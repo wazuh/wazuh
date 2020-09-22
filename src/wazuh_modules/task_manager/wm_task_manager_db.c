@@ -166,6 +166,7 @@ void* wm_task_manager_clean_db(void *arg) {
 STATIC int wm_task_manager_set_timeout_status(time_t now, int timeout, time_t *next_timeout) {
     sqlite3 *db = NULL;
     sqlite3_stmt *stmt = NULL;
+    sqlite3_stmt *stmt2 = NULL;
     int result = OS_INVALID;
 
     w_mutex_lock(&db_mutex);
@@ -190,24 +191,28 @@ STATIC int wm_task_manager_set_timeout_status(time_t now, int timeout, time_t *n
 
         // Check if the last update time is longer than the timeout
         if (now >= (create_time + timeout)) {
-            wdb_finalize(stmt);
 
-            if (wdb_prepare(db, task_queries[WM_TASK_UPDATE_TASK_STATUS], -1, &stmt, NULL) != SQLITE_OK) {
+            if (wdb_prepare(db, task_queries[WM_TASK_UPDATE_TASK_STATUS], -1, &stmt2, NULL) != SQLITE_OK) {
                 mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_PREPARE_ERROR);
                 w_mutex_unlock(&db_mutex);
-                return wm_task_manager_sql_error(db, stmt);
+                wdb_finalize(stmt);
+                return wm_task_manager_sql_error(db, stmt2);
             }
 
-            sqlite3_bind_text(stmt, 1, task_statuses[WM_TASK_TIMEOUT], -1, NULL);
-            sqlite3_bind_int(stmt, 2, time(0));
-            sqlite3_bind_int(stmt, 4, task_id);
+            sqlite3_bind_text(stmt2, 1, task_statuses[WM_TASK_TIMEOUT], -1, NULL);
+            sqlite3_bind_int(stmt2, 2, time(0));
+            sqlite3_bind_int(stmt2, 4, task_id);
 
-            if (result = wdb_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
+            if (result = wdb_step(stmt2), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
                 mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_STEP_ERROR);
                 w_mutex_unlock(&db_mutex);
-                return wm_task_manager_sql_error(db, stmt);
+                wdb_finalize(stmt);
+                return wm_task_manager_sql_error(db, stmt2);
             }
-        } else if (now > create_time) {
+
+            wdb_finalize(stmt2);
+
+        } else if (*next_timeout > (create_time + timeout)) {
             *next_timeout = create_time + timeout;
         }
     }

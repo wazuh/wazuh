@@ -11,7 +11,7 @@ from shutil import copyfile
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, \
-    WazuhDBQueryMultigroups, Agent, WazuhDBQueryGroup, get_agents_info, get_groups, core_upgrade_agents
+    WazuhDBQueryMultigroups, Agent, WazuhDBQueryGroup, get_agents_info, get_groups, core_upgrade_agents, agents_padding
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhPermissionError, \
@@ -19,7 +19,7 @@ from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException,
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array
 from wazuh.rbac.decorators import expose_resources
-from wazuh.core.agent import core_upgrade_agents
+
 
 logger = logging.getLogger('wazuh')
 
@@ -720,14 +720,14 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
                                       none_msg='No upgrade task has been created',
                                       sort_fields=['task_id'], sort_ascending='True')
 
-    '000' in agent_list and agent_list.remove('000')
+    agent_list = agents_padding(result=result, agent_list=agent_list)
     wpk_repo = wpk_repo if wpk_repo else common.wpk_repo_url_4_x
     if version and not version.startswith('v'):
         version = f'v{version}'
     msg = {
         'command': 'upgrade' if not (installer or file_path) else 'upgrade_custom',
-        'agents': list(map(int, agent_list)),
-        'params': {
+        'parameters': {
+            'agents': list(map(int, agent_list)),
             'version': version,
             'force_upgrade': 0 if not force else 1,
             'use_http': 1 if use_http else 0,
@@ -736,20 +736,23 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
             'installer': installer
         }
     }
-    msg['params'] = {k: v for k, v in msg['params'].items() if v is not None}
-    data = core_upgrade_agents(command=msg)
 
-    for agent_result in data:
-        if agent_result['error'] == 0:
-            task_agent = {
-                'agent_id': str(agent_result['agent']).zfill(3),
-                'task_id': agent_result['task_id']
-            }
-            result.affected_items.append(task_agent)
-            result.total_affected_items += 1
-        else:
-            error = WazuhError(code=1810 + agent_result['error'], cmd_error=True, extra_message=agent_result['data'])
-            result.add_failed_item(id_=str(agent_result['agent']).zfill(3), error=error)
+    msg['parameters'] = {k: v for k, v in msg['parameters'].items() if v is not None}
+    agents_result = core_upgrade_agents(command=msg)
+
+    if len(agent_list) > 0:
+        for agent_result in agents_result['data']:
+            if agent_result['error'] == 0:
+                task_agent = {
+                    'agent_id': str(agent_result['agent']).zfill(3),
+                    'task_id': agent_result['task_id']
+                }
+                result.affected_items.append(task_agent)
+                result.total_affected_items += 1
+            else:
+                error = WazuhError(code=1810 + agent_result['error'], cmd_error=True, extra_message=agent_result['message'])
+                result.add_failed_item(id_=str(agent_result['agent']).zfill(3), error=error)
+        result.affected_items = sorted(result.affected_items, key=lambda k: k['task_id'])
 
     return result
 
@@ -772,22 +775,20 @@ def get_upgrade_result(agent_list=None):
                                       some_msg='Some agents have not been updated',
                                       none_msg='No agent has been updated')
 
-    command_list = list()
-    for agent in agent_list:
-        command_list.append({'command': 'upgrade_result', 'module': 'api', 'agent': int(agent)})
+    agent_list = agents_padding(result=result, agent_list=agent_list)
+    msg = {'origin': {'module': 'api'}, 'command': 'upgrade_result', 'module': 'api',
+           'parameters': {'agents': list(map(int, agent_list))}}
 
-    task_results = core_upgrade_agents(command_list, get_result=True)
-    for task_result in task_results:
+    task_results = core_upgrade_agents(msg, get_result=True)
+    for task_result in task_results['data']:
         task_error = task_result.pop('error')
         if task_error == 0:
-            task_result.pop('data')
-            task_result['agent_id'] = str(task_result.pop('agent')).zfill(3)
+            task_result['agent'] = str(task_result['agent']).zfill(3)
             result.affected_items.append(task_result)
             result.total_affected_items += 1
         else:
-            error = WazuhError(code=1810 + task_error, cmd_error=True, extra_message=task_result['data'])
+            error = WazuhError(code=1810 + task_error, cmd_error=True, extra_message=task_result['message'])
             result.add_failed_item(id_=str(task_result.pop('agent')).zfill(3), error=error)
-
     result.affected_items = sorted(result.affected_items, key=lambda k: k['task_id'])
 
     return result

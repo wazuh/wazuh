@@ -81,7 +81,7 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
             response = wm_task_manager_analyze_task_api_module(command, error_code, agent_id, task_id);
         } else {
             *error_code = WM_TASK_INVALID_MODULE;
-            response = wm_task_manager_parse_response(WM_TASK_INVALID_MODULE, agent_id, task_id, status);
+            response = wm_task_manager_parse_data_response(WM_TASK_INVALID_MODULE, agent_id, task_id, status);
         }
     }
 
@@ -105,11 +105,11 @@ STATIC cJSON* wm_task_manager_analyze_task_upgrade_module(char *command, int *er
             if (task_id = wm_task_manager_insert_task(agent_id, task_manager_modules_list[WM_TASK_UPGRADE_MODULE], command), task_id == OS_INVALID) {
                 *error_code = WM_TASK_DATABASE_ERROR;
             } else {
-                response = wm_task_manager_parse_response(WM_TASK_SUCCESS, agent_id, task_id, status);
+                response = wm_task_manager_parse_data_response(WM_TASK_SUCCESS, agent_id, task_id, status);
             }
         } else {
             *error_code = WM_TASK_INVALID_AGENT_ID;
-            response = wm_task_manager_parse_response(WM_TASK_INVALID_AGENT_ID, agent_id, task_id, status);
+            response = wm_task_manager_parse_data_response(WM_TASK_INVALID_AGENT_ID, agent_id, task_id, status);
         }
 
     } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_GET_STATUS], command)) {
@@ -120,13 +120,13 @@ STATIC cJSON* wm_task_manager_analyze_task_upgrade_module(char *command, int *er
                 *error_code = WM_TASK_DATABASE_ERROR;
             } else if (result) {
                 *error_code = result;
-                response = wm_task_manager_parse_response(result, agent_id, task_id, status);
+                response = wm_task_manager_parse_data_response(result, agent_id, task_id, status);
             } else {
-                response = wm_task_manager_parse_response(WM_TASK_SUCCESS, agent_id, task_id, status_result);
+                response = wm_task_manager_parse_data_response(WM_TASK_SUCCESS, agent_id, task_id, status_result);
             }
         } else {
             *error_code = WM_TASK_INVALID_AGENT_ID;
-            response = wm_task_manager_parse_response(WM_TASK_INVALID_AGENT_ID, agent_id, task_id, status);
+            response = wm_task_manager_parse_data_response(WM_TASK_INVALID_AGENT_ID, agent_id, task_id, status);
         }
 
     } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_UPDATE_STATUS], command)) {
@@ -137,18 +137,18 @@ STATIC cJSON* wm_task_manager_analyze_task_upgrade_module(char *command, int *er
                 *error_code = WM_TASK_DATABASE_ERROR;
             } else if (result) {
                 *error_code = result;
-                response = wm_task_manager_parse_response(result, agent_id, task_id, status);
+                response = wm_task_manager_parse_data_response(result, agent_id, task_id, status);
             } else {
-                response = wm_task_manager_parse_response(WM_TASK_SUCCESS, agent_id, task_id, status);
+                response = wm_task_manager_parse_data_response(WM_TASK_SUCCESS, agent_id, task_id, status);
             }
         } else {
             *error_code = WM_TASK_INVALID_AGENT_ID;
-            response = wm_task_manager_parse_response(WM_TASK_INVALID_AGENT_ID, agent_id, task_id, status);
+            response = wm_task_manager_parse_data_response(WM_TASK_INVALID_AGENT_ID, agent_id, task_id, status);
         }
 
     } else {
         *error_code = WM_TASK_INVALID_COMMAND;
-        response = wm_task_manager_parse_response(WM_TASK_INVALID_COMMAND, agent_id, task_id, status);
+        response = wm_task_manager_parse_data_response(WM_TASK_INVALID_COMMAND, agent_id, task_id, status);
     }
 
     os_free(status_result);
@@ -170,17 +170,17 @@ STATIC cJSON* wm_task_manager_analyze_task_api_module(char *command, int *error_
         if (agent_id != OS_INVALID) {
             if (task_id = wm_task_manager_get_task_by_agent_id_and_module(agent_id, task_manager_modules_list[WM_TASK_UPGRADE_MODULE], &command_result, &status, &error, &create_time, &last_update_time), task_id == OS_INVALID) {
                 *error_code = WM_TASK_DATABASE_ERROR;
-                response = wm_task_manager_parse_response(WM_TASK_DATABASE_ERROR, agent_id, task_id, status);
+                response = wm_task_manager_parse_data_response(WM_TASK_DATABASE_ERROR, agent_id, task_id, status);
             } else if (task_id == OS_NOTFOUND || task_id == 0) {
                 *error_code = WM_TASK_DATABASE_NO_TASK;
-                response = wm_task_manager_parse_response(WM_TASK_DATABASE_NO_TASK, agent_id, OS_INVALID, status);
+                response = wm_task_manager_parse_data_response(WM_TASK_DATABASE_NO_TASK, agent_id, OS_INVALID, status);
             } else {
-                response = wm_task_manager_parse_response(WM_TASK_SUCCESS, agent_id, task_id, NULL);
-                wm_task_manager_parse_response_result(response, task_manager_modules_list[WM_TASK_UPGRADE_MODULE], command_result, status, error, create_time, last_update_time, command);
+                response = wm_task_manager_parse_data_response(WM_TASK_SUCCESS, agent_id, task_id, NULL);
+                wm_task_manager_parse_data_result(response, task_manager_modules_list[WM_TASK_UPGRADE_MODULE], command_result, status, error, create_time, last_update_time, command);
             }
         } else {
             *error_code = WM_TASK_INVALID_AGENT_ID;
-            response = wm_task_manager_parse_response(WM_TASK_INVALID_AGENT_ID, agent_id, task_id, status);
+            response = wm_task_manager_parse_data_response(WM_TASK_INVALID_AGENT_ID, agent_id, task_id, status);
         }
 
     } else if (!strcmp(task_manager_commands_list[WM_TASK_TASK_RESULT], command)) {
@@ -188,22 +188,22 @@ STATIC cJSON* wm_task_manager_analyze_task_api_module(char *command, int *error_
         if (task_id != OS_INVALID) {
             if (agent_id = wm_task_manager_get_task_by_task_id(task_id, &module_result, &command_result, &status, &error, &create_time, &last_update_time), agent_id == OS_INVALID) {
                 *error_code = WM_TASK_DATABASE_ERROR;
-                response = wm_task_manager_parse_response(WM_TASK_DATABASE_ERROR, agent_id, task_id, status);
+                response = wm_task_manager_parse_data_response(WM_TASK_DATABASE_ERROR, agent_id, task_id, status);
             } else if (agent_id == OS_NOTFOUND || agent_id == 0) {
                 *error_code = WM_TASK_DATABASE_NO_TASK;
-                response = wm_task_manager_parse_response(WM_TASK_DATABASE_NO_TASK, OS_INVALID, task_id, status);
+                response = wm_task_manager_parse_data_response(WM_TASK_DATABASE_NO_TASK, OS_INVALID, task_id, status);
             } else {
-                response = wm_task_manager_parse_response(WM_TASK_SUCCESS, agent_id, task_id, NULL);
-                wm_task_manager_parse_response_result(response, module_result, command_result, status, error, create_time, last_update_time, command);
+                response = wm_task_manager_parse_data_response(WM_TASK_SUCCESS, agent_id, task_id, NULL);
+                wm_task_manager_parse_data_result(response, module_result, command_result, status, error, create_time, last_update_time, command);
             }
         } else {
             *error_code = WM_TASK_INVALID_TASK_ID;
-            response = wm_task_manager_parse_response(WM_TASK_INVALID_TASK_ID, agent_id, task_id, status);
+            response = wm_task_manager_parse_data_response(WM_TASK_INVALID_TASK_ID, agent_id, task_id, status);
         }
 
     } else {
         *error_code = WM_TASK_INVALID_COMMAND;
-        response = wm_task_manager_parse_response(WM_TASK_INVALID_COMMAND, agent_id, task_id, status);
+        response = wm_task_manager_parse_data_response(WM_TASK_INVALID_COMMAND, agent_id, task_id, status);
     }
 
     os_free(command_result);

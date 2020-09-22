@@ -14,7 +14,7 @@
 
 #define WM_UPGRADE_MINIMAL_VERSION_SUPPORT "v3.0.0"
 #define WM_UPGRADE_NEW_VERSION_REPOSITORY "v3.4.0"
-#define WM_UPGRADE_NEW_UPGRADE_MECHANISM "v4.1.0"
+#define WM_UPGRADE_NEW_UPGRADE_MECHANISM "v4.0.0"
 #define WM_UPGRADE_WPK_DEFAULT_PATH "var/upgrade/"
 #define WM_UPGRADE_WPK_DOWNLOAD_TIMEOUT 60000
 #define WM_UPGRADE_WPK_DOWNLOAD_ATTEMPTS 5
@@ -132,10 +132,9 @@ void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs)
  * @param agent_ids array with the list of agents id
  * @param task pointer to a wm_upgrade_task structure
  * @param manager_configs manager configuration parameters
- * @param upgrade_agents flag to indicate if there are agents valid to upgrade
  * @return string with the response
  * */
-char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task, const wm_manager_configs* manager_configs, int *upgrade_agents) __attribute__((nonnull));
+char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task, const wm_manager_configs* manager_configs) __attribute__((nonnull));
 
 /**
  * Process and upgrade custom command. Create the task for each agent_id, dispatches to task manager and
@@ -143,10 +142,9 @@ char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_
  * @param agent_ids array with the list of agents id
  * @param task pointer to a wm_upgrade_custom_task structure
  * @param manager_configs manager configuration parameters
- * @param upgrade_agents flag to indicate if there are agents valid to upgrade
  * @return string with the response
  * */
-char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task, const wm_manager_configs* manager_configs, int *upgrade_agents) __attribute__((nonnull));
+char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task, const wm_manager_configs* manager_configs) __attribute__((nonnull));
 
 /**
  * Process and agent_upgraded command
@@ -154,19 +152,5 @@ char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_u
  * @param task Task with the update information
  * */
 char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, const wm_upgrade_agent_status_task* task) __attribute__((nonnull));
-
-/**
- * Start the upgrade procedure for the agents
- * @param manager_configs manager configuration parameters
- * */
-void wm_agent_upgrade_start_upgrades(const wm_manager_configs* manager_configs) __attribute__((nonnull));
-
-/**
- * Send a command to the agent and return the response
- * @param command request command to agent
- * @param command_size size of the command
- * @return response from agent
- * */
-char* wm_agent_upgrade_send_command_to_agent(const char *command, const size_t command_size) __attribute__((nonnull));
 
 #endif
