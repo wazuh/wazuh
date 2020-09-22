@@ -262,7 +262,6 @@ stages:
               rationale: !anystr
               title: !anystr
               policy_id: !anystr
-              file: !anystr
               description: !anystr
               id: !anyint
               result: !anystr
@@ -906,7 +905,6 @@ stages:
               rationale: !anystr
               title: !anystr
               policy_id: !anystr
-              file: !anystr
               description: !anystr
               id: !anyint
               result: !anystr
@@ -1456,7 +1454,6 @@ stages:
               rationale: !anystr
               title: !anystr
               policy_id: !anystr
-              file: !anystr
               description: !anystr
               id: !anyint
               result: !anystr
