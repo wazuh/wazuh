@@ -1,6 +1,9 @@
 ---
 test_name: PUT /agents/upgrade
 
+marks:
+  - base_tests
+
 stages:
 
   - name: Generate two task IDs
@@ -21,9 +24,6 @@ stages:
 ---
 test_name: GET /tasks/status
 
-marks:
-  - base_tests
-
 stages:
 
   - name: Missing task IDs
@@ -34,21 +34,10 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 400
       json:
-        data:
-          affected_items: [ ]
-          total_affected_items: 0
-          total_failed_items: 1
-          failed_items:
-            - error:
-                code: 1851
-                message: !anystr
-                remediation: !anything
-              id:
-                - None
-        message: !anystr
-
+        detail: !anystr
+        title: !anystr
 
   - name: Get no-existent tasks's status
     request:
@@ -84,7 +73,7 @@ stages:
       json:
         data:
           affected_items:
-            - data: Success
+            - message: Success
               agent: !anyint
               task_id: 1
               module: upgrade_module
@@ -92,7 +81,7 @@ stages:
               status: !anystr
               create_time: !anystr
               update_time: !anystr
-            - data: Success
+            - message: Success
               agent: !anyint
               task_id: 2
               module: upgrade_module
@@ -102,5 +91,5 @@ stages:
               update_time: !anystr
           total_affected_items: 2
           total_failed_items: 0
-          failed_items: [ ]
+          failed_items: []
         message: !anystr

@@ -3822,6 +3822,7 @@ components:
       in: query
       name: list_tasks
       description: "List of task IDs (separated by comma)"
+      required: true
       schema:
         type: array
         items:
