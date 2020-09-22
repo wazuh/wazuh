@@ -69,7 +69,7 @@
 #define W_LOGTEST_CODE_INVALID_JSON         2   ///< Unabled to process JSON request (Fields not found or they aren't valid)
 #define W_LOGTEST_CODE_COMMAND_NOT_ALLOWED  3   ///< Unabled to process the command
 #define W_LOGTEST_CODE_INVALID_TOKEN        4   ///< Invalid client id
-
+#define W_LOGTEST_CODE_MSG_TOO_LARGE        5   ///< Message too big to be processed
 
 #define valid_str_session(x,y) (cJSON_IsString(x) && x->valuestring && strlen(x->valuestring) == y) ? 1 : 0)
 

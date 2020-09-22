@@ -155,17 +155,14 @@ void * w_logtest_clients_handler(w_logtest_connection_t * connection) {
 char *w_logtest_generate_error_response(char * msg){
 
     cJSON * json_response = NULL;
-    cJSON * json_msg_list = NULL;
     cJSON * json_msg = NULL;
     char * str_response = NULL;
 
-    json_response =  cJSON_CreateObject();
-    json_msg_list = cJSON_CreateArray();
+    json_response = cJSON_CreateObject();
     json_msg = cJSON_CreateString(msg);
 
-    cJSON_AddItemToArray(json_msg_list, json_msg);
-    cJSON_AddItemToObject(json_response,W_LOGTEST_JSON_MESSAGES, json_msg_list);
-    cJSON_AddNumberToObject(json_response, W_LOGTEST_JSON_CODE, W_LOGTEST_RCODE_ERROR_INPUT);
+    cJSON_AddItemToObject(json_response, W_LOGTEST_JSON_MESSAGE, json_msg);
+    cJSON_AddNumberToObject(json_response, W_LOGTEST_JSON_ERROR, W_LOGTEST_CODE_MSG_TOO_LARGE);
 
     str_response = cJSON_PrintUnformatted(json_response);
 
@@ -659,6 +656,8 @@ int w_logtest_check_input(char * input_json, cJSON ** req, char ** command_value
         return W_LOGTEST_CODE_ERROR_PARSING;
     }
 
+    *req = root;
+
     cJSON *parameters;
     if (parameters = cJSON_GetObjectItemCaseSensitive(root, w_LOGTEST_JSON_PARAMETERS), !parameters) {
         mdebug1(LOGTEST_ERROR_FIELD_NOT_FOUND, w_LOGTEST_JSON_PARAMETERS);
@@ -694,11 +693,9 @@ int w_logtest_check_input(char * input_json, cJSON ** req, char ** command_value
     }
 
     if (!strcmp(*command_value, W_LOGTEST_COMMAND_REMOVE_SESSION)) {
-        *req = parameters;
         return w_logtest_check_input_remove_session(parameters, msg);
     }
     else if (!strcmp(*command_value, W_LOGTEST_COMMAND_LOG_PROCESSING)) {
-        *req = parameters;
         return w_logtest_check_input_request(parameters, msg, list_msg);
     }
     else {
@@ -773,7 +770,7 @@ int w_logtest_check_input_request(cJSON * root, char ** msg, OSList * list_msg) 
     }
 
     /* An event can be a string or a json object */
-    if(event = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_EVENT), !event) {
+    if (event = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_EVENT), !event) {
         mdebug1(LOGTEST_ERROR_FIELD_NOT_FOUND, W_LOGTEST_JSON_EVENT);
         int size_msg = strlen(LOGTEST_ERROR_FIELD_NOT_FOUND) + strlen(W_LOGTEST_JSON_EVENT) + 1;
         os_calloc(size_msg, sizeof(char), *msg);
@@ -781,7 +778,7 @@ int w_logtest_check_input_request(cJSON * root, char ** msg, OSList * list_msg) 
         return W_LOGTEST_CODE_INVALID_JSON;
     }
 
-    if ( !(cJSON_IsString(event) && event->valuestring != NULL && strlen(event->valuestring) > 0)
+    if (!(cJSON_IsString(event) && event->valuestring != NULL && strlen(event->valuestring) > 0)
          && !(cJSON_IsObject(event) && event->child != NULL)) {
 
         mdebug1(LOGTEST_ERROR_FIELD_NOT_VALID, W_LOGTEST_JSON_EVENT);
@@ -1024,16 +1021,18 @@ char * w_logtest_process_request(char * raw_request, w_logtest_connection_t * co
     if (retval == W_LOGTEST_CODE_SUCCESS) {
         int codemsg;
 
+        cJSON * parameters = cJSON_GetObjectItemCaseSensitive(json_request, w_LOGTEST_JSON_PARAMETERS);
+
         if (!strcmp(command_value, W_LOGTEST_COMMAND_REMOVE_SESSION)) {
-            codemsg = w_logtest_process_request_remove_session(json_request, data, list_msg, connection);
+            codemsg = w_logtest_process_request_remove_session(parameters, data, list_msg, connection);
         } else {
-            codemsg = w_logtest_process_request_log_processing(json_request, data, list_msg, connection);
+            codemsg = w_logtest_process_request_log_processing(parameters, data, list_msg, connection);
         }
 
         cJSON_AddNumberToObject(data, W_LOGTEST_JSON_CODE, codemsg);
     }
 
-    if(input_error_msg) {
+    if (input_error_msg) {
         cJSON_AddStringToObject(json_response, W_LOGTEST_JSON_MESSAGE, input_error_msg);
         os_free(input_error_msg);
     }

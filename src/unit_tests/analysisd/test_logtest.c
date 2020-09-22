@@ -2800,19 +2800,18 @@ void test_w_logtest_process_request_type_remove_session_ok(void ** state) {
     OSList * list_msg;
     os_calloc(1, sizeof(OSList), list_msg);
 
-
     /* w_logtest_process_request */
     will_return(__wrap_OSList_Create, list_msg);
     will_return(__wrap_OSList_SetMaxSize, 0);
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
 
-    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
-    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+    /* w_logtest_check_input */
     will_return(__wrap_cJSON_ParseWithOpts, (cJSON *) 1);
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
     will_return(__wrap_cJSON_IsObject, true);
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
     will_return(__wrap_cJSON_GetStringValue, "remove_session");
-
 
     // w_logtest_check_input_remove_session ok
     cJSON token = {0};
@@ -2826,7 +2825,9 @@ void test_w_logtest_process_request_type_remove_session_ok(void ** state) {
     /* w_logtest_process_request_remove_session_fail */
     w_logtest_connection_t connection = {0};
     connection.active_client = 5;
+    cJSON parameters = {0};
 
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &parameters);
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, NULL);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(7316): Failure to remove session. token JSON field must be a string");
@@ -2937,6 +2938,10 @@ void test_w_logtest_process_request_type_log_processing(void ** state) {
     will_return(__wrap_cJSON_IsString, true);
     will_return(__wrap_cJSON_IsString, true);
 
+    /* w_logtest_process_request */
+    cJSON parameters = {0};
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &parameters);
+
     /* log processing fail get session*/
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, NULL);
 
@@ -3028,14 +3033,13 @@ void test_w_logtest_generate_error_response_ok(void ** state) {
     cJSON response = {0};
 
     will_return(__wrap_cJSON_CreateObject, &response);
-    will_return(__wrap_cJSON_CreateArray, (cJSON *) 1);
     will_return(__wrap_cJSON_CreateString, (cJSON *) 1);
 
     expect_value(__wrap_cJSON_AddItemToObject, object, &response);
-    expect_string(__wrap_cJSON_AddItemToObject, string, "messages");
+    expect_string(__wrap_cJSON_AddItemToObject, string, "message");
 
-    expect_string(__wrap_cJSON_AddNumberToObject, name, "codemsg");
-    expect_value(__wrap_cJSON_AddNumberToObject, number, -2);
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "error");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 5);
     will_return(__wrap_cJSON_AddNumberToObject, NULL);
 
     will_return(__wrap_cJSON_PrintUnformatted, "{json response}");
@@ -4220,14 +4224,13 @@ void test_w_logtest_clients_handler_recv_msg_oversize(void ** state)
     // w_logtest_generate_error_response
     cJSON response = {0};
     will_return(__wrap_cJSON_CreateObject, &response);
-    will_return(__wrap_cJSON_CreateArray, (cJSON *) 1);
     will_return(__wrap_cJSON_CreateString, (cJSON *) 1);
 
     expect_value(__wrap_cJSON_AddItemToObject, object, &response);
-    expect_string(__wrap_cJSON_AddItemToObject, string, "messages");
+    expect_string(__wrap_cJSON_AddItemToObject, string, "message");
 
-    expect_string(__wrap_cJSON_AddNumberToObject, name, "codemsg");
-    expect_value(__wrap_cJSON_AddNumberToObject, number, -2);
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "error");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 5);
     will_return(__wrap_cJSON_AddNumberToObject, NULL);
 
     will_return(__wrap_cJSON_PrintUnformatted, strdup("{json response}"));
@@ -4246,16 +4249,11 @@ void test_w_logtest_clients_handler_ok(void ** state)
     w_logtest_connection_t conection = {0};
 
     will_return(__wrap_FOREVER, 1);
-
     will_return(__wrap_pthread_mutex_lock, 0);
-
     will_return(__wrap_accept, 5);
-
     will_return(__wrap_pthread_mutex_unlock, 0);
-
     will_return(__wrap_OS_RecvSecureTCP, 100);
 
-    // w_logtest_process_request_type_remove_session_ok
     /* w_logtest_process_request */
     OSList * list_msg;
     os_calloc(1, sizeof(OSList), list_msg);
@@ -4270,8 +4268,7 @@ void test_w_logtest_clients_handler_ok(void ** state)
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
     will_return(__wrap_cJSON_GetStringValue, "remove_session");
 
-
-    // w_logtest_check_input_remove_session ok
+    /* w_logtest_check_input_remove_session ok */
     cJSON token = {0};
     token.valuestring = strdup("12345678");
 
@@ -4279,6 +4276,10 @@ void test_w_logtest_clients_handler_ok(void ** state)
     will_return(__wrap_cJSON_IsString, (cJSON_bool) 1);
     will_return(__wrap_cJSON_IsString, (cJSON_bool) 1);
     will_return(__wrap_cJSON_IsString, (cJSON_bool) 1);
+
+    /* w_logtest_process_request */
+    cJSON parameter = {0};
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &parameter);
 
     /* w_logtest_process_request_remove_session_fail */
     w_logtest_connection_t connection = {0};
