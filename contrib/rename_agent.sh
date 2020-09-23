@@ -35,6 +35,11 @@ sed -i $KEYFILE -e "s/${1}/${2}/"
 
 cd $DIRECTORY/queue
 
+if [ -e "agent-info/${1}-${IPADDR}" ]; then
+	mv "agent-info/${1}-${IPADDR}" \
+	   "agent-info/${2}-${IPADDR}"
+fi
+
 if [ -e "diff/${1}" ]; then
 	mv "diff/${1}" \
 	   "diff/${2}"

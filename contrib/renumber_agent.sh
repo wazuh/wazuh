@@ -36,6 +36,11 @@ sed -i $KEYFILE -e "s/${IPADDR}/${2}/"
 
 cd $DIRECTORY/queue
 
+if [ -e "agent-info/${1}-${IPADDR}" ]; then
+	mv "agent-info/${1}-${IPADDR}" \
+	   "agent-info/${1}-${2}"
+fi
+
 if [ -e "rootcheck/(${1}) ${IPADDR}->rootcheck" ]; then
 	mv "rootcheck/(${1}) ${IPADDR}->rootcheck" \
 	   "rootcheck/(${1}) ${2}->rootcheck"

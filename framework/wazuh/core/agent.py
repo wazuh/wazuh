@@ -481,6 +481,8 @@ class Agent:
 
             # Move agent file
             agent_files = [
+                ('{0}/queue/agent-info/{1}-{2}'.format(common.ossec_path, self.name, self.registerIP),
+                 '{0}/agent-info'.format(agent_backup_dir)),
                 ('{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.registerIP),
                  '{0}/rootcheck'.format(agent_backup_dir)),
                 ('{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id),

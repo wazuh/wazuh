@@ -67,6 +67,9 @@ case "$1" in
 	chmod -R 750 ${DIR}/queue/diff
 	chmod 740 ${DIR}/queue/diff/* > /dev/null 2>&1 || true
 
+	chown -R ${USER_REM}:${GROUP} ${DIR}/queue/agent-info
+	chmod -R 755 ${DIR}/queue/agent-info
+	chmod 744 ${DIR}/queue/agent-info/* > /dev/null 2>&1 || true
 	chown -R ${USER_REM}:${GROUP} ${DIR}/queue/rids
 	chmod -R 755 ${DIR}/queue/rids
 	chmod 744 ${DIR}/queue/rids/* > /dev/null 2>&1 || true
