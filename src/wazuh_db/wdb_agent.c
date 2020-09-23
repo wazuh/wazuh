@@ -27,7 +27,7 @@ static const char *global_db_commands[] = {
     [WDB_INSERT_AGENT_GROUP] = "global insert-agent-group %s",
     [WDB_INSERT_AGENT_BELONG] = "global insert-agent-belong %s",
     [WDB_UPDATE_AGENT_NAME] = "global update-agent-name %s",
-    [WDB_UPDATE_AGENT_VERSION] = "global update-agent-version %s",
+    [WDB_UPDATE_AGENT_DATA] = "global update-agent-data %s",
     [WDB_UPDATE_AGENT_KEEPALIVE] = "global update-keepalive %s",
     [WDB_UPDATE_AGENT_STATUS] = "global update-agent-status %s",
     [WDB_UPDATE_AGENT_GROUP] = "global update-agent-group %s",
@@ -225,23 +225,24 @@ int wdb_update_agent_name(int id, const char *name) {
     return result;
 }
 
-int wdb_update_agent_version (int id,
-                              const char *os_name,
-                              const char *os_version,
-                              const char *os_major,
-                              const char *os_minor,
-                              const char *os_codename,
-                              const char *os_platform,
-                              const char *os_build,
-                              const char *os_uname,
-                              const char *os_arch,
-                              const char *version,
-                              const char *config_sum,
-                              const char *merged_sum,
-                              const char *manager_host,
-                              const char *node_name,
-                              const char *agent_ip,
-                              wdb_sync_status_t sync_status) {
+int wdb_update_agent_data (int id,
+                           const char *os_name,
+                           const char *os_version,
+                           const char *os_major,
+                           const char *os_minor,
+                           const char *os_codename,
+                           const char *os_platform,
+                           const char *os_build,
+                           const char *os_uname,
+                           const char *os_arch,
+                           const char *version,
+                           const char *config_sum,
+                           const char *merged_sum,
+                           const char *manager_host,
+                           const char *node_name,
+                           const char *agent_ip,
+                           const char *labels,
+                           wdb_sync_status_t sync_status) {
     int result = 0;
     cJSON *data_in = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -271,9 +272,10 @@ int wdb_update_agent_version (int id,
     cJSON_AddStringToObject(data_in, "manager_host", manager_host);
     cJSON_AddStringToObject(data_in, "node_name", node_name);
     cJSON_AddStringToObject(data_in, "agent_ip", agent_ip);
+    cJSON_AddStringToObject(data_in, "labels", labels);
     cJSON_AddNumberToObject(data_in, "sync_status", sync_status);
 
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_VERSION], cJSON_PrintUnformatted(data_in));
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_DATA], cJSON_PrintUnformatted(data_in));
 
     cJSON_Delete(data_in);
 

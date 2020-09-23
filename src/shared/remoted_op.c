@@ -194,7 +194,7 @@ int parse_agent_update_msg (char *msg,
     char *line = NULL;
     char *savedptr = NULL;
     char sdelim[] = { '\n', '\0' };
-    const char * AGENT_IP_LABEL = "#\"_agent_ip\":";
+    const char * agent_ip_label = "#\"_agent_ip\":";
 
     // Setting pointers to NULL to guarantee the return value specification
     *version = NULL;
@@ -222,8 +222,8 @@ int parse_agent_update_msg (char *msg,
         case '\"': // Regular label
             // The _agent_ip will not be appended to the labels string.
             // Instead it will be returned in the agent_ip parameter.
-            if(!strncmp(line, AGENT_IP_LABEL, strlen(AGENT_IP_LABEL))) {
-                os_strdup(line + strlen(AGENT_IP_LABEL), *agent_ip);
+            if(!strncmp(line, agent_ip_label, strlen(agent_ip_label))) {
+                os_strdup(line + strlen(agent_ip_label), *agent_ip);
             }
             else {
                 wm_strcat(labels, line, '\n');
