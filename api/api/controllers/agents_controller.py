@@ -439,7 +439,7 @@ async def put_upgrade_agents(request, list_agents='*', pretty=False, wait_for_co
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
-                          wait_for_complete=wait_for_complete,
+                          wait_for_complete=True,
                           logger=logger,
                           broadcasting=list_agents == '*',
                           rbac_permissions=request['token_info']['rbac_policies']
@@ -477,7 +477,7 @@ async def put_upgrade_custom_agents(request, list_agents='*', pretty=False, wait
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
-                          wait_for_complete=wait_for_complete,
+                          wait_for_complete=True,
                           logger=logger,
                           broadcasting=list_agents == '*',
                           rbac_permissions=request['token_info']['rbac_policies']
@@ -508,7 +508,7 @@ async def get_agent_upgrade(request, list_agents=None, pretty=False, wait_for_co
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
-                          wait_for_complete=wait_for_complete,
+                          wait_for_complete=True,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
