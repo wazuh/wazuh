@@ -12,16 +12,6 @@
 #include "fim_db.h"
 
 /**
- * @brief Get checksum of all file_data.
- *
- * @param fim_sql FIM database struct.
- * @param arg CTX object.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_get_data_checksum(fdb_t *fim_sql, void * arg);
-
-/**
  * @brief Get list of all paths by storing them in a temporal file.
  *
  * @param fim_sql FIM database struct.
@@ -95,11 +85,11 @@ int fim_db_sync_path_range(fdb_t *fim_sql, pthread_mutex_t *mutex,
  * @brief Callback function: Entry checksum calculation.
  *
  * @param fim_sql FIM database struct.
- * @param entry Entry data to calculate checksum.
+ * @param checksum Checksum to be added to the ongoing digest.
  * @param storage 1 Store database in memory, disk otherwise.
  * @param arg
  */
-void fim_db_callback_calculate_checksum(fdb_t *fim_sql, fim_entry *entry, int storage, void *arg);
+void fim_db_callback_calculate_checksum(fdb_t *fim_sql, char *checksum, int storage, void *arg);
 
 /**
  * @brief Calculate checksum of data entries between @start and @top.

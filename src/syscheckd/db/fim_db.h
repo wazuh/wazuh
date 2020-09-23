@@ -44,6 +44,7 @@
 #define FIM_DB_PATHS    100
 
 #define FIM_DB_DECODE_TYPE(_func) (void *(*)(sqlite3_stmt *))(_func)
+#define FIM_DB_FREE_TYPE(_func) (void (*)(void *))(_func)
 #define FIM_DB_CALLBACK_TYPE(_func) (void (*)(fdb_t *, void *, int,  void *))(_func)
 
 extern const char *schema_fim_sql;
@@ -284,5 +285,15 @@ void fim_db_callback_save_path(fdb_t *fim_sql, fim_entry *entry, int storage, vo
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 void fim_db_callback_save_string(fdb_t * fim_sql, char *str, int storage, void *arg);
+
+/**
+ * @brief Get checksum of all file_data.
+ *
+ * @param fim_sql FIM database struct.
+ * @param arg CTX object.
+ *
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+int fim_db_get_data_checksum(fdb_t *fim_sql, void * arg);
 
 #endif /* FIM_DB_COMMON_H */

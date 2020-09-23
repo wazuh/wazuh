@@ -144,12 +144,6 @@ int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
 
 }
 
-int fim_db_get_data_checksum(fdb_t *fim_sql, void * arg) {
-    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_ALL_ENTRIES);
-    return fim_db_process_get_query(fim_sql, FIM_TYPE_FILE, FIMDB_STMT_GET_ALL_ENTRIES,
-                                    fim_db_callback_calculate_checksum, 0, arg);
-}
-
 int fim_db_sync_path_range(fdb_t * fim_sql, pthread_mutex_t *mutex, fim_tmp_file *file, int storage) {
     return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_db_callback_sync_path_range, storage,
                                     NULL, NULL, NULL);
@@ -202,7 +196,7 @@ fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt) {
     return entry;
 }
 
-/* No needed bind FIMDB_STMT_GET_LAST_ROWID, FIMDB_STMT_GET_ALL_ENTRIES, FIMDB_STMT_GET_NOT_SCANNED,
+/* No needed bind FIMDB_STMT_GET_LAST_ROWID, FIMDB_STMT_GET_NOT_SCANNED,
    FIMDB_STMT_SET_ALL_UNSCANNED, FIMDB_STMT_DELETE_UNSCANNED */
 
 /* FIMDB_STMT_INSERT_DATA */
@@ -481,15 +475,10 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_file_data *new, fim
     return res_data || res_path;
 }
 
-void fim_db_callback_calculate_checksum(__attribute__((unused)) fdb_t *fim_sql, fim_entry *entry,
+void fim_db_callback_calculate_checksum(__attribute__((unused)) fdb_t *fim_sql, char *checksum,
     __attribute__((unused))int storage, void *arg) {
 
-    EVP_MD_CTX *ctx = (EVP_MD_CTX *)arg;
-    if (entry->type == FIM_TYPE_FILE) {
-        EVP_DigestUpdate(ctx, entry->file_entry.data->checksum, strlen(entry->file_entry.data->checksum));
-    } else {
-        EVP_DigestUpdate(ctx, entry->registry_entry.value->checksum, strlen(entry->registry_entry.value->checksum));
-    }
+    EVP_DigestUpdate((EVP_MD_CTX *)arg, checksum, strlen(checksum));
 }
 
 int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *top,
@@ -531,7 +520,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
             os_strdup(entry->file_entry.path, str_pathlh);
         }
         //Type of storage not required
-        fim_db_callback_calculate_checksum(fim_sql, entry, FIM_DB_DISK, (void *)ctx_left);
+        fim_db_callback_calculate_checksum(fim_sql, entry->file_entry.data->checksum, FIM_DB_DISK, (void *)ctx_left);
         free_entry(entry);
     }
 
@@ -549,7 +538,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
             os_strdup(entry->file_entry.path, str_pathuh);
         }
         //Type of storage not required
-        fim_db_callback_calculate_checksum(fim_sql, entry, FIM_DB_DISK, (void *)ctx_right);
+        fim_db_callback_calculate_checksum(fim_sql, entry->file_entry.data->checksum, FIM_DB_DISK, (void *)ctx_right);
         free_entry(entry);
     }
 

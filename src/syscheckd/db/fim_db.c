@@ -27,9 +27,15 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_GET_PATH] = "SELECT path, inode_id, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM file_entry INNER JOIN file_data ON path = ? AND file_data.rowid = file_entry.inode_id;",
     [FIMDB_STMT_UPDATE_DATA] = "UPDATE file_data SET size = ?, perm = ?, attributes = ?, uid = ?, gid = ?, user_name = ?, group_name = ?, hash_md5 = ?, hash_sha1 = ?, hash_sha256 = ?, mtime = ? WHERE rowid = ?;",
     [FIMDB_STMT_UPDATE_PATH] = "UPDATE file_entry SET inode_id = ?, mode = ?, last_event = ? = ?, scanned = ?, options = ?, checksum = ? WHERE path = ?;",
+#ifndef WIN32
     [FIMDB_STMT_GET_LAST_PATH] = "SELECT path FROM file_entry ORDER BY path DESC LIMIT 1;",
     [FIMDB_STMT_GET_FIRST_PATH] = "SELECT path FROM file_entry ORDER BY path ASC LIMIT 1;",
-    [FIMDB_STMT_GET_ALL_ENTRIES] = "SELECT path, inode_id, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM file_data INNER JOIN file_entry ON inode_id = file_data.rowid ORDER BY PATH ASC;",
+    [FIMDB_STMT_GET_ALL_CHECKSUMS] = "SELECT checksum FROM file_data INNER JOIN file_entry ON inode_id = file_data.rowid ORDER BY PATH ASC;",
+#else
+    [FIMDB_STMT_GET_LAST_PATH] = "SELECT path FROM sync_view ORDER BY path DESC LIMIT 1;",
+    [FIMDB_STMT_GET_FIRST_PATH] = "SELECT path FROM sync_view ORDER BY path ASC LIMIT 1;",
+    [FIMDB_STMT_GET_ALL_CHECKSUMS] = "SELECT checksum FROM sync_view ORDER BY PATH ASC;",
+#endif
     [FIMDB_STMT_GET_NOT_SCANNED] = "SELECT path, inode_id, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM file_data INNER JOIN file_entry ON inode_id = file_data.rowid WHERE scanned = 0 ORDER BY PATH ASC;",
     [FIMDB_STMT_SET_ALL_UNSCANNED] = "UPDATE file_entry SET scanned = 0;",
     [FIMDB_STMT_GET_PATH_COUNT] = "SELECT count(inode_id), inode_id FROM file_entry WHERE inode_id = (select inode_id from file_entry where path = ?);",
@@ -538,4 +544,20 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, int type, pthre
     fim_db_clean_file(&file, storage);
 
     return FIMDB_OK;
+}
+
+// General use functions
+char *fim_db_decode_string(sqlite3_stmt *stmt) {
+    char *retval;
+
+    os_strdup((char *)sqlite3_column_text(stmt, 0), retval);
+
+    return retval;
+}
+
+int fim_db_get_data_checksum(fdb_t *fim_sql, void *arg) {
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_ALL_CHECKSUMS);
+    return fim_db_multiple_row_query(fim_sql, FIMDB_STMT_GET_ALL_CHECKSUMS, FIM_DB_DECODE_TYPE(fim_db_decode_string),
+                                     FIM_DB_FREE_TYPE(free_strarray),
+                                     FIM_DB_CALLBACK_TYPE(fim_db_callback_calculate_checksum), 0, arg);
 }
