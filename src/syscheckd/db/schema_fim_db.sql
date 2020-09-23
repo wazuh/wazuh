@@ -72,3 +72,8 @@ CREATE TABLE IF NOT EXISTS registry_data (
 );
 
 CREATE INDEX IF NOT EXISTS key_name_index ON registry_data (key_id, name);
+
+CREATE VIEW IF NOT EXISTS sync_view (path, checksum) AS
+  SELECT arch || path || '\\' || name, registry_data.checksum FROM registry_key INNER JOIN registry_data ON registry_key.id=registry_data.key_id
+  UNION ALL
+  SELECT path, checksum FROM file_entry INNER JOIN file_data ON file_entry.inode_id=file_data.rowid;
