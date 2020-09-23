@@ -729,8 +729,8 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
         'parameters': {
             'agents': list(map(int, agent_list)),
             'version': version,
-            'force_upgrade': 0 if not force else 1,
-            'use_http': 1 if use_http else 0,
+            'force_upgrade': force,
+            'use_http': use_http,
             'wpk_repo': f'{wpk_repo}/' if not wpk_repo.endswith('/') else wpk_repo,
             'file_path': file_path,
             'installer': installer
