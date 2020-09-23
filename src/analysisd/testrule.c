@@ -45,6 +45,7 @@ __attribute__((noreturn))
 static void help_logtest(void)
 {
     print_header();
+    print_out("\nSince Wazuh v4.0.0 this binary is deprecated. Use wazuh-logtest instead\n");
     print_out("  %s: -[Vhdtva] [-c config] [-D dir] [-U rule:alert:decoder]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
@@ -471,6 +472,9 @@ int main(int argc, char **argv)
 
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
+
+    /* Inform that binary is deprecated */
+    print_out("\nSince Wazuh v4.0.0 this binary is deprecated. Use wazuh-logtest instead\n");
 
     /* Going to main loop */
     OS_ReadMSG(ut_str);
