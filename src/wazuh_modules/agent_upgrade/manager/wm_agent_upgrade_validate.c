@@ -20,6 +20,9 @@
 #include "wazuh_modules/wmodules.h"
 #include "wm_agent_upgrade_validate.h"
 
+// Mutex needed to download a WPK file
+pthread_mutex_t download_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /**
  * Check if agent version is valid to upgrade to a non-customized version
  * @param agent_version Wazuh version of agent to validate
@@ -118,6 +121,10 @@ int wm_agent_upgrade_validate_wpk(const wm_upgrade_task *task) {
     os_sha1 file_sha1;
 
     if (task && task->wpk_repository && task->wpk_file && task->wpk_sha1) {
+
+        // Take mutex to avoid downloading many times the same WPK
+        w_mutex_lock(&download_mutex);
+
         os_calloc(OS_SIZE_4096, sizeof(char), file_url);
         os_calloc(OS_SIZE_4096, sizeof(char), file_path);
 
@@ -152,6 +159,9 @@ int wm_agent_upgrade_validate_wpk(const wm_upgrade_task *task) {
 
         os_free(file_url);
         os_free(file_path);
+
+        // Release download mutex
+        w_mutex_unlock(&download_mutex);
 
     } else {
         return_code = WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST;
