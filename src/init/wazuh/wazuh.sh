@@ -97,7 +97,11 @@ WazuhUpgrade()
         fi
     fi
 
-    # Remove existing SQLite databases
+    # Remove/relocate existing SQLite databases
+    rm -f $DIRECTORY/var/db/.profile.db*
+    rm -f $DIRECTORY/var/db/.template.db*
+    rm -f $DIRECTORY/var/db/agents/*
+
     if [ -f "$DIRECTORY/var/db/global.db" ]; then
         cp $DIRECTORY/var/db/global.db* $DIRECTORY/queue/db/
         chmod 640 $DIRECTORY/queue/db/global.db*
@@ -108,9 +112,6 @@ WazuhUpgrade()
             echo "Unable to move global.db during the upgrade"
         fi
     fi
-    rm -f $DIRECTORY/var/db/.profile.db*
-    rm -f $DIRECTORY/var/db/.template.db*
-    rm -f $DIRECTORY/var/db/agents/*
 
     # Remove existing SQLite databases for Wazuh DB, only if upgrading from 3.2..3.6
 
