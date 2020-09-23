@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS registry_key (
     user_name TEXT,
     group_name TEXT,
     mtime INTEGER,
-    arch INTEGER,
+    arch TEXT CHECK (arch IN ('[x32]', '[x64]')),
     scanned INTEGER,
     checksum TEXT NOT NULL
 );

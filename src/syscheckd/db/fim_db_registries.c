@@ -209,7 +209,7 @@ fim_registry_key *fim_db_decode_registry_key(sqlite3_stmt *stmt) {
     sqlite_strdup((char *)sqlite3_column_text(stmt, 5), entry->user_name);
     sqlite_strdup((char *)sqlite3_column_text(stmt, 6), entry->group_name);
     entry->mtime = (unsigned int)sqlite3_column_int(stmt, 7);
-    entry->arch = (unsigned int)sqlite3_column_int(stmt, 8);
+    entry->arch = strcmp(sqlite3_column_text(stmt, 8), "[x64]") == 0 ? ARCH_64BIT : ARCH_32BIT;
     entry->scanned = (unsigned int)sqlite3_column_int(stmt, 9);
     strncpy(entry->checksum, (char *)sqlite3_column_text(stmt, 10), sizeof(os_sha1) - 1);
     entry->scanned = (unsigned int)sqlite3_column_int(stmt, 11);
