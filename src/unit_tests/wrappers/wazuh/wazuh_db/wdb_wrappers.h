@@ -57,4 +57,6 @@ cJSON* __wrap_wdb_exec(sqlite3 *db, const char *sql);
 
 void __wrap_wdb_leave(wdb_t *wdb);
 
+int __wrap_wdb_sql_exec(wdb_t *wdb, const char *sql_exec);
+
 #endif

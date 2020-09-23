@@ -232,6 +232,7 @@ extern char *schema_upgrade_v2_sql;
 extern char *schema_upgrade_v3_sql;
 extern char *schema_upgrade_v4_sql;
 extern char *schema_upgrade_v5_sql;
+extern char *schema_global_upgrade_v1_sql;
 extern int wdb_sock_agent;
 
 extern wdb_config wconfig;
@@ -700,6 +701,15 @@ int wdb_metadata_fill_version(sqlite3 *db);
 
 /* Get value data in output variable. Returns 0 if doesn't found, 1 on success or -1 on error. */
 int wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output);
+
+/**
+ * @brief Checks if the table exists in the database.
+ * 
+ * @param[in] wdb Database to query for the table existence.
+ * @param[in] key Name of the table to find.
+ * @return 1 if the table exists, 0 if the table doesn't exist or OS_INVALID on failure.
+ */
+ int wdb_metadata_table_check(wdb_t * wdb, const char * key);
 
 /* Update field date for specific fim_entry. */
 int wdb_fim_update_date_entry(wdb_t * wdb, const char *path);
@@ -1228,7 +1238,15 @@ int wdb_scan_info_fim_checks_control (wdb_t * wdb, const char *last_check);
 // Upgrade agent database to last version
 wdb_t * wdb_upgrade(wdb_t *wdb);
 
-// Create backup and generate an emtpy DB
+/**
+ * @brief Function to upgrade Global DB to the latest version.
+ * 
+ * @param [in] wdb The global.db database to upgrade.
+ * @return wdb The global.db database updated on success.
+ */
+wdb_t * wdb_upgrade_global(wdb_t *wdb);
+
+// Create backup and generate an empty DB
 wdb_t * wdb_backup(wdb_t *wdb, int version);
 
 /* Create backup for agent. Returns 0 on success or -1 on error. */
