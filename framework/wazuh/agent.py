@@ -744,7 +744,7 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
         for agent_result in agents_result['data']:
             if agent_result['error'] == 0:
                 task_agent = {
-                    'agent_id': str(agent_result['agent']).zfill(3),
+                    'agent': str(agent_result['agent']).zfill(3),
                     'task_id': agent_result['task_id']
                 }
                 result.affected_items.append(task_agent)

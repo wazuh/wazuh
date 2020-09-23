@@ -962,19 +962,26 @@ def test_agent_upgrade_agents(agent_list):
         List of agent ID's to be updated.
     """
     with patch('wazuh.agent.core_upgrade_agents') as core_upgrade_agents_mock:
-        core_upgrade_agents_mock.return_value = [{'error': 0, 'data': 'Success', 'agent': 1, 'task_id': 1},
-                                                 {'error': 0, 'data': 'Success', 'agent': 2, 'task_id': 2},
-                                                 {'error': 8, 'data': 'Agent is not active.', 'agent': 3},
-                                                 {'error': 8, 'data': 'Agent is not active.', 'agent': 4}]
+        core_upgrade_agents_mock.return_value = {'error': 0,
+                                                 'data': [{'error': 0, 'message': 'Success', 'agent': 1, 'task_id': 1},
+                                                          {'error': 0, 'message': 'Success', 'agent': 2, 'task_id': 2},
+                                                          {'error': 6,
+                                                           'message': 'Agent information not found in database',
+                                                           'agent': 3},
+                                                          {'error': 6,
+                                                           'message': 'Agent information not found in database',
+                                                           'agent': 4}
+                                                          ],
+                                                 'message': 'Success'}
         result = upgrade_agents(agent_list=agent_list)
 
     assert isinstance(result, AffectedItemsWazuhResult)
-    assert result.affected_items[0]['agent_id'] == agent_list[0]
-    assert result.affected_items[1]['agent_id'] == agent_list[1]
+    assert result.affected_items[0]['agent'] == agent_list[0]
+    assert result.affected_items[1]['agent'] == agent_list[1]
     assert list(result.failed_items.values())[0] == set(agent_list[2:])
 
 
-@pytest.mark.parametrize('agent_list', [['001', '002']])
+@pytest.mark.parametrize('agent_list', [['001', '002', '003']])
 def test_agent_get_upgrade_result(agent_list):
     """Test `get_upgrade_result` function from agent module.
 
@@ -984,60 +991,53 @@ def test_agent_get_upgrade_result(agent_list):
         List of agent ID's to be upgraded.
     """
     with patch('wazuh.agent.core_upgrade_agents') as core_upgrade_agents_mock:
-        core_upgrade_agents_mock.return_value = [{'error': 0, 'data': 'Success', 'agent': 1, 'task_id': 1,
-                                                  'module': 'upgrade_module', 'command': 'upgrade',
-                                                  'status': 'Updating', 'create_time': '', 'update_time': '0'},
-                                                 {'error': 7, 'data': 'No task in DB', 'agent': 2}]
+        core_upgrade_agents_mock.return_value = {'error': 0,
+                                                  'data': [
+                                                      {'error': 0, 'message': 'Success', 'agent': 1, 'task_id': 1,
+                                                       'module': 'upgrade_module', 'command': 'upgrade',
+                                                       'status': 'upgraded', 'create_time': '2020/09/23 10:39:53',
+                                                       'update_time': '2020/09/23 10:54:53'},
+                                                      {'error': 0, 'message': 'Success', 'agent': 2, 'task_id': 2,
+                                                       'module': 'upgrade_module', 'command': 'upgrade',
+                                                       'status': 'Legacy upgrade: ...',
+                                                       'create_time': '2020/09/23 11:24:27',
+                                                       'update_time': '2020/09/23 11:24:47'},
+                                                      {'error': 7, 'message': 'No task in DB', 'agent': 3}],
+                                                 'message': 'Success'}
+
         result = get_upgrade_result(agent_list=agent_list)
     assert isinstance(result, AffectedItemsWazuhResult)
-    assert result.affected_items[0]['agent_id'] == agent_list[0]
-    assert list(result.failed_items.values())[0] == set(agent_list[1:])
+    assert result.affected_items[0]['agent'] == agent_list[0]
+    assert list(result.failed_items.values())[0] == set(agent_list[2:])
 
 
-@pytest.mark.parametrize('agent_list', [['001'], ['002']])
-@patch('wazuh.core.agent.OssecSocket')
-@patch('wazuh.core.agent.Agent._send_custom_wpk_file')
-@patch('socket.socket.sendto', return_value=1)
-@patch('wazuh.common.database_path_global', new=test_global_bd_path)
-@patch('sqlite3.connect', return_value=test_data.global_db)
-def test_agent_upgrade_agents_custom(sqlite_mock, socket_sendto, _send_wpk_file, ossec_socket_mock, agent_list):
+@pytest.mark.parametrize('agent_list', [['001', '002', '003', '004']])
+def test_agent_upgrade_agents_custom(agent_list):
     """Test `upgrade_agents_custom` function from agent module.
 
     Parameters
     ----------
     agent_list : List of str
-        List of agent ID's to be upgraded.
+        List of agent ID's to be updated.
     """
-    result = upgrade_agents_custom(agent_list=agent_list, file_path="any-path", installer="installer")
-    assert isinstance(result, str)
-    assert result == "Installation started"
+    with patch('wazuh.agent.core_upgrade_agents') as core_upgrade_agents_mock:
+        core_upgrade_agents_mock.return_value = {'error': 0,
+                                                 'data': [{'error': 0, 'message': 'Success', 'agent': 1, 'task_id': 1},
+                                                          {'error': 0, 'message': 'Success', 'agent': 2, 'task_id': 2},
+                                                          {'error': 6,
+                                                           'message': 'Agent information not found in database',
+                                                           'agent': 3},
+                                                          {'error': 6,
+                                                           'message': 'Agent information not found in database',
+                                                           'agent': 4}
+                                                          ],
+                                                 'message': 'Success'}
+        result = upgrade_agents(agent_list=agent_list, file_path='testing', installer='testing.sh')
 
-
-@pytest.mark.parametrize('file_path, installer', [
-    (None, "installer"),
-    ("any-path", None),
-    (None, None)
-])
-@patch('wazuh.common.database_path_global', new=test_global_bd_path)
-@patch('sqlite3.connect', return_value=test_data.global_db)
-def test_agent_upgrade_agents_custom_exceptions(sqlite_mock, file_path, installer):
-    """Test `upgrade_agents_custom` function from agent module raises the expected `WazuhInternalError` exception when
-    using invalid parameters.
-
-    Parameters
-    ----------
-    file_path : str
-        Path to the installer file to be used.
-    installer : str
-        Name of the installer file to be used.
-    """
-    try:
-        upgrade_agents_custom(agent_list=['001'], file_path=file_path, installer=installer)
-        pytest.fail()
-    except WazuhInternalError as error:
-        assert error == WazuhInternalError(1307)
-    except WazuhError as error:
-        assert error.code == 1006
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.affected_items[0]['agent'] == agent_list[0]
+    assert result.affected_items[1]['agent'] == agent_list[1]
+    assert list(result.failed_items.values())[0] == set(agent_list[2:])
 
 
 @pytest.mark.parametrize('agent_list, component, configuration', [
