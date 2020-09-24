@@ -48,7 +48,7 @@ def find_nth(string, substring, n):
 
     start = string.find(substring)
     while start >= 0 and n > 1:
-        start = string.find(substring, start+len(substring))
+        start = string.find(substring, start + len(substring))
         n -= 1
     return start
 
@@ -296,6 +296,7 @@ def select_array(array, select=None, required_fields=None):
     result_list : list
         Filtered array of dicts with only the selected (and required) fields as keys.
     """
+
     def get_nested_fields(dikt, select_field):
         split_select = select_field.split('.')
         if len(split_select) == 1:
@@ -768,6 +769,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
     :return: list with processed query
     """
+
     def check_clause(value1: typing.Union[str, int], op: str, value2: str) -> bool:
         """
         Checks an operation between value1 and value2. 'value1' could be an
@@ -799,7 +801,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
             return False
 
     # compile regular expression only one time when function is called
-    re_get_elements = re.compile(r'([\w\-]+)(?:\.?)((?:[\w\-]*))(=|!=|<|>|~)([\w\-./:]+)') # get elements in a clause
+    re_get_elements = re.compile(r'([\w\-]+)(?:\.?)((?:[\w\-]*))(=|!=|<|>|~)([\w\-./:]+)')  # get elements in a clause
     # get a list with OR clauses
     or_clauses = q.split(',')
     output_array = []
@@ -895,7 +897,21 @@ class WazuhDBBackend(AbstractDatabaseBackend):
         parameters by itself.
         """
         for k, v in request.items():
-            query = re.sub(r':\b' + re.escape(str(k)) + r'\b', f"{v}" if isinstance(v, int) else f"'{v}'", query)
+            if isinstance(v, list):
+                values = list()
+                for element in v:
+                    if isinstance(element, (int, float)) or (isinstance(element, str) and element.isnumeric()):
+                        values.append(element)
+                    else:
+                        values.append(f"'{element}'")
+                value = f"{','.join(values)}"
+            elif isinstance(v, (int, float)):
+                value = f"{v}"
+            elif isinstance(v, str):
+                value = f"'{v}'"
+            else:
+                raise TypeError(f'Invalid type for request parameters: {type(v)}')
+            query = re.sub(r':\b' + re.escape(str(k)) + r'\b', value, query)
         return query
 
     def _render_query(self, query):
@@ -1133,6 +1149,9 @@ class WazuhDBQuery(object):
             # Filter a date, but only if it is in string (YYYY-MM-DD hh:mm:ss) format.
             # If it matches the same format as DB (timestamp integer), filter directly by value (next if cond).
             self._filter_date(q_filter, field_name)
+        elif 'rbac' in field_name:
+            self.query += f"{field_name.lstrip('rbac_')} IN (:{field_filter})"
+            self.request[field_filter] = q_filter['value']
         else:
             if q_filter['value'] is not None:
                 self.request[field_filter] = q_filter['value'] if field_name != "version" else re.sub(
