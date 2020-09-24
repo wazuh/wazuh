@@ -46,6 +46,20 @@ int main(int argc, const char* argv[])
         {
             std::ifstream configFile{ args.config() };
             std::ifstream inputData{ args.inputData() };
+            if (!configFile.good())
+            {
+                throw std::runtime_error
+                {
+                    "Invalid config file."
+                };
+            }
+            if (!inputData.good())
+            {
+                throw std::runtime_error
+                {
+                    "Invalid inputs file."
+                };
+            }
             const auto jsonConfigFile { nlohmann::json::parse(configFile) };
             const auto jsonInputFile { nlohmann::json::parse(inputData) };
             OneTimeSync otSync(jsonConfigFile[0],

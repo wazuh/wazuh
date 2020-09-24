@@ -12,9 +12,6 @@
 #include <fstream>
 #include <sstream>
 
-
-#include <iostream>
-
 struct SmartDeleterJson final
 {
     void operator()(cJSON * data)
@@ -62,7 +59,7 @@ OneTimeSync::OneTimeSync(const nlohmann::json& config,
         };
     }
     const auto rsyncRegConfig{ config.at("rsync_register_config") };
-    const std::unique_ptr<cJSON, SmartDeleterJson> jsRsyncRegConfig{ cJSON_Parse(rsyncRegConfig[0].dump().c_str()) };
+    const std::unique_ptr<cJSON, SmartDeleterJson> jsRsyncRegConfig{ cJSON_Parse(rsyncRegConfig.at(0).dump().c_str()) };
 
     sync_callback_data_t callback{ rsyncCallback, this };
     if (rsync_register_sync_id(m_rsyncHandle, "OneTimeSync", m_dbSyncHandle, jsRsyncRegConfig.get(), callback))
@@ -81,8 +78,8 @@ OneTimeSync::~OneTimeSync()
 
 void OneTimeSync::syncData()
 {
-    const auto it{ m_inputData[0].find("dbsync") };
-    if (it != m_inputData[0].end())
+    const auto it{ m_inputData.at(0).find("dbsync") };
+    if (it != m_inputData.at(0).end())
     {
         const std::unique_ptr<cJSON, SmartDeleterJson> jsSync{ cJSON_Parse(it->dump().c_str()) };
         callback_data_t callback { syncCallback, nullptr };
@@ -99,8 +96,8 @@ void OneTimeSync::syncData()
 
 void OneTimeSync::pushData()
 {
-    const auto it{ m_inputData[0].find("rsync_push") };
-    if (it != m_inputData[0].end())
+    const auto it{ m_inputData.at(0).find("rsync_push") };
+    if (it != m_inputData.at(0).end())
     {
         for (const auto& push : *it)
         {
@@ -120,8 +117,8 @@ void OneTimeSync::pushData()
 
 void OneTimeSync::startSync()
 {
-    const auto it{ m_inputData[0].find("rsync_start_sync") };
-    if (it != m_inputData[0].end())
+    const auto it{ m_inputData.at(0).find("rsync_start_sync") };
+    if (it != m_inputData.at(0).end())
     {
         sync_callback_data_t callback{ rsyncCallback, this };
         const std::unique_ptr<cJSON, SmartDeleterJson> jsSync{ cJSON_Parse(it->dump().c_str()) };
@@ -141,7 +138,7 @@ void OneTimeSync::startSync()
 void OneTimeSync::rsyncCallback(const void* buffer, size_t bufferSize, void* userData)
 {
     static unsigned int index{ 0 };
-    OneTimeSync* object{ reinterpret_cast<OneTimeSync*>(userData) };
+    const OneTimeSync* object{ reinterpret_cast<OneTimeSync*>(userData) };
     if (object)
     {
         std::stringstream oFileName;

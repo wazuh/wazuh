@@ -17,7 +17,7 @@
 #include <vector>
 #include <iostream>
 
-class CmdLineArgs
+class CmdLineArgs final
 {
 public:
     CmdLineArgs(const int argc, const char* argv[])

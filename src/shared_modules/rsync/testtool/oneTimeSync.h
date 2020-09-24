@@ -16,7 +16,7 @@
 #include "dbsync.h"
 
 
-class OneTimeSync
+class OneTimeSync final
 {
 public:
     OneTimeSync(const nlohmann::json& config,
