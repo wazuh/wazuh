@@ -689,7 +689,7 @@ def get_outdated_agents(agent_list=None, offset=0, limit=common.database_limit, 
 
 
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1818]})
+                  post_proc_kwargs={'exclude_codes': [1703, 1818]})
 def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, use_http=False,
                    file_path=None, installer=None):
     """Start the agent upgrade process.
@@ -720,14 +720,15 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
                                       none_msg='No upgrade task has been created',
                                       sort_fields=['task_id'], sort_ascending='True')
 
-    agent_list = agents_padding(result=result, agent_list=agent_list)
+    agent_list = list(map(int, agents_padding(result=result, agent_list=agent_list)))
+
     wpk_repo = wpk_repo if wpk_repo else common.wpk_repo_url_4_x
     if version and not version.startswith('v'):
         version = f'v{version}'
     msg = {
         'command': 'upgrade' if not (installer or file_path) else 'upgrade_custom',
         'parameters': {
-            'agents': list(map(int, agent_list)),
+            'agents': list(),
             'version': version,
             'force_upgrade': force,
             'use_http': use_http,
@@ -738,10 +739,15 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
     }
 
     msg['parameters'] = {k: v for k, v in msg['parameters'].items() if v is not None}
-    agents_result = core_upgrade_agents(command=msg)
+    agents_result_chunks = [agent_list[x:x+5000] for x in range(0, len(agent_list), 5000)]
 
-    if len(agent_list) > 0:
-        for agent_result in agents_result['data']:
+    agent_results = list()
+    for agents_chunk in agents_result_chunks:
+        msg['parameters']['agents'] = agents_chunk
+        agent_results.append(core_upgrade_agents(command=msg))
+
+    for agent_result_chunk in agent_results:
+        for agent_result in agent_result_chunk['data']:
             if agent_result['error'] == 0:
                 task_agent = {
                     'agent': str(agent_result['agent']).zfill(3),
@@ -750,15 +756,16 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
                 result.affected_items.append(task_agent)
                 result.total_affected_items += 1
             else:
-                error = WazuhError(code=1810 + agent_result['error'], cmd_error=True, extra_message=agent_result['message'])
+                error = WazuhError(code=1810 + agent_result['error'], cmd_error=True,
+                                   extra_message=agent_result['message'])
                 result.add_failed_item(id_=str(agent_result['agent']).zfill(3), error=error)
-        result.affected_items = sorted(result.affected_items, key=lambda k: k['task_id'])
+    result.affected_items = sorted(result.affected_items, key=lambda k: k['task_id'])
 
     return result
 
 
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1817]})
+                  post_proc_kwargs={'exclude_codes': [1703, 1817]})
 def get_upgrade_result(agent_list=None):
     """Read upgrade result output from agent.
 
@@ -775,20 +782,25 @@ def get_upgrade_result(agent_list=None):
                                       some_msg='Some agents have not been updated',
                                       none_msg='No agent has been updated')
 
-    agent_list = agents_padding(result=result, agent_list=agent_list)
-    msg = {'origin': {'module': 'api'}, 'command': 'upgrade_result', 'module': 'api',
-           'parameters': {'agents': list(map(int, agent_list))}}
+    agent_list = list(map(int, agents_padding(result=result, agent_list=agent_list)))
+    agents_result_chunks = [agent_list[x:x + 5000] for x in range(0, len(agent_list), 5000)]
+    msg = {'origin': {'module': 'api'}, 'command': 'upgrade_result', 'module': 'api', 'parameters': {'agents': list()}}
 
-    task_results = core_upgrade_agents(msg, get_result=True)
-    for task_result in task_results['data']:
-        task_error = task_result.pop('error')
-        if task_error == 0:
-            task_result['agent'] = str(task_result['agent']).zfill(3)
-            result.affected_items.append(task_result)
-            result.total_affected_items += 1
-        else:
-            error = WazuhError(code=1810 + task_error, cmd_error=True, extra_message=task_result['message'])
-            result.add_failed_item(id_=str(task_result.pop('agent')).zfill(3), error=error)
+    task_results = list()
+    for agents_chunk in agents_result_chunks:
+        msg['parameters']['agents'] = agents_chunk
+        task_results.append(core_upgrade_agents(msg, get_result=True))
+
+    for task_result_chunk in task_results:
+        for task_result in task_result_chunk['data']:
+            task_error = task_result.pop('error')
+            if task_error == 0:
+                task_result['agent'] = str(task_result['agent']).zfill(3)
+                result.affected_items.append(task_result)
+                result.total_affected_items += 1
+            else:
+                error = WazuhError(code=1810 + task_error, cmd_error=True, extra_message=task_result['message'])
+                result.add_failed_item(id_=str(task_result.pop('agent')).zfill(3), error=error)
     result.affected_items = sorted(result.affected_items, key=lambda k: k['task_id'])
 
     return result
