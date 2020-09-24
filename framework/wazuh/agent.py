@@ -171,9 +171,15 @@ def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None
     if len(agent_list) != 0:
         if filters is None:
             filters = dict()
-        filters['id'] = agent_list
 
         system_agents = get_agents_info()
+
+        not_agent_list = system_agents - set(agent_list)
+        if len(agent_list) < len(not_agent_list):
+            filters['rbac_ids'] = agent_list
+        else:
+            filters['not_rbac_ids'] = list(not_agent_list)
+
         for agent_id in agent_list:
             if agent_id not in system_agents:
                 result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
@@ -185,26 +191,6 @@ def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None
         result.total_affected_items = data['totalItems']
 
     return result
-
-
-def get_agent_by_name(name=None, select=None):
-    """Gets an agent by its name.
-
-    :param name: Agent_name.
-    :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-    :return: AffectedItemsWazuhResult.
-    """
-    db_query = WazuhDBQueryAgents(filters={'name': name})
-    data = db_query.run()
-    try:
-        agent = data['items'][0]['id']
-        return get_agents(agent_list=[agent], select=select)
-    except IndexError:
-        raise WazuhResourceNotFound(1754)
-    except Exception as e:
-        if e.code == 4000:
-            raise WazuhPermissionError(4000)
-        raise e
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
@@ -340,7 +326,6 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort=None, search=No
     :param hash_algorithm: hash algorithm used to get mergedsum and configsum.
     :return: AffectedItemsWazuhResult.
     """
-
     affected_groups = list()
     result = AffectedItemsWazuhResult(all_msg='All selected groups information was returned',
                                       some_msg='Some groups information was not returned',
@@ -351,7 +336,7 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort=None, search=No
     for invalid_group in set(group_list) - get_groups():
         result.add_failed_item(id_=invalid_group, error=WazuhResourceNotFound(1710))
 
-    group_query = WazuhDBQueryGroup(filters={'name': group_list}, offset=offset, limit=limit, sort=sort, search=search)
+    group_query = WazuhDBQueryGroup(filters={'rbac_group_names': group_list}, offset=offset, limit=limit, sort=sort, search=search)
     query_data = group_query.run()
 
     for group in query_data['items']:
