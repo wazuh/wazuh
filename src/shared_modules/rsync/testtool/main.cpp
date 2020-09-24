@@ -16,6 +16,7 @@
 #include "agentEmulator.h"
 #include "managerEmulator.h"
 #include "cmdArgsHelper.h"
+#include "oneTimeSync.h"
 
 static void logFunction(const char* msg)
 {
@@ -26,18 +27,48 @@ int main(int argc, const char* argv[])
 {
     try
     {
-        CmdLineArgs args{argc, argv};
         rsync_initialize(logFunction);
         dbsync_initialize(logFunction);
-        const auto syncQueue
+        CmdLineArgs args{argc, argv};
+        if (args.inputData().empty())
         {
-            std::make_shared<SyncQueue>()
-        };
-        const std::chrono::milliseconds syncPeriod{100};
-        const auto maxDbItems{100};
-        AgentEmulator agent{syncPeriod, maxDbItems, syncQueue, args.outputFolder()};
-        ManagerEmulator manager{syncQueue};
-        while(getc(stdin) != 'q');
+            const auto syncQueue
+            {
+                std::make_shared<SyncQueue>()
+            };
+            const std::chrono::milliseconds syncPeriod{100};
+            const auto maxDbItems{100};
+            AgentEmulator agent{syncPeriod, maxDbItems, syncQueue, args.outputFolder()};
+            ManagerEmulator manager{syncQueue};
+            while(getc(stdin) != 'q');
+        }
+        else
+        {
+            std::ifstream configFile{ args.config() };
+            std::ifstream inputData{ args.inputData() };
+            if (!configFile.good())
+            {
+                throw std::runtime_error
+                {
+                    "Invalid config file."
+                };
+            }
+            if (!inputData.good())
+            {
+                throw std::runtime_error
+                {
+                    "Invalid inputs file."
+                };
+            }
+            const auto jsonConfigFile { nlohmann::json::parse(configFile) };
+            const auto jsonInputFile { nlohmann::json::parse(inputData) };
+            OneTimeSync otSync(jsonConfigFile[0],
+                               jsonInputFile[0],
+                               args.outputFolder());
+            otSync.syncData();
+            otSync.pushData();
+            otSync.startSync();
+        }
     }
     catch(const std::exception& ex)
     {
@@ -45,5 +76,6 @@ int main(int argc, const char* argv[])
         CmdLineArgs::showHelp();
     }
     rsync_teardown();
+    dbsync_teardown();
     return 0;
 }
