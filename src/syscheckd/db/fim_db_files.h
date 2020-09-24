@@ -82,16 +82,6 @@ int fim_db_sync_path_range(fdb_t *fim_sql, pthread_mutex_t *mutex,
                             fim_tmp_file *file, int storage);
 
 /**
- * @brief Callback function: Entry checksum calculation.
- *
- * @param fim_sql FIM database struct.
- * @param checksum Checksum to be added to the ongoing digest.
- * @param storage 1 Store database in memory, disk otherwise.
- * @param arg
- */
-void fim_db_callback_calculate_checksum(fdb_t *fim_sql, char *checksum, int storage, void *arg);
-
-/**
  * @brief Calculate checksum of data entries between @start and @top.
  *
  * Said range will be splitted into two and the resulting checksums will

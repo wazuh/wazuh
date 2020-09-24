@@ -329,6 +329,7 @@ void fim_registry_process_key_delete_event(fdb_t *fim_sql,
     fim_event_mode event_mode = *(fim_event_mode *)_ev_mode;
     fim_tmp_file *file;
     registry *configuration;
+    int result;
 
     configuration = fim_registry_configuration(data->registry_entry.key->path, data->registry_entry.key->arch);
     if (configuration == NULL) {
@@ -347,14 +348,18 @@ void fim_registry_process_key_delete_event(fdb_t *fim_sql,
         }
     }
 
-    if (fim_db_get_values_from_registry_key(fim_sql, &file, FIM_DB_DISK, data->registry_entry.key->id) == FIMDB_OK) {
-        if (file && file->elements) {
-            fim_db_process_read_registry_data_file(fim_sql, file, mutex, fim_registry_process_value_delete_event,
-                                                   FIM_DB_DISK, _alert, _ev_mode, _w_evt);
-        }
+    w_mutex_lock(mutex);
+    result = fim_db_get_values_from_registry_key(fim_sql, &file, FIM_DB_DISK, data->registry_entry.key->id);
+    w_mutex_unlock(mutex);
+
+    if (result == FIMDB_OK && file && file->elements) {
+        fim_db_process_read_registry_data_file(fim_sql, file, mutex, fim_registry_process_value_delete_event,
+                                               FIM_DB_DISK, _alert, _ev_mode, _w_evt);
     }
 
+    w_mutex_lock(mutex);
     fim_db_remove_registry_key(fim_sql, data);
+    w_mutex_unlock(mutex);
 
     if (configuration->opts | CHECK_SEECHANGES) {
         fim_diff_process_delete_registry(data->registry_entry.key->path, data->registry_entry.key->arch);
@@ -367,25 +372,29 @@ void fim_registry_process_key_delete_event(fdb_t *fim_sql,
 void fim_registry_process_unscanned_entries() {
     fim_tmp_file *file;
     fim_event_mode event_mode = FIM_SCHEDULED;
+    int result;
 
-    if (fim_db_get_registry_keys_not_scanned(syscheck.database, &file, FIM_DB_DISK) == FIMDB_OK) {
-        if (file && file->elements) {
-            fim_db_process_read_file(syscheck.database, file, FIM_TYPE_REGISTRY, &syscheck.fim_registry_mutex,
-                                     fim_registry_process_key_delete_event, FIM_DB_DISK, &_base_line, &event_mode,
-                                     NULL);
-        }
-    } else {
+    w_mutex_lock(&syscheck.fim_registry_mutex);
+    result = fim_db_get_registry_keys_not_scanned(syscheck.database, &file, FIM_DB_DISK);
+    w_mutex_unlock(&syscheck.fim_registry_mutex);
+
+    if (result != FIMDB_OK) {
         mwarn(FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
+    } else if (file && file->elements) {
+        fim_db_process_read_file(syscheck.database, file, FIM_TYPE_REGISTRY, &syscheck.fim_registry_mutex,
+                                 fim_registry_process_key_delete_event, FIM_DB_DISK, &_base_line, &event_mode, NULL);
     }
 
-    if (fim_db_get_registry_data_not_scanned(syscheck.database, &file, FIM_DB_DISK) == FIMDB_OK) {
-        if (file && file->elements) {
-            fim_db_process_read_registry_data_file(syscheck.database, file, &syscheck.fim_registry_mutex,
-                                                   fim_registry_process_value_delete_event, FIM_DB_DISK, &_base_line,
-                                                   &event_mode, NULL);
-        }
-    } else {
+    w_mutex_lock(&syscheck.fim_registry_mutex);
+    result = fim_db_get_registry_data_not_scanned(syscheck.database, &file, FIM_DB_DISK);
+    w_mutex_unlock(&syscheck.fim_registry_mutex);
+
+    if (result != FIMDB_OK) {
         mwarn(FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
+    } else if (file && file->elements) {
+        fim_db_process_read_registry_data_file(syscheck.database, file, &syscheck.fim_registry_mutex,
+                                               fim_registry_process_value_delete_event, FIM_DB_DISK, &_base_line,
+                                               &event_mode, NULL);
     }
 }
 
@@ -587,6 +596,12 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
     new.registry_entry.key = fim_registry_get_key_data(current_key_handle, full_key, configuration);
     new.registry_entry.value = NULL;
 
+    if (new.registry_entry.key == NULL) {
+        return;
+    }
+
+    w_mutex_lock(&syscheck.fim_registry_mutex);
+
     saved.type = FIM_TYPE_REGISTRY;
     saved.registry_entry.key = fim_db_get_registry_key(syscheck.database, full_key, arch);
     saved.registry_entry.value = NULL;
@@ -621,6 +636,8 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
     if (value_count) {
         fim_read_values(current_key_handle, &new, &saved, arch, value_count, mode);
     }
+
+    w_mutex_unlock(&syscheck.fim_registry_mutex);
 
     fim_registry_free_key(new.registry_entry.key);
     fim_registry_free_key(saved.registry_entry.key);

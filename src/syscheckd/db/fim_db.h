@@ -287,6 +287,16 @@ void fim_db_callback_save_path(fdb_t *fim_sql, fim_entry *entry, int storage, vo
 void fim_db_callback_save_string(fdb_t * fim_sql, char *str, int storage, void *arg);
 
 /**
+ * @brief Callback function: Entry checksum calculation.
+ *
+ * @param fim_sql FIM database struct.
+ * @param checksum Checksum to be added to the ongoing digest.
+ * @param storage 1 Store database in memory, disk otherwise.
+ * @param arg
+ */
+void fim_db_callback_calculate_checksum(fdb_t *fim_sql, char *checksum, int storage, void *arg);
+
+/**
  * @brief Get checksum of all file_data.
  *
  * @param fim_sql FIM database struct.

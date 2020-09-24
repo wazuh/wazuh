@@ -475,12 +475,6 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_file_data *new, fim
     return res_data || res_path;
 }
 
-void fim_db_callback_calculate_checksum(__attribute__((unused)) fdb_t *fim_sql, char *checksum,
-    __attribute__((unused))int storage, void *arg) {
-
-    EVP_DigestUpdate((EVP_MD_CTX *)arg, checksum, strlen(checksum));
-}
-
 int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *top,
                                 long id, int n, pthread_mutex_t *mutex) {
     fim_entry *entry = NULL;

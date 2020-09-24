@@ -457,6 +457,12 @@ end:
     os_free(base);
 }
 
+void fim_db_callback_calculate_checksum(__attribute__((unused)) fdb_t *fim_sql, char *checksum,
+    __attribute__((unused))int storage, void *arg) {
+
+    EVP_DigestUpdate((EVP_MD_CTX *)arg, checksum, strlen(checksum));
+}
+
 int fim_db_get_count(fdb_t *fim_sql, int index) {
 
     if (index == FIMDB_STMT_GET_COUNT_REG_KEY || index == FIMDB_STMT_GET_COUNT_REG_DATA ||
