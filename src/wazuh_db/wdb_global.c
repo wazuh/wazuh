@@ -244,7 +244,6 @@ int wdb_global_update_agent_version(wdb_t *wdb,
 cJSON* wdb_global_get_agent_labels(wdb_t *wdb, int id) {
     sqlite3_stmt *stmt = NULL;
     cJSON * result = NULL;
-    int index = 0;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
@@ -258,12 +257,9 @@ cJSON* wdb_global_get_agent_labels(wdb_t *wdb, int id) {
 
     stmt = wdb->stmt[WDB_STMT_GLOBAL_LABELS_GET];
 
-    // In this statement, we must bind the agent ID four times
-    for (index = 1; index < 5; ++index) {
-        if (sqlite3_bind_int(stmt, index, id) != SQLITE_OK) {
-            merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-            return NULL;
-        }
+    if (sqlite3_bind_int(stmt, 1, id) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return NULL;
     }
 
     result = wdb_exec_stmt(stmt);
@@ -1143,7 +1139,7 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb,cJSON * json_agent){
 
     stmt = wdb->stmt[WDB_STMT_GLOBAL_UPDATE_AGENT_INFO];
 
-     for (n = 0 ; global_db_agent_fields[n] ; n++){
+    for (n = 0 ; global_db_agent_fields[n] ; n++){
         // Every column name of Global DB is stored in global_db_agent_fields 
         json_field = cJSON_GetObjectItem(json_agent, global_db_agent_fields[n]+1);
         index = sqlite3_bind_parameter_index(stmt, global_db_agent_fields[n]);
@@ -1152,13 +1148,13 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb,cJSON * json_agent){
                 merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
                 return OS_INVALID;
             }
-       
+        
         } else if (cJSON_IsString(json_field) && json_field->valuestring != NULL && index != 0) {
             if (sqlite3_bind_text(stmt, index , json_field->valuestring, -1, NULL) != SQLITE_OK) {
                 merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
                 return OS_INVALID;
             }
-        } 
+        }
     }
 
     index = sqlite3_bind_parameter_index(stmt, ":sync_status");

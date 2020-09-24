@@ -555,18 +555,6 @@ void test_wdb_global_sync_agent_info_get_success(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
-    expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-
-    expect_value(__wrap_sqlite3_bind_int, index, 3);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-
-    expect_value(__wrap_sqlite3_bind_int, index, 4);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-
     // Required for wdb_global_set_sync_status()
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "synced");
@@ -634,18 +622,6 @@ void test_wdb_global_sync_agent_info_get_sync_fail(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
-    expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-
-    expect_value(__wrap_sqlite3_bind_int, index, 3);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-
-    expect_value(__wrap_sqlite3_bind_int, index, 4);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-
     // Required for wdb_global_set_sync_status()
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "synced");
@@ -707,18 +683,6 @@ void test_wdb_global_sync_agent_info_get_full(void **state)
 
     // Required for wdb_get_agent_labels()
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-
-    expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-
-    expect_value(__wrap_sqlite3_bind_int, index, 3);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-
-    expect_value(__wrap_sqlite3_bind_int, index, 4);
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 

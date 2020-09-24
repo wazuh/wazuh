@@ -106,8 +106,11 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
     char *config_sum = NULL;
     char *merged_sum = NULL;
     char *agent_ip = NULL;
-    char *labels = NULL;
     char manager_host[512] = "";
+    char *labels = NULL;
+    const char * agent_ip_label = "#\"_agent_ip\":";
+    const char * manager_label = "#\"_manager_hostname\":";
+    const char * node_label = "#\"_node_name\":";
     pending_data_t *data = NULL;
     int is_startup = 0;
     int agent_id = 0;
@@ -188,7 +191,8 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             /* Unlock mutex */
             w_mutex_unlock(&lastmsg_mutex);
             agent_id = atoi(key->id);
-            if (OS_SUCCESS != wdb_update_agent_keepalive(agent_id, logr.worker_node?"syncreq":"synced")) {            
+
+            if (OS_SUCCESS != wdb_update_agent_keepalive(agent_id, logr.worker_node?"syncreq":"synced")) {
                 mwarn("Unable to set last keepalive as pending");
             }
         } else {
@@ -224,27 +228,34 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
                 return;
             }
 
+            // Appending system labels
             /* Get manager name before chroot */
             if (gethostname(manager_host, HOST_NAME_MAX) < 0){
                 mwarn("Unable to get hostname due to: '%s'", strerror(errno));
+            }
+            else {
+                wm_strcat(&labels, manager_label, labels ? '\n' : 0);
+                wm_strcat(&labels, manager_host, 0);
+            }
+
+            if (agent_ip) {
+                wm_strcat(&labels, agent_ip_label, labels ? '\n' : 0);
+                wm_strcat(&labels, agent_ip, 0);
+            }
+            if (node_name) {
+                wm_strcat(&labels, node_label, labels ? '\n' : 0);
+                wm_strcat(&labels, node_name, 0);
             }
 
             agent_id = atoi(key->id);
 
             // Updating version and keepalive in global.db
-            result = wdb_update_agent_version(agent_id, os_name, os_version, os_major, os_minor, os_codename, os_platform,
-                                              os_build, uname, os_arch, version, config_sum, merged_sum, manager_host,
-                                              node_name, agent_ip, logr.worker_node?"syncreq":"synced");
+            result = wdb_update_agent_data(agent_id, os_name, os_version, os_major, os_minor, os_codename, os_platform,
+                                           os_build, uname, os_arch, version, config_sum, merged_sum, manager_host,
+                                           node_name, agent_ip, labels, logr.worker_node?"syncreq":"synced");
             
             if (OS_INVALID == result)
                 mwarn("Unable to update information in global.db for agent: %s", key->id);
-
-            if (labels) {
-                result = wdb_set_agent_labels(agent_id, labels);
-
-                if (OS_INVALID == result)
-                    mwarn("Unable to update labels information in global.db for agent: %s", key->id);
-            }
 
             os_free(version);
             os_free(os_name);

@@ -951,9 +951,9 @@ void test_wdb_update_agent_name_success(void **state)
     assert_int_equal(OS_SUCCESS, ret);
 }
 
-/* Tests wdb_update_agent_version */
+/* Tests wdb_update_agent_data */
 
-void test_wdb_update_agent_version_error_json(void **state)
+void test_wdb_update_agent_data_error_json(void **state)
 {
     int ret = 0;
     int id = 1;
@@ -972,20 +972,21 @@ void test_wdb_update_agent_version_error_json(void **state)
     char *manager_host = "managerhost";
     char *node_name = "nodename";
     char *agent_ip = "agentip";
+    char *labels = "\"label1\":value1\n\"label2\":value2";
     const char *sync_status = "syncreq";
 
     will_return(__wrap_cJSON_CreateObject, NULL);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Error creating data JSON for Wazuh DB.");
 
-    ret = wdb_update_agent_version(id, os_name, os_version, os_major, os_minor, os_codename,
+    ret = wdb_update_agent_data(id, os_name, os_version, os_major, os_minor, os_codename,
                                    os_platform, os_build, os_uname, os_arch, version, config_sum,
-                                   merged_sum, manager_host, node_name, agent_ip, sync_status);
+                                   merged_sum, manager_host, node_name, agent_ip, labels, sync_status);
 
     assert_int_equal(OS_INVALID, ret);
 }
 
-void test_wdb_update_agent_version_error_socket(void **state)
+void test_wdb_update_agent_data_error_socket(void **state)
 {
     int ret = 0;
     int id = 1;
@@ -1004,18 +1005,22 @@ void test_wdb_update_agent_version_error_socket(void **state)
     char *manager_host = "managerhost";
     char *node_name = "nodename";
     char *agent_ip = "agentip";
+    char *labels = "\"label1\":value1\n\"label2\":value2";
     const char *sync_status = "syncreq";
 
     const char *json_str = "{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
-\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"sync_status\":\"syncreq\"}";
-    const char *query_str = "global update-agent-version {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
+\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}";
+    const char *query_str = "global update-agent-data {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
-\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"sync_status\":\"syncreq\"}";
+\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}";
+
     const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
@@ -1055,6 +1060,8 @@ void test_wdb_update_agent_version_error_socket(void **state)
     expect_value(__wrap_cJSON_AddStringToObject, string, "nodename");
     expect_string(__wrap_cJSON_AddStringToObject, name, "agent_ip");
     expect_value(__wrap_cJSON_AddStringToObject, string, "agentip");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "labels");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "\"label1\":value1\n\"label2\":value2");
     expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
     expect_value(__wrap_cJSON_AddStringToObject, string, "syncreq");
 
@@ -1071,21 +1078,22 @@ void test_wdb_update_agent_version_error_socket(void **state)
 
     // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-agent-version \
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-agent-data \
 {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
-\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"sync_status\":\"syncreq\"}");
+\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}");
 
-    ret = wdb_update_agent_version(id, os_name, os_version, os_major, os_minor, os_codename,
+    ret = wdb_update_agent_data(id, os_name, os_version, os_major, os_minor, os_codename,
                                    os_platform, os_build, os_uname, os_arch, version, config_sum,
-                                   merged_sum, manager_host, node_name, agent_ip, sync_status);
+                                   merged_sum, manager_host, node_name, agent_ip, labels, sync_status);
 
     assert_int_equal(OS_INVALID, ret);
 }
 
-void test_wdb_update_agent_version_error_sql_execution(void **state)
+void test_wdb_update_agent_data_error_sql_execution(void **state)
 {
     int ret = 0;
     int id = 1;
@@ -1104,18 +1112,22 @@ void test_wdb_update_agent_version_error_sql_execution(void **state)
     char *manager_host = "managerhost";
     char *node_name = "nodename";
     char *agent_ip = "agentip";
+    char *labels = "\"label1\":value1\n\"label2\":value2";
     const char *sync_status = "syncreq";
 
     const char *json_str = "{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
-\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"sync_status\":\"syncreq\"}";
-    const char *query_str = "global update-agent-version {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
+\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}";
+    const char *query_str = "global update-agent-data {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
-\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"sync_status\":\"syncreq\"}";
+\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}";
+
     const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
@@ -1155,6 +1167,8 @@ void test_wdb_update_agent_version_error_sql_execution(void **state)
     expect_value(__wrap_cJSON_AddStringToObject, string, "nodename");
     expect_string(__wrap_cJSON_AddStringToObject, name, "agent_ip");
     expect_value(__wrap_cJSON_AddStringToObject, string, "agentip");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "labels");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "\"label1\":value1\n\"label2\":value2");
     expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
     expect_value(__wrap_cJSON_AddStringToObject, string, "syncreq");
 
@@ -1171,21 +1185,22 @@ void test_wdb_update_agent_version_error_sql_execution(void **state)
 
     // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-agent-version \
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-agent-data \
 {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
-\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"sync_status\":\"syncreq\"}");
+\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}");
 
-    ret = wdb_update_agent_version(id, os_name, os_version, os_major, os_minor, os_codename,
+    ret = wdb_update_agent_data(id, os_name, os_version, os_major, os_minor, os_codename,
                                    os_platform, os_build, os_uname, os_arch, version, config_sum,
-                                   merged_sum, manager_host, node_name, agent_ip, sync_status);
+                                   merged_sum, manager_host, node_name, agent_ip, labels, sync_status);
 
     assert_int_equal(OS_INVALID, ret);
 }
 
-void test_wdb_update_agent_version_error_result(void **state)
+void test_wdb_update_agent_data_error_result(void **state)
 {
     int ret = 0;
     int id = 1;
@@ -1204,18 +1219,22 @@ void test_wdb_update_agent_version_error_result(void **state)
     char *manager_host = "managerhost";
     char *node_name = "nodename";
     char *agent_ip = "agentip";
+    char *labels = "\"label1\":value1\n\"label2\":value2";
     const char *sync_status = "syncreq";
 
     const char *json_str = "{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
-\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"sync_status\":\"syncreq\"}";
-    const char *query_str = "global update-agent-version {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
+\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}";
+    const char *query_str = "global update-agent-data {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
-\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"sync_status\":\"syncreq\"}";
+\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}";
+
     const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
@@ -1255,6 +1274,8 @@ void test_wdb_update_agent_version_error_result(void **state)
     expect_value(__wrap_cJSON_AddStringToObject, string, "nodename");
     expect_string(__wrap_cJSON_AddStringToObject, name, "agent_ip");
     expect_value(__wrap_cJSON_AddStringToObject, string, "agentip");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "labels");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "\"label1\":value1\n\"label2\":value2");
     expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
     expect_value(__wrap_cJSON_AddStringToObject, string, "syncreq");
 
@@ -1274,14 +1295,14 @@ void test_wdb_update_agent_version_error_result(void **state)
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
 
-    ret = wdb_update_agent_version(id, os_name, os_version, os_major, os_minor, os_codename,
+    ret = wdb_update_agent_data(id, os_name, os_version, os_major, os_minor, os_codename,
                                    os_platform, os_build, os_uname, os_arch, version, config_sum,
-                                   merged_sum, manager_host, node_name, agent_ip, sync_status);
+                                   merged_sum, manager_host, node_name, agent_ip, labels, sync_status);
 
     assert_int_equal(OS_INVALID, ret);
 }
 
-void test_wdb_update_agent_version_success(void **state)
+void test_wdb_update_agent_data_success(void **state)
 {
     int ret = 0;
     int id = 1;
@@ -1300,18 +1321,21 @@ void test_wdb_update_agent_version_success(void **state)
     char *manager_host = "managerhost";
     char *node_name = "nodename";
     char *agent_ip = "agentip";
+    char *labels = "\"label1\":value1\n\"label2\":value2";
     const char *sync_status = "syncreq";
 
     const char *json_str = "{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
-\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"sync_status\":\"syncreq\"}";
-    const char *query_str = "global update-agent-version {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
+\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}";
+    const char *query_str = "global update-agent-data {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
-\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"sync_status\":\"syncreq\"}";
+\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}";
     const char *response = "ok";
 
     will_return(__wrap_cJSON_CreateObject, 1);
@@ -1351,6 +1375,8 @@ void test_wdb_update_agent_version_success(void **state)
     expect_value(__wrap_cJSON_AddStringToObject, string, "nodename");
     expect_string(__wrap_cJSON_AddStringToObject, name, "agent_ip");
     expect_value(__wrap_cJSON_AddStringToObject, string, "agentip");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "labels");
+    expect_value(__wrap_cJSON_AddStringToObject, string, "\"label1\":value1\n\"label2\":value2");
     expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
     expect_value(__wrap_cJSON_AddStringToObject, string, "syncreq");
 
@@ -1369,9 +1395,9 @@ void test_wdb_update_agent_version_success(void **state)
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
-    ret = wdb_update_agent_version(id, os_name, os_version, os_major, os_minor, os_codename,
+    ret = wdb_update_agent_data(id, os_name, os_version, os_major, os_minor, os_codename,
                                    os_platform, os_build, os_uname, os_arch, version, config_sum,
-                                   merged_sum, manager_host, node_name, agent_ip, sync_status);
+                                   merged_sum, manager_host, node_name, agent_ip, labels, sync_status);
 
     assert_int_equal(OS_SUCCESS, ret);
 }
@@ -4830,12 +4856,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_name_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_name_error_result, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_name_success, setup_wdb_agent, teardown_wdb_agent),
-        /* Tests wdb_update_agent_version */
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_version_error_json, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_version_error_socket, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_version_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_version_error_result, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_version_success, setup_wdb_agent, teardown_wdb_agent),
+        /* Tests wdb_update_agent_data */
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_data_error_json, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_data_error_socket, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_data_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_data_error_result, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_data_success, setup_wdb_agent, teardown_wdb_agent),
         /* Tests wdb_get_agent_info */
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_info_error_no_json_response, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_info_success, setup_wdb_agent, teardown_wdb_agent),
