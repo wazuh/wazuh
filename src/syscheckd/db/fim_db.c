@@ -339,14 +339,22 @@ int fim_db_clean_stmt(fdb_t *fim_sql, int index) {
 
 //wrappers
 
-int fim_db_process_get_query(fdb_t *fim_sql, int type, int index, void (*callback)(fdb_t *, fim_entry *, int , void *),
-                             int storage, void * arg) {
+int fim_db_process_get_query(fdb_t *fim_sql,
+                             __attribute__((unused)) int type,
+                             int index,
+                             void (*callback)(fdb_t *, fim_entry *, int, void *),
+                             int storage,
+                             void *arg) {
     int result;
     int i;
 
     for (i = 0; result = sqlite3_step(fim_sql->stmt[index]), result == SQLITE_ROW; i++) {
+#ifndef WIN32
+        fim_entry *entry = fim_db_decode_full_row(fim_sql->stmt[index]);
+#else
         fim_entry *entry = type == FIM_TYPE_REGISTRY ? fim_db_decode_registry(index, fim_sql->stmt[index])
                                                      : fim_db_decode_full_row(fim_sql->stmt[index]);
+#endif
         callback(fim_sql, entry, storage, arg);
         free_entry(entry);
     }
@@ -465,8 +473,12 @@ void fim_db_callback_calculate_checksum(__attribute__((unused)) fdb_t *fim_sql, 
 
 int fim_db_get_count(fdb_t *fim_sql, int index) {
 
+#ifndef WIN32
+    if (index == FIMDB_STMT_GET_COUNT_PATH || index == FIMDB_STMT_GET_COUNT_DATA) {
+#else
     if (index == FIMDB_STMT_GET_COUNT_REG_KEY || index == FIMDB_STMT_GET_COUNT_REG_DATA ||
         index == FIMDB_STMT_GET_COUNT_PATH    || index == FIMDB_STMT_GET_COUNT_DATA) {
+#endif
         fim_db_clean_stmt(fim_sql, index);
 
         if (sqlite3_step(fim_sql->stmt[index]) == SQLITE_ROW) {
@@ -478,9 +490,15 @@ int fim_db_get_count(fdb_t *fim_sql, int index) {
     return FIMDB_ERR;
 }
 
-int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, int type, pthread_mutex_t *mutex,
+int fim_db_process_read_file(fdb_t *fim_sql,
+                             fim_tmp_file *file,
+                             __attribute__((unused)) int type,
+                             pthread_mutex_t *mutex,
                              void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
-                             int storage, void * alert, void * mode, void * w_evt) {
+                             int storage,
+                             void *alert,
+                             void *mode,
+                             void *w_evt) {
     char line[PATH_MAX + 1];
     char *path = NULL;
     char *split = NULL;
@@ -516,11 +534,12 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, int type, pthre
             w_mutex_lock(mutex);
             fim_entry *entry;
 
+#ifndef WIN32
+            entry = fim_db_get_path(fim_sql, path);
+#else
             if (type == FIM_TYPE_FILE) {
                 entry = fim_db_get_path(fim_sql, path);
-            }
-            else {
-
+            } else {
                 os_calloc(1, sizeof(fim_entry), entry);
                 unsigned int arch =  strtoul(line, &split, 10);
                 if (*split != ' ') {
@@ -533,6 +552,7 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, int type, pthre
                 entry->type = FIM_TYPE_REGISTRY;
                 entry->registry_entry.key = fim_db_get_registry_key(fim_sql, split, arch);
             }
+#endif
 
             w_mutex_unlock(mutex);
 

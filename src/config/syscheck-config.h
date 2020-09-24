@@ -43,6 +43,7 @@ typedef enum fdb_stmt {
     FIMDB_STMT_GET_COUNT_DATA,
     FIMDB_STMT_GET_INODE,
     // Registries
+#ifdef WIN32
     FIMDB_STMT_REPLACE_REG_DATA,
     FIMDB_STMT_REPLACE_REG_KEY,
     FIMDB_STMT_GET_REG_KEY,
@@ -69,6 +70,7 @@ typedef enum fdb_stmt {
     FIMDB_STMT_SET_REG_KEY_SCANNED,
     FIMDB_STMT_GET_REG_KEY_ROWID,
     FIMDB_STMT_GET_REG_DATA_ROWID,
+#endif
     FIMDB_STMT_SIZE
 } fdb_stmt;
 
@@ -389,7 +391,9 @@ typedef struct _config {
     pthread_mutex_t fim_entry_mutex;
     pthread_mutex_t fim_scan_mutex;
     pthread_mutex_t fim_realtime_mutex;
+#ifdef WIN32
     pthread_mutex_t fim_registry_mutex;
+#endif
 
     rtfim *realtime;
     fdb_t *database;

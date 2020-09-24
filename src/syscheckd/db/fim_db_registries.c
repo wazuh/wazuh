@@ -6,6 +6,7 @@
  * @copyright Copyright (c) 2020 Wazuh, Inc.
  */
 
+#ifdef WIN32
 #include "fim_db_registries.h"
 
 extern const char *SQL_STMT[];
@@ -629,3 +630,5 @@ int fim_db_process_read_registry_data_file(fdb_t *fim_sql, fim_tmp_file *file, p
 
     return FIMDB_OK;
 }
+
+#endif

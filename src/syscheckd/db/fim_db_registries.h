@@ -9,6 +9,8 @@
 #ifndef FIM_DB_REGISTRIES_H
 #define FIM_DB_REGISTRIES_H
 
+#ifdef WIN32
+
 #include "fim_db.h"
 
 /**
@@ -456,4 +458,5 @@ fim_registry_key *fim_db_decode_registry_key(sqlite3_stmt *stmt);
  */
 fim_registry_value_data * fim_db_decode_registry_value(sqlite3_stmt *stmt);
 
+#endif /* WIN32 */
 #endif /* FIM_DB_REGISTRIES_H */

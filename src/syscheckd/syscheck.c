@@ -88,7 +88,9 @@ void fim_initialize() {
     w_mutex_init(&syscheck.fim_entry_mutex, NULL);
     w_mutex_init(&syscheck.fim_scan_mutex, NULL);
     w_mutex_init(&syscheck.fim_realtime_mutex, NULL);
+#ifdef WIN32
     w_mutex_init(&syscheck.fim_registry_mutex, NULL);
+#endif
 }
 
 
