@@ -535,6 +535,8 @@ int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
                     if (strlen(word) == 0) {
                         smerror(log_msg, "decode-xml: Wrong field '%s' in the order"
                                   " of decoder '%s'", *norder, pi->name);
+                        os_free(*s_norder);
+                        os_free(s_norder);
                         goto cleanup;
                     }
 
@@ -613,6 +615,8 @@ int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
                     if (strlen(word) == 0) {
                         smerror(log_msg, "decode-xml: Wrong field '%s' in the fts"
                                   " decoder '%s'", *norder, pi->name);
+                        os_free(*s_norder);
+                        os_free(s_norder);
                         goto cleanup;
                     }
 

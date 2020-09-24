@@ -886,7 +886,10 @@ void w_logtest_remove_old_session(w_logtest_connection_t * connection) {
         w_logtest_session_t * old_session = NULL;
         bool exchange = false;
 
-        hash_node = OSHash_Begin(w_logtest_sessions, &inode_it);
+        if(hash_node = OSHash_Begin(w_logtest_sessions, &inode_it), !hash_node) {
+            return;
+        }
+
         old_session = hash_node->data;
         hash_node = OSHash_Next(w_logtest_sessions, &inode_it, hash_node);
 
