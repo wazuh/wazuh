@@ -36,7 +36,9 @@ namespace Utils
         : ThreadType{std::bind(&DispatcherType::dispatch, this, std::placeholders::_1)}
         {
         }
+        // LCOV_EXCL_START
         ~MsgDispatcher() = default;
+        // LCOV_EXCL_STOP
         bool addCallback(const Key& key, const std::function<void(Value)>& callback)
         {
             std::lock_guard<std::mutex> lock{ m_mutex };

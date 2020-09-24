@@ -5,11 +5,10 @@ project(utils_unit_test)
 get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../../ ABSOLUTE)
 
 if(COVERITY)
-  set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14")
   add_definitions(-D__GNUC__=8)
-else()
-  set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++11")
 endif(COVERITY)
+
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14")
 set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
 include_directories(${SRC_FOLDER}/shared_modules/utils/)

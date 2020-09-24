@@ -23,7 +23,9 @@ namespace DbSync
     using PipelineCtxHandle = void*;
     struct IPipeline
     {
+        // LCOV_EXCL_START
         virtual ~IPipeline() = default;
+        // LCOV_EXCL_STOP
         virtual void syncRow(const nlohmann::json& syncJson) = 0;
         virtual void getDeleted(const ResultCallback callback) = 0;
     };

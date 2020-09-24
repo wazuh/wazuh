@@ -71,10 +71,6 @@ DBSYNC_HANDLE dbsync_create(const HostType     host_type,
         {
             retVal = DBSyncImplementation::instance().initialize(host_type, db_type, path, sql_statement);
         }
-        catch(const nlohmann::detail::exception& ex)
-        {
-            errorMessage += "json error, id: " + std::to_string(ex.id) + ". " + ex.what();
-        }
         catch(const DbSync::dbsync_error& ex)
         {
             errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
@@ -299,11 +295,6 @@ int dbsync_set_table_max_rows(const DBSYNC_HANDLE      handle,
         {
             DBSyncImplementation::instance().setMaxRows(handle, table, max_rows);
             retVal = 0;
-        }
-        catch(const nlohmann::detail::exception& ex)
-        {
-            errorMessage += "json error, id: " + std::to_string(ex.id) + ". " + ex.what();
-            retVal = ex.id;
         }
         catch(const DbSync::dbsync_error& ex)
         {

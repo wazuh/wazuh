@@ -22,7 +22,9 @@ namespace Utils
         std::map<Key, Value> m_map;
         std::mutex m_mutex;
     public:
+        // LCOV_EXCL_START
         MapWrapperSafe() = default;
+        // LCOV_EXCL_STOP
         void insert(const Key& key, const Value& value)
         {
             std::lock_guard<std::mutex> lock(m_mutex);

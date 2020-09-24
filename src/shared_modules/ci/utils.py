@@ -211,7 +211,7 @@ def runCppCheck(moduleName):
     """
     printHeader("<"+moduleName+">"+headerDic['cppcheck']+"<"+moduleName+">")
     currentDir = currentDirPath(moduleName)
-    cppcheckCommand = "cppcheck --force --std=c++11 --quiet --suppressions-list=" + currentDir + "/cppcheckSuppress.txt " + currentDir
+    cppcheckCommand = "cppcheck --force --std=c++14 --quiet --suppressions-list=" + currentDir + "/cppcheckSuppress.txt " + currentDir
     out = subprocess.run(cppcheckCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     if out.returncode == 0 and not out.stderr:
         printGreen('[Cppcheck: PASSED]')

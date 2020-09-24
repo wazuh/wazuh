@@ -25,7 +25,9 @@ namespace DbSync
     class IDbEngine
     {
     public:
+        // LCOV_EXCL_START
         virtual ~IDbEngine() = default;
+        // LCOV_EXCL_STOP
     
         virtual void bulkInsert(const std::string& table,
                                 const nlohmann::json& data) = 0;

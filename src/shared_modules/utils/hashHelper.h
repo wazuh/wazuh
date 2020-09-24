@@ -31,8 +31,9 @@ namespace Utils
         {
             initializeContext(hashType, m_spCtx);
         }
+        // LCOV_EXCL_START
         ~HashData() = default;
-
+        // LCOV_EXCL_STOP
         void update(const void* data, const size_t size)
         {
             const auto ret

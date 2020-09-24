@@ -993,7 +993,7 @@ std::string SQLiteDBEngine::buildSelectQuery(const std::string& table,
     }
     for (const auto& column : columns)
     {
-        sql += column;
+        sql += column.get_ref<const std::string&>();
         sql += ",";
     }
     sql = sql.substr(0, sql.size()-1);
@@ -1628,7 +1628,7 @@ std::string SQLiteDBEngine::buildDeleteRelationTrigger(const nlohmann::json& dat
         {
             sqlDelete.append(match.key());
             sqlDelete.append(" = OLD.");
-            sqlDelete.append(match.value());
+            sqlDelete.append(match.value().get_ref<const std::string&>());
             sqlDelete.append(" AND ");
         }
         sqlDelete = sqlDelete.substr(0, sqlDelete.size()-5);
@@ -1667,12 +1667,12 @@ std::string SQLiteDBEngine::buildUpdateRelationTrigger(const nlohmann::json&    
         {
             sqlUpdate.append(match.key());
             sqlUpdate.append(" = NEW.");
-            sqlUpdate.append(match.value());
+            sqlUpdate.append(match.value().get_ref<const std::string&>());
             sqlUpdate.append(",");
 
             sqlUpdateWhere.append(match.key());
             sqlUpdateWhere.append(" = OLD.");
-            sqlUpdateWhere.append(match.value());
+            sqlUpdateWhere.append(match.value().get_ref<const std::string&>());
             sqlUpdateWhere.append(" AND ");
         }
         sqlUpdate = sqlUpdate.substr(0, sqlUpdate.size()-1);

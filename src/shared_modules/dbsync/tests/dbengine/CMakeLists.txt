@@ -2,11 +2,12 @@ cmake_minimum_required(VERSION 2.6.4)
 
 project(dbengine_unit_test)
 
+
 if(COVERITY)
-  set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14")
-else()
-  set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++11")
+  add_definitions(-D__GNUC__=8)
 endif(COVERITY)
+
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14 --coverage")
 
 include_directories(${CMAKE_SOURCE_DIR}/include/)
 link_directories(${CMAKE_BINARY_DIR}/lib)
