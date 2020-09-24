@@ -16,15 +16,16 @@ from shutil import copyfile, rmtree
 from time import time, sleep
 
 import requests
+
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.ossec_queue import OssecQueue
-from wazuh.core.wazuh_socket import OssecSocket, OssecSocketJSON
 from wazuh.core.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
-    WazuhDBQueryDistinct, WazuhDBQueryGroupBy, SQLiteBackend, WazuhDBBackend, safe_move
+    WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, safe_move
+from wazuh.core.wazuh_socket import OssecSocket, OssecSocketJSON
 
 
 class WazuhDBQueryAgents(WazuhDBQuery):
@@ -96,8 +97,18 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         # Also remove, extra fields (internal key and registration IP)
         selected_fields = self.select - self.extra_fields if self.remove_extra_fields else self.select
         selected_fields |= {'id'}
-        self._data = [{key: format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'))
-                       for key, value in item.items() if key in selected_fields} for item in self._data]
+        aux = list()
+        for item in self._data:
+            aux_dict = dict()
+            lastkeepalive = item.get('lastKeepAlive')
+            version = item.get('version')
+            for key, value in item.items():
+                if key in selected_fields:
+                    aux_dict[key] = format_fields(key, value, today, lastkeepalive, version)
+
+            aux.append(aux_dict)
+
+        self._data = aux
 
         self._data = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in self._data]
 
@@ -144,7 +155,6 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                                     'operator': operator,
                                     'separator': 'AND',
                                     'level': 0}]
-
 
         self.query_filters += [{'value': None if subvalue == "null" else subvalue,
                                 'field': '{}${}'.format(name, i),
