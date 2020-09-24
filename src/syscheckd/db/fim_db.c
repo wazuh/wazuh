@@ -30,22 +30,24 @@ const char *SQL_STMT[] = {
 #ifndef WIN32
     [FIMDB_STMT_GET_LAST_PATH] = "SELECT path FROM file_entry ORDER BY path DESC LIMIT 1;",
     [FIMDB_STMT_GET_FIRST_PATH] = "SELECT path FROM file_entry ORDER BY path ASC LIMIT 1;",
-    [FIMDB_STMT_GET_ALL_CHECKSUMS] = "SELECT checksum FROM file_data INNER JOIN file_entry ON inode_id = file_data.rowid ORDER BY PATH ASC;",
+    [FIMDB_STMT_GET_ALL_CHECKSUMS] = "SELECT checksum FROM file_entry ORDER BY path ASC;",
 #else
     [FIMDB_STMT_GET_LAST_PATH] = "SELECT path FROM sync_view ORDER BY path DESC LIMIT 1;",
     [FIMDB_STMT_GET_FIRST_PATH] = "SELECT path FROM sync_view ORDER BY path ASC LIMIT 1;",
-    [FIMDB_STMT_GET_ALL_CHECKSUMS] = "SELECT checksum FROM sync_view ORDER BY PATH ASC;",
+    [FIMDB_STMT_GET_ALL_CHECKSUMS] = "SELECT checksum FROM sync_view ORDER BY path ASC;",
 #endif
     [FIMDB_STMT_GET_NOT_SCANNED] = "SELECT path, inode_id, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM file_data INNER JOIN file_entry ON inode_id = file_data.rowid WHERE scanned = 0 ORDER BY PATH ASC;",
     [FIMDB_STMT_SET_ALL_UNSCANNED] = "UPDATE file_entry SET scanned = 0;",
     [FIMDB_STMT_GET_PATH_COUNT] = "SELECT count(inode_id), inode_id FROM file_entry WHERE inode_id = (select inode_id from file_entry where path = ?);",
 #ifndef WIN32
     [FIMDB_STMT_GET_DATA_ROW] = "SELECT rowid FROM file_data WHERE inode = ? AND dev = ?;",
+    [FIMDB_STMT_GET_COUNT_RANGE] = "SELECT count(*) FROM file_entry INNER JOIN file_data ON file_data.rowid = file_entry.inode_id WHERE path BETWEEN ? and ? ORDER BY path;",
+    [FIMDB_STMT_GET_PATH_RANGE] = "SELECT path, checksum FROM file_entry WHERE path BETWEEN ? and ? ORDER BY path;",
 #else
     [FIMDB_STMT_GET_DATA_ROW] = "SELECT inode_id FROM file_entry WHERE path = ?",
+    [FIMDB_STMT_GET_COUNT_RANGE] = "SELECT count(*) FROM sync_view WHERE path BETWEEN ? and ? ORDER BY path;",
+    [FIMDB_STMT_GET_PATH_RANGE] = "SELECT path, checksum FROM sync_view WHERE path BETWEEN ? and ? ORDER BY path;",
 #endif
-    [FIMDB_STMT_GET_COUNT_RANGE] = "SELECT count(*) FROM file_entry INNER JOIN file_data ON file_data.rowid = file_entry.inode_id WHERE path BETWEEN ? and ? ORDER BY path;",
-    [FIMDB_STMT_GET_PATH_RANGE] = "SELECT path, inode_id, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM file_entry INNER JOIN file_data ON file_data.rowid = file_entry.inode_id WHERE path BETWEEN ? and ? ORDER BY path;",
     [FIMDB_STMT_DELETE_PATH] = "DELETE FROM file_entry WHERE path = ?;",
     [FIMDB_STMT_DELETE_DATA] = "DELETE FROM file_data WHERE rowid = ?;",
     [FIMDB_STMT_GET_PATHS_INODE] = "SELECT path FROM file_entry INNER JOIN file_data ON file_data.rowid=file_entry.inode_id WHERE file_data.inode=? AND file_data.dev=?;",
@@ -573,10 +575,37 @@ int fim_db_process_read_file(fdb_t *fim_sql,
 }
 
 // General use functions
+void fim_db_bind_range(fdb_t *fim_sql, int index, const char *start, const char *top) {
+    if (index == FIMDB_STMT_GET_PATH_RANGE ||
+        index == FIMDB_STMT_GET_COUNT_RANGE ) {
+        sqlite3_bind_text(fim_sql->stmt[index], 1, start, -1, NULL);
+        sqlite3_bind_text(fim_sql->stmt[index], 2, top, -1, NULL);
+    }
+}
+
 char *fim_db_decode_string(sqlite3_stmt *stmt) {
     char *retval;
 
     os_strdup((char *)sqlite3_column_text(stmt, 0), retval);
+
+    return retval;
+}
+
+char **fim_db_decode_string_array(sqlite3_stmt *stmt) {
+    int column_count, i;
+    char **retval;
+
+    column_count = sqlite3_column_count(stmt);
+    if (column_count <= 0) {
+        return NULL;
+    }
+
+    os_calloc(column_count + 1, sizeof(char *), retval);
+
+    for (i = 0; i < column_count; i++) {
+        os_strdup((char *)sqlite3_column_text(stmt, i), retval[i]);
+    }
+    retval[column_count] = NULL;
 
     return retval;
 }
@@ -586,4 +615,125 @@ int fim_db_get_data_checksum(fdb_t *fim_sql, void *arg) {
     return fim_db_multiple_row_query(fim_sql, FIMDB_STMT_GET_ALL_CHECKSUMS, FIM_DB_DECODE_TYPE(fim_db_decode_string),
                                      FIM_DB_FREE_TYPE(free_strarray),
                                      FIM_DB_CALLBACK_TYPE(fim_db_callback_calculate_checksum), 0, arg);
+}
+
+int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *top,
+                                long id, int n, pthread_mutex_t *mutex) {
+    char **decoded_row = NULL;
+    int m = n / 2;
+    int i;
+    int retval = FIMDB_ERR;
+    unsigned char digest[EVP_MAX_MD_SIZE] = {0};
+    unsigned int digest_size = 0;
+    os_sha1 hexdigest;
+    char *str_pathlh = NULL;
+    char *str_pathuh = NULL;
+    char *plain      = NULL;
+
+    EVP_MD_CTX *ctx_left = EVP_MD_CTX_create();
+    EVP_MD_CTX *ctx_right = EVP_MD_CTX_create();
+
+    EVP_DigestInit(ctx_left, EVP_sha1());
+    EVP_DigestInit(ctx_right, EVP_sha1());
+
+    w_mutex_lock(mutex);
+
+    // Clean statements
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
+    fim_db_bind_range(fim_sql, FIMDB_STMT_GET_PATH_RANGE, start, top);
+
+    // Calculate checksum of the first half
+    for (i = 0; i < m; i++) {
+        char *path, *checksum;
+        if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]) != SQLITE_ROW) {
+            merror("Step error getting path range, first half 'start %s' 'top %s' (i:%d): %s", start, top, i,
+                   sqlite3_errmsg(fim_sql->db));
+            w_mutex_unlock(mutex);
+            goto end;
+        }
+
+        decoded_row = fim_db_decode_string_array(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]);
+        path = decoded_row[0];
+        checksum = decoded_row[1];
+
+        if (i == (m - 1) && path) {
+            os_strdup(path, str_pathlh);
+        }
+        //Type of storage not required
+        fim_db_callback_calculate_checksum(fim_sql, checksum, FIM_DB_DISK, (void *)ctx_left);
+        free_strarray(decoded_row);
+    }
+
+    //Calculate checksum of the second half
+    for (i = m; i < n; i++) {
+        char *path, *checksum;
+        if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]) != SQLITE_ROW) {
+            merror("Step error getting path range, second half 'start %s' 'top %s' (i:%d): %s", start, top, i,
+                   sqlite3_errmsg(fim_sql->db));
+            w_mutex_unlock(mutex);
+            goto end;
+        }
+        decoded_row = fim_db_decode_string_array(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]);
+        path = decoded_row[0];
+        checksum = decoded_row[1];
+
+        if (i == m && path) {
+            os_free(str_pathuh);
+            os_strdup(path, str_pathuh);
+        }
+        //Type of storage not required
+        fim_db_callback_calculate_checksum(fim_sql, checksum, FIM_DB_DISK, (void *)ctx_right);
+        free_strarray(decoded_row);
+    }
+
+    w_mutex_unlock(mutex);
+
+    if (!str_pathlh || !str_pathuh) {
+        merror("Failed to obtain required paths in order to form message");
+        goto end;
+    }
+
+    // Send message with checksum of first half
+    EVP_DigestFinal_ex(ctx_left, digest, &digest_size);
+    OS_SHA1_Hexdigest(digest, hexdigest);
+    plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_LEFT, id, start, str_pathlh, str_pathuh, hexdigest);
+    fim_send_sync_msg(plain);
+    os_free(plain);
+
+    // Send message with checksum of second half
+    EVP_DigestFinal_ex(ctx_right, digest, &digest_size);
+    OS_SHA1_Hexdigest(digest, hexdigest);
+    plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_RIGHT, id, str_pathuh, top, "", hexdigest);
+    fim_send_sync_msg(plain);
+    os_free(plain);
+    os_free(str_pathuh);
+
+    retval = FIMDB_OK;
+
+end:
+    EVP_MD_CTX_destroy(ctx_left);
+    EVP_MD_CTX_destroy(ctx_right);
+    os_free(str_pathlh);
+    os_free(str_pathuh);
+    return retval;
+}
+
+int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int storage) {
+    if ((*file = fim_db_create_temp_file(storage)) == NULL) {
+        return FIMDB_ERR;
+    }
+
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
+    fim_db_bind_range(fim_sql, FIMDB_STMT_GET_PATH_RANGE, start, top);
+
+    int ret = fim_db_multiple_row_query(fim_sql, FIMDB_STMT_GET_PATH_RANGE, FIM_DB_DECODE_TYPE(fim_db_decode_string),
+                                        free, FIM_DB_CALLBACK_TYPE(fim_db_callback_save_string), storage,
+                                        (void *)*file);
+
+
+    if (*file && (*file)->elements == 0) {
+        fim_db_clean_file(file, storage);
+    }
+
+    return ret;
 }

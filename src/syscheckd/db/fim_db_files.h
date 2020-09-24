@@ -82,24 +82,6 @@ int fim_db_sync_path_range(fdb_t *fim_sql, pthread_mutex_t *mutex,
                             fim_tmp_file *file, int storage);
 
 /**
- * @brief Calculate checksum of data entries between @start and @top.
- *
- * Said range will be splitted into two and the resulting checksums will
- * be sent as sync messages.
- *
- * @param fim_sql FIM database struct.
- * @param start First entry of the range.
- * @param top Last entry of the range.
- * @param id Sync session counter (timetamp).
- * @param n Number of entries between start and stop.
- * @param mutex FIM database's mutex for thread synchronization.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *top,
-                               long id, int n, pthread_mutex_t *mutex);
-
-/**
  * @brief Count the number of entries between range @start and @top.
  *
  * @param fim_sql FIM database struct.
