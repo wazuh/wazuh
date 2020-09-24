@@ -10,7 +10,7 @@ import socket
 from base64 import b64encode
 from datetime import date, datetime, timedelta, timezone
 from glob import glob
-from os import chown, chmod, path, makedirs, urandom, stat, remove
+from os import chown, chmod, path, makedirs, urandom, stat, remove, listdir
 from platform import platform
 from shutil import copyfile, rmtree
 from time import time, sleep
@@ -20,6 +20,7 @@ import requests
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
+from wazuh.core.common import shared_path, client_keys
 from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.ossec_queue import OssecQueue
@@ -1707,10 +1708,7 @@ def get_agents_info():
 
     :return: List of agents ids
     """
-    db_query = WazuhDBQueryAgents(select=['id'], limit=None)
-    query_data = db_query.run()
-
-    return {str(agent_info['id']).zfill(3) for agent_info in query_data['items']}
+    return {line.split(' ')[0] for line in open(client_keys, 'r')}
 
 
 @common.context_cached('system_groups')
@@ -1719,10 +1717,10 @@ def get_groups():
 
     :return: List of group names
     """
-    db_query = WazuhDBQueryGroup(limit=None)
-    query_data = db_query.run()
-
-    return {group['name'] for group in query_data['items']}
+    groups = set()
+    for group in listdir(shared_path):
+        path.isdir(path.join(shared_path, group)) and groups.add(group)
+    return groups
 
 
 def expand_group(group_name):
