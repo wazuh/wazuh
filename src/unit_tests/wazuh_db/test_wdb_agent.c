@@ -413,15 +413,15 @@ void test_wdb_insert_agent_error_socket(void **state)
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "name");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "agent1");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "agent1");
     expect_string(__wrap_cJSON_AddStringToObject, name, "ip");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "192.168.0.101");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "192.168.0.101");
     expect_string(__wrap_cJSON_AddStringToObject, name, "register_ip");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "any");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "any");
     expect_string(__wrap_cJSON_AddStringToObject, name, "internal_key");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301");
     expect_string(__wrap_cJSON_AddStringToObject, name, "group");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "default");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "default");
     expect_string(__wrap_cJSON_AddNumberToObject, name, "date_add");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
 
@@ -472,15 +472,15 @@ void test_wdb_insert_agent_error_sql_execution(void **state)
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "name");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "agent1");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "agent1");
     expect_string(__wrap_cJSON_AddStringToObject, name, "ip");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "192.168.0.101");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "192.168.0.101");
     expect_string(__wrap_cJSON_AddStringToObject, name, "register_ip");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "any");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "any");
     expect_string(__wrap_cJSON_AddStringToObject, name, "internal_key");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301");
     expect_string(__wrap_cJSON_AddStringToObject, name, "group");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "default");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "default");
     expect_string(__wrap_cJSON_AddNumberToObject, name, "date_add");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
 
@@ -531,15 +531,15 @@ void test_wdb_insert_agent_error_result(void **state)
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "name");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "agent1");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "agent1");
     expect_string(__wrap_cJSON_AddStringToObject, name, "ip");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "192.168.0.101");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "192.168.0.101");
     expect_string(__wrap_cJSON_AddStringToObject, name, "register_ip");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "any");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "any");
     expect_string(__wrap_cJSON_AddStringToObject, name, "internal_key");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301");
     expect_string(__wrap_cJSON_AddStringToObject, name, "group");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "default");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "default");
     expect_string(__wrap_cJSON_AddNumberToObject, name, "date_add");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
 
@@ -589,15 +589,15 @@ void test_wdb_insert_agent_success(void **state)
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "name");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "agent1");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "agent1");
     expect_string(__wrap_cJSON_AddStringToObject, name, "ip");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "192.168.0.101");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "192.168.0.101");
     expect_string(__wrap_cJSON_AddStringToObject, name, "register_ip");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "any");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "any");
     expect_string(__wrap_cJSON_AddStringToObject, name, "internal_key");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301");
     expect_string(__wrap_cJSON_AddStringToObject, name, "group");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "default");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "default");
     expect_string(__wrap_cJSON_AddNumberToObject, name, "date_add");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
 
@@ -707,15 +707,15 @@ void test_wdb_insert_agent_success_keep_date(void **state)
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "name");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "agent1");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "agent1");
     expect_string(__wrap_cJSON_AddStringToObject, name, "ip");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "192.168.0.101");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "192.168.0.101");
     expect_string(__wrap_cJSON_AddStringToObject, name, "register_ip");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "any");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "any");
     expect_string(__wrap_cJSON_AddStringToObject, name, "internal_key");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301");
     expect_string(__wrap_cJSON_AddStringToObject, name, "group");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "default");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "default");
     expect_string(__wrap_cJSON_AddNumberToObject, name, "date_add");
     expect_value(__wrap_cJSON_AddNumberToObject, number, date_returned);
 
@@ -808,7 +808,7 @@ void test_wdb_update_agent_name_error_socket(void **state)
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "name");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "agent1");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "agent1");
 
     // Printing JSON
     will_return(__wrap_cJSON_PrintUnformatted, json_str);
@@ -848,7 +848,7 @@ void test_wdb_update_agent_name_error_sql_execution(void **state)
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "name");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "agent1");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "agent1");
 
     // Printing JSON
     will_return(__wrap_cJSON_PrintUnformatted, json_str);
@@ -888,7 +888,7 @@ void test_wdb_update_agent_name_error_result(void **state)
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "name");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "agent1");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "agent1");
 
     // Printing JSON
     will_return(__wrap_cJSON_PrintUnformatted, json_str);
@@ -929,7 +929,7 @@ void test_wdb_update_agent_name_success(void **state)
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "name");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "agent1");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "agent1");
 
     // Printing JSON
     will_return(__wrap_cJSON_PrintUnformatted, json_str);
@@ -973,7 +973,7 @@ void test_wdb_update_agent_data_error_json(void **state)
     char *node_name = "nodename";
     char *agent_ip = "agentip";
     char *labels = "\"label1\":value1\n\"label2\":value2";
-    wdb_sync_status_t sync_status = WDB_SYNC_REQ;
+    const char *sync_status = "syncreq";
 
     will_return(__wrap_cJSON_CreateObject, NULL);
 
@@ -1006,20 +1006,21 @@ void test_wdb_update_agent_data_error_socket(void **state)
     char *node_name = "nodename";
     char *agent_ip = "agentip";
     char *labels = "\"label1\":value1\n\"label2\":value2";
-    wdb_sync_status_t sync_status = WDB_SYNC_REQ;
+    const char *sync_status = "syncreq";
 
     const char *json_str = "{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
 \"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
-\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":1}";
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}";
     const char *query_str = "global update-agent-data {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
 \"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
-\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":1}";
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}";
+
     const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
@@ -1030,39 +1031,39 @@ void test_wdb_update_agent_data_error_socket(void **state)
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_name");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osname");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osname");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_version");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osversion");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osversion");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_major");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osmajor");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osmajor");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_minor");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osminor");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osminor");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_codename");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "oscodename");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "oscodename");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_platform");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osplatform");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osplatform");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_build");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osbuild");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osbuild");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_uname");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osuname");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osuname");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_arch");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osarch");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osarch");
     expect_string(__wrap_cJSON_AddStringToObject, name, "version");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "version");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "version");
     expect_string(__wrap_cJSON_AddStringToObject, name, "config_sum");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "csum");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "csum");
     expect_string(__wrap_cJSON_AddStringToObject, name, "merged_sum");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "msum");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "msum");
     expect_string(__wrap_cJSON_AddStringToObject, name, "manager_host");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "managerhost");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "managerhost");
     expect_string(__wrap_cJSON_AddStringToObject, name, "node_name");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "nodename");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "nodename");
     expect_string(__wrap_cJSON_AddStringToObject, name, "agent_ip");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "agentip");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "agentip");
     expect_string(__wrap_cJSON_AddStringToObject, name, "labels");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "\"label1\":value1\n\"label2\":value2");
-    expect_string(__wrap_cJSON_AddNumberToObject, name, "sync_status");
-    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddStringToObject, string, "\"label1\":value1\n\"label2\":value2");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "syncreq");
 
     // Printing JSON
     will_return(__wrap_cJSON_PrintUnformatted, json_str);
@@ -1083,7 +1084,7 @@ void test_wdb_update_agent_data_error_socket(void **state)
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
 \"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
-\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":1}");
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}");
 
     ret = wdb_update_agent_data(id, os_name, os_version, os_major, os_minor, os_codename,
                                    os_platform, os_build, os_uname, os_arch, version, config_sum,
@@ -1112,20 +1113,21 @@ void test_wdb_update_agent_data_error_sql_execution(void **state)
     char *node_name = "nodename";
     char *agent_ip = "agentip";
     char *labels = "\"label1\":value1\n\"label2\":value2";
-    wdb_sync_status_t sync_status = WDB_SYNC_REQ;
+    const char *sync_status = "syncreq";
 
     const char *json_str = "{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
 \"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
-\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":1}";
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}";
     const char *query_str = "global update-agent-data {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
 \"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
-\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":1}";
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}";
+
     const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
@@ -1136,39 +1138,39 @@ void test_wdb_update_agent_data_error_sql_execution(void **state)
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_name");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osname");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osname");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_version");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osversion");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osversion");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_major");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osmajor");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osmajor");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_minor");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osminor");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osminor");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_codename");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "oscodename");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "oscodename");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_platform");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osplatform");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osplatform");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_build");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osbuild");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osbuild");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_uname");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osuname");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osuname");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_arch");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osarch");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osarch");
     expect_string(__wrap_cJSON_AddStringToObject, name, "version");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "version");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "version");
     expect_string(__wrap_cJSON_AddStringToObject, name, "config_sum");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "csum");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "csum");
     expect_string(__wrap_cJSON_AddStringToObject, name, "merged_sum");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "msum");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "msum");
     expect_string(__wrap_cJSON_AddStringToObject, name, "manager_host");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "managerhost");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "managerhost");
     expect_string(__wrap_cJSON_AddStringToObject, name, "node_name");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "nodename");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "nodename");
     expect_string(__wrap_cJSON_AddStringToObject, name, "agent_ip");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "agentip");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "agentip");
     expect_string(__wrap_cJSON_AddStringToObject, name, "labels");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "\"label1\":value1\n\"label2\":value2");
-    expect_string(__wrap_cJSON_AddNumberToObject, name, "sync_status");
-    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddStringToObject, string, "\"label1\":value1\n\"label2\":value2");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "syncreq");
 
     // Printing JSON
     will_return(__wrap_cJSON_PrintUnformatted, json_str);
@@ -1189,7 +1191,7 @@ void test_wdb_update_agent_data_error_sql_execution(void **state)
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
 \"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
-\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":1}");
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}");
 
     ret = wdb_update_agent_data(id, os_name, os_version, os_major, os_minor, os_codename,
                                    os_platform, os_build, os_uname, os_arch, version, config_sum,
@@ -1218,20 +1220,21 @@ void test_wdb_update_agent_data_error_result(void **state)
     char *node_name = "nodename";
     char *agent_ip = "agentip";
     char *labels = "\"label1\":value1\n\"label2\":value2";
-    wdb_sync_status_t sync_status = WDB_SYNC_REQ;
+    const char *sync_status = "syncreq";
 
     const char *json_str = "{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
 \"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
-\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":1}";
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}";
     const char *query_str = "global update-agent-data {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
 \"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
-\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":1}";
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}";
+
     const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
@@ -1242,39 +1245,39 @@ void test_wdb_update_agent_data_error_result(void **state)
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_name");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osname");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osname");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_version");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osversion");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osversion");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_major");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osmajor");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osmajor");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_minor");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osminor");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osminor");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_codename");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "oscodename");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "oscodename");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_platform");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osplatform");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osplatform");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_build");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osbuild");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osbuild");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_uname");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osuname");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osuname");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_arch");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osarch");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osarch");
     expect_string(__wrap_cJSON_AddStringToObject, name, "version");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "version");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "version");
     expect_string(__wrap_cJSON_AddStringToObject, name, "config_sum");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "csum");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "csum");
     expect_string(__wrap_cJSON_AddStringToObject, name, "merged_sum");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "msum");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "msum");
     expect_string(__wrap_cJSON_AddStringToObject, name, "manager_host");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "managerhost");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "managerhost");
     expect_string(__wrap_cJSON_AddStringToObject, name, "node_name");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "nodename");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "nodename");
     expect_string(__wrap_cJSON_AddStringToObject, name, "agent_ip");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "agentip");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "agentip");
     expect_string(__wrap_cJSON_AddStringToObject, name, "labels");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "\"label1\":value1\n\"label2\":value2");
-    expect_string(__wrap_cJSON_AddNumberToObject, name, "sync_status");
-    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddStringToObject, string, "\"label1\":value1\n\"label2\":value2");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "syncreq");
 
     // Printing JSON
     will_return(__wrap_cJSON_PrintUnformatted, json_str);
@@ -1319,21 +1322,21 @@ void test_wdb_update_agent_data_success(void **state)
     char *node_name = "nodename";
     char *agent_ip = "agentip";
     char *labels = "\"label1\":value1\n\"label2\":value2";
-    wdb_sync_status_t sync_status = WDB_SYNC_REQ;
+    const char *sync_status = "syncreq";
 
     const char *json_str = "{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
 \"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
-\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":1}";
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}";
     const char *query_str = "global update-agent-data {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
 \"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
-\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":1}";
-    const char *response = "err";
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}";
+    const char *response = "ok";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
@@ -1343,39 +1346,39 @@ void test_wdb_update_agent_data_success(void **state)
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_name");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osname");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osname");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_version");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osversion");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osversion");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_major");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osmajor");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osmajor");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_minor");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osminor");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osminor");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_codename");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "oscodename");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "oscodename");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_platform");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osplatform");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osplatform");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_build");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osbuild");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osbuild");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_uname");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osuname");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osuname");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_arch");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "osarch");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "osarch");
     expect_string(__wrap_cJSON_AddStringToObject, name, "version");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "version");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "version");
     expect_string(__wrap_cJSON_AddStringToObject, name, "config_sum");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "csum");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "csum");
     expect_string(__wrap_cJSON_AddStringToObject, name, "merged_sum");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "msum");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "msum");
     expect_string(__wrap_cJSON_AddStringToObject, name, "manager_host");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "managerhost");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "managerhost");
     expect_string(__wrap_cJSON_AddStringToObject, name, "node_name");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "nodename");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "nodename");
     expect_string(__wrap_cJSON_AddStringToObject, name, "agent_ip");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "agentip");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "agentip");
     expect_string(__wrap_cJSON_AddStringToObject, name, "labels");
-    expect_value(__wrap_cJSON_AddStringToObject, string, "\"label1\":value1\n\"label2\":value2");
-    expect_string(__wrap_cJSON_AddNumberToObject, name, "sync_status");
-    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddStringToObject, string, "\"label1\":value1\n\"label2\":value2");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "syncreq");
 
     // Printing JSON
     will_return(__wrap_cJSON_PrintUnformatted, json_str);
@@ -1568,7 +1571,7 @@ void test_wdb_update_agent_keepalive_error_json(void **state)
 {
     int ret = 0;
     int id = 1;
-    wdb_sync_status_t sync_status = WDB_SYNCED;
+    const char *sync_status = "synced";
 
     will_return(__wrap_cJSON_CreateObject, NULL);
 
@@ -1583,20 +1586,21 @@ void test_wdb_update_agent_keepalive_error_socket(void **state)
 {
     int ret = 0;
     int id = 1;
-    wdb_sync_status_t sync_status = WDB_SYNCED;
+    const char *sync_status = "synced";
 
-    const char *json_str = "{\"id\":1,\"sync_status\":0}";
-    const char *query_str = "global update-keepalive {\"id\":1,\"sync_status\":0}";
+    const char *json_str = "{\"id\":1,\"sync_status\":\"synced\"}";
+    const char *query_str = "global update-keepalive {\"id\":1,\"sync_status\":\"synced\"}";
     const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
 
     // Adding data to JSON
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
-    expect_string(__wrap_cJSON_AddNumberToObject, name, "sync_status");
-    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "synced");
 
     // Printing JSON
     will_return(__wrap_cJSON_PrintUnformatted, json_str);
@@ -1611,7 +1615,7 @@ void test_wdb_update_agent_keepalive_error_socket(void **state)
 
     // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-keepalive {\"id\":1,\"sync_status\":0}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-keepalive {\"id\":1,\"sync_status\":\"synced\"}");
 
     ret = wdb_update_agent_keepalive(id, sync_status);
 
@@ -1622,20 +1626,21 @@ void test_wdb_update_agent_keepalive_error_sql_execution(void **state)
 {
     int ret = 0;
     int id = 1;
-    wdb_sync_status_t sync_status = WDB_SYNCED;
+    const char *sync_status = "synced";
 
-    const char *json_str = "{\"id\":1,\"sync_status\":0}";
-    const char *query_str = "global update-keepalive {\"id\":1,\"sync_status\":0}";
+    const char *json_str = "{\"id\":1,\"sync_status\":\"synced\"}";
+    const char *query_str = "global update-keepalive {\"id\":1,\"sync_status\":\"synced\"}";
     const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
 
     // Adding data to JSON
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
-    expect_string(__wrap_cJSON_AddNumberToObject, name, "sync_status");
-    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "synced");
 
     // Printing JSON
     will_return(__wrap_cJSON_PrintUnformatted, json_str);
@@ -1650,7 +1655,7 @@ void test_wdb_update_agent_keepalive_error_sql_execution(void **state)
 
     // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-keepalive {\"id\":1,\"sync_status\":0}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-keepalive {\"id\":1,\"sync_status\":\"synced\"}");
 
     ret = wdb_update_agent_keepalive(id, sync_status);
 
@@ -1661,20 +1666,21 @@ void test_wdb_update_agent_keepalive_error_result(void **state)
 {
     int ret = 0;
     int id = 1;
-    wdb_sync_status_t sync_status = WDB_SYNCED;
+    const char *sync_status = "synced";
 
-    const char *json_str = "{\"id\":1,\"sync_status\":0}";
-    const char *query_str = "global update-keepalive {\"id\":1,\"sync_status\":0}";
+    const char *json_str = "{\"id\":1,\"sync_status\":\"synced\"}";
+    const char *query_str = "global update-keepalive {\"id\":1,\"sync_status\":\"synced\"}";
     const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
 
     // Adding data to JSON
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
-    expect_string(__wrap_cJSON_AddNumberToObject, name, "sync_status");
-    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "synced");
 
     // Printing JSON
     will_return(__wrap_cJSON_PrintUnformatted, json_str);
@@ -1701,20 +1707,21 @@ void test_wdb_update_agent_keepalive_success(void **state)
 {
     int ret = 0;
     int id = 1;
-    wdb_sync_status_t sync_status = WDB_SYNCED;
+    const char *sync_status = "synced";
 
-    const char *json_str = "{\"id\":1,\"sync_status\":0}";
-    const char *query_str = "global update-keepalive {\"id\":1,\"sync_status\":0}";
+    const char *json_str = "{\"id\":1,\"sync_status\":\"synced\"}";
+    const char *query_str = "global update-keepalive {\"id\":1,\"sync_status\":\"synced\"}";
     const char *response = "ok";
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
 
     // Adding data to JSON
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
-    expect_string(__wrap_cJSON_AddNumberToObject, name, "sync_status");
-    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "synced");
 
     // Printing JSON
     will_return(__wrap_cJSON_PrintUnformatted, json_str);
@@ -2296,9 +2303,9 @@ void test_wdb_find_agent_error_json_output(void **state)
 
     // Adding data to JSON
     expect_string(__wrap_cJSON_AddStringToObject, name, "name");
-    expect_value(__wrap_cJSON_AddStringToObject, string, name_str);
+    expect_string(__wrap_cJSON_AddStringToObject, string, name_str);
     expect_string(__wrap_cJSON_AddStringToObject, name, "ip");
-    expect_value(__wrap_cJSON_AddStringToObject, string, ip_str);
+    expect_string(__wrap_cJSON_AddStringToObject, string, ip_str);
 
     // Printing JSON
     will_return(__wrap_cJSON_PrintUnformatted, json_str);
@@ -2336,9 +2343,9 @@ void test_wdb_find_agent_success(void **state)
 
     // Adding data to JSON
     expect_string(__wrap_cJSON_AddStringToObject, name, "name");
-    expect_value(__wrap_cJSON_AddStringToObject, string, name_str);
+    expect_string(__wrap_cJSON_AddStringToObject, string, name_str);
     expect_string(__wrap_cJSON_AddStringToObject, name, "ip");
-    expect_value(__wrap_cJSON_AddStringToObject, string, ip_str);
+    expect_string(__wrap_cJSON_AddStringToObject, string, ip_str);
 
     // Printing JSON
     will_return(__wrap_cJSON_PrintUnformatted, json_str);

@@ -219,12 +219,6 @@ typedef enum {
     WDB_FIM         ///< File integrity monitoring.
 } wdb_component_t;
 
-/// Enumeration of sync-status.
-typedef enum {
-    WDB_SYNCED,
-    WDB_SYNC_REQ
-} wdb_sync_status_t;
-
 extern char *schema_global_sql;
 extern char *schema_agents_sql;
 extern char *schema_upgrade_v1_sql;
@@ -443,16 +437,16 @@ int wdb_update_agent_data(int id,
                           const char *node_name,
                           const char *agent_ip,
                           const char *labels,
-                          wdb_sync_status_t sync_status);
+                          const char *sync_status);
 
 /**
  * @brief Update agent's last keepalive ond modifies the cluster synchronization status.
  * 
  * @param[in] id Id of the agent for whom the keepalive must be updated.
- * @param[in] sync_status Enumeration with the cluster synchronization status to be set.
+ * @param[in] sync_status String with the cluster synchronization status to be set.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_update_agent_keepalive(int id, wdb_sync_status_t sync_status);
+int wdb_update_agent_keepalive(int id, const char *sync_status);
 
 /**
  * @brief Set agent updating status.
@@ -1371,7 +1365,7 @@ int wdb_global_update_agent_version(wdb_t *wdb,
                                     const char *manager_host,
                                     const char *node_name,
                                     const char *agent_ip,
-                                    wdb_sync_status_t sync_status);
+                                    const char *sync_status);
 
 /**
  * @brief Function to get the labels of a particular agent.
@@ -1410,7 +1404,7 @@ int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value);
  * @param [in] status The value of sync_status
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, wdb_sync_status_t status);
+int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *sync_status);
 
 /**
  * @brief Function to delete an agent from the agent table.
@@ -1597,10 +1591,10 @@ cJSON* wdb_global_select_agent_keepalive(wdb_t *wdb, char* name, char* ip);
  * @param [in] status The value of sync_status
  * @return 0 On success. -1 On error.
  */
-int wdb_global_set_sync_status(wdb_t *wdb, int id, wdb_sync_status_t status);
+int wdb_global_set_sync_status(wdb_t *wdb, int id, const char *sync_status);
 
 /**
- * @brief Gets and parses agents with WDB_SYNC_REQ sync_status and sets them to WDB_SYNCED.
+ * @brief Gets and parses agents with 'syncreq' sync_status and sets them to 'synced'.
  *        Response is prepared in one chunk, 
  *        if the size of the chunk exceeds WDB_MAX_RESPONSE_SIZE parsing stops and reports the amount of agents obtained.
  *        Multiple calls to this function can be required to fully obtain all agents.

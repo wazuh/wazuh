@@ -242,7 +242,7 @@ int wdb_update_agent_data (int id,
                            const char *node_name,
                            const char *agent_ip,
                            const char *labels,
-                           wdb_sync_status_t sync_status) {
+                           const char *sync_status) {
     int result = 0;
     cJSON *data_in = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -273,7 +273,7 @@ int wdb_update_agent_data (int id,
     cJSON_AddStringToObject(data_in, "node_name", node_name);
     cJSON_AddStringToObject(data_in, "agent_ip", agent_ip);
     cJSON_AddStringToObject(data_in, "labels", labels);
-    cJSON_AddNumberToObject(data_in, "sync_status", sync_status);
+    cJSON_AddStringToObject(data_in, "sync_status", sync_status);
 
     snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_DATA], cJSON_PrintUnformatted(data_in));
 
@@ -301,7 +301,7 @@ int wdb_update_agent_data (int id,
     return result;
 }
 
-int wdb_update_agent_keepalive(int id, wdb_sync_status_t sync_status) {
+int wdb_update_agent_keepalive(int id, const char *sync_status) {
     int result = 0;
     cJSON *data_in = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -316,7 +316,7 @@ int wdb_update_agent_keepalive(int id, wdb_sync_status_t sync_status) {
     }
 
     cJSON_AddNumberToObject(data_in, "id", id);
-    cJSON_AddNumberToObject(data_in, "sync_status", sync_status);
+    cJSON_AddStringToObject(data_in, "sync_status", sync_status);
 
     snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_KEEPALIVE], cJSON_PrintUnformatted(data_in));
 
