@@ -535,7 +535,9 @@ int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
                     if (strlen(word) == 0) {
                         smerror(log_msg, "decode-xml: Wrong field '%s' in the order"
                                   " of decoder '%s'", *norder, pi->name);
-                        os_free(*s_norder);
+                        for (int i = 0; i < Config.decoder_order_size; i++) {
+                            os_free(s_norder[i]);
+                        }
                         os_free(s_norder);
                         goto cleanup;
                     }
@@ -615,7 +617,9 @@ int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
                     if (strlen(word) == 0) {
                         smerror(log_msg, "decode-xml: Wrong field '%s' in the fts"
                                   " decoder '%s'", *norder, pi->name);
-                        os_free(*s_norder);
+                        for (int i = 0; i < Config.decoder_order_size; i++ ) {
+                            os_free(s_norder[i]);
+                        }
                         os_free(s_norder);
                         goto cleanup;
                     }
@@ -653,6 +657,10 @@ int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
                             if (!pi->fields[i]) {
                                 smerror(log_msg, "decode-xml: Wrong field '%s' in the fts"
                                         " decoder '%s'", *norder, pi->name);
+                                for (int i = 0; i < Config.decoder_order_size; i++ ) {
+                                    os_free(s_norder[i]);
+                                }
+                                os_free(s_norder);
                                 goto cleanup;
                             }
 
@@ -661,7 +669,7 @@ int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
                         }
                     }
 
-                    free(*norder);
+                    os_free(*norder);
                     norder++;
                 }
 
