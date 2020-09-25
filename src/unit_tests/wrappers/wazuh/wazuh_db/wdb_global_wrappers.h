@@ -34,7 +34,7 @@ int __wrap_wdb_global_update_agent_version(wdb_t *wdb,
                                     const char *manager_host,
                                     const char *node_name,
                                     const char *agent_ip,
-                                    wdb_sync_status_t sync_status);
+                                    const char *sync_status);
 
 cJSON* __wrap_wdb_global_get_agent_labels(wdb_t *wdb, int id);
 
@@ -42,7 +42,7 @@ int __wrap_wdb_global_del_agent_labels(wdb_t *wdb, int id);
 
 int __wrap_wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value);
 
-int __wrap_wdb_global_update_agent_keepalive(wdb_t *wdb, int id, wdb_sync_status_t status);
+int __wrap_wdb_global_update_agent_keepalive(wdb_t *wdb, int id, char* status);
 
 int __wrap_wdb_global_delete_agent(wdb_t *wdb, int id);
 

@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS agent (
     fim_offset INTEGER NOT NULL DEFAULT 0,
     reg_offset INTEGER NOT NULL DEFAULT 0,
     `group` TEXT DEFAULT 'default',
-    sync_status INTEGER NOT NULL DEFAULT 0
+    sync_status TEXT NOT NULL CHECK (sync_status IN ('synced', 'syncreq')) DEFAULT 'synced'
 );
 
 CREATE INDEX IF NOT EXISTS agent_name ON agent (name);
@@ -62,5 +62,12 @@ CREATE TABLE IF NOT EXISTS belongs (
     id_group INTEGER,
     PRIMARY KEY (id_agent, id_group)
 );
+
+CREATE TABLE IF NOT EXISTS metadata (
+    key TEXT PRIMARY KEY,
+    value TEXT
+);
+
+INSERT INTO metadata (key, value) VALUES ('db_version', '1');
 
 PRAGMA journal_mode=WAL;

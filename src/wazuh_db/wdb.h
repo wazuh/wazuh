@@ -168,7 +168,7 @@ typedef enum global_db_access {
     WDB_INSERT_AGENT_GROUP,
     WDB_INSERT_AGENT_BELONG,
     WDB_UPDATE_AGENT_NAME,
-    WDB_UPDATE_AGENT_VERSION,
+    WDB_UPDATE_AGENT_DATA,
     WDB_UPDATE_AGENT_KEEPALIVE,
     WDB_UPDATE_AGENT_STATUS,
     WDB_UPDATE_AGENT_GROUP,
@@ -219,12 +219,6 @@ typedef enum {
     WDB_FIM         ///< File integrity monitoring.
 } wdb_component_t;
 
-/// Enumeration of sync-status.
-typedef enum {
-    WDB_SYNCED,
-    WDB_SYNC_REQ
-} wdb_sync_status_t;
-
 extern char *schema_global_sql;
 extern char *schema_agents_sql;
 extern char *schema_upgrade_v1_sql;
@@ -232,6 +226,7 @@ extern char *schema_upgrade_v2_sql;
 extern char *schema_upgrade_v3_sql;
 extern char *schema_upgrade_v4_sql;
 extern char *schema_upgrade_v5_sql;
+extern char *schema_global_upgrade_v1_sql;
 extern int wdb_sock_agent;
 
 extern wdb_config wconfig;
@@ -403,7 +398,7 @@ int wdb_update_agent_belongs(int id_group, int id_agent);
 int wdb_update_agent_name(int id, const char *name);
 
 /**
- * @brief Update agent version in global.db.
+ * @brief Update agent data in global.db.
  * 
  * @param[in] id The agent ID.
  * @param[in] os_name The agent's operating system name.
@@ -421,35 +416,37 @@ int wdb_update_agent_name(int id, const char *name);
  * @param[in] manager_host The agent's manager host name.
  * @param[in] node_name The agent's manager node name.
  * @param[in] agent_ip The agent's IP address.
+ * @param[in] labels The agent labels.
  * @param[in] sync_status The agent's synchronization status in cluster.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_update_agent_version(int id, 
-                             const char *os_name,
-                             const char *os_version,
-                             const char *os_major,
-                             const char *os_minor,
-                             const char *os_codename,
-                             const char *os_platform,
-                             const char *os_build,
-                             const char *os_uname,
-                             const char *os_arch,
-                             const char *version,
-                             const char *config_sum,
-                             const char *merged_sum,
-                             const char *manager_host,
-                             const char *node_name,
-                             const char *agent_ip,
-                             wdb_sync_status_t sync_status);
+int wdb_update_agent_data(int id, 
+                          const char *os_name,
+                          const char *os_version,
+                          const char *os_major,
+                          const char *os_minor,
+                          const char *os_codename,
+                          const char *os_platform,
+                          const char *os_build,
+                          const char *os_uname,
+                          const char *os_arch,
+                          const char *version,
+                          const char *config_sum,
+                          const char *merged_sum,
+                          const char *manager_host,
+                          const char *node_name,
+                          const char *agent_ip,
+                          const char *labels,
+                          const char *sync_status);
 
 /**
  * @brief Update agent's last keepalive ond modifies the cluster synchronization status.
  * 
  * @param[in] id Id of the agent for whom the keepalive must be updated.
- * @param[in] sync_status Enumeration with the cluster synchronization status to be set.
+ * @param[in] sync_status String with the cluster synchronization status to be set.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_update_agent_keepalive(int id, wdb_sync_status_t sync_status);
+int wdb_update_agent_keepalive(int id, const char *sync_status);
 
 /**
  * @brief Set agent updating status.
@@ -699,6 +696,15 @@ int wdb_metadata_fill_version(sqlite3 *db);
 /* Get value data in output variable. Returns 0 if doesn't found, 1 on success or -1 on error. */
 int wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output);
 
+/**
+ * @brief Checks if the table exists in the database.
+ * 
+ * @param[in] wdb Database to query for the table existence.
+ * @param[in] key Name of the table to find.
+ * @return 1 if the table exists, 0 if the table doesn't exist or OS_INVALID on failure.
+ */
+ int wdb_metadata_table_check(wdb_t * wdb, const char * key);
+
 /* Update field date for specific fim_entry. */
 int wdb_fim_update_date_entry(wdb_t * wdb, const char *path);
 
@@ -931,14 +937,14 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output);
 int wdb_parse_global_update_agent_name(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to parse the update agent version request.
+ * @brief Function to parse the update agent data request.
  * 
  * @param [in] wdb The global struct database.
  * @param [in] input String with the agent data in JSON format.
  * @param [out] output Response of the query.
  * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
  */
-int wdb_parse_global_update_agent_version(wdb_t * wdb, char * input, char * output);
+int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output);
 
 /**
  * @brief Function to parse the labels request for a particular agent.
@@ -1226,7 +1232,15 @@ int wdb_scan_info_fim_checks_control (wdb_t * wdb, const char *last_check);
 // Upgrade agent database to last version
 wdb_t * wdb_upgrade(wdb_t *wdb);
 
-// Create backup and generate an emtpy DB
+/**
+ * @brief Function to upgrade Global DB to the latest version.
+ * 
+ * @param [in] wdb The global.db database to upgrade.
+ * @return wdb The global.db database updated on success.
+ */
+wdb_t * wdb_upgrade_global(wdb_t *wdb);
+
+// Create backup and generate an empty DB
 wdb_t * wdb_backup(wdb_t *wdb, int version);
 
 /* Create backup for agent. Returns 0 on success or -1 on error. */
@@ -1351,7 +1365,7 @@ int wdb_global_update_agent_version(wdb_t *wdb,
                                     const char *manager_host,
                                     const char *node_name,
                                     const char *agent_ip,
-                                    wdb_sync_status_t sync_status);
+                                    const char *sync_status);
 
 /**
  * @brief Function to get the labels of a particular agent.
@@ -1390,7 +1404,7 @@ int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value);
  * @param [in] status The value of sync_status
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, wdb_sync_status_t status);
+int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *sync_status);
 
 /**
  * @brief Function to delete an agent from the agent table.
@@ -1577,10 +1591,10 @@ cJSON* wdb_global_select_agent_keepalive(wdb_t *wdb, char* name, char* ip);
  * @param [in] status The value of sync_status
  * @return 0 On success. -1 On error.
  */
-int wdb_global_set_sync_status(wdb_t *wdb, int id, wdb_sync_status_t status);
+int wdb_global_set_sync_status(wdb_t *wdb, int id, const char *sync_status);
 
 /**
- * @brief Gets and parses agents with WDB_SYNC_REQ sync_status and sets them to WDB_SYNCED.
+ * @brief Gets and parses agents with 'syncreq' sync_status and sets them to 'synced'.
  *        Response is prepared in one chunk, 
  *        if the size of the chunk exceeds WDB_MAX_RESPONSE_SIZE parsing stops and reports the amount of agents obtained.
  *        Multiple calls to this function can be required to fully obtain all agents.

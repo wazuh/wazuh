@@ -353,31 +353,31 @@ void test_wdb_parse_global_update_agent_name_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
-void test_wdb_parse_global_update_agent_version_syntax_error(void **state)
+void test_wdb_parse_global_update_agent_data_syntax_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global update-agent-version";
+    char query[OS_BUFFER_SIZE] = "global update-agent-data";
 
     will_return(__wrap_wdb_open_global, data->socket);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-agent-version");
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for update-agent-version.");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: update-agent-version");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-agent-data");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for update-agent-data.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: update-agent-data");
 
     ret = wdb_parse(query, data->output);
 
-    assert_string_equal(data->output, "err Invalid DB query syntax, near 'update-agent-version'");
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'update-agent-data'");
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_parse_global_update_agent_version_invalid_json(void **state)
+void test_wdb_parse_global_update_agent_data_invalid_json(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global update-agent-version {INVALID_JSON}";
+    char query[OS_BUFFER_SIZE] = "global update-agent-data {INVALID_JSON}";
 
     will_return(__wrap_wdb_open_global, data->socket);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-agent-version {INVALID_JSON}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-agent-data {INVALID_JSON}");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when updating agent version.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
 
@@ -387,23 +387,23 @@ void test_wdb_parse_global_update_agent_version_invalid_json(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_parse_global_update_agent_version_query_error(void **state)
+void test_wdb_parse_global_update_agent_data_query_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global update-agent-version {\"id\":1,\"os_name\":\"test_name\",\"os_version\":\"test_version\",\
+    char query[OS_BUFFER_SIZE] = "global update-agent-data {\"id\":1,\"os_name\":\"test_name\",\"os_version\":\"test_version\",\
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_codename\":\"test_codename\",\"os_platform\":\"test_platform\",\
     \"os_build\":\"test_build\",\"os_uname\":\"test_uname\",\"os_arch\":\"test_arch\",\"version\":\"test_version\",\"config_sum\":\
     \"test_config\",\"merged_sum\":\"test_merged\",\"manager_host\":\"test_manager\",\"node_name\":\"test_node\",\"agent_ip\":\"test_ip\",\
-    \"sync_status\":1}";
+    \"sync_status\":\"syncreq\"}";
 
     will_return(__wrap_wdb_open_global, data->socket);
     expect_string(__wrap__mdebug2, formatted_msg, 
-    "Global query: update-agent-version {\"id\":1,\"os_name\":\"test_name\",\"os_version\":\"test_version\",\
+    "Global query: update-agent-data {\"id\":1,\"os_name\":\"test_name\",\"os_version\":\"test_version\",\
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_codename\":\"test_codename\",\"os_platform\":\"test_platform\",\
     \"os_build\":\"test_build\",\"os_uname\":\"test_uname\",\"os_arch\":\"test_arch\",\"version\":\"test_version\",\"config_sum\":\
     \"test_config\",\"merged_sum\":\"test_merged\",\"manager_host\":\"test_manager\",\"node_name\":\"test_node\",\"agent_ip\":\"test_ip\",\
-    \"sync_status\":1}");
+    \"sync_status\":\"syncreq\"}");
 
     expect_value(__wrap_wdb_global_update_agent_version, id, 1);
     expect_string(__wrap_wdb_global_update_agent_version, os_name, "test_name");
@@ -421,7 +421,7 @@ void test_wdb_parse_global_update_agent_version_query_error(void **state)
     expect_string(__wrap_wdb_global_update_agent_version, manager_host, "test_manager");
     expect_string(__wrap_wdb_global_update_agent_version, node_name, "test_node");
     expect_string(__wrap_wdb_global_update_agent_version, agent_ip, "test_ip");
-    expect_value(__wrap_wdb_global_update_agent_version, sync_status, WDB_SYNC_REQ);
+    expect_string(__wrap_wdb_global_update_agent_version, sync_status, "syncreq");
 
     will_return(__wrap_wdb_global_update_agent_version, OS_INVALID);
 
@@ -434,23 +434,23 @@ void test_wdb_parse_global_update_agent_version_query_error(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_parse_global_update_agent_version_invalid_data(void **state)
+void test_wdb_parse_global_update_agent_data_invalid_data(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global update-agent-version {\"os_name\":\"test_name\",\"os_version\":\"test_version\",\
+    char query[OS_BUFFER_SIZE] = "global update-agent-data {\"os_name\":\"test_name\",\"os_version\":\"test_version\",\
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_codename\":\"test_codename\",\"os_platform\":\"test_platform\",\
     \"os_build\":\"test_build\",\"os_uname\":\"test_uname\",\"os_arch\":\"test_arch\",\"version\":\"test_version\",\"config_sum\":\
     \"test_config\",\"merged_sum\":\"test_merged\",\"manager_host\":\"test_manager\",\"node_name\":\"test_node\",\"agent_ip\":\"test_ip\",\
-    \"sync_status\":1}";
+    \"sync_status\":\"syncreq\"}";
 
     will_return(__wrap_wdb_open_global, data->socket);
     expect_string(__wrap__mdebug2, formatted_msg, 
-    "Global query: update-agent-version {\"os_name\":\"test_name\",\"os_version\":\"test_version\",\
+    "Global query: update-agent-data {\"os_name\":\"test_name\",\"os_version\":\"test_version\",\
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_codename\":\"test_codename\",\"os_platform\":\"test_platform\",\
     \"os_build\":\"test_build\",\"os_uname\":\"test_uname\",\"os_arch\":\"test_arch\",\"version\":\"test_version\",\"config_sum\":\
     \"test_config\",\"merged_sum\":\"test_merged\",\"manager_host\":\"test_manager\",\"node_name\":\"test_node\",\"agent_ip\":\"test_ip\",\
-    \"sync_status\":1}");
+    \"sync_status\":\"syncreq\"}");
 
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when updating agent version.");
 
@@ -460,23 +460,23 @@ void test_wdb_parse_global_update_agent_version_invalid_data(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_parse_global_update_agent_version_success(void **state)
+void test_wdb_parse_global_update_agent_data_success(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global update-agent-version {\"id\":1,\"os_name\":\"test_name\",\"os_version\":\"test_version\",\
+    char query[OS_BUFFER_SIZE] = "global update-agent-data {\"id\":1,\"os_name\":\"test_name\",\"os_version\":\"test_version\",\
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_codename\":\"test_codename\",\"os_platform\":\"test_platform\",\
     \"os_build\":\"test_build\",\"os_uname\":\"test_uname\",\"os_arch\":\"test_arch\",\"version\":\"test_version\",\"config_sum\":\
     \"test_config\",\"merged_sum\":\"test_merged\",\"manager_host\":\"test_manager\",\"node_name\":\"test_node\",\"agent_ip\":\"test_ip\",\
-    \"sync_status\":1}";
+    \"sync_status\":\"syncreq\"}";
 
     will_return(__wrap_wdb_open_global, data->socket);
     expect_string(__wrap__mdebug2, formatted_msg, 
-    "Global query: update-agent-version {\"id\":1,\"os_name\":\"test_name\",\"os_version\":\"test_version\",\
+    "Global query: update-agent-data {\"id\":1,\"os_name\":\"test_name\",\"os_version\":\"test_version\",\
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_codename\":\"test_codename\",\"os_platform\":\"test_platform\",\
     \"os_build\":\"test_build\",\"os_uname\":\"test_uname\",\"os_arch\":\"test_arch\",\"version\":\"test_version\",\"config_sum\":\
     \"test_config\",\"merged_sum\":\"test_merged\",\"manager_host\":\"test_manager\",\"node_name\":\"test_node\",\"agent_ip\":\"test_ip\",\
-    \"sync_status\":1}");
+    \"sync_status\":\"syncreq\"}");
 
     expect_value(__wrap_wdb_global_update_agent_version, id, 1);
     expect_string(__wrap_wdb_global_update_agent_version, os_name, "test_name");
@@ -494,8 +494,11 @@ void test_wdb_parse_global_update_agent_version_success(void **state)
     expect_string(__wrap_wdb_global_update_agent_version, manager_host, "test_manager");
     expect_string(__wrap_wdb_global_update_agent_version, node_name, "test_node");
     expect_string(__wrap_wdb_global_update_agent_version, agent_ip, "test_ip");
-    expect_value(__wrap_wdb_global_update_agent_version, sync_status, WDB_SYNC_REQ);
+    expect_string(__wrap_wdb_global_update_agent_version, sync_status, "syncreq");
     will_return(__wrap_wdb_global_update_agent_version, OS_SUCCESS);
+
+    expect_value(__wrap_wdb_global_del_agent_labels, id, 1);
+    will_return(__wrap_wdb_global_del_agent_labels, OS_SUCCESS);
 
     ret = wdb_parse(query, data->output);
 
@@ -673,6 +676,23 @@ void test_wdb_parse_global_set_agent_labels_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
+void test_wdb_parse_global_set_agent_labels_success_only_remove(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global set-labels 1";
+
+    will_return(__wrap_wdb_open_global, data->socket);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-labels 1");
+    expect_value(__wrap_wdb_global_del_agent_labels, id, 1);
+    will_return(__wrap_wdb_global_del_agent_labels, OS_SUCCESS);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
 void test_wdb_parse_global_update_agent_keepalive_syntax_error(void **state)
 {
     int ret = 0;
@@ -727,14 +747,14 @@ void test_wdb_parse_global_update_agent_keepalive_query_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global update-keepalive {\"id\":1,\"sync_status\":1}";
+    char query[OS_BUFFER_SIZE] = "global update-keepalive {\"id\":1,\"sync_status\":\"syncreq\"}";
 
     will_return(__wrap_wdb_open_global, data->socket);
     expect_value(__wrap_wdb_global_update_agent_keepalive, id, 1);
-    expect_value(__wrap_wdb_global_update_agent_keepalive, status, WDB_SYNC_REQ);
+    expect_string(__wrap_wdb_global_update_agent_keepalive, status, "syncreq");
     will_return(__wrap_wdb_global_update_agent_keepalive, OS_INVALID);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-keepalive {\"id\":1,\"sync_status\":1}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-keepalive {\"id\":1,\"sync_status\":\"syncreq\"}");
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
 
@@ -748,14 +768,14 @@ void test_wdb_parse_global_update_agent_keepalive_success(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global update-keepalive {\"id\":1,\"sync_status\":1}";
+    char query[OS_BUFFER_SIZE] = "global update-keepalive {\"id\":1,\"sync_status\":\"syncreq\"}";
 
     will_return(__wrap_wdb_open_global, data->socket);
     expect_value(__wrap_wdb_global_update_agent_keepalive, id, 1);
-    expect_value(__wrap_wdb_global_update_agent_keepalive, status, WDB_SYNC_REQ);
+    expect_string(__wrap_wdb_global_update_agent_keepalive, status, "syncreq");
     will_return(__wrap_wdb_global_update_agent_keepalive, OS_SUCCESS);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-keepalive {\"id\":1,\"sync_status\":1}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-keepalive {\"id\":1,\"sync_status\":\"syncreq\"}");
 
     ret = wdb_parse(query, data->output);
 
@@ -1541,15 +1561,15 @@ void test_wdb_parse_global_update_agent_group_invalid_data(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global update-agent-group {\"id\":1,\"group\":null}";
+    char query[OS_BUFFER_SIZE] = "global update-agent-group {\"group\":null}";
 
     will_return(__wrap_wdb_open_global, data->socket);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-agent-group {\"id\":1,\"group\":null}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-agent-group {\"group\":null}");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when updating agent group.");
 
     ret = wdb_parse(query, data->output);
 
-    assert_string_equal(data->output, "err Invalid JSON data, near '{\"id\":1,\"group\":null}'");
+    assert_string_equal(data->output, "err Invalid JSON data, near '{\"group\":null}'");
     assert_int_equal(ret, OS_INVALID);
 }
 
@@ -2462,11 +2482,11 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_name_invalid_data, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_name_query_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_name_success, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_version_syntax_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_version_invalid_json, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_version_query_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_version_invalid_data, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_version_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_data_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_data_invalid_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_data_query_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_data_invalid_data, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_data_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agent_labels_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agent_labels_query_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agent_labels_success, test_setup, test_teardown),
@@ -2475,6 +2495,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_labels_remove_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_labels_set_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_labels_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_labels_success_only_remove, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_keepalive_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_keepalive_invalid_json, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_keepalive_invalid_data, test_setup, test_teardown),

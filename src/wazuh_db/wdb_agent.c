@@ -27,7 +27,7 @@ static const char *global_db_commands[] = {
     [WDB_INSERT_AGENT_GROUP] = "global insert-agent-group %s",
     [WDB_INSERT_AGENT_BELONG] = "global insert-agent-belong %s",
     [WDB_UPDATE_AGENT_NAME] = "global update-agent-name %s",
-    [WDB_UPDATE_AGENT_VERSION] = "global update-agent-version %s",
+    [WDB_UPDATE_AGENT_DATA] = "global update-agent-data %s",
     [WDB_UPDATE_AGENT_KEEPALIVE] = "global update-keepalive %s",
     [WDB_UPDATE_AGENT_STATUS] = "global update-agent-status %s",
     [WDB_UPDATE_AGENT_GROUP] = "global update-agent-group %s",
@@ -103,7 +103,7 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
             mdebug2("Global DB SQL query: %s", wdbquery);
             break;
         default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
             result = OS_INVALID;
     }
@@ -132,7 +132,7 @@ int wdb_insert_group(const char *name) {
             mdebug2("Global DB SQL query: %s", wdbquery);
             return OS_INVALID;
         default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
             return OS_INVALID;
     }
@@ -174,7 +174,7 @@ int wdb_update_agent_belongs(int id_group, int id_agent) {
             mdebug2("Global DB SQL query: %s", wdbquery);
             return OS_INVALID;
         default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
             return OS_INVALID;
     }
@@ -217,7 +217,7 @@ int wdb_update_agent_name(int id, const char *name) {
             mdebug2("Global DB SQL query: %s", wdbquery);
             break;
         default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
             result = OS_INVALID;
     }
@@ -225,23 +225,24 @@ int wdb_update_agent_name(int id, const char *name) {
     return result;
 }
 
-int wdb_update_agent_version (int id,
-                              const char *os_name,
-                              const char *os_version,
-                              const char *os_major,
-                              const char *os_minor,
-                              const char *os_codename,
-                              const char *os_platform,
-                              const char *os_build,
-                              const char *os_uname,
-                              const char *os_arch,
-                              const char *version,
-                              const char *config_sum,
-                              const char *merged_sum,
-                              const char *manager_host,
-                              const char *node_name,
-                              const char *agent_ip,
-                              wdb_sync_status_t sync_status) {
+int wdb_update_agent_data (int id,
+                           const char *os_name,
+                           const char *os_version,
+                           const char *os_major,
+                           const char *os_minor,
+                           const char *os_codename,
+                           const char *os_platform,
+                           const char *os_build,
+                           const char *os_uname,
+                           const char *os_arch,
+                           const char *version,
+                           const char *config_sum,
+                           const char *merged_sum,
+                           const char *manager_host,
+                           const char *node_name,
+                           const char *agent_ip,
+                           const char *labels,
+                           const char *sync_status) {
     int result = 0;
     cJSON *data_in = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -271,9 +272,10 @@ int wdb_update_agent_version (int id,
     cJSON_AddStringToObject(data_in, "manager_host", manager_host);
     cJSON_AddStringToObject(data_in, "node_name", node_name);
     cJSON_AddStringToObject(data_in, "agent_ip", agent_ip);
-    cJSON_AddNumberToObject(data_in, "sync_status", sync_status);
+    cJSON_AddStringToObject(data_in, "labels", labels);
+    cJSON_AddStringToObject(data_in, "sync_status", sync_status);
 
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_VERSION], cJSON_PrintUnformatted(data_in));
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_DATA], cJSON_PrintUnformatted(data_in));
 
     cJSON_Delete(data_in);
 
@@ -291,7 +293,7 @@ int wdb_update_agent_version (int id,
             mdebug2("Global DB SQL query: %s", wdbquery);
             break;
         default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
             result = OS_INVALID;
     }
@@ -299,7 +301,7 @@ int wdb_update_agent_version (int id,
     return result;
 }
 
-int wdb_update_agent_keepalive(int id, wdb_sync_status_t sync_status) {
+int wdb_update_agent_keepalive(int id, const char *sync_status) {
     int result = 0;
     cJSON *data_in = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -314,7 +316,7 @@ int wdb_update_agent_keepalive(int id, wdb_sync_status_t sync_status) {
     }
 
     cJSON_AddNumberToObject(data_in, "id", id);
-    cJSON_AddNumberToObject(data_in, "sync_status", sync_status);
+    cJSON_AddStringToObject(data_in, "sync_status", sync_status);
 
     snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_KEEPALIVE], cJSON_PrintUnformatted(data_in));
 
@@ -334,7 +336,7 @@ int wdb_update_agent_keepalive(int id, wdb_sync_status_t sync_status) {
             mdebug2("Global DB SQL query: %s", wdbquery);
             break;
         default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
             result = OS_INVALID;
     }
@@ -392,7 +394,7 @@ int wdb_set_agent_status(int id_agent, int status) {
             mdebug2("Global DB SQL query: %s", wdbquery);
             return OS_INVALID;
         default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
             return OS_INVALID;
     }
@@ -437,7 +439,7 @@ int wdb_update_agent_group(int id, char *group) {
             mdebug2("Global DB SQL query: %s", wdbquery);
             return OS_INVALID;
         default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
             return OS_INVALID;
     }
@@ -489,7 +491,7 @@ int wdb_set_agent_offset(int id, int type, long offset) {
             mdebug2("Global DB SQL query: %s", wdbquery);
             return OS_INVALID;
         default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
             return OS_INVALID;
     }
@@ -522,7 +524,7 @@ int wdb_set_agent_labels(int id, const char *labels) {
             mdebug2("Global DB SQL query: %s", wdbquery);
             break;
         default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
             result = OS_INVALID;
     }
@@ -971,7 +973,7 @@ int wdb_remove_agent(int id) {
             mdebug2("Global DB SQL query: %s", wdbquery);
             break;
         default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
             result = OS_INVALID;
     }
@@ -1006,7 +1008,7 @@ int wdb_remove_group_db(const char *name) {
             mdebug2("Global DB SQL query: %s", wdbquery);
             return OS_INVALID;
         default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
             return OS_INVALID;
     }
@@ -1035,7 +1037,7 @@ int wdb_delete_agent_belongs(int id) {
             mdebug2("Global DB SQL query: %s", wdbquery);
             return OS_INVALID;
         default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
             return OS_INVALID;
     }
@@ -1064,7 +1066,7 @@ int wdb_remove_group_from_belongs_db(const char *name) {
             mdebug2("Global DB SQL query: %s", wdbquery);
             return OS_INVALID;
         default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB2_GLOB_NAME);
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
             return OS_INVALID;
     }
