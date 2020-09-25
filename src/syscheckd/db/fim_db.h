@@ -182,20 +182,28 @@ fim_registry_key *fim_db_get_registry_key(fdb_t *fim_sql, const char *path, unsi
 /**
  * @brief Calculate checksum of data entries between @start and @top.
  *
- * Said range will be splitted into two and the resulting checksums will
- * be sent as sync messages.
+ * Said range will be split into two and the resulting checksums will
+ * be returned in their corresponding parameters.
  *
  * @param fim_sql FIM database struct.
  * @param start First entry of the range.
  * @param top Last entry of the range.
- * @param id Sync session counter (timetamp).
  * @param n Number of entries between start and stop.
- * @param mutex FIM database's mutex for thread synchronization.
+ * @param ctx_left FIM database's lower side checksum.
+ * @param ctx_right FIM database's upper side checksum.
+ * @param str_pathlh Holds FIM database's last path of the lower side on a succesful exit.
+ * @param str_pathuh Holds FIM database's first path of the higher side on a succesful exit.
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *top,
-                               long id, int n, pthread_mutex_t *mutex);
+int fim_db_data_checksum_range(fdb_t *fim_sql,
+                               const char *start,
+                               const char *top,
+                               int n,
+                               EVP_MD_CTX *ctx_left,
+                               EVP_MD_CTX *ctx_right,
+                               char **str_pathlh,
+                               char **str_pathuh);
 
 /**
  * @brief Initialize FIM databases.

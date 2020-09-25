@@ -322,13 +322,13 @@ char **fim_db_get_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsi
     return paths;
 }
 
-int fim_db_get_count_range(fdb_t *fim_sql, char *start, char *top, int *count) {
+int fim_db_get_count_range(fdb_t *fim_sql, const char *start, const char *top, int *count) {
     // Clean and bind statements
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_COUNT_RANGE);
     fim_db_bind_range(fim_sql, FIMDB_STMT_GET_COUNT_RANGE, start, top);
 
     if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_COUNT_RANGE]) != SQLITE_ROW) {
-        merror("Step error getting count range 'start %s' 'top %s': %s", start, top,  sqlite3_errmsg(fim_sql->db));
+        merror("Step error getting count range 'start %s' 'top %s': %s", start, top, sqlite3_errmsg(fim_sql->db));
         return FIMDB_ERR;
     }
 

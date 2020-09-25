@@ -91,7 +91,7 @@ int fim_db_sync_path_range(fdb_t *fim_sql, pthread_mutex_t *mutex,
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_count_range(fdb_t *fim_sql, char *start, char *top, int *counter);
+int fim_db_get_count_range(fdb_t *fim_sql, const char *start, const char *top, int *counter);
 
 /**
  * @brief Delete entry using file path.

@@ -101,6 +101,9 @@ void fim_sync_checksum() {
     EVP_DigestInit(ctx, EVP_sha1());
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
+#ifdef WIN32
+    w_mutex_lock(&syscheck.fim_registry_mutex);
+#endif
 
     if (fim_db_get_row_path(syscheck.database, FIM_FIRST_ROW,
         &start) != FIMDB_OK) {
@@ -123,6 +126,10 @@ void fim_sync_checksum() {
     }
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
+#ifdef WIN32
+    w_mutex_unlock(&syscheck.fim_registry_mutex);
+#endif
+
     fim_sync_cur_id = time(NULL);
 
     if (start && top) {
@@ -144,24 +151,35 @@ void fim_sync_checksum() {
         os_free(plain);
     }
 
-end:    os_free(start);
-        os_free(top);
-        EVP_MD_CTX_destroy(ctx);
+end:
+    os_free(start);
+    os_free(top);
+    EVP_MD_CTX_destroy(ctx);
 }
 
 void fim_sync_checksum_split(const char * start, const char * top, long id) {
-    fim_entry *entry    = NULL;
-    cJSON *file_data   = NULL;
-    int range_size      = 0;
+    fim_entry *entry = NULL;
+    cJSON *file_data = NULL;
+    int range_size;
+    char *str_pathlh;
+    char *str_pathuh;
+    EVP_MD_CTX *ctx_left;
+    EVP_MD_CTX *ctx_right;
+    int result;
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
+#ifdef WIN32
+    w_mutex_lock(&syscheck.fim_registry_mutex);
+#endif
 
-    if (fim_db_get_count_range(syscheck.database, (char*)start, (char*)top,
-        &range_size) != FIMDB_OK) {
+    if (fim_db_get_count_range(syscheck.database, start, top, &range_size) != FIMDB_OK) {
         merror(FIM_DB_ERROR_COUNT_RANGE, start, top);
-        goto end;
+        range_size = 0;
     }
 
+#ifdef WIN32
+    w_mutex_unlock(&syscheck.fim_registry_mutex);
+#endif
     w_mutex_unlock(&syscheck.fim_entry_mutex)
 
     switch (range_size) {
@@ -170,11 +188,21 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
 
     case 1:
         w_mutex_lock(&syscheck.fim_entry_mutex);
-        if ((entry = fim_db_get_path(syscheck.database, start)) == NULL){
-            merror(FIM_DB_ERROR_GET_PATH, start);
-            goto end;
-        }
+#ifdef WIN32
+        w_mutex_lock(&syscheck.fim_registry_mutex);
+#endif
+
+        entry = fim_db_get_path(syscheck.database, start);
+
+#ifdef WIN32
+        w_mutex_unlock(&syscheck.fim_registry_mutex);
+#endif
         w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+        if (entry == NULL) {
+            merror(FIM_DB_ERROR_GET_PATH, start);
+            return;
+        }
 
         file_data = fim_entry_json(start, entry->file_entry.data);
         char * plain = dbsync_state_msg("syscheck", file_data);
@@ -184,13 +212,53 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
         return;
 
     default:
-        fim_db_data_checksum_range(syscheck.database, start, top, id,
-                                   range_size, &syscheck.fim_entry_mutex);
+        ctx_left = EVP_MD_CTX_create();
+        ctx_right = EVP_MD_CTX_create();
+
+        EVP_DigestInit(ctx_left, EVP_sha1());
+        EVP_DigestInit(ctx_right, EVP_sha1());
+
+        w_mutex_lock(&syscheck.fim_entry_mutex);
+#ifdef WIN32
+        w_mutex_lock(&syscheck.fim_registry_mutex);
+#endif
+
+        result = fim_db_data_checksum_range(syscheck.database, start, top, range_size, ctx_left, ctx_right,
+                                            &str_pathlh, &str_pathuh);
+
+#ifdef WIN32
+        w_mutex_unlock(&syscheck.fim_registry_mutex);
+#endif
+        w_mutex_unlock(&syscheck.fim_entry_mutex)
+
+        if (result == FIMDB_OK) {
+            unsigned char digest[EVP_MAX_MD_SIZE] = {0};
+            unsigned int digest_size = 0;
+            os_sha1 hexdigest;
+            char *plain;
+
+            // Send message with checksum of first half
+            EVP_DigestFinal_ex(ctx_left, digest, &digest_size);
+            OS_SHA1_Hexdigest(digest, hexdigest);
+            plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_LEFT, id, start, str_pathlh, str_pathuh, hexdigest);
+            fim_send_sync_msg(plain);
+            os_free(plain);
+
+            // Send message with checksum of second half
+            EVP_DigestFinal_ex(ctx_right, digest, &digest_size);
+            OS_SHA1_Hexdigest(digest, hexdigest);
+            plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_RIGHT, id, str_pathuh, top, "", hexdigest);
+            fim_send_sync_msg(plain);
+            os_free(plain);
+        }
+
+        os_free(str_pathlh);
+        os_free(str_pathuh);
+
+        EVP_MD_CTX_destroy(ctx_left);
+        EVP_MD_CTX_destroy(ctx_right);
         return;
     }
-
-    end:
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
 }
 
 void fim_sync_send_list(const char * start, const char * top) {

@@ -617,26 +617,21 @@ int fim_db_get_data_checksum(fdb_t *fim_sql, void *arg) {
                                      FIM_DB_CALLBACK_TYPE(fim_db_callback_calculate_checksum), 0, arg);
 }
 
-int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *top,
-                                long id, int n, pthread_mutex_t *mutex) {
+int fim_db_data_checksum_range(fdb_t *fim_sql,
+                               const char *start,
+                               const char *top,
+                               int n,
+                               EVP_MD_CTX *ctx_left,
+                               EVP_MD_CTX *ctx_right,
+                               char **str_pathlh,
+                               char **str_pathuh) {
     char **decoded_row = NULL;
     int m = n / 2;
     int i;
-    int retval = FIMDB_ERR;
-    unsigned char digest[EVP_MAX_MD_SIZE] = {0};
-    unsigned int digest_size = 0;
-    os_sha1 hexdigest;
-    char *str_pathlh = NULL;
-    char *str_pathuh = NULL;
-    char *plain      = NULL;
 
-    EVP_MD_CTX *ctx_left = EVP_MD_CTX_create();
-    EVP_MD_CTX *ctx_right = EVP_MD_CTX_create();
-
-    EVP_DigestInit(ctx_left, EVP_sha1());
-    EVP_DigestInit(ctx_right, EVP_sha1());
-
-    w_mutex_lock(mutex);
+    if (str_pathlh == NULL || str_pathuh == NULL) {
+        return FIMDB_ERR;
+    }
 
     // Clean statements
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
@@ -648,8 +643,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
         if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]) != SQLITE_ROW) {
             merror("Step error getting path range, first half 'start %s' 'top %s' (i:%d): %s", start, top, i,
                    sqlite3_errmsg(fim_sql->db));
-            w_mutex_unlock(mutex);
-            goto end;
+            return FIMDB_ERR;
         }
 
         decoded_row = fim_db_decode_string_array(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]);
@@ -657,10 +651,10 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
         checksum = decoded_row[1];
 
         if (i == (m - 1) && path) {
-            os_strdup(path, str_pathlh);
+            os_strdup(path, *str_pathlh);
         }
-        //Type of storage not required
-        fim_db_callback_calculate_checksum(fim_sql, checksum, FIM_DB_DISK, (void *)ctx_left);
+
+        EVP_DigestUpdate(ctx_left, checksum, strlen(checksum));
         free_strarray(decoded_row);
     }
 
@@ -670,52 +664,27 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
         if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]) != SQLITE_ROW) {
             merror("Step error getting path range, second half 'start %s' 'top %s' (i:%d): %s", start, top, i,
                    sqlite3_errmsg(fim_sql->db));
-            w_mutex_unlock(mutex);
-            goto end;
+            return FIMDB_ERR;
         }
         decoded_row = fim_db_decode_string_array(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]);
         path = decoded_row[0];
         checksum = decoded_row[1];
 
         if (i == m && path) {
-            os_free(str_pathuh);
-            os_strdup(path, str_pathuh);
+            os_free(*str_pathuh);
+            os_strdup(path, *str_pathuh);
         }
-        //Type of storage not required
-        fim_db_callback_calculate_checksum(fim_sql, checksum, FIM_DB_DISK, (void *)ctx_right);
+
+        EVP_DigestUpdate(ctx_right, checksum, strlen(checksum));
         free_strarray(decoded_row);
     }
 
-    w_mutex_unlock(mutex);
-
-    if (!str_pathlh || !str_pathuh) {
+    if (*str_pathlh == NULL || *str_pathuh == NULL) {
         merror("Failed to obtain required paths in order to form message");
-        goto end;
+        return FIMDB_ERR;
     }
 
-    // Send message with checksum of first half
-    EVP_DigestFinal_ex(ctx_left, digest, &digest_size);
-    OS_SHA1_Hexdigest(digest, hexdigest);
-    plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_LEFT, id, start, str_pathlh, str_pathuh, hexdigest);
-    fim_send_sync_msg(plain);
-    os_free(plain);
-
-    // Send message with checksum of second half
-    EVP_DigestFinal_ex(ctx_right, digest, &digest_size);
-    OS_SHA1_Hexdigest(digest, hexdigest);
-    plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_RIGHT, id, str_pathuh, top, "", hexdigest);
-    fim_send_sync_msg(plain);
-    os_free(plain);
-    os_free(str_pathuh);
-
-    retval = FIMDB_OK;
-
-end:
-    EVP_MD_CTX_destroy(ctx_left);
-    EVP_MD_CTX_destroy(ctx_right);
-    os_free(str_pathlh);
-    os_free(str_pathuh);
-    return retval;
+    return FIMDB_OK;
 }
 
 int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int storage) {
