@@ -511,8 +511,12 @@ void w_logtest_remove_session(char *token) {
 
     w_logtest_session_t *session;
 
+    char* token_session;
+    os_strdup(token, token_session);
+
     /* Remove session from hash */
     if (session = OSHash_Delete_ex(w_logtest_sessions, token), !session) {
+        os_free(token_session);
         return;
     }
 
@@ -544,6 +548,9 @@ void w_logtest_remove_session(char *token) {
     /* Free memory allocated in OSRegex execution */
     OSRegex_free_regex_matching(&session->decoder_match);
     OSRegex_free_regex_matching(&session->rule_match);
+
+    mdebug1(LOGTEST_INFO_SESSION_REMOVE, token_session);
+    os_free(token_session);
 
     /* Remove token and session */
     os_free(session->token);
@@ -1106,7 +1113,6 @@ int w_logtest_process_request_remove_session(cJSON * json_request, cJSON * json_
         w_mutex_lock(&connection->mutex_hash_table);
 
         if (session = OSHash_Get_ex(w_logtest_sessions, s_token), session) {
-
             connection->active_client -= 1;
             w_logtest_remove_session(s_token);
             sminfo(list_msg, LOGTEST_INFO_SESSION_REMOVE, s_token);
