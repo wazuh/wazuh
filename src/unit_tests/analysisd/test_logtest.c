@@ -838,6 +838,8 @@ void test_w_logtest_remove_session_OK(void **state)
 
     will_return(__wrap_pthread_mutex_destroy, 0);
 
+    expect_string(__wrap__mdebug1, formatted_msg, "(7206): The session 'test' was closed successfully");
+
     w_logtest_remove_session(key);
 
 }
@@ -944,6 +946,8 @@ void test_w_logtest_check_inactive_sessions_remove(void **state)
 
     will_return(__wrap_FOREVER, 0);
 
+    expect_string(__wrap__mdebug1, formatted_msg, "(7206): The session 'test' was closed successfully");
+
 
     w_logtest_check_inactive_sessions(&connection);
 
@@ -988,6 +992,8 @@ void test_w_logtest_remove_old_session_one(void ** state) {
     will_return(__wrap_OSHash_Free, old_session);
 
     will_return(__wrap_pthread_mutex_destroy, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(7206): The session 'old_session' was closed successfully");
 
 
     w_logtest_remove_old_session(&connection);
@@ -1049,6 +1055,8 @@ void test_w_logtest_remove_old_session_many(void ** state) {
     will_return(__wrap_OSHash_Free, old_session);
 
     will_return(__wrap_pthread_mutex_destroy, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(7206): The session 'old_session' was closed successfully");
 
     w_logtest_remove_old_session(&connection);
     assert_int_equal(connection.active_client, w_logtest_conf.max_sessions);
@@ -1141,6 +1149,8 @@ void test_w_logtest_register_session_remove_old(void ** state) {
     will_return(__wrap_OSHash_Free, old_session);
 
     will_return(__wrap_pthread_mutex_destroy, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(7206): The session 'old_session' was closed successfully");
 
     will_return(__wrap_pthread_mutex_unlock, 0);
 
@@ -4071,6 +4081,8 @@ void test_w_logtest_process_request_remove_session_ok(void ** state)
     expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_INFO);
     expect_value(__wrap__os_analysisd_add_logmsg, list, NULL);
     expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "(7206): The session '000015b3' was closed successfully");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(7206): The session '000015b3' was closed successfully");
 
     will_return(__wrap_pthread_mutex_unlock, 0);
 
