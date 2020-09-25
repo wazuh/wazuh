@@ -309,11 +309,11 @@ char *get_file_user(const char *path, char **sid);
  * @param path File or registry path to check the owner of.
  * @param sid The user ID associated to the user.
  * @param hndl Handle of the file or registry to check the owner of (NULL for files).
- * @param entry_type Type of the entry to check the owner of (FIM_TYPE_FILE or FIM_TYPE_REGISTRY).
+ * @param object_type Type of the object to check the owner of (SE_FILE_OBJECT or SE_REGISTRY_KEY).
  *
  * @return The user name on success, NULL on failure.
  */
-char *get_user(const char *path, char **sid, HANDLE hndl, fim_type entry_type);
+char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_type);
 
 /**
  * @brief Check if a directory exists

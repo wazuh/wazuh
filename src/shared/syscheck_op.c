@@ -616,11 +616,12 @@ void ag_send_syscheck(char * message) {
 #else /* #ifndef WIN32 */
 
 char *get_registry_user(const char *path, char **sid, HANDLE hndl) {
-    return get_user(path, sid, hndl, FIM_TYPE_REGISTRY);
+    return get_user(path, sid, hndl, SE_REGISTRY_KEY);
 }
 
 char *get_file_user(const char *path, char **sid) {
     HANDLE hFile;
+    char *result;
 
     // Get the handle of the file object.
     hFile = CreateFile(
@@ -657,10 +658,14 @@ char *get_file_user(const char *path, char **sid) {
         LocalFree(messageBuffer);
     }
 
-    return get_user(path, sid, hFile, FIM_TYPE_FILE);
+    result = get_user(path, sid, hFile, SE_FILE_OBJECT);
+
+    CloseHandle(hndl);
+
+    return result;
 }
 
-char *get_user(const char *path, char **sid, HANDLE hndl, fim_type entry_type) {
+char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_type) {
     DWORD dwRtnCode = 0;
     DWORD dwSecurityInfoErrorCode = 0;
     PSID pSidOwner = NULL;
@@ -678,8 +683,6 @@ char *get_user(const char *path, char **sid, HANDLE hndl, fim_type entry_type) {
         goto end;
     }
 
-    SE_OBJECT_TYPE object_type = entry_type == FIM_TYPE_FILE ? SE_FILE_OBJECT : SE_REGISTRY_KEY;
-
     // Get the owner SID of the file or registry
     dwRtnCode = GetSecurityInfo(
                                 hndl,                       // Object handle
@@ -693,10 +696,6 @@ char *get_user(const char *path, char **sid, HANDLE hndl, fim_type entry_type) {
 
     if (dwRtnCode != ERROR_SUCCESS) {
         dwSecurityInfoErrorCode = GetLastError();
-    }
-
-    if (entry_type == FIM_TYPE_FILE) {
-        CloseHandle(hndl);
     }
 
     char *aux_sid;
