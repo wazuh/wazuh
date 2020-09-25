@@ -33,7 +33,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
     def __init__(self, offset=0, limit=common.database_limit, sort=None, search=None, select=None, count=True,
                  get_data=True, query='', filters=None, default_sort_field='id', min_select_fields=None,
-                 remove_extra_fields=True, distinct=False):
+                 remove_extra_fields=True, distinct=False, rbac_negate=True):
         if filters is None:
             filters = {}
         if min_select_fields is None:
@@ -46,6 +46,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                               date_fields={'lastKeepAlive', 'dateAdd'}, extra_fields={'internal_key'},
                               distinct=distinct)
         self.remove_extra_fields = remove_extra_fields
+        self.rbac_negate = rbac_negate
 
     def _filter_status(self, status_filter):
         # set the status value to lowercase in case it's a string. If not, the value will be return unmodified.
@@ -143,10 +144,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         # Add RBAC filters and remove them from query_filters
         if 'rbac_ids' in legacy_filters_as_list:
             rbac_value = legacy_filters_as_list.pop('rbac_ids')
-            operator = 'IN'
-        elif 'not_rbac_ids' in legacy_filters_as_list:
-            rbac_value = legacy_filters_as_list.pop('not_rbac_ids')
-            operator = 'NOT IN'
+            operator = 'NOT IN' if self.rbac_negate else 'IN'
         else:
             rbac_value = None
 
@@ -186,7 +184,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 class WazuhDBQueryGroup(WazuhDBQuery):
     def __init__(self, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
                  get_data=True, query='', filters=None, count=True, default_sort_field='name', min_select_fields=None,
-                 remove_extra_fields=True):
+                 remove_extra_fields=True, rbac_negate=True):
         if filters is None:
             filters = {}
         if min_select_fields is None:
@@ -198,6 +196,7 @@ class WazuhDBQueryGroup(WazuhDBQuery):
                               default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
                               backend=backend, min_select_fields=min_select_fields, count=count, get_data=get_data)
         self.remove_extra_fields = remove_extra_fields
+        self.rbac_negate = rbac_negate
 
     def _add_select_to_query(self):
         pass
@@ -245,12 +244,9 @@ class WazuhDBQueryGroup(WazuhDBQuery):
         #                  parenthesis are used except when filtering over the same field.
 
         # Add RBAC filters and remove them from query_filters
-        if 'rbac_group_names' in legacy_filters_as_list:
-            rbac_value = legacy_filters_as_list.pop('rbac_group_names')
-            operator = 'IN'
-        elif 'not_rbac_group_names' in legacy_filters_as_list:
-            rbac_value = legacy_filters_as_list.pop('not_rbac_group_names')
-            operator = 'NOT IN'
+        if 'rbac_ids' in legacy_filters_as_list:
+            rbac_value = legacy_filters_as_list.pop('rbac_ids')
+            operator = 'NOT IN' if self.rbac_negate else 'IN'
         else:
             rbac_value = None
 
@@ -1743,3 +1739,16 @@ def expand_group(group_name):
             agents_ids.add(str(agent['id']).zfill(3))
 
     return agents_ids
+
+
+def get_rbac_filters(system_resources=None, permitted_resources=None, filters=None):
+    non_permitted_resources = system_resources - set(permitted_resources)
+
+    if len(permitted_resources) < len(non_permitted_resources):
+        filters['rbac_ids'] = permitted_resources
+        negate = False
+    else:
+        filters['rbac_ids'] = list(non_permitted_resources)
+        negate = True
+
+    return {'filters': filters, 'rbac_negate': negate}
