@@ -332,4 +332,15 @@ void fim_db_callback_calculate_checksum(fdb_t *fim_sql, char *checksum, int stor
  */
 int fim_db_get_data_checksum(fdb_t *fim_sql, void * arg);
 
+/**
+ * @brief Read a single line from a fim_tmp_file.
+ *
+ * @param file A fim_tmp_file pointer from which to read the line.
+ * @param storage Type of storage (memory or disk).
+ * @param it The current line number to be read.
+ *
+ * @return A string holding the read line, NULL on error.
+ */
+char *fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it);
+
 #endif /* FIM_DB_COMMON_H */

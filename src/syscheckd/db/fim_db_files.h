@@ -69,19 +69,6 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_file_data *ent
 int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_file_data *new, fim_file_data *saved);
 
 /**
- * @brief Send sync message for all entries.
- *
- * @param fim_sql FIM database struct.
- * @param mutex FIM database's mutex for thread synchronization.
- * @param file Structure of temporal storage which contains all the paths.
- * @param storage 1 Store database in memory, disk otherwise.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_sync_path_range(fdb_t *fim_sql, pthread_mutex_t *mutex,
-                            fim_tmp_file *file, int storage);
-
-/**
  * @brief Count the number of entries between range @start and @top.
  *
  * @param fim_sql FIM database struct.
@@ -152,23 +139,6 @@ int fim_db_set_scanned(fdb_t *fim_sql, char *path);
 int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage);
 
 /**
- * @brief Callback function to send a sync message for a sole entry.
- *
- * @param fim_sql FIM database struct.
- * @param entry Entry data to be inserted.
- * @param mutex FIM database's mutex for thread synchronization.
- * @param alert Unused argument.
- * @param mode Unused argument.
- * @param w_event Unused argument.
- */
-void fim_db_callback_sync_path_range(__attribute__((unused)) fdb_t *fim_sql,
-                                     fim_entry *entry,
-                                     __attribute__((unused)) pthread_mutex_t *mutex,
-                                     __attribute__((unused)) void *alert,
-                                     __attribute__((unused)) void *mode,
-                                     __attribute__((unused)) void *w_event);
-
-/**
  * @brief Delete not scanned entries from database.
  *
  * @param fim_sql FIM database struct.
@@ -191,7 +161,7 @@ int fim_db_delete_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int storage);
+int fim_db_get_path_range(fdb_t *fim_sql, const char *start, const char *top, fim_tmp_file **file, int storage);
 
 /**
  * @brief Removes a range of paths from the database.

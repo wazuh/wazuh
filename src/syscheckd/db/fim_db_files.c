@@ -126,11 +126,6 @@ int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
 
 }
 
-int fim_db_sync_path_range(fdb_t * fim_sql, pthread_mutex_t *mutex, fim_tmp_file *file, int storage) {
-    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_db_callback_sync_path_range, storage,
-                                    NULL, NULL, NULL);
-}
-
 int fim_db_delete_not_scanned(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
     return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_db_remove_path, storage,
                                     (void *) true, (void *) FIM_SCHEDULED, NULL);
@@ -602,17 +597,6 @@ int fim_db_set_scanned(fdb_t *fim_sql, char *path) {
     fim_db_check_transaction(fim_sql);
 
     return FIMDB_OK;
-}
-
-void fim_db_callback_sync_path_range(__attribute__((unused))fdb_t *fim_sql, fim_entry *entry,
-    __attribute__((unused))pthread_mutex_t *mutex, __attribute__((unused))void *alert,
-    __attribute__((unused))void *mode, __attribute__((unused))void *w_event) {
-
-    cJSON * file_data = fim_entry_json(entry->file_entry.path, entry->file_entry.data);
-    char * plain = dbsync_state_msg("syscheck", file_data);
-    mdebug1("Sync Message for %s sent: %s", entry->file_entry.path, plain);
-    fim_send_sync_msg(plain);
-    os_free(plain);
 }
 
 int fim_db_get_count_file_data(fdb_t * fim_sql) {

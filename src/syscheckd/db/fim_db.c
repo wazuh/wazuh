@@ -413,7 +413,7 @@ void fim_db_callback_save_string(__attribute__((unused))fdb_t * fim_sql, char *s
     if (storage == FIM_DB_DISK) { // disk storage enabled
         if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", base) != (strlen(base) + sizeof(char))) {
             merror("%s - %s", str, strerror(errno));
-            goto end;
+            return;
         }
 
         fflush(((fim_tmp_file *) arg)->fd);
@@ -423,9 +423,6 @@ void fim_db_callback_save_string(__attribute__((unused))fdb_t * fim_sql, char *s
     }
 
     ((fim_tmp_file *) arg)->elements++;
-
-end:
-    os_free(base);
 }
 
 void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry *entry, int storage, void *arg) {
@@ -613,8 +610,7 @@ char **fim_db_decode_string_array(sqlite3_stmt *stmt) {
 int fim_db_get_data_checksum(fdb_t *fim_sql, void *arg) {
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_ALL_CHECKSUMS);
     return fim_db_multiple_row_query(fim_sql, FIMDB_STMT_GET_ALL_CHECKSUMS, FIM_DB_DECODE_TYPE(fim_db_decode_string),
-                                     FIM_DB_FREE_TYPE(free_strarray),
-                                     FIM_DB_CALLBACK_TYPE(fim_db_callback_calculate_checksum), 0, arg);
+                                     free, FIM_DB_CALLBACK_TYPE(fim_db_callback_calculate_checksum), 0, arg);
 }
 
 int fim_db_data_checksum_range(fdb_t *fim_sql,
@@ -687,7 +683,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql,
     return FIMDB_OK;
 }
 
-int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int storage) {
+int fim_db_get_path_range(fdb_t *fim_sql, const char *start, const char *top, fim_tmp_file **file, int storage) {
     if ((*file = fim_db_create_temp_file(storage)) == NULL) {
         return FIMDB_ERR;
     }
@@ -705,4 +701,40 @@ int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file *
     }
 
     return ret;
+}
+
+char *fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it) {
+    char *retval;
+    char line[PATH_MAX + 1];
+
+    if (storage == FIM_DB_DISK) {
+        if (it == 0 && fseek(file->fd, SEEK_SET, 0) != 0) {
+            merror("Failed fseek in %s", file->path);
+            return NULL;
+        }
+
+        // fgets() adds \n(newline) to the end of the string,
+        // So it must be removed.
+        if (fgets(line, sizeof(line), file->fd)) {
+            size_t len = strlen(line);
+
+            if (len > 2 && line[len - 1] == '\n') {
+                line[len - 1] = '\0';
+            }
+            else {
+                merror("Temporary path file '%s' is corrupt: missing line end.", file->path);
+                return NULL;
+            }
+
+            retval = wstr_unescape_json(line);
+        }
+    } else {
+        if (it > file->list->size) {
+            merror("Attempted to retrieve an out of bounds line.");
+            return NULL;
+        }
+        retval = wstr_unescape_json((char *) W_Vector_get(file->list, it));
+    }
+
+    return retval;
 }

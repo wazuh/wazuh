@@ -3,10 +3,8 @@
  * @brief Definition of FIM data synchronization library
  * @date 2019-08-28
  *
- * @copyright Copyright (c) 2019 Wazuh, Inc.
- */
-
-/*
+ * @copyright Copyright (c) 2020 Wazuh, Inc.
+ *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
@@ -263,17 +261,71 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
 
 void fim_sync_send_list(const char * start, const char * top) {
     fim_tmp_file *file = NULL;
+    int it;
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
-    if (fim_db_get_path_range(syscheck.database, (char*)start,
-        (char*)top, &file, syscheck.database_store) != FIMDB_OK) {
+#ifdef WIN32
+    w_mutex_lock(&syscheck.fim_registry_mutex);
+#endif
+
+    if (fim_db_get_path_range(syscheck.database, start, top, &file, syscheck.database_store) != FIMDB_OK) {
         merror(FIM_DB_ERROR_SYNC_DB);
+        if (file != NULL) {
+            fim_db_clean_file(&file, syscheck.database_store);
+        }
+        return;
     }
+
+#ifdef WIN32
+    w_mutex_unlock(&syscheck.fim_registry_mutex);
+#endif
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
-    if (file && file->elements) {
-        fim_db_sync_path_range(syscheck.database, &syscheck.fim_entry_mutex, file,syscheck.database_store);
+    if (file == NULL) {
+        return;
     }
+
+    if (file->elements == 0) {
+        fim_db_clean_file(&file, syscheck.database_store);
+        return;
+    }
+
+    for (it = 0; it < file->elements; it++) {
+        fim_entry *entry;
+        cJSON *file_data;
+        char *plain;
+        char *line = fim_db_read_line_from_file(file, syscheck.database_store, it);
+
+        if (line == NULL) {
+            continue;
+        }
+        w_mutex_lock(&syscheck.fim_entry_mutex);
+#ifdef WIN32
+        w_mutex_lock(&syscheck.fim_registry_mutex);
+#endif
+
+        entry = fim_db_get_path(syscheck.database, line);
+
+#ifdef WIN32
+        w_mutex_unlock(&syscheck.fim_registry_mutex);
+#endif
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+        if (entry == NULL) {
+            merror(FIM_DB_ERROR_GET_PATH, line);
+            os_free(line);
+            continue;
+        }
+
+        file_data = fim_entry_json(entry->file_entry.path, entry->file_entry.data);
+        plain = dbsync_state_msg("syscheck", file_data);
+        mdebug1("Sync Message for %s sent: %s", entry->file_entry.path, plain);
+        fim_send_sync_msg(plain);
+        os_free(plain);
+        free_entry(entry);
+    }
+
+    fim_db_clean_file(&file, syscheck.database_store);
 }
 
 void fim_sync_dispatch(char * payload) {
