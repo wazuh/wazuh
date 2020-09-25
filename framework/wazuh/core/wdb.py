@@ -67,9 +67,9 @@ class WazuhDBConnection:
             if not check:
                 raise WazuhError(2004, error_text)
 
-    def _send(self, msg):
+    def _send(self, msg, raw=False):
         """
-        Sends a message to the wdb socket
+        Send a message to the wdb socket
         """
         msg = struct.pack('<I', len(msg)) + msg.encode()
         self.__conn.send(msg)
@@ -78,12 +78,23 @@ class WazuhDBConnection:
         data = self.__conn.recv(4)
         data_size = struct.unpack('<I', data[0:4])[0]
 
-        data = self.__conn.recv(data_size).decode(encoding='utf-8', errors='ignore').split(" ", 1)
+        data = self._recvall(data_size).decode(encoding='utf-8', errors='ignore').split(" ", 1)
 
         if data[0] == "err":
             raise WazuhError(2003, data[1])
+        elif raw:
+            return data
         else:
             return json.loads(data[1], object_hook=WazuhDBConnection.json_decoder)
+
+    def _recvall(self, data_size, buffer_size=4096):
+        data = bytearray()
+        while len(data) < data_size:
+            packet = self.__conn.recv(buffer_size)
+            if not packet:
+                return data
+            data.extend(packet)
+        return data
 
     @staticmethod
     def json_decoder(dct):
@@ -133,6 +144,38 @@ class WazuhDBConnection:
         - DB not found
         """
         return self._send(f"wazuhdb remove {' '.join(agents_id)}")
+
+    def run_wdb_command(self, command):
+        """Run command in wdb and return list of retrieved information.
+
+        The response of wdb socket contains 2 elements, a STATUS and a PAYLOAD.
+        State value can be:
+            ok {payload}    -> Successful query with no pending data
+            due {payload}   -> Successful query with pending data
+            err {message}   -> Unsuccessful query
+
+        Parameters
+        ----------
+        command : str
+            Command to be executed inside wazuh-db
+
+        Returns
+        -------
+        response : list
+            List with JSON results
+        """
+        response = []
+
+        while True:
+            status, payload = self._send(command, raw=True)
+            if status == 'err':
+                raise WazuhInternalError(2007, extra_message=payload)
+            response.append(payload)
+            # Exit if there are no items left to return
+            if status == 'ok':
+                break
+
+        return response
 
     def execute(self, query, count=False, delete=False, update=False):
         """
