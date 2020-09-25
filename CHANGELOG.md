@@ -58,6 +58,13 @@ All notable changes to this project will be documented in this file.
 - Removed Wazuh API rootcheck endpoints ([#5246](https://github.com/wazuh/wazuh/issues/5246))
 
 
+## [v3.13.2] - 2020-09-21
+
+### Fixed
+
+- Updated the default NVD feed URL from 1.0 to 1.1 in Vulnerability Detector. ([#6056](https://github.com/wazuh/wazuh/pull/6056))
+
+
 ## [v3.13.1] - 2020-07-14
 
 ### Added
