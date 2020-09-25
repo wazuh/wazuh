@@ -4290,7 +4290,7 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
                 // The output string will be filled by the labels setter method.
                 char *labels_data = NULL;
                 os_calloc(OS_MAXSTR, sizeof(char), labels_data);
-                snprintf(labels_data, OS_MAXSTR + 1, "%d", id);
+                snprintf(labels_data, OS_MAXSTR, "%d", id);
                 wm_strcat(&labels_data, labels, ' ');
 
                 int result = wdb_parse_global_set_agent_labels(wdb, labels_data, output);
