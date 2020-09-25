@@ -456,6 +456,16 @@ components:
             title: "Unauthorized"
             detail: "No authorization token provided"
 
+    InvalidCredentialsResponse:
+      description: "Response to report a problem with authentication"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RequestError'
+          example:
+            title: "Unauthorized"
+            detail: "Invalid credentials"
+
     InvalidHTTPMethodResponse:
       description: "Response to an invalid HTTP method"
       content:
@@ -3310,7 +3320,7 @@ components:
                 properties:
                   name:
                     type: string
-                    format: alphanumeric
+                    format: alphanumeric_symbols
                   platform:
                     type: string
                     format: alphanumeric
@@ -12790,7 +12800,7 @@ paths:
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
+          $ref: '#/components/responses/InvalidCredentialsResponse'
         '403':
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
@@ -12854,6 +12864,14 @@ paths:
                 token: "<generated_token>"
         '400':
           $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/InvalidCredentialsResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/actions:
     get:

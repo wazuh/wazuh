@@ -35,10 +35,6 @@ current_time = None
 async def unlock_ip(request, block_time):
     """This function blocks/unblocks the IPs that are requesting an API token"""
     global ip_block, ip_stats
-    if request.remote in ip_block:
-        logger.warning(f'IP blocked due to exceeded number of logins attempts: {request.remote}')
-        raise_if_exc(WazuhPermissionError(6000))
-
     try:
         if time() - block_time >= ip_stats[request.remote]['timestamp']:
             ip_stats.pop(request.remote)
@@ -46,11 +42,15 @@ async def unlock_ip(request, block_time):
     except (KeyError, ValueError):
         pass
 
+    if request.remote in ip_block:
+        logger.warning(f'IP blocked due to exceeded number of logins attempts: {request.remote}')
+        raise_if_exc(WazuhPermissionError(6000))
 
-async def prevent_bruteforce_attack(request, status, attempts=5):
+
+async def prevent_bruteforce_attack(request, attempts=5):
     """This function checks that the IPs that are requesting an API token do not do so repeatedly"""
     global ip_stats, ip_block
-    if request.path == '/security/user/authenticate' and request.method == 'GET' and status != 200:
+    if request.path == '/security/user/authenticate' and request.method in ['GET', 'POST']:
         if request.remote not in ip_stats.keys():
             ip_stats[request.remote] = dict()
             ip_stats[request.remote]['attempts'] = 1
@@ -60,10 +60,6 @@ async def prevent_bruteforce_attack(request, status, attempts=5):
 
         if ip_stats[request.remote]['attempts'] >= attempts:
             ip_block.add(request.remote)
-
-
-request_counter = 0
-current_time = None
 
 
 @web.middleware
@@ -91,8 +87,6 @@ async def security_middleware(request, handler):
     await unlock_ip(request=request, block_time=access_conf['block_time'])
 
     response = await handler(request)
-
-    await prevent_bruteforce_attack(request=request, status=response.status, attempts=access_conf['max_login_attempts'])
 
     return response
 
@@ -125,7 +119,12 @@ async def response_postprocessing(request, handler):
                                     detail=cleanup_detail_field(ex.__dict__['detail']) if 'detail' in ex.__dict__ else '',
                                     ext=ex.__dict__['ext'] if 'ext' in ex.__dict__ else None)
     except OAuthProblem:
-        problem = connexion_problem(401, "Unauthorized", type="about:blank", detail="No authorization token provided")
+        if request.path == '/security/user/authenticate' and request.method in ['GET', 'POST']:
+            await prevent_bruteforce_attack(request=request, attempts=api_conf['access']['max_login_attempts'])
+            problem = connexion_problem(401, "Unauthorized", type="about:blank", detail="Invalid credentials")
+        else:
+            problem = connexion_problem(401, "Unauthorized", type="about:blank",
+                                        detail="No authorization token provided")
     finally:
         if problem:
             remove_unwanted_fields()

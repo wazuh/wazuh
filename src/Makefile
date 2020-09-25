@@ -981,6 +981,9 @@ wrappers_externals_audit_o := $(wrappers_externals_audit_c:.c=.o)
 wrappers_externals_bzip2_c := $(wildcard unit_tests/wrappers/externals/bzip2/*.c)
 wrappers_externals_bzip2_o := $(wrappers_externals_bzip2_c:.c=.o)
 
+wrappers_externals_zlib_c := $(wildcard unit_tests/wrappers/externals/zlib/*.c)
+wrappers_externals_zlib_o := $(wrappers_externals_zlib_c:.c=.o)
+
 wrappers_externals_cJSON_c := $(wildcard unit_tests/wrappers/externals/cJSON/*.c)
 wrappers_externals_cJSON_o := $(wrappers_externals_cJSON_c:.c=.o)
 
@@ -1053,6 +1056,7 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS:=${wrappers_common_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_bzip2_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_externals_zlib_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_cJSON_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_openssl_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_sqlite_o}
@@ -1968,6 +1972,7 @@ clean-unit-tests:
 	rm -f ${wrappers_externals_o}
 	rm -f ${wrappers_externals_audit_o}
 	rm -f ${wrappers_externals_bzip2_o}
+	rm -f ${wrappers_externals_zlib_o}
 	rm -f ${wrappers_externals_cJSON_o}
 	rm -f ${wrappers_externals_openssl_o}
 	rm -f ${wrappers_externals_procpc_o}

@@ -636,29 +636,119 @@ os_info *get_unix_version()
             // MacOSX
             } else if(strcmp(strtok_r(buff, "\n", &save_ptr),"Darwin") == 0){
                 info->os_platform = strdup("darwin");
-                if (cmd_output_ver = popen("sw_vers -productName", "r"), cmd_output_ver) {
-                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
-                        mdebug1("Cannot read from command output (sw_vers -productName).");
-                    } else {
-                        info->os_name = strdup(strtok_r(buff, "\n", &save_ptr));
+
+                //plist
+                if(os_release = fopen("/System/Library/CoreServices/SystemVersion.plist", "r"), os_release) { 
+                    OS_XML xml;
+                    OS_ReadXML(os_release, &xml);
+                    OS_ApplyVariables(&xml);
+                    const char *xml_path1[] = { "key" };
+                    const char *xml_path2[] = { "string" };
+                    char **keys, **value;
+                    keys = OS_GetContents(&xml, xml_path1);
+                    value = OS_GetContents(&xml, xml_path2);
+                    printf ("\n\n %s \n\n", keys[0]);  //temporal
+                    if(strcmp(keys[0], "ProductBuildVersion")){
+                        info->os_build = strdup(value[0]);
                     }
-                    pclose(cmd_output_ver);
+                    printf ("\n\n %s \n\n", keys[2]);   //temporal
+                    if(strcmp(keys[2], "ProductName")){
+                        info->os_name = strdup(value[2]);
+                    }
+                    printf ("\n\n %s \n\n", keys[4]);   //temporal
+                    if(strcmp(keys[4], "ProductVersion")){
+                        info->os_version = strdup(value[4]);
+                    }
+
+
+                    printf ("\n\n %s \n\n", info->os_build);    //temporal
+                    printf ("\n\n %s \n\n", info->os_name);     //temporal
+                    printf ("\n\n %s \n\n", info->os_version);  //temporal
+
+                    int i = 0;
+                    while (keys[i]) {
+                        free(keys[i++]);
+                    }
+                    free(keys);
+
+                    i = 0;
+                    while (value[i]) {
+                        free(value[i++]);
+                    }
+                    free(value);
+                    OS_ClearXML(&xml);
+                    
+                    fclose(version_release);
                 }
-                if (cmd_output_ver = popen("sw_vers -productVersion", "r"), cmd_output_ver) {
-                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
-                        mdebug1("Cannot read from command output (sw_vers -productVersion).");
-                    } else {
-                        info->os_version = strdup(strtok_r(buff, "\n", &save_ptr));
+                //plist server
+                else if(os_release = fopen("/System/Library/CoreServices/ServerVersion.plist", "r"), os_release) {
+                    OS_XML xml;
+                    OS_ReadXML(os_release, &xml);
+                    OS_ApplyVariables(&xml);
+                    const char *xml_path1[] = { "key" };
+                    const char *xml_path2[] = { "string" };
+                    char **keys, **value;
+                    keys = OS_GetContents(&xml, xml_path1);
+                    value = OS_GetContents(&xml, xml_path2);
+                    printf ("\n\n %s \n\n", keys[0]);  //temporal
+                    if(strcmp(keys[0], "ProductBuildVersion")){
+                        info->os_build = strdup(value[0]);
                     }
-                    pclose(cmd_output_ver);
+                    printf ("\n\n %s \n\n", keys[2]);   //temporal
+                    if(strcmp(keys[2], "ProductName")){
+                        info->os_name = strdup(value[2]);
+                    }
+                    printf ("\n\n %s \n\n", keys[4]);   //temporal
+                    if(strcmp(keys[4], "ProductVersion")){
+                        info->os_version = strdup(value[4]);
+                    }
+
+
+                    printf ("\n\n %s \n\n", info->os_build);    //temporal
+                    printf ("\n\n %s \n\n", info->os_name);     //temporal
+                    printf ("\n\n %s \n\n", info->os_version);  //temporal
+
+                    int i = 0;
+                    while (keys[i]) {
+                        free(keys[i++]);
+                    }
+                    free(keys);
+
+                    i = 0;
+                    while (value[i]) {
+                        free(value[i++]);
+                    }
+                    free(value);
+                    OS_ClearXML(&xml);
+                    
+                    fclose(version_release);
                 }
-                if (cmd_output_ver = popen("sw_vers -buildVersion", "r"), cmd_output_ver) {
-                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
-                        mdebug1("Cannot read from command output (sw_vers -buildVersion).");
-                    } else {
-                        info->os_build = strdup(strtok_r(buff, "\n", &save_ptr));
+                //cmd
+                else{ 
+                    if (cmd_output_ver = popen("sw_vers -productName", "r"), cmd_output_ver) {
+                        if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                            mdebug1("Cannot read from command output (sw_vers -productName).");
+                        } else {
+                            info->os_name = strdup(strtok_r(buff, "\n", &save_ptr));
+                        }
+                        pclose(cmd_output_ver);
                     }
-                    pclose(cmd_output_ver);
+                    if (cmd_output_ver = popen("sw_vers -productVersion", "r"), cmd_output_ver) {
+                        if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                            mdebug1("Cannot read from command output (sw_vers -productVersion).");
+                        } else {
+                            info->os_version = strdup(strtok_r(buff, "\n", &save_ptr));
+                        }
+                        pclose(cmd_output_ver);
+                    }
+                    if (cmd_output_ver = popen("sw_vers -buildVersion", "r"), cmd_output_ver) {
+                        if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                            mdebug1("Cannot read from command output (sw_vers -buildVersion).");
+                        } else {
+                            info->os_build = strdup(strtok_r(buff, "\n", &save_ptr));
+                        }
+                        pclose(cmd_output_ver);
+                    }
                 }
                 if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
                     if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
