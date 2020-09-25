@@ -52,6 +52,12 @@ class LocalClientHandler(client.AbstractClient):
             self.response = self.in_str[data].payload
             self.response_available.set()
             return b'ok', b'Distributed api response received'
+        elif command == b'ok':
+            if data.startswith(b'Error'):
+                return b'err', self.process_error_from_peer(data)
+            self.response = data
+            self.response_available.set()
+            return b'ok', b'Sendsync response received'
         elif command == b'control_res':
             if data.startswith(b'Error'):
                 return b'err', self.process_error_from_peer(data)
@@ -62,6 +68,10 @@ class LocalClientHandler(client.AbstractClient):
             self.response = data
             self.response_available.set()
             return b'ok', b'Response received'
+        elif command == b'err':
+            self.response = data
+            self.response_available.set()
+            return b'ok', b'Error response received'
         else:
             return super().process_request(command, data)
 
@@ -134,8 +144,8 @@ class LocalClient(client.AbstractClientManager):
         if result == 'There are no connected worker nodes':
             request_result = {}
         else:
-            if command == b'dapi' or command == b'dapi_forward' or command == b'send_file' or \
-                    result == 'Sent request to master node':
+            if command == b'dapi' or command == b'dapi_forward' or command == b'send_file' or command == b'sendasync' \
+                    or result == 'Sent request to master node':
                 try:
                     timeout = None if wait_for_complete \
                         else self.cluster_items['intervals']['communication']['timeout_api_request']
