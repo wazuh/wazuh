@@ -615,7 +615,52 @@ void ag_send_syscheck(char * message) {
 
 #else /* #ifndef WIN32 */
 
-char *get_user(const char *path, char **sid, HANDLE hdnl, fim_type entry_type) {
+char *get_registry_user(const char *path, char **sid, HANDLE hndl) {
+    return get_user(path, sid, hndl, FIM_TYPE_REGISTRY);
+}
+
+char *get_file_user(const char *path, char **sid) {
+    HANDLE hFile;
+
+    // Get the handle of the file object.
+    hFile = CreateFile(
+                        TEXT(path),
+                        GENERIC_READ,
+                        FILE_SHARE_READ | FILE_SHARE_WRITE,
+                        NULL,
+                        OPEN_EXISTING,
+                        FILE_ATTRIBUTE_NORMAL,
+                        NULL);
+
+    // Check GetLastError for CreateFile error code.
+    if (hFile == INVALID_HANDLE_VALUE) {
+        DWORD dwErrorCode = GetLastError();
+        LPSTR messageBuffer = NULL;
+        LPSTR end;
+
+        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                        NULL, dwErrorCode, 0, (LPTSTR) &messageBuffer, 0, NULL);
+
+        if (end = strchr(messageBuffer, '\r'), end) {
+            *end = '\0';
+        }
+
+        switch (dwErrorCode) {
+        case ERROR_ACCESS_DENIED:     // 5
+        case ERROR_SHARING_VIOLATION: // 32
+            mdebug1("At get_user(%s): CreateFile(): %s (%lu)", path, messageBuffer, dwErrorCode);
+            break;
+        default:
+            mwarn("At get_user(%s): CreateFile(): %s (%lu)", path, messageBuffer, dwErrorCode);
+        }
+
+        LocalFree(messageBuffer);
+    }
+
+    return get_user(path, sid, hFile, FIM_TYPE_FILE);
+}
+
+char *get_user(const char *path, char **sid, HANDLE hndl, fim_type entry_type) {
     DWORD dwRtnCode = 0;
     DWORD dwSecurityInfoErrorCode = 0;
     PSID pSidOwner = NULL;
@@ -625,56 +670,19 @@ char *get_user(const char *path, char **sid, HANDLE hdnl, fim_type entry_type) {
     DWORD dwAcctName = BUFFER_LEN;
     DWORD dwDomainName = BUFFER_LEN;
     SID_NAME_USE eUse = SidTypeUnknown;
-    HANDLE hFile;
     PSECURITY_DESCRIPTOR pSD = NULL;
     char *result;
 
-    if (entry_type == FIM_TYPE_FILE) {
-        // Get the handle of the file object.
-        hFile = CreateFile(
-                           TEXT(path),
-                           GENERIC_READ,
-                           FILE_SHARE_READ | FILE_SHARE_WRITE,
-                           NULL,
-                           OPEN_EXISTING,
-                           FILE_ATTRIBUTE_NORMAL,
-                           NULL);
-
-        // Check GetLastError for CreateFile error code.
-        if (hFile == INVALID_HANDLE_VALUE) {
-            DWORD dwErrorCode = GetLastError();
-            LPSTR messageBuffer = NULL;
-            LPSTR end;
-
-            FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-                          NULL, dwErrorCode, 0, (LPTSTR) &messageBuffer, 0, NULL);
-
-            if (end = strchr(messageBuffer, '\r'), end) {
-                *end = '\0';
-            }
-
-            switch (dwErrorCode) {
-            case ERROR_ACCESS_DENIED:     // 5
-            case ERROR_SHARING_VIOLATION: // 32
-                mdebug1("At get_user(%s): CreateFile(): %s (%lu)", path, messageBuffer, dwErrorCode);
-                break;
-            default:
-                mwarn("At get_user(%s): CreateFile(): %s (%lu)", path, messageBuffer, dwErrorCode);
-            }
-
-            LocalFree(messageBuffer);
-            *AcctName = '\0';
-            goto end;
-        }
-
-        hdnl = hFile;
+    if (hndl == INVALID_HANDLE_VALUE) {
+        *AcctName = '\0';
+        goto end;
     }
 
     SE_OBJECT_TYPE object_type = entry_type == FIM_TYPE_FILE ? SE_FILE_OBJECT : SE_REGISTRY_KEY;
 
     // Get the owner SID of the file or registry
     dwRtnCode = GetSecurityInfo(
-                                hdnl,                       // Object handle
+                                hndl,                       // Object handle
                                 object_type,                // Object type (file or registry)
                                 OWNER_SECURITY_INFORMATION, // Security information bit flags
                                 &pSidOwner,                 // Owner SID
@@ -688,7 +696,7 @@ char *get_user(const char *path, char **sid, HANDLE hdnl, fim_type entry_type) {
     }
 
     if (entry_type == FIM_TYPE_FILE) {
-        CloseHandle(hFile);
+        CloseHandle(hndl);
     }
 
     char *aux_sid;
@@ -726,7 +734,7 @@ char *get_user(const char *path, char **sid, HANDLE hdnl, fim_type entry_type) {
         dwErrorCode = GetLastError();
 
         if (dwErrorCode == ERROR_NONE_MAPPED) {
-            mdebug1("Account owner not found for file '%s'", path);
+            mdebug1("Account owner not found for '%s'", path);
         }
         else {
             merror("Error in LookupAccountSid.");
@@ -919,7 +927,7 @@ const char *get_group(__attribute__((unused)) int gid) {
     return "";
 }
 
-char *get_registry_group(const char *path, char **sid, HANDLE hdnl) {
+char *get_registry_group(char **sid, HANDLE hndl) {
     DWORD dwRtnCode = 0;
     DWORD dwSecurityInfoErrorCode = 0;
     PSID pSidGroup = NULL;
@@ -934,7 +942,7 @@ char *get_registry_group(const char *path, char **sid, HANDLE hdnl) {
 
     // Get the owner SID of the file or registry
     dwRtnCode = GetSecurityInfo(
-                                hdnl,                       // Object handle
+                                hndl,                       // Object handle
                                 SE_REGISTRY_KEY,            // Object type (file or registry)
                                 GROUP_SECURITY_INFORMATION, // Security information bit flags
                                 NULL,                       // Owner SID
@@ -976,7 +984,7 @@ char *get_registry_group(const char *path, char **sid, HANDLE hdnl) {
                                 &eUse);                 // SID type
 
     if (strncmp(GrpName, "None", 4) == 0) {
-        snprintf(GrpName, 1, "%s", "");
+        *GrpName = '\0';
     }
 
     // Check GetLastError for LookupAccountSid error condition.
@@ -986,7 +994,7 @@ char *get_registry_group(const char *path, char **sid, HANDLE hdnl) {
         dwErrorCode = GetLastError();
 
         if (dwErrorCode == ERROR_NONE_MAPPED) {
-            mdebug1("Group not found for registry '%s'", path);
+            mdebug1("Group not found for registry key");
         }
         else {
             merror("Error in LookupAccountSid.");
@@ -1005,7 +1013,7 @@ end:
     return result;
 }
 
-int get_registry_permissions(const char *path, HKEY hdnl, char *perm_key) {
+DWORD get_registry_permissions(HKEY hndl, char *perm_key) {
     PSECURITY_DESCRIPTOR pSecurityDescriptor = LocalAlloc(LMEM_FIXED, 1024);
     ACL_SIZE_INFORMATION aclsizeinfo;
     ACCESS_ALLOWED_ACE *pAce = NULL;
@@ -1023,15 +1031,14 @@ int get_registry_permissions(const char *path, HKEY hdnl, char *perm_key) {
 
     // Get the security information.
     dwRtnCode = RegGetKeySecurity(
-                                  hdnl,                         // Handle to an open key
+                                  hndl,                         // Handle to an open key
                                   DACL_SECURITY_INFORMATION,    // Requeste DACL security information
                                   pSecurityDescriptor,          // Pointer that receives the DACL information
                                   &lpcbSecurityDescriptor);     // Pointer that specifies the size, in bytes
 
     if (dwRtnCode != ERROR_SUCCESS) {
-        mwarn("Could not get registry key %s security information. Error: %ld", path, dwRtnCode);
         os_free(pSecurityDescriptor);
-        return -1;
+        return dwRtnCode;
     }
 
     // Retrieve a pointer to the DACL in the security descriptor.
@@ -1045,7 +1052,7 @@ int get_registry_permissions(const char *path, HKEY hdnl, char *perm_key) {
         dwErrorCode = GetLastError();
         mwarn("GetSecurityDescriptorDacl failed. GetLastError returned: %ld", dwErrorCode);
         os_free(pSecurityDescriptor);
-        return -1;
+        return dwErrorCode;
     }
 
     // Check whether no DACL or a NULL DACL was retrieved from the security descriptor buffer.
@@ -1066,7 +1073,7 @@ int get_registry_permissions(const char *path, HKEY hdnl, char *perm_key) {
         dwErrorCode = GetLastError();
         mwarn("GetAclInformation failed. GetLastError returned: %ld", dwErrorCode);
         os_free(pSecurityDescriptor);
-        return -1;
+        return dwErrorCode;
     }
 
     // Loop through the ACEs to get the information.
@@ -1089,7 +1096,7 @@ int get_registry_permissions(const char *path, HKEY hdnl, char *perm_key) {
         }
     }
 
-    return 0;
+    return ERROR_SUCCESS;
 }
 
 /* Send a one-way message to Syscheck */

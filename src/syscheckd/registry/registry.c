@@ -190,20 +190,22 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
     os_calloc(1, sizeof(fim_registry_key), key);
 
     if (configuration->opts & CHECK_OWNER) {
-        key->user_name = get_user(path, &key->uid, key_handle, FIM_TYPE_REGISTRY);
+        key->user_name = get_registry_user(path, &key->uid, key_handle);
     }
 
     if (configuration->opts & CHECK_GROUP) {
-        key->group_name = get_registry_group(path, &key->gid, key_handle);
+        key->group_name = get_registry_group(&key->gid, key_handle);
     }
 
     if (configuration->opts & CHECK_PERM) {
         char permissions[OS_SIZE_6144 + 1];
+        int retval = 0;
 
-        if (get_registry_permissions(path, key_handle, permissions) == -1) {
-            mwarn(FIM_EXTRACT_PERM_FAIL, path, -1);
-        }
-        else {
+        retval = get_registry_permissions(key_handle, permissions);
+
+        if (retval != ERROR_SUCCESS) {
+            mwarn(FIM_EXTRACT_PERM_FAIL, path, retval);
+        } else {
             key->perm = decode_win_permissions(permissions);
         }
     }

@@ -703,7 +703,7 @@ fim_file_data * fim_get_data(const char *file, fim_element *item) {
 
 #ifdef WIN32
     if (item->configuration & CHECK_OWNER) {
-        data->user_name = get_user(file, &data->uid, NULL, FIM_TYPE_FILE);
+        data->user_name = get_file_user(file, &data->uid);
     }
 #else
     if (item->configuration & CHECK_OWNER) {

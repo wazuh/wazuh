@@ -280,17 +280,40 @@ const char *get_group(int gid);
 #else
 
 /**
+ * @brief Retrieves the user name of the owner of a registry in Windows.
+ * Also sets the user ID associated to that user.
+ *
+ * @param path Registry path to check the owner of.
+ * @param sid The user ID associated to the user.
+ * @param hndl Handle for the registry to check the owner of.
+ *
+ * @return The user name on success, NULL on failure.
+ */
+char *get_registry_user(const char *path, char **sid, HANDLE hndl);
+
+/**
+ * @brief Retrieves the user name of the owner of a file in Windows.
+ * Also sets the user ID associated to that user.
+ *
+ * @param path File path to check the owner of.
+ * @param sid The user ID associated to the user.
+ *
+ * @return The user name on success, NULL on failure.
+ */
+char *get_file_user(const char *path, char **sid);
+
+/**
  * @brief Retrieves the user name of the owner of a file or registry in Windows.
  * Also sets the user ID associated to that user.
  *
  * @param path File or registry path to check the owner of.
  * @param sid The user ID associated to the user.
- * @param hdnl Handle for the registry to check the owner of (NULL for files).
+ * @param hndl Handle of the file or registry to check the owner of (NULL for files).
  * @param entry_type Type of the entry to check the owner of (FIM_TYPE_FILE or FIM_TYPE_REGISTRY).
  *
  * @return The user name on success, NULL on failure.
  */
-char *get_user(const char *path, char **sid, HANDLE hdnl, fim_type entry_type);
+char *get_user(const char *path, char **sid, HANDLE hndl, fim_type entry_type);
 
 /**
  * @brief Check if a directory exists
@@ -329,24 +352,22 @@ const char *get_group(__attribute__((unused)) int gid);
  * @brief Retrieves the group name and gid of a registry key.
  * Also sets the group ID associated to that group.
  *
- * @param path Path of the registry key.
  * @param sid The user ID associated to the group.
- * @param hdnl Handle for the registry to check the group of.
+ * @param hndl Handle for the registry to check the group of.
  *
  * @return The user name on success, NULL on failure.
 */
-char *get_registry_group(const char *path, char **sid, HANDLE hdnl);
+char *get_registry_group(char **sid, HANDLE hndl);
 
 /**
  * @brief Retrieves the permissions of a registry key.
  *
- * @param path Path to the registry key.
- * @param hdnl Handle for the registry key to check the permissions of.
+ * @param hndl Handle for the registry key to check the permissions of.
  * @param perm_key Permissions associated to the registry key.
  *
- * @return Permissions in perm_key. -1 on failure, 0 on sucess.
+ * @return Permissions in perm_key. ERROR_SUCCESS on success, different otherwise
 */
-int get_registry_permissions(const char *path, HKEY hdnl, char *perm_key);
+DWORD get_registry_permissions(HKEY hndl, char *perm_key);
 
 /**
  * @brief Copy ACE information into buffer
