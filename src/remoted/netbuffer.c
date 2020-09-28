@@ -79,7 +79,7 @@ int nb_recv(netbuffer_t * buffer, int sock) {
     // Dispatch as most messages as possible
 
     for (i = 0; i + sizeof(uint32_t) <= sockbuf->data_len; i = cur_offset + cur_len) {
-        memcpy (&cur_len, sockbuf->data + i, sizeof(uint32_t));
+        memcpy(&cur_len, sockbuf->data + i, sizeof(uint32_t));
         cur_len = wnet_order(cur_len);
 
         if (cur_len > OS_MAXSTR) {
