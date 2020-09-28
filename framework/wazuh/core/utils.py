@@ -1221,54 +1221,77 @@ class WazuhDBQuery(object):
         else:
             raise WazuhError(1412, date_filter['value'])
 
-    def run(self):
+    def general_run(self):
         """Builds the query and runs it on the database"""
         self._add_select_to_query()
-        original_select = self.select
-
-        rbac_ids = set(self.legacy_filters.pop('rbac_ids', set()))
-        negate = self.legacy_filters.pop('negate', None)
-
         self._add_filters_to_query()
         self._add_search_to_query()
         if self.count:
             self._get_total_items()
             if not self.data:
                 return {'totalItems': self.total_items}
-
-        if len(str(rbac_ids)) >= 60 * 1024:
-            self.select = ['id']
-            self._add_select_to_query()
-            self._execute_data_query()
-            try:
-                resource = None
-                if self.__class__.__name__ == 'WazuhDBQueryAgents':
-                    resource = 'id'
-                elif self.__class__.__name__ == 'WazuhDBQueryGroups':
-                    resource = 'name'
-                else:
-                    raise WazuhInternalError(1123)
-                agent_ids = set(map(lambda d: str(d[resource]), self._data))
-                if negate:
-                    rbac_ids = agent_ids.difference(set(rbac_ids))
-                else:
-                    rbac_ids = agent_ids.intersection(set(rbac_ids))
-
-                rbac_ids = sorted(rbac_ids)
-                if len(rbac_ids) > 500:
-                    rbac_ids = list(rbac_ids)[:500]
-            except NameError:
-                pass
-
-            self.legacy_filters['rbac_ids'] = rbac_ids
-            self._add_filters_to_query()
-
-        self.select = original_select
         self._add_sort_to_query()
         self._add_limit_to_query()
         if self.data:
             self._execute_data_query()
             return self._format_data_into_dictionary()
+
+    def oversized_run(self):
+        """Builds the query and runs it on the database"""
+        self._add_select_to_query()
+        original_select = self.select
+
+        rbac_ids = set(self.legacy_filters.pop('rbac_ids', set()))
+
+        self._add_filters_to_query()
+        self._add_search_to_query()
+        self._add_sort_to_query()
+
+        resource = None
+        final_ids = list()
+        resources = list()
+        if self.__class__.__name__ == 'WazuhDBQueryAgents':
+            resource = 'id'
+        elif self.__class__.__name__ == 'WazuhDBQueryGroups':
+            resource = 'name'
+        else:
+            raise WazuhInternalError(1123)
+        self.select = [resource]
+        self._add_select_to_query()
+        self._execute_data_query()
+        try:
+            resources = list(map(lambda d: str(d[resource]), self._data))
+            maximum_value = min(self.limit, len(resources)) if self.limit is not None else len(resources)
+            for item in resources:
+                if self.rbac_negate:
+                    if item.zfill(3) not in rbac_ids:
+                        final_ids.append(item)
+                else:
+                    if item.zfill(3) in rbac_ids:
+                        final_ids.append(item)
+                if len(final_ids) >= maximum_value:
+                    break
+        except NameError:
+            pass
+
+        if self.rbac_negate:
+            count = len(resources) - len(set(rbac_ids).intersection(set(resources)))
+        else:
+            count = len(set(rbac_ids).intersection(set(resources)))
+
+        self.select = original_select
+        self.reset()
+        self.legacy_filters['rbac_ids'] = final_ids
+        self.count = False
+        result = self.general_run()
+        result['totalItems'] = count
+
+        return result
+
+    def run(self):
+        rbac_ids = set(self.legacy_filters.get('rbac_ids', set()))
+        return self.general_run() if len(str(rbac_ids)) < common.MAX_QUERY_FILTERS_RESERVED_SIZE else \
+            self.oversized_run()
 
     def reset(self):
         """Resets query to its initial value. Useful when doing several requests to the same DB."""
