@@ -26,7 +26,7 @@ sleep 1
 
 # Manager configuration
 for py_file in /configuration_files/*.py; do
-  /usr/bin/python3 $py_file
+  /var/ossec/framework/python/bin/python3 $py_file
 done
 
 for sh_file in /configuration_files/*.sh; do
