@@ -157,6 +157,133 @@ TEST_F(DBSyncTest, dbsyncAddTableRelationshipDummy)
     ASSERT_EQ(-1, dbsync_add_table_relationship(nullptr, nullptr));
 }
 
+TEST_F(DBSyncTest, dbsyncAddTableRelationship)
+{
+    const auto sql { R"(CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `path` TEXT, `cmdline` TEXT, `state` TEXT, `cwd` TEXT, `root` TEXT, `uid` BIGINT, `gid` BIGINT, `euid` BIGINT, `egid` BIGINT, `suid` BIGINT, `sgid` BIGINT, `on_disk` INTEGER, `wired_size` BIGINT, `resident_size` BIGINT, `total_size` BIGINT, `user_time` BIGINT, `system_time` BIGINT, `disk_bytes_read` BIGINT, `disk_bytes_written` BIGINT, `start_time` BIGINT, `parent` BIGINT, `pgroup` BIGINT, `threads` INTEGER, `nice` INTEGER, `is_elevated_token` INTEGER, `elapsed_time` BIGINT, `handle_count` BIGINT, `percent_processor_time` BIGINT, `upid` BIGINT HIDDEN, `uppid` BIGINT HIDDEN, `cpu_type` INTEGER HIDDEN, `cpu_subtype` INTEGER HIDDEN, `phys_footprint` BIGINT HIDDEN, PRIMARY KEY (`pid`)) WITHOUT ROWID;CREATE TABLE processes_sockets(`socket_id` BIGINT, `pid` BIGINT, PRIMARY KEY (`socket_id`)) WITHOUT ROWID;)"};
+
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    const auto insertDataProcess{ R"(
+        {
+            "table": "processes",
+            "data":[
+                {
+                    "pid":4,
+                    "name":"System",
+                    "path":"",
+                    "cmdline":"",
+                    "state":"",
+                    "cwd":"",
+                    "root":"",
+                    "uid":-1,
+                    "gid":-1,
+                    "euid":-1,
+                    "egid":-1,
+                    "suid":-1,
+                    "sgid":-1,
+                    "on_disk":-1,
+                    "wired_size":-1,
+                    "resident_size":-1,
+                    "total_size":-1,
+                    "user_time":-1,
+                    "system_time":-1,
+                    "disk_bytes_read":-1,
+                    "disk_bytes_written":-1,
+                    "start_time":-1,
+                    "parent":0,
+                    "pgroup":-1,
+                    "threads":164,
+                    "nice":-1,
+                    "is_elevated_token":false,
+                    "elapsed_time":-1,
+                    "handle_count":-1,
+                    "percent_processor_time":-1
+                 }
+            ]
+        }
+    )"};
+
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInsertProcess{ cJSON_Parse(insertDataProcess) };
+    EXPECT_EQ(0, dbsync_insert_data(handle, jsInsertProcess.get()));
+
+    const auto insertDataSocket{ R"(
+        {
+        "table": "processes_sockets",
+            "data":[
+                {
+                    "pid":4,
+                    "socket_id":1
+                }
+            ]
+        }
+    )"};
+
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInsertSocket{ cJSON_Parse(insertDataSocket) };
+    EXPECT_EQ(0, dbsync_insert_data(handle, jsInsertSocket.get()));
+
+    const auto relationshipJson{ R"(
+        {
+            "base_table":"processes",
+            "relationed_tables":
+            [
+                {
+                    "table": "processes_sockets",
+                    "field_match":
+                    {
+                        "pid": "pid"
+                    }
+                }
+            ]
+        })"
+    };
+
+    const std::unique_ptr<cJSON, smartDeleterJson> jsRelationship{ cJSON_Parse(relationshipJson) };
+    EXPECT_EQ(0, dbsync_add_table_relationship(handle, jsRelationship.get()));
+
+
+    const auto deleteProcess{ R"(
+        {
+            "table": "processes",
+            "query": {
+                "data":[
+                {
+                    "pid":4
+                }],
+                "where_filter_opt":""
+            }
+        })"};
+
+    const std::unique_ptr<cJSON, smartDeleterJson> jsDeleteProcess{ cJSON_Parse(deleteProcess) };
+    EXPECT_EQ(0, dbsync_delete_rows(handle, jsDeleteProcess.get()));
+
+}
+
+TEST_F(DBSyncTest, AddTableRelationshipIncorrectJSON)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    const auto addRelationshipIncorrectJson{ R"(
+    {
+            "base_table":"processes",
+            "relationed_tables":
+            [
+                {
+                    "incorrect": "processes_sockets",
+                    "incorrect":
+                    {
+                        "incorrect": "pid"
+                    }
+                }
+            ]
+        })"};
+
+    const std::unique_ptr<cJSON, smartDeleterJson> jsAddRelationshipIncorrectJson{ cJSON_Parse(addRelationshipIncorrectJson) };
+    EXPECT_NE(0, dbsync_add_table_relationship(handle, jsAddRelationshipIncorrectJson.get()));
+}
 TEST_F(DBSyncTest, InsertData)
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
@@ -322,12 +449,30 @@ TEST_F(DBSyncTest, UpdateDataCbBadInputs)
     ASSERT_NE(nullptr, handle);
 
     const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
-    
+
     callback_data_t callbackData { nullptr, nullptr };
 
     // Failure cases
     EXPECT_NE(0, dbsync_update_with_snapshot_cb(reinterpret_cast<void *>(0xffffffff), jsInsert.get(), callbackData));
     EXPECT_NE(0, dbsync_update_with_snapshot_cb(handle, nullptr, callbackData));
+    EXPECT_NE(0, dbsync_update_with_snapshot_cb(handle, jsInsert.get(), callbackData));
+}
+
+
+TEST_F(DBSyncTest, UpdateDataCbEmptyInputs)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto insertionSqlStmt{ R"({ "incorrect":"incorrect" })"};
+
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+
+    CallbackMock wrapper;
+    callback_data_t callbackData { callback, &wrapper };
+
+    // Failure cases
     EXPECT_NE(0, dbsync_update_with_snapshot_cb(handle, jsInsert.get(), callbackData));
 }
 

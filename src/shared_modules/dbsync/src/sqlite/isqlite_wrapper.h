@@ -34,7 +34,9 @@ namespace SQLite
     class IConnection
     {
     public:
+        // LCOV_EXCL_START
         virtual ~IConnection() = default;
+        // LCOV_EXCL_STOP
         virtual void close() = 0;
         virtual void execute(const std::string& query) = 0;
         virtual const std::shared_ptr<sqlite3>& db() const = 0;
@@ -43,7 +45,9 @@ namespace SQLite
     class ITransaction
     {
     public:
+        // LCOV_EXCL_START
         virtual ~ITransaction() = default;
+        // LCOV_EXCL_STOP
         virtual void commit() = 0;
         virtual void rollback() = 0;
     };
@@ -51,7 +55,9 @@ namespace SQLite
     class IColumn
     {
     public:
+        // LCOV_EXCL_START
         virtual ~IColumn() = default;
+        // LCOV_EXCL_STOP
         virtual int32_t type() const = 0;
         virtual std::string name() const = 0;
         virtual bool hasValue() const = 0;
@@ -65,7 +71,9 @@ namespace SQLite
     class IStatement
     {
     public:
+        // LCOV_EXCL_START
         virtual ~IStatement() = default;
+        // LCOV_EXCL_STOP
         virtual int32_t step() = 0;
         virtual void bind(const int32_t index, const int32_t value) = 0;
         virtual void bind(const int32_t index, const uint64_t value) = 0;

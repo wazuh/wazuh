@@ -9,10 +9,10 @@ include_directories(${SRC_FOLDER}/external/nlohmann/)
 link_directories(${CMAKE_BINARY_DIR}/lib)
 
 if(COVERITY)
-  set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14")
-else()
-  set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++11")
+  add_definitions(-D__GNUC__=8)
 endif(COVERITY)
+
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14")
 
 add_executable(rsync_test_tool
                "${CMAKE_SOURCE_DIR}/testtool/main.cpp"

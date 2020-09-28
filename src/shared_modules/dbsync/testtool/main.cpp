@@ -36,11 +36,11 @@ int main(int argc, const char* argv[])
         // dbsync configuration data 
         std::ifstream configFile{ cmdLineArgs.configFile() };
         const nlohmann::json jsonConfigFile { nlohmann::json::parse(configFile) };
-        const std::string dbName{ jsonConfigFile[0]["db_name"] };
-        const std::string dbType{ jsonConfigFile[0]["db_type"] };
-        const std::string hostType{ jsonConfigFile[0]["host_type"] };        
-        const std::string persistance{ jsonConfigFile[0]["persistance"] };
-        const std::string sqlStmt{ jsonConfigFile[0]["sql_statement"] };
+        const std::string dbName{ jsonConfigFile.at(0).at("db_name").get_ref<const std::string&>() };
+        const std::string dbType{ jsonConfigFile.at(0).at("db_type").get_ref<const std::string&>() };
+        const std::string hostType{ jsonConfigFile.at(0).at("host_type").get_ref<const std::string&>() };
+        const std::string persistance{ jsonConfigFile.at(0).at("persistance").get_ref<const std::string&>() };
+        const std::string sqlStmt{ jsonConfigFile.at(0).at("sql_statement").get_ref<const std::string&>() };
 
         dbsync_initialize(loggerFunction);
 

@@ -17,6 +17,7 @@
 class ISQLiteFactory
 {
 public:
+    virtual ~ISQLiteFactory() = default;
     virtual std::shared_ptr<SQLite::IConnection> createConnection(const std::string& path) = 0;
     virtual std::unique_ptr<SQLite::ITransaction> createTransaction(std::shared_ptr<SQLite::IConnection>& connection) = 0;
     virtual std::unique_ptr<SQLite::IStatement> createStatement(std::shared_ptr<SQLite::IConnection>& connection,

@@ -134,21 +134,21 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
     {
         [](const std::vector<std::string>& primaryKeyList,
            const nlohmann::json& result,
-           const nlohmann::json& data,
-           const bool inTransaction)
+           const nlohmann::json& dataParam,
+           const bool inTransactionParam)
         {
             nlohmann::json ret;
-            if (inTransaction)
+            if (inTransactionParam)
             {
                 if (result.empty())
                 {
                     std::for_each(primaryKeyList.begin(),
                                   primaryKeyList.end(),
-                                  [&data, &ret](const std::string& pKey)
+                                  [&dataParam, &ret](const std::string& pKey)
                                   {
-                                        if(data.find(pKey) != data.end())
+                                        if(dataParam.find(pKey) != dataParam.end())
                                         {
-                                            ret[pKey] = data[pKey];
+                                            ret[pKey] = dataParam[pKey];
                                         }
                                   });
                 }
@@ -221,20 +221,20 @@ void SQLiteDBEngine::initializeStatusField(const nlohmann::json& tableNames)
             if (fields.end() == it)
             {
                 m_tableFields.erase(table);
-                const auto& stmtAdd { getStatement(std::string("ALTER TABLE " +
-                                                               table +
-                                                               " ADD COLUMN ") + 
-                                                               STATUS_FIELD_NAME + 
-                                                               " " +
-                                                               STATUS_FIELD_TYPE +
-                                                               " DEFAULT 1;")};
+                const auto& stmtAdd { getStatement("ALTER TABLE " +
+                                                   table +
+                                                   " ADD COLUMN " + 
+                                                   STATUS_FIELD_NAME + 
+                                                   " " +
+                                                   STATUS_FIELD_TYPE +
+                                                   " DEFAULT 1;")};
                 stmtAdd->step();
             }
-            const auto& stmtInit { getStatement(std::string("UPDATE " +
-                                                            table +
-                                                            " SET ") +
-                                                            STATUS_FIELD_NAME +
-                                                            "=0;")};
+            const auto& stmtInit { getStatement("UPDATE " +
+                                                table +
+                                                " SET " +
+                                                STATUS_FIELD_NAME +
+                                                "=0;")};
             stmtInit->step();
         } 
         else
@@ -255,11 +255,11 @@ void SQLiteDBEngine::deleteRowsByStatusField(const nlohmann::json& tableNames)
 
         if (0 != loadTableData(table)) 
         {
-            const auto& stmt { getStatement(std::string("DELETE FROM " +
-                                                        table +
-                                                        " WHERE ") +
-                                                        STATUS_FIELD_NAME +
-                                                        "=0;")};
+            const auto& stmt { getStatement("DELETE FROM " +
+                                            table +
+                                            " WHERE " +
+                                            STATUS_FIELD_NAME +
+                                            "=0;")};
             stmt->step();
         }
         else
@@ -993,7 +993,7 @@ std::string SQLiteDBEngine::buildSelectQuery(const std::string& table,
     }
     for (const auto& column : columns)
     {
-        sql += column;
+        sql += column.get_ref<const std::string&>();
         sql += ",";
     }
     sql = sql.substr(0, sql.size()-1);
@@ -1047,7 +1047,7 @@ std::string SQLiteDBEngine::buildLeftOnlyQuery(const std::string& t1,
     onMatchList = onMatchList.substr(0, onMatchList.size()-5);
     nullFilterList = nullFilterList.substr(0, nullFilterList.size()-5);
 
-    return std::string("SELECT "+fieldsList+" FROM "+t1+" t1 LEFT JOIN "+t2+" t2 ON "+onMatchList+" WHERE "+nullFilterList+";");
+    return "SELECT "+fieldsList+" FROM "+t1+" t1 LEFT JOIN "+t2+" t2 ON "+onMatchList+" WHERE "+nullFilterList+";";
 } 
 
 bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
@@ -1628,7 +1628,7 @@ std::string SQLiteDBEngine::buildDeleteRelationTrigger(const nlohmann::json& dat
         {
             sqlDelete.append(match.key());
             sqlDelete.append(" = OLD.");
-            sqlDelete.append(match.value());
+            sqlDelete.append(match.value().get_ref<const std::string&>());
             sqlDelete.append(" AND ");
         }
         sqlDelete = sqlDelete.substr(0, sqlDelete.size()-5);
@@ -1667,12 +1667,12 @@ std::string SQLiteDBEngine::buildUpdateRelationTrigger(const nlohmann::json&    
         {
             sqlUpdate.append(match.key());
             sqlUpdate.append(" = NEW.");
-            sqlUpdate.append(match.value());
+            sqlUpdate.append(match.value().get_ref<const std::string&>());
             sqlUpdate.append(",");
 
             sqlUpdateWhere.append(match.key());
             sqlUpdateWhere.append(" = OLD.");
-            sqlUpdateWhere.append(match.value());
+            sqlUpdateWhere.append(match.value().get_ref<const std::string&>());
             sqlUpdateWhere.append(" AND ");
         }
         sqlUpdate = sqlUpdate.substr(0, sqlUpdate.size()-1);

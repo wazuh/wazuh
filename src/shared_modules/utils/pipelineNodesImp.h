@@ -33,7 +33,9 @@ namespace Utils
                  const unsigned int numberOfThreads)
         : DispatcherType{ functor, numberOfThreads }
         {}
+        // LCOV_EXCL_START
         ~ReadNode() = default;
+        // LCOV_EXCL_STOP
         void receive(const Input& data)
         {
             DispatcherType::push(data);
@@ -64,8 +66,9 @@ namespace Utils
         : DispatcherType{ std::bind(&RWNodeType::doTheWork, this, std::placeholders::_1), numberOfThreads }
         , m_functor{functor}
         {}
+        // LCOV_EXCL_START
         ~ReadWriteNode() = default;
-
+        // LCOV_EXCL_STOP
         void receive(const Input& data)
         {
             DispatcherType::push(data);

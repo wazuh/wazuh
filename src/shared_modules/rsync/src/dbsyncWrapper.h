@@ -31,6 +31,9 @@ namespace RSync
                 throw rsync_error { ERROR_IN_SELECT_DATA };
             }
         }
+        // LCOV_EXCL_START
+        virtual ~DBSyncWrapper() = default;
+        // LCOV_EXCL_STOP
     };
 };// namespace RSync
 
