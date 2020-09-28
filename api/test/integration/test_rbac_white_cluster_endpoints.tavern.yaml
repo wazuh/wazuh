@@ -298,17 +298,13 @@ stages:
       json:
         data:
           affected_items:
-            - agentless: !anything
-              alerts: !anything
+            - alerts: !anything
               auth: !anything
               cis-cat: !anything
               cluster: !anything
               command: !anything
-              email_alerts: !anything
               global: !anything
-              integration: !anything
               localfile: !anything
-              open-scap: !anything
               osquery: !anything
               remote: !anything
               rootcheck: !anything
@@ -316,7 +312,6 @@ stages:
               sca: !anything
               syscheck: !anything
               syscollector: !anything
-              syslog_output: !anything
               vulnerability-detector: !anything
           failed_items: []
           total_affected_items: 1

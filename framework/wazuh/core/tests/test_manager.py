@@ -461,9 +461,8 @@ def test_update_api_conf(mock_open, mock_yaml):
     with patch('wazuh.core.manager.configuration.api_conf', new=old_config):
         update_api_conf(new_config=new_config)
 
-        assert old_config == {'experimental_features': True, 'cache': {'enabled': True, 'time': 0.75}}
         mock_open.assert_called_once(), '"Open" should be called, but it was not.'
-        mock_yaml.assert_called_once_with(old_config, ANY), '"Yaml.dump" should be called with updated config.'
+        mock_yaml.assert_called_once_with(new_config, ANY), '"Yaml.dump" should be called with updated config.'
 
 
 def test_update_api_conf_ko():

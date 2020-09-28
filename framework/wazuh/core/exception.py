@@ -4,8 +4,10 @@
 
 
 from copy import deepcopy
+from wazuh.core.common import wazuh_version as wazuh_full_version
 
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
+WAZUH_VERSION = 'current' if wazuh_full_version == '' else '.'.join(wazuh_full_version.split('.')[:2]).lstrip('v')
 
 
 class WazuhException(Exception):
@@ -47,17 +49,17 @@ class WazuhException(Exception):
         1101: {'message': 'Requested component does not exist',
                'remediation': 'Run `WAZUH_PATH/bin/ossec-logtest -t` to check your configuration'},
         1102: {'message': 'Invalid section',
-               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/index.html) '
+               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/index.html) '
                               'to get more information about configuration sections'},
         1103: {'message': 'Invalid field in section',
-               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/index.html) '
+               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/index.html) '
                               'to get more information about configuration sections'},
         1104: {'message': 'Invalid type',
                'remediation': 'Insert a valid type'},
         1105: 'Error reading API configuration',
         1106: {'message': 'Requested section not present in configuration',
                'remediation': 'Please, check your configuration file. '
-                              'You can visit the official documentation (https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/index.html) '
+                              f'You can visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/index.html) '
                               'to get more information about configuration sections'},
         1107: 'Internal options file not found',
         1108: 'Value not found in internal_options.conf',
@@ -75,7 +77,7 @@ class WazuhException(Exception):
                'remediation': 'Please, check your configuration file and try again'
                },
         1116: {'message': "Requested component configuration does not exist",
-               'remediation': "Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/api/reference.html#get-active-configuration) to check available component configurations"
+               'remediation': f"Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/reference.html#operation/api.controllers.agents_controller.get_agent_config) to check available component configurations"
                },
         1117: {'message': "Unable to connect with component. The component might be disabled."},
         1118: {'message': "Could not request component configuration"},
@@ -92,11 +94,11 @@ class WazuhException(Exception):
 
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
-               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/index.html)'
+               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/index.html)'
                               ' to get more information about how to configure the rules'
                },
         1201: {'message': 'Error reading rule files',
-               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/index.html)'
+               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/index.html)'
                               ' to get more information about how to configure the rules'
                },
         1202: {'message': 'Argument \'status\' must be: enabled, disabled or all',
@@ -112,14 +114,14 @@ class WazuhException(Exception):
                'remediation': 'Please indicate one of the following values:'
                },
         1206: {'message': 'Duplicated rule ID',
-               'remediation': 'Please check your configuration, two or more rules have the same ID, visit the official documentation (https://documentation.wazuh.com/3.x/user-manual/ruleset/custom.html)'
+               'remediation': f'Please check your configuration, two or more rules have the same ID, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/ruleset/custom.html)'
                               ' to get more information about how to configure the rules'
                },
         1207: {'message': 'Error reading rule files, wrong permissions',
                'remediation': 'Please, check your permissions over the file'
                },
         1208: {'message': 'The rule does not exist or you do not have permission to see it',
-               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/index.html)'
+               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/index.html)'
                               ' to get more information about how to configure the rules'
                },
 
@@ -166,7 +168,7 @@ class WazuhException(Exception):
 
         # Decoders: 1500 - 1599
         1500: {'message': 'Error reading decoders from ossec.conf',
-               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/ruleset/custom.html)'
+               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/ruleset/custom.html)'
                               'to get more information on adding or modifying existing decoders'
                },
         1501: {'message': 'Error reading decoders file'
@@ -178,20 +180,20 @@ class WazuhException(Exception):
                'remediation': 'Please, use GET /decoders/files to list all available decoders'
                },
         1504: {'message': 'The decoder does not exist or you do not have permission to see it',
-               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/index.html)'
+               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/index.html)'
                               ' to get more information about the decoders'
                },
 
         # Syscheck/AR: 1600 - 1699
         1600: {'message': 'There is no database for selected agent with id',
                'remediation': 'Please, upgrade wazuh to v3.7.0 or newer. Visit '
-                              'https://documentation.wazuh.com/current/installation-guide/upgrading/index.html'
+                              f'https://documentation.wazuh.com/{WAZUH_VERSION}/upgrade-guide/index.html'
                               ' to obtain more information on upgrading wazuh'
                },
         1601: {'message': 'Impossible to run FIM scan, agent is not active',
                'remediation': 'Please, ensure selected agent is active and connected to the manager. Visit '
-                              'https://documentation.wazuh.com/current/user-manual/registering/index.html and '
-                              'https://documentation.wazuh.com/current/user-manual/agents/agent-connection.html'
+                              f'https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/registering/index.html and '
+                              f'https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/agents/agent-connection.html'
                               'to obtain more information on registering and connecting agents'
                },
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
@@ -203,7 +205,7 @@ class WazuhException(Exception):
         1655: 'Active response - Command not available',
         1656: {'message': 'No parameters provided for request',
                'remediation': 'Please, visit the official documentation '
-                              '(https://documentation.wazuh.com/current/user-manual/api/reference.html#active-response) '
+                              f'(https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/reference.html#tag/active-response) '
                               'to get more information about `active-response` API call'},
 
         # Agents: 1700 - 1799
@@ -240,7 +242,7 @@ class WazuhException(Exception):
                'remediation': 'Please, use another group ID'
                },
         1712: {'message': 'Default group is not deletable',
-               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/3.x/user-manual/agents/grouping-agents.html)'
+               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/agents/grouping-agents.html)'
                               'to get more information'
                },
         1713: {'message': 'Error accessing repository',
@@ -263,7 +265,7 @@ class WazuhException(Exception):
                'remediation': 'Please check the version again or check our repository at [official repository](https://github.com/wazuh/wazuh)'
                },
         1719: {'message': 'Remote upgrade is not available for this agent version',
-               'remediation': 'Please, follow this for agent upgrading: https://documentation.wazuh.com/3.x/user-manual/agents/remote-upgrading/upgrading-agent.html'
+               'remediation': f'Please, follow this for agent upgrading: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/agents/remote-upgrading/upgrading-agent.html'
                },
         1720: {'message': 'Agent disconnected',
                'remediation': 'Please make sure the agent is active'
@@ -282,13 +284,13 @@ class WazuhException(Exception):
                'remediation': 'Please check all data fields and try again'
                },
         1726: {'message': 'Ossec authd is not running',
-               'remediation': 'Please, visit our documentation to get more information: https://documentation.wazuh.com/current/user-manual/agents/registering-agents/register-agent-authd.html'
+               'remediation': f'Please, visit our documentation to get more information: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/registering/index.html#registering-the-wazuh-agent-using-simple-registration-service'
                },
         1727: {'message': 'Error listing group files',
                'remediation': 'Please, use `GET /agents/groups/:group_id/files` to get all available group files'
                },
         1728: {'message': 'Invalid node type',
-               'remediation': 'Valid types are `master` and `worker`. Please, visit https://documentation.wazuh.com/current/user-manual/manager/wazuh-cluster.html '
+               'remediation': f'Valid types are `master` and `worker`. Please, visit https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/configuring-cluster/index.html '
                               'to get more information about cluster configuration'},
         1729: {
             'message': 'Agent status not valid. Valid statuses are active, disconnected, pending and never_connected',
@@ -296,16 +298,16 @@ class WazuhException(Exception):
             },
         1730: {'message': 'Node does not exist',
                'remediation': 'Make sure the name is correct and that the node is up. You can check it using '
-                              '`cluster_control -l` (https://documentation.wazuh.com/current/user-manual/reference/tools/cluster_control.html#get-connected-nodes)'},
+                              f'`cluster_control -l` (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/tools/cluster_control.html#get-connected-nodes)'},
         1731: {'message': 'Agent is not eligible for removal',
-               'remediation': "Please check the agent's status official documentation (https://documentation.wazuh.com/3.x/user-manual/agents/restful-api/remove.html)"
+               'remediation': f"Please check the agent's status official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/agents/agent-life-cycle.html#registered-agent)"
                },
         1732: {'message': 'No agents selected',
                'remediation': 'Please select an agent to perform the operation.'
                },
         1733: 'Bad formatted version. Version must follow this pattern: vX.Y.Z .',
         1734: {'message': 'Error removing agent from group',
-               'remediation': 'Agent does not belong to specified group, to assign the agent to a group follow: https://documentation.wazuh.com/3.x/user-manual/agents/grouping-agents.html'
+               'remediation': f'Agent does not belong to specified group, to assign the agent to a group follow: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/agents/grouping-agents.html'
                },
         1735: {'message': 'Agent version is not compatible with this feature',
                'remediation': 'Please update the agent, in case the problem persists contact us at: https://github.com/wazuh/wazuh/issues'
@@ -320,7 +322,7 @@ class WazuhException(Exception):
                'remediation': 'Max length allowed for agent name is 128'
                },
         1739: {'message': 'Error getting agents group sync',
-               'remediation': 'Please check that the agent and the group are correctly created. Official documentation: https://documentation.wazuh.com/3.x/user-manual/agents/command-line/register.html'
+               'remediation': f'Please check that the agent and the group are correctly created. Official documentation: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/agents/grouping-agents.html'
                },
         1740: {'message': 'Action only available for active agents',
                'remediation': 'Please activate the agent to synchronize it'
@@ -385,7 +387,7 @@ class WazuhException(Exception):
         1909: {'message': 'Content of file is empty',
                'remediation': 'Try to upload another non-empty file'},
         1910: {'message': 'Content-type header is mandatory',
-               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/api/reference.html#update-local-file-at-any-cluster-node)'
+               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/reference.html#operation/api.controllers.cluster_controller.put_files_node)'
                               ' to get more information about how to configure a cluster'},
         1911: {'message': 'Error parsing body request to UTF-8',
                'remediation': 'Please, check if the file content is valid UTF-8'},
@@ -409,11 +411,11 @@ class WazuhException(Exception):
         3002: {'message': 'Error creating PID file'},
         3003: {'message': 'Error deleting PID file'},
         3004: {'message': 'Error in cluster configuration',
-               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/configuring-cluster/index.html)'
+               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/configuring-cluster/index.html)'
                               ' to get more information about how to configure a cluster'},
         3005: 'Error reading cluster JSON file',
         3006: {'message': 'Error reading cluster configuration',
-               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/configuring-cluster/index.html)'
+               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/configuring-cluster/index.html)'
                               ' to get more information about how to configure a cluster'},
         3007: 'Client.keys file received in master node',
         3008: 'Received invalid agent status',
@@ -423,7 +425,7 @@ class WazuhException(Exception):
         3011: 'Agent info file received in a worker node',
         3012: 'Cluster is not running',
         3013: {'message': 'Cluster is not running, it might be disabled in `WAZUH_HOME/etc/ossec.conf`',
-               'remediation': 'Please, visit the official documentation (https://documentation.wazuh.com/current/user-manual/configuring-cluster/index.html)'
+               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/configuring-cluster/index.html)'
                               ' to get more information about how to configure a cluster'
                },
         3015: 'Cannot access directory',
@@ -442,21 +444,21 @@ class WazuhException(Exception):
         3024: "Length of command exceeds limit defined in wazuh.cluster.common.Handler.cmd_len.",
         3025: {'message': "Could not decrypt message",
                'remediation': "Check the cluster key is correct in the worker's "
-                              "[ossec.conf](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/cluster.html#key)"
+                              f"[ossec.conf](https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/cluster.html#key)"
                               ", ensure it is the same that the master's."},
         3026: "Error sending request: Memory error. Request chunk size divided by 2.",
         3027: "Unknown received task name",
         3028: {'message': "Worker node ID already exists",
-               'remediation': "Check and fix [worker names](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/cluster.html#node-name)"
+               'remediation': f"Check and fix [worker names](https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/cluster.html#node-name)"
                               " and restart the `wazuh-manager` service."},
         3029: {"message": "Connected worker with same name as the master",
-               "remediation": "Check and fix the [worker name](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/cluster.html#node-name)"
+               "remediation": f"Check and fix the [worker name](https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/cluster.html#node-name)"
                               " and restart the `wazuh-manager` service in the node"},
         3030: {'message': 'Worker does not belong to the same cluster',
-               'remediation': "Change the [cluster name](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/cluster.html#name)"
+               'remediation': f"Change the [cluster name](https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/cluster.html#name)"
                               " in the worker configuration to match the master's and restart the `wazuh-manager` service"},
         3031: {'message': "Worker and master versions are not the same",
-               'remediation': "[Update](https://documentation.wazuh.com/current/installation-guide/upgrading/index.html)"
+               'remediation': f"[Update](https://documentation.wazuh.com/{WAZUH_VERSION}/upgrade-guide/index.html)"
                               " master and workers to the same version."},
         3032: "Could not forward DAPI request. Connection not available.",
         3033: "Payload length exceeds limit defined in wazuh.cluster.common.Handler.request_chunk.",
@@ -466,7 +468,7 @@ class WazuhException(Exception):
         # The messages of these exceptions are provisional until the RBAC documentation is published.
         4000: {'message': "Permission denied",
                'remediation': "Please, make sure you have permissions to execute the current request. "
-                              "For more information on how to set up permissions, please visit https://documentation.wazuh.com/current/user-manual/api/rbac/configuration.html"},
+                              f"For more information on how to set up permissions, please visit https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/rbac/configuration.html"},
         4001: {'message': 'The body of the request is empty, you must specify what you want to modify'},
         4002: {'message': 'The specified role does not exist',
                'remediation': 'Please, create the specified role with the endpoint POST /security/roles'},
@@ -499,7 +501,7 @@ class WazuhException(Exception):
         4017: {'message': 'The specified user-role relation already exists'},
         4018: {'message': 'Level cannot be a negative number'},
         4019: {'message': 'Invalid resource specified',
-               'remediation': 'Please, check the current RBAC resources, for more information please visit https://documentation.wazuh.com/current/user-manual/api/rbac/configuration.html'},
+               'remediation': f'Please, check the current RBAC resources, for more information please visit https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/rbac/configuration.html'},
         4020: {'message': 'Invalid endpoint specified',
                'remediation': 'Valid endpoints are: '},
         4021: 'Error reading security configuration',
@@ -511,7 +513,7 @@ class WazuhException(Exception):
                               'POST /security/roles/{role_id}/rules'},
         4500: {'message': 'The specified resources are invalid',
                'remediation': 'Please, make sure permissions are properly defined, '
-                              'for more information on setting up permissions please visit https://documentation.wazuh.com/current/user-manual/api/rbac/configuration.html'},
+                              f'for more information on setting up permissions please visit https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/rbac/configuration.html'},
 
         # User management
         5000: {'message': 'The user could not be created',
@@ -524,10 +526,6 @@ class WazuhException(Exception):
                'remediation': 'There is already a user with these properties'},
         5004: {'message': 'The user could not be removed or updated',
                'remediation': 'Administrator users cannot be removed or updated'},
-        5005: {'message': 'Invalid body',
-               'remediation':
-                   'Please check our official documentation to see more details: '
-                   'https://documentation.wazuh.com/current/user-manual/manager/wazuh-cluster.html)'},
         5006: {'message': 'Operation not allowed, the user does not have permissions to perform this action',
                'remediation': 'No user, except administrator users, can change the data of a different user'},
         5007: {'message': 'Insecure password provided',
@@ -541,12 +539,12 @@ class WazuhException(Exception):
         6000: {'message': 'Limit of login attempts reached. '
                           'The current IP has been blocked due to a high number of login attempts'},
         6001: {'message': 'Maximum number of request per minute reached',
-               'remediation': 'This limit can be changed in security.yaml file. More information here: https://documentation.wazuh.com/current/user-manual/api/security/configuration.html'},
+               'remediation': f'This limit can be changed in security.yaml file. More information here: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#configuration-file'},
         6002: {'message': 'The body type is not the one specified in the content-type'},
         6003: {'message': 'Error trying to load the JWT secret',
                'remediation': 'Make sure you have the right permissions: WAZUH_PATH/api/configuration/security/jwt_secret'},
         6004: {'message': 'The current user does not have authentication enabled through authorization context',
-               'remediation': 'More information here: https://documentation.wazuh.com/current/user-manual/api/security/configuration.html'}
+               'remediation': f'You can enable it using the following endpoint: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#configuration-file'}
         # > 9000: Authd
     }
 

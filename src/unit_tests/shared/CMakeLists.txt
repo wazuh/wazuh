@@ -7,7 +7,9 @@ if(NOT ${TARGET} STREQUAL "winagent")
                             -Wl,--wrap,fopen,--wrap,_mferror,--wrap,fflush,--wrap,fclose \
                             -Wl,--wrap,fread,--wrap,fseek,--wrap,fwrite,--wrap,remove \
                             -Wl,--wrap,fprintf,--wrap,fgets,--wrap,File_DateofChange \
-                            -Wl,--wrap,bzip2_uncompress,--wrap,mdebug1")
+                            -Wl,--wrap,bzip2_uncompress,--wrap,mdebug1,--wrap,lstat \
+                            -Wl,--wrap,gzopen,--wrap,gzread,--wrap,gzclose \
+                            -Wl,--wrap,gzeof,--wrap,gzerror,--wrap,gzwrite")
     list(APPEND shared_tests_flags "${FILE_OP_BASE_FLAGS}")
 endif()
 
