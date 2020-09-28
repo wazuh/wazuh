@@ -245,6 +245,162 @@ void fim_registry_get_checksum_value(fim_registry_value_data *data) {
 }
 
 /**
+ * @brief Initialize digest context according to a provided configuration
+ *
+ * @param opts An integer holding the registry configuration.
+ * @param md5_ctx An uninitialized md5 context.
+ * @param sha1_ctx An uninitialized sha1 context.
+ * @param sha256_ctx An uninitialized sha256 context.
+ */
+void fim_registry_init_digests(int opts, MD5_CTX *md5_ctx, SHA_CTX *sha1_ctx, SHA256_CTX *sha256_ctx) {
+    if (opts | CHECK_MD5SUM) {
+        MD5_Init(md5_ctx);
+    }
+
+    if (opts | CHECK_SHA1SUM) {
+        SHA1_Init(sha1_ctx);
+    }
+
+    if (opts | CHECK_SHA256SUM) {
+        SHA256_Init(sha256_ctx);
+    }
+}
+
+/**
+ * @brief Update digests from a provided buffer.
+ *
+ * @param buffer A raw data buffer used to update digests.
+ * @param length An integer holding the length of buffer.
+ * @param opts An integer holding the registry configuration.
+ * @param md5_ctx An MD5 CTX to be updated with the contents of buffer.
+ * @param sha1_ctx An SHA1 CTX to be updated with the contents of buffer.
+ * @param sha256_ctx An SHA256 CTX to be updated with the contents of buffer.
+ */
+void fim_registry_update_digests(const BYTE *buffer,
+                                 int length,
+                                 int opts,
+                                 MD5_CTX *md5_ctx,
+                                 SHA_CTX *sha1_ctx,
+                                 SHA256_CTX *sha256_ctx) {
+    if (opts | CHECK_MD5SUM) {
+        MD5_Update(md5_ctx, buffer, (unsigned)length);
+    }
+
+    if (opts | CHECK_SHA1SUM) {
+        SHA1_Update(sha1_ctx, buffer, length);
+    }
+
+    if (opts | CHECK_SHA256SUM) {
+        SHA256_Update(sha256_ctx, buffer, length);
+    }
+}
+
+/**
+ * @brief Prints out hashes from the provided contexts, destryoing them in the process.
+ *
+ * @param opts An integer holding the registry configuration.
+ * @param md5_ctx An MD5 CTX used to print the corresponding hash.
+ * @param sha1_ctx An SHA1 CTX used to print the corresponding hash.
+ * @param sha256_ctx An SHA256 CTX used to print the corresponding hash.
+ * @param md5_output A buffer holding the MD5 hash on exit.
+ * @param sha1_output A buffer holding the SHA1 hash on exit.
+ * @param sha256_output A buffer holding the SHA256 hash on exit.
+ */
+void fim_registry_final_digests(int opts,
+                                MD5_CTX *md5_ctx,
+                                SHA_CTX *sha1_ctx,
+                                SHA256_CTX *sha256_ctx,
+                                os_md5 md5_output,
+                                os_sha1 sha1_output,
+                                os_sha256 sha256_output) {
+    unsigned char md5_digest[16];
+    unsigned char sha1_digest[SHA_DIGEST_LENGTH];
+    unsigned char sha256_digest[SHA256_DIGEST_LENGTH];
+    int n;
+
+    if (opts | CHECK_MD5SUM) {
+        MD5_Final(md5_digest, md5_ctx);
+        for (n = 0; n < 16; n++) {
+            snprintf(md5_output, 3, "%02x", md5_digest[n]);
+            md5_output += 2;
+        }
+    }
+
+    if (opts | CHECK_SHA1SUM) {
+        SHA1_Final(sha1_digest, sha1_ctx);
+        for (n = 0; n < SHA_DIGEST_LENGTH; n++) {
+            snprintf(sha1_output, 3, "%02x", sha1_digest[n]);
+            sha1_output += 2;
+        }
+    }
+
+    if (opts | CHECK_SHA256SUM) {
+        SHA256_Final(sha256_digest, sha256_ctx);
+        for (n = 0; n < SHA256_DIGEST_LENGTH; n++) {
+            snprintf(sha256_output, 3, "%02x", sha256_digest[n]);
+            sha256_output += 2;
+        }
+    }
+}
+
+/**
+ * @brief Calculate and store value hashes.
+ *
+ * @param entry FIM entry holding information from a value.
+ * @param configuration The confguration associated with the value.
+ * @param data_buffer Raw buffer holding the value's contents.
+ */
+void fim_registry_calculate_hashes(fim_entry *entry, registry *configuration, BYTE *data_buffer) {
+    MD5_CTX md5_ctx;
+    SHA_CTX sha1_ctx;
+    SHA256_CTX sha256_ctx;
+
+    char *string_it;
+    BYTE buffer[OS_SIZE_2048];
+    int length;
+
+    entry->registry_entry.value->hash_md5[0] = '\0';
+    entry->registry_entry.value->hash_sha1[0] = '\0';
+    entry->registry_entry.value->hash_sha256[0] = '\0';
+
+    if ((configuration->opts & (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM)) == 0) {
+        return;
+    }
+
+    /* Initialize configured hashes */
+    fim_registry_init_digests(configuration->opts, &md5_ctx, &sha1_ctx, &sha256_ctx);
+
+    switch (entry->registry_entry.value->type) {
+    case REG_SZ:
+    case REG_EXPAND_SZ:
+        fim_registry_update_digests(data_buffer, strlen((char *)data_buffer), configuration->opts, &md5_ctx, &sha1_ctx,
+                                    &sha256_ctx);
+        break;
+    case REG_MULTI_SZ:
+        /* Print multiple strings */
+        for (string_it = (char *)data_buffer; *string_it; string_it += strlen(string_it) + 1) {
+            fim_registry_update_digests((BYTE *)string_it, strlen(string_it), configuration->opts, &md5_ctx, &sha1_ctx,
+                                        &sha256_ctx);
+        }
+        break;
+    case REG_DWORD:
+        length = snprintf((char *)buffer, OS_SIZE_2048, "%08x", *((unsigned int *)data_buffer));
+        fim_registry_update_digests(buffer, length, configuration->opts, &md5_ctx, &sha1_ctx, &sha256_ctx);
+        break;
+    default:
+        for (unsigned int i = 0; i < entry->registry_entry.value->size; i++) {
+            length = snprintf((char *)buffer, 3, "%02x", (unsigned int)data_buffer[i] & 0xFF);
+            fim_registry_update_digests(buffer, length, configuration->opts, &md5_ctx, &sha1_ctx, &sha256_ctx);
+        }
+        break;
+    }
+
+    fim_registry_final_digests(configuration->opts, &md5_ctx, &sha1_ctx, &sha256_ctx,
+                               entry->registry_entry.value->hash_md5, entry->registry_entry.value->hash_sha1,
+                               entry->registry_entry.value->hash_sha256);
+}
+
+/**
  * @brief Gets all information from a given registry key.
  *
  * @param key_handle A handle to the key whose information we want.
@@ -499,6 +655,8 @@ void fim_registry_process_value_event(fim_entry *new,
     if (fim_check_restrict(value_path, configuration->filerestrict)) {
         return;
     }
+
+    fim_registry_calculate_hashes(new, configuration, data_buffer);
 
     saved->registry_entry.value = fim_db_get_registry_data(syscheck.database, new->registry_entry.key->id,
                                                            new->registry_entry.value->name);
