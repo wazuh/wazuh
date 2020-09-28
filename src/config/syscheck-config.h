@@ -268,7 +268,7 @@ typedef struct fim_registry_key {
     int arch;
 
     unsigned int scanned;
-    // path:perm:uid:user_name:gid:group_name
+    // perm:uid:user_name:gid:group_name:mtime
     os_sha1 checksum;
 } fim_registry_key;
 
@@ -283,7 +283,7 @@ typedef struct fim_registry_value_data {
 
     unsigned int scanned;
     time_t last_event;
-    //type:size:hash_sh1:mtime
+    // type:size:hash_md5:hash_sha1:hash_sha256
     os_sha1 checksum;
     fim_event_mode mode;
 } fim_registry_value_data;

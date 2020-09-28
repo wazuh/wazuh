@@ -18,7 +18,8 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/md5_sha1/md5_sha1_op.h"
-#include <openssl/evp.h>
+#include <openssl/md5.h>
+#include <openssl/sha.h>
 
 #ifdef WAZUH_UNIT_TESTING
 #include "unit_tests/wrappers/windows/winreg_wrappers.h"
@@ -174,6 +175,73 @@ int fim_registry_validate_path(const char *entry_path, const registry *configura
     }
 
     return 0;
+}
+
+/**
+ * @brief Compute checksum of a registry key
+ *
+ * @param data FIM registry key whose checksum will be computed
+ */
+void fim_registry_get_checksum_key(fim_registry_key *data) {
+    char *checksum = NULL;
+    int size;
+
+    size = snprintf(0,
+            0,
+            "%s:%s:%s:%s:%s:%u",
+            data->perm ? data->perm : "",
+            data->uid ? data->uid : "",
+            data->user_name ? data->user_name : "",
+            data->gid ? data->gid : "",
+            data->group_name ? data->group_name : "",
+            data->mtime);
+
+    os_calloc(size + 1, sizeof(char), checksum);
+    snprintf(checksum,
+            size + 1,
+            "%s:%s:%s:%s:%s:%u:%d",
+            data->perm ? data->perm : "",
+            data->uid ? data->uid : "",
+            data->gid ? data->gid : "",
+            data->user_name ? data->user_name : "",
+            data->group_name ? data->group_name : "",
+            data->mtime,
+            data->arch);
+
+    OS_SHA1_Str(checksum, -1, data->checksum);
+    free(checksum);
+}
+
+/**
+ * @brief Compute checksum of a registry value
+ *
+ * @param data FIM registry value whose checksum will be computed
+ */
+void fim_registry_get_checksum_value(fim_registry_value_data *data) {
+    char *checksum = NULL;
+    int size;
+
+    size = snprintf(0,
+            0,
+            "%u:%u:%s:%s:%s",
+            data->type,
+            data->size,
+            data->hash_md5 ,
+            data->hash_sha1,
+            data->hash_sha256);
+
+    os_calloc(size + 1, sizeof(char), checksum);
+    snprintf(checksum,
+            size + 1,
+            "%u:%u:%s:%s:%s",
+            data->type,
+            data->size,
+            data->hash_md5 ,
+            data->hash_sha1,
+            data->hash_sha256);
+
+    OS_SHA1_Str(checksum, -1, data->checksum);
+    free(checksum);
 }
 
 /**
