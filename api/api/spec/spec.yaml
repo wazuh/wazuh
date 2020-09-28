@@ -456,6 +456,16 @@ components:
             title: "Unauthorized"
             detail: "No authorization token provided"
 
+    InvalidCredentialsResponse:
+      description: "Response to report a problem with authentication"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RequestError'
+          example:
+            title: "Unauthorized"
+            detail: "Invalid credentials"
+
     InvalidHTTPMethodResponse:
       description: "Response to an invalid HTTP method"
       content:
@@ -3310,7 +3320,7 @@ components:
                 properties:
                   name:
                     type: string
-                    format: alphanumeric
+                    format: alphanumeric_symbols
                   platform:
                     type: string
                     format: alphanumeric
@@ -4052,6 +4062,15 @@ components:
       in: query
       name: 'rule_ids'
       description: "List of rule IDs (separated by comma)"
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Security_rule_id'
+    security_rule_ids_required:
+      in: query
+      name: 'rule_ids'
+      description: "List of rule IDs (separated by comma)"
+      required: true
       schema:
         type: array
         items:
@@ -7458,7 +7477,7 @@ paths:
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
                         access:
-                          max_login_attempts: 5
+                          max_login_attempts: 50
                           block_time: 300
                           max_request_per_minute: 300
                         logs:
@@ -9830,7 +9849,7 @@ paths:
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
                         access:
-                          max_login_attempts: 5
+                          max_login_attempts: 50
                           block_time: 300
                           max_request_per_minute: 300
                         logs:
@@ -12781,7 +12800,7 @@ paths:
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
+          $ref: '#/components/responses/InvalidCredentialsResponse'
         '403':
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
@@ -12845,6 +12864,14 @@ paths:
                 token: "<generated_token>"
         '400':
           $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/InvalidCredentialsResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/actions:
     get:
@@ -13549,17 +13576,20 @@ paths:
                       data:
                         $ref: '#/components/schemas/AllItemsResponsePolicies'
               example:
-                #TODO AffectedItemWazuhResult
                 data:
-                  id: 2
-                  name: 'normal_policy'
-                  policy:
-                    actions:
-                      - "agent:delete"
-                    resources:
-                      - "agent:id:001"
-                    effect: "allow"
-                  roles: []
+                  affected_items:
+                    - id: 2
+                      name: 'normal_policy'
+                      policy:
+                        actions:
+                          - "agent:delete"
+                        resources:
+                          - "agent:id:001"
+                        effect: "allow"
+                      roles: []
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
                 message: "Policy was successfully created"
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -13835,7 +13865,7 @@ paths:
         - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
         - $ref: '#/components/parameters/role_id'
-        - $ref: '#/components/parameters/security_rule_ids'
+        - $ref: '#/components/parameters/security_rule_ids_required'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -14265,8 +14295,20 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseUsers'
                 example:
                   data:
-                    # TODO AffectedItemWazuhResult
-                    message: "Users were successfully deleted"
+                    affected_items:
+                      - id: 100
+                        username: new_user
+                        allow_run_as: false
+                        roles: []
+                      - id: 102
+                        username: another_user
+                        allow_run_as: true
+                        roles:
+                          - 6
+                    total_affected_items: 2
+                    failed_items: []
+                    total_failed_items: 0
+                  message: "Users were successfully deleted"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14320,12 +14362,14 @@ paths:
                 example:
                   data:
                     affected_items:
-                      - username: wazuh-wui
+                      - id: 100
+                        username: wazuh-test
+                        allow_run_as: false
                         roles:
                           - 2
                     total_affected_items: 1
-                    total_failed_items: 0
                     failed_items: []
+                    total_failed_items: 0
                   message: "User was successfully updated"
         '400':
           $ref: '#/components/responses/ResponseError'

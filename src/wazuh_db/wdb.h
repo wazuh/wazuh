@@ -235,6 +235,31 @@ extern wdb_t * db_pool;
 extern int db_pool_size;
 extern OSHash * open_dbs;
 
+typedef struct os_data {
+    char *os_name;
+    char *os_version;
+    char *os_major;
+    char *os_minor;
+    char *os_codename;
+    char *os_platform;
+    char *os_build;
+    char *os_uname;
+    char *os_arch;
+} os_data;
+
+typedef struct agent_info_data {
+    int id;
+    os_data *osd;
+    char *version;
+    char *config_sum;
+    char *merged_sum;
+    char *manager_host;
+    char *node_name;
+    char *agent_ip;
+    char *labels;
+    char *sync_status;
+} agent_info_data;
+
 /**
  * @brief Opens global database and stores it in DB pool.
  *
@@ -358,6 +383,13 @@ int wdb_sca_check_delete_distinct(wdb_t * wdb,char * policy_id,int scan_id);
 int wdb_sca_policy_sha256(wdb_t * wdb, char *id, char * output);
 
 /**
+ * @brief Frees agent_info_data struct memory.
+ * 
+ * @param[in] agent_data Pointer to the struct to be freed.
+ */
+void wdb_free_agent_info_data(agent_info_data *agent_data);
+
+/**
  * @brief Insert agent to the global.db.
  * 
  * @param[in] id The agent ID.
@@ -400,44 +432,10 @@ int wdb_update_agent_name(int id, const char *name);
 /**
  * @brief Update agent data in global.db.
  * 
- * @param[in] id The agent ID.
- * @param[in] os_name The agent's operating system name.
- * @param[in] os_version The agent's operating system version.
- * @param[in] os_major The agent's operating system major version.
- * @param[in] os_minor The agent's operating system minor version.
- * @param[in] os_codename The agent's operating system code name.
- * @param[in] os_platform The agent's operating system platform.
- * @param[in] os_build The agent's operating system build number.
- * @param[in] os_uname The agent's operating system uname.
- * @param[in] os_arch The agent's operating system architecture.
- * @param[in] version The agent's version.
- * @param[in] config_sum The agent's configuration sum.
- * @param[in] merged_sum The agent's merged sum.
- * @param[in] manager_host The agent's manager host name.
- * @param[in] node_name The agent's manager node name.
- * @param[in] agent_ip The agent's IP address.
- * @param[in] labels The agent labels.
- * @param[in] sync_status The agent's synchronization status in cluster.
+ * @param[in] agent_data A pointer to an agent_info_data structure with the agent information.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_update_agent_data(int id, 
-                          const char *os_name,
-                          const char *os_version,
-                          const char *os_major,
-                          const char *os_minor,
-                          const char *os_codename,
-                          const char *os_platform,
-                          const char *os_build,
-                          const char *os_uname,
-                          const char *os_arch,
-                          const char *version,
-                          const char *config_sum,
-                          const char *merged_sum,
-                          const char *manager_host,
-                          const char *node_name,
-                          const char *agent_ip,
-                          const char *labels,
-                          const char *sync_status);
+int wdb_update_agent_data(agent_info_data *agent_data);
 
 /**
  * @brief Update agent's last keepalive ond modifies the cluster synchronization status.

@@ -184,7 +184,7 @@ int OS_RemoveAgent(const char *u_id) {
     }
     os_free(wdboutput);
 
-    if(wdb_remove_agent(atoi(u_id)) != OS_SUCCESS){
+    if (wdb_remove_agent(atoi(u_id)) != OS_SUCCESS) {
         merror("Could not remove the information stored in Wazuh DB of the agent %s.", u_id);
     }
 

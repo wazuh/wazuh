@@ -16,6 +16,7 @@ etc/ossec.mc
 src/Config.OS
 src/selinux/*.mod
 src/selinux/*.pp
+framework/wazuh/core/wazuh.json
 
 # Compiled programs
 src/agent-auth
@@ -92,6 +93,9 @@ etc/preloaded-vars.conf
 
 # unit tests
 src/unit_tests/build/*
+
+# api tests
+api/test/integration/_test_results
 
 # Old firewall-drop.sh (moved to default-firewall-drop.sh)
 active-response/firewall-drop.sh

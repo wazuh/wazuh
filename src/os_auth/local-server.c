@@ -316,7 +316,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
     if (id && (index = OS_IsAllowedID(&keys, id), index >= 0)) {
         if (force >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= force || antiquity < 0)) {
             id_exist = keys.keyentries[index]->id;
-            minfo("Duplicated ID '%s' (%s). Saving backup.", id, id_exist);
+            minfo("Duplicated ID '%s' (%s). Removing old agent.", id, id_exist);
             add_remove(keys.keyentries[index]);
             OS_DeleteKey(&keys, id_exist, 0);
         } else {
@@ -331,7 +331,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
         if (index = OS_IsAllowedIP(&keys, ip), index >= 0) {
             if (force >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= force || antiquity < 0)) {
                 id_exist = keys.keyentries[index]->id;
-                minfo("Duplicated IP '%s' (%s). Saving backup.", ip, id_exist);
+                minfo("Duplicated IP '%s' (%s). Removing old agent.", ip, id_exist);
                 add_remove(keys.keyentries[index]);
                 OS_DeleteKey(&keys, id_exist, 0);
             } else {
@@ -353,7 +353,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
     if (index = OS_IsAllowedName(&keys, name), index >= 0) {
         if (force >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= force || antiquity < 0)) {
             id_exist = keys.keyentries[index]->id;
-            minfo("Duplicated name '%s' (%s). Saving backup.", name, id_exist);
+            minfo("Duplicated name '%s' (%s). Removing old agent.", name, id_exist);
             add_remove(keys.keyentries[index]);
             OS_DeleteKey(&keys, id_exist, 0);
         } else {

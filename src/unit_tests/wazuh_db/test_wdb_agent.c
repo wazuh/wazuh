@@ -31,7 +31,7 @@
 #define WDBQUERY_SIZE OS_BUFFER_SIZE
 #define WDBOUTPUT_SIZE OS_MAXSTR
 
-int test_mode = 0;
+extern int test_mode;
 int set_payload = 0;
 
 char test_payload[OS_MAXSTR] = { 0 };
@@ -957,56 +957,68 @@ void test_wdb_update_agent_data_error_json(void **state)
 {
     int ret = 0;
     int id = 1;
-    char *os_name = "osname";
-    char *os_version = "osversion";
-    char *os_major = "osmajor";
-    char *os_minor = "osminor";
-    char *os_codename = "oscodename";
-    char *os_platform = "osplatform";
-    char *os_build = "osbuild";
-    char *os_uname = "osuname";
-    char *os_arch = "osarch";
-    char *version = "version";
-    char *config_sum = "csum";
-    char *merged_sum = "msum";
-    char *manager_host = "managerhost";
-    char *node_name = "nodename";
-    char *agent_ip = "agentip";
-    char *labels = "\"label1\":value1\n\"label2\":value2";
-    const char *sync_status = "syncreq";
+    agent_info_data *agent_data = NULL;
+
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+    os_calloc(1, sizeof(os_data), agent_data->osd);
+
+    agent_data->id = 1;
+    os_strdup("osname", agent_data->osd->os_name);
+    os_strdup("osversion", agent_data->osd->os_version);
+    os_strdup("osmajor", agent_data->osd->os_major);
+    os_strdup("osminor", agent_data->osd->os_minor);
+    os_strdup("oscodename", agent_data->osd->os_codename);
+    os_strdup("osplatform", agent_data->osd->os_platform);
+    os_strdup("osbuild", agent_data->osd->os_build);
+    os_strdup("osuname", agent_data->osd->os_uname);
+    os_strdup("osarch", agent_data->osd->os_arch);
+    os_strdup("version", agent_data->version);
+    os_strdup("csum", agent_data->config_sum);
+    os_strdup("msum", agent_data->merged_sum);
+    os_strdup("managerhost", agent_data->manager_host);
+    os_strdup("nodename", agent_data->node_name);
+    os_strdup("agentip", agent_data->agent_ip);
+    os_strdup("\"label1\":value1\n\"label2\":value2", agent_data->labels);
+    os_strdup("syncreq", agent_data->sync_status);
 
     will_return(__wrap_cJSON_CreateObject, NULL);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Error creating data JSON for Wazuh DB.");
 
-    ret = wdb_update_agent_data(id, os_name, os_version, os_major, os_minor, os_codename,
-                                   os_platform, os_build, os_uname, os_arch, version, config_sum,
-                                   merged_sum, manager_host, node_name, agent_ip, labels, sync_status);
+    ret = wdb_update_agent_data(agent_data);
 
     assert_int_equal(OS_INVALID, ret);
+
+    wdb_free_agent_info_data(agent_data);
 }
 
 void test_wdb_update_agent_data_error_socket(void **state)
 {
     int ret = 0;
     int id = 1;
-    char *os_name = "osname";
-    char *os_version = "osversion";
-    char *os_major = "osmajor";
-    char *os_minor = "osminor";
-    char *os_codename = "oscodename";
-    char *os_platform = "osplatform";
-    char *os_build = "osbuild";
-    char *os_uname = "osuname";
-    char *os_arch = "osarch";
-    char *version = "version";
-    char *config_sum = "csum";
-    char *merged_sum = "msum";
-    char *manager_host = "managerhost";
-    char *node_name = "nodename";
-    char *agent_ip = "agentip";
-    char *labels = "\"label1\":value1\n\"label2\":value2";
-    const char *sync_status = "syncreq";
+    agent_info_data *agent_data = NULL;
+
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+    os_calloc(1, sizeof(os_data), agent_data->osd);
+
+    agent_data->id = 1;
+    os_strdup("osname", agent_data->osd->os_name);
+    os_strdup("osversion", agent_data->osd->os_version);
+    os_strdup("osmajor", agent_data->osd->os_major);
+    os_strdup("osminor", agent_data->osd->os_minor);
+    os_strdup("oscodename", agent_data->osd->os_codename);
+    os_strdup("osplatform", agent_data->osd->os_platform);
+    os_strdup("osbuild", agent_data->osd->os_build);
+    os_strdup("osuname", agent_data->osd->os_uname);
+    os_strdup("osarch", agent_data->osd->os_arch);
+    os_strdup("version", agent_data->version);
+    os_strdup("csum", agent_data->config_sum);
+    os_strdup("msum", agent_data->merged_sum);
+    os_strdup("managerhost", agent_data->manager_host);
+    os_strdup("nodename", agent_data->node_name);
+    os_strdup("agentip", agent_data->agent_ip);
+    os_strdup("\"label1\":value1\n\"label2\":value2", agent_data->labels);
+    os_strdup("syncreq", agent_data->sync_status);
 
     const char *json_str = "{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
@@ -1086,34 +1098,40 @@ void test_wdb_update_agent_data_error_socket(void **state)
 \"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
 \"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}");
 
-    ret = wdb_update_agent_data(id, os_name, os_version, os_major, os_minor, os_codename,
-                                   os_platform, os_build, os_uname, os_arch, version, config_sum,
-                                   merged_sum, manager_host, node_name, agent_ip, labels, sync_status);
+    ret = wdb_update_agent_data(agent_data);
 
     assert_int_equal(OS_INVALID, ret);
+
+    wdb_free_agent_info_data(agent_data);
 }
 
 void test_wdb_update_agent_data_error_sql_execution(void **state)
 {
     int ret = 0;
     int id = 1;
-    char *os_name = "osname";
-    char *os_version = "osversion";
-    char *os_major = "osmajor";
-    char *os_minor = "osminor";
-    char *os_codename = "oscodename";
-    char *os_platform = "osplatform";
-    char *os_build = "osbuild";
-    char *os_uname = "osuname";
-    char *os_arch = "osarch";
-    char *version = "version";
-    char *config_sum = "csum";
-    char *merged_sum = "msum";
-    char *manager_host = "managerhost";
-    char *node_name = "nodename";
-    char *agent_ip = "agentip";
-    char *labels = "\"label1\":value1\n\"label2\":value2";
-    const char *sync_status = "syncreq";
+    agent_info_data *agent_data = NULL;
+
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+    os_calloc(1, sizeof(os_data), agent_data->osd);
+
+    agent_data->id = 1;
+    os_strdup("osname", agent_data->osd->os_name);
+    os_strdup("osversion", agent_data->osd->os_version);
+    os_strdup("osmajor", agent_data->osd->os_major);
+    os_strdup("osminor", agent_data->osd->os_minor);
+    os_strdup("oscodename", agent_data->osd->os_codename);
+    os_strdup("osplatform", agent_data->osd->os_platform);
+    os_strdup("osbuild", agent_data->osd->os_build);
+    os_strdup("osuname", agent_data->osd->os_uname);
+    os_strdup("osarch", agent_data->osd->os_arch);
+    os_strdup("version", agent_data->version);
+    os_strdup("csum", agent_data->config_sum);
+    os_strdup("msum", agent_data->merged_sum);
+    os_strdup("managerhost", agent_data->manager_host);
+    os_strdup("nodename", agent_data->node_name);
+    os_strdup("agentip", agent_data->agent_ip);
+    os_strdup("\"label1\":value1\n\"label2\":value2", agent_data->labels);
+    os_strdup("syncreq", agent_data->sync_status);
 
     const char *json_str = "{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
@@ -1193,34 +1211,40 @@ void test_wdb_update_agent_data_error_sql_execution(void **state)
 \"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
 \"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}");
 
-    ret = wdb_update_agent_data(id, os_name, os_version, os_major, os_minor, os_codename,
-                                   os_platform, os_build, os_uname, os_arch, version, config_sum,
-                                   merged_sum, manager_host, node_name, agent_ip, labels, sync_status);
+    ret = wdb_update_agent_data(agent_data);
 
     assert_int_equal(OS_INVALID, ret);
+
+    wdb_free_agent_info_data(agent_data);
 }
 
 void test_wdb_update_agent_data_error_result(void **state)
 {
     int ret = 0;
     int id = 1;
-    char *os_name = "osname";
-    char *os_version = "osversion";
-    char *os_major = "osmajor";
-    char *os_minor = "osminor";
-    char *os_codename = "oscodename";
-    char *os_platform = "osplatform";
-    char *os_build = "osbuild";
-    char *os_uname = "osuname";
-    char *os_arch = "osarch";
-    char *version = "version";
-    char *config_sum = "csum";
-    char *merged_sum = "msum";
-    char *manager_host = "managerhost";
-    char *node_name = "nodename";
-    char *agent_ip = "agentip";
-    char *labels = "\"label1\":value1\n\"label2\":value2";
-    const char *sync_status = "syncreq";
+    agent_info_data *agent_data = NULL;
+
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+    os_calloc(1, sizeof(os_data), agent_data->osd);
+
+    agent_data->id = 1;
+    os_strdup("osname", agent_data->osd->os_name);
+    os_strdup("osversion", agent_data->osd->os_version);
+    os_strdup("osmajor", agent_data->osd->os_major);
+    os_strdup("osminor", agent_data->osd->os_minor);
+    os_strdup("oscodename", agent_data->osd->os_codename);
+    os_strdup("osplatform", agent_data->osd->os_platform);
+    os_strdup("osbuild", agent_data->osd->os_build);
+    os_strdup("osuname", agent_data->osd->os_uname);
+    os_strdup("osarch", agent_data->osd->os_arch);
+    os_strdup("version", agent_data->version);
+    os_strdup("csum", agent_data->config_sum);
+    os_strdup("msum", agent_data->merged_sum);
+    os_strdup("managerhost", agent_data->manager_host);
+    os_strdup("nodename", agent_data->node_name);
+    os_strdup("agentip", agent_data->agent_ip);
+    os_strdup("\"label1\":value1\n\"label2\":value2", agent_data->labels);
+    os_strdup("syncreq", agent_data->sync_status);
 
     const char *json_str = "{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
@@ -1295,34 +1319,40 @@ void test_wdb_update_agent_data_error_result(void **state)
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
 
-    ret = wdb_update_agent_data(id, os_name, os_version, os_major, os_minor, os_codename,
-                                   os_platform, os_build, os_uname, os_arch, version, config_sum,
-                                   merged_sum, manager_host, node_name, agent_ip, labels, sync_status);
+    ret = wdb_update_agent_data(agent_data);
 
     assert_int_equal(OS_INVALID, ret);
+
+    wdb_free_agent_info_data(agent_data);
 }
 
 void test_wdb_update_agent_data_success(void **state)
 {
     int ret = 0;
     int id = 1;
-    char *os_name = "osname";
-    char *os_version = "osversion";
-    char *os_major = "osmajor";
-    char *os_minor = "osminor";
-    char *os_codename = "oscodename";
-    char *os_platform = "osplatform";
-    char *os_build = "osbuild";
-    char *os_uname = "osuname";
-    char *os_arch = "osarch";
-    char *version = "version";
-    char *config_sum = "csum";
-    char *merged_sum = "msum";
-    char *manager_host = "managerhost";
-    char *node_name = "nodename";
-    char *agent_ip = "agentip";
-    char *labels = "\"label1\":value1\n\"label2\":value2";
-    const char *sync_status = "syncreq";
+    agent_info_data *agent_data = NULL;
+
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+    os_calloc(1, sizeof(os_data), agent_data->osd);
+
+    agent_data->id = 1;
+    os_strdup("osname", agent_data->osd->os_name);
+    os_strdup("osversion", agent_data->osd->os_version);
+    os_strdup("osmajor", agent_data->osd->os_major);
+    os_strdup("osminor", agent_data->osd->os_minor);
+    os_strdup("oscodename", agent_data->osd->os_codename);
+    os_strdup("osplatform", agent_data->osd->os_platform);
+    os_strdup("osbuild", agent_data->osd->os_build);
+    os_strdup("osuname", agent_data->osd->os_uname);
+    os_strdup("osarch", agent_data->osd->os_arch);
+    os_strdup("version", agent_data->version);
+    os_strdup("csum", agent_data->config_sum);
+    os_strdup("msum", agent_data->merged_sum);
+    os_strdup("managerhost", agent_data->manager_host);
+    os_strdup("nodename", agent_data->node_name);
+    os_strdup("agentip", agent_data->agent_ip);
+    os_strdup("\"label1\":value1\n\"label2\":value2", agent_data->labels);
+    os_strdup("syncreq", agent_data->sync_status);
 
     const char *json_str = "{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
@@ -1395,11 +1425,11 @@ void test_wdb_update_agent_data_success(void **state)
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
-    ret = wdb_update_agent_data(id, os_name, os_version, os_major, os_minor, os_codename,
-                                   os_platform, os_build, os_uname, os_arch, version, config_sum,
-                                   merged_sum, manager_host, node_name, agent_ip, labels, sync_status);
+    ret = wdb_update_agent_data(agent_data);
 
     assert_int_equal(OS_SUCCESS, ret);
+
+    wdb_free_agent_info_data(agent_data);
 }
 
 /* Tests wdb_get_agent_info */

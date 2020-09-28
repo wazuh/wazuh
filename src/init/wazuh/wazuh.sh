@@ -103,10 +103,10 @@ WazuhUpgrade()
     rm -f $DIRECTORY/var/db/agents/*
 
     if [ -f "$DIRECTORY/var/db/global.db" ]; then
-        cp $DIRECTORY/var/db/global.db* $DIRECTORY/queue/db/
-        chmod 640 $DIRECTORY/queue/db/global.db*
-        chown ossec:ossec $DIRECTORY/queue/db/global.db*
+        cp $DIRECTORY/var/db/global.db $DIRECTORY/queue/db/
         if [ -f "$DIRECTORY/queue/db/global.db" ]; then
+            chmod 640 $DIRECTORY/queue/db/global.db
+            chown ossec:ossec $DIRECTORY/queue/db/global.db
             rm -f $DIRECTORY/var/db/global.db*
         else
             echo "Unable to move global.db during the upgrade"
