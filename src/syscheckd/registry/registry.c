@@ -210,6 +210,10 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
         }
     }
 
+    if (configuration->opts & CHECK_MTIME) {
+        key->mtime = get_registry_mtime(key_handle);
+    }
+
     return key;
 }
 

@@ -660,7 +660,7 @@ char *get_file_user(const char *path, char **sid) {
 
     result = get_user(path, sid, hFile, SE_FILE_OBJECT);
 
-    CloseHandle(hndl);
+    CloseHandle(hFile);
 
     return result;
 }
@@ -1096,6 +1096,35 @@ DWORD get_registry_permissions(HKEY hndl, char *perm_key) {
     }
 
     return ERROR_SUCCESS;
+}
+
+unsigned int FILETIME_to_POSIX(FILETIME ft) {
+    // takes the last modified date
+    LARGE_INTEGER date, adjust;
+    date.HighPart = ft.dwHighDateTime;
+    date.LowPart = ft.dwLowDateTime;
+
+    // 100-nanoseconds = milliseconds * 10000
+    adjust.QuadPart = 11644473600000 * 10000;
+
+    // removes the diff between 1970 and 1601
+    date.QuadPart -= adjust.QuadPart;
+
+    // converts back from 100-nanoseconds to seconds
+    return date.QuadPart / 10000000;
+}
+
+unsigned int get_registry_mtime(HKEY hndl) {
+    FILETIME lpftLastWriteTime;
+    DWORD dwRtnCode = 0;
+
+    dwRtnCode = RegQueryInfoKeyA(hndl, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &lpftLastWriteTime);
+
+    if (dwRtnCode != ERROR_SUCCESS) {
+        mwarn("Couldn't get modification time for registry key.");
+    }
+
+    return FILETIME_to_POSIX(lpftLastWriteTime);
 }
 
 /* Send a one-way message to Syscheck */
