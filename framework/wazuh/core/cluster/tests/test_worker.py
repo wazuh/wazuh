@@ -200,38 +200,41 @@ async def test_SyncWorker(caplog):
 async def test_SyncInfo(caplog):
     async def check_message(expected_messages, *args, **kwargs):
         with caplog.at_level(logging.DEBUG):
-            await sync_worker.sync(*args, **kwargs)
+            await sync_worker.retrieve_and_send(*args, **kwargs)
             for i, expected_message in enumerate(expected_messages):
                 assert caplog.records[-(i+1)].message == expected_message
 
     worker_handler = get_worker_handler()
 
     # Test if data_retriever exceptions are handled
-    sync_worker = worker.SyncInfo(worker=worker_handler, daemon='test', logger=logger,
-                                  data_retriever=lambda: exec('raise(WazuhException(1000))'))
+    sync_worker = worker.RetrieveAndSendToMaster(worker=worker_handler, destination_daemon='test', logger=logger,
+                                                 data_retriever=lambda: exec('raise(WazuhException(1000))'))
     await check_message(expected_messages=["Error obtaining data: Error 1000 - Wazuh Internal Error",
                                            "Obtaining data to be sent to master's test."])
 
     # Test params used in data_retriever are correct
     data_mock = MagicMock()
-    sync_worker = worker.SyncInfo(worker=worker_handler, daemon='test', logger=logger, data_retriever=data_mock)
+    sync_worker = worker.RetrieveAndSendToMaster(worker=worker_handler, destination_daemon='test', logger=logger,
+                                                 data_retriever=data_mock)
     await check_message(expected_messages=[], command='global sql test')
     data_mock.assert_called_once_with(command='global sql test')
 
     # Test expected exception is raised when calling LocalClient.execute().
-    sync_worker = worker.SyncInfo(worker=worker_handler, daemon='test', logger=logger, data_retriever=lambda: ['test'])
+    sync_worker = worker.RetrieveAndSendToMaster(worker=worker_handler, destination_daemon='test', logger=logger,
+                                                 data_retriever=lambda: ['test'])
     with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=WazuhException(1000)):
         await check_message(expected_messages=["Finished sending information to test (0 chunks sent).",
                                                "Error sending information to test: Error 1000 - Wazuh Internal Error"])
 
     # Test successful workflow for 2 chunks
-    sync_worker = worker.SyncInfo(worker=worker_handler, daemon='test', logger=logger,
-                                  msg_format='test_format {payload}', data_retriever=lambda: ['test1', 'test2'])
+    sync_worker = worker.RetrieveAndSendToMaster(worker=worker_handler, destination_daemon='test', logger=logger,
+                                                 msg_format='test_format {payload}',
+                                                 data_retriever=lambda: ['test1', 'test2'])
     with patch('wazuh.core.cluster.local_client.LocalClient.execute', return_value='ok') as mock_lc:
         await check_message(expected_messages=["Finished sending information to test (2 chunks sent).",
                                                "Master's test response: ok.",
                                                "Master's test response: ok.",
-                                               "Starting sending information to test."])
+                                               "Starting to send information to test."])
         calls = [call(command=b'sendasync', data=b'{"daemon_name": "test", "message": "test_format test1"}',
                       wait_for_complete=False),
                  call(command=b'sendasync', data=b'{"daemon_name": "test", "message": "test_format test2"}',
@@ -239,16 +242,18 @@ async def test_SyncInfo(caplog):
         mock_lc.assert_has_calls(calls)
 
     # Test unsuccessful workflow for 1 chunks
-    sync_worker = worker.SyncInfo(worker=worker_handler, daemon='test', logger=logger, expected_res='test_res',
-                                  n_retries=1, data_retriever=lambda: ['test1'], cmd=b'sync_a_m_w')
+    sync_worker = worker.RetrieveAndSendToMaster(worker=worker_handler, destination_daemon='test', logger=logger,
+                                                 expected_res='test_res', n_retries=1, data_retriever=lambda: ['test1'],
+                                                 cmd=b'sync_a_m_w')
     with patch('wazuh.core.cluster.local_client.LocalClient.execute', return_value='ok') as mock_lc:
         with patch('wazuh.core.cluster.common.Handler.send_request', return_value='ok'):
             await check_message(expected_messages=["Finished sending information to test (0 chunks sent).",
                                                    "Master response for b'sync_a_m_w_e' command: ok",
                                                    "Master's test response: ok.",
-                                                   "Response does not start with test_res. Retrying... 0.",
+                                                   "Error sending chunk to master's test. Response does not start with"
+                                                   " test_res. Retrying... 0.",
                                                    "Master's test response: ok.",
-                                                   "Starting sending information to test.",
+                                                   "Starting to send information to test.",
                                                    "Master response for b'sync_a_m_w_s' command: ok",
                                                    "Obtained 1 chunks of data to be sent.",
                                                    "Obtaining data to be sent to master's test."])
