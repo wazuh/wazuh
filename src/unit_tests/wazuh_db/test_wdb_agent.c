@@ -1986,6 +1986,24 @@ void test_wdb_remove_agent_error_socket(void **state)
 {
     int ret = 0;
     int id = 1;
+    cJSON *root = NULL;
+    cJSON *row = NULL;
+    cJSON *str = NULL;
+
+    root = __real_cJSON_CreateArray();
+    row = __real_cJSON_CreateObject();
+    str = __real_cJSON_CreateString("agent1");
+    __real_cJSON_AddItemToObject(row, "name", str);
+    __real_cJSON_AddItemToArray(root, row);
+
+    // Calling Wazuh DB in select-agent-name
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, root);
+
+    // Getting JSON data
+    will_return(__wrap_cJSON_GetObjectItem, str);
+
+    expect_function_call(__wrap_cJSON_Delete);
 
     char *query_str = "global delete-agent 1";
     const char *response = "err";
@@ -2004,12 +2022,32 @@ void test_wdb_remove_agent_error_socket(void **state)
     ret = wdb_remove_agent(id);
 
     assert_int_equal(OS_INVALID, ret);
+
+    __real_cJSON_Delete(root);
 }
 
 void test_wdb_remove_agent_error_sql_execution(void **state)
 {
     int ret = 0;
     int id = 1;
+    cJSON *root = NULL;
+    cJSON *row = NULL;
+    cJSON *str = NULL;
+
+    root = __real_cJSON_CreateArray();
+    row = __real_cJSON_CreateObject();
+    str = __real_cJSON_CreateString("agent1");
+    __real_cJSON_AddItemToObject(row, "name", str);
+    __real_cJSON_AddItemToArray(root, row);
+
+    // Calling Wazuh DB in select-agent-name
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, root);
+
+    // Getting JSON data
+    will_return(__wrap_cJSON_GetObjectItem, str);
+
+    expect_function_call(__wrap_cJSON_Delete);
 
     char *query_str = "global delete-agent 1";
     const char *response = "err";
@@ -2028,12 +2066,32 @@ void test_wdb_remove_agent_error_sql_execution(void **state)
     ret = wdb_remove_agent(id);
 
     assert_int_equal(OS_INVALID, ret);
+
+    __real_cJSON_Delete(root);
 }
 
 void test_wdb_remove_agent_error_result(void **state)
 {
     int ret = 0;
     int id = 1;
+    cJSON *root = NULL;
+    cJSON *row = NULL;
+    cJSON *str = NULL;
+
+    root = __real_cJSON_CreateArray();
+    row = __real_cJSON_CreateObject();
+    str = __real_cJSON_CreateString("agent1");
+    __real_cJSON_AddItemToObject(row, "name", str);
+    __real_cJSON_AddItemToArray(root, row);
+
+    // Calling Wazuh DB in select-agent-name
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, root);
+
+    // Getting JSON data
+    will_return(__wrap_cJSON_GetObjectItem, str);
+
+    expect_function_call(__wrap_cJSON_Delete);
 
     char *query_str = "global delete-agent 1";
     const char *response = "err";
@@ -2053,6 +2111,8 @@ void test_wdb_remove_agent_error_result(void **state)
     ret = wdb_remove_agent(id);
 
     assert_int_equal(OS_INVALID, ret);
+
+    __real_cJSON_Delete(root);
 }
 
 void test_wdb_remove_agent_error_delete_belongs_and_name(void **state)
