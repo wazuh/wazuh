@@ -23,6 +23,16 @@
 int fim_db_get_multiple_path(fdb_t *fim_sql, int index, FILE *fd);
 
 /**
+ * @brief Get entry data using path.
+ *
+ * @param fim_sql FIM database struct.
+ * @param file_path File path.
+ *
+ * @return FIM entry struct on success, NULL on error.
+ */
+fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path);
+
+/**
  * @brief Get all the paths asociated to an inode
  *
  * @param fim_sql FIM databse struct.
@@ -192,6 +202,15 @@ int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mu
  */
 int fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage,
                                  fim_event_mode mode, whodata_evt * w_evt);
+
+/**
+ * @brief Decodes a row from the database to be saved in a fim_entry structure.
+ *
+ * @param stmt The statement to be decoded.
+ *
+ * @return fim_entry* The filled structure.
+ */
+fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt);
 
 /**
  * @brief Get count of all entries in file_data table.

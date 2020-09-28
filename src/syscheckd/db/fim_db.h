@@ -16,6 +16,8 @@
 #include "../syscheck.h"
 #include "external/sqlite/sqlite3.h"
 #include "config/syscheck-config.h"
+#include "fim_db_files.h"
+#include "fim_db_registries.h"
 
 #define FIM_DB_MEMORY_PATH  ":memory:"
 
@@ -122,34 +124,20 @@ fim_tmp_file *fim_db_create_temp_file(int storage);
  */
 void fim_db_clean_file(fim_tmp_file **file, int storage);
 
+#ifdef WIN32
 /**
- * @brief Decodes a row from the registry database to be saved in a registry key structure.
+ * @brief Get a fim entry from a path in sync_view.
  *
- * @param stmt The statement to be decoded.
- * @param index Index of the statement.
- *
- * @return fim_entry* The filled structure.
- */
-fim_entry *fim_db_decode_registry(int index, sqlite3_stmt *stmt);
-
-/**
- * @brief Decodes a row from the database to be saved in a fim_entry structure.
- *
- * @param stmt The statement to be decoded.
- *
- * @return fim_entry* The filled structure.
- */
-fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt);
-
-/**
- * @brief Get entry data using path.
+ * The returned result is mapped to file type fim_entry, independently of
+ * the original type. This function is meant to be used with the sync mechanism.
  *
  * @param fim_sql FIM database struct.
- * @param file_path File path.
+ * @param path A string to the path of the object to map in a fim_entry.
  *
  * @return FIM entry struct on success, NULL on error.
  */
-fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path);
+fim_entry *fim_db_get_entry_from_sync_view(fdb_t *fim_sql, const char *path);
+#endif
 
 /**
  * @brief Get a registry key using its path.
@@ -196,14 +184,14 @@ fim_registry_key *fim_db_get_registry_key(fdb_t *fim_sql, const char *path, unsi
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_data_checksum_range(fdb_t *fim_sql,
-                               const char *start,
-                               const char *top,
-                               int n,
-                               EVP_MD_CTX *ctx_left,
-                               EVP_MD_CTX *ctx_right,
-                               char **str_pathlh,
-                               char **str_pathuh);
+int fim_db_get_checksum_range(fdb_t *fim_sql,
+                              const char *start,
+                              const char *top,
+                              int n,
+                              EVP_MD_CTX *ctx_left,
+                              EVP_MD_CTX *ctx_right,
+                              char **str_pathlh,
+                              char **str_pathuh);
 
 /**
  * @brief Initialize FIM databases.
@@ -310,7 +298,7 @@ void fim_db_callback_save_path(fdb_t *fim_sql, fim_entry *entry, int storage, vo
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-void fim_db_callback_save_string(fdb_t * fim_sql, char *str, int storage, void *arg);
+void fim_db_callback_save_string(fdb_t * fim_sql, const char *str, int storage, void *arg);
 
 /**
  * @brief Callback function: Entry checksum calculation.

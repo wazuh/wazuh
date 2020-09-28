@@ -16,6 +16,8 @@
 #define static
 #endif
 
+char **fim_db_decode_string_array(sqlite3_stmt *stmt);
+
 const char *SQL_STMT[] = {
     // Files
 #ifdef WIN32
@@ -85,6 +87,8 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_SET_REG_KEY_SCANNED] = "UPDATE registry_key SET scanned = 1 WHERE path = ? and arch = ?;",
     [FIMDB_STMT_GET_REG_KEY_ROWID] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, scanned, checksum FROM registry_key WHERE id = ?;",
     [FIMDB_STMT_GET_REG_DATA_ROWID] = "SELECT key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, scanned, last_event, checksum FROM registry_data WHERE key_id = ?;",
+    [FIMDB_STMT_GET_REG_KEY_SYNC_VIEW_ENTRY] = "SELECT reg_key, reg_value FROM sync_view WHERE path = ?;",
+    [FIMDB_STMT_GET_REG_FROM_SYNC_VIEW] = "SELECT registry_data.checksum, size, perm, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM registry_key INNER JOIN registry_data ON registry_key.id = registry_data.key_id WHERE arch = ? AND path = ? AND name = ?;",
 #endif
 };
 
@@ -286,6 +290,66 @@ void fim_db_clean_file(fim_tmp_file **file, int storage) {
     os_free((*file));
 }
 
+#ifdef WIN32
+fim_entry *fim_db_get_entry_from_sync_view(fdb_t *fim_sql, const char *path) {
+    char **keys;
+    fim_entry *entry;
+    sqlite3_stmt *keys_stmt = fim_sql->stmt[FIMDB_STMT_GET_REG_KEY_SYNC_VIEW_ENTRY];
+    sqlite3_stmt *data_stmt = fim_sql->stmt[FIMDB_STMT_GET_REG_FROM_SYNC_VIEW];
+
+    if (strncmp(path, "[x32]", 5) != 0 && strncmp(path, "[x64]", 5) != 0) {
+        return fim_db_get_path(fim_sql, path);
+    }
+
+    // If we got here, we are dealing with a registry entry.
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_REG_KEY_SYNC_VIEW_ENTRY);
+    sqlite3_bind_text(keys_stmt, 1, path, -1, NULL);
+    if (sqlite3_step(keys_stmt) != SQLITE_ROW) {
+        mwarn("No entry in sync view for '%s'", path);
+        return NULL;
+    }
+
+    keys = fim_db_decode_string_array(keys_stmt);
+
+    if (keys == NULL) {
+        mwarn("Failed to decode registry keys for '%s'", path);
+        return NULL;
+    }
+
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_REG_FROM_SYNC_VIEW);
+    sqlite3_bind_text(data_stmt, 1, path, 5, NULL);
+    sqlite3_bind_text(data_stmt, 2, keys[0], -1, NULL);
+    sqlite3_bind_text(data_stmt, 3, keys[1], -1, NULL);
+    if (sqlite3_step(data_stmt) != SQLITE_ROW) {
+        mwarn("Unable to retrieve data for '[%.5s]%s%s'", path, keys[0], keys[1]);
+        free_strarray(keys);
+        return NULL;
+    }
+
+    // We got the registry data, we trick the sync code into thinking this is a file
+    os_calloc(1, sizeof(fim_entry), entry);
+
+    entry->type = FIM_TYPE_FILE;
+    os_strdup(path, entry->file_entry.path);
+
+    os_calloc(1, sizeof(fim_file_data), entry->file_entry.data);
+    strncpy(entry->file_entry.data->checksum, (char *)sqlite3_column_text(data_stmt, 0), sizeof(os_sha1) - 1);
+    entry->file_entry.data->size = (unsigned int)sqlite3_column_int(data_stmt, 1);
+    sqlite_strdup((char *)sqlite3_column_text(data_stmt, 2), entry->file_entry.data->perm);
+    sqlite_strdup((char *)sqlite3_column_text(data_stmt, 3), entry->file_entry.data->uid);
+    sqlite_strdup((char *)sqlite3_column_text(data_stmt, 4), entry->file_entry.data->gid);
+    sqlite_strdup((char *)sqlite3_column_text(data_stmt, 5), entry->file_entry.data->user_name);
+    sqlite_strdup((char *)sqlite3_column_text(data_stmt, 6), entry->file_entry.data->group_name);
+    strncpy(entry->file_entry.data->hash_md5, (char *)sqlite3_column_text(data_stmt, 7), sizeof(os_md5) - 1);
+    strncpy(entry->file_entry.data->hash_sha1, (char *)sqlite3_column_text(data_stmt, 8), sizeof(os_sha1) - 1);
+    strncpy(entry->file_entry.data->hash_sha256, (char *)sqlite3_column_text(data_stmt, 9), sizeof(os_sha256) - 1);
+    entry->file_entry.data->mtime = (unsigned int)sqlite3_column_int(data_stmt, 10);
+
+    free_strarray(keys);
+    return entry;
+}
+#endif
+
 int fim_db_finalize_stmt(fdb_t *fim_sql) {
     int index;
     int retval = FIMDB_ERR;
@@ -403,16 +467,23 @@ int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query) {
     return FIMDB_OK;
 }
 
-void fim_db_callback_save_string(__attribute__((unused))fdb_t * fim_sql, char *str, int storage, void *arg) {
+void fim_db_callback_save_string(__attribute__((unused))fdb_t * fim_sql, const char *str, int storage, void *arg) {
+    char *base;
+
     if (str == NULL) {
         return;
     }
 
-    char *base = str;
+    base = wstr_escape_json(str);
+    if (base == NULL) {
+        merror("Error escaping '%s'", str);
+        return;
+    }
 
     if (storage == FIM_DB_DISK) { // disk storage enabled
         if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", base) != (strlen(base) + sizeof(char))) {
             merror("%s - %s", str, strerror(errno));
+            free(base);
             return;
         }
 
@@ -423,6 +494,7 @@ void fim_db_callback_save_string(__attribute__((unused))fdb_t * fim_sql, char *s
     }
 
     ((fim_tmp_file *) arg)->elements++;
+    free(base);
 }
 
 void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry *entry, int storage, void *arg) {
@@ -613,19 +685,19 @@ int fim_db_get_data_checksum(fdb_t *fim_sql, void *arg) {
                                      free, FIM_DB_CALLBACK_TYPE(fim_db_callback_calculate_checksum), 0, arg);
 }
 
-int fim_db_data_checksum_range(fdb_t *fim_sql,
-                               const char *start,
-                               const char *top,
-                               int n,
-                               EVP_MD_CTX *ctx_left,
-                               EVP_MD_CTX *ctx_right,
-                               char **str_pathlh,
-                               char **str_pathuh) {
+int fim_db_get_checksum_range(fdb_t *fim_sql,
+                              const char *start,
+                              const char *top,
+                              int n,
+                              EVP_MD_CTX *ctx_left,
+                              EVP_MD_CTX *ctx_right,
+                              char **str_pathlh,
+                              char **str_pathuh) {
     char **decoded_row = NULL;
     int m = n / 2;
     int i;
 
-    if (str_pathlh == NULL || str_pathuh == NULL) {
+    if (str_pathlh == NULL || str_pathuh == NULL || ctx_left == NULL || ctx_right == NULL) {
         return FIMDB_ERR;
     }
 
@@ -660,6 +732,8 @@ int fim_db_data_checksum_range(fdb_t *fim_sql,
         if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]) != SQLITE_ROW) {
             merror("Step error getting path range, second half 'start %s' 'top %s' (i:%d): %s", start, top, i,
                    sqlite3_errmsg(fim_sql->db));
+            os_free(str_pathlh);
+            os_free(str_pathuh);
             return FIMDB_ERR;
         }
         decoded_row = fim_db_decode_string_array(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]);
@@ -677,6 +751,8 @@ int fim_db_data_checksum_range(fdb_t *fim_sql,
 
     if (*str_pathlh == NULL || *str_pathuh == NULL) {
         merror("Failed to obtain required paths in order to form message");
+        os_free(str_pathlh);
+        os_free(str_pathuh);
         return FIMDB_ERR;
     }
 
@@ -706,6 +782,10 @@ int fim_db_get_path_range(fdb_t *fim_sql, const char *start, const char *top, fi
 char *fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it) {
     char *retval;
     char line[PATH_MAX + 1];
+
+    if (it == file->elements) {
+        return NULL;
+    }
 
     if (storage == FIM_DB_DISK) {
         if (it == 0 && fseek(file->fd, SEEK_SET, 0) != 0) {

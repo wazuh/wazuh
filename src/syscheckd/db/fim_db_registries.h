@@ -458,5 +458,15 @@ fim_registry_key *fim_db_decode_registry_key(sqlite3_stmt *stmt);
  */
 fim_registry_value_data * fim_db_decode_registry_value(sqlite3_stmt *stmt);
 
+/**
+ * @brief Decodes a row from the registry database to be saved in a registry key structure.
+ *
+ * @param stmt The statement to be decoded.
+ * @param index Index of the statement.
+ *
+ * @return fim_entry* The filled structure.
+ */
+fim_entry *fim_db_decode_registry(int index, sqlite3_stmt *stmt);
+
 #endif /* WIN32 */
 #endif /* FIM_DB_REGISTRIES_H */

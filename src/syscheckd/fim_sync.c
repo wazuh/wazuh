@@ -15,7 +15,7 @@
 #include <openssl/evp.h>
 #include "syscheck.h"
 #include "integrity_op.h"
-#include "db/fim_db_files.h"
+#include "db/fim_db.h"
 
 #ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when unit testing */
@@ -188,12 +188,10 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
         w_mutex_lock(&syscheck.fim_entry_mutex);
 #ifdef WIN32
         w_mutex_lock(&syscheck.fim_registry_mutex);
-#endif
-
-        entry = fim_db_get_path(syscheck.database, start);
-
-#ifdef WIN32
+        entry = fim_db_get_entry_from_sync_view(syscheck.database, start);
         w_mutex_unlock(&syscheck.fim_registry_mutex);
+#else
+        entry = fim_db_get_path(syscheck.database, start);
 #endif
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
@@ -221,7 +219,7 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
         w_mutex_lock(&syscheck.fim_registry_mutex);
 #endif
 
-        result = fim_db_data_checksum_range(syscheck.database, start, top, range_size, ctx_left, ctx_right,
+        result = fim_db_get_checksum_range(syscheck.database, start, top, range_size, ctx_left, ctx_right,
                                             &str_pathlh, &str_pathuh);
 
 #ifdef WIN32
@@ -259,9 +257,10 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
     }
 }
 
-void fim_sync_send_list(const char * start, const char * top) {
+void fim_sync_send_list(const char *start, const char *top) {
     fim_tmp_file *file = NULL;
     int it;
+    char *line;
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 #ifdef WIN32
@@ -290,24 +289,19 @@ void fim_sync_send_list(const char * start, const char * top) {
         return;
     }
 
-    for (it = 0; it < file->elements; it++) {
+    for (it = 0; (line = fim_db_read_line_from_file(file, syscheck.database_store, it)); it++) {
         fim_entry *entry;
         cJSON *file_data;
         char *plain;
-        char *line = fim_db_read_line_from_file(file, syscheck.database_store, it);
 
-        if (line == NULL) {
-            continue;
-        }
         w_mutex_lock(&syscheck.fim_entry_mutex);
+
 #ifdef WIN32
         w_mutex_lock(&syscheck.fim_registry_mutex);
-#endif
-
-        entry = fim_db_get_path(syscheck.database, line);
-
-#ifdef WIN32
+        entry = fim_db_get_entry_from_sync_view(syscheck.database, line);
         w_mutex_unlock(&syscheck.fim_registry_mutex);
+#else
+        entry = fim_db_get_path(syscheck.database, line);
 #endif
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
@@ -316,6 +310,7 @@ void fim_sync_send_list(const char * start, const char * top) {
             os_free(line);
             continue;
         }
+        os_free(line);
 
         file_data = fim_entry_json(entry->file_entry.path, entry->file_entry.data);
         plain = dbsync_state_msg("syscheck", file_data);
