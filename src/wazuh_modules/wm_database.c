@@ -205,10 +205,9 @@ void* wm_database_main(wm_database *data) {
 // Update manager information
 void wm_sync_manager() {
     agent_info_data *manager_data = NULL;
-    const char *path;
+    char *os_uname = NULL;
+    const char *path = NULL;
     struct stat buffer;
-    regmatch_t match[2];
-    int match_size;
 
     os_calloc(1, sizeof(agent_info_data), manager_data);
     os_calloc(1, sizeof(os_data), manager_data->osd);
@@ -232,61 +231,22 @@ void wm_sync_manager() {
 
     OS_ClearXML(&xml);
 
-    if ((manager_data->osd->os_uname = strdup(getuname()))) {
-        manager_data->osd->os_arch = get_os_arch(manager_data->osd->os_uname);
+    if ((os_uname = strdup(getuname()))) {
         char *ptr;
 
-        if ((ptr = strstr(manager_data->osd->os_uname, " - ")))
+        if ((ptr = strstr(os_uname, " - ")))
             *ptr = '\0';
 
-        if (manager_data->osd->os_name = strstr(manager_data->osd->os_uname, " ["), manager_data->osd->os_name){
-            *manager_data->osd->os_name = '\0';
-            manager_data->osd->os_name += 2;
-            if (manager_data->osd->os_version = strstr(manager_data->osd->os_name, ": "), manager_data->osd->os_version){
-                *manager_data->osd->os_version = '\0';
-                manager_data->osd->os_version += 2;
-                *(manager_data->osd->os_version + strlen(manager_data->osd->os_version) - 1) = '\0';
-
-                // os_major.os_minor (os_codename)
-                if (manager_data->osd->os_codename = strstr(manager_data->osd->os_version, " ("), manager_data->osd->os_codename){
-                    *manager_data->osd->os_codename = '\0';
-                    manager_data->osd->os_codename += 2;
-                    *(manager_data->osd->os_codename + strlen(manager_data->osd->os_codename) - 1) = '\0';
-                }
-
-                // Get os_major
-                if (w_regexec("^([0-9]+)\\.*", manager_data->osd->os_version, 2, match)) {
-                    match_size = match[1].rm_eo - match[1].rm_so;
-
-                    os_malloc(match_size +1, manager_data->osd->os_major);
-
-                    snprintf(manager_data->osd->os_major, match_size +1, "%.*s", match_size, manager_data->osd->os_version + match[1].rm_so);
-                }
-
-                // Get os_minor
-                if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", manager_data->osd->os_version, 2, match)) {
-                    match_size = match[1].rm_eo - match[1].rm_so;
-
-                    os_malloc(match_size +1, manager_data->osd->os_minor);
-
-                    snprintf(manager_data->osd->os_minor, match_size +1, "%.*s", match_size, manager_data->osd->os_version + match[1].rm_so);
-                }
-
-            } else
-                *(manager_data->osd->os_name + strlen(manager_data->osd->os_name) - 1) = '\0';
-
-            // os_name|os_platform
-            if (manager_data->osd->os_platform = strstr(manager_data->osd->os_name, "|"), manager_data->osd->os_platform){
-                *manager_data->osd->os_platform = '\0';
-                manager_data->osd->os_platform ++;
-            }
-        }
+        parse_uname_string(os_uname, manager_data->osd);
 
         manager_data->id = 0;
+        os_strdup(os_uname, manager_data->osd->os_uname);
         os_strdup(__ossec_name " " __ossec_version, manager_data->version);
         os_strdup("synced", manager_data->sync_status);
 
         wdb_update_agent_data(manager_data);
+
+        os_free(os_uname);
     }
 
     wdb_free_agent_info_data(manager_data);
