@@ -12,6 +12,7 @@ import struct
 from typing import List
 
 from wazuh.core import common
+from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE
 from wazuh.core.exception import WazuhInternalError, WazuhError
 
 DATE_FORMAT = re.compile(r'\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}')
@@ -22,7 +23,7 @@ class WazuhDBConnection:
     Represents a connection to the wdb socket
     """
 
-    def __init__(self, request_slice=20, max_size=6144):
+    def __init__(self, request_slice=500, max_size=6144):
         """
         Constructor
         """
@@ -79,6 +80,10 @@ class WazuhDBConnection:
         data_size = struct.unpack('<I', data[0:4])[0]
 
         data = self._recvall(data_size).decode(encoding='utf-8', errors='ignore').split(" ", 1)
+
+        # Max size socket buffer is 64KB
+        if data_size >= MAX_SOCKET_BUFFER_SIZE:
+            raise ValueError
 
         if data[0] == "err":
             raise WazuhError(2003, data[1])
@@ -221,7 +226,7 @@ class WazuhDBConnection:
             offset = int(re.compile(r".* offset (\d+)").match(query_lower).group(1))
             query_lower = query_lower.replace(" offset {}".format(offset), "")
 
-        if not re.search(r'.?count\(.*\).?', query_without_where):
+        if not re.search(r'.?select count\(.*\).?', query_without_where):
             lim = 0
             if 'limit' in query_lower:
                 lim = int(re.compile(r".* limit (\d+)").match(query_lower).group(1))
@@ -230,6 +235,13 @@ class WazuhDBConnection:
             regex = re.compile(r"\w+(?: \d*|)? sql select ([A-Z a-z0-9,*_` \.\-%\(\):\']+) from")
             select = regex.match(query_lower).group(1)
             countq = query_lower.replace(select, "count(*)", 1)
+            gb_regex = re.compile(r"(group by [^\s]+)")
+            try:
+                group_by = gb_regex.search(query_lower)
+                if group_by:
+                    countq = countq.replace(group_by.group(1), '')
+            except IndexError:
+                pass
             try:
                 total = list(self._send(countq)[0].values())[0]
             except IndexError:

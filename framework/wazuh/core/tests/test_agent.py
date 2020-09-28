@@ -2341,3 +2341,33 @@ def test_agent_remove_manual_ko(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock,
 
     if expected_exception == 1746:
         remove_mock.assert_any_call('{0}/etc/client.keys.tmp'.format(test_data_path))
+
+
+@pytest.mark.parametrize('system_resources, permitted_resources, filters, expected_result', [
+    ({'001', '002', '003', '004'}, ['001', '002', '005', '006'], None,
+     {'filters': {'rbac_ids': ['004', '003']}, 'rbac_negate': True}),
+    ({'001'}, ['002', '005', '006'], None,
+     {'filters': {'rbac_ids': ['001']}, 'rbac_negate': True}),
+    ({'group1', 'group3', 'group4'}, ['group1', 'group2', 'group5', 'group6'], None,
+     {'filters': {'rbac_ids': ['group3', 'group4']}, 'rbac_negate': True}),
+    ({'group1', 'group2', 'group3', 'group4', 'group5', 'group6'}, ['group1'], {'testing': 'first'},
+     {'filters': {'rbac_ids': {'group1'}, 'testing': 'first'}, 'rbac_negate': False})
+])
+def test_get_rbac_filters(system_resources, permitted_resources, filters, expected_result):
+    """Check that the function get_rbac_filters calculates correctly the list of allowed or denied
+
+    Parameters
+    ----------
+    system_resources : str
+        Id of the agent to be searched.
+    permitted_resources : int
+        Error code that is expected.
+    """
+    with patch('sqlite3.connect') as mock_db:
+        mock_db.return_value = test_data.global_db
+
+        result = get_rbac_filters(system_resources=system_resources,
+                                  permitted_resources=permitted_resources, filters=filters)
+        result['filters']['rbac_ids'] = set(result['filters']['rbac_ids'])
+        expected_result['filters']['rbac_ids'] = set(expected_result['filters']['rbac_ids'])
+        assert result == expected_result
