@@ -77,7 +77,7 @@ while($process_id -eq $null -And $counter -gt 0)
     $process_id = (Get-Process ossec-agent).id
 }
 write-output "$(Get-Date -format u) - Process ID: $($process_id)" >> .\upgrade\upgrade.log
-# Wait for agent state to be cleansed
+# Wait for agent state to be cleaned
 Start-Sleep 10
 # Check status file
 $status = Get-Content .\ossec-agent.state | select-string "status='connected'" -SimpleMatch
