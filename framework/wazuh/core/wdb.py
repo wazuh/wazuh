@@ -12,6 +12,7 @@ import struct
 from typing import List
 
 from wazuh.core import common
+from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE
 from wazuh.core.exception import WazuhInternalError, WazuhError
 
 DATE_FORMAT = re.compile(r'\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}')
@@ -81,7 +82,7 @@ class WazuhDBConnection:
         data = self.__conn.recv(data_size).decode(encoding='utf-8', errors='ignore').split(" ", 1)
 
         # Max size socket buffer is 64KB
-        if data_size >= 64 * 1024:
+        if data_size >= MAX_SOCKET_BUFFER_SIZE:
             raise ValueError
 
         if data[0] == "err":

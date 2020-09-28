@@ -44,9 +44,8 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                               default_sort_order='ASC', query=query, backend=backend,
                               min_select_fields=min_select_fields, count=count, get_data=get_data,
                               date_fields={'lastKeepAlive', 'dateAdd'}, extra_fields={'internal_key'},
-                              distinct=distinct)
+                              distinct=distinct, rbac_negate=rbac_negate)
         self.remove_extra_fields = remove_extra_fields
-        self.rbac_negate = rbac_negate
 
     def _filter_status(self, status_filter):
         # set the status value to lowercase in case it's a string. If not, the value will be return unmodified.
@@ -194,9 +193,9 @@ class WazuhDBQueryGroup(WazuhDBQuery):
                               select=select,
                               filters=filters, fields={'name': 'name'},
                               default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
-                              backend=backend, min_select_fields=min_select_fields, count=count, get_data=get_data)
+                              backend=backend, min_select_fields=min_select_fields, count=count, get_data=get_data,
+                              rbac_negate=rbac_negate)
         self.remove_extra_fields = remove_extra_fields
-        self.rbac_negate = rbac_negate
 
     def _add_select_to_query(self):
         pass

@@ -935,7 +935,7 @@ class WazuhDBQuery(object):
 
     def __init__(self, offset, limit, table, sort, search, select, query, fields, default_sort_field, count,
                  get_data, backend, default_sort_order='ASC', filters={}, min_select_fields=set(), date_fields=set(),
-                 extra_fields=set(), distinct=False):
+                 extra_fields=set(), distinct=False, rbac_negate=True):
         """
         Wazuh DB Query constructor
 
@@ -959,6 +959,7 @@ class WazuhDBQuery(object):
         :param distinct: Look for distinct values.
         :param agent_id: Agent to fetch information about.
         :param distinct: Look for distinct values
+        :param rbac_negate: Whether to use IN or NOT IN on RBAC resources
         """
         self.offset = offset
         self.limit = limit
@@ -1001,6 +1002,7 @@ class WazuhDBQuery(object):
         self.legacy_filters = filters
         self.inverse_fields = {v: k for k, v in self.fields.items()}
         self.backend = backend
+        self.rbac_negate = rbac_negate
 
     def _clean_filter(self, query_filter):
         # Replace special characters with wildcards
