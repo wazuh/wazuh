@@ -262,7 +262,6 @@ TEST_F(DBSyncTest, dbsyncAddTableRelationship)
 TEST_F(DBSyncTest, AddTableRelationshipIncorrectJSON)
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
-    const auto insertionSqlStmt{ R"({"table":"processes","data":[{"pid":4,"name":"System"}]})"};
 
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);

@@ -13,7 +13,7 @@ if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14")
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")

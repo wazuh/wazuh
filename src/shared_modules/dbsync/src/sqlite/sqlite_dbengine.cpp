@@ -134,21 +134,21 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
     {
         [](const std::vector<std::string>& primaryKeyList,
            const nlohmann::json& result,
-           const nlohmann::json& data,
-           const bool inTransaction)
+           const nlohmann::json& dataParam,
+           const bool inTransactionParam)
         {
             nlohmann::json ret;
-            if (inTransaction)
+            if (inTransactionParam)
             {
                 if (result.empty())
                 {
                     std::for_each(primaryKeyList.begin(),
                                   primaryKeyList.end(),
-                                  [&data, &ret](const std::string& pKey)
+                                  [&dataParam, &ret](const std::string& pKey)
                                   {
-                                        if(data.find(pKey) != data.end())
+                                        if(dataParam.find(pKey) != dataParam.end())
                                         {
-                                            ret[pKey] = data[pKey];
+                                            ret[pKey] = dataParam[pKey];
                                         }
                                   });
                 }
@@ -221,20 +221,20 @@ void SQLiteDBEngine::initializeStatusField(const nlohmann::json& tableNames)
             if (fields.end() == it)
             {
                 m_tableFields.erase(table);
-                const auto& stmtAdd { getStatement(std::string("ALTER TABLE " +
-                                                               table +
-                                                               " ADD COLUMN ") + 
-                                                               STATUS_FIELD_NAME + 
-                                                               " " +
-                                                               STATUS_FIELD_TYPE +
-                                                               " DEFAULT 1;")};
+                const auto& stmtAdd { getStatement("ALTER TABLE " +
+                                                   table +
+                                                   " ADD COLUMN " + 
+                                                   STATUS_FIELD_NAME + 
+                                                   " " +
+                                                   STATUS_FIELD_TYPE +
+                                                   " DEFAULT 1;")};
                 stmtAdd->step();
             }
-            const auto& stmtInit { getStatement(std::string("UPDATE " +
-                                                            table +
-                                                            " SET ") +
-                                                            STATUS_FIELD_NAME +
-                                                            "=0;")};
+            const auto& stmtInit { getStatement("UPDATE " +
+                                                table +
+                                                " SET " +
+                                                STATUS_FIELD_NAME +
+                                                "=0;")};
             stmtInit->step();
         } 
         else
@@ -255,11 +255,11 @@ void SQLiteDBEngine::deleteRowsByStatusField(const nlohmann::json& tableNames)
 
         if (0 != loadTableData(table)) 
         {
-            const auto& stmt { getStatement(std::string("DELETE FROM " +
-                                                        table +
-                                                        " WHERE ") +
-                                                        STATUS_FIELD_NAME +
-                                                        "=0;")};
+            const auto& stmt { getStatement("DELETE FROM " +
+                                            table +
+                                            " WHERE " +
+                                            STATUS_FIELD_NAME +
+                                            "=0;")};
             stmt->step();
         }
         else
@@ -1047,7 +1047,7 @@ std::string SQLiteDBEngine::buildLeftOnlyQuery(const std::string& t1,
     onMatchList = onMatchList.substr(0, onMatchList.size()-5);
     nullFilterList = nullFilterList.substr(0, nullFilterList.size()-5);
 
-    return std::string("SELECT "+fieldsList+" FROM "+t1+" t1 LEFT JOIN "+t2+" t2 ON "+onMatchList+" WHERE "+nullFilterList+";");
+    return "SELECT "+fieldsList+" FROM "+t1+" t1 LEFT JOIN "+t2+" t2 ON "+onMatchList+" WHERE "+nullFilterList+";";
 } 
 
 bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
