@@ -31,8 +31,6 @@ void test_get_os_arch_x86_64(void **state)
 {
     char* uname = "Linux |debian10 |4.19.0-9-amd64 |#1 SMP Debian |x86_64";
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Detected architecture from Linux |debian10 |4.19.0-9-amd64 |#1 SMP Debian |x86_64: x86_64");
-
     char* os_arch = get_os_arch(uname);
 
     assert_string_equal("x86_64", os_arch);
