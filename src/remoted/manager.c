@@ -240,7 +240,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
 
             // Updating version and keepalive in global.db
             result = wdb_update_agent_data(agent_data);
-            
+
             if (OS_INVALID == result)
                 mwarn("Unable to update information in global.db for agent: %s", key->id);
 

@@ -22,6 +22,7 @@ typedef struct _agent_info {
     char *rootcheck_endtime;
     char *os;
     char *version;
+    char *config_sum;
     char *merged_sum;
 } agent_info;
 

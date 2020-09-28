@@ -1112,7 +1112,7 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const c
     /* Allocate memory for the info structure */   
     os_calloc(1, sizeof(agent_info), agt_info);
 
-    json_field = cJSON_GetObjectItem(json_agt_info->child, "os_name");
+    json_field = cJSON_GetObjectItem(json_agt_info->child, "os_uname");
     if(cJSON_IsString(json_field) && json_field->valuestring != NULL){
         os_strdup(json_field->valuestring, agt_info->os);
     }
@@ -1120,6 +1120,11 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const c
     json_field = cJSON_GetObjectItem(json_agt_info->child, "version");
     if(cJSON_IsString(json_field) && json_field->valuestring != NULL){
         os_strdup(json_field->valuestring, agt_info->version);
+    }
+
+    json_field = cJSON_GetObjectItem(json_agt_info->child, "config_sum");
+    if(cJSON_IsString(json_field) && json_field->valuestring != NULL){
+        os_strdup(json_field->valuestring, agt_info->config_sum);
     }
 
     json_field = cJSON_GetObjectItem(json_agt_info->child, "merged_sum");

@@ -936,6 +936,9 @@ int wdb_remove_agent(int id) {
     char *payload = NULL;
     char *name = NULL;
 
+    // Getting the agent's name before removing it from global.db
+    name = wdb_get_agent_name(id);
+
     snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DELETE_AGENT], id);
     result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
 
@@ -943,7 +946,6 @@ int wdb_remove_agent(int id) {
         case OS_SUCCESS:
             if (WDBC_OK == wdbc_parse_result(wdboutput, &payload)) {
                 result = wdb_delete_agent_belongs(id);
-                name = wdb_get_agent_name(id);
 
                 result = ((OS_SUCCESS == result) && name) ? wdb_remove_agent_db(id, name) : OS_INVALID;
 
