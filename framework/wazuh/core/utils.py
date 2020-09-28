@@ -1237,12 +1237,11 @@ class WazuhDBQuery(object):
             return self._format_data_into_dictionary()
 
     def oversized_run(self):
-        """Builds the query and runs it on the database"""
+        """Method used when the size of the query exceeds the maximum available in the communication.
+        Builds the query and runs it on the database"""
         self._add_select_to_query()
         original_select = self.select
-
         rbac_ids = set(self.legacy_filters.pop('rbac_ids', set()))
-
         self._add_filters_to_query()
         self._add_search_to_query()
         self._add_sort_to_query()
@@ -1274,10 +1273,8 @@ class WazuhDBQuery(object):
         except NameError:
             pass
 
-        if self.rbac_negate:
-            count = len(resources) - len(set(rbac_ids).intersection(set(resources)))
-        else:
-            count = len(set(rbac_ids).intersection(set(resources)))
+        count = len(resources) - len(set(rbac_ids).intersection(set(resources))) if self.rbac_negate else \
+            len(set(rbac_ids).intersection(set(resources)))
 
         self.select = original_select
         self.reset()
@@ -1289,6 +1286,8 @@ class WazuhDBQuery(object):
         return result
 
     def run(self):
+        """Generic function that will redirect the information
+        to the function that needs to be used for the specific case"""
         rbac_ids = set(self.legacy_filters.get('rbac_ids', set()))
         return self.general_run() if len(str(rbac_ids)) < common.MAX_QUERY_FILTERS_RESERVED_SIZE else \
             self.oversized_run()
