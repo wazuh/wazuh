@@ -17,7 +17,7 @@
     node_name: master-node
   extra_params:
     agent_id: 9
-    last_connection_in_days: 2
+    days_from_last_connection: 2
 
 
 - new_agent_info:
@@ -38,4 +38,4 @@
     node_name: master-node
   extra_params:
     agent_id: 10
-    last_connection_in_days: 2
+    days_from_last_connection: 2

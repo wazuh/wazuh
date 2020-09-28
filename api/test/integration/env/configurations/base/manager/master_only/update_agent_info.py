@@ -32,29 +32,23 @@ def create_and_send_query(agent_info_file):
     with open(agent_info_file) as f:
         agent_info = yaml.safe_load(f)
 
-    with open('/configuration_files/output_agent_info', 'w+') as f:
-        for agent in agent_info:
-            # Add last_keepalive key-value with epoch time
-            try:
-                agent['new_agent_info']['last_keepalive'] = int(time.time()) - \
-                                                            3600*24*int(agent['extra_params']['last_connection_in_days'])
-            except KeyError:
-                pass
+    for agent in agent_info:
+        # Add last_keepalive with epoch time
+        try:
+            agent['new_agent_info']['last_keepalive'] = int(time.time()) - \
+                                                        3600*24*int(agent['extra_params']['days_from_last_connection'])
+        except KeyError:
+            pass
 
-            f.write(f'GLOBAL.DB before updating agent-info: \n ' +
-                    f'{json.dumps(json.loads(send_msg("global sql select * from agent")[1]), indent=4, sort_keys=True)}')
+        # Prepare query with all the requested fields
+        query = "UPDATE agent SET " + \
+                ", ".join(['{0} = {1}'.format(key, value) if isinstance(value, int)
+                           else '{0} = "{1}"'.format(key, value)
+                           for key, value in agent['new_agent_info'].items()]) + \
+                f" WHERE id = {agent['extra_params']['agent_id']}"
 
-            # Prepare query with all the requested fields
-            query = "UPDATE agent SET " + \
-                    ", ".join(['{0} = {1}'.format(key, value)
-                               if isinstance(value, int) else '{0} = "{1}"'.format(key, value)
-                               for key, value in agent['new_agent_info'].items()]) + \
-                    f" WHERE id = {agent['extra_params']['agent_id']}"
-
-            # Send update query
-            f.write(str(send_msg("global sql " + query)))
-            f.write(f'GLOBAL.DB after updating agent-info: \n ' +
-                    f'{json.dumps(json.loads(send_msg("global sql select * from agent")[1]), indent=4, sort_keys=True)}')
+        # Send query to wdb
+        send_msg("global sql " + query)
 
 
 if __name__ == "__main__":
