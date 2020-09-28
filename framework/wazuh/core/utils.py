@@ -1239,7 +1239,14 @@ class WazuhDBQuery(object):
             self._add_select_to_query()
             self._execute_data_query()
             try:
-                agent_ids = set(map(lambda d: str(d['id']), self._data))
+                resource = None
+                if self.__class__.__name__ == 'WazuhDBQueryAgents':
+                    resource = 'id'
+                elif self.__class__.__name__ == 'WazuhDBQueryGroups':
+                    resource = 'name'
+                else:
+                    raise WazuhInternalError(1123)
+                agent_ids = set(map(lambda d: str(d[resource]), self._data))
                 if negate:
                     rbac_ids = agent_ids.difference(set(rbac_ids))
                 else:
