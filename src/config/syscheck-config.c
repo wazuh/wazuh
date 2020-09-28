@@ -123,165 +123,191 @@ void organize_syscheck_dirs(syscheck_config *syscheck)
     }
 }
 
-void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg, const char *restrictfile,
-                         int recursion_limit, const char *tag, const char *link, int diff_size) {
+void dump_syscheck_file(syscheck_config *syscheck,
+                        char *entry,
+                        int vals,
+                        const char *restrictfile,
+                        int recursion_limit,
+                        const char *tag,
+                        const char *link,
+                        int diff_size) {
 
     unsigned int pl = 0;
     int overwrite = -1;
     int j;
 
-    if (!reg) {
-        for (j = 0; syscheck->dir && syscheck->dir[j]; j++) {
-            /* Duplicate entry */
-            if (strcmp(syscheck->dir[j], entry) == 0) {
-                mdebug2("Overwriting the file entry %s", entry);
-                overwrite = j;
-            }
-        }
-
-        /* If overwrite < 0, syscheck entry is added at the end */
-        if(overwrite != -1) {
-            pl = overwrite;
-        }
-
-        if (syscheck->dir == NULL) {
-            os_calloc(2, sizeof(char *), syscheck->dir);
-            os_calloc(strlen(entry) + 2, sizeof(char), syscheck->dir[0]);
-            if (link && !(CHECK_FOLLOW & vals)) {
-                // Taking the link itself if follow_symbolic_link is not enabled
-                snprintf(syscheck->dir[0], strlen(link) + 1, "%s", link);
-            }
-            else {
-                snprintf(syscheck->dir[0], strlen(entry) + 1, "%s", entry);
-            }
-            syscheck->dir[1] = NULL;
-
-#ifdef WIN32
-            os_calloc(2, sizeof(whodata_dir_status), syscheck->wdata.dirs_status);
-#endif
-            os_calloc(2, sizeof(char *), syscheck->symbolic_links);
-            syscheck->symbolic_links[0] = NULL;
-            syscheck->symbolic_links[1] = NULL;
-            if (link) {
-                os_strdup(link, syscheck->symbolic_links[0]);
-            }
-
-            os_calloc(2, sizeof(int), syscheck->opts);
-            syscheck->opts[0] = vals;
-
-            os_calloc(2, sizeof(int), syscheck->diff_size_limit);
-
-            // If diff_size has not been set in read_attr, assign -1 to modify it later with the global value
-            if (diff_size == -1) {
-                syscheck->diff_size_limit[0] = -1;
-            }
-            else {
-                syscheck->diff_size_limit[0] = diff_size;
-            }
-
-            os_calloc(2, sizeof(OSMatch *), syscheck->filerestrict);
-
-            os_calloc(2, sizeof(int), syscheck->recursion_level);
-            syscheck->recursion_level[0] = recursion_limit;
-
-            os_calloc(2, sizeof(char *), syscheck->tag);
-        } else if (overwrite < 0) {
-            while (syscheck->dir[pl] != NULL) {
-                pl++;
-            }
-            os_realloc(syscheck->dir, (pl + 2) * sizeof(char *), syscheck->dir);
-            syscheck->dir[pl + 1] = NULL;
-            os_calloc(strlen(entry) + 2, sizeof(char), syscheck->dir[pl]);
-            if (link && !(CHECK_FOLLOW & vals)) {
-                // Taking the link itself if follow_symbolic_link is not enabled
-                snprintf(syscheck->dir[pl], strlen(link) + 1, "%s", link);
-            }
-            else {
-                snprintf(syscheck->dir[pl], strlen(entry) + 1, "%s", entry);
-            }
-
-#ifdef WIN32
-            os_realloc(syscheck->wdata.dirs_status, (pl + 2) * sizeof(whodata_dir_status),
-                    syscheck->wdata.dirs_status);
-            memset(syscheck->wdata.dirs_status + pl, 0, 2 * sizeof(whodata_dir_status));
-#endif
-
-            os_realloc(syscheck->symbolic_links, (pl + 2) * sizeof(char *), syscheck->symbolic_links);
-            syscheck->symbolic_links[pl] = NULL;
-            syscheck->symbolic_links[pl + 1] = NULL;
-            if (link) {
-                os_strdup(link, syscheck->symbolic_links[pl]);
-            }
-
-            os_realloc(syscheck->opts, (pl + 2) * sizeof(int),
-                       syscheck->opts);
-            syscheck->opts[pl] = vals;
-            syscheck->opts[pl + 1] = 0;
-
-            os_realloc(syscheck->diff_size_limit, (pl + 2) * sizeof(int), syscheck->diff_size_limit);
-
-            if (diff_size == -1) {
-                syscheck->diff_size_limit[pl] = -1;
-            }
-            else {
-                syscheck->diff_size_limit[pl] = diff_size;
-            }
-
-            syscheck->diff_size_limit[pl + 1] = 0;
-
-            os_realloc(syscheck->filerestrict, (pl + 2) * sizeof(OSMatch *),
-                    syscheck->filerestrict);
-            syscheck->filerestrict[pl] = NULL;
-            syscheck->filerestrict[pl + 1] = NULL;
-
-            os_realloc(syscheck->recursion_level, (pl + 2) * sizeof(int),
-                       syscheck->recursion_level);
-            syscheck->recursion_level[pl] = recursion_limit;
-            syscheck->recursion_level[pl + 1] = 0;
-
-            os_realloc(syscheck->tag, (pl + 2) * sizeof(char *),
-                       syscheck->tag);
-            syscheck->tag[pl] = NULL;
-            syscheck->tag[pl + 1] = NULL;
-        } else {
-            if (link) {
-                os_free(syscheck->symbolic_links[pl]);
-                os_strdup(link, syscheck->symbolic_links[pl]);
-            }
-            syscheck->opts[pl] = vals;
-
-            if (diff_size == -1) {
-                syscheck->diff_size_limit[pl] = -1;
-            }
-            else {
-                syscheck->diff_size_limit[pl] = diff_size;
-            }
-
-            os_free(syscheck->filerestrict[pl]);
-            syscheck->recursion_level[pl] = recursion_limit;
-            os_free(syscheck->tag[pl]);
-        }
-
-        if (restrictfile) {
-            os_calloc(1, sizeof(OSMatch), syscheck->filerestrict[pl]);
-            if (!OSMatch_Compile(restrictfile, syscheck->filerestrict[pl], 0)) {
-                OSMatch *ptm;
-
-                ptm = syscheck->filerestrict[pl];
-
-                merror(REGEX_COMPILE, restrictfile, ptm->error);
-                free(syscheck->filerestrict[pl]);
-                syscheck->filerestrict[pl] = NULL;
-            }
-        }
-        if (tag) {
-            os_strdup(tag, syscheck->tag[pl]);
+    for (j = 0; syscheck->dir && syscheck->dir[j]; j++) {
+        /* Duplicate entry */
+        if (strcmp(syscheck->dir[j], entry) == 0) {
+            mdebug2("Overwriting the file entry %s", entry);
+            overwrite = j;
         }
     }
+
+    /* If overwrite < 0, syscheck entry is added at the end */
+    if (overwrite != -1) {
+        pl = overwrite;
+    }
+
+    if (syscheck->dir == NULL) {
+        os_calloc(2, sizeof(char *), syscheck->dir);
+        os_calloc(strlen(entry) + 2, sizeof(char), syscheck->dir[0]);
+        if (link && !(CHECK_FOLLOW & vals)) {
+            // Taking the link itself if follow_symbolic_link is not enabled
+            snprintf(syscheck->dir[0], strlen(link) + 1, "%s", link);
+        } else {
+            snprintf(syscheck->dir[0], strlen(entry) + 1, "%s", entry);
+        }
+        syscheck->dir[1] = NULL;
+
 #ifdef WIN32
-    else {
-        if (syscheck->registry == NULL) {
-            os_calloc(2, sizeof(registry), syscheck->registry);
+        os_calloc(2, sizeof(whodata_dir_status), syscheck->wdata.dirs_status);
+#endif
+        os_calloc(2, sizeof(char *), syscheck->symbolic_links);
+        syscheck->symbolic_links[0] = NULL;
+        syscheck->symbolic_links[1] = NULL;
+        if (link) {
+            os_strdup(link, syscheck->symbolic_links[0]);
+        }
+
+        os_calloc(2, sizeof(int), syscheck->opts);
+        syscheck->opts[0] = vals;
+
+        os_calloc(2, sizeof(int), syscheck->diff_size_limit);
+
+        // If diff_size has not been set in read_attr, assign -1 to modify it later with the global value
+        if (diff_size == -1) {
+            syscheck->diff_size_limit[0] = -1;
+        } else {
+            syscheck->diff_size_limit[0] = diff_size;
+        }
+
+        os_calloc(2, sizeof(OSMatch *), syscheck->filerestrict);
+
+        os_calloc(2, sizeof(int), syscheck->recursion_level);
+        syscheck->recursion_level[0] = recursion_limit;
+
+        os_calloc(2, sizeof(char *), syscheck->tag);
+    } else if (overwrite < 0) {
+        while (syscheck->dir[pl] != NULL) {
+            pl++;
+        }
+        os_realloc(syscheck->dir, (pl + 2) * sizeof(char *), syscheck->dir);
+        syscheck->dir[pl + 1] = NULL;
+        os_calloc(strlen(entry) + 2, sizeof(char), syscheck->dir[pl]);
+        if (link && !(CHECK_FOLLOW & vals)) {
+            // Taking the link itself if follow_symbolic_link is not enabled
+            snprintf(syscheck->dir[pl], strlen(link) + 1, "%s", link);
+        } else {
+            snprintf(syscheck->dir[pl], strlen(entry) + 1, "%s", entry);
+        }
+
+#ifdef WIN32
+        os_realloc(syscheck->wdata.dirs_status, (pl + 2) * sizeof(whodata_dir_status), syscheck->wdata.dirs_status);
+        memset(syscheck->wdata.dirs_status + pl, 0, 2 * sizeof(whodata_dir_status));
+#endif
+
+        os_realloc(syscheck->symbolic_links, (pl + 2) * sizeof(char *), syscheck->symbolic_links);
+        syscheck->symbolic_links[pl] = NULL;
+        syscheck->symbolic_links[pl + 1] = NULL;
+        if (link) {
+            os_strdup(link, syscheck->symbolic_links[pl]);
+        }
+
+        os_realloc(syscheck->opts, (pl + 2) * sizeof(int), syscheck->opts);
+        syscheck->opts[pl] = vals;
+        syscheck->opts[pl + 1] = 0;
+
+        os_realloc(syscheck->diff_size_limit, (pl + 2) * sizeof(int), syscheck->diff_size_limit);
+
+        if (diff_size == -1) {
+            syscheck->diff_size_limit[pl] = -1;
+        } else {
+            syscheck->diff_size_limit[pl] = diff_size;
+        }
+
+        syscheck->diff_size_limit[pl + 1] = 0;
+
+        os_realloc(syscheck->filerestrict, (pl + 2) * sizeof(OSMatch *), syscheck->filerestrict);
+        syscheck->filerestrict[pl] = NULL;
+        syscheck->filerestrict[pl + 1] = NULL;
+
+        os_realloc(syscheck->recursion_level, (pl + 2) * sizeof(int), syscheck->recursion_level);
+        syscheck->recursion_level[pl] = recursion_limit;
+        syscheck->recursion_level[pl + 1] = 0;
+
+        os_realloc(syscheck->tag, (pl + 2) * sizeof(char *), syscheck->tag);
+        syscheck->tag[pl] = NULL;
+        syscheck->tag[pl + 1] = NULL;
+    } else {
+        if (link) {
+            os_free(syscheck->symbolic_links[pl]);
+            os_strdup(link, syscheck->symbolic_links[pl]);
+        }
+        syscheck->opts[pl] = vals;
+
+        if (diff_size == -1) {
+            syscheck->diff_size_limit[pl] = -1;
+        } else {
+            syscheck->diff_size_limit[pl] = diff_size;
+        }
+
+        os_free(syscheck->filerestrict[pl]);
+        syscheck->recursion_level[pl] = recursion_limit;
+        os_free(syscheck->tag[pl]);
+    }
+
+    if (restrictfile) {
+        os_calloc(1, sizeof(OSMatch), syscheck->filerestrict[pl]);
+        if (!OSMatch_Compile(restrictfile, syscheck->filerestrict[pl], 0)) {
+            OSMatch *ptm;
+
+            ptm = syscheck->filerestrict[pl];
+
+            merror(REGEX_COMPILE, restrictfile, ptm->error);
+            free(syscheck->filerestrict[pl]);
+            syscheck->filerestrict[pl] = NULL;
+        }
+    }
+    if (tag) {
+        os_strdup(tag, syscheck->tag[pl]);
+    }
+}
+
+#ifdef WIN32
+void dump_syscheck_registry(syscheck_config *syscheck,
+                            char *entry,
+                            int vals,
+                            const char *restrictfile,
+                            int recursion_limit,
+                            const char *tag,
+                            const char *link,
+                            int diff_size) {
+    unsigned int pl = 0;
+    int overwrite = -1;
+
+    if (syscheck->registry == NULL) {
+        os_calloc(2, sizeof(registry), syscheck->registry);
+        syscheck->registry[pl + 1].entry = NULL;
+        syscheck->registry[pl].tag = NULL;
+        syscheck->registry[pl + 1].tag = NULL;
+        syscheck->registry[pl + 1].recursion_level = 0;
+        syscheck->registry[pl].recursion_level = recursion_limit;
+        syscheck->registry[pl].arch = (int)*link;
+        syscheck->registry[pl].opts = vals;
+        os_strdup(entry, syscheck->registry[pl].entry);
+    } else {
+        while (syscheck->registry[pl].entry != NULL) {
+            /* Duplicated entry */
+            if (strcmp(syscheck->registry[pl].entry, entry) == 0 && (int)*link == syscheck->registry[pl].arch) {
+                overwrite = pl;
+                mdebug2("Duplicated registration entry: %s", syscheck->registry[pl].entry);
+                break;
+            }
+            pl++;
+        }
+        if (overwrite < 0) {
+            os_realloc(syscheck->registry, (pl + 2) * sizeof(registry), syscheck->registry);
             syscheck->registry[pl + 1].entry = NULL;
             syscheck->registry[pl].tag = NULL;
             syscheck->registry[pl + 1].tag = NULL;
@@ -332,13 +358,14 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
                 syscheck->registry[pl].filerestrict = NULL;
             }
         }
-
-        if (tag) {
-            os_strdup(tag, syscheck->registry[pl].tag);
-        }
     }
-#endif
+
+    if (tag) {
+        os_strdup(tag, syscheck->registry[pl].tag);
+    }
 }
+#endif
+
 
 #ifdef WIN32
 
@@ -510,7 +537,7 @@ int read_reg(syscheck_config *syscheck,
                 merror("Processing tag '%s' for registry entry '%s'.", tag, tmp_entry);
         }
         /* Add new entry */
-        dump_syscheck_entry(syscheck, tmp_entry, vals, 1, restrictfile, recursion_level, clean_tag, &arch, -1);
+        dump_syscheck_registry(syscheck, tmp_entry, arch, NULL, recursion_level, clean_tag, &arch, -1);
 
         if (clean_tag)
             free(clean_tag);
@@ -931,7 +958,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     }
 
                     str_lowercase(real_path);
-                    dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL,
+                    dump_syscheck_file(syscheck, real_path, opts, restrictfile, recursion_limit, clean_tag, NULL,
                                         tmp_diff_size);
                 }
                 os_free(env_variable[i]);
@@ -977,7 +1004,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         }
 
         str_lowercase(real_path);
-        dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL,
+        dump_syscheck_file(syscheck, real_path, opts, restrictfile, recursion_limit, clean_tag, NULL,
                             tmp_diff_size);
 
 #else
@@ -996,7 +1023,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                             }
                         }
 
-                        dump_syscheck_entry(syscheck, env_variable[i], opts, 0, restrictfile, recursion_limit,
+                        dump_syscheck_file(syscheck, env_variable[i], opts, restrictfile, recursion_limit,
                                             clean_tag, NULL, tmp_diff_size);
                     }
                     os_free(env_variable[i]);
@@ -1047,10 +1074,10 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
                 if (resolved_path = realpath(g.gl_pathv[gindex], NULL), resolved_path) {
                     if (!strcmp(resolved_path, g.gl_pathv[gindex])) {
-                        dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0, restrictfile, recursion_limit,
+                        dump_syscheck_file(syscheck, g.gl_pathv[gindex], opts, restrictfile, recursion_limit,
                                             clean_tag, NULL, tmp_diff_size);
                     } else {
-                        dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile, recursion_limit, clean_tag,
+                        dump_syscheck_file(syscheck, resolved_path, opts, restrictfile, recursion_limit, clean_tag,
                                             g.gl_pathv[gindex], tmp_diff_size);
                     }
                     os_free(resolved_path);
@@ -1068,11 +1095,11 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             char *resolved_path = realpath(real_path, NULL);
 
             if (resolved_path && strcmp(resolved_path, real_path)) {
-                dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile, recursion_limit, clean_tag,
+                dump_syscheck_file(syscheck, resolved_path, opts, restrictfile, recursion_limit, clean_tag,
                                     real_path, tmp_diff_size);
             }
             else {
-                dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL,
+                dump_syscheck_file(syscheck, real_path, opts, restrictfile, recursion_limit, clean_tag, NULL,
                                     tmp_diff_size);
             }
 

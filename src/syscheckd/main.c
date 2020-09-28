@@ -113,7 +113,7 @@ int main(int argc, char **argv)
             if (!test_config) {
                 minfo(FIM_DIRECTORY_NOPROVIDED);
             }
-            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL, NULL, -1);
+            dump_syscheck_file(&syscheck, "", 0, NULL, 0, NULL, NULL, -1);
         } else if (!syscheck.dir[0]) {
             if (!test_config) {
                 minfo(FIM_DIRECTORY_NOPROVIDED);
