@@ -1743,6 +1743,23 @@ def expand_group(group_name):
 
 
 def get_rbac_filters(system_resources=None, permitted_resources=None, filters=None):
+    """This function calculate the list of allowed or denied depending on the list size
+
+    Parameters
+    ----------
+    system_resources : set
+        System resources for the current request
+    permitted_resources : list
+        Resources granted by RBAC
+    filters : dict
+        Dictionary with additional filters for the current request
+
+    Returns
+    -------
+    Dictionary with the original filters plus those added by RBAC
+    """
+    if not filters:
+        filters = dict()
     non_permitted_resources = system_resources - set(permitted_resources)
 
     if len(permitted_resources) < len(non_permitted_resources):

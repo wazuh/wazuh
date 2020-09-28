@@ -46,7 +46,7 @@ def get_distinct_agents(agent_list=None, offset=0, limit=common.database_limit, 
                                       )
 
     if len(agent_list) != 0:
-        rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list, filters={})
+        rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
         db_query = WazuhDBQueryGroupByAgents(filter_fields=fields, offset=offset, limit=limit, sort=sort,
                                              search=search, select=select, query=q, min_select_fields=set(), count=True,
@@ -68,7 +68,7 @@ def get_agents_summary_status(agent_list=None):
     """
     result = WazuhResult({'active': 0, 'disconnected': 0, 'never_connected': 0, 'pending': 0, 'total': 0})
     if len(agent_list) != 0:
-        rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list, filters={})
+        rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
         db_query = WazuhDBQueryAgents(limit=None, select=['status'], **rbac_filters)
         data = db_query.run()
@@ -91,7 +91,7 @@ def get_agents_summary_os(agent_list=None):
                                       all_msg='Showing the operative system of all specified agents',
                                       some_msg='Could not get the operative system of some agents')
     if len(agent_list) != 0:
-        rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list, filters={})
+        rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
         db_query = WazuhDBQueryAgents(select=['os.platform'], default_sort_field='os_platform', min_select_fields=set(),
                                       distinct=True, **rbac_filters)
@@ -341,7 +341,7 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort=None, search=No
     for invalid_group in set(group_list) - get_groups():
         result.add_failed_item(id_=invalid_group, error=WazuhResourceNotFound(1710))
 
-    rbac_filters = get_rbac_filters(system_resources=get_groups(), permitted_resources=group_list, filters={})
+    rbac_filters = get_rbac_filters(system_resources=get_groups(), permitted_resources=group_list)
 
     group_query = WazuhDBQueryGroup(offset=offset, limit=limit, sort=sort, search=search, **rbac_filters)
     query_data = group_query.run()
@@ -666,7 +666,7 @@ def get_outdated_agents(agent_list=None, offset=0, limit=common.database_limit, 
         manager.load_info_from_db()
 
         select = ['version', 'id', 'name'] if select is None else select
-        rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list, filters={})
+        rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
                                       query=f"version!={manager.version}" + (';' + q if q else ''), **rbac_filters)
