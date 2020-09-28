@@ -782,8 +782,8 @@ int OS_SendSecureTCPCluster(int sock, const void * command, const void * payload
     os_malloc(buffer_size, buffer);
     counter = wnet_order_big(counter);
     memcpy(buffer, &counter, sizeof(uint32_t));
-    length = wnet_order_big(length);
-    memcpy(buffer + sizeof(uint32_t), &length, sizeof(uint32_t));
+    uint32_t ordered_length = wnet_order_big(length);
+    memcpy(buffer + sizeof(uint32_t), &ordered_length, sizeof(uint32_t));
     memcpy(buffer + HEADER_SIZE, command, cmd_length);
     buffer[HEADER_SIZE + cmd_length] = ' ';
     memset(buffer + HEADER_SIZE + cmd_length + 1, '-', COMMAND_SIZE - cmd_length - 1);
