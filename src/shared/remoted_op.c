@@ -37,7 +37,6 @@ char * get_os_arch(char * os_header) {
         os_strdup("", os_arch);
     }
 
-    mdebug2("Detected architecture from %s: %s", os_header, os_arch);
     return os_arch;
 }
 
@@ -46,105 +45,94 @@ char * get_os_arch(char * os_header) {
  *        to allocated memory that must be de-allocated by the caller.
  *
  * @param[in] msg The agent update message string to be parsed.
- * @param[Out] os_name The OS name.
- * @param[Out] os_major The OS major version.
- * @param[Out] os_minor The OS minor version.
- * @param[Out] os_build The OS build number.
- * @param[Out] os_version The OS full version.
- * @param[Out] os_codename The OS codename.
- * @param[Out] os_platform The OS platform.
- * @param[Out] os_arch The OS architecture.
+ * @param[in] osd An os_data structure to be filled with the os's data.
  */
 void parse_uname_string (char *uname,
-                        char **os_name,
-                        char **os_major,
-                        char **os_minor,
-                        char **os_build,
-                        char **os_version,
-                        char **os_codename,
-                        char **os_platform,
-                        char **os_arch)
+                         os_data *osd)
 {
     char *str_tmp = NULL;
     regmatch_t match[2] = { 0 };
     int match_size = 0;
 
+    if (!osd)
+        return;
+
     // [Ver: os_major.os_minor.os_build]
-    if (str_tmp = strstr(uname, " [Ver: "), str_tmp){
+    if (str_tmp = strstr(uname, " [Ver: "), str_tmp) {
         *str_tmp = '\0';
         str_tmp += 7;
-        os_strdup(uname, *os_name);
+        os_strdup(uname, osd->os_name);
         *(str_tmp + strlen(str_tmp) - 1) = '\0';
 
         // Get os_major
         if (w_regexec("^([0-9]+)\\.*", str_tmp, 2, match)) {
             match_size = match[1].rm_eo - match[1].rm_so;
-            os_malloc(match_size +1, *os_major);
-            snprintf (*os_major, match_size + 1, "%.*s", match_size, str_tmp + match[1].rm_so);
+            os_malloc(match_size +1, osd->os_major);
+            snprintf (osd->os_major, match_size + 1, "%.*s", match_size, str_tmp + match[1].rm_so);
         }
 
         // Get os_minor
         if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", str_tmp, 2, match)) {
             match_size = match[1].rm_eo - match[1].rm_so;
-            os_malloc(match_size +1, *os_minor);
-            snprintf(*os_minor, match_size + 1, "%.*s", match_size, str_tmp + match[1].rm_so);
+            os_malloc(match_size +1, osd->os_minor);
+            snprintf(osd->os_minor, match_size + 1, "%.*s", match_size, str_tmp + match[1].rm_so);
         }
 
         // Get os_build
         if (w_regexec("^[0-9]+\\.[0-9]+\\.([0-9]+)\\.*", str_tmp, 2, match)) {
             match_size = match[1].rm_eo - match[1].rm_so;
-            os_malloc(match_size +1, *os_build);
-            snprintf(*os_build, match_size + 1, "%.*s", match_size, str_tmp + match[1].rm_so);
+            os_malloc(match_size +1, osd->os_build);
+            snprintf(osd->os_build, match_size + 1, "%.*s", match_size, str_tmp + match[1].rm_so);
         }
 
-        os_strdup(str_tmp, *os_version);
-        os_strdup("windows", *os_platform);
+        os_strdup(str_tmp, osd->os_version);
+        os_strdup("windows", osd->os_platform);
     }
     else {
-        if (str_tmp = strstr(uname, " ["), str_tmp){
+        if (str_tmp = strstr(uname, " ["), str_tmp) {
             *str_tmp = '\0';
             str_tmp += 2;
-            os_strdup(str_tmp, *os_name);
-            if (str_tmp = strstr(*os_name, ": "), str_tmp){
+            os_strdup(str_tmp, osd->os_name);
+            if (str_tmp = strstr(osd->os_name, ": "), str_tmp) {
                 *str_tmp = '\0';
                 str_tmp += 2;
-                os_strdup(str_tmp, *os_version);
-                *(*os_version + strlen(*os_version) - 1) = '\0';
+                os_strdup(str_tmp, osd->os_version);
+                *(osd->os_version + strlen(osd->os_version) - 1) = '\0';
 
                 // os_major.os_minor (os_codename)
-                if (str_tmp = strstr(*os_version, " ("), str_tmp){
+                if (str_tmp = strstr(osd->os_version, " ("), str_tmp) {
                     *str_tmp = '\0';
                     str_tmp += 2;
-                    os_strdup(str_tmp, *os_codename);
-                    *(*os_codename + strlen(*os_codename) - 1) = '\0';
+                    os_strdup(str_tmp, osd->os_codename);
+                    *(osd->os_codename + strlen(osd->os_codename) - 1) = '\0';
                 }
 
                 // Get os_major
-                if (w_regexec("^([0-9]+)\\.*", *os_version, 2, match)) {
+                if (w_regexec("^([0-9]+)\\.*", osd->os_version, 2, match)) {
                     match_size = match[1].rm_eo - match[1].rm_so;
-                    os_malloc(match_size +1, *os_major);
-                    snprintf(*os_major, match_size + 1, "%.*s", match_size, *os_version + match[1].rm_so);
+                    os_malloc(match_size +1, osd->os_major);
+                    snprintf(osd->os_major, match_size + 1, "%.*s", match_size, osd->os_version + match[1].rm_so);
                 }
 
                 // Get os_minor
-                if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", *os_version, 2, match)) {
+                if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", osd->os_version, 2, match)) {
                     match_size = match[1].rm_eo - match[1].rm_so;
-                    os_malloc(match_size +1, *os_minor);
-                    snprintf(*os_minor, match_size + 1, "%.*s", match_size, *os_version + match[1].rm_so);
+                    os_malloc(match_size +1, osd->os_minor);
+                    snprintf(osd->os_minor, match_size + 1, "%.*s", match_size, osd->os_version + match[1].rm_so);
                 }
 
             } else
-                *(*os_name + strlen(*os_name) - 1) = '\0';
+                *(osd->os_name + strlen(osd->os_name) - 1) = '\0';
 
             // os_name|os_platform
-            if (str_tmp = strstr(*os_name, "|"), str_tmp){
+            if (str_tmp = strstr(osd->os_name, "|"), str_tmp) {
                 *str_tmp = '\0';
                 str_tmp++;
-                os_strdup(str_tmp, *os_platform);
+                os_strdup(str_tmp, osd->os_platform);
             }
         }
         str_tmp = get_os_arch(uname);
-        os_strdup(str_tmp, *os_arch);
+        os_strdup(str_tmp, osd->os_arch);
         os_free(str_tmp);
     }
 }
@@ -156,38 +144,12 @@ void parse_uname_string (char *uname,
  *        OUT parameter, it returns pointing to NULL.
  *
  * @param[in] msg The agent update message string to be parsed.
- * @param[Out] version The Wazuh version.
- * @param[Out] os_name The OS name.
- * @param[Out] os_major The OS major version.
- * @param[Out] os_minor The OS minor version.
- * @param[Out] os_build The OS build number.
- * @param[Out] os_version The OS full version.
- * @param[Out] os_codename The OS codename.
- * @param[Out] os_platform The OS platform.
- * @param[Out] os_arch The OS architecture.
- * @param[Out] uname The OS uname string.
- * @param[Out] config_sum The hash of the config file.
- * @param[Out] merged_sum The hash of the merged.mg file.
- * @param[Out] agent_ip The agent IP address.
- * @param[Out] labels String with all the key-values separated by EOL.
+ * @param[in] agent_data An agent_info_data structure to be filled with the agent's data.
  * @retval -1 Error parsing the message.
  * @retval 0 Success.
  */
 int parse_agent_update_msg (char *msg,
-                            char **version,
-                            char **os_name,
-                            char **os_major,
-                            char **os_minor,
-                            char **os_build,
-                            char **os_version,
-                            char **os_codename,
-                            char **os_platform,
-                            char **os_arch,
-                            char **uname,
-                            char **config_sum,
-                            char **merged_sum,
-                            char **agent_ip,
-                            char **labels)
+                            agent_info_data *agent_data)
 {
     char *msg_tmp = NULL;
     char *str_tmp = NULL;
@@ -196,21 +158,8 @@ int parse_agent_update_msg (char *msg,
     char sdelim[] = { '\n', '\0' };
     const char * agent_ip_label = "#\"_agent_ip\":";
 
-    // Setting pointers to NULL to guarantee the return value specification
-    *version = NULL;
-    *os_name = NULL;
-    *os_major = NULL;
-    *os_minor = NULL;
-    *os_build = NULL;
-    *os_version = NULL;
-    *os_codename = NULL;
-    *os_platform = NULL;
-    *os_arch = NULL;
-    *uname = NULL;
-    *config_sum = NULL;
-    *merged_sum = NULL;
-    *agent_ip = NULL;
-    *labels = NULL;
+    if (!agent_data)
+        return OS_INVALID;
 
     // Temporary coping the msg string
     os_strdup(msg, msg_tmp);
@@ -222,11 +171,11 @@ int parse_agent_update_msg (char *msg,
         case '\"': // Regular label
             // The _agent_ip will not be appended to the labels string.
             // Instead it will be returned in the agent_ip parameter.
-            if(!strncmp(line, agent_ip_label, strlen(agent_ip_label))) {
-                os_strdup(line + strlen(agent_ip_label), *agent_ip);
+            if (!strncmp(line, agent_ip_label, strlen(agent_ip_label))) {
+                os_strdup(line + strlen(agent_ip_label), agent_data->agent_ip);
             }
             else {
-                wm_strcat(labels, line, '\n');
+                wm_strcat(&agent_data->labels, line, '\n');
             }
             break;
         default:
@@ -235,18 +184,19 @@ int parse_agent_update_msg (char *msg,
             {
                 *str_tmp = '\0';
                 str_tmp += 3;
-                os_strdup(str_tmp, *config_sum);
+                os_strdup(str_tmp, agent_data->config_sum);
 
-                if (str_tmp = strstr(line, " - "), str_tmp){
+                if (str_tmp = strstr(line, " - "), str_tmp) {
                     *str_tmp = '\0';
                     str_tmp += 3;
-                    os_strdup(str_tmp, *version);
+                    os_strdup(str_tmp, agent_data->version);
                 }
 
-                parse_uname_string(line, os_name, os_major, os_minor, os_build,
-                                   os_version, os_codename, os_platform, os_arch);
+                os_calloc(1, sizeof(os_data), agent_data->osd);
 
-                os_strdup(line, *uname);
+                parse_uname_string(line, agent_data->osd);
+
+                os_strdup(line, agent_data->osd->os_uname);
             }
             // merged sum
             else if (str_tmp = strchr(line, ' '), str_tmp)
@@ -255,7 +205,7 @@ int parse_agent_update_msg (char *msg,
                 str_tmp++;
 
                 if (strncmp(str_tmp, SHAREDCFG_FILENAME, strlen(SHAREDCFG_FILENAME)-1) == 0) {
-                    os_strdup(line, *merged_sum);
+                    os_strdup(line, agent_data->merged_sum);
                 }
             }
         }
