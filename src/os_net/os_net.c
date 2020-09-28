@@ -639,7 +639,8 @@ int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
     size_t bufsz = size + sizeof(uint32_t);
 
     os_malloc(bufsz, buffer);
-    *(uint32_t *)buffer = wnet_order(size);
+    size = wnet_order(size);
+    memcpy(buffer, &size, sizeof(uint32_t));
     memcpy(buffer + sizeof(uint32_t), msg, size);
     errno = 0;
     retval = send(sock, buffer, bufsz, 0) == (ssize_t)bufsz ? 0 : OS_SOCKTERR;
@@ -779,8 +780,10 @@ int OS_SendSecureTCPCluster(int sock, const void * command, const void * payload
     // Cluster message: [counter:4][length:4][command:12][payload]
     buffer_size = HEADER_SIZE + COMMAND_SIZE + length;
     os_malloc(buffer_size, buffer);
-    *(uint32_t *)buffer = wnet_order_big(counter);
-    *(uint32_t *)(buffer + 4) = wnet_order_big(length);
+    counter = wnet_order_big(counter);
+    memcpy(buffer, &counter, sizeof(uint32_t));
+    length = wnet_order_big(length);
+    memcpy(buffer + sizeof(uint32_t), &length, sizeof(uint32_t));
     memcpy(buffer + HEADER_SIZE, command, cmd_length);
     buffer[HEADER_SIZE + cmd_length] = ' ';
     memset(buffer + HEADER_SIZE + cmd_length + 1, '-', COMMAND_SIZE - cmd_length - 1);
@@ -815,12 +818,13 @@ int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length) {
                 return -1;
             }
     }
-   
+
     if (strncmp(buffer+8, "err --------", CMD_SIZE) == 0) {
         return -2;
     }
 
-    size = wnet_order_big(*(uint32_t*)(buffer + 4));
+    memcpy(&size, buffer + 4, sizeof(uint32_t));
+    size = wnet_order_big(size);
     if (size > length) {
         mwarn("Cluster message size (%u) exceeds buffer length (%u)", (unsigned)size, (unsigned)length);
         return -1;
