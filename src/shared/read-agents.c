@@ -1154,11 +1154,11 @@ agent_status_t get_agent_status(int agent_id){
     }
     
     json_field = cJSON_GetObjectItem(json_agt_info->child, "last_keepalive");
-    if(cJSON_IsNumber(json_field)){
+    if (cJSON_IsNumber(json_field)) {
         last_keepalive = json_field->valueint;
         cJSON_Delete(json_agt_info);
     
-    } else{
+    } else {
         cJSON_Delete(json_agt_info);
         return GA_STATUS_INV;
     }
@@ -1224,7 +1224,7 @@ char **get_agents(int flag){
     
         status = last_keepalive > (time(0) - DISCON_TIME) ? 1 : 0;
 
-        switch (flag){
+        switch (flag) {
             case GA_ALL:
             case GA_ALL_WSTATUS:
                 break;
@@ -1276,7 +1276,7 @@ char **get_agents_by_last_keepalive(int flag, int delta){
     cJSON *json_name = NULL;
     cJSON *json_ip = NULL;
 
-    switch(flag){
+    switch (flag) {
         case GA_NOTACTIVE:
             id_array = wdb_get_agents_by_keepalive("<", time(0)-delta, FALSE);
             break;
@@ -1288,7 +1288,7 @@ char **get_agents_by_last_keepalive(int flag, int delta){
             return NULL;
     }
 
-    if(!id_array){
+    if (!id_array) {
         mdebug1("Failed getting agent's ID array.");
         return (NULL);
     }

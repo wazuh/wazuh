@@ -9,6 +9,7 @@
  */
 
 #include "shared.h"
+#include "wazuh_db/wdb.h"
 
 
 /**
@@ -27,24 +28,10 @@ char * get_os_arch(char * os_header);
  *        to allocated memory that must be de-allocated by the caller.
  *
  * @param[in] msg The agent update message string to be parsed.
- * @param[Out] os_name The OS name.
- * @param[Out] os_major The OS major version.
- * @param[Out] os_minor The OS minor version.
- * @param[Out] os_build The OS build number.
- * @param[Out] os_version The OS full version.
- * @param[Out] os_codename The OS codename.
- * @param[Out] os_platform The OS platform.
- * @param[Out] os_arch The OS architecture.
+ * @param[in] osd An os_data structure to be filled with the os's data.
  */
 void parse_uname_string (char *uname,
-                        char **os_name,
-                        char **os_major,
-                        char **os_minor,
-                        char **os_build,
-                        char **os_version,
-                        char **os_codename,
-                        char **os_platform,
-                        char **os_arch);
+                         os_data *osd);
 
 /**
  * @brief Parses an agent update message to get the information by fields. All
@@ -52,35 +39,9 @@ void parse_uname_string (char *uname,
  *        de-allocated by the caller.
  *
  * @param[in] msg The agent update message string to be parsed.
- * @param[Out] version The Wazuh version.
- * @param[Out] os_name The OS name.
- * @param[Out] os_major The OS major version.
- * @param[Out] os_minor The OS minor version.
- * @param[Out] os_build The OS build number.
- * @param[Out] os_version The OS full version.
- * @param[Out] os_codename The OS codename.
- * @param[Out] os_platform The OS platform.
- * @param[Out] os_arch The OS architecture.
- * @param[Out] uname The OS uname string.
- * @param[Out] config_sum The hash of the config file.
- * @param[Out] merged_sum The hash of the merged.mg file.
- * @param[Out] agent_ip The agent IP address.
- * @param[Out] labels String with all the key-values separated by EOL.
+ * @param[in] agent_data An agent_info_data structure to be filled with the agent's data.
  * @retval -1 Error parsing the message.
  * @retval 0 Success.
  */
 int parse_agent_update_msg (char *msg,
-                            char **version,
-                            char **os_name,
-                            char **os_major,
-                            char **os_minor,
-                            char **os_build,
-                            char **os_version,
-                            char **os_codename,
-                            char **os_platform,
-                            char **os_arch,
-                            char **uname,
-                            char **config_sum,
-                            char **merged_sum,
-                            char **agent_ip,
-                            char **labels);
+                            agent_info_data *agent_data);

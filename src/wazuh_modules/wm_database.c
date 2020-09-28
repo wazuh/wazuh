@@ -204,29 +204,21 @@ void* wm_database_main(wm_database *data) {
 
 // Update manager information
 void wm_sync_manager() {
-    char hostname[1024];
-    char *os_uname;
-    const char *path;
-    char *os_name = NULL;
-    char *os_major = NULL;
-    char *os_minor = NULL;
-    char *os_build = NULL;
-    char *os_version = NULL;
-    char *os_codename = NULL;
-    char *os_platform = NULL;
-    char *os_arch = NULL;
+    agent_info_data *manager_data = NULL;
+    char *os_uname = NULL;
+    const char *path = NULL;
     struct stat buffer;
-    regmatch_t match[2];
-    int match_size;
 
-    if (gethostname(hostname, 1024) == 0)
-        wdb_update_agent_name(0, hostname);
+    os_calloc(1, sizeof(agent_info_data), manager_data);
+    os_calloc(1, sizeof(os_data), manager_data->osd);
+    os_calloc(HOST_NAME_MAX, sizeof(char), manager_data->manager_host);
+
+    if (gethostname(manager_data->manager_host, HOST_NAME_MAX) == 0)
+        wdb_update_agent_name(0, manager_data->manager_host);
     else
         mterror(WM_DATABASE_LOGTAG, "Couldn't get manager's hostname: %s.", strerror(errno));
 
     /* Get node name of the manager in cluster */
-    char* node_name;
-
     const char *(xml_node[]) = {"ossec_config", "cluster", "node_name", NULL};
 
     OS_XML xml;
@@ -235,69 +227,29 @@ void wm_sync_manager() {
         merror_exit(XML_ERROR, DEFAULTCPATH, xml.err, xml.err_line);
     }
 
-    node_name = OS_GetOneContentforElement(&xml, xml_node);
+    manager_data->node_name = OS_GetOneContentforElement(&xml, xml_node);
 
     OS_ClearXML(&xml);
 
     if ((os_uname = strdup(getuname()))) {
-        os_arch = get_os_arch(os_uname);
         char *ptr;
 
         if ((ptr = strstr(os_uname, " - ")))
             *ptr = '\0';
 
-        if (os_name = strstr(os_uname, " ["), os_name){
-            *os_name = '\0';
-            os_name += 2;
-            if (os_version = strstr(os_name, ": "), os_version){
-                *os_version = '\0';
-                os_version += 2;
-                *(os_version + strlen(os_version) - 1) = '\0';
+        parse_uname_string(os_uname, manager_data->osd);
 
-                // os_major.os_minor (os_codename)
-                if (os_codename = strstr(os_version, " ("), os_codename){
-                    *os_codename = '\0';
-                    os_codename += 2;
-                    *(os_codename + strlen(os_codename) - 1) = '\0';
-                }
+        manager_data->id = 0;
+        os_strdup(os_uname, manager_data->osd->os_uname);
+        os_strdup(__ossec_name " " __ossec_version, manager_data->version);
+        os_strdup("synced", manager_data->sync_status);
 
-                // Get os_major
-                if (w_regexec("^([0-9]+)\\.*", os_version, 2, match)) {
-                    match_size = match[1].rm_eo - match[1].rm_so;
+        wdb_update_agent_data(manager_data);
 
-                    os_malloc(match_size +1, os_major);
-
-                    snprintf(os_major, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
-                }
-
-                // Get os_minor
-                if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
-                    match_size = match[1].rm_eo - match[1].rm_so;
-
-                    os_malloc(match_size +1, os_minor);
-
-                    snprintf(os_minor, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
-                }
-
-            } else
-                *(os_name + strlen(os_name) - 1) = '\0';
-
-            // os_name|os_platform
-            if (os_platform = strstr(os_name, "|"), os_platform){
-                *os_platform = '\0';
-                os_platform ++;
-            }
-        }
-
-        wdb_update_agent_data(0, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os_uname, os_arch, 
-                              __ossec_name " " __ossec_version, NULL, NULL, hostname, node_name, NULL, NULL, "synced");
-
-        free(node_name);
-        free(os_major);
-        free(os_minor);
-        free(os_uname);
-        free(os_arch);
+        os_free(os_uname);
     }
+
+    wdb_free_agent_info_data(manager_data);
 
     // Set starting offset if full_sync disabled
 
