@@ -527,7 +527,7 @@ void fim_registry_process_value_delete_event(fdb_t *fim_sql,
 
     fim_db_remove_registry_value_data(fim_sql, data->registry_entry.value);
 
-    if (configuration->opts | CHECK_SEECHANGES) {
+    if (configuration->opts & CHECK_SEECHANGES) {
         fim_diff_process_delete_value(data->registry_entry.key->path, data->registry_entry.value->name,
                                       data->registry_entry.key->arch);
     }
@@ -585,7 +585,7 @@ void fim_registry_process_key_delete_event(fdb_t *fim_sql,
     fim_db_remove_registry_key(fim_sql, data);
     w_mutex_unlock(mutex);
 
-    if (configuration->opts | CHECK_SEECHANGES) {
+    if (configuration->opts & CHECK_SEECHANGES) {
         fim_diff_process_delete_registry(data->registry_entry.key->path, data->registry_entry.key->arch);
     }
 }
@@ -658,10 +658,12 @@ void fim_registry_process_value_event(fim_entry *new,
 
     fim_registry_calculate_hashes(new, configuration, data_buffer);
 
+    fim_registry_get_checksum_value(new->registry_entry.value);
+
     saved->registry_entry.value = fim_db_get_registry_data(syscheck.database, new->registry_entry.key->id,
                                                            new->registry_entry.value->name);
 
-    if (configuration->opts | CHECK_SEECHANGES) {
+    if (configuration->opts & CHECK_SEECHANGES) {
         diff = fim_registry_value_diff(new->registry_entry.key->path, new->registry_entry.value->name,
                                        (char *)data_buffer, new->registry_entry.value->type, configuration);
     }
