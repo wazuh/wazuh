@@ -2339,8 +2339,10 @@ STATIC int doesRuleExist(int sid, RuleNode *r_node)
 
 
 /* Checks if the current_rule matches the event information */
-RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events, ListNode **cdblists, RuleNode *curr_node,
-                              regex_matching *rule_match, OSList **fts_list, OSHash **fts_store) {
+RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
+                              ListNode **cdblists, RuleNode *curr_node,
+                              regex_matching *rule_match, OSList **fts_list,
+                              OSHash **fts_store, const bool save_fts_value) {
 
     /* We check for:
      * decoded_as,
@@ -2676,25 +2678,30 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events, Lis
 
     /* Check for the FTS flag */
     if (rule->alert_opts & DO_FTS) {
+
         /** FTS CHECKS **/
         if (lf->decoder_info->fts || lf->rootcheck_fts) {
+
             char * _line = NULL;
             char * _line_cpy;
-            if ((lf->decoder_info->fts & FTS_DONE) || (lf->rootcheck_fts & FTS_DONE))  {
+
+            if ((lf->decoder_info->fts & FTS_DONE) || (lf->rootcheck_fts & FTS_DONE)) {
                 /* We already did the fts in here */
             } else if (_line = FTS(lf, fts_list, fts_store), _line == NULL) {
-                return (NULL);
+                return NULL;
             }
 
-            if(_line){
+            if (_line && save_fts_value) {
                 os_strdup(_line, _line_cpy);
-                free(_line);
                 if (queue_push_ex_block(writer_queue_log_fts, _line_cpy) < 0) {
-                    free(_line_cpy);
+                    os_free(_line_cpy);
                 }
             }
+
+            os_free(_line);
+
         } else {
-            return (NULL);
+            return NULL;
         }
     }
 
@@ -2874,7 +2881,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events, Lis
 
         while (child_node) {
             child_rule = OS_CheckIfRuleMatch(lf, last_events, cdblists, child_node, rule_match,
-                                             fts_list, fts_store);
+                                             fts_list, fts_store, save_fts_value);
             if (child_rule != NULL) {
                 if (!child_rule->prev_rule) {
                     child_rule->prev_rule = rule;

@@ -303,7 +303,7 @@ int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
 
         /* Search the rule that match */
         if (ruleinformation = OS_CheckIfRuleMatch(lf, session->eventlist, &session->cdblistnode,
-            rulenode, &session->rule_match, &session->fts_list, &session->fts_store), !ruleinformation) {
+            rulenode, &session->rule_match, &session->fts_list, &session->fts_store, false), !ruleinformation) {
             continue;
         }
 
