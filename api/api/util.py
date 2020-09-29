@@ -294,3 +294,27 @@ def raise_if_exc(obj):
         _create_problem(obj)
     else:
         return obj
+
+
+from aiohttp import web
+from api.encoder import dumps, prettify
+
+def json_response_wazuh(data=None, status=200, dumps=None, **kwargs):
+    response_dict = data
+
+    if 'data' in response_dict:
+        if 'total_affected_items' in response_dict['data'] and response_dict['data']['total_affected_items'] > 0:
+            if 'total_failed_items' in response_dict['data'] and response_dict['data']['total_failed_items'] > 0:
+                error_code = 1
+            else:
+                error_code = 0
+        elif 'total_affected_items' in response_dict['data'] and 'total_failed_items' in response_dict['data'] \
+                and response_dict['data']['total_failed_items'] > 0:
+            error_code = 2
+        else:
+            error_code = 0
+    else:
+        error_code = 0
+
+    response_dict['error'] = error_code
+    return web.json_response(data=response_dict, status=status, dumps=dumps, **kwargs)

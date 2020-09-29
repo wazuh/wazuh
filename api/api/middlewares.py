@@ -3,6 +3,8 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import concurrent.futures
+import json
+
 from logging import getLogger
 from time import time
 
@@ -112,6 +114,7 @@ async def response_postprocessing(request, handler):
 
     try:
         return await handler(request)
+
     except ProblemException as ex:
         problem = connexion_problem(ex.__dict__['status'],
                                     ex.__dict__['title'] if 'title' in ex.__dict__ and ex.__dict__['title'] else 'Bad Request',
