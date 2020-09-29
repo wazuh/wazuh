@@ -1152,7 +1152,7 @@ class WazuhDBQuery(object):
             # If it matches the same format as DB (timestamp integer), filter directly by value (next if cond).
             self._filter_date(q_filter, field_name)
         elif 'rbac' in field_name:
-            self.query += f"{field_name.lstrip('rbac_')} IN (:{field_filter})"
+            self.query += f"{field_name.lstrip('rbac_')} {q_filter['operator']} (:{field_filter})"
             self.request[field_filter] = q_filter['value']
         else:
             if q_filter['value'] is not None:
