@@ -114,7 +114,7 @@ cJSON* wm_task_manager_parse_message(const char *msg) {
             if (agent_json->type == cJSON_Number) {
                 cJSON *task = cJSON_CreateObject();
 
-                cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_NAME], name_json->valuestring);
+                cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_NODE], name_json->valuestring);
                 cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_MODULE], module_json->valuestring);
                 cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_COMMAND], command_json->valuestring);
                 cJSON_AddNumberToObject(task, task_manager_json_keys[WM_TASK_AGENT_ID], agent_json->valueint);
@@ -143,7 +143,7 @@ cJSON* wm_task_manager_parse_message(const char *msg) {
             if (task_json->type == cJSON_Number) {
                 cJSON *task = cJSON_CreateObject();
 
-                cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_NAME], name_json->valuestring);
+                cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_NODE], name_json->valuestring);
                 cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_MODULE], module_json->valuestring);
                 cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_COMMAND], command_json->valuestring);
                 cJSON_AddNumberToObject(task, task_manager_json_keys[WM_TASK_TASK_ID], task_json->valueint);
@@ -172,7 +172,7 @@ cJSON* wm_task_manager_parse_message(const char *msg) {
 void wm_task_manager_parse_data_result(cJSON *response, const char *node, const char *module, const char *command, char *status, char *error, int create_time, int last_update_time, char *request_command) {
 
     if (node != NULL) {
-        cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_NAME], node);
+        cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_NODE], node);
     }
 
     if (module != NULL) {

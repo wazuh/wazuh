@@ -57,7 +57,7 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
     char *status = NULL;
     char *error = NULL;
 
-    if (tmp = cJSON_GetObjectItem(task_object, task_manager_json_keys[WM_TASK_NAME]), tmp && tmp->type == cJSON_String) {
+    if (tmp = cJSON_GetObjectItem(task_object, task_manager_json_keys[WM_TASK_NODE]), tmp && tmp->type == cJSON_String) {
         os_strdup(tmp->valuestring, node);
     }
     if (tmp = cJSON_GetObjectItem(task_object, task_manager_json_keys[WM_TASK_MODULE]), tmp && tmp->type == cJSON_String) {

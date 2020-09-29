@@ -38,6 +38,7 @@ typedef enum _task_manager_json_key {
     WM_TASK_ERROR_MESSAGE,
     WM_TASK_AGENT_ID,
     WM_TASK_TASK_ID,
+    WM_TASK_NODE,
     WM_TASK_STATUS,
     WM_TASK_ERROR_MSG,
     WM_TASK_CREATE_TIME,
