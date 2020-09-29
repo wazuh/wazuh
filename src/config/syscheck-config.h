@@ -446,20 +446,20 @@ void dump_syscheck_file(syscheck_config *syscheck, char *entry, int vals, const 
  *
  * @param syscheck Syscheck configuration structure
  * @param entry Entry to be dumped
- * @param vals Indicates the attributes for folders or registries to be set
+ * @param opts Indicates the attributes for registries to be set
  * @param restrictfile The restrict regex to be set
  * @param recursion_level The recursion level to be set
  * @param tag The tag to be set
- * @param link If the added entry is pointed by a symbolic link for folders and arch for registries
+ * @param arch Indicates whether to monitor the 64 or 32 version of the registry
  * @param diff_size Maximum size to calculate diff for files in the directory
  */
 void dump_syscheck_registry(syscheck_config *syscheck,
                             char *entry,
-                            int vals,
+                            int opts,
                             const char *restrictfile,
                             int recursion_level,
                             const char *tag,
-                            const char *link,
+                            int arch,
                             int diff_size) __attribute__((nonnull(1, 2)));
 #endif
 

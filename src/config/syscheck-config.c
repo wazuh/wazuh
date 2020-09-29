@@ -277,11 +277,11 @@ void dump_syscheck_file(syscheck_config *syscheck,
 #ifdef WIN32
 void dump_syscheck_registry(syscheck_config *syscheck,
                             char *entry,
-                            int vals,
+                            int opts,
                             const char *restrictfile,
-                            int recursion_limit,
+                            int recursion_level,
                             const char *tag,
-                            const char *link,
+                            int arch,
                             int diff_size) {
     unsigned int pl = 0;
     int overwrite = -1;
@@ -292,14 +292,14 @@ void dump_syscheck_registry(syscheck_config *syscheck,
         syscheck->registry[pl].tag = NULL;
         syscheck->registry[pl + 1].tag = NULL;
         syscheck->registry[pl + 1].recursion_level = 0;
-        syscheck->registry[pl].recursion_level = recursion_limit;
-        syscheck->registry[pl].arch = (int)*link;
-        syscheck->registry[pl].opts = vals;
+        syscheck->registry[pl].recursion_level = recursion_level;
+        syscheck->registry[pl].arch = arch;
+        syscheck->registry[pl].opts = opts;
         os_strdup(entry, syscheck->registry[pl].entry);
     } else {
         while (syscheck->registry[pl].entry != NULL) {
             /* Duplicated entry */
-            if (strcmp(syscheck->registry[pl].entry, entry) == 0 && (int)*link == syscheck->registry[pl].arch) {
+            if (strcmp(syscheck->registry[pl].entry, entry) == 0 && arch == syscheck->registry[pl].arch) {
                 overwrite = pl;
                 mdebug2("Duplicated registration entry: %s", syscheck->registry[pl].entry);
                 break;
@@ -312,44 +312,15 @@ void dump_syscheck_registry(syscheck_config *syscheck,
             syscheck->registry[pl].tag = NULL;
             syscheck->registry[pl + 1].tag = NULL;
             syscheck->registry[pl + 1].recursion_level = 0;
-            syscheck->registry[pl].recursion_level = recursion_limit;
-            syscheck->registry[pl].arch = (int)*link;
-            syscheck->registry[pl].opts = vals;
-            syscheck->registry[pl].filerestrict = NULL;
             syscheck->registry[pl + 1].filerestrict = NULL;
+            syscheck->registry[pl].recursion_level = recursion_level;
+            syscheck->registry[pl].arch = arch;
             os_strdup(entry, syscheck->registry[pl].entry);
         } else {
-            while (syscheck->registry[pl].entry != NULL) {
-                /* Duplicated entry */
-                if (strcmp(syscheck->registry[pl].entry, entry) == 0 && (int)*link == syscheck->registry[pl].arch) {
-                    overwrite = pl;
-                    mdebug2("Duplicated registration entry: %s", syscheck->registry[pl].entry);
-                    break;
-                }
-                pl++;
-            }
-            if (overwrite < 0) {
-                os_realloc(syscheck->registry, (pl + 2) * sizeof(registry),
-                        syscheck->registry);
-                syscheck->registry[pl + 1].entry = NULL;
-                syscheck->registry[pl].tag = NULL;
-                syscheck->registry[pl + 1].tag = NULL;
-                syscheck->registry[pl + 1].recursion_level = 0;
-                syscheck->registry[pl].recursion_level = recursion_limit;
-                syscheck->registry[pl].arch = (int)*link;
-                syscheck->registry[pl].filerestrict = NULL;
-                syscheck->registry[pl + 1].filerestrict = NULL;
-                os_strdup(entry, syscheck->registry[pl].entry);
-            } else {
-                os_free(syscheck->registry[pl].tag);
-                if (syscheck->registry[pl].filerestrict){
-                    OSMatch_FreePattern(syscheck->registry[pl].filerestrict);
-                    free(syscheck->registry[pl].filerestrict);
-                    syscheck->registry[pl].filerestrict = NULL;
-                }
-            }
+            OSMatch_FreePattern(syscheck->registry[pl].filerestrict);
+            os_free(syscheck->registry[pl].filerestrict);
+            os_free(syscheck->registry[pl].tag);
         }
-
         if (restrictfile) {
             os_calloc(1, sizeof(OSMatch), syscheck->registry[pl].filerestrict);
             if (!OSMatch_Compile(restrictfile, syscheck->registry[pl].filerestrict, 0)) {
@@ -580,7 +551,12 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
         }
 
         /* Add new entry */
-        dump_syscheck_registry(syscheck, tmp_entry, arch, NULL, recursion_level, tag, &arch, -1);
+        if (arch == ARCH_BOTH) {
+            dump_syscheck_registry(syscheck, tmp_entry, opts, NULL, recursion_level, tag, ARCH_64BIT, -1);
+            dump_syscheck_registry(syscheck, tmp_entry, opts, NULL, recursion_level, tag, ARCH_32BIT, -1);
+        } else {
+            dump_syscheck_registry(syscheck, tmp_entry, opts, NULL, recursion_level, tag, arch, -1);
+        }
 
         /* Next entry */
         free(entry[i]);
