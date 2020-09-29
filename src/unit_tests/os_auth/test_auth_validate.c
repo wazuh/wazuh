@@ -188,14 +188,14 @@ static void test_w_auth_validate_data_force_insert(void **state) {
 
     /* Duplicated IP*/
     response[0] = '\0';
-    expect_string(__wrap__minfo, formatted_msg, "Duplicated IP '"EXISTENT_IP1"' (001). Saving backup.");
+    expect_string(__wrap__minfo, formatted_msg, "Duplicated IP '"EXISTENT_IP1"' (001). Removing old agent.");
     err = w_auth_validate_data(response, EXISTENT_IP1, NEW_AGENT1, NULL);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");
 
      /* Duplicated Name*/
     response[0] = '\0';
-    expect_string(__wrap__minfo, formatted_msg, "Duplicated name '"EXISTENT_AGENT2"' (002). Saving backup.");
+    expect_string(__wrap__minfo, formatted_msg, "Duplicated name '"EXISTENT_AGENT2"' (002). Removing old agent.");
     err = w_auth_validate_data(response, NEW_IP2, EXISTENT_AGENT2, NULL);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");

@@ -231,7 +231,7 @@
   <rule id="20177" level="8">
     <if_sid>20168</if_sid>
     <field name="win.system.eventID">^2004$</field>
-    <group>pci_dss_10.6.1,gpg13_4.14,gpg13_4.4,gpg13_,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,gpg13_4.14,gpg13_4.4,gdpr_IV_35.7.d,</group>
     <description>Microsoft Security Essentials - Loading definitions failed. Using last good set</description>
     <options>no_full_log</options>
   </rule>

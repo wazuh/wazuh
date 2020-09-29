@@ -30,12 +30,10 @@ def update_security_conf(new_config):
     new_config : dict
         Dictionary with the new configuration.
     """
-    configuration.security_conf.update(new_config)
-
     if new_config:
         try:
             with open(SECURITY_CONFIG_PATH, 'w+') as f:
-                yaml.dump(configuration.security_conf, f)
+                yaml.dump(new_config, f)
         except IOError:
             raise WazuhInternalError(1005)
     else:
