@@ -12,6 +12,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include "../../common.h"
 
 
 int __wrap_sqlite3_bind_int(__attribute__((unused)) sqlite3_stmt *stmt,
@@ -136,5 +137,8 @@ int __wrap_sqlite3_reset(__attribute__((unused)) sqlite3_stmt *pStmt) {
 }
 
 int __wrap_sqlite3_step(__attribute__((unused)) sqlite3_stmt * stmt){
-    return mock();
+    if (mock())
+        return __real_sqlite3_step(stmt);
+    else
+        return mock();
 }
