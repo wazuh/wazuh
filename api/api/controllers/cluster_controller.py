@@ -186,7 +186,7 @@ async def get_status_node(request, node_id, pretty=False, wait_for_complete=Fals
 
 
 async def get_info_node(request, node_id, pretty=False, wait_for_complete=False):
-    """Get a specified node's information 
+    """Get a specified node's information
 
     Returns basic information about a specified node such as version, compilation date, installation path.
 
@@ -240,7 +240,7 @@ async def get_configuration_node(request, node_id, pretty=False, wait_for_comple
 
 
 async def get_stats_node(request, node_id, pretty=False, wait_for_complete=False, date=None):
-    """Get a specified node's stats. 
+    """Get a specified node's stats.
 
     Returns Wazuh statistical information in node {node_id} for the current or specified date.
 
@@ -268,12 +268,11 @@ async def get_stats_node(request, node_id, pretty=False, wait_for_complete=False
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
-
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_stats_hourly_node(request, node_id, pretty=False, wait_for_complete=False):
-    """Get a specified node's stats by hour. 
+    """Get a specified node's stats by hour.
 
     Returns Wazuh statistical information in node {node_id} per hour. Each number in the averages field represents the
     average of alerts per hour.
@@ -295,13 +294,12 @@ async def get_stats_hourly_node(request, node_id, pretty=False, wait_for_complet
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_stats_weekly_node(request, node_id, pretty=False, wait_for_complete=False):
-    """Get a specified node's stats by week. 
+    """Get a specified node's stats by week.
 
     Returns Wazuh statistical information in node {node_id} per week. Each number in the averages field represents the
     average of alerts per hour for that specific day.
@@ -323,9 +321,8 @@ async def get_stats_weekly_node(request, node_id, pretty=False, wait_for_complet
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_stats_analysisd_node(request, node_id, pretty=False, wait_for_complete=False):
@@ -349,9 +346,8 @@ async def get_stats_analysisd_node(request, node_id, pretty=False, wait_for_comp
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_stats_remoted_node(request, node_id, pretty=False, wait_for_complete=False):
@@ -375,14 +371,13 @@ async def get_stats_remoted_node(request, node_id, pretty=False, wait_for_comple
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_log_node(request, node_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
                        search=None, tag=None, level=None, q=None):
-    """Get a specified node's wazuh logs. 
+    """Get a specified node's wazuh logs.
 
     Returns the last 2000 wazuh log entries in node {node_id}.
 

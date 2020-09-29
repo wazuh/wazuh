@@ -34,6 +34,13 @@
 #define AUDIT_HEALTHCHECK_KEY "wazuh_hc"
 #define AUDIT_HEALTHCHECK_FILE AUDIT_HEALTHCHECK_DIR "/audit_hc"
 
+#ifndef WAZUH_UNIT_TESTING
+#define audit_thread_status() ((mode == READING_MODE && audit_thread_active) || \
+                                (mode == HEALTHCHECK_MODE && hc_thread_active))
+#else
+#define audit_thread_status() FOREVER()
+#endif
+
 // Global variables
 W_Vector *audit_added_rules;
 W_Vector *audit_added_dirs;
@@ -702,7 +709,7 @@ void audit_parse(char *buffer) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_malloc(match_size + 1, w_evt->user_id);
                 snprintf (w_evt->user_id, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-                w_evt->user_name = get_user("", atoi(w_evt->user_id), NULL);
+                w_evt->user_name = get_user(atoi(w_evt->user_id));
             }
             // audit_name & audit_uid
             if(regexec(&regexCompiled_auid, buffer, 2, match, 0) == 0) {
@@ -718,7 +725,7 @@ void audit_parse(char *buffer) {
                     w_evt->audit_name = NULL;
                     w_evt->audit_uid = NULL;
                 } else {
-                    w_evt->audit_name = get_user("",atoi(auid), NULL);
+                    w_evt->audit_name = get_user(atoi(auid));
                     w_evt->audit_uid = strdup(auid);
                 }
                 os_free(auid);
@@ -728,7 +735,7 @@ void audit_parse(char *buffer) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_malloc(match_size + 1, w_evt->effective_uid);
                 snprintf (w_evt->effective_uid, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
-                w_evt->effective_name = get_user("",atoi(w_evt->effective_uid), NULL);
+                w_evt->effective_name = get_user(atoi(w_evt->effective_uid));
             }
             // group_name & group_id
             if(regexec(&regexCompiled_gid, buffer, 2, match, 0) == 0) {
@@ -1256,8 +1263,7 @@ void audit_read_events(int *audit_sock, int mode) {
     os_malloc(BUF_SIZE * sizeof(char), buffer);
     os_malloc(BUF_SIZE, cache);
 
-    while ((mode == READING_MODE && audit_thread_active)
-       || (mode == HEALTHCHECK_MODE && hc_thread_active)) {
+    while (audit_thread_status()) {
         FD_ZERO(&fdset);
         FD_SET(*audit_sock, &fdset);
 

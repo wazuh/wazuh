@@ -1,5 +1,7 @@
 import json
 import time
+from base64 import b64decode
+from json import loads
 
 from box import Box
 
@@ -108,7 +110,7 @@ def test_validate_upgrade(response):
 def test_validate_upgrade_result(response, upgraded):
     upgraded = int(upgraded, 10)
     if upgraded == 1:
-        assert response.json().get('message', None) == "Agent upgraded successfully"
+        assert response.json().get('message', None) == "Agent was successfully upgraded"
     else:
         # If upgrade didnt work because no version was available, we expect an empty upgrade_result with error 1716
         assert response.json().get('code', None) == 1716
@@ -177,3 +179,29 @@ def test_validate_restart_by_node_rbac(response, permitted_agents):
         assert response.status_code == 403
         assert response.json()['code'] == 4000
         assert 'agent:id' in response.json()['detail']
+
+
+def test_validate_auth_context(response, expected_roles=None):
+    """Check that the authorization context has been matched with the correct rules
+
+    Parameters
+    ----------
+    response : Request response
+    expected_roles : list
+        List of expected roles after checking the authorization context
+    """
+    token = response.json()['token'].split('.')[1]
+    payload = loads(b64decode(token + '===').decode())
+    assert payload['rbac_roles'] == expected_roles
+
+
+def test_validate_syscollector_hotfix(response, hotfix_filter=None, experimental=False):
+    hotfixes_keys = {'hotfix', 'scan_id', 'scan_time'}
+    if experimental:
+        hotfixes_keys.add('agent_id')
+    affected_items = response.json()['data']['affected_items']
+    if affected_items:
+        for item in affected_items:
+            assert set(item.keys()) == hotfixes_keys
+            if hotfix_filter:
+                assert item['hotfix'] == hotfix_filter

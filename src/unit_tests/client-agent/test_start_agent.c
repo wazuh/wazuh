@@ -16,31 +16,20 @@
 
 #include "../wrappers/common.h"
 #include "../wrappers/client-agent/start_agent.h"
+#include "../wrappers/wazuh/os_net/os_net_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/validate_op_wrappers.h"
+#include "../wrappers/wazuh/monitord/monitord_wrappers.h"
+
+#ifdef TEST_WINAGENT
+#include "../wrappers/wazuh/shared/randombytes_wrappers.h"
+#endif
+
 #include "../client-agent/agentd.h"
 
 extern void send_msg_on_startup(void);
 extern bool agent_handshake_to_server(int server_id, bool is_startup);
 extern int _s_verify_counter;
-
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
-   return;
-}
-
-void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
-   return;
-}
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    return;
-}
-
-void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...) {
-    return;
-}
-void __wrap_w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json, int daily_rotations) {
-    return;
-}
 
 #ifndef TEST_WINAGENT
 int __wrap_close(int fd) {
@@ -48,17 +37,6 @@ int __wrap_close(int fd) {
     return 0;
 }
 #endif
-
-int __wrap_OS_ConnectUDP(u_int16_t _port, const char *_ip, int ipv6) {
-    return mock();
-}
-int __wrap_OS_ConnectTCP(u_int16_t _port, const char *_ip, int ipv6) {
-    return mock();
-}
-
-int __wrap_OS_SetRecvTimeout(int socket, long seconds, long useconds) {
-    return mock();
-}
 
 void __wrap_resolveHostname(char **hostname, int attempts) {
     if (strcmp(*hostname, "VALID_HOSTNAME/") == 0) {
@@ -68,10 +46,6 @@ void __wrap_resolveHostname(char **hostname, int attempts) {
         free(*hostname);
         os_strdup("INVALID_HOSTNAME/", *hostname);
     }
-}
-
-int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, int max) {
-    return mock();
 }
 
 int __wrap_send_msg(const char *msg, ssize_t msg_length) {
@@ -88,13 +62,6 @@ ssize_t __wrap_recv(int __fd, void *__buf, size_t __n, int __flags) {
 }
 #endif
 
-int __wrap_OS_RecvSecureTCP(int sock, char * ret,uint32_t size) {
-    char* rcv = (char*)mock_ptr_type(char *);
-    int len = strlen(rcv);
-    snprintf(ret, len+1, "%s", rcv);
-    return len;
-}
-
 int __wrap_fseek(FILE *__stream, long __off, int __whence) {
     return 0;
 }
@@ -108,10 +75,6 @@ int __wrap_fflush(FILE *__stream) {
 int __wrap_ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned int buffer_size, size_t *final_size, const char *srcip, char **output) {
     check_expected(buffer);
     *output = (char*)mock_ptr_type(char *);
-    return (int)mock();
-}
-
-int __wrap_wnet_select(int sock, int timeout) {
     return (int)mock();
 }
 
@@ -133,6 +96,11 @@ void add_server_config(char* address, int protocol) {
 
 void keys_init(keystore *keys) {
     /* Initialize hashes */
+
+#ifdef TEST_WINAGENT
+    will_return_count(__wrap_os_random, 12345, 6);
+#endif
+
     keys->keyhash_id = OSHash_Create();
     keys->keyhash_ip = OSHash_Create();
     keys->keyhash_sock = OSHash_Create();
@@ -203,6 +171,9 @@ static void test_connect_server(void **state) {
     /* Connect to first server (UDP)*/
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OS_ConnectUDP, 11);
+
+    expect_any_count(__wrap__minfo, formatted_msg, 2);
+
     connected = connect_server(0);
     assert_int_equal(agt->rip_id, 0);
     assert_int_equal(agt->sock, 11);
@@ -210,12 +181,19 @@ static void test_connect_server(void **state) {
 
     /* Connect to second server (TCP), previous connection must be closed*/
     will_return(__wrap_getDefine_Int, 5);
+
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
     will_return(__wrap_OS_ConnectTCP, 12);
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_close, fd, 11);
-    #else
+#else
     expect_value(wrap_closesocket, fd, 11);
-    #endif
+#endif
+
+    expect_any_count(__wrap__minfo, formatted_msg, 2);
+
     connected = connect_server(1);
     assert_int_equal(agt->rip_id, 1);
     assert_int_equal(agt->sock, 12);
@@ -224,11 +202,14 @@ static void test_connect_server(void **state) {
     /* Connect to third server (UDP), valid host name*/
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OS_ConnectUDP, 13);
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_close, fd, 12);
-    #else
+#else
     expect_value(wrap_closesocket, fd, 12);
-    #endif
+#endif
+
+    expect_any_count(__wrap__minfo, formatted_msg, 2);
+
     connected = connect_server(2);
     assert_int_equal(agt->rip_id, 2);
     assert_int_equal(agt->sock, 13);
@@ -236,11 +217,15 @@ static void test_connect_server(void **state) {
 
     /* Connect to fourth server (UDP), invalid host name*/
     will_return(__wrap_getDefine_Int, 5);
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_close, fd, 13);
-    #else
+#else
     expect_value(wrap_closesocket, fd, 13);
-    #endif
+#endif
+
+    expect_any(__wrap__minfo, formatted_msg);
+    expect_any(__wrap__merror, formatted_msg);
+
     connected = connect_server(3);
     assert_false(connected);
 
@@ -271,42 +256,62 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
+    expect_any_count(__wrap__minfo, formatted_msg, 3);
+
     handshaked = agent_handshake_to_server(0, false);
     assert_true(handshaked);
 
     /* Handshake with second server (TCP) */
     will_return(__wrap_getDefine_Int, 5);
+
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
     will_return(__wrap_OS_ConnectTCP, 22);
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_close, fd, 21);
-    #else
+#else
     expect_value(wrap_closesocket, fd, 21);
-    #endif
+#endif
     will_return(__wrap_wnet_select, 1);
+    expect_any(__wrap_OS_RecvSecureTCP, sock);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
     will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
     expect_string(__wrap_send_msg, msg, "#!-agent startup ");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_any_count(__wrap__minfo, formatted_msg, 6);
 
     handshaked = agent_handshake_to_server(1, false);
     assert_true(handshaked);
 
     /* Handshake sending the startup message */
     will_return(__wrap_getDefine_Int, 5);
+
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
     will_return(__wrap_OS_ConnectTCP, 23);
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_close, fd, 22);
-    #else
+#else
     expect_value(wrap_closesocket, fd, 22);
-    #endif
+#endif
     will_return(__wrap_wnet_select, 1);
+    expect_any(__wrap_OS_RecvSecureTCP, sock);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
     will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
     expect_string(__wrap_send_msg, msg, "#!-agent startup ");
     expect_string(__wrap_send_msg, msg, "1:ossec:ossec: Agent started: 'agent0->any'.");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_any_count(__wrap__minfo, formatted_msg, 3);
 
     handshaked = agent_handshake_to_server(1, true);
     assert_true(handshaked);
@@ -314,11 +319,14 @@ static void test_agent_handshake_to_server(void **state) {
     /* Handshake with connection error */
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OS_ConnectUDP, -1);
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_close, fd, 23);
-    #else
+#else
     expect_value(wrap_closesocket, fd, 23);
-    #endif
+#endif
+
+    expect_any(__wrap__minfo, formatted_msg);
+    expect_any(__wrap__merror, formatted_msg);
 
     handshaked = agent_handshake_to_server(0, false);
     assert_false(handshaked);
@@ -329,19 +337,21 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_wnet_select, 0);
     expect_string(__wrap_send_msg, msg, "#!-agent startup ");
 
+    expect_any(__wrap__mwarn, formatted_msg);
+
     handshaked = agent_handshake_to_server(0, false);
     assert_false(handshaked);
 
     /* Handshake with decode error */
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OS_ConnectUDP, 24);
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_close, fd, 23);
     will_return(__wrap_recv, SERVER_WRONG_ACK);
-    #else
+#else
     expect_value(wrap_closesocket, fd, 23);
     will_return(wrap_recv, SERVER_WRONG_ACK);
-    #endif
+#endif
     will_return(__wrap_wnet_select, 1);
     expect_string(__wrap_send_msg, msg, "#!-agent startup ");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_WRONG_ACK);

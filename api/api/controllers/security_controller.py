@@ -7,6 +7,7 @@ import re
 from json import JSONDecodeError
 
 from aiohttp import web
+
 from api.authentication import generate_token
 from api.configuration import default_security_configuration
 from api.encoder import dumps, prettify
@@ -18,7 +19,7 @@ from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
 from wazuh import security
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.exception import WazuhPermissionError, WazuhException, WazuhInternalError
+from wazuh.core.exception import WazuhPermissionError, WazuhException
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.security import revoke_tokens
 from wazuh.rbac import preprocessor
@@ -58,6 +59,7 @@ async def login_user(request, user: str, raw=False):
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
+    token = None
     try:
         token = generate_token(user_id=user, rbac_policies=data.dikt)
     except WazuhException as e:
@@ -97,8 +99,15 @@ async def get_user_me(request, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def logout_user(request):
+async def logout_user(request, pretty=False, wait_for_complete=False):
     """Invalidate all current user's tokens.
+
+    Parameters
+    ----------
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
 
     Returns
     -------
@@ -109,11 +118,12 @@ async def logout_user(request):
                           request_type='local_master',
                           is_async=False,
                           current_user=request['token_info']['sub'],
+                          wait_for_complete=wait_for_complete,
                           logger=logger
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_users(request, user_ids: list = None, pretty=False, wait_for_complete=False,
@@ -162,12 +172,16 @@ async def get_users(request, user_ids: list = None, pretty=False, wait_for_compl
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def create_user(request):
+async def create_user(request, pretty=False, wait_for_complete=False):
     """Create a new user.
 
     Parameters
     ----------
     request : connexion.request
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
 
     Returns
     -------
@@ -181,14 +195,15 @@ async def create_user(request):
                           request_type='local_master',
                           is_async=False,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          wait_for_complete=wait_for_complete
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def update_user(request, user_id: str):
+async def update_user(request, user_id: str, pretty=False, wait_for_complete=False):
     """Modify an existent user.
 
     Parameters
@@ -196,6 +211,10 @@ async def update_user(request, user_id: str):
     request : connexion.request
     user_id : str
         User ID of the user to be updated
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
 
     Returns
     -------
@@ -209,14 +228,15 @@ async def update_user(request, user_id: str):
                           request_type='local_master',
                           is_async=False,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          wait_for_complete=wait_for_complete
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_users(request, user_ids: list = None):
+async def delete_users(request, user_ids: list = None, pretty=False, wait_for_complete=False):
     """Delete an existent list of users.
 
     Parameters
@@ -224,6 +244,10 @@ async def delete_users(request, user_ids: list = None):
     request : connexion.request
     user_ids : list, optional
         IDs of the users to be removed
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
 
     Returns
     -------
@@ -239,11 +263,12 @@ async def delete_users(request, user_ids: list = None):
                           is_async=False,
                           logger=logger,
                           current_user=request['token_info']['sub'],
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          wait_for_complete=wait_for_complete
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_roles(request, role_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
@@ -903,15 +928,15 @@ async def remove_role_rule(request, role_id: int, rule_ids: list, pretty: bool =
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_rbac_resources(pretty: bool = False, resource: str = None):
+async def get_rbac_resources(resource: str = None, pretty: bool = False):
     """Gets all the current defined resources for RBAC.
 
     Parameters
     ----------
-    pretty : bool, optional
-        Show results in human-readable format
     resource : str, optional
         Show the information of the specified resource. Ex: agent:id
+    pretty : bool, optional
+        Show results in human-readable format
 
     Returns
     -------
@@ -961,8 +986,19 @@ async def get_rbac_actions(pretty: bool = False, endpoint: str = None):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def revoke_all_tokens(request):
-    """Revoke all tokens."""
+async def revoke_all_tokens(request, pretty: bool = False):
+    """Revoke all tokens
+
+    Parameters
+    ----------
+    pretty : bool, optional
+        Show results in human-readable format
+
+    Returns
+    -------
+    dict
+        Status message
+    """
     f_kwargs = {}
 
     nodes = await get_system_nodes()
@@ -983,7 +1019,7 @@ async def revoke_all_tokens(request):
     if type(data) == AffectedItemsWazuhResult and len(data.affected_items) == 0:
         raise_if_exc(WazuhPermissionError(4000, data.message))
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_security_config(request, pretty=False, wait_for_complete=False):
@@ -1030,10 +1066,20 @@ async def security_revoke_tokens():
 
 
 async def put_security_config(request, pretty=False, wait_for_complete=False):
-    """Update current security configuration with the given one.
+    """Update current security configuration with the given one
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
+    Parameters
+    ----------
+    request
+    pretty : bool
+        Show results in human-readable format
+    wait_for_complete : bool
+        Disable timeout response
+
+    Returns
+    -------
+    dict:
+        Status message
     """
     Body.validate_content_type(request, expected_content_type='application/json')
     f_kwargs = {'updated_config': await SecurityConfigurationModel.get_kwargs(request)}
@@ -1053,10 +1099,20 @@ async def put_security_config(request, pretty=False, wait_for_complete=False):
 
 
 async def delete_security_config(request, pretty=False, wait_for_complete=False):
-    """Restore default security configuration.
+    """Restore default security configuration
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
+    Parameters
+    ----------
+    request
+    pretty : bool
+        Show results in human-readable format
+    wait_for_complete : bool
+        Disable timeout response
+
+    Returns
+    -------
+    dict:
+        Status message
     """
     f_kwargs = {"updated_config": await SecurityConfigurationModel.get_kwargs(default_security_configuration)}
 

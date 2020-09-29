@@ -1,5 +1,5 @@
 # Generate os_auth library
-file(GLOB os_auth_files 
+file(GLOB os_auth_files
     ${SRC_FOLDER}/os_auth/*.o
     ${SRC_FOLDER}/addagent/*.o)
 list(REMOVE_ITEM os_auth_files ${SRC_FOLDER}/os_auth/main-server.o)
@@ -26,11 +26,12 @@ target_link_libraries(OS_AUTH_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 list(APPEND os_auth_names "test_auth_parse")
 list(APPEND os_auth_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_minfo -Wl,--wrap,_mdebug1")
 list(APPEND os_auth_names "test_auth_validate")
-list(APPEND os_auth_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_minfo -Wl,--wrap,_mdebug1 -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,OS_RemoveAgentGroup -Wl,--wrap,add_remove")
+list(APPEND os_auth_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_minfo -Wl,--wrap,_mdebug1 \
+                           -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,OS_RemoveAgentGroup -Wl,--wrap,add_remove")
 list(APPEND os_auth_names "test_auth_add")
 list(APPEND os_auth_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_minfo -Wl,--wrap,_mdebug1")
 list(APPEND os_auth_names "test_ssl")
-list(APPEND os_auth_flags "-Wl,--wrap,SSL_read")
+list(APPEND os_auth_flags "-Wl,--wrap,SSL_read -Wl,--wrap=SSL_new")
 
 list(LENGTH os_auth_names count)
 math(EXPR count "${count} - 1")

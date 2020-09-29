@@ -26,12 +26,12 @@ INSERT INTO roles VALUES(104,'normalUser','1970-01-01 00:00:00');
 INSERT INTO roles VALUES(105,'ossec','1970-01-01 00:00:00');
 
 /* Testing */
-INSERT INTO rules VALUES(100,'omegalul','{"FIND": {"r''^auth[a-zA-Z]+$''": ["administrator"]}}','1970-01-01 00:00:00');
-INSERT INTO rules VALUES(101,'omegalul1','{"FIND": {"r''^auth[a-zA-Z]+$''": ["administrator-app"]}}','1970-01-01 00:00:00');
-INSERT INTO rules VALUES(102,'omegalul2','{"MATCH": {"definition": "technicalRule"}}','1970-01-01 00:00:00');
-INSERT INTO rules VALUES(103,'omegalul3','{"MATCH": {"definition": "administratorRule"}}','1970-01-01 00:00:00');
-INSERT INTO rules VALUES(104,'omegalul4','{"MATCH": {"definition": "normalRule"}}','1970-01-01 00:00:00');
-INSERT INTO rules VALUES(105,'omegalul5','{"MATCH": {"definition": "ossecRule"}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(100,'rule1','{"FIND": {"r''^auth[a-zA-Z]+$''": ["administrator"]}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(101,'rule2','{"FIND": {"r''^auth[a-zA-Z]+$''": ["administrator-app"]}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(102,'rule3','{"MATCH": {"definition": "technicalRule"}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(103,'rule4','{"MATCH": {"definition": "administratorRule"}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(104,'rule5','{"MATCH": {"definition": "normalRule"}}','1970-01-01 00:00:00');
+INSERT INTO rules VALUES(105,'rule6','{"MATCH": {"definition": "ossecRule"}}','1970-01-01 00:00:00');
 
 /* Testing */
 INSERT INTO policies VALUES(100,'wazuhPolicy','{"actions": ["*:*"], "resources": ["*:*"], "effect": "allow"}','1970-01-01 00:00:00');

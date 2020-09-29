@@ -15,7 +15,7 @@
 #include "time_op.h"
 #include "fim_db.h"
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when unit testing */
 #define static
 
@@ -61,6 +61,11 @@ void fim_scan() {
     gettime(&start);
     minfo(FIM_FREQUENCY_STARTED);
     fim_send_scan_info(FIM_SCAN_START);
+
+    fim_diff_folder_size();
+    syscheck.disk_quota_full_msg = true;
+
+    mdebug2(FIM_DIFF_FOLDER_SIZE, DIFF_DIR_PATH, syscheck.diff_folder_size);
 
     w_mutex_lock(&syscheck.fim_scan_mutex);
 
@@ -194,6 +199,21 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
         }
 
         if (item->configuration & CHECK_SEECHANGES) {
+            if (syscheck.disk_quota_enabled) {
+                char *full_path;
+                full_path = seechanges_get_diff_path(path);
+
+                if (full_path != NULL && IsDir(full_path) == 0) {
+                    syscheck.diff_folder_size -= (DirSize(full_path) / 1024);   // Update diff_folder_size
+
+                    if (!syscheck.disk_quota_full_msg) {
+                        syscheck.disk_quota_full_msg = true;
+                    }
+                }
+
+                os_free(full_path);
+            }
+
             delete_target_file(path);
         }
 
@@ -743,7 +763,7 @@ fim_entry_data * fim_get_data(const char *file, fim_element *item) {
 
 #ifdef WIN32
     if (item->configuration & CHECK_OWNER) {
-        data->user_name = get_user(file, 0, &data->uid);
+        data->user_name = get_user(file, &data->uid);
     }
 #else
     if (item->configuration & CHECK_OWNER) {
@@ -751,7 +771,7 @@ fim_entry_data * fim_get_data(const char *file, fim_element *item) {
         snprintf(aux, OS_SIZE_64, "%u", item->statbuf.st_uid);
         os_strdup(aux, data->uid);
 
-        data->user_name = get_user(file, item->statbuf.st_uid, NULL);
+        data->user_name = get_user(item->statbuf.st_uid);
     }
 
     if (item->configuration & CHECK_GROUP) {
@@ -915,23 +935,21 @@ cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_da
 #ifndef WIN32
     char** paths = NULL;
 
-    if (new_data) {
-        if (paths = fim_db_get_paths_from_inode(syscheck.database, new_data->inode, new_data->dev), paths){
-            if (paths[0] && paths[1]) {
-                cJSON *hard_links = cJSON_CreateArray();
-                int i;
-                for(i = 0; paths[i]; i++) {
-                    if(strcmp(file_name, paths[i])) {
-                        cJSON_AddItemToArray(hard_links, cJSON_CreateString(paths[i]));
-                    }
-                    os_free(paths[i]);
+    if (paths = fim_db_get_paths_from_inode(syscheck.database, new_data->inode, new_data->dev), paths){
+        if (paths[0] && paths[1]) {
+            cJSON *hard_links = cJSON_CreateArray();
+            int i;
+            for(i = 0; paths[i]; i++) {
+                if(strcmp(file_name, paths[i])) {
+                    cJSON_AddItemToArray(hard_links, cJSON_CreateString(paths[i]));
                 }
-                cJSON_AddItemToObject(data, "hard_links", hard_links);
-            } else {
-                os_free(paths[0]);
+                os_free(paths[i]);
             }
-            os_free(paths);
+            cJSON_AddItemToObject(data, "hard_links", hard_links);
+        } else {
+            os_free(paths[0]);
         }
+        os_free(paths);
     }
 #endif
 
@@ -1248,6 +1266,20 @@ void free_inode_data(fim_inode_data **data) {
     }
     os_free((*data)->paths);
     os_free(*data);
+}
+
+void fim_diff_folder_size(){
+    char *diff_local;
+
+    os_malloc(strlen(DIFF_DIR_PATH) + strlen("/local") + 1, diff_local);
+
+    snprintf(diff_local, strlen(DIFF_DIR_PATH) + strlen("/local") + 1, "%s/local", DIFF_DIR_PATH);
+
+    if (IsDir(diff_local) == 0) {
+        syscheck.diff_folder_size = DirSize(diff_local) / 1024;
+    }
+
+    os_free(diff_local);
 }
 
 // LCOV_EXCL_START

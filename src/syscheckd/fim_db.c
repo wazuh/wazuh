@@ -8,15 +8,11 @@
 
 #include "fim_db.h"
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
-#include "unit_tests/wrappers/common.h"
-#include "unit_tests/wrappers/syscheckd/fim_db.h"
-
-#define fprintf wrap_fprintf
-#define Sleep wrap_fim_db_Sleep
+#include "unit_tests/wrappers/windows/synchapi_wrappers.h"
+#include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
 #endif
-
 #define static
 #endif
 
@@ -888,6 +884,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *new, fi
         sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATH_COUNT]);
 
         res = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_PATH_COUNT], 0);
+        inode_id = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_PATH_COUNT], 1);
         if (res == 1) {
             // The inode has only one entry, delete the entry data.
             fim_db_clean_stmt(fim_sql, FIMDB_STMT_DELETE_DATA);
@@ -1125,11 +1122,24 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
             goto end;
         }
 
-        json_event = fim_json_event(entry->path, NULL, entry->data, pos,
-                                                FIM_DELETE, mode, whodata_event, NULL);
+        json_event = fim_json_event(entry->path, NULL, entry->data, pos, FIM_DELETE, mode, whodata_event, NULL);
 
-        if (!strcmp(FIM_ENTRY_TYPE[entry->data->entry_type], "file") &&
-            syscheck.opts[pos] & CHECK_SEECHANGES) {
+        if (!strcmp(FIM_ENTRY_TYPE[entry->data->entry_type], "file") && syscheck.opts[pos] & CHECK_SEECHANGES) {
+            if (syscheck.disk_quota_enabled) {
+                char *full_path;
+                full_path = seechanges_get_diff_path(entry->path);
+
+                if (full_path != NULL && IsDir(full_path) == 0) {
+                    syscheck.diff_folder_size -= (DirSize(full_path) / 1024);   // Update diff_folder_size
+
+                    if (!syscheck.disk_quota_full_msg) {
+                        syscheck.disk_quota_full_msg = true;
+                    }
+                }
+
+                os_free(full_path);
+            }
+
             delete_target_file(entry->path);
         }
 

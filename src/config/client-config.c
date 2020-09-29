@@ -328,7 +328,7 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
     const char *xml_server_ca_path = "server_ca_path";
     const char *xml_agent_certif_path = "agent_certificate_path";
     const char *xml_agent_key_path = "agent_key_path";
-    const char *xml_auth_password = "authorization_pass_path";
+    const char *xml_auth_password_path = "authorization_pass_path";
     const char *xml_auto_method = "auto_method";
     const char *xml_delay_after_enrollment = "delay_after_enrollment";
     const char *xml_use_source_ip = "use_source_ip";
@@ -420,7 +420,7 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
         } else if (strcmp(node[j]->element, xml_agent_key_path) == 0) {
             os_free(cert_cfg->agent_key);
             os_strdup(node[j]->content, cert_cfg->agent_key);
-        } else if (strcmp(node[j]->element, xml_auth_password) == 0) {
+        } else if (strcmp(node[j]->element, xml_auth_password_path) == 0) {
             os_free(cert_cfg->authpass_file);
             os_strdup(node[j]->content, cert_cfg->authpass_file);
         } else if (strcmp(node[j]->element, xml_auto_method) == 0) {

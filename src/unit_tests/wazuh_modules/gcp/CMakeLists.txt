@@ -5,44 +5,16 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-cmake_minimum_required(VERSION 3.10)
-
-set(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../)
-
-include_directories(${SRC_FOLDER}/headers)
-include_directories(${SRC_FOLDER}/external/openssl/include)
-include_directories(${SRC_FOLDER})
-
-
-# Wazuh libraries
-find_library(WAZUHLIB NAMES libwazuh.a HINTS "${SRC_FOLDER}")
-if(NOT WAZUHLIB)
-  message(FATAL_ERROR "libwazuh.a not found! Aborting...")
-endif()
-
-find_library(WAZUHEXT NAMES libwazuhext.so HINTS "${SRC_FOLDER}")
-if(NOT WAZUHEXT)
-  message(FATAL_ERROR "libwazuhext.so not found! Aborting...")
-endif()
-
-
-# Add compiling flags
-add_compile_options(-ggdb -O0 -g -coverage)
-
-
-# Enable testing
-enable_testing()
-
-
 # Tests list and flags
 list(APPEND tests_names "test_wm_gcp")
 list(APPEND tests_flags "-Wl,--wrap,wm_exec,--wrap,_mtdebug1,--wrap,_mtinfo,--wrap,_mtwarn,--wrap,_mterror \
                          -Wl,--wrap,sched_scan_dump,--wrap,sched_scan_get_time_until_next_scan,--wrap,cJSON_CreateObject \
                          -Wl,--wrap,FOREVER,--wrap,_mtdebug2")
+list(APPEND use_shared_libs 0)
 
 list(APPEND tests_names "test_wmodules_gcp")
-list(APPEND tests_flags "-Wl,--wrap,sched_scan_read,--wrap,realpath,--wrap,IsFile,--wrap,_mwarn,--wrap,_merror")
-
+list(APPEND tests_flags "-Wl,--wrap,sched_scan_read,--wrap,realpath,--wrap,IsFile,--wrap,_mwarn,--wrap,_merror,--wrap,atexit")
+list(APPEND use_shared_libs 0)
 
 # Generate wazuh modules library
 file(GLOB gcp ../../../wazuh_modules/*.o ../../../config/*.o)

@@ -284,9 +284,9 @@ def test_agent_get_agents_keys(sqlite_mock, agent_list, expected_items):
 
 
 @pytest.mark.parametrize('agent_list, older_than, remove_msg, error_code, expected_items', [
-    (['001', '002', '003'], "1s", 'Agent deleted successfully.', None, ['001', '002', '003']),
+    (['001', '002', '003'], "1s", 'Agent was successfully deleted', None, ['001', '002', '003']),
     (['000'], "1s", None, 1703, []),
-    (['001', '500'], "1s", 'Agent deleted successfully.', 1701, ['001']),
+    (['001', '500'], "1s", 'Agent was successfully deleted', 1701, ['001']),
     (['001', '002'], "1s", WazuhException(1700), 1700, []),
 ])
 @patch('wazuh.common.database_path_global', new=test_global_bd_path)
@@ -987,7 +987,7 @@ def test_agent_get_upgrade_result(sqlite_mock, socket_sendto, _send_wpk_file, os
     """
     result = get_upgrade_result(agent_list=agent_list, timeout=0)
     assert isinstance(result, str)
-    assert result == "Agent upgraded successfully"
+    assert result == "Agent was successfully upgraded"
 
 
 @pytest.mark.parametrize('agent_list', [['001'], ['002']])
@@ -1184,7 +1184,7 @@ def test_agent_upload_group_file(mock_upload, group_list):
     group_list : List of str
         List of group names.
     """
-    expected_msg = 'Agent configuration was updated successfully'
+    expected_msg = 'Agent configuration was successfully updated'
     mock_upload.return_value = expected_msg
     result = upload_group_file(group_list=group_list, file_data="sample")
     assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'

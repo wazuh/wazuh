@@ -12,6 +12,7 @@ from time import time
 
 import yaml
 from sqlalchemy import create_engine, UniqueConstraint, Column, DateTime, String, Integer, ForeignKey, Boolean
+from sqlalchemy import desc
 from sqlalchemy.dialects.sqlite import TEXT
 from sqlalchemy.exc import IntegrityError, InvalidRequestError
 from sqlalchemy.ext.declarative import declarative_base
@@ -21,6 +22,9 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from api.configuration import security_conf
 from api.constants import SECURITY_PATH
+
+# Max reserved ID value
+max_id_reserved = 99
 
 # Start a session and set the default security elements
 _auth_db_file = os.path.join(SECURITY_PATH, 'rbac.db')
@@ -140,7 +144,7 @@ class UserRoles(_Base):
 
 
 # Declare basic tables
-class TokenBlacklist(_Base):
+class UsersTokenBlacklist(_Base):
     """
     This table contains the users with an invalid token and for how long
     The information stored is:
@@ -150,12 +154,12 @@ class TokenBlacklist(_Base):
         the deadline will be the time of token creation plus the time of token validity.
         This way, when we delete this rule, we ensure the invalid tokens have already expired.
     """
-    __tablename__ = "token_blacklist"
+    __tablename__ = "users_token_blacklist"
 
     user_id = Column('user_id', Integer, primary_key=True)
     nbf_invalid_until = Column('nbf_invalid_until', Integer)
     is_valid_until = Column('is_valid_until', Integer)
-    __table_args__ = (UniqueConstraint('user_id', name='user_rule'),)
+    __table_args__ = (UniqueConstraint('user_id', name='user_invalidation_rule'),)
 
     def __init__(self, user_id):
         self.user_id = user_id
@@ -168,6 +172,37 @@ class TokenBlacklist(_Base):
         :return: Dict with the information
         """
         return {'user_id': self.user_id, 'nbf_invalid_until': self.nbf_invalid_until,
+                'is_valid_until': self.is_valid_until}
+
+
+class RolesTokenBlacklist(_Base):
+    """
+    This table contains the roles with an invalid token and for how long
+    The information stored is:
+        role_id: Affected role id
+        nbf_invalid_until: The tokens that have an nbf prior to this timestamp will be invalidated
+        is_valid_until: Deadline for the rule's validity. To ensure that we can delete this rule,
+        the deadline will be the time of token creation plus the time of token validity.
+        This way, when we delete this rule, we ensure the invalid tokens have already expired.
+    """
+    __tablename__ = "roles_token_blacklist"
+
+    role_id = Column('role_id', Integer, primary_key=True)
+    nbf_invalid_until = Column('nbf_invalid_until', Integer)
+    is_valid_until = Column('is_valid_until', Integer)
+    __table_args__ = (UniqueConstraint('role_id', name='role_invalidation_rule'),)
+
+    def __init__(self, role_id):
+        self.role_id = role_id
+        self.nbf_invalid_until = int(time())
+        self.is_valid_until = self.nbf_invalid_until + security_conf['auth_token_exp_timeout']
+
+    def to_dict(self):
+        """Return the information of the token rule.
+
+        :return: Dict with the information
+        """
+        return {'role_id': self.role_id, 'nbf_invalid_until': self.nbf_invalid_until,
                 'is_valid_until': self.is_valid_until}
 
 
@@ -185,7 +220,8 @@ class User(_Base):
     roles = relationship("Roles", secondary='user_roles',
                          backref=backref("rolesu", cascade="all, delete", order_by=UserRoles.role_id), lazy='dynamic')
 
-    def __init__(self, username, password, allow_run_as=False):
+    def __init__(self, username, password, allow_run_as=False, user_id=None):
+        self.id = user_id
         self.username = username
         self.password = password
         self.allow_run_as = allow_run_as
@@ -248,7 +284,8 @@ class Roles(_Base):
     rules = relationship("Rules", secondary='roles_rules',
                          backref=backref("ruless", cascade="all, delete", order_by=RolesRules.id), lazy='dynamic')
 
-    def __init__(self, name):
+    def __init__(self, name, role_id=None):
+        self.id = role_id
         self.name = name
         self.created_at = datetime.utcnow()
 
@@ -290,14 +327,14 @@ class Rules(_Base):
     name = Column('name', String(20))
     rule = Column('rule', TEXT)
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
-    __table_args__ = (UniqueConstraint('name', name='rule_name'),
-                      UniqueConstraint('rule', name='rule_definition'))
+    __table_args__ = (UniqueConstraint('name', name='rule_name'),)
 
     # Relations
     roles = relationship("Roles", secondary='roles_rules',
                          backref=backref("ruless", cascade="all, delete", order_by=id), lazy='dynamic')
 
-    def __init__(self, name, rule):
+    def __init__(self, name, rule, rule_id=None):
+        self.id = rule_id
         self.name = name
         self.rule = rule
         self.created_at = datetime.utcnow()
@@ -341,7 +378,8 @@ class Policies(_Base):
     roles = relationship("Roles", secondary='roles_policies',
                          backref=backref("roless", cascade="all, delete", order_by=id), lazy='dynamic')
 
-    def __init__(self, name, policy):
+    def __init__(self, name, policy, policy_id=None):
+        self.id = policy_id
         self.name = name
         self.policy = policy
         self.created_at = datetime.utcnow()
@@ -369,13 +407,15 @@ class TokenManager:
     all the methods needed for the token blacklist administration.
     """
 
-    def is_token_valid(self, user_id: int, token_nbf_time: int):
+    def is_token_valid(self, token_nbf_time: int, user_id: int = None, role_id: int = None):
         """Check if specified token is valid
 
         Parameters
         ----------
         user_id : int
-            Current token's username
+            Current token's user id
+        role_id : int
+            Current token's role id
         token_nbf_time : int
             Token's issue timestamp
 
@@ -384,65 +424,87 @@ class TokenManager:
         True if is valid, False if not
         """
         try:
-            rule = self.session.query(TokenBlacklist).filter_by(user_id=user_id).first()
-            return not rule or (token_nbf_time > rule.nbf_invalid_until)
+            user_rule = self.session.query(UsersTokenBlacklist).filter_by(user_id=user_id).first()
+            role_rule = self.session.query(RolesTokenBlacklist).filter_by(role_id=role_id).first()
+            return (not user_rule or (token_nbf_time > user_rule.nbf_invalid_until)) and \
+                   (not role_rule or (token_nbf_time > role_rule.nbf_invalid_until))
         except IntegrityError:
             return True
 
     def get_all_rules(self):
-        """Return a dictionary where keys are user_ids and the value of each them is nbf_invalid_until
+        """Return two dictionaries where keys are role_ids and user_ids and the value of each them is nbf_invalid_until
 
         Returns
         -------
         dict
         """
         try:
-            rules = map(TokenBlacklist.to_dict, self.session.query(TokenBlacklist).all())
-            format_rules = dict()
-            for rule in list(rules):
-                format_rules[rule['user_id']] = rule['nbf_invalid_until']
-            return format_rules
+            users_rules = map(UsersTokenBlacklist.to_dict, self.session.query(UsersTokenBlacklist).all())
+            roles_rules = map(RolesTokenBlacklist.to_dict, self.session.query(RolesTokenBlacklist).all())
+            users_format_rules, roles_format_rules = dict(), dict()
+            for rule in list(users_rules):
+                users_format_rules[rule['user_id']] = rule['nbf_invalid_until']
+            for rule in list(roles_rules):
+                roles_format_rules[rule['role_id']] = rule['nbf_invalid_until']
+            return users_format_rules, roles_format_rules
         except IntegrityError:
             return SecurityError.TOKEN_RULE_NOT_EXIST
 
-    def add_user_rules(self, users: set):
-        """Add new rules for users-token. Both, nbf_invalid_until and is_valid_until are generated automatically
+    def add_user_roles_rules(self, users: set = None, roles: set = None):
+        """Add new rules for users-token or roles-token.
+        Both, nbf_invalid_until and is_valid_until are generated automatically
 
         Parameters
         ----------
         users : set
             Set with the affected users
+        roles : set
+            Set with the affected roles
 
         Returns
         -------
         True if the success, SecurityError.ALREADY_EXIST if failed
         """
+        if users is None:
+            users = set()
+        if roles is None:
+            roles = set()
+
         try:
             self.delete_all_expired_rules()
             for user_id in users:
                 self.delete_rule(user_id=user_id)
-                self.session.add(TokenBlacklist(user_id=user_id))
+                self.session.add(UsersTokenBlacklist(user_id=user_id))
                 self.session.commit()
+            for role_id in roles:
+                self.delete_rule(role_id=role_id)
+                self.session.add(RolesTokenBlacklist(role_id=role_id))
+                self.session.commit()
+
             return True
         except IntegrityError:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
 
-    def delete_rule(self, user_id: str):
-        """Remove the rule for the specified user
+    def delete_rule(self, user_id: int = None, role_id: int = None):
+        """Remove the rule for the specified role
 
         Parameters
         ----------
         user_id : int
             Desired user_id
+        role_id : int
+            Desired role_id
 
         Returns
         -------
         True if success, SecurityError.TOKEN_RULE_NOT_EXIST if failed
         """
         try:
-            self.session.query(TokenBlacklist).filter_by(user_id=user_id).delete()
+            self.session.query(UsersTokenBlacklist).filter_by(user_id=user_id).delete()
+            self.session.query(RolesTokenBlacklist).filter_by(role_id=role_id).delete()
             self.session.commit()
+
             return True
         except IntegrityError:
             self.session.rollback()
@@ -453,19 +515,27 @@ class TokenManager:
 
         Returns
         -------
-        List of removed user's rules
+        List of removed user and role rules
         """
         try:
-            list_user = list()
+            list_users, list_roles = list(), list()
             current_time = int(time())
-            tokens_in_blacklist = self.session.query(TokenBlacklist).all()
-            for user_token in tokens_in_blacklist:
-                token_rule = self.session.query(TokenBlacklist).filter_by(user_id=user_token.user_id)
+            users_tokens_in_blacklist = self.session.query(UsersTokenBlacklist).all()
+            for user_token in users_tokens_in_blacklist:
+                token_rule = self.session.query(UsersTokenBlacklist).filter_by(user_id=user_token.user_id)
                 if token_rule.first() and current_time > token_rule.first().is_valid_until:
                     token_rule.delete()
                     self.session.commit()
-                    list_user.append(user_token.user_id)
-            return list_user
+                    list_users.append(user_token.user_id)
+            roles_tokens_in_blacklist = self.session.query(RolesTokenBlacklist).all()
+            for role_token in roles_tokens_in_blacklist:
+                token_rule = self.session.query(RolesTokenBlacklist).filter_by(role_id=role_token.role_id)
+                if token_rule.first() and current_time > token_rule.first().is_valid_until:
+                    token_rule.delete()
+                    self.session.commit()
+                    list_roles.append(role_token.role_id)
+
+            return list_users, list_roles
         except IntegrityError:
             self.session.rollback()
             return False
@@ -475,16 +545,24 @@ class TokenManager:
 
         Returns
         -------
-        List of removed user's rules
+        List of removed user and role rules
         """
         try:
-            list_user = list()
-            tokens_in_blacklist = self.session.query(TokenBlacklist).all()
-            for user_token in tokens_in_blacklist:
-                list_user.append(user_token.user_id)
-                self.session.query(TokenBlacklist).filter_by(user_id=user_token.user_id).delete()
-                self.session.commit()
-            return list_user
+            list_users, list_roles = list(), list()
+            users_tokens_in_blacklist = self.session.query(UsersTokenBlacklist).all()
+            roles_tokens_in_blacklist = self.session.query(RolesTokenBlacklist).all()
+            clean = False
+            for user_token in users_tokens_in_blacklist:
+                list_roles.append(user_token.user_id)
+                self.session.query(UsersTokenBlacklist).filter_by(user_id=user_token.user_id).delete()
+                clean = True
+            for role_token in roles_tokens_in_blacklist:
+                list_roles.append(role_token.role_id)
+                self.session.query(RolesTokenBlacklist).filter_by(role_id=role_token.role_id).delete()
+                clean = True
+
+            clean and self.session.commit()
+            return list_users, list_roles
         except IntegrityError:
             self.session.rollback()
             return False
@@ -502,17 +580,34 @@ class AuthenticationManager:
     It manages users and token generation.
     """
 
-    def add_user(self, username: str, password: str, allow_run_as: bool = False):
+    def add_user(self, username: str, password: str, allow_run_as: bool = False, check_default: bool = True):
         """Creates a new user if it does not exist.
 
-        :param username: string Unique user name
-        :param password: string Password provided by user. It will be stored hashed
-        :param allow_run_as: Flag that indicates if the user can log into the API throw an authorization context
-        :return: True if the user has been created successfully. False otherwise (i.e. already exists)
+        Parameters
+        ----------
+        username : str
+            Unique user name
+        password : str
+            Password provided by user. It will be stored hashed
+        allow_run_as : bool
+            Flag that indicates if the user can log into the API throw an authorization context
+        check_default : bool
+            Flag that indicates if the user ID can be less than max_id_reserved
+
+        Returns
+        -------
+        True if the user has been created successfully. False otherwise (i.e. already exists)
         """
         try:
+            user_id = None
+            try:
+                if check_default and self.session.query(User).order_by(desc(User.id)
+                                                                       ).limit(1).scalar().id < max_id_reserved:
+                    user_id = max_id_reserved + 1
+            except (TypeError, AttributeError):
+                pass
             self.session.add(User(username=username, password=generate_password_hash(password),
-                                  allow_run_as=allow_run_as))
+                                  allow_run_as=allow_run_as, user_id=user_id))
             self.session.commit()
             return True
         except IntegrityError:
@@ -648,7 +743,8 @@ class AuthenticationManager:
         for user in users:
             if user is not None:
                 user_dict = {
-                    'user_id': str(user.id)
+                    'user_id': str(user.id),
+                    'username': user.username
                 }
                 user_ids.append(user_dict)
         return user_ids
@@ -706,15 +802,29 @@ class RolesManager:
         except IntegrityError:
             return SecurityError.ROLE_NOT_EXIST
 
-    def add_role(self, name: str):
-        """Add a new role
+    def add_role(self, name: str, check_default: bool = True):
+        """Add a new role.
 
-        :param name: Name of the new role
-        :param rule: Rule of the new role
-        :return: True -> Success | Role already exist | Invalid rule
+        Parameters
+        ----------
+        name : str
+            Name of the new role
+        check_default : bool
+            Flag that indicates if the user ID can be less than max_id_reserved
+
+        Returns
+        -------
+        True -> Success | Role already exist
         """
         try:
-            self.session.add(Roles(name=name))
+            role_id = None
+            try:
+                if check_default and self.session.query(Roles).order_by(desc(Roles.id)
+                                                                        ).limit(1).scalar().id < max_id_reserved:
+                    role_id = max_id_reserved + 1
+            except (TypeError, AttributeError):
+                pass
+            self.session.add(Roles(name=name, role_id=role_id))
             self.session.commit()
             return True
         except IntegrityError:
@@ -874,7 +984,7 @@ class RulesManager:
         except IntegrityError:
             return SecurityError.RULE_NOT_EXIST
 
-    def add_rule(self, name: str, rule: dict):
+    def add_rule(self, name: str, rule: dict, check_default: bool = True):
         """Add a new rule.
 
         Parameters
@@ -883,6 +993,9 @@ class RulesManager:
             Name of the new rule.
         rule : dict
             Rule dictionary.
+        check_default : bool
+            Flag that indicates if the user ID can be less than max_id_reserved
+
         Returns
         -------
         True -> Success | Rule already exists | Invalid rule
@@ -890,7 +1003,15 @@ class RulesManager:
         try:
             if rule is not None and not json_validator(rule):
                 return SecurityError.INVALID
-            self.session.add(Rules(name=name, rule=json.dumps(rule)))
+            rule_id = None
+            try:
+                if check_default and \
+                        self.session.query(Policies).order_by(desc(Policies.id)
+                                                              ).limit(1).scalar().id < max_id_reserved:
+                    rule_id = max_id_reserved + 1
+            except (TypeError, AttributeError):
+                pass
+            self.session.add(Rules(name=name, rule=json.dumps(rule), rule_id=rule_id))
             self.session.commit()
             return True
         except IntegrityError:
@@ -1059,12 +1180,21 @@ class PoliciesManager:
         except IntegrityError:
             return SecurityError.POLICY_NOT_EXIST
 
-    def add_policy(self, name: str, policy: dict):
-        """Add a new role
+    def add_policy(self, name: str, policy: dict, check_default: bool = True):
+        """Add a new policy.
 
-        :param name: Name of the new policy
-        :param policy: Policy of the new policy
-        :return: True -> Success | Invalid policy | Missing key (actions, resources, effect) or invalid policy (regex)
+        Parameters
+        ----------
+        name : str
+            Name of the new policy
+        policy : dict
+            Policy of the new policy
+        check_default : bool
+            Flag that indicates if the user ID can be less than max_id_reserved
+
+        Returns
+        -------
+        True -> Success | Invalid policy | Missing key (actions, resources, effect) or invalid policy (regex)
         """
         try:
             if policy is not None and not json_validator(policy):
@@ -1085,7 +1215,15 @@ class PoliciesManager:
                         for resource in policy['resources']:
                             if not re.match(regex, resource):
                                 return SecurityError.INVALID
-                        self.session.add(Policies(name=name, policy=json.dumps(policy)))
+                        policy_id = None
+                        try:
+                            if check_default and \
+                                    self.session.query(Policies).order_by(desc(Policies.id)
+                                                                          ).limit(1).scalar().id < max_id_reserved:
+                                policy_id = max_id_reserved + 1
+                        except (TypeError, AttributeError):
+                            pass
+                        self.session.add(Policies(name=name, policy=json.dumps(policy), policy_id=policy_id))
                         self.session.commit()
                     else:
                         return SecurityError.INVALID
@@ -1759,6 +1897,7 @@ class RolesRulesManager:
     This class is the manager of the relationships between the roles and the rules. This class provides
     all the methods needed for the roles-rules administration.
     """
+
     def add_rule_to_role(self, rule_id: int, role_id: int):
         """Add a relation between one specified role and one specified rule.
 
@@ -2006,7 +2145,7 @@ with open(os.path.join(default_path, "users.yaml"), 'r') as stream:
     with AuthenticationManager() as auth:
         for d_username, payload in default_users[next(iter(default_users))].items():
             auth.add_user(username=d_username, password=payload['password'],
-                          allow_run_as=payload['allow_run_as'])
+                          allow_run_as=payload['allow_run_as'], check_default=False)
 
 # Create default roles if they don't exist yet
 with open(os.path.join(default_path, "roles.yaml"), 'r') as stream:
@@ -2014,14 +2153,14 @@ with open(os.path.join(default_path, "roles.yaml"), 'r') as stream:
 
     with RolesManager() as rm:
         for d_role_name, payload in default_roles[next(iter(default_roles))].items():
-            rm.add_role(name=d_role_name)
+            rm.add_role(name=d_role_name, check_default=False)
 
 with open(os.path.join(default_path, 'rules.yaml'), 'r') as stream:
     default_rules = yaml.safe_load(stream)
 
     with RulesManager() as rum:
         for d_rule_name, payload in default_rules[next(iter(default_rules))].items():
-            rum.add_rule(name=d_rule_name, rule=payload['rule'])
+            rum.add_rule(name=d_rule_name, rule=payload['rule'], check_default=False)
 
 # Create default policies if they don't exist yet
 with open(os.path.join(default_path, "policies.yaml"), 'r') as stream:
@@ -2030,7 +2169,7 @@ with open(os.path.join(default_path, "policies.yaml"), 'r') as stream:
     with PoliciesManager() as pm:
         for d_policy_name, payload in default_policies[next(iter(default_policies))].items():
             for name, policy in payload['policies'].items():
-                pm.add_policy(name=f'{d_policy_name}_{name}', policy=policy)
+                pm.add_policy(name=f'{d_policy_name}_{name}', policy=policy, check_default=False)
 
 # Create the relationships
 with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:

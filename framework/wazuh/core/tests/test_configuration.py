@@ -312,7 +312,7 @@ def test_upload_group_file(mock_safe_move, mock_open):
                 with patch('wazuh.core.utils.chmod', side_effect=None):
                     assert configuration.upload_group_file('default',
                                                            "<agent_config>new_config</agent_config>", 'agent.conf') == \
-                                                           'Agent configuration was updated successfully'
+                                                           'Agent configuration was successfully updated'
 
     with patch('wazuh.common.shared_path', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with pytest.raises(WazuhError, match=".* 1111 .*"):

@@ -31,7 +31,7 @@
 #define FREAD_ERROR   "(1115): Could not read from file '%s' due to [(%d)-(%s)]."
 #define FSEEK_ERROR   "(1116): Could not set position in file '%s' due to [(%d)-(%s)]."
 #define FILE_ERROR    "(1117): Error handling file '%s' (date)."
-#define FSTAT_ERROR   "(1117): Could not retrieve informations of file '%s' due to [(%d)-(%s)]."
+#define FSTAT_ERROR   "(1117): Could not retrieve information of file '%s' due to [(%d)-(%s)]."
 #define FGETS_ERROR   "(1119): Invalid line on file '%s': %s."
 //#define PIPE_ERROR    "%s(1120): ERROR: Pipe error."
 #define GLOB_ERROR    "(1121): Glob error. Invalid pattern: '%s'."
@@ -56,6 +56,7 @@
 #define FCLOSE_ERROR  "(1140): Could not close file '%s' due to [(%d)-(%s)]."
 #define GLOB_ERROR_WIN "(1141): Glob error. Invalid pattern: '%s' or no files found."
 #define NICE_ERROR      "(1142): Cannot set process priority: %s (%d)."
+#define RMDIR_ERROR     "(1143): Unable to delete folder '%s' due to [(%d)-(%s)]."
 
 /* COMMON ERRORS */
 #define CONN_ERROR      "(1201): No remote connection configured."
@@ -103,6 +104,7 @@
 #define SHARED_ERROR    "(1246): Unable to send file '%s' to agent ID '%s'."
 #define TCP_NOT_SUPPORT "(1247): TCP not supported for this operating system."
 #define TCP_EPIPE       "(1248): Unable to send message. Connection has been closed by remote server."
+#define CONN_REF        "(1249): Unable to send message. Connection with remote server refused."
 
 #define MAILQ_ERROR     "(1221): No Mail queue at %s"
 #define IMSG_ERROR      "(1222): Invalid msg: %s"
@@ -373,9 +375,11 @@
 #define VU_REPORT_NVD_SCORE_ERROR   "(5580): Could not fill the report with the CVE score from the NVD for agent '%.3d'"
 #define VU_REPORT_OVAL_ERROR        "(5581): Could not fill the report with the CVE info from the Vendor feed for agent '%.3d'"
 #define VU_NVD_EMPTY                "(5582): Unavailable vulnerabilities at the NVD database. The scan is aborted."
-#define VU_GET_DEB_STATUS_FEED      "(5583): Couldn't get the Debian feed '%s' to check the status of the packages. This can lead to many false positives."
+#define VU_DEB_STATUS_FEED_ERROR    "(5583): Couldn't get the Debian feed '%s' to check the vulnerable packages."
 #define VU_FILTER_VULN_NVD_ERROR    "(5584): Couldn't verify if the vulnerability '%s' is reported in the NVD feed."
 #define VU_GET_NVD_YEAR_ERROR       "(5585): Couldn't get the NVD configured year."
+#define VU_NO_ENABLED_FEEDS         "(5586): No feeds specified for '%s' provider. Enabling all the available ones."
+#define VU_OFFLINE_CONFLICT         "(5587): Feed conflict. Only '%s' will be updated offline."
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
@@ -388,7 +392,7 @@
 #define FIM_ERROR_NFS_INOTIFY                       "(6608): '%s' NFS Directories do not support iNotify."
 #define FIM_ERROR_GENDIFF_COMMAND                   "(6609): Unable to run diff command '%s'"
 #define FIM_ERROR_REALTIME_WAITSINGLE_OBJECT        "(6610): WaitForSingleObjectEx failed (for real time file integrity monitoring)."
-#define FIM_ERROR_REALTIME_ADDDIR_FAILED            "(6611): 'realtime_adddir' failed, the directory '%s'could't be added to real time mode."
+#define FIM_ERROR_REALTIME_ADDDIR_FAILED            "(6611): 'realtime_adddir' failed, the directory '%s' couldn't be added to real time mode."
 #define FIM_ERROR_REALTIME_READ_BUFFER              "(6612): Unable to read from real time buffer."
 #define FIM_ERROR_REALTIME_WINDOWS_CALLBACK         "(6613): Real time Windows callback process: '%s' (%lx)."
 #define FIM_ERROR_REALTIME_WINDOWS_CALLBACK_EMPTY   "(6614): Real time call back called, but hash is empty."
@@ -453,7 +457,7 @@
 #define FIM_ERROR_SYSCOM_ACCEPT                     "(6673): In accept(): '%s'"
 #define FIM_ERROR_SYSCOM_RECV                       "(6674): In OS_RecvSecureTCP(): '%s'"
 #define FIM_ERROR_SYSCOM_RECV_TOOLONG               "(6675): In OS_RecvSecureTCP(): response size is bigger than expected"
-#define FIM_ERROR_SYSCOM_RECV_MAXLEN                "(6676): The received message exeed maximum permited > '%i'"
+#define FIM_ERROR_SYSCOM_RECV_MAXLEN                "(6676): The received message exceeds maximum permitted > '%i'"
 #define FIM_NO_OPTIONS                              "(6677): No option provided for directories: '%s', ignoring it."
 #define FIM_DIRECTORY_NOPROVIDED                    "(6678): No directory provided for syscheck to monitor."
 #define FIM_INVALID_ATTRIBUTE                       "(6679): Invalid attribute '%s' for '%s' option."

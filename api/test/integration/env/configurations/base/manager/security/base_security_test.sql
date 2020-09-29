@@ -15,6 +15,9 @@ INSERT INTO users VALUES(99,'testing','pbkdf2:sha256:150000$OMVAATei$cb30da77537
 /* Testing role */
 INSERT INTO roles VALUES(99,'testing','1970-01-01 00:00:00');
 
+/* Testing rule */
+INSERT INTO rules VALUES(99,'testing','{"FIND": {"r''testing''": "integration"}}','1970-01-01 00:00:00');
+
 /* Testing roles-policies links */
 INSERT INTO roles_policies VALUES(1000,99,1,0,'1970-01-01 00:00:00');
 INSERT INTO roles_policies VALUES(1001,99,2,1,'1970-01-01 00:00:00');
@@ -34,6 +37,9 @@ INSERT INTO roles_policies VALUES(1014,99,13,14,'1970-01-01 00:00:00');
 INSERT INTO roles_policies VALUES(1015,99,18,15,'1970-01-01 00:00:00');
 INSERT INTO roles_policies VALUES(1016,99,19,16,'1970-01-01 00:00:00');
 INSERT INTO roles_policies VALUES(1017,99,16,17,'1970-01-01 00:00:00');
+
+/* Testing role-rules link */
+INSERT INTO roles_rules VALUES(99,99,99,'1970-01-01 00:00:00');
 
 /* Testing user-role link */
 INSERT INTO user_roles VALUES(99,99,99,0,'1970-01-01 00:00:00');

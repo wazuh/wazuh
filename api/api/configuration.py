@@ -19,7 +19,6 @@ from api.api_exception import APIError
 from api.constants import SECURITY_CONFIG_PATH
 from wazuh.core import common
 
-
 default_security_configuration = {
     "auth_token_exp_timeout": 3600,
     "rbac_mode": "white"
@@ -52,7 +51,7 @@ default_api_configuration = {
         "time": 0.750
     },
     "access": {
-        "max_login_attempts": 5,
+        "max_login_attempts": 50,
         "block_time": 300,
         "max_request_per_minute": 300
     },
@@ -215,5 +214,5 @@ def read_yaml_config(config_file=common.api_config_path, default_conf=None) -> D
 
 
 # Configuration - global object
-api_conf = read_yaml_config()
+api_conf = dict()
 security_conf = read_yaml_config(config_file=SECURITY_CONFIG_PATH, default_conf=default_security_configuration)
