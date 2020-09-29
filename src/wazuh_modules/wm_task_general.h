@@ -26,6 +26,7 @@
 typedef enum _task_manager_json_key {
     // Request
     WM_TASK_ORIGIN = 0,
+    WM_TASK_NAME,
     WM_TASK_MODULE,
     WM_TASK_COMMAND,
     WM_TASK_PARAMETERS,

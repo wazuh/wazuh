@@ -14,6 +14,7 @@
 const char *task_manager_json_keys[] = {
     // Request
     [WM_TASK_ORIGIN] = "origin",
+    [WM_TASK_NAME] = "name",
     [WM_TASK_MODULE] = "module",
     [WM_TASK_COMMAND] = "command",
     [WM_TASK_PARAMETERS] = "parameters",
