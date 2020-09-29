@@ -3,22 +3,17 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
 import errno
-import glob
-import itertools
 import json
 import os
-import re
 import shutil
 import time
-from typing import Tuple, Dict, Callable, List, TextIO, KeysView
+from typing import Tuple, Dict, Callable, List
 
 import wazuh.core.cluster.cluster
 from wazuh.core import cluster as metadata, common, exception, utils
-from wazuh.core.agent import Agent
 from wazuh.core.cluster import client, common as c_common
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.dapi import dapi
-from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhClusterError, WazuhInternalError
 from wazuh.core.utils import safe_move
 from wazuh.core.wdb import WazuhDBConnection
@@ -457,109 +452,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         finally:
             shutil.rmtree(zip_path)
 
-    @staticmethod
-    def remove_bulk_agents(agent_ids_list: KeysView, logger):
-        """
-        Removes files created by agents in worker nodes. This function doesn't remove agents from client.keys since the
-        client.keys file is overwritten by the master node.
-        :param agent_ids_list: List of agents ids to remove.
-        :param logger: Logger to use
-        :return: None.
-        """
-
-        def remove_agent_file_type(agent_files: List[str]):
-            """
-            Removes files if they exist
-            :param agent_files: Path regexes of the files to remove
-            :return: None
-            """
-            for filetype in agent_files:
-
-                filetype_glob = filetype.format(ossec_path=common.ossec_path, id='*', name='*', ip='*')
-                filetype_agent = {filetype.format(ossec_path=common.ossec_path, id=a['id'], name=a['name'], ip=a['ip'])
-                                  for a in agent_info}
-
-                for agent_file in set(glob.iglob(filetype_glob)) & filetype_agent:
-                    logger.debug2("Removing {}".format(agent_file))
-                    if os.path.isdir(agent_file):
-                        shutil.rmtree(agent_file)
-                    else:
-                        os.remove(agent_file)
-
-        if not agent_ids_list:
-            return  # the function doesn't make sense if there is no agents to remove
-
-        logger.info("Removing files from {} agents".format(len(agent_ids_list)))
-        logger.debug("Agents to remove: {}".format(', '.join(agent_ids_list)))
-        # Remove agents in group of 500 elements (so wazuh-db socket is not saturated)
-        for agents_ids_sublist in itertools.zip_longest(*itertools.repeat(iter(agent_ids_list), 500), fillvalue='0'):
-            agents_ids_sublist = list(filter(lambda x: x != '0', agents_ids_sublist))
-            # Get info from DB
-            agent_info = Agent.get_agents_overview(q=",".join(["id={}".format(i) for i in agents_ids_sublist]),
-                                                   select=['ip', 'id', 'name'], limit=None)['items']
-            logger.debug2("Removing files from agents {}".format(', '.join(agents_ids_sublist)))
-
-            files_to_remove = ['{ossec_path}/queue/rootcheck/({name}) {ip}->rootcheck',
-                               '{ossec_path}/queue/diff/{name}', '{ossec_path}/queue/agent-groups/{id}',
-                               '{ossec_path}/queue/rids/{id}',
-                               '{ossec_path}/var/db/agents/{name}-{id}.db']
-            remove_agent_file_type(files_to_remove)
-
-            logger.debug2("Removing agent group assigments from database")
-            # remove agent from groups
-            wdb_conn = WazuhDBConnection()
-
-            query_to_execute = 'global sql delete from belongs where {}'.format(' or '.join([
-                'id_agent = {}'.format(agent_id) for agent_id in agents_ids_sublist
-            ]))
-            wdb_conn.run_wdb_command(query_to_execute)
-
-        logger.info("Agent files removed")
-
-    @staticmethod
-    def _check_removed_agents(new_client_keys_path: str, logger):
-        """
-        Function to delete agents that have been deleted in a synchronized
-        client.keys.
-
-        It makes a diff of the old client keys and the new one and search for
-        deleted or changed lines (in the diff those lines start with -).
-
-        If a line starting with - matches the regex structure of a client.keys line
-        that agent is deleted.
-        """
-
-        def parse_client_keys(client_keys_contents: TextIO):
-            """
-            Parses client.keys file into a dictionary
-            :param client_keys_contents: client.keys file object
-            :return: generator of dictionaries.
-            """
-            ck_line = re.compile(r'\d+ \S+ \S+ \S+')
-            return {a_id: {'name': a_name, 'ip': a_ip, 'key': a_key} for a_id, a_name, a_ip, a_key in
-                    map(lambda x: x.split(' '), filter(lambda x: ck_line.match(x) is not None, client_keys_contents))
-                    if not a_name.startswith('!')}
-
-        ck_path = "{0}/etc/client.keys".format(common.ossec_path)
-        try:
-            with open(ck_path) as ck:
-                # can't use readlines function since it leaves a \n at the end of each item of the list
-                client_keys_dict = parse_client_keys(ck)
-        except Exception as e:
-            # if client.keys can't be read, it can't be parsed
-            logger.warning("Could not parse client.keys file: {}".format(e))
-            return
-
-        with open(new_client_keys_path) as n_ck:
-            new_client_keys_dict = parse_client_keys(n_ck)
-
-        # get removed agents: the ones missing in the new client keys and present in the old
-        try:
-            WorkerHandler.remove_bulk_agents(client_keys_dict.keys() - new_client_keys_dict.keys(), logger)
-        except Exception as e:
-            logger.error("Error removing agent files: {}".format(e))
-            raise e
-
     def update_master_files_in_worker(self, ko_files: Dict, zip_path: str):
         """
         Iterates over received files and updates them locally.
@@ -575,8 +467,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             :return: None
             """
             full_filename_path = common.ossec_path + filename
-            if os.path.basename(filename) == 'client.keys':
-                self._check_removed_agents("{}{}".format(zip_path, filename), logger)
 
             if data['merged']:  # worker nodes can only receive agent-groups files
                 if data['merge-type'] == 'agent-info':
