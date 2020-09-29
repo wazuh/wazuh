@@ -1259,7 +1259,7 @@ class WazuhDBQuery(object):
         self._add_select_to_query()
         self._execute_data_query()
         try:
-            resources = list(map(lambda d: str(d[resource]), self._data))
+            resources = list(map(lambda d: str(d[resource]).zfill(3), self._data))
             maximum_value = min(self.limit, len(resources)) if self.limit is not None else len(resources)
             for item in resources:
                 if self.rbac_negate:
@@ -1279,9 +1279,11 @@ class WazuhDBQuery(object):
         self.select = original_select
         self.reset()
         self.legacy_filters['rbac_ids'] = final_ids
+        original_count = self.count
         self.count = False
         result = self.general_run()
-        result['totalItems'] = count
+        if original_count:
+            result['totalItems'] = count
 
         return result
 
