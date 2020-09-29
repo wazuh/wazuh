@@ -185,6 +185,10 @@ int OS_RemoveAgent(const char *u_id) {
 
     os_free(wdboutput);
 
+    if (wdb_remove_agent(atoi(u_id)) != OS_SUCCESS) {
+        mdebug1("Could not remove the information stored in Wazuh DB of the agent %s.", u_id);
+    }
+
     /* Remove counter for ID */
     OS_RemoveCounter(u_id);
     OS_RemoveAgentTimestamp(u_id);
