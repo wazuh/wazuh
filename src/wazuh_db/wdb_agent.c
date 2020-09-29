@@ -947,10 +947,9 @@ int wdb_remove_agent(int id) {
             if (WDBC_OK == wdbc_parse_result(wdboutput, &payload)) {
                 result = wdb_delete_agent_belongs(id);
 
-                result = ((OS_SUCCESS == result) && name) ? wdb_remove_agent_db(id, name) : OS_INVALID;
-
-                if(OS_INVALID == result){
-                    mdebug1("Unable to remove agent DB: %d - %s", id, name);
+                if ((OS_SUCCESS == result) && name &&
+                     OS_INVALID == wdb_remove_agent_db(id, name)) {
+                     mdebug1("Unable to remove agent DB: %d - %s", id, name);
                 }
             }
             else {

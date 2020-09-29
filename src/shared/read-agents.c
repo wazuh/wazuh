@@ -843,7 +843,7 @@ void delete_diff(const char *name)
     snprintf(tmp_folder, 512, "%s/%s",
              DIFF_DIR,
              name);
-    
+
     rmdir_ex(tmp_folder);
 }
 
@@ -1314,18 +1314,17 @@ char **get_agents_by_last_keepalive(int flag, int delta){
         if(cJSON_IsString(json_name) && json_name->valuestring != NULL && 
             cJSON_IsString(json_ip) && json_ip->valuestring != NULL){
             snprintf(agent_name_ip, sizeof(agent_name_ip), "%s-%s", json_name->valuestring, json_ip->valuestring);
+            os_realloc(agents_array, (array_size + 2) * sizeof(char *), agents_array);
+            os_strdup(agent_name_ip, agents_array[array_size]);
+            agents_array[array_size + 1] = NULL;
+            array_size++;
         }
 
         cJSON_Delete(json_agt_info);
-        os_realloc(agents_array, (array_size + 2) * sizeof(char *), agents_array);
-        os_strdup(agent_name_ip, agents_array[array_size]);
-
-        agents_array[array_size + 1] = NULL;
-        array_size++;
     }
 
     os_free(id_array);
-    return (agents_array);
+    return agents_array;
 }
 
 #ifndef WIN32

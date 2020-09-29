@@ -10,6 +10,8 @@
 
 BEGIN;
 
+PRAGMA journal_mode=DELETE;
+
 CREATE TABLE IF NOT EXISTS labels (
     id INTEGER,
     key TEXT NOT NULL,

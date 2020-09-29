@@ -2156,8 +2156,6 @@ void test_wdb_remove_agent_error_delete_belongs_and_name(void **state)
 
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent's 1 name.");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Unable to remove agent DB: 1 - (null)");
-
     ret = wdb_remove_agent(id);
 
     assert_int_equal(OS_INVALID, ret);

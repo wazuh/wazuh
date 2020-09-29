@@ -29,9 +29,9 @@
 #include <sys/wait.h>
 #include "check_cert.h"
 #include "os_crypto/md5/md5_op.h"
+#include "wazuh_db/wdb.h"
 #include "wazuhdb_op.h"
 #include "os_err.h"
-#include "wazuh_db/wdb.h"
 
 /* Prototypes */
 static void help_authd(void) __attribute((noreturn));
@@ -811,8 +811,8 @@ void* run_writer(__attribute__((unused)) void *arg) {
             OS_RemoveAgentTimestamp(cur->id);
             OS_RemoveAgentGroup(cur->id);
 
-            if(wdb_remove_agent(atoi(cur->id)) != OS_SUCCESS){
-                merror("Could not remove the information stored in Wazuh DB of the agent %s.", cur->id);
+            if (wdb_remove_agent(atoi(cur->id)) != OS_SUCCESS) {
+                mdebug1("Could not remove the information stored in Wazuh DB of the agent %s.", cur->id);
             }
 
             snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
