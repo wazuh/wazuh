@@ -137,6 +137,10 @@ int __wrap_OSHash_setSize(OSHash *self, unsigned int new_size) {
     return mock();
 }
 
+int __wrap_OSHash_SetFreeDataPointer(OSHash *self, void (free_data_function)(void *)) {
+    return mock_type(int);
+}
+
 OSList *__wrap_OSList_Create() {
     return mock_type(OSList *);
 }
@@ -801,6 +805,7 @@ void test_w_logtest_fts_init_success(void **state)
 
     expect_value(__wrap_OSHash_setSize, new_size, 2048);
     will_return(__wrap_OSHash_setSize, 1);
+    will_return(__wrap_OSHash_SetFreeDataPointer, 1);
 
     int ret = w_logtest_fts_init(&fts_list, &fts_store);
     assert_int_equal(ret, 1);
@@ -1403,6 +1408,7 @@ void test_w_logtest_initialize_session_error_accumulate_init(void ** state) {
     will_return(__wrap_OSHash_Create, hash);
     expect_value(__wrap_OSHash_setSize, new_size, 2048);
     will_return(__wrap_OSHash_setSize, 1);
+    will_return(__wrap_OSHash_SetFreeDataPointer, 1);
 
     will_return(__wrap_Accumulate_Init, 0);
 
@@ -1467,6 +1473,7 @@ void test_w_logtest_initialize_session_success(void ** state) {
     will_return(__wrap_OSHash_Create, hash);
     expect_value(__wrap_OSHash_setSize, new_size, 2048);
     will_return(__wrap_OSHash_setSize, 1);
+    will_return(__wrap_OSHash_SetFreeDataPointer, 1);
 
     will_return(__wrap_Accumulate_Init, 1);
 
@@ -1671,6 +1678,7 @@ void test_w_logtest_get_session_expired_token(void ** state) {
     will_return(__wrap_OSHash_Create, hash);
     expect_value(__wrap_OSHash_setSize, new_size, 2048);
     will_return(__wrap_OSHash_setSize, 1);
+    will_return(__wrap_OSHash_SetFreeDataPointer, 1);
 
     will_return(__wrap_Accumulate_Init, 1);
 
@@ -1761,6 +1769,7 @@ void test_w_logtest_get_session_new(void ** state) {
     will_return(__wrap_OSHash_Create, hash);
     expect_value(__wrap_OSHash_setSize, new_size, 2048);
     will_return(__wrap_OSHash_setSize, 1);
+    will_return(__wrap_OSHash_SetFreeDataPointer, 1);
 
     will_return(__wrap_Accumulate_Init, 1);
 

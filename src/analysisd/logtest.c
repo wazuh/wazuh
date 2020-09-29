@@ -628,6 +628,8 @@ int w_logtest_fts_init(OSList **fts_list, OSHash **fts_store) {
         return 0;
     }
 
+    OSHash_SetFreeDataPointer(*fts_store, &free);
+    
     return 1;
 }
 
