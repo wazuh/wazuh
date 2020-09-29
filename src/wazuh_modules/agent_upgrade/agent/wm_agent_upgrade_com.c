@@ -8,6 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include "os_crypto/sha1/sha1_op.h"
 #include "wazuh_modules/wmodules.h"
 #include "wm_agent_upgrade_agent.h"
 
@@ -24,7 +25,9 @@ typedef enum _command_error_codes {
     ERROR_FILE_NOT_OPENED,
     ERROR_FILE_NOT_OPENED2,
     ERROR_TARGET_FILE_NOT_MATCH,
-    ERROR_WRITE_FILE
+    ERROR_WRITE_FILE,
+    ERROR_CLOSE,
+    ERROR_GEN_SHA1
 } command_error_codes;
 
 static const char * error_messages[] = {
@@ -35,7 +38,9 @@ static const char * error_messages[] = {
     [ERROR_FILE_NOT_OPENED] = "File not opened. Agent might have been auto-restarted during upgrade",
     [ERROR_FILE_NOT_OPENED2] = "No file opened",
     [ERROR_TARGET_FILE_NOT_MATCH] = "The target file doesn't match the opened file",
-    [ERROR_WRITE_FILE] = "Cannot write file"
+    [ERROR_WRITE_FILE] = "Cannot write file",
+    [ERROR_CLOSE] = "Cannot close file",
+    [ERROR_GEN_SHA1] = "Cannot generate SHA1"
 };
 
 /**
@@ -76,8 +81,22 @@ static char * wm_agent_upgrade_com_write(const cJSON* json_object);
 /**
  * Process a command the close an already opened file
  * @param json_obj expected json format
+ * {
+ *  "command": "close",
+ *  "file" : "file_path",
+ * }
  * */
 static char * wm_agent_upgrade_com_close(const cJSON* json_object);
+
+/**
+ * Process a command that calculates the sha1 already opened file
+ * @param json_obj expected json format
+ * {
+ *  "command": "sha1",
+ *  "file" : "file_path",
+ * }
+ * */
+static char * wm_agent_upgrade_com_sha1(const cJSON* json_object);
 
 
 /* Helpers methods */
@@ -94,6 +113,10 @@ char *wm_agent_upgrade_process_command(const char* buffer) {
                 return wm_agent_upgrade_com_open(buffer_obj);
             } else if(strcmp(command, "write") == 0) { 
                 return wm_agent_upgrade_com_write(buffer_obj);
+            } else if(strcmp(command, "close") == 0) { 
+                return wm_agent_upgrade_com_close(buffer_obj);
+            } else if(strcmp(command, "sha1") == 0) {
+                return wm_agent_upgrade_com_sha1(buffer_obj);
             }
         }
     }
@@ -103,7 +126,7 @@ char *wm_agent_upgrade_process_command(const char* buffer) {
 static char* wm_agent_upgrade_command_ack(int error_code, const char* message) {
     cJSON* root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, task_manager_json_keys[WM_TASK_ERROR], error_code);
-    cJSON_AddStringToObject(root, task_manager_json_keys[WM_TASK_ERROR_DATA], strdup(message));
+    cJSON_AddStringToObject(root, task_manager_json_keys[WM_TASK_DATA], strdup(message));
     char *msg_string = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
     return msg_string;
@@ -186,19 +209,42 @@ static char * wm_agent_upgrade_com_close(const cJSON* json_object) {
         return wm_agent_upgrade_command_ack(ERROR_FILE_NOT_OPENED2, error_messages[ERROR_FILE_NOT_OPENED2]);
     }
     
-    if (!file_path_obj || (file_path_obj->type != cJSON_String) || _jailfile(final_path, INCOMING_DIR, file_path_obj->valuestring) < 0) {
+    if (!file_path_obj || (file_path_obj->type != cJSON_String) || _jailfile(file_path_obj->valuestring, INCOMING_DIR, file_path_obj->valuestring) < 0) {
         merror("At WCOM open: Invalid file name");
         return wm_agent_upgrade_command_ack(ERROR_INVALID_FILE_NAME, error_messages[ERROR_INVALID_FILE_NAME]);
     }
 
-    if (strcmp(file.path, file_path_obj->valuestirng) != 0) {
+    if (strcmp(file.path, file_path_obj->valuestring) != 0) {
         merror("At WCOM close: The target file doesn't match the opened file (%s).", file.path);
-        
+        return wm_agent_upgrade_command_ack(ERROR_TARGET_FILE_NOT_MATCH, error_messages[ERROR_TARGET_FILE_NOT_MATCH]);
     }
      
+    *file.path = '\0';
 
+    if (fclose(file.fp)) {
+        merror("At WCOM close: %s", strerror(errno));
+        return wm_agent_upgrade_command_ack(ERROR_CLOSE, error_messages[ERROR_CLOSE]);
+    }
+
+    return wm_agent_upgrade_command_ack(ERROR_OK, error_messages[ERROR_OK]);
 }
 
+static char * wm_agent_upgrade_com_sha1(const cJSON* json_object) {
+    const cJSON *file_path_obj = cJSON_GetObjectItem(json_object, "file");
+    os_sha1 sha1;
+
+    if (!file_path_obj || (file_path_obj->type != cJSON_String) || _jailfile(file_path_obj->valuestring, INCOMING_DIR, file_path_obj->valuestring) < 0) {
+        merror("At WCOM open: Invalid file name");
+        return wm_agent_upgrade_command_ack(ERROR_INVALID_FILE_NAME, error_messages[ERROR_INVALID_FILE_NAME]);
+    }
+
+    if (OS_SHA1_File(file_path_obj->valuestring, sha1, OS_BINARY) < 0) {
+        merror("At WCOM sha1: Error generating SHA1.");
+        return wm_agent_upgrade_command_ack(ERROR_GEN_SHA1, error_messages[ERROR_GEN_SHA1]);
+    }
+
+    return wm_agent_upgrade_command_ack(ERROR_OK, sha1);
+}
 
 static int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename) {
 
