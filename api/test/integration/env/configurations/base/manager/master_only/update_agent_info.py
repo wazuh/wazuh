@@ -52,4 +52,4 @@ def create_and_send_query(agent_info_file):
 
 
 if __name__ == "__main__":
-    create_and_send_query('/configuration_files/agent_info.yaml')
+    create_and_send_query('/configuration_files/master_only/agent_info.yaml')
