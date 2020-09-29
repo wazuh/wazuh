@@ -175,8 +175,7 @@ class WazuhDBConnection:
             status, payload = self._send(command, raw=True)
             if status == 'err':
                 raise WazuhInternalError(2007, extra_message=payload)
-            if payload != '[]':
-                response.append(payload)
+            response.append(payload)
             # Exit if there are no items left to return
             if status == 'ok':
                 break
