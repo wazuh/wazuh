@@ -111,10 +111,8 @@ async def print_health(config, more, filter_node):
             msg2 += "                Last synchronization: {0} - {1}.\n".format(
                 node_info['status']['last_sync_agentinfo']['date_start_master'],
                 node_info['status']['last_sync_agentinfo']['date_end_master'])
-            msg2 += "                Synchronized files: {}.\n".format(
+            msg2 += "                Number of synchronized chunks: {}.\n".format(
                 str(node_info['status']['last_sync_agentinfo']['total_agentinfo']))
-            msg2 += "                Permission to synchronize: {}.\n".format(
-                str(node_info['status']['sync_agentinfo_free']))
 
             # Agent groups
             msg2 += "            Agents-group\n"

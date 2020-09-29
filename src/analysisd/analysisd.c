@@ -238,7 +238,6 @@ static int reported_dbsync;
 pthread_mutex_t decode_syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_check_hour_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t lf_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Reported mutexes */
 static pthread_mutex_t writer_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -2418,9 +2417,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         }
 
         // Insert labels
-        w_mutex_lock(&lf_mutex);
         lf->labels = labels_find(lf);
-        w_mutex_unlock(&lf_mutex);
 
         /* Check the rules */
         DEBUG_MSG("%s: DEBUG: Checking the rules - %d ",

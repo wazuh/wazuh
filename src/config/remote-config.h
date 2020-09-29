@@ -33,6 +33,7 @@ typedef struct _remoted {
     int nocmerged;
     socklen_t peer_size;
     long queue_size;
+    bool worker_node;
 } remoted;
 
 #endif /* CLOGREMOTE_H */
