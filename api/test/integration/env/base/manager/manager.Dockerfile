@@ -26,7 +26,6 @@ ARG manager_type
 
 RUN if [ "$manager_type" = "master" ]; then \
         cp -rf /aux_testing/* /var/ossec/; \
-        cp -rf /configuration_files/master_only/* /configuration_files/; \
     fi
 
 COPY configurations/base/manager/security/base_security_test.sql /configuration_files/

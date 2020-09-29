@@ -34,6 +34,12 @@ done
 
 /var/ossec/bin/ossec-control restart
 
+sleep 1
+
+if [ "$3" == "master" ]; then
+  /var/ossec/framework/python/bin/python3 /configuration_files/master_only/update_agent_info.py
+fi
+
 # RBAC configuration
 for sql_file in /configuration_files/*.sql; do
   sqlite3 /var/ossec/api/configuration/security/rbac.db < $sql_file
