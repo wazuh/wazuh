@@ -131,7 +131,7 @@ int Start_win32_Syscheck()
         }
 
         if (!syscheck.registry) {
-            dump_syscheck_registry(&syscheck, "", 0, NULL, 0, NULL, NULL, -1);
+            dump_syscheck_registry(&syscheck, "", 0, NULL, 0, NULL, 0, -1);
         }
         os_free(syscheck.registry[0].entry);
 
@@ -165,7 +165,10 @@ int Start_win32_Syscheck()
         r = 0;
         // TODO: allow sha256 sum on registries
         while (syscheck.registry[r].entry != NULL) {
-            minfo(FIM_MONITORING_REGISTRY, syscheck.registry[r].entry, syscheck.registry[r].arch == ARCH_64BIT ? " [x64]" : "");
+            char optstr[1024];
+            minfo(FIM_MONITORING_REGISTRY, syscheck.registry[r].entry,
+                  syscheck.registry[r].arch == ARCH_64BIT ? " [x64]" : "",
+                  syscheck_opts2str(optstr, sizeof(optstr), syscheck.registry[r].opts));
             r++;
         }
 

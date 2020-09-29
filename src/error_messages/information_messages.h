@@ -14,7 +14,7 @@
 /* File integrity monitoring info messages*/
 #define FIM_DAEMON_STARTED                  "(6000): Starting daemon..."
 #define FIM_DISABLED                        "(6001): File integrity monitoring disabled."
-#define FIM_MONITORING_REGISTRY             "(6002): Monitoring registry entry: '%s%s'."
+#define FIM_MONITORING_REGISTRY             "(6002): Monitoring registry entry: '%s%s', with options '%s'"
 #define FIM_MONITORING_DIRECTORY            "(6003): Monitoring directory/file: '%s', with options '%s'."
 #define FIM_MONITORING_LDIRECTORY           "(6003): Monitoring directory: '%s' (%s), with options '%s'."
 #define FIM_NO_DIFF                         "(6004): No diff for file: '%s'"
