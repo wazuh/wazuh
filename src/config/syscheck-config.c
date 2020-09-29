@@ -459,13 +459,24 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
     const char *xml_tag = "tags";
     const char *xml_recursion_level = "recursion_level";
     const char *xml_report_changes = "report_changes";
+    const char *xml_check_all = "check_all";
+    const char *xml_check_sum = "check_sum";
+    const char *xml_check_md5sum = "check_md5sum";
+    const char *xml_check_sha1sum = "check_sha1sum";
+    const char *xml_check_sha256sum = "check_sha256sum";
+    const char *xml_check_size = "check_size";
+    const char *xml_check_owner = "check_owner";
+    const char *xml_check_group = "check_group";
+    const char *xml_check_perm = "check_perm";
+    const char *xml_check_mtime = "check_mtime";
+    const char *xml_check_type = "check_type";
 
     int i;
     char **entry;
     char *tag = NULL;
     int arch = ARCH_32BIT;
     int recursion_level = MAX_REGISTRY_DEPTH;
-    int opts = 0;
+    int opts = REGISTRY_CHECK_ALL;
     int retval = 0;
 
     if (attributes && values) {
@@ -502,6 +513,105 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
                     opts |= CHECK_SEECHANGES;
                 } else if (strcmp(values[i], "no") == 0) {
                     opts &= ~CHECK_SEECHANGES;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_check_all)) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= REGISTRY_CHECK_ALL;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~REGISTRY_CHECK_ALL;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_check_sum)) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= CHECK_SUM;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~CHECK_SUM;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_check_md5sum)) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= CHECK_MD5SUM;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~CHECK_MD5SUM;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_check_sha1sum)) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= CHECK_SHA1SUM;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~CHECK_SHA1SUM;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_check_sha256sum)) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= CHECK_SHA256SUM;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~CHECK_SHA256SUM;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_check_size)) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= CHECK_SIZE;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~CHECK_SIZE;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_check_owner)) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= CHECK_OWNER;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~CHECK_OWNER;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_check_group)) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= CHECK_GROUP;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~CHECK_GROUP;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_check_perm)) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= CHECK_PERM;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~CHECK_PERM;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_check_mtime)) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= CHECK_MTIME;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~CHECK_MTIME;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_check_type)) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= CHECK_TYPE;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~CHECK_TYPE;
                 } else {
                     mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
                     goto clean_reg;

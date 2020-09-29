@@ -105,6 +105,11 @@ typedef enum fdb_stmt {
 #define SCHEDULED_ACTIVE    00400000
 #ifdef WIN32
 #define CHECK_TYPE          01000000
+
+#define REGISTRY_CHECK_ALL                                                                                  \
+    (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | CHECK_PERM | \
+     CHECK_MTIME | CHECK_TYPE)
+#define CHECK_SUM (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM)
 #endif
 
 #define ARCH_32BIT          0
