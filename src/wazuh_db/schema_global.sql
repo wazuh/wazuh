@@ -69,5 +69,3 @@ CREATE TABLE IF NOT EXISTS metadata (
 );
 
 INSERT INTO metadata (key, value) VALUES ('db_version', '1');
-
-PRAGMA journal_mode=WAL;
