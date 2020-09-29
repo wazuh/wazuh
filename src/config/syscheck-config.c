@@ -480,16 +480,67 @@ int dump_registry_nodiff_regex(syscheck_config *syscheck, const char *regex, int
 }
 
 /* Read Windows registry configuration */
-int read_reg(syscheck_config *syscheck,
-             char *entries,
-             int arch,
-             char *tag,
-             int vals,
-             const char *restrictfile,
-             int recursion_level) {
-    int j;
+int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, char **values) {
+    const char *xml_arch = "arch";
+    const char *xml_32bit = "32bit";
+    const char *xml_64bit = "64bit";
+    const char *xml_both = "both";
+    const char *xml_tag = "tags";
+    const char *xml_recursion_level = "recursion_level";
+    const char *xml_report_changes = "report_changes";
+
+    int i;
     char **entry;
-    char *tmp_str;
+    char *tag = NULL;
+    int arch = ARCH_32BIT;
+    int recursion_level = MAX_REGISTRY_DEPTH;
+    int opts = 0;
+    int retval = 0;
+
+    if (attributes && values) {
+        for (i = 0; attributes[i]; i++) {
+            if (strcmp(attributes[i], xml_tag) == 0) {
+                os_free(tag);
+
+                if (tag = os_strip_char(values[i], ' '), !tag) {
+                    merror("Processing tag '%s' for registry entry '%s'.", tag, entries);
+                }
+            } else if (strcmp(attributes[i], xml_arch) == 0) {
+                if (strcmp(values[i], xml_32bit) == 0) {
+                } else if (strcmp(values[i], xml_64bit) == 0) {
+                    arch = ARCH_64BIT;
+                } else if (strcmp(values[i], xml_both) == 0) {
+                    arch = ARCH_BOTH;
+                } else {
+                    merror(XML_INVATTR, attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_recursion_level) == 0) {
+                if (!OS_StrIsNum(values[i])) {
+                    merror(XML_VALUEERR, xml_recursion_level, entries);
+                    goto clean_reg;
+                }
+                recursion_level = atoi(values[i]);
+                if (recursion_level < 0 || recursion_level > MAX_REGISTRY_DEPTH) {
+                    mwarn("Invalid recursion level value: %d. Setting default (%d).", recursion_level,
+                          MAX_REGISTRY_DEPTH);
+                    recursion_level = MAX_REGISTRY_DEPTH;
+                }
+            } else if (strcmp(attributes[i], xml_report_changes) == 0) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= CHECK_SEECHANGES;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~CHECK_SEECHANGES;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else {
+                merror(XML_INVATTR, attributes[i], entries);
+                goto clean_reg;
+            }
+        }
+    }
 
     /* Get each entry separately */
     entry = OS_StrBreak(',', entries, MAX_DIR_SIZE + 1); /* Max number */
@@ -498,56 +549,49 @@ int read_reg(syscheck_config *syscheck,
         return (0);
     }
 
-    for (j = 0; entry[j]; j++) {
+    for (i = 0; entry[i]; i++) {
         char *tmp_entry;
-        char * clean_tag = NULL;
-
-        tmp_entry = entry[j];
-
 
         /* When the maximum number of registries monitored in the same tag is reached,
            the excess is discarded and warned */
-        if (j >= MAX_DIR_SIZE){
-            mwarn(FIM_WARN_MAX_REG_REACH, MAX_DIR_SIZE, tmp_entry);
-            free(entry[j]);
+        if (i >= MAX_DIR_SIZE) {
+            mwarn(FIM_WARN_MAX_REG_REACH, MAX_DIR_SIZE, entry[i]);
+            free(entry[i]);
             continue;
         }
 
+        /* Remove spaces at the end */
+        tmp_entry = entry[i] + strlen(entry[i]) - 1;
+        while(*tmp_entry == ' ') {
+            *tmp_entry = '\0';
+            tmp_entry--;
+        }
+
         /* Remove spaces at the beginning */
+        tmp_entry = entry[i];
         while (*tmp_entry == ' ') {
             tmp_entry++;
         }
 
-        /* Remove spaces at the end */
-        tmp_str = strchr(tmp_entry, ' ');
-        if (tmp_str) {
-            tmp_str++;
-
-            /* Check if it is really at the end */
-            if ((*tmp_str == '\0') || (*tmp_str == ' ')) {
-                tmp_str--;
-                *tmp_str = '\0';
-            }
+        if (*tmp_entry == '\0') {
+            mdebug2(FIM_EMPTY_REGISTRY_CONFIG);
+            free(entry[i]);
+            continue;
         }
 
-        /* Remove spaces from tag */
-
-        if (tag) {
-            if (clean_tag = os_strip_char(tag, ' '), !clean_tag)
-                merror("Processing tag '%s' for registry entry '%s'.", tag, tmp_entry);
-        }
         /* Add new entry */
-        dump_syscheck_registry(syscheck, tmp_entry, arch, NULL, recursion_level, clean_tag, &arch, -1);
-
-        if (clean_tag)
-            free(clean_tag);
+        dump_syscheck_registry(syscheck, tmp_entry, arch, NULL, recursion_level, tag, &arch, -1);
 
         /* Next entry */
-        free(entry[j]);
+        free(entry[i]);
     }
     free(entry);
 
-    return (1);
+    retval = 1;
+clean_reg:
+    os_free(tag);
+
+    return retval;
 }
 #endif /* WIN32 */
 
@@ -1550,10 +1594,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_32bit = "32bit";
     const char *xml_64bit = "64bit";
     const char *xml_both = "both";
-    const char *xml_tag = "tags";
-    const char *xml_recursion_level = "recursion_level";
-    const char *xml_report_changes = "report_changes";
-    const char *xml_restrict = "restrict";
 #endif
     const char *xml_whodata_options = "whodata";
     const char *xml_audit_key = "audit_key";
@@ -1617,93 +1657,9 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         /* Get Windows registry */
         else if (strcmp(node[i]->element, xml_registry) == 0) {
 #ifdef WIN32
-            char *tag = NULL;
-            char *restrictfile = NULL;
-            char arch[6] = "32bit";
-            int reg_recursion_level = MAX_REGISTRY_DEPTH;
-            int opts = 0;
-
-            if (node[i]->attributes) {
-                int j = 0;
-
-                while(node[i]->attributes[j]) {
-                    if (strcmp(node[i]->attributes[j], xml_tag) == 0) {
-                        os_free(tag);
-                        os_strdup(node[i]->values[j], tag);
-                    } else if (strcmp(node[i]->attributes[j], xml_arch) == 0) {
-                        if (strcmp(node[i]->values[j], xml_32bit) == 0) {
-                        } else if (strcmp(node[i]->values[j], xml_64bit) == 0) {
-                            snprintf(arch, 6, "%s", "64bit");
-                        } else if (strcmp(node[i]->values[j], xml_both) == 0) {
-                            snprintf(arch, 6, "%s", "both");
-                        } else {
-                            merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
-                            os_free(tag);
-                            os_free(restrictfile);
-                            return OS_INVALID;
-                        }
-                    } else if (strcmp(node[i]->attributes[j], xml_recursion_level) == 0) {
-                        if (!OS_StrIsNum(node[i]->values[j])) {
-                            merror(XML_VALUEERR, xml_recursion_level, node[i]->content);
-                            os_free(tag);
-                            os_free(restrictfile);
-                            return OS_INVALID;
-                        }
-                        reg_recursion_level = atoi(node[i]->values[j]);
-                        if (reg_recursion_level < 0 || reg_recursion_level > MAX_REGISTRY_DEPTH) {
-                            mwarn("Invalid recursion level value: %d. Setting default (%d).", reg_recursion_level, MAX_REGISTRY_DEPTH);
-                            reg_recursion_level = MAX_REGISTRY_DEPTH;
-                        }
-                    } else if (strcmp(node[i]->attributes[j], xml_report_changes) == 0) {
-                        if (strcmp(node[i]->values[j], "yes") == 0) {
-                            opts |= CHECK_SEECHANGES;
-                        } else if (strcmp(node[i]->values[j], "no") == 0) {
-                            opts &= ~ CHECK_SEECHANGES;
-                        } else {
-                            mwarn(FIM_INVALID_REG_OPTION_SKIP, node[i]->values[j], node[i]->attributes[j], node[i]->content);
-                            free(tag);
-                            os_free(restrictfile);
-                            return OS_INVALID;
-                        }
-                    } else if (strcmp(node[i]->attributes[j], xml_restrict) == 0) {
-                        os_free(restrictfile);
-                        os_strdup(node[i]->values[j], restrictfile);
-                    } else {
-                        merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
-                        os_free(tag);
-                        os_free(restrictfile);
-                        return OS_INVALID;
-                    }
-                    j++;
-                }
+            if (!read_reg(syscheck, node[i]->content, node[i]->attributes, node[i]->values)) {
+                return (OS_INVALID);
             }
-
-            if (strcmp(arch, "both") == 0) {
-                if (!(read_reg(syscheck, node[i]->content, ARCH_32BIT, tag, opts, restrictfile, reg_recursion_level) &&
-                read_reg(syscheck, node[i]->content, ARCH_64BIT, tag, opts, restrictfile, reg_recursion_level))) {
-                    free(tag);
-                    os_free(restrictfile);
-                    return (OS_INVALID);
-                }
-
-            } else if (strcmp(arch, "64bit") == 0) {
-                if (!read_reg(syscheck, node[i]->content, ARCH_64BIT, tag, opts, restrictfile, reg_recursion_level)) {
-                    free(tag);
-                    os_free(restrictfile);
-                    return (OS_INVALID);
-                }
-
-            } else {
-                if (!read_reg(syscheck, node[i]->content, ARCH_32BIT, tag, opts, restrictfile, reg_recursion_level)) {
-                    free(tag);
-                    os_free(restrictfile);
-                    return (OS_INVALID);
-                }
-            }
-
-            if (tag)
-                free(tag);
-            os_free(restrictfile);
 #endif
         }
         /* Get windows audit interval */
