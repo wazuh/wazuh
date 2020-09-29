@@ -74,12 +74,13 @@ void test_wm_agent_upgrade_upgrade_success_callback_no_task_id(void **state)
     will_return(__wrap_wm_agent_upgrade_validate_task_ids_message, 1);
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, agent);
+    expect_value(__wrap_wm_agent_upgrade_remove_entry, free, 1);
     will_return(__wrap_wm_agent_upgrade_remove_entry, 0);
 
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_TASK_MANAGER_FAILURE);
-    expect_string(__wrap_wm_agent_upgrade_parse_response_message, message, data);
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, agent_int, agent);
-    will_return(__wrap_wm_agent_upgrade_parse_response_message, error_json);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, error_id, WM_UPGRADE_TASK_MANAGER_FAILURE);
+    expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, data);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, agent_int, agent);
+    will_return(__wrap_wm_agent_upgrade_parse_data_response, error_json);
 
     cJSON *response = wm_agent_upgrade_upgrade_success_callback(&error, input);
 
@@ -198,37 +199,39 @@ void test_wm_agent_upgrade_update_status_success_validate_error(void **state)
 
 void test_wm_agent_upgrade_task_module_callback_no_callbacks_ok(void **state)
 {
-    cJSON *input = cJSON_CreateArray();
     cJSON *output = cJSON_CreateArray();
-    cJSON *task_response = cJSON_CreateArray();
 
-    cJSON *task_request1 = cJSON_CreateObject();
-    cJSON *task_request2 = cJSON_CreateObject();
+    cJSON *input = cJSON_CreateObject();
+    cJSON *origin = cJSON_CreateObject();
+    cJSON *parameters = cJSON_CreateObject();
+    cJSON *agents = cJSON_CreateArray();
 
-    cJSON_AddStringToObject(task_request1, "module", "upgrade_module");
-    cJSON_AddStringToObject(task_request1, "command", "upgrade");
-    cJSON_AddNumberToObject(task_request1, "agent", 12);
+    cJSON_AddStringToObject(origin, "module", "upgrade_module");
+    cJSON_AddItemToObject(input, "origin", origin);
+    cJSON_AddStringToObject(input, "command", "upgrade");
+    cJSON_AddItemToArray(agents, cJSON_CreateNumber(12));
+    cJSON_AddItemToArray(agents, cJSON_CreateNumber(10));
+    cJSON_AddItemToObject(parameters, "agents", agents);
+    cJSON_AddItemToObject(input, "parameters", parameters);
 
-    cJSON_AddStringToObject(task_request2, "module", "upgrade_module");
-    cJSON_AddStringToObject(task_request2, "command", "upgrade");
-    cJSON_AddNumberToObject(task_request2, "agent", 10);
-
-    cJSON_AddItemToArray(input, task_request1);
-    cJSON_AddItemToArray(input, task_request2);
-
+    cJSON *task_response = cJSON_CreateObject();
+    cJSON *data = cJSON_CreateArray();
     cJSON *task1 = cJSON_CreateObject();
     cJSON *task2 = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(task1, "error", 0);
-    cJSON_AddStringToObject(task1, "data", "Success");
+    cJSON_AddStringToObject(task1, "message", "Success");
     cJSON_AddNumberToObject(task1, "agent", 12);
+    cJSON_AddItemToArray(data, task1);
 
     cJSON_AddNumberToObject(task2, "error", 1);
-    cJSON_AddStringToObject(task2, "data", "Error");
+    cJSON_AddStringToObject(task2, "message", "Error");
     cJSON_AddNumberToObject(task2, "agent", 10);
+    cJSON_AddItemToArray(data, task2);
 
-    cJSON_AddItemToArray(task_response, task1);
-    cJSON_AddItemToArray(task_response, task2);
+    cJSON_AddNumberToObject(task_response, "error", 0);
+    cJSON_AddItemToObject(task_response, "data", data);
+    cJSON_AddStringToObject(task_response, "message", "Success");
 
     expect_memory(__wrap_wm_agent_upgrade_send_tasks_information, message_object, input, sizeof(input));
     will_return(__wrap_wm_agent_upgrade_send_tasks_information, task_response);
@@ -243,15 +246,15 @@ void test_wm_agent_upgrade_task_module_callback_no_callbacks_ok(void **state)
     cJSON *out1 = cJSON_GetArrayItem(output, 0);
     assert_non_null(cJSON_GetObjectItem(out1, "error"));
     assert_int_equal(cJSON_GetObjectItem(out1, "error")->valueint, 0);
-    assert_non_null(cJSON_GetObjectItem(out1, "data"));
-    assert_string_equal(cJSON_GetObjectItem(out1, "data")->valuestring, "Success");
+    assert_non_null(cJSON_GetObjectItem(out1, "message"));
+    assert_string_equal(cJSON_GetObjectItem(out1, "message")->valuestring, "Success");
     assert_non_null(cJSON_GetObjectItem(out1, "agent"));
     assert_int_equal(cJSON_GetObjectItem(out1, "agent")->valueint, 12);
     cJSON *out2 = cJSON_GetArrayItem(output, 1);
     assert_non_null(cJSON_GetObjectItem(out2, "error"));
     assert_int_equal(cJSON_GetObjectItem(out2, "error")->valueint, 1);
-    assert_non_null(cJSON_GetObjectItem(out2, "data"));
-    assert_string_equal(cJSON_GetObjectItem(out2, "data")->valuestring, "Error");
+    assert_non_null(cJSON_GetObjectItem(out2, "message"));
+    assert_string_equal(cJSON_GetObjectItem(out2, "message")->valuestring, "Error");
     assert_non_null(cJSON_GetObjectItem(out2, "agent"));
     assert_int_equal(cJSON_GetObjectItem(out2, "agent")->valueint, 10);
     assert_null(cJSON_GetArrayItem(output, 2));
@@ -259,43 +262,45 @@ void test_wm_agent_upgrade_task_module_callback_no_callbacks_ok(void **state)
 
 void test_wm_agent_upgrade_task_module_callback_success_callback_ok(void **state)
 {
-    cJSON *input = cJSON_CreateArray();
     cJSON *output = cJSON_CreateArray();
-    cJSON *task_response = cJSON_CreateArray();
 
-    cJSON *task_request1 = cJSON_CreateObject();
-    cJSON *task_request2 = cJSON_CreateObject();
+    cJSON *input = cJSON_CreateObject();
+    cJSON *origin = cJSON_CreateObject();
+    cJSON *parameters = cJSON_CreateObject();
+    cJSON *agents = cJSON_CreateArray();
 
-    cJSON_AddStringToObject(task_request1, "module", "upgrade_module");
-    cJSON_AddStringToObject(task_request1, "command", "upgrade");
-    cJSON_AddNumberToObject(task_request1, "agent", 12);
+    cJSON_AddStringToObject(origin, "module", "upgrade_module");
+    cJSON_AddItemToObject(input, "origin", origin);
+    cJSON_AddStringToObject(input, "command", "upgrade");
+    cJSON_AddItemToArray(agents, cJSON_CreateNumber(12));
+    cJSON_AddItemToArray(agents, cJSON_CreateNumber(10));
+    cJSON_AddItemToObject(parameters, "agents", agents);
+    cJSON_AddItemToObject(input, "parameters", parameters);
 
-    cJSON_AddStringToObject(task_request2, "module", "upgrade_module");
-    cJSON_AddStringToObject(task_request2, "command", "upgrade");
-    cJSON_AddNumberToObject(task_request2, "agent", 10);
-
-    cJSON_AddItemToArray(input, task_request1);
-    cJSON_AddItemToArray(input, task_request2);
-
+    cJSON *task_response = cJSON_CreateObject();
+    cJSON *data = cJSON_CreateArray();
     cJSON *task1 = cJSON_CreateObject();
     cJSON *task2 = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(task1, "error", 0);
-    cJSON_AddStringToObject(task1, "data", "Success");
+    cJSON_AddStringToObject(task1, "message", "Success");
     cJSON_AddNumberToObject(task1, "agent", 12);
     cJSON_AddNumberToObject(task1, "task_id", 115);
+    cJSON_AddItemToArray(data, task1);
 
     cJSON_AddNumberToObject(task2, "error", 1);
-    cJSON_AddStringToObject(task2, "data", "Error");
+    cJSON_AddStringToObject(task2, "message", "Error");
     cJSON_AddNumberToObject(task2, "agent", 10);
+    cJSON_AddItemToArray(data, task2);
 
-    cJSON_AddItemToArray(task_response, task1);
-    cJSON_AddItemToArray(task_response, task2);
+    cJSON_AddNumberToObject(task_response, "error", 0);
+    cJSON_AddItemToObject(task_response, "data", data);
+    cJSON_AddStringToObject(task_response, "message", "Success");
 
     cJSON *error_json = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(error_json, "error", 1);
-    cJSON_AddStringToObject(error_json, "data", "Error");
+    cJSON_AddStringToObject(error_json, "message", "Error");
     cJSON_AddNumberToObject(error_json, "agent", 10);
 
     expect_memory(__wrap_wm_agent_upgrade_send_tasks_information, message_object, input, sizeof(input));
@@ -315,12 +320,13 @@ void test_wm_agent_upgrade_task_module_callback_success_callback_ok(void **state
     will_return(__wrap_wm_agent_upgrade_validate_task_ids_message, 1);
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, 10);
+    expect_value(__wrap_wm_agent_upgrade_remove_entry, free, 1);
     will_return(__wrap_wm_agent_upgrade_remove_entry, 0);
 
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_TASK_MANAGER_FAILURE);
-    expect_string(__wrap_wm_agent_upgrade_parse_response_message, message, "Error");
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, agent_int, 10);
-    will_return(__wrap_wm_agent_upgrade_parse_response_message, error_json);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, error_id, WM_UPGRADE_TASK_MANAGER_FAILURE);
+    expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, "Error");
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, agent_int, 10);
+    will_return(__wrap_wm_agent_upgrade_parse_data_response, error_json);
 
     int result = wm_agent_upgrade_task_module_callback(output, input, wm_agent_upgrade_upgrade_success_callback, NULL);
 
@@ -332,8 +338,8 @@ void test_wm_agent_upgrade_task_module_callback_success_callback_ok(void **state
     cJSON *out1 = cJSON_GetArrayItem(output, 0);
     assert_non_null(cJSON_GetObjectItem(out1, "error"));
     assert_int_equal(cJSON_GetObjectItem(out1, "error")->valueint, 0);
-    assert_non_null(cJSON_GetObjectItem(out1, "data"));
-    assert_string_equal(cJSON_GetObjectItem(out1, "data")->valuestring, "Success");
+    assert_non_null(cJSON_GetObjectItem(out1, "message"));
+    assert_string_equal(cJSON_GetObjectItem(out1, "message")->valuestring, "Success");
     assert_non_null(cJSON_GetObjectItem(out1, "agent"));
     assert_int_equal(cJSON_GetObjectItem(out1, "agent")->valueint, 12);
     assert_non_null(cJSON_GetObjectItem(out1, "task_id"));
@@ -341,8 +347,8 @@ void test_wm_agent_upgrade_task_module_callback_success_callback_ok(void **state
     cJSON *out2 = cJSON_GetArrayItem(output, 1);
     assert_non_null(cJSON_GetObjectItem(out2, "error"));
     assert_int_equal(cJSON_GetObjectItem(out2, "error")->valueint, 1);
-    assert_non_null(cJSON_GetObjectItem(out2, "data"));
-    assert_string_equal(cJSON_GetObjectItem(out2, "data")->valuestring, "Error");
+    assert_non_null(cJSON_GetObjectItem(out2, "message"));
+    assert_string_equal(cJSON_GetObjectItem(out2, "message")->valuestring, "Error");
     assert_non_null(cJSON_GetObjectItem(out2, "agent"));
     assert_int_equal(cJSON_GetObjectItem(out2, "agent")->valueint, 10);
     assert_null(cJSON_GetObjectItem(out2, "task_id"));
@@ -351,47 +357,51 @@ void test_wm_agent_upgrade_task_module_callback_success_callback_ok(void **state
 
 void test_wm_agent_upgrade_task_module_callback_no_callbacks_error(void **state)
 {
-    cJSON *input = cJSON_CreateArray();
     cJSON *output = cJSON_CreateArray();
-    cJSON *task_response = cJSON_CreateArray();
 
-    cJSON *task_request1 = cJSON_CreateObject();
-    cJSON *task_request2 = cJSON_CreateObject();
+    cJSON *input = cJSON_CreateObject();
+    cJSON *origin = cJSON_CreateObject();
+    cJSON *parameters = cJSON_CreateObject();
+    cJSON *agents = cJSON_CreateArray();
 
-    cJSON_AddStringToObject(task_request1, "module", "upgrade_module");
-    cJSON_AddStringToObject(task_request1, "command", "upgrade");
-    cJSON_AddNumberToObject(task_request1, "agent", 12);
+    cJSON_AddStringToObject(origin, "module", "upgrade_module");
+    cJSON_AddItemToObject(input, "origin", origin);
+    cJSON_AddStringToObject(input, "command", "upgrade");
+    cJSON_AddItemToArray(agents, cJSON_CreateNumber(12));
+    cJSON_AddItemToArray(agents, cJSON_CreateNumber(10));
+    cJSON_AddItemToObject(parameters, "agents", agents);
+    cJSON_AddItemToObject(input, "parameters", parameters);
 
-    cJSON_AddStringToObject(task_request2, "module", "upgrade_module");
-    cJSON_AddStringToObject(task_request2, "command", "upgrade");
-    cJSON_AddNumberToObject(task_request2, "agent", 10);
+    cJSON *task_response = cJSON_CreateObject();
+    cJSON *data = cJSON_CreateArray();
 
-    cJSON_AddItemToArray(input, task_request1);
-    cJSON_AddItemToArray(input, task_request2);
+    cJSON_AddNumberToObject(task_response, "error", 1);
+    cJSON_AddItemToObject(task_response, "data", data);
+    cJSON_AddStringToObject(task_response, "message", "Error");
 
     cJSON *error1 = cJSON_CreateObject();
     cJSON *error2 = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(error1, "error", WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
-    cJSON_AddStringToObject(error1, "data", upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
+    cJSON_AddStringToObject(error1, "message", upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
     cJSON_AddNumberToObject(error1, "agent", 12);
 
     cJSON_AddNumberToObject(error2, "error", WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
-    cJSON_AddStringToObject(error2, "data", upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
+    cJSON_AddStringToObject(error2, "message", upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
     cJSON_AddNumberToObject(error2, "agent", 10);
 
     expect_memory(__wrap_wm_agent_upgrade_send_tasks_information, message_object, input, sizeof(input));
     will_return(__wrap_wm_agent_upgrade_send_tasks_information, task_response);
 
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
-    expect_string(__wrap_wm_agent_upgrade_parse_response_message, message, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, agent_int, 12);
-    will_return(__wrap_wm_agent_upgrade_parse_response_message, error1);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, error_id, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
+    expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, agent_int, 12);
+    will_return(__wrap_wm_agent_upgrade_parse_data_response, error1);
 
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
-    expect_string(__wrap_wm_agent_upgrade_parse_response_message, message, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, agent_int, 10);
-    will_return(__wrap_wm_agent_upgrade_parse_response_message, error2);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, error_id, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
+    expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, agent_int, 10);
+    will_return(__wrap_wm_agent_upgrade_parse_data_response, error2);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8105): Response from task manager does not have a valid JSON format.");
@@ -406,15 +416,15 @@ void test_wm_agent_upgrade_task_module_callback_no_callbacks_error(void **state)
     cJSON *out1 = cJSON_GetArrayItem(output, 0);
     assert_non_null(cJSON_GetObjectItem(out1, "error"));
     assert_int_equal(cJSON_GetObjectItem(out1, "error")->valueint, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
-    assert_non_null(cJSON_GetObjectItem(out1, "data"));
-    assert_string_equal(cJSON_GetObjectItem(out1, "data")->valuestring, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
+    assert_non_null(cJSON_GetObjectItem(out1, "message"));
+    assert_string_equal(cJSON_GetObjectItem(out1, "message")->valuestring, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
     assert_non_null(cJSON_GetObjectItem(out1, "agent"));
     assert_int_equal(cJSON_GetObjectItem(out1, "agent")->valueint, 12);
     cJSON *out2 = cJSON_GetArrayItem(output, 1);
     assert_non_null(cJSON_GetObjectItem(out2, "error"));
     assert_int_equal(cJSON_GetObjectItem(out2, "error")->valueint, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
-    assert_non_null(cJSON_GetObjectItem(out2, "data"));
-    assert_string_equal(cJSON_GetObjectItem(out2, "data")->valuestring, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
+    assert_non_null(cJSON_GetObjectItem(out2, "message"));
+    assert_string_equal(cJSON_GetObjectItem(out2, "message")->valuestring, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
     assert_non_null(cJSON_GetObjectItem(out2, "agent"));
     assert_int_equal(cJSON_GetObjectItem(out2, "agent")->valueint, 10);
     assert_null(cJSON_GetArrayItem(output, 2));
@@ -422,53 +432,59 @@ void test_wm_agent_upgrade_task_module_callback_no_callbacks_error(void **state)
 
 void test_wm_agent_upgrade_task_module_callback_error_callback_error(void **state)
 {
-    cJSON *input = cJSON_CreateArray();
     cJSON *output = cJSON_CreateArray();
-    cJSON *task_response = cJSON_CreateArray();
 
-    cJSON *task_request1 = cJSON_CreateObject();
-    cJSON *task_request2 = cJSON_CreateObject();
+    cJSON *input = cJSON_CreateObject();
+    cJSON *origin = cJSON_CreateObject();
+    cJSON *parameters = cJSON_CreateObject();
+    cJSON *agents = cJSON_CreateArray();
 
-    cJSON_AddStringToObject(task_request1, "module", "upgrade_module");
-    cJSON_AddStringToObject(task_request1, "command", "upgrade");
-    cJSON_AddNumberToObject(task_request1, "agent", 12);
+    cJSON_AddStringToObject(origin, "module", "upgrade_module");
+    cJSON_AddItemToObject(input, "origin", origin);
+    cJSON_AddStringToObject(input, "command", "upgrade");
+    cJSON_AddItemToArray(agents, cJSON_CreateNumber(12));
+    cJSON_AddItemToArray(agents, cJSON_CreateNumber(10));
+    cJSON_AddItemToObject(parameters, "agents", agents);
+    cJSON_AddItemToObject(input, "parameters", parameters);
 
-    cJSON_AddStringToObject(task_request2, "module", "upgrade_module");
-    cJSON_AddStringToObject(task_request2, "command", "upgrade");
-    cJSON_AddNumberToObject(task_request2, "agent", 10);
+    cJSON *task_response = cJSON_CreateObject();
+    cJSON *data = cJSON_CreateArray();
 
-    cJSON_AddItemToArray(input, task_request1);
-    cJSON_AddItemToArray(input, task_request2);
+    cJSON_AddNumberToObject(task_response, "error", 1);
+    cJSON_AddItemToObject(task_response, "data", data);
+    cJSON_AddStringToObject(task_response, "message", "Error");
 
     cJSON *error1 = cJSON_CreateObject();
     cJSON *error2 = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(error1, "error", WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
-    cJSON_AddStringToObject(error1, "data", upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
+    cJSON_AddStringToObject(error1, "message", upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
     cJSON_AddNumberToObject(error1, "agent", 12);
 
     cJSON_AddNumberToObject(error2, "error", WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
-    cJSON_AddStringToObject(error2, "data", upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
+    cJSON_AddStringToObject(error2, "message", upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
     cJSON_AddNumberToObject(error2, "agent", 10);
 
     expect_memory(__wrap_wm_agent_upgrade_send_tasks_information, message_object, input, sizeof(input));
     will_return(__wrap_wm_agent_upgrade_send_tasks_information, task_response);
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, 12);
+    expect_value(__wrap_wm_agent_upgrade_remove_entry, free, 1);
     will_return(__wrap_wm_agent_upgrade_remove_entry, 0);
 
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
-    expect_string(__wrap_wm_agent_upgrade_parse_response_message, message, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, agent_int, 12);
-    will_return(__wrap_wm_agent_upgrade_parse_response_message, error1);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, error_id, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
+    expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, agent_int, 12);
+    will_return(__wrap_wm_agent_upgrade_parse_data_response, error1);
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, 10);
+    expect_value(__wrap_wm_agent_upgrade_remove_entry, free, 1);
     will_return(__wrap_wm_agent_upgrade_remove_entry, 0);
 
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
-    expect_string(__wrap_wm_agent_upgrade_parse_response_message, message, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, agent_int, 10);
-    will_return(__wrap_wm_agent_upgrade_parse_response_message, error2);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, error_id, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
+    expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, agent_int, 10);
+    will_return(__wrap_wm_agent_upgrade_parse_data_response, error2);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8105): Response from task manager does not have a valid JSON format.");
@@ -483,15 +499,15 @@ void test_wm_agent_upgrade_task_module_callback_error_callback_error(void **stat
     cJSON *out1 = cJSON_GetArrayItem(output, 0);
     assert_non_null(cJSON_GetObjectItem(out1, "error"));
     assert_int_equal(cJSON_GetObjectItem(out1, "error")->valueint, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
-    assert_non_null(cJSON_GetObjectItem(out1, "data"));
-    assert_string_equal(cJSON_GetObjectItem(out1, "data")->valuestring, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
+    assert_non_null(cJSON_GetObjectItem(out1, "message"));
+    assert_string_equal(cJSON_GetObjectItem(out1, "message")->valuestring, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
     assert_non_null(cJSON_GetObjectItem(out1, "agent"));
     assert_int_equal(cJSON_GetObjectItem(out1, "agent")->valueint, 12);
     cJSON *out2 = cJSON_GetArrayItem(output, 1);
     assert_non_null(cJSON_GetObjectItem(out2, "error"));
     assert_int_equal(cJSON_GetObjectItem(out2, "error")->valueint, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
-    assert_non_null(cJSON_GetObjectItem(out2, "data"));
-    assert_string_equal(cJSON_GetObjectItem(out2, "data")->valuestring, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
+    assert_non_null(cJSON_GetObjectItem(out2, "message"));
+    assert_string_equal(cJSON_GetObjectItem(out2, "message")->valuestring, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
     assert_non_null(cJSON_GetObjectItem(out2, "agent"));
     assert_int_equal(cJSON_GetObjectItem(out2, "agent")->valueint, 10);
     assert_null(cJSON_GetArrayItem(output, 2));
@@ -499,49 +515,51 @@ void test_wm_agent_upgrade_task_module_callback_error_callback_error(void **stat
 
 void test_wm_agent_upgrade_task_module_callback_success_error_callback_error(void **state)
 {
-    cJSON *input = cJSON_CreateArray();
     cJSON *output = cJSON_CreateArray();
-    cJSON *task_response = cJSON_CreateArray();
 
-    cJSON *task_request1 = cJSON_CreateObject();
-    cJSON *task_request2 = cJSON_CreateObject();
+    cJSON *input = cJSON_CreateObject();
+    cJSON *origin = cJSON_CreateObject();
+    cJSON *parameters = cJSON_CreateObject();
+    cJSON *agents = cJSON_CreateArray();
 
-    cJSON_AddStringToObject(task_request1, "module", "upgrade_module");
-    cJSON_AddStringToObject(task_request1, "command", "upgrade");
-    cJSON_AddNumberToObject(task_request1, "agent", 12);
+    cJSON_AddStringToObject(origin, "module", "upgrade_module");
+    cJSON_AddItemToObject(input, "origin", origin);
+    cJSON_AddStringToObject(input, "command", "upgrade");
+    cJSON_AddItemToArray(agents, cJSON_CreateNumber(12));
+    cJSON_AddItemToArray(agents, cJSON_CreateNumber(10));
+    cJSON_AddItemToObject(parameters, "agents", agents);
+    cJSON_AddItemToObject(input, "parameters", parameters);
 
-    cJSON_AddStringToObject(task_request2, "module", "upgrade_module");
-    cJSON_AddStringToObject(task_request2, "command", "upgrade");
-    cJSON_AddNumberToObject(task_request2, "agent", 10);
-
-    cJSON_AddItemToArray(input, task_request1);
-    cJSON_AddItemToArray(input, task_request2);
-
+    cJSON *task_response = cJSON_CreateObject();
+    cJSON *data = cJSON_CreateArray();
     cJSON *task1 = cJSON_CreateObject();
     cJSON *task2 = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(task1, "error", 0);
-    cJSON_AddStringToObject(task1, "data", "Success");
+    cJSON_AddStringToObject(task1, "message", "Success");
     cJSON_AddNumberToObject(task1, "agent", 12);
     cJSON_AddNumberToObject(task1, "task_id", 115);
+    cJSON_AddItemToArray(data, task1);
 
     cJSON_AddNumberToObject(task2, "error", 0);
-    cJSON_AddStringToObject(task2, "data", "Success");
+    cJSON_AddStringToObject(task2, "message", "Success");
     cJSON_AddNumberToObject(task2, "agent", 10);
     cJSON_AddNumberToObject(task2, "task_id", 116);
+    cJSON_AddItemToArray(data, task2);
 
-    cJSON_AddItemToArray(task_response, task1);
-    cJSON_AddItemToArray(task_response, task2);
+    cJSON_AddNumberToObject(task_response, "error", 0);
+    cJSON_AddItemToObject(task_response, "data", data);
+    cJSON_AddStringToObject(task_response, "message", "Success");
 
     cJSON *error1 = cJSON_CreateObject();
     cJSON *error2 = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(error1, "error", WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
-    cJSON_AddStringToObject(error1, "data", upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
+    cJSON_AddStringToObject(error1, "message", upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
     cJSON_AddNumberToObject(error1, "agent", 12);
 
     cJSON_AddNumberToObject(error2, "error", WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
-    cJSON_AddStringToObject(error2, "data", upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
+    cJSON_AddStringToObject(error2, "message", upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
     cJSON_AddNumberToObject(error2, "agent", 10);
 
     expect_memory(__wrap_wm_agent_upgrade_send_tasks_information, message_object, input, sizeof(input));
@@ -561,20 +579,22 @@ void test_wm_agent_upgrade_task_module_callback_success_error_callback_error(voi
     will_return(__wrap_wm_agent_upgrade_validate_task_ids_message, 0);
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, 12);
+    expect_value(__wrap_wm_agent_upgrade_remove_entry, free, 1);
     will_return(__wrap_wm_agent_upgrade_remove_entry, 0);
 
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
-    expect_string(__wrap_wm_agent_upgrade_parse_response_message, message, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, agent_int, 12);
-    will_return(__wrap_wm_agent_upgrade_parse_response_message, error1);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, error_id, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
+    expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, agent_int, 12);
+    will_return(__wrap_wm_agent_upgrade_parse_data_response, error1);
 
     expect_value(__wrap_wm_agent_upgrade_remove_entry, agent_id, 10);
+    expect_value(__wrap_wm_agent_upgrade_remove_entry, free, 1);
     will_return(__wrap_wm_agent_upgrade_remove_entry, 0);
 
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, error_id, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
-    expect_string(__wrap_wm_agent_upgrade_parse_response_message, message, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
-    expect_value(__wrap_wm_agent_upgrade_parse_response_message, agent_int, 10);
-    will_return(__wrap_wm_agent_upgrade_parse_response_message, error2);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, error_id, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
+    expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
+    expect_value(__wrap_wm_agent_upgrade_parse_data_response, agent_int, 10);
+    will_return(__wrap_wm_agent_upgrade_parse_data_response, error2);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8105): Response from task manager does not have a valid JSON format.");
@@ -589,15 +609,15 @@ void test_wm_agent_upgrade_task_module_callback_success_error_callback_error(voi
     cJSON *out1 = cJSON_GetArrayItem(output, 0);
     assert_non_null(cJSON_GetObjectItem(out1, "error"));
     assert_int_equal(cJSON_GetObjectItem(out1, "error")->valueint, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
-    assert_non_null(cJSON_GetObjectItem(out1, "data"));
-    assert_string_equal(cJSON_GetObjectItem(out1, "data")->valuestring, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
+    assert_non_null(cJSON_GetObjectItem(out1, "message"));
+    assert_string_equal(cJSON_GetObjectItem(out1, "message")->valuestring, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
     assert_non_null(cJSON_GetObjectItem(out1, "agent"));
     assert_int_equal(cJSON_GetObjectItem(out1, "agent")->valueint, 12);
     cJSON *out2 = cJSON_GetArrayItem(output, 1);
     assert_non_null(cJSON_GetObjectItem(out2, "error"));
     assert_int_equal(cJSON_GetObjectItem(out2, "error")->valueint, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
-    assert_non_null(cJSON_GetObjectItem(out2, "data"));
-    assert_string_equal(cJSON_GetObjectItem(out2, "data")->valuestring, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
+    assert_non_null(cJSON_GetObjectItem(out2, "message"));
+    assert_string_equal(cJSON_GetObjectItem(out2, "message")->valuestring, upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
     assert_non_null(cJSON_GetObjectItem(out2, "agent"));
     assert_int_equal(cJSON_GetObjectItem(out2, "agent")->valueint, 10);
     assert_null(cJSON_GetArrayItem(output, 2));

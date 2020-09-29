@@ -22,14 +22,21 @@
  * Enumeration of all available keys that could be used in the messages
  * */
 typedef enum _task_manager_json_key {
-    WM_TASK_MODULE = 0,
+    // Request
+    WM_TASK_ORIGIN = 0,
+    WM_TASK_MODULE,
     WM_TASK_COMMAND,
+    WM_TASK_PARAMETERS,
+    WM_TASK_AGENTS,
+    WM_TASK_TASKS,
+    // Response
+    WM_TASK_ERROR,
+    WM_TASK_DATA,
+    WM_TASK_ERROR_MESSAGE,
     WM_TASK_AGENT_ID,
     WM_TASK_TASK_ID,
     WM_TASK_STATUS,
     WM_TASK_ERROR_MSG,
-    WM_TASK_ERROR,
-    WM_TASK_ERROR_DATA,
     WM_TASK_CREATE_TIME,
     WM_TASK_LAST_UPDATE_TIME
 } task_manager_json_key;

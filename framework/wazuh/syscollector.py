@@ -29,9 +29,9 @@ def get_item_agent(agent_list, offset=0, limit=common.database_limit, select=Non
     :return: AffectedItemsWazuhResult
     """
     result = AffectedItemsWazuhResult(
-        none_msg='No syscollector information shown',
-        some_msg='Some syscollector information could not be shown',
-        all_msg='All specified syscollector information is shown',
+        none_msg='No syscollector information was returned',
+        some_msg='Some syscollector information was not returned',
+        all_msg='All specified syscollector information was returned',
         sort_fields=['agent_id'] if sort is None else sort['fields'],
         sort_casting=['str'],
         sort_ascending=[sort['order'] == 'asc' for _ in sort['fields']] if sort is not None else ['True']

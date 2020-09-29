@@ -116,6 +116,19 @@ def test_previous_moth(month):
     assert isinstance(result, datetime)
 
 
+@pytest.mark.parametrize('string, substring, n, expected_index', [
+    ("string_1_", "_", 1, 6),
+    ("string_2_", "_", 2, 8),
+    ("string_3_", "_", 3, -1),
+    ("string4", "_", 1, -1)
+])
+def test_find_nth(string, substring, n, expected_index):
+    """Test find_nth function."""
+    result = find_nth(string, substring, n)
+
+    assert result == expected_index
+
+
 @patch('wazuh.core.utils.check_output', return_value='{"data": "Some data", "message": "Some message", "error":0}')
 def test_execute(mock_output):
     """Test execute function."""

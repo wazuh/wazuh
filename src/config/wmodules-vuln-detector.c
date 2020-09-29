@@ -30,8 +30,6 @@ typedef struct provider_options {
     char *multi_url;
     int multi_url_start;
     int multi_url_end;
-    char **multi_allowed_os_name;
-    char **multi_allowed_os_ver;
     int port;
     time_t update_interval;
     int update_since;
@@ -41,16 +39,12 @@ typedef struct provider_options {
 static int wm_vuldet_get_interval(char *source, time_t *interval);
 static int wm_vuldet_is_valid_year(char *source, int *date, int max);
 static int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list);
-static int wm_vuldet_read_deprecated_config(const OS_XML *xml, xml_node *node, update_node **updates, long unsigned int *update);
-static int wm_vuldet_read_deprecated_feed_tag(const OS_XML *xml, xml_node *node, update_node **updates, long unsigned int *update);
-static int wm_vuldet_read_deprecated_multifeed_tag(xml_node *node, update_node **updates, long unsigned int *update);
 static int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **updates, wm_vuldet_flags *flags);
 static int wm_vuldet_provider_enable(xml_node **node);
 static char *wm_vuldet_provider_name(xml_node *node);
 static int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds, char *pr_name);
 static void wm_vuldet_set_port_to_url(char **url, int port);
-static int wm_vuldet_add_allow_os(update_node *update, char *os_tags, char old_config);
-static int wm_vuldet_add_multi_allow_os(update_node *update, char **src_os, char **dst_os);
+static int wm_vuldet_add_allow_os(update_node *update, char *os_tags);
 static int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_provider, provider_options *options);
 static char wm_vuldet_provider_type(char *pr_name);
 static void wm_vuldet_remove_os_feed(vu_os_feed *feed, char full_r);
@@ -74,7 +68,6 @@ static const char *XML_PORT = "port";
 static const char *XML_ALLOW = "allow";
 static const char *XML_UPDATE_FROM_YEAR = "update_from_year";
 static const char *XML_PROVIDER = "provider";
-static const char *XML_REPLACED_OS = "replaced_os";
 static const char *XML_TIMEOUT = "download_timeout";
 
 static const char *XML_START = "start";
@@ -84,7 +77,6 @@ static const char *XML_END = "end";
 static const char *XML_FEED = "feed";
 static const char *XML_UPDATE_UBUNTU_OVAL = "update_ubuntu_oval";
 static const char *XML_UPDATE_REDHAT_OVAL = "update_redhat_oval";
-static const char *XML_VERSION = "version";
 
 int format_os_version(char *OS, char **os_name, char **os_ver) {
     char OS_cpy[OS_SIZE_1024] = {'\0'};
@@ -413,9 +405,8 @@ int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2) {
         } else if (!strcmp(nodes[i]->element, XML_FEED) ||
                    !strcmp(nodes[i]->element, XML_UPDATE_UBUNTU_OVAL) ||
                    !strcmp(nodes[i]->element, XML_UPDATE_REDHAT_OVAL)) {
-            if (wm_vuldet_read_deprecated_config(xml, nodes[i], updates, &run_update)) {
-                return OS_INVALID;
-            }
+            mwarn("'%s' option at module '%s' is deprecated. Use '%s' instead.", nodes[i]->element, WM_VULNDETECTOR_CONTEXT.name, XML_PROVIDER);
+            continue;
         } else if (!strcmp(nodes[i]->element, XML_RUN_ON_START)) {
             if (!strcmp(nodes[i]->content, "yes")) {
                 vuldet->flags.run_on_start = 1;
@@ -474,201 +465,6 @@ void wm_vuldet_enable_rhel_json_feed(update_node **updates) {
     }
 }
 
-int wm_vuldet_read_deprecated_config(const OS_XML *xml, xml_node *node, update_node **updates, long unsigned int *update) {
-
-    mwarn("'%s' option at module '%s' is deprecated. Use '%s' instead.", node->element, WM_VULNDETECTOR_CONTEXT.name, XML_PROVIDER);
-
-    if (!strcmp(node->element, XML_FEED)) {
-        return wm_vuldet_read_deprecated_feed_tag(xml, node, updates, update);
-    }  else {
-        return wm_vuldet_read_deprecated_multifeed_tag(node, updates, update);
-    }
-}
-
-static int wm_vuldet_read_deprecated_multifeed_tag(xml_node *node, update_node **updates, long unsigned int *update) {
-    int j, k;
-    int enabled = 0;
-    time_t interval = 0;
-    int os1 = 0, os2 = 0, os3 = 0;
-    char is_ubuntu = !strcmp(node->element, XML_UPDATE_UBUNTU_OVAL);
-    char *os_tag = is_ubuntu ? "UBUNTU" : "REDHAT";
-
-    if (!strcmp(node->content, "yes")) {
-        enabled = 1;
-        if (node->attributes) {
-            for (j = 0; node->attributes[j]; j++) {
-                if (!strcmp(node->attributes[j], XML_VERSION)) {
-                    char * version = node->values[j];
-                    for (k = 0;; k++) {
-                        int out = (version[k] == '\0');
-                        if (version[k] == ',' || out) {
-                            version[k] = '\0';
-                            if ((is_ubuntu && !strcmp(version, "12")) || (!is_ubuntu && !strcmp(version, "5"))) {
-                                os1 = 1;
-                            } else if ((is_ubuntu && !strcmp(version, "14")) || (!is_ubuntu && !strcmp(version, "6"))) {
-                                os2 = 1;
-                            } else if ((is_ubuntu && !strcmp(version, "16")) || (!is_ubuntu && !strcmp(version, "7"))) {
-                                os3 = 1;
-                            } else {
-                                merror("Invalid %s version '%s'.", os_tag, version);
-                            }
-
-                            version = &version[k] + 1;
-                            k = 0;
-                        }
-                        if (out)
-                            break;
-                    }
-                } else if (!strcmp(node->attributes[j], XML_INTERVAL)) {
-                    if (wm_vuldet_get_interval(node->values[j], &interval)) {
-                        merror("Invalid interval at module '%s'", WM_VULNDETECTOR_CONTEXT.name);
-                        return OS_INVALID;
-                    }
-                } else {
-                    merror("Invalid attribute '%s' for '%s'", node->attributes[j], XML_UPDATE_UBUNTU_OVAL);
-                    return OS_INVALID;
-                }
-            }
-        }
-    } else if (!strcmp(node->content, "no")) {
-        enabled = 0;
-    } else {
-        merror("Invalid content '%s' for tag '%s' at module '%s'", node->content, node->element, WM_VULNDETECTOR_CONTEXT.name);
-        return OS_INVALID;
-    }
-
-    if(os1 || os2 || os3) {
-        *update = 1;
-    }
-
-    if (enabled) {
-        int os_index;
-        int i;
-        char *ver_tag;
-
-        for (i = 0; i < 3; i++) {
-            switch (i) {
-                case 0:
-                    if (!os1) continue;
-                    ver_tag = is_ubuntu ? "12" : "5";
-                break;
-                case 1:
-                    if (!os2) continue;
-                    ver_tag = is_ubuntu ? "14" : "6";
-                break;
-                case 2:
-                    if (!os3) continue;
-                    ver_tag = is_ubuntu ? "16" : "7";
-                break;
-            }
-            if (os_index = wm_vuldet_set_feed_version(os_tag, ver_tag, updates), os_index == OS_INVALID) {
-                return OS_INVALID;
-            } else if (os_index == OS_SUPP_SIZE) {
-                return 0;
-            }
-            updates[os_index]->interval = interval;
-            updates[os_index]->attempted = 0;
-            updates[os_index]->old_config = 1;
-            // Deprecated config don't support new option download_timeout
-            updates[os_index]->timeout = 300;
-        }
-    }
-
-    return 0;
-}
-
-static int wm_vuldet_read_deprecated_feed_tag(const OS_XML *xml, xml_node *node, update_node **updates, long unsigned int *update) {
-    char *feed;
-    char *version;
-    int os_index;
-    int j;
-    XML_NODE chld_node = NULL;
-
-    if (!node->attributes || strcmp(*node->attributes, XML_NAME)) {
-        merror("Invalid content for tag '%s' at module '%s'", XML_FEED, WM_VULNDETECTOR_CONTEXT.name);
-        return OS_INVALID;
-    }
-    str_uppercase(node->values[0]);
-    feed = node->values[0];
-    if (version = strchr(feed, '-'), version) {
-        *version = '\0';
-        version++;
-    } else if (strcmp(feed, vu_feed_tag[FEED_REDHAT])) {
-        merror("Invalid feed '%s' at module '%s'", feed, WM_VULNDETECTOR_CONTEXT.name);
-        return OS_INVALID;
-    }
-
-    if (os_index = wm_vuldet_set_feed_version(feed, version, updates), os_index == OS_INVALID) {
-        return OS_INVALID;
-    } else if (os_index == OS_SUPP_SIZE) {
-        return 0;
-    }
-
-    assert(updates[os_index] != NULL);
-
-    updates[os_index]->old_config = 1;
-    // Deprecated config don't support new option download_timeout
-    updates[os_index]->timeout = 300;
-
-    if (chld_node = OS_GetElementsbyNode(xml, node), !chld_node) {
-        merror(XML_INVELEM, node->element);
-        return OS_INVALID;
-    }
-
-    for (j = 0; chld_node[j]; j++) {
-        if (!strcmp(chld_node[j]->element, XML_DISABLED)) {
-            if (!strcmp(chld_node[j]->content, "yes")) {
-                wm_vuldet_release_update_node(updates, os_index);
-                if (os_index == CVE_NVD) {
-                    wm_vuldet_release_update_node(updates, CPE_WDIC);
-                    wm_vuldet_release_update_node(updates, CVE_MSU);
-                }
-                break;
-            } else if (!strcmp(chld_node[j]->content, "no")) {
-                *update = 1;
-            } else {
-                merror("Invalid content for '%s' option at module '%s'", XML_DISABLED, WM_VULNDETECTOR_CONTEXT.name);
-                OS_ClearNode(chld_node);
-                return OS_INVALID;
-            }
-        } else if (!strcmp(chld_node[j]->element, XML_UPDATE_INTERVAL)) {
-            if (wm_vuldet_get_interval(chld_node[j]->content, &updates[os_index]->interval)) {
-                merror("Invalid content for '%s' option at module '%s'", XML_UPDATE_INTERVAL, WM_VULNDETECTOR_CONTEXT.name);
-                OS_ClearNode(chld_node);
-                return OS_INVALID;
-            }
-        } else if (!strcmp(chld_node[j]->element, XML_UPDATE_FROM_YEAR)) {
-            if (!wm_vuldet_is_valid_year(chld_node[j]->content, &updates[os_index]->update_from_year, RED_HAT_REPO_MIN_YEAR)) {
-                merror("Invalid content for '%s' option at module '%s'", XML_UPDATE_FROM_YEAR, WM_VULNDETECTOR_CONTEXT.name);
-                OS_ClearNode(chld_node);
-                return OS_INVALID;
-            }
-        } else if (!strcmp(chld_node[j]->element, XML_ALLOW)) {
-            if (wm_vuldet_add_allow_os(updates[os_index], chld_node[j]->content, 1)) {
-                OS_ClearNode(chld_node);
-                return OS_INVALID;
-            }
-        } else if (!strcmp(chld_node[j]->element, XML_URL)) {
-            os_free(updates[os_index]->url);
-            os_strdup(chld_node[j]->content, updates[os_index]->url);
-            if (chld_node[j]->attributes && !strcmp(*chld_node[j]->attributes, XML_PORT)) {
-                updates[os_index]->port = strtol(*chld_node[j]->values, NULL, 10);
-            }
-        } else if (!strcmp(chld_node[j]->element, XML_PATH)) {
-            os_free(updates[os_index]->path);
-            os_strdup(chld_node[j]->content, updates[os_index]->path);
-        } else {
-            merror("Invalid option '%s' for tag '%s' at module '%s'", chld_node[j]->element, XML_FEED , WM_VULNDETECTOR_CONTEXT.name);
-            OS_ClearNode(chld_node);
-            return OS_INVALID;
-        }
-    }
-
-    OS_ClearNode(chld_node);
-
-    return 0;
-}
-
 int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **updates, wm_vuldet_flags *flags) {
     int os_index = OS_SUPP_SIZE;
     XML_NODE chld_node = NULL;
@@ -713,22 +509,6 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
         goto end;
     }
 
-    if (strcasestr(pr_name, "redhat") && !os_list) {
-        minfo(VU_NO_ENABLED_FEEDS, pr_name);
-        char vsr [2] = {0};
-        vu_os_feed *list, *tmp_list = NULL;
-        // New linked list for RedHat (5, 6, 7 and 8)
-        for (int i = 5; i <= 8; i++) {
-            os_calloc(1, sizeof(vu_os_feed), list);
-            if (tmp_list) tmp_list->next = list;
-            if (!os_list) os_list = list; // Save tail
-            sprintf(vsr, "%d", i);
-            os_strdup(vsr, list->version);
-            tmp_list = list;
-        }
-    }
-
-
     /**
      *  single_provider = Ubuntu, Debian and RedHat.
      *  Those which use the <os> tag.
@@ -745,7 +525,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
                 continue;
             }
 
-            if (os_list->allow && wm_vuldet_add_allow_os(updates[os_index], os_list->allow, 0)) {
+            if (os_list->allow && wm_vuldet_add_allow_os(updates[os_index], os_list->allow)) {
                 goto end;
             }
 
@@ -781,7 +561,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
     }
 
     /**
-    *  multi_provider = NVD, RedHat and MSU.
+    *  multi_provider = NVD, RedHat JSON and MSU.
     *  Those which use <path> or <url> tags.
     **/
     if (multi_provider || (p_options.multi_path || p_options.multi_url)) {
@@ -807,12 +587,6 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
         updates[os_index]->multi_url_end = p_options.multi_url_end;
         updates[os_index]->port = p_options.port;
         updates[os_index]->timeout = p_options.timeout;
-
-        if (p_options.multi_allowed_os_name) {
-            if (wm_vuldet_add_multi_allow_os(updates[os_index], p_options.multi_allowed_os_name, p_options.multi_allowed_os_ver)) {
-                goto end;
-            }
-        }
 
         p_options.multi_path = NULL;
         p_options.multi_url = NULL;
@@ -889,6 +663,7 @@ int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds, char *pr_nam
     int j;
     vu_os_feed *feeds_it = *feeds;
     int8_t debian_provider = (strcasestr(pr_name, vu_feed_tag[FEED_DEBIAN])) ? 1 : 0;
+    int8_t redhat_provider = (strcasestr(pr_name, vu_feed_tag[FEED_REDHAT])) ? 1 : 0;
 
     for (i = 0; node[i]; i++) {
         if (!strcmp(node[i]->element, XML_OS)) {
@@ -927,6 +702,27 @@ int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds, char *pr_nam
             if (feeds_it->url) {
                 wm_vuldet_set_port_to_url(&feeds_it->url, feeds_it->port);
             }
+        }
+    }
+
+    if (feeds_it == NULL) {
+        // The OS tag is optional for redhat
+        if (redhat_provider) {
+            minfo(VU_NO_ENABLED_FEEDS, pr_name);
+            char vsr [2] = {0};
+            vu_os_feed *tmp_list = NULL;
+            // New linked list for RedHat (5, 6, 7 and 8)
+            for (int i = 5; i <= 8; i++) {
+                os_calloc(1, sizeof(vu_os_feed), feeds_it);
+                if (tmp_list) tmp_list->next = feeds_it;
+                if (!*feeds)  *feeds = feeds_it; // Save tail
+                sprintf(vsr, "%d", i);
+                os_strdup(vsr, feeds_it->version);
+                tmp_list = feeds_it;
+            }
+        } else {
+            merror("'%s' tag required for '%s' provider.", XML_OS, pr_name);
+            return OS_INVALID;
         }
     }
 
@@ -977,19 +773,6 @@ void wm_vuldet_free_update_node(update_node *update) {
         free(update->allowed_os_name);
         w_FreeArray(update->allowed_os_ver);
         free(update->allowed_os_ver);
-    } else if (update->dist_ref == FEED_REDHAT) {
-        int section, i;
-
-        for (section = 0; section < 2; section++) {
-            char ***multios_src = !section ? update->allowed_multios_src_name : update->allowed_multios_src_ver;
-            char **multios_dst = !section ? update->allowed_multios_dst_name : update->allowed_multios_dst_ver;
-            for (i = 0; multios_src && multios_src[i]; i++) {
-                w_FreeArray(multios_src[i]);
-                free(multios_src[i]);
-            }
-            w_FreeArray(multios_dst);
-            free(multios_dst);
-        }
     }
 }
 
@@ -1031,83 +814,40 @@ void wm_vuldet_set_port_to_url(char **url, int port) {
     }
 }
 
-int wm_vuldet_add_allow_os(update_node *update, char *os_tags, char old_config) {
+int wm_vuldet_add_allow_os(update_node *update, char *os_tags) {
     char *found;
     size_t size;
 
-    if (wm_vuldet_is_single_provider(update->dist_ref) || old_config) {
-        os_calloc(1, sizeof(char *), update->allowed_os_name);
-        os_calloc(1, sizeof(char *), update->allowed_os_ver);
+    os_calloc(1, sizeof(char *), update->allowed_os_name);
+    os_calloc(1, sizeof(char *), update->allowed_os_ver);
 
-        for (size = 0; (found = strchr(os_tags, ',')); size++) {
-            *(found++) = '\0';
-            os_realloc(update->allowed_os_name, (size + 2)*sizeof(char *), update->allowed_os_name);
-            os_realloc(update->allowed_os_ver, (size + 2)*sizeof(char *), update->allowed_os_ver);
-            if (format_os_version(os_tags, &update->allowed_os_name[size], &update->allowed_os_ver[size])) {
-                merror("Invalid OS entered in %s: %s", WM_VULNDETECTOR_CONTEXT.name, os_tags);
-                return OS_INVALID;
-            }
-            update->allowed_os_name[size + 1] = NULL;
-            os_tags = found;
-        }
+    for (size = 0; (found = strchr(os_tags, ',')); size++) {
+        *(found++) = '\0';
         os_realloc(update->allowed_os_name, (size + 2)*sizeof(char *), update->allowed_os_name);
+        os_realloc(update->allowed_os_ver, (size + 2)*sizeof(char *), update->allowed_os_ver);
         if (format_os_version(os_tags, &update->allowed_os_name[size], &update->allowed_os_ver[size])) {
             merror("Invalid OS entered in %s: %s", WM_VULNDETECTOR_CONTEXT.name, os_tags);
             return OS_INVALID;
         }
+        mdebug1("'%s' successfully added to the monitored OS list.", os_tags);
         update->allowed_os_name[size + 1] = NULL;
-    } else {
-        merror("The 'allow' option can only be used with single-providers.");
+        os_tags = found;
+    }
+    os_realloc(update->allowed_os_name, (size + 2)*sizeof(char *), update->allowed_os_name);
+    if (format_os_version(os_tags, &update->allowed_os_name[size], &update->allowed_os_ver[size])) {
+        merror("Invalid OS entered in %s: %s", WM_VULNDETECTOR_CONTEXT.name, os_tags);
         return OS_INVALID;
     }
-
-    return 0;
-}
-
-int wm_vuldet_add_multi_allow_os(update_node *update, char **src_os, char **dst_os) {
-    int i, j;
-    char *version;
-
-    for (i = 0; src_os[i]; i++) {
-        os_realloc(update->allowed_multios_src_name, (i + 2) * sizeof(char **), update->allowed_multios_src_name);
-        memset(&update->allowed_multios_src_name[i], '\0', 2 * sizeof(char **));
-        os_realloc(update->allowed_multios_src_ver, (i + 2) * sizeof(char **), update->allowed_multios_src_ver);
-        memset(&update->allowed_multios_src_ver[i], '\0', 2 * sizeof(char **));
-
-        os_realloc(update->allowed_multios_dst_name, (i + 2) * sizeof(char *), update->allowed_multios_dst_name);
-        memset(&update->allowed_multios_dst_name[i], '\0', 2 * sizeof(char *));
-        os_realloc(update->allowed_multios_dst_ver, (i + 2) * sizeof(char *), update->allowed_multios_dst_ver);
-        memset(&update->allowed_multios_dst_ver[i], '\0', 2 * sizeof(char *));
-
-        // Set the allowed names
-        wstr_split(src_os[i], ",", NULL, 1, &update->allowed_multios_src_name[i]);
-        os_strdup(dst_os[i], update->allowed_multios_dst_name[i]);
-
-        // Set the allowed versions
-        for (j = 0; update->allowed_multios_src_name[i][j]; j++) {
-            if (version = strchr(update->allowed_multios_src_name[i][j], '-'), !version) {
-                merror("Invalid '%s' content. Use: 'OS-version'", XML_ALLOW);
-                return OS_INVALID;
-            }
-            *(version++) = '\0';
-            os_realloc(update->allowed_multios_src_ver[i], (j + 2) * sizeof(char *), update->allowed_multios_src_ver[i]);
-            os_strdup(version, update->allowed_multios_src_ver[i][j]);
-        }
-        if (version = strchr(update->allowed_multios_dst_name[i], '-'), !version) {
-            merror("Invalid '%s' content. Use: 'OS-version'", XML_REPLACED_OS);
-            return OS_INVALID;
-        }
-        *(version++) = '\0';
-        os_strdup(version, update->allowed_multios_dst_ver[i]);
-    }
+    mdebug1("'%s' successfully added to the monitored OS list.", os_tags);
+    update->allowed_os_name[size + 1] = NULL;
 
     return 0;
 }
 
 int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_provider, provider_options *options) {
     int i, j;
-    int elements;
     int8_t rhel_enabled = (strcasestr(name, vu_feed_tag[FEED_REDHAT])) ? 1 : 0;
+    int8_t msu_enabled = (strcasestr(name, vu_feed_tag[FEED_MSU])) ? 1 : 0;
 
     memset(options, '\0', sizeof(provider_options));
 
@@ -1119,7 +859,12 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
             // Deprecated in RHEL
             if (rhel_enabled) {
                 minfo("'%s' option at module '%s' is deprecated. Use '%s' instead.", XML_UPDATE_FROM_YEAR, WM_VULNDETECTOR_CONTEXT.name, XML_OS);
+            // Even though MSU is a multi_provider, it does not use the update_from_year option.
+            } else if (msu_enabled) {
+                mwarn("'%s' option cannot be used for '%s' provider.", node[i]->element, name);
+                continue;
             }
+
             if (multi_provider || rhel_enabled) {
                 int min_year = rhel_enabled ? RED_HAT_REPO_MIN_YEAR : NVD_REPO_MIN_YEAR;
                 if (!wm_vuldet_is_valid_year(node[i]->content, &options->update_since, min_year)) {
@@ -1127,7 +872,7 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
                     return OS_INVALID;
                 }
             } else {
-                mwarn("'%s' option can only be used in a multi-provider.", node[i]->element);
+                mwarn("Invalid option '%s' for '%s' provider at '%s'", node[i]->element, name, WM_VULNDETECTOR_CONTEXT.name);
             }
         } else if (!strcmp(node[i]->element, XML_UPDATE_INTERVAL)) {
             if (wm_vuldet_get_interval(node[i]->content, &options->update_interval)) {
@@ -1169,25 +914,14 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
                 }
             }
         } else if (!strcmp(node[i]->element, XML_ALLOW)) {
-            if (multi_provider || rhel_enabled) {
-                if (!node[i]->attributes || !*node[i]->attributes || strcmp(*node[i]->attributes, XML_REPLACED_OS) ||
-                    !node[i]->values || !*node[i]->values || !**node[i]->values) {
-                    merror("Invalid '%s' value.", XML_REPLACED_OS);
-                    return OS_INVALID;
-                }
-                for (elements = 0; options->multi_allowed_os_name && options->multi_allowed_os_name[elements]; elements++);
-                os_realloc(options->multi_allowed_os_name, (elements + 2) * sizeof(char *), options->multi_allowed_os_name);
-                os_realloc(options->multi_allowed_os_ver, (elements + 2) * sizeof(char *), options->multi_allowed_os_ver);
-                os_strdup(node[i]->content, options->multi_allowed_os_name[elements]);
-                os_strdup(*node[i]->values, options->multi_allowed_os_ver[elements]);
-                options->multi_allowed_os_name[elements + 1] = NULL;
-                options->multi_allowed_os_ver[elements + 1] = NULL;
+            if (rhel_enabled) {
+                mwarn("Deprecated option '%s' for '%s' provider. Use it as attribute <os %s> instead.", node[i]->element, name, node[i]->element);
             } else {
-                mwarn("'%s' option can only be used in a multi-provider.", node[i]->element);
+                mwarn("Invalid option '%s' for '%s' provider at '%s'", node[i]->element, name, WM_VULNDETECTOR_CONTEXT.name);
             }
         } else if (!strcmp(node[i]->element, XML_OS)) {
             if (multi_provider) {
-                mwarn("'%s' option can only be used in a single-provider.", node[i]->element);
+                mwarn("Invalid option '%s' for '%s' provider at '%s'", node[i]->element, name, WM_VULNDETECTOR_CONTEXT.name);
             }
         } else if (strcmp(node[i]->element, XML_ENABLED)) {
             merror("Invalid option in %s section for module '%s': '%s'", XML_PROVIDER, WM_VULNDETECTOR_CONTEXT.name, node[i]->element);
@@ -1236,8 +970,6 @@ void wm_vuldet_init_provider_options(provider_options *options) {
     options->multi_url = NULL;
     options->multi_url_start = 0;
     options->multi_url_end = 0;
-    options->multi_allowed_os_name = NULL;
-    options->multi_allowed_os_ver = NULL;
     options->port = 0;
     options->update_interval = 0;
     options->update_since = 0;
@@ -1247,10 +979,6 @@ void wm_vuldet_init_provider_options(provider_options *options) {
 void wm_vuldet_clear_provider_options(provider_options options) {
     os_free(options.multi_path);
     os_free(options.multi_url);
-    w_FreeArray(options.multi_allowed_os_name);
-    w_FreeArray(options.multi_allowed_os_ver);
-    os_free(options.multi_allowed_os_name);
-    os_free(options.multi_allowed_os_ver);
 }
 
 #endif

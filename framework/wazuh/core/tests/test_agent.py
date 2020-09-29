@@ -715,8 +715,8 @@ def test_agent_restart_ko():
 @pytest.mark.parametrize('status', [
     'stopped', 'running'
 ])
-@patch('wazuh.core.agent.Agent._remove_authd', return_value='Agent deleted successfully.')
-@patch('wazuh.core.agent.Agent._remove_manual', return_value='Agent deleted successfully.')
+@patch('wazuh.core.agent.Agent._remove_authd', return_value='Agent was successfully deleted')
+@patch('wazuh.core.agent.Agent._remove_manual', return_value='Agent was successfully deleted')
 def test_agent_remove(mock_remove_manual, mock_remove_authd, status):
     """Tests if method remove() works as expected
 
@@ -729,7 +729,7 @@ def test_agent_remove(mock_remove_manual, mock_remove_authd, status):
     with patch('wazuh.core.agent.get_manager_status', return_value={'ossec-authd': status}):
         agent = Agent(0)
         result = agent.remove(use_only_authd=False)
-        assert result == 'Agent deleted successfully.', 'Not expected message'
+        assert result == 'Agent was successfully deleted', 'Not expected message'
 
         if status == 'stopped':
             mock_remove_manual.assert_called_once_with(False, False), 'Not expected params'
@@ -739,8 +739,8 @@ def test_agent_remove(mock_remove_manual, mock_remove_authd, status):
             mock_remove_authd.assert_called_once_with(False), 'Not expected params'
 
 
-@patch('wazuh.core.agent.Agent._remove_authd', return_value='Agent deleted successfully.')
-@patch('wazuh.core.agent.Agent._remove_manual', return_value='Agent deleted successfully.')
+@patch('wazuh.core.agent.Agent._remove_authd', return_value='Agent was successfully deleted')
+@patch('wazuh.core.agent.Agent._remove_manual', return_value='Agent was successfully deleted')
 def test_agent_remove_ko(mock_remove_manual, mock_remove_authd):
     """Tests if method remove() raises expected exception"""
     with pytest.raises(WazuhInternalError, match='.* 1726 .*'):
@@ -1042,7 +1042,7 @@ def test_agent_add_manual_ko(mock_lockf, mock_stat, mock_chmod, mock_chown, mock
 @patch('wazuh.common.backup_path', new=os.path.join(test_data_path, 'backup'))
 @patch('wazuh.core.agent.safe_move')
 @patch('wazuh.core.agent.time', return_value=0)
-@patch('wazuh.core.agent.Agent._remove_manual', return_value='Agent deleted successfully.')
+@patch('wazuh.core.agent.Agent._remove_manual', return_value='Agent was successfully deleted')
 def test_agent_delete_single_group(mock_remove_manual, mock_time, mock_safe_move, mock_exists):
     """Tests if method delete_single_group() works as expected"""
 
@@ -1961,7 +1961,7 @@ def test_agent_upgrade_result(mock_sleep, socket_sendto, _send_wpk_file, ossec_s
         agent = Agent(agent_id)
         result = agent.upgrade_result(debug=True)
 
-        assert result == 'Agent upgraded successfully', 'Message is not as expected.'
+        assert result == 'Agent was successfully upgraded', 'Message is not as expected.'
         calls = [call(bytes(f'{agent_id} com upgrade_result', encoding='ascii')),
                  call(bytes(f'{agent_id} com upgrade_result', encoding='ascii'))]
         ossec_socket_mock.return_value.send.assert_has_calls(calls)

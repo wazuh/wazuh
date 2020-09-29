@@ -3,6 +3,9 @@
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+from api import configuration
+configuration.api_conf.update(configuration.read_yaml_config())
+
 import argparse
 import asyncio
 import logging

@@ -78,6 +78,8 @@ STATIC cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config){
         cJSON_AddStringToObject(wm_info,"enabled","no");
     }
     #ifndef CLIENT
+    cJSON_AddNumberToObject(wm_info, "max_threads", upgrade_config->manager_config.max_threads);
+    cJSON_AddNumberToObject(wm_info, "chunk_size", upgrade_config->manager_config.chunk_size);
     if (upgrade_config->manager_config.wpk_repository) {
         cJSON_AddStringToObject(wm_info, "wpk_repository", upgrade_config->manager_config.wpk_repository);
     }
