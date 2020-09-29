@@ -10,8 +10,8 @@ All notable changes to this project will be documented in this file.
   - Migrated Wazuh API server from nodejs to python ([#2640](https://github.com/wazuh/wazuh/pull/2640))
   - Added asynchronous aiohttp server for the Wazuh API ([#4474](https://github.com/wazuh/wazuh/issues/4474))
   - New Wazuh API is approximately 5 times faster on average ([#5834](https://github.com/wazuh/wazuh/issues/5834))
-  - Added OpenApi based Wazuh API specification ([#2413](https://github.com/wazuh/wazuh/issues/2413))
-  - Improved Wazuh API reference documentation based on OpenApi spec using redoc ([#4967](https://github.com/wazuh/wazuh/issues/4967))
+  - Added OpenAPI based Wazuh API specification ([#2413](https://github.com/wazuh/wazuh/issues/2413))
+  - Improved Wazuh API reference documentation based on OpenAPI spec using redoc ([#4967](https://github.com/wazuh/wazuh/issues/4967))
   - Added new yaml Wazuh API configuration file ([#2570](https://github.com/wazuh/wazuh/issues/2570))
   - Added new endpoints to manage API configuration and deprecated configure_api.sh ([#2570](https://github.com/wazuh/wazuh/issues/4822))
   - Added RBAC support to Wazuh API ([#3287](https://github.com/wazuh/wazuh/issues/3287))
@@ -56,6 +56,13 @@ All notable changes to this project will be documented in this file.
 
 - Removed Wazuh API cache endpoints ([#3042](https://github.com/wazuh/wazuh/pull/3042))
 - Removed Wazuh API rootcheck endpoints ([#5246](https://github.com/wazuh/wazuh/issues/5246))
+
+
+## [v3.13.2] - 2020-09-21
+
+### Fixed
+
+- Updated the default NVD feed URL from 1.0 to 1.1 in Vulnerability Detector. ([#6056](https://github.com/wazuh/wazuh/pull/6056))
 
 
 ## [v3.13.1] - 2020-07-14
