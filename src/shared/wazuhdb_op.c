@@ -83,6 +83,7 @@ int wdbc_query(const int sock, const char *query, char *response, const int len)
 
     switch (recv_len) {
     case OS_SOCKTERR:
+        retval = -2;
         merror("Cannot receive message: response size is bigger than expected");
         break;
     case -1:
@@ -131,7 +132,7 @@ int wdbc_query_ex(int *sock, const char *query, char *response, const int len) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             merror("database socket is full");
             return retval;
-        } else if (errno == EPIPE) {
+        } else if (errno == EPIPE || retval == -2) {
             // Retry to connect
             merror("Connection with wazuh-db lost. Reconnecting.");
             close(*sock);

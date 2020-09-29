@@ -633,16 +633,18 @@ int OS_SetSendTimeout(int socket, int seconds)
  * This function prepends a header containing message size as 4-byte little-endian unsigned integer.
  * Return 0 on success or OS_SOCKTERR on error.
  */
-int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
+int OS_SendSecureTCP(int sock, const uint32_t size, const void * msg) {
     int retval;
-    void * buffer;
-    size_t bufsz = size + sizeof(uint32_t);
+    char * buffer;
+    const size_t bufsz = size + sizeof(uint32_t);
+    const uint32_t ordered_size = wnet_order(size);    
 
     os_malloc(bufsz, buffer);
-    *(uint32_t *)buffer = wnet_order(size);
+    memcpy(buffer, &ordered_size, sizeof(uint32_t));
     memcpy(buffer + sizeof(uint32_t), msg, size);
     errno = 0;
     retval = send(sock, buffer, bufsz, 0) == (ssize_t)bufsz ? 0 : OS_SOCKTERR;
+
     free(buffer);
     return retval;
 }
