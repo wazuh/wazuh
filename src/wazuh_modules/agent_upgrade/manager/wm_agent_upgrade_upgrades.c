@@ -185,7 +185,19 @@ STATIC void* wm_agent_upgrade_start_upgrade(void *arg) {
     wm_manager_configs *config = upgrade_config->config;
     wm_agent_task *agent_task = upgrade_config->agent_task;
 
+    cJSON *status_request = NULL;
+    cJSON *status_response = NULL;
     int error_code = WM_UPGRADE_SUCCESS;
+
+    // Update task to "In progress"
+    status_response = cJSON_CreateArray();
+    status_request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS,
+                                                                cJSON_CreateIntArray(&agent_task->agent_info->agent_id, 1),
+                                                                task_statuses[WM_TASK_IN_PROGRESS],
+                                                                NULL);
+
+    wm_agent_upgrade_task_module_callback(status_response, status_request, NULL, NULL);
+    wm_agent_upgrade_validate_task_status_message(cJSON_GetArrayItem(status_response, 0), NULL, NULL);
 
     if (error_code = wm_agent_upgrade_send_wpk_to_agent(agent_task, config), error_code == WM_UPGRADE_SUCCESS) {
 
@@ -194,35 +206,38 @@ STATIC void* wm_agent_upgrade_start_upgrade(void *arg) {
 
             if (upgrade_task->custom_version && (wm_agent_upgrade_compare_versions(upgrade_task->custom_version, WM_UPGRADE_NEW_UPGRADE_MECHANISM) < 0)) {
 
+                cJSON_Delete(status_request);
+                cJSON_Delete(status_response);
+
                 // Update task to "Legacy". The agent won't report the result of the upgrade task
-                cJSON *status_response = cJSON_CreateArray();
-                cJSON *status_request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS,
-                                                                                   cJSON_CreateIntArray(&agent_task->agent_info->agent_id, 1),
-                                                                                   task_statuses[WM_TASK_LEGACY],
-                                                                                   NULL);
+                status_response = cJSON_CreateArray();
+                status_request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS,
+                                                                            cJSON_CreateIntArray(&agent_task->agent_info->agent_id, 1),
+                                                                            task_statuses[WM_TASK_LEGACY],
+                                                                            NULL);
 
                 wm_agent_upgrade_task_module_callback(status_response, status_request, NULL, NULL);
                 wm_agent_upgrade_validate_task_status_message(cJSON_GetArrayItem(status_response, 0), NULL, NULL);
-
-                cJSON_Delete(status_request);
-                cJSON_Delete(status_response);
             }
         }
     } else {
 
+        cJSON_Delete(status_request);
+        cJSON_Delete(status_response);
+
         // Update task to "Failed"
-        cJSON *status_response = cJSON_CreateArray();
-        cJSON *status_request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS,
-                                                                           cJSON_CreateIntArray(&agent_task->agent_info->agent_id, 1),
-                                                                           task_statuses[WM_TASK_FAILED],
-                                                                           upgrade_error_codes[error_code]);
+        status_response = cJSON_CreateArray();
+        status_request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS,
+                                                                    cJSON_CreateIntArray(&agent_task->agent_info->agent_id, 1),
+                                                                    task_statuses[WM_TASK_FAILED],
+                                                                    upgrade_error_codes[error_code]);
 
         wm_agent_upgrade_task_module_callback(status_response, status_request, NULL, NULL);
         wm_agent_upgrade_validate_task_status_message(cJSON_GetArrayItem(status_response, 0), NULL, NULL);
-
-        cJSON_Delete(status_request);
-        cJSON_Delete(status_response);
     }
+
+    cJSON_Delete(status_request);
+    cJSON_Delete(status_response);
 
     wm_agent_upgrade_free_agent_task(agent_task);
 

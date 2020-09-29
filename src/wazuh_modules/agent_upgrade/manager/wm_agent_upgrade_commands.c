@@ -277,7 +277,7 @@ STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task,
     wm_agent_upgrade_task_module_callback(status_response, status_request, NULL, NULL);
     if (!wm_agent_upgrade_validate_task_status_message(cJSON_GetArrayItem(status_response, 0), &status, NULL)) {
         validate_result = WM_UPGRADE_TASK_MANAGER_COMMUNICATION;
-    } else if (status && !strcmp(status, task_statuses[WM_TASK_IN_PROGRESS])) {
+    } else if (status && (!strcmp(status, task_statuses[WM_TASK_PENDING]) || !strcmp(status, task_statuses[WM_TASK_IN_PROGRESS]))) {
         validate_result = WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS;
     }
 

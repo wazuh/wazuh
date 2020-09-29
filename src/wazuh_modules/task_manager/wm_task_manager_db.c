@@ -288,7 +288,7 @@ int wm_task_manager_insert_task(int agent_id, const char *module, const char *co
     sqlite3_bind_text(stmt, 2, module, -1, NULL);
     sqlite3_bind_text(stmt, 3, command, -1, NULL);
     sqlite3_bind_int(stmt, 4, time(0));
-    sqlite3_bind_text(stmt, 6, task_statuses[WM_TASK_IN_PROGRESS], -1, NULL);
+    sqlite3_bind_text(stmt, 6, task_statuses[WM_TASK_PENDING], -1, NULL);
 
     if (result = wdb_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_STEP_ERROR);
