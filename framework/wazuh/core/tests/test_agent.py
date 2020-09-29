@@ -12,6 +12,8 @@ from unittest.mock import ANY, patch, mock_open, call, Mock
 import pytest
 from freezegun import freeze_time
 
+from api.util import remove_nones_to_dict
+
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         from wazuh.core.agent import *
@@ -77,6 +79,7 @@ class InitAgent:
             os.remove(db_path)
 
         self.global_db = sqlite3.connect(db_path)
+        self.global_db.row_factory = sqlite3.Row
         self.cur = self.global_db.cursor()
         with open(os.path.join(data_path, 'schema_global_test.sql')) as f:
             self.cur.executescript(f.read())
@@ -89,6 +92,12 @@ class InitAgent:
 
 
 test_data = InitAgent()
+
+
+def send_msg_to_wdb(msg, raw=False):
+    query = ' '.join(msg.split(' ')[2:])
+    result = test_data.cur.execute(query).fetchall()
+    return list(map(remove_nones_to_dict, map(dict, result)))
 
 
 @pytest.fixture(scope='module', autouse=True)
