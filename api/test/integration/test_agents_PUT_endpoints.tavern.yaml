@@ -664,7 +664,7 @@ stages:
                 - "notexists"
 
 ---
-test_name: PUT /agents/{agent_id}/upgrade
+test_name: PUT /agents/upgrade
 
 stages:
 
@@ -747,7 +747,7 @@ stages:
       json:
         data:
           affected_items:
-            - agent_id: '006'
+            - agent: '006'
               task_id: !anyint
           total_affected_items: 1
           total_failed_items: 0
@@ -812,7 +812,7 @@ stages:
       json:
         data:
           affected_items:
-            - agent_id: '004'
+            - agent: '004'
               task_id: !anyint
           total_affected_items: 1
           total_failed_items: 0
@@ -835,7 +835,7 @@ stages:
       json:
         data:
           affected_items:
-            - agent_id: '005'
+            - agent: '005'
               task_id: !anyint
           total_affected_items: 1
           total_failed_items: 0
@@ -935,7 +935,7 @@ stages:
       json:
         data:
           affected_items:
-            - agent_id: '007'
+            - agent: '007'
               task_id: !anyint
           total_affected_items: 1
           total_failed_items: 0
@@ -958,7 +958,7 @@ stages:
       json:
         data:
           affected_items:
-            - agent_id: '008'
+            - agent: '008'
               task_id: !anyint
           total_affected_items: 1
           total_failed_items: 0
