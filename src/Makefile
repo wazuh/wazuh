@@ -136,8 +136,13 @@ ifeq (${uname_S},AIX)
 else
 ifeq (${uname_S},SunOS)
 SOLARIS_CMAKE_OPTS=-DSOLARIS=ON
+ifneq ($(uname_R),5.10)
 		DEFINES+=-DSUN_MAJOR_VERSION=$(word 1, $(subst ., ,$(uname_V)))
 		DEFINES+=-DSUN_MINOR_VERSION=$(word 2, $(subst ., ,$(uname_V)))
+else
+		DEFINES+=-DSUN_MAJOR_VERSION=10
+		DEFINES+=-DSUN_MINOR_VERSION=0
+endif
 		DEFINES+=-DSOLARIS
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-D_REENTRANT
