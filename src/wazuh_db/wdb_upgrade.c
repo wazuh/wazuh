@@ -249,8 +249,7 @@ int wdb_create_backup_global(int version) {
     }
 
     while (nbytes = fread(buffer, 1, 4096, source), nbytes) {
-        if (fwrite(buffer, 1, nbytes, dest) != nbytes) {
-            unlink(path);
+        if (fwrite(buffer, 1, nbytes, dest) != nbytes) {            
             result = OS_INVALID;
             break;
         }
@@ -258,7 +257,8 @@ int wdb_create_backup_global(int version) {
 
     fclose(source);
     if (fclose(dest) == -1) {
-        merror("Couldn't create file %s completely ", path);
+        unlink(path);
+        merror("Couldn't create file %s completely.", path);
         return OS_INVALID;
     }
 
