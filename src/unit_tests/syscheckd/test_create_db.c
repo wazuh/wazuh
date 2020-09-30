@@ -2041,8 +2041,8 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
 
     // In fim_checker
-    expect_any_count(__wrap_lstat, filename, 12);
-    will_return_count(__wrap_lstat, 0, 12);
+    expect_any_count(__wrap_lstat, filename, 8);
+    will_return_count(__wrap_lstat, 0, 8);
 
     int it = 0;
 
