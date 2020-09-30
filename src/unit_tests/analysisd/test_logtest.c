@@ -3734,7 +3734,6 @@ void test_w_logtest_process_log_preprocessing_fail(void ** state)
     w_logtest_session_t session = {0};
     OSList list_msg = {0};
 
-
     cJSON * retval;
 
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &json_event);
@@ -3749,15 +3748,12 @@ void test_w_logtest_process_log_preprocessing_fail(void ** state)
     expect_value(__wrap__os_analysisd_add_logmsg, list, &list_msg);
     expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "(1106): String not correctly formatted.");
 
-
-
     retval = w_logtest_process_log(&request, &session, &alert_generated, &list_msg);
 
     assert_null(retval);
     assert_false(alert_generated);
     os_free(str_location);
     os_free(raw_event);
-
 }
 
 void test_w_logtest_process_log_rule_match_fail(void ** state)
@@ -3845,6 +3841,8 @@ void test_w_logtest_process_log_rule_dont_match(void ** state)
 
     will_return(__wrap_Eventinfo_to_jsonstr, strdup("output example"));
     will_return(__wrap_cJSON_Parse, output);
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 0);
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 0);
 
     retval = w_logtest_process_log(&request, &session, &alert_generated, &list_msg);
 
@@ -3862,6 +3860,7 @@ void test_w_logtest_process_log_rule_match(void ** state)
 {
     Config.decoder_order_size = 1;
     bool alert_generated = false;
+    Config.logbylevel = 3;
 
     cJSON * output;
     os_calloc(1, sizeof(cJSON), output);
@@ -3903,16 +3902,15 @@ void test_w_logtest_process_log_rule_match(void ** state)
     // w_logtest_decoding_phase
     expect_value(__wrap_DecodeEvent, node, session.decoderlist_forpname);
 
-
     // w_logtest_rulesmatching_phase
     will_return(__wrap_OS_CheckIfRuleMatch, &ruleinfo);
-
-
 
     will_return(__wrap_ParseRuleComment, strdup("Comment test"));
 
     will_return(__wrap_Eventinfo_to_jsonstr, strdup("output example"));
     will_return(__wrap_cJSON_Parse, output);
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
 
     retval = w_logtest_process_log(&request, &session, &alert_generated, &list_msg);
 
@@ -3925,7 +3923,77 @@ void test_w_logtest_process_log_rule_match(void ** state)
     os_free(session.rule_list);
     refill_OS_CleanMSG = false;
     os_free(output);
+}
 
+void test_w_logtest_process_log_rule_match_level_0(void ** state)
+{
+    Config.decoder_order_size = 1;
+    bool alert_generated = false;
+    Config.logbylevel = 3;
+
+    cJSON * output;
+    os_calloc(1, sizeof(cJSON), output);
+
+    cJSON request = {0};
+    cJSON json_event = {0};
+    json_event.child = false;
+
+    char * raw_event = strdup("event");
+    char * str_location = strdup("location");
+
+    w_logtest_session_t session = {0};
+    OSList list_msg = {0};
+    OSDecoderInfo decoder_info = {0};
+    decoder_info.accumulate = 1;
+    decoder_info.type = SYSLOG;
+    decoder_CleanMSG = &decoder_info;
+
+    RuleInfo ruleinfo = {0};
+    ruleinfo.category = SYSLOG;
+    ruleinfo.level = 0;
+
+    os_calloc(1, sizeof(RuleNode), session.rule_list);
+    session.rule_list->next = NULL;
+    session.rule_list->ruleinfo = &ruleinfo;
+
+    cJSON * retval;
+
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &json_event);
+    will_return(__wrap_cJSON_GetStringValue, raw_event);
+
+    // w_logtest_preprocessing_phase
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
+    will_return(__wrap_cJSON_GetStringValue, str_location);
+
+    refill_OS_CleanMSG = true;
+    will_return(__wrap_OS_CleanMSG, 0);
+
+    // w_logtest_decoding_phase
+    expect_value(__wrap_DecodeEvent, node, session.decoderlist_forpname);
+
+    // w_logtest_rulesmatching_phase
+    will_return(__wrap_OS_CheckIfRuleMatch, &ruleinfo);
+
+    will_return(__wrap_ParseRuleComment, strdup("Comment test"));
+
+    will_return(__wrap_Eventinfo_to_jsonstr, strdup("output example"));
+    will_return(__wrap_cJSON_Parse, output);
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 0);
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "level");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, NULL);
+
+    retval = w_logtest_process_log(&request, &session, &alert_generated, &list_msg);
+
+    assert_false(alert_generated);
+    assert_non_null(retval);
+
+    os_free(str_location);
+    os_free(raw_event);
+    os_free(session.rule_list);
+    refill_OS_CleanMSG = false;
+    os_free(output);
 }
 
 // w_logtest_process_request_remove_session
@@ -4673,6 +4741,8 @@ void test_w_logtest_process_request_log_processing_ok_and_alert(void ** state)
 
     will_return(__wrap_Eventinfo_to_jsonstr, strdup("output example"));
     will_return(__wrap_cJSON_Parse, output);
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
 
     // w_logtest_process_request_log_processing
 
@@ -4819,6 +4889,7 @@ int main(void)
         cmocka_unit_test(test_w_logtest_process_log_rule_match_fail),
         cmocka_unit_test(test_w_logtest_process_log_rule_dont_match),
         cmocka_unit_test(test_w_logtest_process_log_rule_match),
+        cmocka_unit_test(test_w_logtest_process_log_rule_match_level_0),
         // Tests w_logtest_process_request_remove_session
         cmocka_unit_test(test_w_logtest_process_request_remove_session_invalid_token),
         cmocka_unit_test(test_w_logtest_process_request_remove_session_session_not_found),
