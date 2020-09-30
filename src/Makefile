@@ -12,7 +12,6 @@
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 uname_P := $(shell sh -c 'uname -p 2>/dev/null || echo not')
 uname_R := $(shell sh -c 'uname -r 2>/dev/null || echo not')
-uname_V := $(shell sh -c 'uname -v 2>/dev/null || echo not')
 HAS_CHECKMODULE = $(shell command -v checkmodule > /dev/null && echo YES)
 HAS_SEMODULE_PACKAGE = $(shell command -v semodule_package > /dev/null && echo YES)
 CHECK_ARCHLINUX := $(shell sh -c 'grep "Arch Linux" /etc/os-release > /dev/null && echo YES || echo not')
@@ -135,8 +134,7 @@ ifeq (${uname_S},AIX)
 		CC=gcc
 else
 ifeq (${uname_S},SunOS)
-		DEFINES+=-DSUNOS_MAJOR_VERSION = $(word 1,$(subst ., ,$(uname_V)))
-		DEFINES+=-DSUNOS_MINOR_VERSION = $(word 2,$(subst ., ,$(uname_V)))
+		DEFINE+=-DSUN_VERSION=`uname -v | sed -e 's/\.\([0-9]\{1,1\}\)$/0\1/' -e 's/\.//'`
 		DEFINES+=-DSOLARIS
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-D_REENTRANT
@@ -1021,9 +1019,6 @@ wrappers_externals_audit_o := $(wrappers_externals_audit_c:.c=.o)
 wrappers_externals_bzip2_c := $(wildcard unit_tests/wrappers/externals/bzip2/*.c)
 wrappers_externals_bzip2_o := $(wrappers_externals_bzip2_c:.c=.o)
 
-wrappers_externals_zlib_c := $(wildcard unit_tests/wrappers/externals/zlib/*.c)
-wrappers_externals_zlib_o := $(wrappers_externals_zlib_c:.c=.o)
-
 wrappers_externals_cJSON_c := $(wildcard unit_tests/wrappers/externals/cJSON/*.c)
 wrappers_externals_cJSON_o := $(wrappers_externals_cJSON_c:.c=.o)
 
@@ -1096,7 +1091,6 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS:=${wrappers_common_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_bzip2_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_externals_zlib_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_cJSON_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_openssl_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_sqlite_o}
@@ -1723,7 +1717,6 @@ install_python:
 python_dependencies := requirements.txt
 
 install_dependencies: install_python
-	${WPYTHON_DIR}/bin/pip3 install --upgrade pip --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
 	LD_LIBRARY_PATH="${PREFIX}/lib" LDFLAGS="-L${PREFIX}/lib" ${WPYTHON_DIR}/bin/pip3 install -r ../framework/${python_dependencies}  --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
 
 install_framework: install_python
@@ -2035,7 +2028,6 @@ clean-unit-tests:
 	rm -f ${wrappers_externals_o}
 	rm -f ${wrappers_externals_audit_o}
 	rm -f ${wrappers_externals_bzip2_o}
-	rm -f ${wrappers_externals_zlib_o}
 	rm -f ${wrappers_externals_cJSON_o}
 	rm -f ${wrappers_externals_openssl_o}
 	rm -f ${wrappers_externals_procpc_o}
