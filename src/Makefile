@@ -134,7 +134,7 @@ ifeq (${uname_S},AIX)
 		CC=gcc
 else
 ifeq (${uname_S},SunOS)
-		DEFINE+=-DSUN_VERSION=`uname -v | sed -e 's/\.\([0-9]\{1,1\}\)$/0\1/' -e 's/\.//'`
+		DEFINES+=-DSUN_VERSION=`uname -v | sed -e 's/\.\([0-9]\{1,1\}\)$/0\1/' -e 's/\.//'`
 		DEFINES+=-DSOLARIS
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-D_REENTRANT
