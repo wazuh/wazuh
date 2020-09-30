@@ -46,7 +46,7 @@
 
 STATIC cJSON* wm_task_manager_command_upgrade(char *module, char *command, int *error_code, int agent_id, int task_id, char *status);
 STATIC cJSON* wm_task_manager_command_upgrade_get_status(int *error_code, int agent_id, int task_id, char *status);
-STATIC cJSON* wm_task_manager_command_upgrade_update_status(int *error_code, int agent_id, int task_id, char *status, char *error);
+STATIC cJSON* wm_task_manager_command_upgrade_update_status(int *error_code, int agent_id, int task_id, char *status, char *error)__attribute__((nonnull));
 STATIC cJSON* wm_task_manager_command_upgrade_result(char *command, int *error_code, int agent_id, int task_id);
 STATIC cJSON* wm_task_manager_command_task_result(char *command, int *error_code, int agent_id, int task_id);
 
@@ -170,8 +170,8 @@ STATIC cJSON* wm_task_manager_command_upgrade_update_status(int *error_code, int
             response = wm_task_manager_parse_data_response(WM_TASK_SUCCESS, agent_id, task_id, status);
         }
     } else {
-        *error_code = WM_TASK_INVALID_COMMAND;
-        response = wm_task_manager_parse_data_response(WM_TASK_INVALID_COMMAND, agent_id, task_id, status);
+        *error_code = WM_TASK_INVALID_AGENT_ID;
+        response = wm_task_manager_parse_data_response(WM_TASK_INVALID_AGENT_ID, agent_id, task_id, status);
     }
 
     os_free(status_result);
@@ -232,8 +232,8 @@ STATIC cJSON* wm_task_manager_command_task_result(char *command, int *error_code
             wm_task_manager_parse_data_result(response, module_result, command_result, status, error, create_time, last_update_time, command);
         }
     } else {
-        *error_code = WM_TASK_INVALID_COMMAND;
-        response = wm_task_manager_parse_data_response(WM_TASK_INVALID_COMMAND, agent_id, task_id, status);
+        *error_code = WM_TASK_INVALID_TASK_ID;
+        response = wm_task_manager_parse_data_response(WM_TASK_INVALID_TASK_ID, agent_id, task_id, status);
     }
 
     os_free(command_result);
