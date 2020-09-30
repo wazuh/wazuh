@@ -135,10 +135,8 @@ ifeq (${uname_S},AIX)
 		CC=gcc
 else
 ifeq (${uname_S},SunOS)
-		MAJOR_VERSION := $(word 1, $(subst., ,$uname_V))
-		MINOR_VERSION := $(word 2, $(subst., ,$uname_V))
-		DEFINES+=-DSUN_MAJOR_VERSION=$(MAJOR_VERSION)
-		DEFINES+=-DSUN_MINOR_VERSION=$(MINOR_VERSION)
+		DEFINES+=-DSUN_MAJOR_VERSION=$(word 1, $(subst ., ,$(uname_V)))
+		DEFINES+=-DSUN_MINOR_VERSION=$(word 2, $(subst ., ,$(uname_V)))
 		DEFINES+=-DSOLARIS
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-D_REENTRANT
