@@ -135,7 +135,7 @@ ifeq (${uname_S},AIX)
 		CC=gcc
 else
 ifeq (${uname_S},SunOS)
-SOLARIS_CMAKE_OPTS=-DSOLARIS
+SOLARIS_CMAKE_OPTS=-DSOLARIS=ON
 		DEFINES+=-DSUN_MAJOR_VERSION=$(word 1, $(subst ., ,$(uname_V)))
 		DEFINES+=-DSUN_MINOR_VERSION=$(word 2, $(subst ., ,$(uname_V)))
 		DEFINES+=-DSOLARIS
