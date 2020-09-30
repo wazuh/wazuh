@@ -6,8 +6,6 @@
  * and/or modify it under the terms of GPLv2.
  */
 
-PRAGMA journal_mode=DELETE;
-
 CREATE TABLE IF NOT EXISTS agent (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
