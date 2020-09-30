@@ -28,6 +28,7 @@ typedef struct _wm_agent_configs {
     unsigned int upgrade_wait_start;
     unsigned int upgrade_wait_max;
     float upgrade_wait_factor_increase;
+    unsigned int enable_ca_verification;
 } wm_agent_configs;
 
 /**
@@ -46,7 +47,7 @@ typedef struct _wm_agent_upgrade {
 } wm_agent_upgrade;
 
 // Parse XML configuration
-int wm_agent_upgrade_read(xml_node **nodes, wmodule *module);
+int wm_agent_upgrade_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
 
 extern const wm_context WM_AGENT_UPGRADE_CONTEXT;   // Context
 

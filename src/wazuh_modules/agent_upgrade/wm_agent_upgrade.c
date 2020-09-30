@@ -83,6 +83,20 @@ STATIC cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config){
     if (upgrade_config->manager_config.wpk_repository) {
         cJSON_AddStringToObject(wm_info, "wpk_repository", upgrade_config->manager_config.wpk_repository);
     }
+    #else
+    if (upgrade_config->agent_config.enable_ca_verification) {
+        cJSON_AddStringToObject(wm_info,"ca_verification","yes"); 
+    } else {
+        cJSON_AddStringToObject(wm_info,"ca_verification","no");
+    } 
+
+    if (wcom_ca_store) {
+        cJSON *calist = cJSON_CreateArray();
+        for (int i=0; wcom_ca_store[i]; i++) {
+            cJSON_AddItemToArray(calist,cJSON_CreateString(wcom_ca_store[i]));
+        }
+        cJSON_AddItemToObject(wm_info,"ca_store",calist);
+    }
     #endif
     cJSON_AddItemToObject(root,"agent-upgrade",wm_info);
     return root;

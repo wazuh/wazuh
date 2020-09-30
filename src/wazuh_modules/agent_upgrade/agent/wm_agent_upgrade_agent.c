@@ -42,6 +42,8 @@ static const char *task_statuses_map[] = {
     [WM_UPGRADE_FAILED] = WM_TASK_STATUS_FAILED
 };
 
+char **wcom_ca_store = NULL;
+
 /**
  * Reads the upgrade_result file if it is present and sends the upgrade result message to the manager.
  * Example message:

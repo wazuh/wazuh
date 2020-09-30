@@ -40,4 +40,5 @@ void wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config) _
  * */
 void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config) __attribute__((nonnull));
 
+extern char ** wcom_ca_store;
 #endif

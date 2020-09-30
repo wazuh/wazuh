@@ -70,8 +70,6 @@ int WinExecd_Start()
         return (0);
     }
 
-    CheckExecConfig();
-
     /* Create list for timeout */
     timeout_list = OSList_Create();
     if (!timeout_list) {

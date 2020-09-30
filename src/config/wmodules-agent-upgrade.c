@@ -10,19 +10,27 @@
 #include "wazuh_modules/wmodules.h"
 
 #ifdef CLIENT
+#include "wazuh_modules/agent_upgrade/agent/wm_agent_upgrade_agent.h"
+
 static const char *XML_ENABLED = "enabled";
 static const char *XML_WAIT_START = "notification_wait_start";
 static const char *XML_WAIT_MAX = "notification_wait_max";
 static const char *XML_WAIT_FACTOR = "notification_wait_factor";
+static const char *XML_CA_VERIFICATION = "ca_verification";
+static const char *XML_CA_STORE = "ca_store";
 #else
 static const char *XML_WPK_REPOSITORY = "wpk_repository";
 static const char *XML_CHUNK_SIZE = "chunk_size";
 static const char *XML_MAX_THREADS = "max_threads";
 #endif
 
-int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
+#ifdef CLIENT
+static int wm_agent_upgrade_read_ca_verification(xml_node **nodes, unsigned int *verification_flag);
+#endif
+
+int wm_agent_upgrade_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
     wm_agent_upgrade* data = NULL;
-    
+
     if (!module->data) {
         // Default initialization
         module->context = &WM_AGENT_UPGRADE_CONTEXT;
@@ -33,6 +41,7 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
         data->agent_config.upgrade_wait_start = WM_UPGRADE_WAIT_START;
         data->agent_config.upgrade_wait_max = WM_UPGRADE_WAIT_MAX;
         data->agent_config.upgrade_wait_factor_increase = WM_UPGRADE_WAIT_FACTOR_INCREASE;
+        data->agent_config.enable_ca_verification = 1;
         #else
         data->manager_config.max_threads = WM_UPGRADE_MAX_THREADS;
         data->manager_config.chunk_size = WM_UPGRADE_CHUNK_SIZE;
@@ -119,6 +128,13 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_WAIT_FACTOR, WM_AGENT_UPGRADE_CONTEXT.name);
                 return OS_INVALID;
             }
+        } else if (!strcmp(nodes[i]->element, XML_CA_VERIFICATION)) {
+            XML_NODE childs = OS_GetElementsbyNode(xml, nodes[i]);
+            if (wm_agent_upgrade_read_ca_verification(childs, &data->agent_config.enable_ca_verification)) {
+                OS_ClearNode(childs);
+                return OS_INVALID;
+            }
+            OS_ClearNode(childs);
         }
         #else
         else if (!strcmp(nodes[i]->element, XML_CHUNK_SIZE)) {
@@ -160,5 +176,46 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
         }
     }
 
+    #ifdef CLIENT
+    if (data->agent_config.enable_ca_verification) {
+        if (!wcom_ca_store || !wcom_ca_store[0]) {
+            os_realloc(wcom_ca_store, 2, wcom_ca_store);
+            os_strdup(DEF_CA_STORE, wcom_ca_store[0]);
+            wcom_ca_store[1] = NULL;
+        }
+    } else {
+        minfo("WPK verification with CA is disabled.");
+    }
+    #endif
+
     return 0;
 }
+
+#ifdef CLIENT
+static int wm_agent_upgrade_read_ca_verification(xml_node **nodes, unsigned int *verification_flag) {
+    int ca_store_count = 0;
+    if(wcom_ca_store) {
+        os_realloc(wcom_ca_store, ca_store_count + 1, wcom_ca_store);
+        wcom_ca_store[0] = NULL;
+    }
+    
+    for(int i = 0; nodes[i]; i++) {
+        if (!strcmp(nodes[i]->element, XML_ENABLED)) {
+            if (strcasecmp(nodes[i]->content, "yes") == 0) {
+                *verification_flag = 1;
+            } else if (strcasecmp(nodes[i]->content, "no") == 0) {
+                *verification_flag = 0;
+            } else {
+                mwarn("Invalid content for tag <%s>", nodes[i]->element);
+                return OS_INVALID;
+            }
+        } else if(!strcmp(nodes[i]->element, XML_CA_STORE)) {
+            os_realloc(wcom_ca_store, ca_store_count + 1, wcom_ca_store);
+            os_strdup(nodes[i]->content, wcom_ca_store[ca_store_count]);
+            ca_store_count++;
+            wcom_ca_store[ca_store_count] = NULL;
+        }
+    }
+    return 0;
+}
+#endif

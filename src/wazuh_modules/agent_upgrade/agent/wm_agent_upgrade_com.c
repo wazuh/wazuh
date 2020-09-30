@@ -8,7 +8,10 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include <shared.h>
+#include "external/zlib/zlib.h"
 #include "os_crypto/sha1/sha1_op.h"
+#include "os_crypto/signature/signature.h"
 #include "wazuh_modules/wmodules.h"
 #include "wm_agent_upgrade_agent.h"
 
@@ -27,7 +30,13 @@ typedef enum _command_error_codes {
     ERROR_TARGET_FILE_NOT_MATCH,
     ERROR_WRITE_FILE,
     ERROR_CLOSE,
-    ERROR_GEN_SHA1
+    ERROR_GEN_SHA1,
+    ERROR_SIGNATURE,
+    ERROR_COMPRESS,
+    ERROR_CLEAN_DIRECTORY,
+    ERROR_UNMERGE,
+    ERROR_CHMOD,
+    ERROR_EXEC
 } command_error_codes;
 
 static const char * error_messages[] = {
@@ -40,7 +49,13 @@ static const char * error_messages[] = {
     [ERROR_TARGET_FILE_NOT_MATCH] = "The target file doesn't match the opened file",
     [ERROR_WRITE_FILE] = "Cannot write file",
     [ERROR_CLOSE] = "Cannot close file",
-    [ERROR_GEN_SHA1] = "Cannot generate SHA1"
+    [ERROR_GEN_SHA1] = "Cannot generate SHA1",
+    [ERROR_SIGNATURE] = "Could not verify signature",
+    [ERROR_COMPRESS] = "Could not uncompress package",
+    [ERROR_CLEAN_DIRECTORY] = "Could not clean up upgrade directory",
+    [ERROR_UNMERGE] = "Error unmerging file",
+    [ERROR_CHMOD] = "Could not chmod",
+    [ERROR_EXEC] = "Error executing command"
 };
 
 /**
@@ -98,9 +113,16 @@ static char * wm_agent_upgrade_com_close(const cJSON* json_object);
  * */
 static char * wm_agent_upgrade_com_sha1(const cJSON* json_object);
 
+/**
+ * Process a command that executes an upgrade script
+ * @param json_obj expected json format
+ * */
+static char * wm_agent_upgrade_com_upgrade(const cJSON* json_object);
 
 /* Helpers methods */
 static int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename);
+static int _unsign(const char * source, char dest[PATH_MAX + 1]);
+static int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1]);
 
 char *wm_agent_upgrade_process_command(const char* buffer) {
     cJSON *buffer_obj = cJSON_Parse(buffer);
@@ -117,10 +139,13 @@ char *wm_agent_upgrade_process_command(const char* buffer) {
                 return wm_agent_upgrade_com_close(buffer_obj);
             } else if(strcmp(command, "sha1") == 0) {
                 return wm_agent_upgrade_com_sha1(buffer_obj);
+            } else if(strcmp(command, "upgrade") == 0) {
+                return wm_agent_upgrade_com_upgrade(buffer_obj);
             }
         }
     }
     cJSON_Delete(buffer_obj);
+    return NULL;
 }
 
 static char* wm_agent_upgrade_command_ack(int error_code, const char* message) {
@@ -246,6 +271,79 @@ static char * wm_agent_upgrade_com_sha1(const cJSON* json_object) {
     return wm_agent_upgrade_command_ack(ERROR_OK, sha1);
 }
 
+static char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
+    char compressed[PATH_MAX + 1];
+    char merged[PATH_MAX + 1];
+    char installer_j[PATH_MAX + 1];
+    const cJSON *package_obj = cJSON_GetObjectItem(json_object, "package");
+    const cJSON *installer_obj = cJSON_GetObjectItem(json_object, "installer");
+    int status;
+    int req_timeout = 0;
+    char *out;
+
+    if (req_timeout == 0) {
+        req_timeout = getDefine_Int("execd", "request_timeout", 1, 3600);
+    }
+    // Unsign
+    if (!package_obj || (package_obj->type != cJSON_String) || _unsign(package_obj->valuestring, compressed) < 0) {
+        merror("At WCOM Upgrade: %s", error_messages[ERROR_SIGNATURE]);
+        return wm_agent_upgrade_command_ack(ERROR_SIGNATURE, error_messages[ERROR_SIGNATURE]);
+    }
+
+    // Uncompress
+    if (_uncompress(compressed, package_obj->valuestring, merged) < 0) {
+        unlink(compressed);
+        merror("At WCOM Upgrade: %s", error_messages[ERROR_COMPRESS]);
+        return wm_agent_upgrade_command_ack(ERROR_COMPRESS, error_messages[ERROR_COMPRESS]);
+    }
+
+    // Clean up upgrade folder
+#ifndef WIN32
+    if (cldir_ex(isChroot() ? UPGRADE_DIR : DEFAULTDIR UPGRADE_DIR)) {
+#else
+    if (cldir_ex(UPGRADE_DIR)) {
+#endif
+        merror("At WCOM Upgrade: %s", error_messages[ERROR_CLEAN_DIRECTORY]);
+        return wm_agent_upgrade_command_ack(ERROR_CLEAN_DIRECTORY, error_messages[ERROR_CLEAN_DIRECTORY]);
+    }
+
+    //Unmerge
+#ifndef WIN32
+    if (UnmergeFiles(merged, isChroot() ? UPGRADE_DIR : DEFAULTDIR UPGRADE_DIR, OS_BINARY) == 0) {
+#else
+    if (UnmergeFiles(merged, UPGRADE_DIR, OS_BINARY) == 0) {
+#endif
+        unlink(merged);
+        merror("At WCOM upgrade: Error unmerging file: %s", merged);
+        return wm_agent_upgrade_command_ack(ERROR_UNMERGE, error_messages[ERROR_UNMERGE]);
+    }
+
+    unlink(merged);
+
+    // Installer executable file
+    if (!installer_obj || (installer_obj->type != cJSON_String) || _jailfile(installer_j, UPGRADE_DIR, installer_obj->valuestring) < 0) {
+        merror("At WCOM open: Invalid file name");
+        return wm_agent_upgrade_command_ack(ERROR_INVALID_FILE_NAME, error_messages[ERROR_INVALID_FILE_NAME]);
+    }
+
+    // Execute
+#ifndef WIN32
+    if (chmod(installer_j, 0750) < 0) {
+        merror("At WCOM upgrade: Could not chmod '%s'", installer_j);
+        return wm_agent_upgrade_command_ack(ERROR_CHMOD, error_messages[ERROR_CHMOD]);
+    }
+#endif
+
+    if (wm_exec(installer_j, &out, &status, req_timeout, NULL) < 0) {
+        merror("At WCOM upgrade: Error executing command [%s]", installer_j);
+        return wm_agent_upgrade_command_ack(ERROR_EXEC, error_messages[ERROR_EXEC]);
+    } else {
+        char status_str[5];
+        sprintf(status_str, "%d", status);
+        return wm_agent_upgrade_command_ack(ERROR_OK, status_str);
+    }
+}
+
 static int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename) {
 
     if (w_ref_parent_folder(filename)) {
@@ -257,4 +355,116 @@ static int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const c
 #else
     return snprintf(finalpath, PATH_MAX + 1, "%s\\%s", basedir, filename) > PATH_MAX ? -1 : 0;
 #endif
+}
+
+static int _unsign(const char * source, char dest[PATH_MAX + 1]) {
+    const char TEMPLATE[] = ".gz.XXXXXX";
+    char source_j[PATH_MAX + 1];
+    size_t length;
+    int output = 0;
+
+    if (_jailfile(source_j, INCOMING_DIR, source) < 0) {
+        merror("At unsign(): Invalid file name '%s'", source);
+        return -1;
+    }
+
+    if (_jailfile(dest, TMP_DIR, source) < 0) {
+        merror("At unsign(): Invalid file name '%s'", source);
+        return -1;
+    }
+
+    if (length = strlen(dest), length + 10 > PATH_MAX) {
+        merror("At unsign(): Too long temp file.");
+        return -1;
+    }
+
+    memcpy(dest + length, TEMPLATE, sizeof(TEMPLATE));
+    mode_t old_mask = umask(0022);
+#ifndef WIN32
+    int fd;
+
+    if (fd = mkstemp(dest), fd >= 0) {
+        close(fd);
+
+        if (chmod(dest, 0640) < 0) {
+            unlink(dest);
+            merror("At unsign(): Couldn't chmod '%s'", dest);
+            output = -1;
+        }
+    } else {
+#else
+    if (_mktemp_s(dest, strlen(dest) + 1)) {
+#endif
+        merror("At unsign(): Couldn't create temporary compressed file");
+        output = -1;
+    }
+
+    if (w_wpk_unsign(source_j, dest, (const char **)wcom_ca_store) < 0) {
+        unlink(dest);
+        merror("At unsign: Couldn't unsign package file '%s'", source_j);
+        output = -1;
+    }
+    umask(old_mask);
+    unlink(source);
+    return output;
+}
+
+static int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1]) {
+    const char TEMPLATE[] = ".mg.XXXXXX";
+    char buffer[4096];
+    gzFile fsource;
+    FILE *ftarget;
+
+    if (_jailfile(dest, TMP_DIR, package) < 0) {
+        merror("At uncompress(): Invalid file name '%s'", package);
+        return -1;
+    }
+
+    {
+        size_t length;
+
+        if (length = strlen(dest), length + 10 > PATH_MAX) {
+            merror("At uncompress(): Too long temp file.");
+            return -1;
+        }
+
+        memcpy(dest + length, TEMPLATE, sizeof(TEMPLATE));
+    }
+
+    if (fsource = gzopen(source, "rb"), !fsource) {
+        merror("At uncompress(): Unable to open '%s'", source);
+        return -1;
+    }
+
+    if (ftarget = fopen(dest, "wb"), !ftarget) {
+        gzclose(fsource);
+        merror("At uncompress(): Unable to open '%s'", dest);
+        return -1;
+    }
+
+    {
+        int length;
+
+        while (length = gzread(fsource, buffer, sizeof(buffer)), length > 0) {
+            if ((int)fwrite(buffer, 1, length, ftarget) != length) {
+                unlink(dest);
+                gzclose(fsource);
+                fclose(ftarget);
+                merror("At uncompress(): Unable to write '%s'", source);
+                return -1;
+            }
+        }
+
+        gzclose(fsource);
+        fclose(ftarget);
+
+        if (length < 0) {
+            unlink(dest);
+            merror("At uncompress(): Unable to read '%s'", source);
+            return -1;
+        }
+    }
+
+    unlink(source);
+    return 0;
 }

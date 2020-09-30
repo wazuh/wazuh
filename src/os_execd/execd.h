@@ -29,7 +29,6 @@
 #define EXECD_TIMEOUT   1
 
 extern int repeated_offenders_timeout[];
-extern char ** wcom_ca_store;
 extern time_t pending_upg;
 extern int is_disabled;
 extern int req_timeout;
@@ -39,7 +38,6 @@ extern int max_restart_lock;
 
 void WinExecdRun(char *exec_msg);
 int ReadExecConfig(void);
-void CheckExecConfig();
 cJSON *getARConfig(void);
 cJSON *getARInternalOptions(void);
 cJSON *getExecdInternalOptions(void);

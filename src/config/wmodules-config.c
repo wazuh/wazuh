@@ -321,7 +321,7 @@ int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1) {
 
     //Agent Upgrade module
     if (!strcmp(node->element, WM_AGENT_UPGRADE_CONTEXT.name)) {
-        if (wm_agent_upgrade_read(children, cur_wmodule) < 0) {
+        if (wm_agent_upgrade_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
