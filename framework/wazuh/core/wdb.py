@@ -227,7 +227,7 @@ class WazuhDBConnection:
             offset = int(re.compile(r".* offset (\d+)").match(query_lower).group(1))
             query_lower = query_lower.replace(" offset {}".format(offset), "")
 
-        if not re.search(r'.?select count\(.*\).?', query_without_where):
+        if not re.search(r'.?select count\(.*\)( as [^\s]+)? from', query_without_where):
             lim = 0
             if 'limit' in query_lower:
                 lim = int(re.compile(r".* limit (\d+)").match(query_lower).group(1))
