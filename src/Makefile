@@ -12,6 +12,7 @@
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 uname_P := $(shell sh -c 'uname -p 2>/dev/null || echo not')
 uname_R := $(shell sh -c 'uname -r 2>/dev/null || echo not')
+uname_V := $(shell sh -c 'uname -v 2>/dev/null || echo not')
 HAS_CHECKMODULE = $(shell command -v checkmodule > /dev/null && echo YES)
 HAS_SEMODULE_PACKAGE = $(shell command -v semodule_package > /dev/null && echo YES)
 CHECK_ARCHLINUX := $(shell sh -c 'grep "Arch Linux" /etc/os-release > /dev/null && echo YES || echo not')
@@ -134,7 +135,10 @@ ifeq (${uname_S},AIX)
 		CC=gcc
 else
 ifeq (${uname_S},SunOS)
-		DEFINES+=-DSUN_VERSION=`uname -v | sed -e 's/\.\([0-9]\{1,1\}\)$/0\1/' -e 's/\.//'`
+		MAJOR_VERSION := $(word 1, $(subst., ,$uname_V))
+		MINOR_VERSION := $(word 2, $(subst., ,$uname_V))
+		DEFINES+=-DSUN_MAJOR_VERSION=$(MAJOR_VERSION)
+		DEFINES+=-DSUN_MINOR_VERSION=$(MINOR_VERSION)
 		DEFINES+=-DSOLARIS
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-D_REENTRANT
