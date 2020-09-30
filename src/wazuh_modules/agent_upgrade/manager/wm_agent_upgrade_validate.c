@@ -20,6 +20,12 @@
 #include "wazuh_modules/wmodules.h"
 #include "wm_agent_upgrade_validate.h"
 
+#ifdef WAZUH_UNIT_TESTING
+// Redefine ossec_version
+#undef __ossec_version
+#define __ossec_version "v3.13.0"
+#endif
+
 // Mutex needed to download a WPK file
 pthread_mutex_t download_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -190,31 +196,24 @@ int wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task *task) {
 
 STATIC int wm_agent_upgrade_validate_non_custom_version(const char *agent_version, const wm_agent_info *agent_info, wm_upgrade_task *task, const wm_manager_configs* manager_configs) {
     char *manager_version = NULL;
-    char *tmp_manager_version = NULL;
     int return_code = WM_UPGRADE_GLOBAL_DB_FAILURE;
 
     return_code = wm_agent_upgrade_validate_system(agent_info->platform, agent_info->major_version, agent_info->minor_version, agent_info->architecture);
 
     if (WM_UPGRADE_SUCCESS == return_code) {
-        if (manager_version = wdb_agent_version(MANAGER_ID), manager_version) {
-            if (tmp_manager_version = strchr(manager_version, 'v'), tmp_manager_version) {
-                char *wpk_version = task->custom_version ? task->custom_version : tmp_manager_version;
+        if (manager_version = strchr(__ossec_version, 'v'), manager_version) {
+            char *wpk_version = task->custom_version ? task->custom_version : manager_version;
 
-                // Check if a WPK package exist for the upgrade version
-                return_code = wm_agent_upgrade_validate_wpk_version(agent_info, task, wpk_version, manager_configs->wpk_repository);
+            // Check if a WPK package exist for the upgrade version
+            return_code = wm_agent_upgrade_validate_wpk_version(agent_info, task, wpk_version, manager_configs->wpk_repository);
 
-                if (WM_UPGRADE_SUCCESS == return_code && !task->force_upgrade) {
-                    if (wm_agent_upgrade_compare_versions(agent_version, wpk_version) >= 0) {
-                        return_code = WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT;
-                    } else if (wm_agent_upgrade_compare_versions(wpk_version, tmp_manager_version) > 0) {
-                        return_code = WM_UPGRADE_NEW_VERSION_GREATER_MASTER;
-                    }
+            if (WM_UPGRADE_SUCCESS == return_code && !task->force_upgrade) {
+                if (wm_agent_upgrade_compare_versions(agent_version, wpk_version) >= 0) {
+                    return_code = WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT;
+                } else if (wm_agent_upgrade_compare_versions(wpk_version, manager_version) > 0) {
+                    return_code = WM_UPGRADE_NEW_VERSION_GREATER_MASTER;
                 }
             }
-
-            os_free(manager_version);
-        } else {
-            return_code = WM_UPGRADE_GLOBAL_DB_FAILURE;
         }
     }
 

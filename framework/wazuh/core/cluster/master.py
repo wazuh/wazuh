@@ -55,39 +55,6 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
         self.wazuh_common.sync_integrity_free = True
 
 
-class ReceiveAgentInfoTask(c_common.ReceiveFileTask):
-    """
-    Defines the process and variables necessary to receive and process agent info files.
-
-    This task is created by the master when the worker starts sending its agent-info files and its destroyed once the
-    master has updated its agent-info files.
-    """
-
-    def __init__(self, *args, **kwargs):
-        """
-        Class constructor
-        :param args: Arguments for parent constructor class
-        :param kwargs: Arguments for parent constructor class
-        """
-        super().__init__(*args, **kwargs)
-        self.logger_tag = "Agent info"
-
-    def set_up_coro(self) -> Callable:
-        """
-        Sets up the function to be called when the worker sends its agent infos
-        """
-        return self.wazuh_common.sync_agent_info
-
-    def done_callback(self, future=None):
-        """
-        Checks the synchronization process was correct and frees its lock
-        :param future: synchronization process result
-        :return: None
-        """
-        super().done_callback(future)
-        self.wazuh_common.sync_agent_info_free = True
-
-
 class ReceiveExtraValidTask(c_common.ReceiveFileTask):
     """
     Defines the process and variables necessary to receive and process extra valid files from the worker.
@@ -134,7 +101,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # sync status variables. Used to prevent sync process from overlapping.
         self.sync_integrity_free = True  # the worker isn't currently synchronizing integrity
         self.sync_extra_valid_free = True
-        self.sync_agent_info_free = True
         # sync status variables. Used in cluster_control -i and GET/cluster/healthcheck
         self.sync_integrity_status = {'date_start_master': "n/a", 'date_end_master': "n/a",
                                       'total_files': {'missing': 0, 'shared': 0, 'extra': 0, 'extra_valid': 0}}
@@ -156,7 +122,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         return {'info': {'name': self.name, 'type': self.node_type, 'version': self.version, 'ip': self.ip},
                 'status': {'sync_integrity_free': self.sync_integrity_free, 'last_sync_integrity': self.sync_integrity_status,
-                           'sync_agentinfo_free': self.sync_agent_info_free, 'last_sync_agentinfo': self.sync_agent_info_status,
+                           'last_sync_agentinfo': self.sync_agent_info_status,
                            'sync_extravalid_free': self.sync_extra_valid_free, 'last_sync_agentgroups': self.sync_extra_valid_status,
                            'last_keep_alive': self.last_keepalive}}
 
@@ -168,14 +134,18 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         :return: response
         """
         self.logger.debug("Command received: {}".format(command))
-        if command == b'sync_i_w_m_p' or command == b'sync_e_w_m_p' or command == b'sync_a_w_m_p':
+        if command == b'sync_i_w_m_p' or command == b'sync_e_w_m_p':
             return self.get_permission(command)
-        elif command == b'sync_i_w_m' or command == b'sync_e_w_m' or command == b'sync_a_w_m':
+        elif command == b'sync_i_w_m' or command == b'sync_e_w_m':
             return self.setup_sync_integrity(command)
-        elif command == b'sync_i_w_m_e' or command == b'sync_e_w_m_e' or command == b'sync_a_w_m_e':
+        elif command == b'sync_i_w_m_e' or command == b'sync_e_w_m_e':
             return self.end_receiving_integrity_checksums(data.decode())
-        elif command == b'sync_i_w_m_r' or command == b'sync_e_w_m_r' or command == b'sync_a_w_m_r':
+        elif command == b'sync_i_w_m_r' or command == b'sync_e_w_m_r':
             return self.process_sync_error_from_worker(command, data)
+        elif command == b'sync_a_w_m_s':
+            return self.set_start_time(command)
+        elif command == b'sync_a_w_m_e':
+            return self.set_end_time(command, data)
         elif command == b'dapi':
             self.server.dapi.add_request(self.name.encode() + b'*' + data)
             return b'ok', b'Added request to API requests queue'
@@ -250,8 +220,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         cmd, payload = super().hello(name)
 
         self.task_loggers = {'Integrity': self.setup_task_logger('Integrity'),
-                             'Extra valid': self.setup_task_logger('Extra valid'),
-                             'Agent info': self.setup_task_logger('Agent info')}
+                             'Extra valid': self.setup_task_logger('Extra valid')}
 
         self.version, self.cluster_name, self.node_type = version.decode(), cluster_name.decode(), node_type.decode()
 
@@ -319,8 +288,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             permission = self.sync_integrity_free
         elif sync_type == b'sync_e_w_m_p':
             permission = self.sync_extra_valid_free
-        elif sync_type == b'sync_a_w_m_p':
-            permission = self.sync_agent_info_free
         else:
             permission = False
 
@@ -336,12 +303,23 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             self.sync_integrity_free, sync_function = False, ReceiveIntegrityTask
         elif sync_type == b'sync_e_w_m':
             self.sync_extra_valid_free, sync_function = False, ReceiveExtraValidTask
-        elif sync_type == b'sync_a_w_m':
-            self.sync_agent_info_free, sync_function = False, ReceiveAgentInfoTask
         else:
             sync_function = None
 
         return super().setup_receive_file(sync_function)
+
+    def set_start_time(self, sync_type: bytes) -> Tuple[bytes, bytes]:
+        if sync_type == b'sync_a_w_m_s':
+            self.sync_agent_info_status['date_start_master'] = str(datetime.now())
+
+        return b'ok', b'Started ' + sync_type
+
+    def set_end_time(self, sync_type: bytes, size: bytes) -> Tuple[bytes, bytes]:
+        if sync_type == b'sync_a_w_m_e':
+            self.sync_agent_info_status['date_end_master'] = str(datetime.now())
+            self.sync_agent_info_status['total_agentinfo'] = size.decode()
+
+        return b'ok', b'Ended ' + sync_type
 
     def process_sync_error_from_worker(self, command: bytes, error_msg: bytes) -> Tuple[bytes, bytes]:
         """
@@ -352,10 +330,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         if command == b'sync_i_w_m_r':
             sync_type, self.sync_integrity_free = "Integrity", True
-        elif command == b'sync_e_w_m_r':
+        else:  # command == b'sync_e_w_m_r':
             sync_type, self.sync_extra_valid_free = "Extra valid", True
-        else:  # command == b'sync_a_w_m_r'
-            sync_type, self.sync_agent_info_free = "Agent status", True
 
         return super().error_receiving_file(error_msg.decode())
 
@@ -403,21 +379,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         await self.sync_worker_files(task_name, received_file, extra_valid_logger)
         self.sync_extra_valid_free = True
         self.sync_extra_valid_status['date_end_master'] = str(datetime.now())
-
-    async def sync_agent_info(self, task_name: str, received_file: asyncio.Event):
-        """
-        Function called to do the agent info sync process.
-        It sets up necessary parameters for sync_worker_files function.
-
-        :param task_name: Task name in charge of doing the sync process
-        :param received_file: Received filename containing information to sync
-        :return: None
-        """
-        agent_info_logger = self.task_loggers['Agent info']
-        self.sync_agent_info_status['date_start_master'] = str(datetime.now())
-        await self.sync_worker_files(task_name, received_file, agent_info_logger)
-        self.sync_agent_info_free = True
-        self.sync_agent_info_status['date_end_master'] = str(datetime.now())
 
     async def sync_integrity(self, task_name: str, received_file: asyncio.Event):
         """
@@ -516,36 +477,21 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     self.logger.warning("Client.keys received in a master node")
                     raise exception.WazuhClusterError(3007)
                 if data['merged']:
-                    is_agent_info = data['merge_type'] == 'agent-info'
-                    if is_agent_info:
-                        self.sync_agent_info_status['total_agent_info'] = len(agent_ids)
-                    else:
-                        self.sync_extra_valid_status['total_extra_valid'] = len(agent_ids)
+                    self.sync_extra_valid_status['total_extra_valid'] = len(agent_ids)
                     for file_path, file_data, file_time in wazuh.core.cluster.cluster.unmerge_agent_info(data['merge_type'],
                                                                                                          decompressed_files_path,
                                                                                                          data['merge_name']):
                         full_unmerged_name = os.path.join(common.ossec_path, file_path)
                         tmp_unmerged_path = os.path.join(common.ossec_path, 'queue/cluster', self.name, os.path.basename(file_path))
                         try:
-                            if is_agent_info:
-                                agent_name_re = re.match(r'(^.+)-(.+)$', os.path.basename(file_path))
-                                agent_name = agent_name_re.group(1) if agent_name_re else os.path.basename(file_path)
-                                if agent_name not in agent_names:
-                                    n_errors['warnings'][data['cluster_item_key']] = 1 \
-                                        if n_errors['warnings'].get(data['cluster_item_key']) is None \
-                                        else n_errors['warnings'][data['cluster_item_key']] + 1
+                            agent_id = os.path.basename(file_path)
+                            if agent_id not in agent_ids:
+                                n_errors['warnings'][data['cluster_item_key']] = 1 \
+                                    if n_errors['warnings'].get(data['cluster_item_key']) is None \
+                                    else n_errors['warnings'][data['cluster_item_key']] + 1
 
-                                    self.logger.debug2("Received status of an non-existent agent '{}'".format(agent_name))
-                                    continue
-                            else:
-                                agent_id = os.path.basename(file_path)
-                                if agent_id not in agent_ids:
-                                    n_errors['warnings'][data['cluster_item_key']] = 1 \
-                                        if n_errors['warnings'].get(data['cluster_item_key']) is None \
-                                        else n_errors['warnings'][data['cluster_item_key']] + 1
-
-                                    self.logger.debug2("Received group of an non-existent agent '{}'".format(agent_id))
-                                    continue
+                                self.logger.debug2("Received group of an non-existent agent '{}'".format(agent_id))
+                                continue
 
                             try:
                                 mtime = datetime.strptime(file_time, '%Y-%m-%d %H:%M:%S.%f')
@@ -571,10 +517,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                             )
                         except Exception as e:
                             self.logger.error("Error updating agent group/status ({}): {}".format(tmp_unmerged_path, e))
-                            if is_agent_info:
-                                self.sync_agent_info_status['total_agent_info'] -= 1
-                            else:
-                                self.sync_extra_valid_status['total_extra_valid'] -= 1
+                            self.sync_extra_valid_status['total_extra_valid'] -= 1
 
                             n_errors['errors'][data['cluster_item_key']] = 1 \
                                 if n_errors['errors'].get(data['cluster_item_key']) is None \
@@ -617,11 +560,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         try:
             agents = Agent.get_agents_overview(select=['name'], limit=None)['items']
-            agent_names = set(map(operator.itemgetter('name'), agents))
             agent_ids = set(map(operator.itemgetter('id'), agents))
         except Exception as e:
-            logger.debug2("Error getting agent ids and names: {}".format(e))
-            agent_names, agent_ids = {}, {}
+            logger.debug2("Error getting agent ids: {}".format(e))
+            agent_ids = {}
 
         try:
             for filename, data in files_checksums.items():

@@ -36,11 +36,9 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_match
     char *oa_location;
     char *oa_val;
     char oa_newlocation[256];
-    char agent_file[OS_SIZE_1024 +1];
     char tmpstr_buffer[4096 +1];
     char *tmp_str = NULL;
     RuleInfo *rule_pointer;
-    FILE *fp;
 
     lf->decoder_info->type = OSSEC_ALERT;
 
@@ -84,7 +82,6 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_match
     }
     tmp_str += 11;
 
-
     /* Setting location; */
     oa_location = tmp_str;
 
@@ -93,10 +90,6 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_match
 
     /* Setting new location. */
     oa_newlocation[255] = '\0';
-    agent_file[OS_SIZE_1024] = '\0';
-
-    snprintf(agent_file, OS_SIZE_1024, "%s/%s->%s",
-             AGENTINFO_DIR, lf->hostname, lf->location);
 
     snprintf(oa_newlocation, 255, "%s|%s", lf->location, oa_location);
     free(lf->location);
@@ -105,13 +98,6 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_match
         free(lf->hostname);
     }
     os_strdup(lf->location, lf->hostname);
-
-    /* Writting to the agent file */
-    fp = fopen(agent_file, "w");
-    if (fp) {
-        fprintf(fp, "%s\n", "Remote Syslog");
-        fclose(fp);
-    }
 
     *tmp_str = ';';
     tmp_str++;

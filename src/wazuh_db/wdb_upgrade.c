@@ -60,7 +60,44 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
     return wdb;
 }
 
-// Create backup and generate an emtpy DB
+wdb_t * wdb_upgrade_global(wdb_t *wdb) {
+    const char * UPDATES[] = {
+        schema_global_upgrade_v1_sql,
+    };
+
+    char db_version[OS_SIZE_256 + 2];
+    int version = 0;
+
+    switch (wdb_metadata_table_check(wdb,"metadata")) {
+    case OS_INVALID:
+        mdebug1("DB(%s) Error trying to find metadata table", wdb->id);
+        return wdb;
+    case 0:
+        // The table doesn't exist, this is the global.db version 0
+        break;
+    default:
+        if( wdb_metadata_get_entry(wdb, "db_version", db_version) == 1) {
+            version = atoi(db_version);
+        }
+        else{
+            merror("DB(%s): Error trying to get DB version", wdb->id);
+            return wdb;
+        }
+    }
+
+    for (unsigned i = version; i < sizeof(UPDATES) / sizeof(char *); i++) {
+        mdebug2("Updating database '%s' to version %d", wdb->id, i + 1);
+
+        if (wdb_sql_exec(wdb, UPDATES[i]) == -1) {
+            merror("Failed to update global.db to version %d", i + 1);
+            break;
+        }
+    }
+
+    return wdb;
+}
+
+// Create backup and generate an empty DB
 wdb_t * wdb_backup(wdb_t *wdb, int version) {
     char path[PATH_MAX];
     char * sagent_id;
@@ -99,8 +136,6 @@ wdb_t * wdb_backup(wdb_t *wdb, int version) {
     free(sagent_id);
     return new_wdb;
 }
-
-
 
 /* Create backup for agent. Returns 0 on success or -1 on error. */
 int wdb_create_backup(const char * agent_id, int version) {
