@@ -22,10 +22,10 @@ struct SmartDeleterJson final
 
 DBSYNC_HANDLE getDbsyncHandle(const nlohmann::json& config)
 {
-    const std::string dbName{ config.at("db_name") };
-    const std::string dbType{ config.at("db_type") };
-    const std::string hostType{ config.at("host_type") };        
-    const std::string sqlStmt{ config.at("sql_statement") };
+    const std::string dbName{ config.at("db_name").get_ref<const std::string&>() };
+    const std::string dbType{ config.at("db_type").get_ref<const std::string&>() };
+    const std::string hostType{ config.at("host_type").get_ref<const std::string&>() };
+    const std::string sqlStmt{ config.at("sql_statement").get_ref<const std::string&>() };
     auto handle 
     { 
         dbsync_create((hostType.compare("0") == 0) ? HostType::MANAGER : HostType::AGENT,
