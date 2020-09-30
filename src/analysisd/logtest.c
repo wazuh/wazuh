@@ -176,6 +176,8 @@ cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, boo
 
     cJSON *output = NULL;
     Eventinfo *lf = NULL;
+    cJSON * rule  = NULL;
+    cJSON * level = NULL;
     int check_add_event;
 
     /* Initialize eventinfo which will contain alert information */
@@ -214,6 +216,12 @@ cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, boo
     char *output_str = Eventinfo_to_jsonstr(lf, false);
     output = cJSON_Parse(output_str);
     os_free(output_str);
+
+    /* Add rule level 0 */
+    rule = cJSON_GetObjectItemCaseSensitive(output, "rule");
+    if (level = cJSON_GetObjectItemCaseSensitive(rule, "level"), lf->generated_rule && !level) {
+        cJSON_AddNumberToObject(rule, "level", lf->generated_rule->level);
+    }
 
     /* Clear the memory if the event was not added to the stateful memory */
     if (check_add_event == 0) {
