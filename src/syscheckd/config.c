@@ -305,7 +305,20 @@ cJSON *getSyscheckConfig(void) {
 
         for (i=0; syscheck.registry[i].entry; i++) {
             cJSON *pair = cJSON_CreateObject();
+            cJSON *opts = cJSON_CreateArray();
 
+            if (syscheck.registry[i].opts & CHECK_MD5SUM) cJSON_AddItemToArray(opts, cJSON_CreateString("check_md5sum"));
+            if (syscheck.registry[i].opts & CHECK_SHA1SUM) cJSON_AddItemToArray(opts, cJSON_CreateString("check_sha1sum"));
+            if (syscheck.registry[i].opts & CHECK_SHA256SUM) cJSON_AddItemToArray(opts, cJSON_CreateString("check_sha256sum"));
+            if (syscheck.registry[i].opts & CHECK_SIZE) cJSON_AddItemToArray(opts, cJSON_CreateString("check_size"));
+            if (syscheck.registry[i].opts & CHECK_OWNER) cJSON_AddItemToArray(opts, cJSON_CreateString("check_owner"));
+            if (syscheck.registry[i].opts & CHECK_GROUP) cJSON_AddItemToArray(opts, cJSON_CreateString("check_group"));
+            if (syscheck.registry[i].opts & CHECK_PERM) cJSON_AddItemToArray(opts, cJSON_CreateString("check_perm"));
+            if (syscheck.registry[i].opts & CHECK_MTIME) cJSON_AddItemToArray(opts, cJSON_CreateString("check_mtime"));
+            if (syscheck.registry[i].opts & CHECK_TYPE) cJSON_AddItemToArray(opts, cJSON_CreateString("check_type"));
+            if (syscheck.registry[i].opts & CHECK_SEECHANGES) cJSON_AddItemToArray(opts, cJSON_CreateString("report_changes"));
+
+            cJSON_AddItemToObject(pair,"opts",opts);
             cJSON_AddStringToObject(pair, "entry", syscheck.registry[i].entry);
 
             if (syscheck.registry[i].arch == 0) {
@@ -317,6 +330,16 @@ cJSON *getSyscheckConfig(void) {
             if (syscheck.registry[i].tag) {
                 cJSON_AddStringToObject(pair, "tags", syscheck.registry[i].tag);
             }
+
+            if (syscheck.registry[i].filerestrict) {
+                cJSON_AddStringToObject(pair,"restrict", syscheck.registry[i].filerestrict->raw);
+            }
+
+            if (syscheck.file_size_enabled && syscheck.registry[i].diff_size_limit) {
+                cJSON_AddNumberToObject(pair, "diff_size_limit", syscheck.registry[i].diff_size_limit);
+            }
+
+            cJSON_AddNumberToObject(pair,"recursion_level",syscheck.registry[i].recursion_level);
 
             cJSON_AddItemToArray(rg, pair);
         }
@@ -359,6 +382,44 @@ cJSON *getSyscheckConfig(void) {
             cJSON_AddItemToArray(rgi, pair);
         }
         cJSON_AddItemToObject(syscfg,"registry_ignore_sregex",rgi);
+    }
+
+    if (syscheck.registry_nodiff) {
+        cJSON *rgi = cJSON_CreateArray();
+
+        for (i=0; syscheck.registry_nodiff[i].entry; i++) {
+            cJSON *pair = cJSON_CreateObject();
+
+            cJSON_AddStringToObject(pair, "entry", syscheck.registry_nodiff[i].entry);
+
+            if (syscheck.registry_nodiff[i].arch == 0) {
+                cJSON_AddStringToObject(pair,"arch","32bit");
+            } else {
+                cJSON_AddStringToObject(pair,"arch","64bit");
+            }
+
+            cJSON_AddItemToArray(rgi, pair);
+        }
+        cJSON_AddItemToObject(syscfg, "registry_nodiff", rgi);
+    }
+
+    if (syscheck.registry_nodiff_regex) {
+        cJSON *rgi = cJSON_CreateArray();
+
+        for (i=0;syscheck.registry_nodiff_regex[i].regex;i++) {
+            cJSON *pair = cJSON_CreateObject();
+
+            cJSON_AddStringToObject(pair,"entry",syscheck.registry_nodiff_regex[i].regex->raw);
+
+            if (syscheck.registry_nodiff_regex[i].arch == 0) {
+                cJSON_AddStringToObject(pair,"arch","32bit");
+            } else {
+                cJSON_AddStringToObject(pair,"arch","64bit");
+            }
+
+            cJSON_AddItemToArray(rgi, pair);
+        }
+        cJSON_AddItemToObject(syscfg,"registry_nodiff_sregex",rgi);
     }
 #endif
 
