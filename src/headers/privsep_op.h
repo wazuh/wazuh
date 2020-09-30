@@ -15,7 +15,7 @@
 
 #include "shared.h"
 
-#if defined(SUN_VERSION) && SUN_VERSION < 114
+#if defined(SUN_VERSION) && SUN_VERSION < 1104
 #define w_ctime(x,y,z) ctime_r(x,y,z)
 #else
 #define w_ctime(x,y,z) ctime_r(x,y)

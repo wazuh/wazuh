@@ -22,7 +22,7 @@
 #include "headers/os_err.h"
 
 struct passwd *w_getpwnam(const char *name, struct passwd *pwd, char *buf, size_t buflen) {
-#if defined(SUN_VERSION) && SUN_VERSION < 114
+#if defined(SUN_VERSION) && SUN_VERSION < 1104
     return getpwnam_r(name, pwd, buf, buflen);
 #else
     struct passwd *result = NULL;
@@ -37,7 +37,7 @@ struct passwd *w_getpwnam(const char *name, struct passwd *pwd, char *buf, size_
 }
 
 struct passwd *w_getpwuid(uid_t uid, struct  passwd  *pwd, char *buf, int  buflen) {
-#if defined(SUN_VERSION) && SUN_VERSION < 114
+#if defined(SUN_VERSION) && SUN_VERSION < 1104
     return getpwuid_r(uid, pwd, buf, buflen);
 #else
     struct passwd *result = NULL;
@@ -52,7 +52,7 @@ struct passwd *w_getpwuid(uid_t uid, struct  passwd  *pwd, char *buf, int  bufle
 }
 
 struct group *w_getgrnam(const  char  *name,  struct group *grp, char *buf, int buflen) {
-#if defined(SUN_VERSION) && SUN_VERSION < 114
+#if defined(SUN_VERSION) && SUN_VERSION < 1104
     return getgrnam_r(name, grp, buf, buflen);
 #else
     struct group *result = NULL;
@@ -67,7 +67,7 @@ struct group *w_getgrnam(const  char  *name,  struct group *grp, char *buf, int 
 }
 
 struct group *w_getgrgid(gid_t gid, struct group *grp,  char *buf, int buflen) {
-#if defined(SUN_VERSION) && SUN_VERSION < 114
+#if defined(SUN_VERSION) && SUN_VERSION < 1104
     return getgrgid_r(gid, grp, buf, buflen);
 #else
     struct group *result = NULL;
