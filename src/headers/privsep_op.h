@@ -15,8 +15,8 @@
 
 #include "shared.h"
 
-#ifdef SOLARIS_OLD_LIB
-#define w_ctime(x,y,z) ctime_r(x,y,z)
+#if defined(SOLARIS) && (SUNOS_MAJOR_VERSION <= 10 || (SUNOS_MAJOR_VERSION == 11 && SUNOS_MINOR_VERSION <= 3))
+    #define w_ctime(x,y,z) ctime_r(x,y,z)
 #else
 #define w_ctime(x,y,z) ctime_r(x,y)
 #endif
