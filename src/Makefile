@@ -135,6 +135,7 @@ ifeq (${uname_S},AIX)
 		CC=gcc
 else
 ifeq (${uname_S},SunOS)
+SOLARIS_CMAKE_OPTS=-DSOLARIS
 		DEFINES+=-DSUN_MAJOR_VERSION=$(word 1, $(subst ., ,$(uname_V)))
 		DEFINES+=-DSUN_MINOR_VERSION=$(word 2, $(subst ., ,$(uname_V)))
 		DEFINES+=-DSOLARIS
@@ -1153,11 +1154,11 @@ config/%.o: config/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
 build_shared_modules:
-	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && make
-	cd ${RSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${RSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && make
+	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SOLARIS_CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && make
+	cd ${RSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SOLARIS_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && make
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
-	cd ${SHARED_UTILS_TEST} &&  mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && make
+	cd ${SHARED_UTILS_TEST} &&  mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SOLARIS_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && make
 endif
 endif
 
