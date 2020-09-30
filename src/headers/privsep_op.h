@@ -15,7 +15,7 @@
 
 #include "shared.h"
 
-#ifdef SOLARIS
+#ifdef SOLARIS_OLD_LIB
 #define w_ctime(x,y,z) ctime_r(x,y,z)
 #else
 #define w_ctime(x,y,z) ctime_r(x,y)

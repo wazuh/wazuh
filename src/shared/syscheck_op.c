@@ -603,7 +603,7 @@ char *get_user(int uid) {
 
     os_calloc(bufsize, sizeof(char), buf);
 
-#ifdef SOLARIS
+#ifdef SOLARIS_OLD_LIB
     result = getpwuid_r(uid, &pwd, buf, bufsize);
 #else
     errno = getpwuid_r(uid, &pwd, buf, bufsize, &result);
