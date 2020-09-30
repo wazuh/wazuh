@@ -135,8 +135,10 @@ ifeq (${uname_S},AIX)
 		CC=gcc
 else
 ifeq (${uname_S},SunOS)
+		$(info $(uname_V))
 		MAJOR_VERSION = $(word 1,$(subst ., ,$(uname_V)))
 		MINOR_VERSION = $(word 2,$(subst ., ,$(uname_V)))
+		$(info $(uname_V) $(MAJOR_VERSION).$(MINOR_VERSION))
 ifneq (${MAJOR_VERSION},11)
 	ifneq ($(shell expr $(MINOR_VERSION)\<= 3),1)	
 		DEFINES+=-DSOLARIS_OLD_CLIB
