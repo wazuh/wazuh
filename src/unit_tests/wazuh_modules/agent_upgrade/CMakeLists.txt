@@ -38,7 +38,7 @@ if(${TARGET} STREQUAL "server")
     list(APPEND upgrade_flags "-Wl,--wrap,_mterror")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_validate")
-    list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,wurl_http_get -Wl,--wrap,wdb_agent_version -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,OS_SHA1_File -Wl,--wrap,wurl_request -Wl,--wrap,sleep \
+    list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,wurl_http_get -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,OS_SHA1_File -Wl,--wrap,wurl_request -Wl,--wrap,sleep \
                                -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,getpid")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_tasks")
@@ -54,7 +54,7 @@ if(${TARGET} STREQUAL "server")
     list(APPEND upgrade_names "test_wm_agent_upgrade_commands")
     list(APPEND upgrade_flags "-Wl,--wrap,_mtinfo -Wl,--wrap,_mtwarn \
                             -Wl,--wrap,wm_agent_upgrade_parse_task_module_request -Wl,--wrap,wm_agent_upgrade_task_module_callback -Wl,--wrap,wm_agent_upgrade_validate_task_status_message -Wl,--wrap,wm_agent_upgrade_validate_id \
-                            -Wl,--wrap,wm_agent_upgrade_validate_status -Wl,--wrap,wm_agent_upgrade_validate_version -Wl,--wrap,wdb_agent_info -Wl,--wrap,wm_agent_upgrade_create_task_entry -Wl,--wrap,wm_agent_upgrade_parse_data_response \
+                            -Wl,--wrap,wm_agent_upgrade_validate_status -Wl,--wrap,wm_agent_upgrade_validate_version -Wl,--wrap,wdb_get_agent_info -Wl,--wrap,wm_agent_upgrade_create_task_entry -Wl,--wrap,wm_agent_upgrade_parse_data_response \
                             -Wl,--wrap,wm_agent_upgrade_parse_response -Wl,--wrap,wm_agent_upgrade_prepare_upgrades")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_upgrades")
