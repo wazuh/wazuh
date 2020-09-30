@@ -12,6 +12,7 @@
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 uname_P := $(shell sh -c 'uname -p 2>/dev/null || echo not')
 uname_R := $(shell sh -c 'uname -r 2>/dev/null || echo not')
+uname_V := $(shell sh -c 'uname -v 2>/dev/null || echo not')
 HAS_CHECKMODULE = $(shell command -v checkmodule > /dev/null && echo YES)
 HAS_SEMODULE_PACKAGE = $(shell command -v semodule_package > /dev/null && echo YES)
 CHECK_ARCHLINUX := $(shell sh -c 'grep "Arch Linux" /etc/os-release > /dev/null && echo YES || echo not')
@@ -134,6 +135,14 @@ ifeq (${uname_S},AIX)
 		CC=gcc
 else
 ifeq (${uname_S},SunOS)
+SOLARIS_CMAKE_OPTS=-DSOLARIS=ON
+ifneq ($(uname_R),5.10)
+		DEFINES+=-DSUN_MAJOR_VERSION=$(word 1, $(subst ., ,$(uname_V)))
+		DEFINES+=-DSUN_MINOR_VERSION=$(word 2, $(subst ., ,$(uname_V)))
+else
+		DEFINES+=-DSUN_MAJOR_VERSION=10
+		DEFINES+=-DSUN_MINOR_VERSION=0
+endif
 		DEFINES+=-DSOLARIS
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-D_REENTRANT
@@ -1155,7 +1164,7 @@ config/%.o: config/%.c
 
 build_shared_modules:
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && make
-	cd ${RSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${RSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && make
+	cd ${RSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${RSYNC_TEST} ${SOLARIS_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && make
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
 	cd ${SHARED_UTILS_TEST} &&  mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && make

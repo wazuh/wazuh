@@ -33,4 +33,11 @@ else()
 	    pthread
 	    dl
 	)
+
+	if(SOLARIS)
+		target_link_libraries(rsync_test_tool
+			nsl
+			socket
+		)
+	endif(SOLARIS)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
