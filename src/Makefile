@@ -1027,6 +1027,9 @@ wrappers_externals_audit_o := $(wrappers_externals_audit_c:.c=.o)
 wrappers_externals_bzip2_c := $(wildcard unit_tests/wrappers/externals/bzip2/*.c)
 wrappers_externals_bzip2_o := $(wrappers_externals_bzip2_c:.c=.o)
 
+wrappers_externals_zlib_c := $(wildcard unit_tests/wrappers/externals/zlib/*.c)
+wrappers_externals_zlib_o := $(wrappers_externals_zlib_c:.c=.o)
+
 wrappers_externals_cJSON_c := $(wildcard unit_tests/wrappers/externals/cJSON/*.c)
 wrappers_externals_cJSON_o := $(wrappers_externals_cJSON_c:.c=.o)
 
@@ -1099,6 +1102,7 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS:=${wrappers_common_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_bzip2_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_externals_zlib_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_cJSON_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_openssl_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_sqlite_o}
@@ -1160,7 +1164,7 @@ config/%.o: config/%.c
 
 build_shared_modules:
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && make
-	cd ${RSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SOLARIS_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && make
+	cd ${RSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${RSYNC_TEST} ${SOLARIS_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && make
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
 	cd ${SHARED_UTILS_TEST} &&  mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && make
@@ -1725,6 +1729,7 @@ install_python:
 python_dependencies := requirements.txt
 
 install_dependencies: install_python
+	${WPYTHON_DIR}/bin/pip3 install --upgrade pip --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
 	LD_LIBRARY_PATH="${PREFIX}/lib" LDFLAGS="-L${PREFIX}/lib" ${WPYTHON_DIR}/bin/pip3 install -r ../framework/${python_dependencies}  --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
 
 install_framework: install_python
@@ -2036,6 +2041,7 @@ clean-unit-tests:
 	rm -f ${wrappers_externals_o}
 	rm -f ${wrappers_externals_audit_o}
 	rm -f ${wrappers_externals_bzip2_o}
+	rm -f ${wrappers_externals_zlib_o}
 	rm -f ${wrappers_externals_cJSON_o}
 	rm -f ${wrappers_externals_openssl_o}
 	rm -f ${wrappers_externals_procpc_o}
