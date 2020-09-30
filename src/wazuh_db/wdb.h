@@ -1245,6 +1245,24 @@ wdb_t * wdb_backup(wdb_t *wdb, int version);
 int wdb_create_backup(const char * agent_id, int version);
 
 /**
+ * @brief Function to backup Global DB in case of an upgrade failure.
+ * 
+ * @param [in] wdb The global.db database to backup.
+ * @param [in] version The global.db database version to backup.
+ * @return wdb The new empty global.db database on success or NULL on error
+ */
+wdb_t * wdb_backup_global(wdb_t *wdb, int version);
+
+/**
+ * @brief Function to create the Global DB backup file.
+ * 
+ * @param [in] wdb The global.db database to backup.
+ * @param [in] version The global.db database version to backup.
+ * @return wdb OS_SUCESS on success or OS_INVALID on error.
+ */
+int wdb_create_backup_global(int version);
+
+/**
  * @brief Query the checksum of a data range
  *
  * Check that the accumulated checksum of every item between begin and
