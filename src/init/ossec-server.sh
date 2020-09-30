@@ -413,17 +413,17 @@ pstatus()
 
     ls ${DIR}/var/run/${pfile}*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
-        for k in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
-            ps -p $k > /dev/null 2>&1
+        for pid in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
+            ps -p ${pid} > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 if [ $USE_JSON = false ]; then
-                    echo "${pfile}: Process $k not used by Wazuh, removing..."
+                    echo "${pfile}: Process ${pid} not used by Wazuh, removing..."
                 fi
-                rm -f ${DIR}/var/run/${pfile}-$k.pid
+                rm -f ${DIR}/var/run/${pfile}-${pid}.pid
                 continue;
             fi
 
-            kill -0 $k > /dev/null 2>&1
+            kill -0 ${pid} > /dev/null 2>&1
             if [ $? = 0 ]; then
                 return 1;
             fi
