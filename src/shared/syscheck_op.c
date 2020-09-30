@@ -603,7 +603,7 @@ char *get_user(int uid) {
 
     os_calloc(bufsize, sizeof(char), buf);
 
-#if defined(SOLARIS) && (SUNOS_MAJOR_VERSION <= 10 || (SUNOS_MAJOR_VERSION == 11 && SUNOS_MINOR_VERSION <= 3))
+#if defined(SOLARIS) && ((SUNOS_MAJOR_VERSION <= 10) || ((SUNOS_MAJOR_VERSION == 11) && (SUNOS_MINOR_VERSION <= 3)))
     result = getpwuid_r(uid, &pwd, buf, bufsize);
 #else
     errno = getpwuid_r(uid, &pwd, buf, bufsize, &result);
