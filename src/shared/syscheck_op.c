@@ -603,7 +603,7 @@ char *get_user(int uid) {
 
     os_calloc(bufsize, sizeof(char), buf);
 
-#if defined(SUN_VERSION) && SUN_VERSION < 1104
+#if defined(SUN_VERSION) && (SUN_VERSION < 1104)
     result = getpwuid_r(uid, &pwd, buf, bufsize);
 #else
     errno = getpwuid_r(uid, &pwd, buf, bufsize, &result);
