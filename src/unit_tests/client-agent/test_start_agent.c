@@ -174,7 +174,7 @@ static void test_connect_server(void **state) {
 
     expect_any_count(__wrap__minfo, formatted_msg, 2);
 
-    connected = connect_server(0);
+    connected = connect_server(0, false);
     assert_int_equal(agt->rip_id, 0);
     assert_int_equal(agt->sock, 11);
     assert_true(connected);
@@ -194,7 +194,7 @@ static void test_connect_server(void **state) {
 
     expect_any_count(__wrap__minfo, formatted_msg, 2);
 
-    connected = connect_server(1);
+    connected = connect_server(1, false);
     assert_int_equal(agt->rip_id, 1);
     assert_int_equal(agt->sock, 12);
     assert_true(connected);
@@ -210,7 +210,7 @@ static void test_connect_server(void **state) {
 
     expect_any_count(__wrap__minfo, formatted_msg, 2);
 
-    connected = connect_server(2);
+    connected = connect_server(2, false);
     assert_int_equal(agt->rip_id, 2);
     assert_int_equal(agt->sock, 13);
     assert_true(connected);
@@ -226,13 +226,13 @@ static void test_connect_server(void **state) {
     expect_any(__wrap__minfo, formatted_msg);
     expect_any(__wrap__merror, formatted_msg);
 
-    connected = connect_server(3);
+    connected = connect_server(3, false);
     assert_false(connected);
 
     /* Connect to first server (UDP), simulate connection error*/
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OS_ConnectUDP, -1);
-    connected = connect_server(0);
+    connected = connect_server(0, false);
     assert_false(connected);
 
     return;

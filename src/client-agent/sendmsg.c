@@ -19,29 +19,26 @@ void sender_init() {
     w_mutex_init(&send_mutex, NULL);
 }
 
-/* Send a message to the server */
-int send_msg(const char *msg, ssize_t msg_length)
+/**
+ * @brief Send a message to destination server using TCP or UDP protocol.
+ * @param msg Payload to sent
+ * @param msg_size Payload size
+ * @retval true on message sent
+ * @retval false on message not sent
+ * */
+int send_message(const char *msg, ssize_t msg_size)
 {
-    ssize_t msg_size;
-    char crypt_msg[OS_MAXSTR + 1];
     int retval;
     int error;
 
-    msg_size = CreateSecMSG(&keys, msg, msg_length < 0 ? strlen(msg) : (size_t)msg_length, crypt_msg, 0);
-    if (msg_size <= 0) {
-        merror(SEC_ERROR);
-        return (-1);
-    }
-
-    /* Send msg_size of crypt_msg */
     if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
-        retval = OS_SendUDPbySize(agt->sock, msg_size, crypt_msg);
+        retval = OS_SendUDPbySize(agt->sock, msg_size, msg);
 #ifndef WIN32
         error = errno;
 #endif
     } else {
         w_mutex_lock(&send_mutex);
-        retval = OS_SendSecureTCP(agt->sock, msg_size, crypt_msg);
+        retval = OS_SendSecureTCP(agt->sock, msg_size, msg);
 #ifndef WIN32
         error = errno;
 #endif
@@ -70,6 +67,28 @@ int send_msg(const char *msg, ssize_t msg_length)
 #endif
         sleep(1);
     }
+    return retval;
+}
 
+/**
+ * @brief Create an encrypted message and send the message to destination server.
+ * @param msg Message
+ * @param msg_size Message length
+ * @retval true on message sent
+ * @retval false on message not sent
+ * */
+int send_msg(const char *msg, ssize_t msg_length)
+{
+    ssize_t msg_size;
+    char crypt_msg[OS_MAXSTR + 1];
+    int retval;
+
+    msg_size = CreateSecMSG(&keys, msg, msg_length < 0 ? strlen(msg) : (size_t)msg_length, crypt_msg, 0);
+    if (msg_size <= 0) {
+        merror(SEC_ERROR);
+        return (-1);
+    }
+
+    retval = send_message(crypt_msg, msg_size);
     return retval;
 }
