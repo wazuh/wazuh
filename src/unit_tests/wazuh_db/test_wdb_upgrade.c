@@ -231,7 +231,7 @@ void test_wdb_create_backup_global_src_fopen_fail(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_create_backup_fwrite_fail(void **state)
+void test_wdb_create_backup_global_fwrite_fail(void **state)
 {   
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;    
@@ -255,7 +255,7 @@ void test_wdb_create_backup_fwrite_fail(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_create_backup_fclose_fail(void **state)
+void test_wdb_create_backup_global_fclose_fail(void **state)
 {   
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;    
@@ -278,7 +278,7 @@ void test_wdb_create_backup_fclose_fail(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_create_backup_chmod_fail(void **state)
+void test_wdb_create_backup_global_chmod_fail(void **state)
 {   
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;    
@@ -303,8 +303,112 @@ void test_wdb_create_backup_chmod_fail(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
+void test_wdb_backup_global_success(void **state)
+{   
+    wdb_t *ret = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;    
+    
+    will_return(__wrap_wdb_close, 0);
+
+    expect_any_always(__wrap_fopen, path);
+    expect_any_always(__wrap_fopen, mode);
+    will_return(__wrap_fopen, 1);
+    will_return(__wrap_fopen, 1);
+    will_return(__wrap_fread, "");
+    will_return(__wrap_fread, 0);
+    expect_any_always(__wrap_fclose, _File);
+    will_return(__wrap_fclose, 0);
+    will_return(__wrap_fclose, 0);
+    expect_any_always(__wrap_chmod, path);
+    will_return(__wrap_chmod, 0);
+    expect_string(__wrap__mwarn, formatted_msg, "Creating Global DB backup and creating empty DB");
+    expect_string(__wrap_unlink, file, "queue/db/global.db");    
+    will_return(__wrap_unlink, 0);
+    expect_string(__wrap_wdb_create_global, path, "queue/db/global.db");    
+    will_return(__wrap_wdb_create_global, OS_SUCCESS);
+    expect_string(__wrap_sqlite3_open_v2, filename, "queue/db/global.db");
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+    expect_string(__wrap_wdb_init, id, "global");
+    will_return(__wrap_wdb_init, (wdb_t*)1);
+    expect_value(__wrap_wdb_pool_append, wdb, (wdb_t*)1);
+    
+    ret = wdb_backup_global(data->socket, 1);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_wdb_backup_global_close_fail(void **state)
+{   
+    wdb_t *ret = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;    
+    
+    will_return(__wrap_wdb_close, -1);
+    expect_string(__wrap__merror, formatted_msg, "Couldn't create SQLite Global backup database.");    
+    
+    ret = wdb_backup_global(data->socket,1);
+
+    assert_int_equal(ret, NULL);
+}
+
+void test_wdb_backup_global_create_fail(void **state)
+{   
+    wdb_t *ret = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;    
+    
+    will_return(__wrap_wdb_close, 0);
+    expect_any_always(__wrap_fopen, path);
+    expect_any_always(__wrap_fopen, mode);
+    will_return(__wrap_fopen, 0);
+    expect_string(__wrap__merror, formatted_msg, "Couldn't open source 'queue/db/global.db': Success (0)");
+    
+    ret = wdb_backup_global(data->socket, 1);
+
+    assert_int_equal(ret, NULL);
+}
+
+void test_wdb_backup_global_qlite3_open_v2_fail(void **state)
+{   
+    wdb_t *ret = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;    
+    
+    will_return(__wrap_wdb_close, 0);
+
+    expect_any_always(__wrap_fopen, path);
+    expect_any_always(__wrap_fopen, mode);
+    will_return(__wrap_fopen, 1);
+    will_return(__wrap_fopen, 1);
+    will_return(__wrap_fread, "");
+    will_return(__wrap_fread, 0);
+    expect_any_always(__wrap_fclose, _File);
+    will_return(__wrap_fclose, 0);
+    will_return(__wrap_fclose, 0);
+    expect_any_always(__wrap_chmod, path);
+    will_return(__wrap_chmod, 0);
+    expect_string(__wrap__mwarn, formatted_msg, "Creating Global DB backup and creating empty DB");
+    expect_string(__wrap_unlink, file, "queue/db/global.db");    
+    will_return(__wrap_unlink, 0);
+    expect_string(__wrap_wdb_create_global, path, "queue/db/global.db");    
+    will_return(__wrap_wdb_create_global, OS_SUCCESS);
+    expect_string(__wrap_sqlite3_open_v2, filename, "queue/db/global.db");
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, NULL);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Can't open SQLite backup database 'queue/db/global.db': ERROR MESSAGE");
+    will_return(__wrap_sqlite3_close_v2,0);   
+    
+    ret = wdb_backup_global(data->socket, 1);
+
+    assert_int_equal(ret, NULL);
+}
+
 int main()
 {
+
+    bool block = true;
+    //while (block){;}
     const struct CMUnitTest tests[] = 
     {
         cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_table_fail, setup_wdb, teardown_wdb),
@@ -315,9 +419,13 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_create_backup_global_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_create_backup_global_dst_fopen_fail, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_create_backup_global_src_fopen_fail, setup_wdb, teardown_wdb),
-        cmocka_unit_test_setup_teardown(test_wdb_create_backup_fwrite_fail, setup_wdb, teardown_wdb),
-        cmocka_unit_test_setup_teardown(test_wdb_create_backup_fclose_fail, setup_wdb, teardown_wdb),
-        cmocka_unit_test_setup_teardown(test_wdb_create_backup_chmod_fail, setup_wdb, teardown_wdb)
+        cmocka_unit_test_setup_teardown(test_wdb_create_backup_global_fwrite_fail, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_create_backup_global_fclose_fail, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_create_backup_global_chmod_fail, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_backup_global_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_backup_global_close_fail, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_backup_global_create_fail, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_backup_global_qlite3_open_v2_fail, setup_wdb, teardown_wdb),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
