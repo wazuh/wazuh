@@ -358,7 +358,12 @@ STATIC int wm_agent_upgrade_send_open(int agent_id, const char *wpk_file) {
 
     os_calloc(OS_MAXSTR, sizeof(char), command);
 
-    snprintf(command, OS_MAXSTR, "%.3d com open wb %s", agent_id, wpk_file);
+    cJSON *command_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(command_info, "command", "open");
+    cJSON_AddStringToObject(command_info, "mode", "wb");
+    cJSON_AddStringToObject(command_info, "file", wpk_file);
+    snprintf(command, OS_MAXSTR, "%.3d agent-upgrade %s", agent_id, cJSON_Print(command_info));
+    cJSON_Delete(command_info);
 
     for (open_retries = 0; open_retries < WM_UPGRADE_WPK_OPEN_ATTEMPTS; ++open_retries) {
         os_free(response);
@@ -378,23 +383,24 @@ STATIC int wm_agent_upgrade_send_write(int agent_id, const char *wpk_file, const
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;
-    unsigned char buffer[chunk_size];
+    char buffer[chunk_size];
     size_t bytes = 0;
-    size_t command_size = 0;
-    size_t byte = 0;
 
     os_calloc(OS_MAXSTR, sizeof(char), command);
 
     FILE *file = fopen(file_path, "rb");
     if (file) {
         while (bytes = fread(buffer, 1, sizeof(buffer), file), bytes) {
-            snprintf(command, OS_MAXSTR, "%.3d com write %ld %s ", agent_id, bytes, wpk_file);
-            command_size = strlen(command);
-            for (byte = 0; byte < bytes; ++byte) {
-                sprintf(&command[command_size++], "%c", buffer[byte]);
-            }
-            os_free(response);
-            response = wm_agent_upgrade_send_command_to_agent(command, command_size);
+
+            cJSON *command_info = cJSON_CreateObject();
+            cJSON_AddStringToObject(command_info, "command", "write");
+            cJSON_AddRawToObject(command_info, "buffer", buffer);
+            cJSON_AddNumberToObject(command_info, "length", bytes);
+            cJSON_AddStringToObject(command_info, "file", wpk_file);
+            snprintf(command, OS_MAXSTR, "%.3d agent-upgrade %s", agent_id, cJSON_Print(command_info));
+            cJSON_Delete(command_info);
+
+            response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
             if (result = wm_agent_upgrade_parse_agent_response(response, NULL), result) {
                 break;
             }
@@ -415,7 +421,11 @@ STATIC int wm_agent_upgrade_send_close(int agent_id, const char *wpk_file) {
 
     os_calloc(OS_MAXSTR, sizeof(char), command);
 
-    snprintf(command, OS_MAXSTR, "%.3d com close %s", agent_id, wpk_file);
+    cJSON *command_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(command_info, "command", "close");
+    cJSON_AddStringToObject(command_info, "file", wpk_file);
+    snprintf(command, OS_MAXSTR, "%.3d agent-upgrade %s", agent_id, cJSON_Print(command_info));
+    cJSON_Delete(command_info);
 
     response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
 
@@ -435,8 +445,12 @@ STATIC int wm_agent_upgrade_send_sha1(int agent_id, const char *wpk_file, const 
 
     os_calloc(OS_MAXSTR, sizeof(char), command);
 
-    snprintf(command, OS_MAXSTR, "%.3d com sha1 %s", agent_id, wpk_file);
-
+    cJSON *command_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(command_info, "command", "sha1");
+    cJSON_AddStringToObject(command_info, "file", wpk_file);
+    snprintf(command, OS_MAXSTR, "%.3d agent-upgrade %s", agent_id, cJSON_Print(command_info));
+    cJSON_Delete(command_info);
+    
     response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
 
     if (result = wm_agent_upgrade_parse_agent_response(response, &data), !result) {
@@ -460,7 +474,12 @@ STATIC int wm_agent_upgrade_send_upgrade(int agent_id, const char *wpk_file, con
 
     os_calloc(OS_MAXSTR, sizeof(char), command);
 
-    snprintf(command, OS_MAXSTR, "%.3d com upgrade %s %s", agent_id, wpk_file, installer);
+    cJSON *command_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(command_info, "command", "upgrade");
+    cJSON_AddStringToObject(command_info, "file", wpk_file);
+    cJSON_AddStringToObject(command_info, "installer", installer);
+    snprintf(command, OS_MAXSTR, "%.3d agent-upgrade %s", agent_id, cJSON_Print(command_info));
+    cJSON_Delete(command_info);
 
     response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
     if (result = wm_agent_upgrade_parse_agent_response(response, &data), !result) {
