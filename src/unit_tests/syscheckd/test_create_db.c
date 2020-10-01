@@ -1698,6 +1698,7 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     strcpy(fim_data->local_data->checksum, "");
 
     expect_string(__wrap_lstat, filename, path);
+    will_return(__wrap_lstat, S_IFREG);
     will_return(__wrap_lstat, -1);
     errno = ENOENT;
 
@@ -1814,6 +1815,7 @@ static void test_fim_checker_fim_regular_warning(void **state) {
     fim_data->item->statbuf.st_size = 1500;
 
     fim_data->item->index = 3;
+    expect_string(__wrap_lstat, filename, path);
     will_return(__wrap_lstat, S_IFREG);
     will_return(__wrap_lstat, 0);
 
@@ -1878,6 +1880,7 @@ static void test_fim_checker_fim_regular_restrict(void **state) {
     fim_data->item->mode = FIM_REALTIME;
 
     expect_string(__wrap_lstat, filename, path);
+    will_return(__wrap_lstat, S_IFREG);
     will_return(__wrap_lstat, 0);
     expect_string(__wrap_HasFilesystem, path, path);
     will_return(__wrap_HasFilesystem, 0);
@@ -1898,9 +1901,9 @@ static void test_fim_checker_fim_directory(void **state) {
     fim_data->item->mode = FIM_REALTIME;
 
     expect_string(__wrap_lstat, filename, "/media/");
-    expect_string(__wrap_lstat, filename, "/media/test");
     will_return(__wrap_lstat, S_IFDIR);
     will_return(__wrap_lstat, 0);
+    expect_string(__wrap_lstat, filename, "/media/test");
     will_return(__wrap_lstat, S_IFDIR);
     will_return(__wrap_lstat, 0);
 
@@ -1937,23 +1940,26 @@ static void test_fim_checker_fim_directory_on_max_recursion_level(void **state) 
 
     syscheck.recursion_level[3] = 0;
 
+    expect_string(__wrap_lstat, filename, "/media");
     will_return(__wrap_lstat, S_IFDIR);
     will_return(__wrap_lstat, 0);
-
-    expect_string(__wrap_lstat, filename, "/media");
-    will_return(__wrap_lstat, 0);
-
     expect_string(__wrap_HasFilesystem, path, "/media");
-    expect_string(__wrap_HasFilesystem, path, "/media/test");
+    will_return(__wrap_HasFilesystem, 0);
 
     expect_string(__wrap_realtime_adddir, dir, "/media");
     expect_value(__wrap_realtime_adddir, whodata, 0);
     will_return(__wrap_realtime_adddir, 0);
 
+    will_return(__wrap_opendir, 1);
     strcpy(fim_data->entry->d_name, "test");
-
-    will_return_always(__wrap_opendir, 1);
     will_return(__wrap_readdir, fim_data->entry);
+
+    expect_string(__wrap_lstat, filename, "/media/test");
+    will_return(__wrap_lstat, S_IFDIR);
+    will_return(__wrap_lstat, 0);
+    expect_string(__wrap_HasFilesystem, path, "/media/test");
+    will_return(__wrap_HasFilesystem, 0);
+
     will_return(__wrap_readdir, NULL);
 
     expect_string(__wrap__mdebug2, formatted_msg,
@@ -2040,27 +2046,25 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
 
-    // In fim_checker
-    expect_any_count(__wrap_lstat, filename, 8);
-    will_return_count(__wrap_lstat, 0, 8);
-
     int it = 0;
 
+    // First scan
     while (syscheck.dir[it]) {
+        expect_string(__wrap_lstat, filename, syscheck.dir[it]);
+        will_return(__wrap_lstat, S_IFDIR);
+        will_return(__wrap_lstat, 0);
         expect_string(__wrap_HasFilesystem, path, syscheck.dir[it]);
+        will_return(__wrap_HasFilesystem, 0);
+        if (it == 0 || it == 2 || it == 3){
+            expect_string_count(__wrap_realtime_adddir, dir, syscheck.dir[it], 2);
+            expect_value_count(__wrap_realtime_adddir, whodata, 0, 2);
+            will_return_count(__wrap_realtime_adddir, 0, 2);
+        }
+        will_return(__wrap_opendir, 1);
+        will_return(__wrap_readdir, NULL);
+
         it++;
     }
-
-    will_return_count(__wrap_HasFilesystem, 0, 8);
-    expect_string(__wrap_realtime_adddir, dir, "/boot");
-    expect_value(__wrap_realtime_adddir, whodata, 0);
-    will_return(__wrap_realtime_adddir, 0);
-    expect_string(__wrap_realtime_adddir, dir, "/home");
-    expect_value(__wrap_realtime_adddir, whodata, 0);
-    will_return(__wrap_realtime_adddir, 0);
-    expect_string(__wrap_realtime_adddir, dir, "/media");
-    expect_value(__wrap_realtime_adddir, whodata, 0);
-    will_return(__wrap_realtime_adddir, 0);
 
     will_return(__wrap_fim_db_get_count_entry_path, 50000);
 
@@ -2070,21 +2074,24 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     will_return(__wrap_fim_db_get_not_scanned, NULL);
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
 
-    // second scan
+    // Second scan
+    expect_string(__wrap_lstat, filename, "/boot");
     will_return(__wrap_lstat, S_IFDIR);
     will_return(__wrap_lstat, 0);
-
     expect_string(__wrap_HasFilesystem, path, "/boot");
+    will_return(__wrap_HasFilesystem, 0);
     expect_string(__wrap_realtime_adddir, dir, "/boot");
     expect_value(__wrap_realtime_adddir, whodata, 0);
     will_return(__wrap_realtime_adddir, 0);
-    // fim_directory
     will_return(__wrap_opendir, 1);
     will_return(__wrap_readdir, file);
-    // fim_checker
+
+    expect_string(__wrap_lstat, filename, "/boot/test_file");
     will_return(__wrap_lstat, S_IFREG);
     will_return(__wrap_lstat, 0);
     expect_string(__wrap_HasFilesystem, path, "/boot/test_file");
+    will_return(__wrap_HasFilesystem, 0);
+
     // fim_file
     {
         // fim_get_data
@@ -2158,18 +2165,19 @@ static void test_fim_scan_no_realtime(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
 
-    // In fim_checker
-    expect_any_count(__wrap_lstat, filename, 12);
-    will_return_count(__wrap_lstat, 0, 12);
-
     it = 0;
-
+    // First scan
     while (syscheck.dir[it]) {
+        expect_string(__wrap_lstat, filename, syscheck.dir[it]);
+        will_return(__wrap_lstat, S_IFDIR);
+        will_return(__wrap_lstat, 0);
         expect_string(__wrap_HasFilesystem, path, syscheck.dir[it]);
+        will_return(__wrap_HasFilesystem, 0);
+        will_return(__wrap_opendir, 1);
+        will_return(__wrap_readdir, NULL);
+
         it++;
     }
-
-    will_return_count(__wrap_HasFilesystem, 0, 6);
 
     will_return(__wrap_fim_db_get_count_entry_path, 50000);
 
@@ -2211,29 +2219,28 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
 
-    // In fim_checker
-    expect_any_count(__wrap_lstat, filename, 12);
-    will_return_count(__wrap_lstat, 0, 12);
+    int it = 0;
 
-    expect_string(__wrap_HasFilesystem, path, "/boot");
-    expect_string(__wrap_HasFilesystem, path, "/etc");
-    expect_string(__wrap_HasFilesystem, path, "/home");
-    expect_string(__wrap_HasFilesystem, path, "/media");
-    expect_string(__wrap_HasFilesystem, path, "/usr/bin");
-    expect_string(__wrap_HasFilesystem, path, "/usr/sbin");
-    will_return_count(__wrap_HasFilesystem, 0, 6);
+    // First scan
+    while (syscheck.dir[it]) {
+        expect_string(__wrap_lstat, filename, syscheck.dir[it]);
+        will_return(__wrap_lstat, S_IFDIR);
+        will_return(__wrap_lstat, 0);
+        expect_string(__wrap_HasFilesystem, path, syscheck.dir[it]);
+        will_return(__wrap_HasFilesystem, 0);
+        if (it == 0 || it == 2 || it == 3){
+            expect_string_count(__wrap_realtime_adddir, dir, syscheck.dir[it], 2);
+            expect_value_count(__wrap_realtime_adddir, whodata, 0, 2);
+            will_return_count(__wrap_realtime_adddir, 0, 2);
+        }
+        will_return(__wrap_opendir, 1);
+        will_return(__wrap_readdir, NULL);
 
-    expect_string(__wrap_realtime_adddir, dir, "/boot");
-    expect_value(__wrap_realtime_adddir, whodata, 0);
-    will_return(__wrap_realtime_adddir, 0);
-    expect_string(__wrap_realtime_adddir, dir, "/home");
-    expect_value(__wrap_realtime_adddir, whodata, 0);
-    will_return(__wrap_realtime_adddir, 0);
-    expect_string(__wrap_realtime_adddir, dir, "/media");
-    expect_value(__wrap_realtime_adddir, whodata, 0);
-    will_return(__wrap_realtime_adddir, 0);
+        it++;
+    }
 
     will_return(__wrap_fim_db_get_count_entry_path, 50000);
+
     // check_deleted_files
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
@@ -2283,26 +2290,21 @@ static void test_fim_scan_realtime_enabled(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
 
-    // In fim_checker
-    expect_any_count(__wrap_lstat, filename, 12);
-    will_return_count(__wrap_lstat, 0, 12);
-
     it = 0;
 
+    // First scan
     while (syscheck.dir[it]) {
+        expect_string(__wrap_lstat, filename, syscheck.dir[it]);
+        will_return(__wrap_lstat, S_IFDIR);
+        will_return(__wrap_lstat, 0);
         expect_string(__wrap_HasFilesystem, path, syscheck.dir[it]);
-        it++;
-    }
+        will_return(__wrap_HasFilesystem, 0);
+        expect_string_count(__wrap_realtime_adddir, dir, syscheck.dir[it], 2);
+        expect_value_count(__wrap_realtime_adddir, whodata, 0, 2);
+        will_return_count(__wrap_realtime_adddir, 0, 2);
+        will_return(__wrap_opendir, 1);
+        will_return(__wrap_readdir, NULL);
 
-    will_return_count(__wrap_HasFilesystem, 0, 6);
-
-    // fim_scan
-    it = 0;
-
-    while (syscheck.dir[it]) {
-        expect_string(__wrap_realtime_adddir, dir, syscheck.dir[it]);
-        expect_value(__wrap_realtime_adddir, whodata, 0);
-        will_return(__wrap_realtime_adddir, 0);
         it++;
     }
 
@@ -2346,53 +2348,33 @@ static void test_fim_scan_db_free(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
 
-    // In fim_checker
-    expect_any_count(__wrap_lstat, filename, 12);
-    will_return_count(__wrap_lstat, 0, 12);
+    int it = 0;
 
-    expect_string(__wrap_HasFilesystem, path, "/boot");
-    expect_string(__wrap_HasFilesystem, path, "/etc");
-    expect_string(__wrap_HasFilesystem, path, "/home");
-    expect_string(__wrap_HasFilesystem, path, "/media");
-    expect_string(__wrap_HasFilesystem, path, "/usr/bin");
-    expect_string(__wrap_HasFilesystem, path, "/usr/sbin");
-    will_return_count(__wrap_HasFilesystem, 0, 6);
+    // First scan
+    while (syscheck.dir[it]) {
+        expect_string(__wrap_lstat, filename, syscheck.dir[it]);
+        will_return(__wrap_lstat, S_IFDIR);
+        will_return(__wrap_lstat, 0);
+        expect_string(__wrap_HasFilesystem, path, syscheck.dir[it]);
+        will_return(__wrap_HasFilesystem, 0);
+        if (it == 0 || it == 2 || it == 3){
+            expect_string_count(__wrap_realtime_adddir, dir, syscheck.dir[it], 2);
+            expect_value_count(__wrap_realtime_adddir, whodata, 0, 2);
+            will_return_count(__wrap_realtime_adddir, 0, 2);
+        }
+        will_return(__wrap_opendir, 1);
+        will_return(__wrap_readdir, NULL);
 
-    expect_string(__wrap_realtime_adddir, dir, "/boot");
-    expect_value(__wrap_realtime_adddir, whodata, 0);
-    will_return(__wrap_realtime_adddir, 0);
-    expect_string(__wrap_realtime_adddir, dir, "/home");
-    expect_value(__wrap_realtime_adddir, whodata, 0);
-    will_return(__wrap_realtime_adddir, 0);
-    expect_string(__wrap_realtime_adddir, dir, "/media");
-    expect_value(__wrap_realtime_adddir, whodata, 0);
-    will_return(__wrap_realtime_adddir, 0);
+        it++;
+    }
+
+    will_return(__wrap_fim_db_get_count_entry_path, 1000);
 
     // check_deleted_files
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_not_scanned, NULL);
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
-
-    // fim_scan
-    will_return(__wrap_fim_db_get_count_entry_path, 1000);
-
-    expect_any_count(__wrap_lstat, filename, 6);
-    will_return_count(__wrap_lstat, 0, 6);
-    will_return_count(__wrap_lstat, 0, 6);
-
-    expect_string(__wrap_HasFilesystem, path, "/boot");
-    expect_string(__wrap_HasFilesystem, path, "/etc");
-    expect_string(__wrap_HasFilesystem, path, "/home");
-    expect_string(__wrap_HasFilesystem, path, "/media");
-    expect_string(__wrap_HasFilesystem, path, "/usr/bin");
-    expect_string(__wrap_HasFilesystem, path, "/usr/sbin");
-    will_return_count(__wrap_HasFilesystem, 0, 6);
-
-    will_return_count(__wrap_fim_db_get_count_entry_path, 1000, 6);
-
-    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_set_all_unscanned, 0);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
 
@@ -2424,34 +2406,33 @@ static void test_fim_scan_no_limit(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of '/var/ossec/queue/diff' folder: 0.00000 KB.");
 
-    // In fim_checker
-    expect_any_count(__wrap_lstat, filename, 12);
-    will_return_count(__wrap_lstat, 0, 12);
+    int it = 0;
 
-    expect_string(__wrap_HasFilesystem, path, "/boot");
-    expect_string(__wrap_HasFilesystem, path, "/etc");
-    expect_string(__wrap_HasFilesystem, path, "/home");
-    expect_string(__wrap_HasFilesystem, path, "/media");
-    expect_string(__wrap_HasFilesystem, path, "/usr/bin");
-    expect_string(__wrap_HasFilesystem, path, "/usr/sbin");
-    will_return_count(__wrap_HasFilesystem, 0, 6);
+    // First scan
+    while (syscheck.dir[it]) {
+        expect_string(__wrap_lstat, filename, syscheck.dir[it]);
+        will_return(__wrap_lstat, S_IFDIR);
+        will_return(__wrap_lstat, 0);
+        expect_string(__wrap_HasFilesystem, path, syscheck.dir[it]);
+        will_return(__wrap_HasFilesystem, 0);
+        if (it == 0 || it == 2 || it == 3){
+            expect_string_count(__wrap_realtime_adddir, dir, syscheck.dir[it], 2);
+            expect_value_count(__wrap_realtime_adddir, whodata, 0, 2);
+            will_return_count(__wrap_realtime_adddir, 0, 2);
+        }
+        will_return(__wrap_opendir, 1);
+        will_return(__wrap_readdir, NULL);
 
-    expect_string(__wrap_realtime_adddir, dir, "/boot");
-    expect_value(__wrap_realtime_adddir, whodata, 0);
-    will_return(__wrap_realtime_adddir, 0);
-    expect_string(__wrap_realtime_adddir, dir, "/home");
-    expect_value(__wrap_realtime_adddir, whodata, 0);
-    will_return(__wrap_realtime_adddir, 0);
-    expect_string(__wrap_realtime_adddir, dir, "/media");
-    expect_value(__wrap_realtime_adddir, whodata, 0);
-    will_return(__wrap_realtime_adddir, 0);
+        it++;
+    }
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6343): No limit set to maximum number of files to be monitored");
-
+    // check_deleted_files
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_not_scanned, NULL);
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6343): No limit set to maximum number of files to be monitored");
 
     // In fim_scan
     expect_function_call(__wrap_count_watches);
@@ -4017,24 +3998,16 @@ static void test_check_deleted_files(void **state) {
     file->elements = 1;
 #ifdef TEST_WINAGENT
     expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 #endif
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_not_scanned, file);
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
+
     expect_value(__wrap_fim_db_delete_not_scanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_delete_not_scanned, FIMDB_OK);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
-    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_set_all_unscanned, 0);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
+
     check_deleted_files();
 
     free(file);
@@ -4043,24 +4016,14 @@ static void test_check_deleted_files(void **state) {
 static void test_check_deleted_files_error(void **state) {
 #ifdef TEST_WINAGENT
     expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 #endif
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_not_scanned, NULL);
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_ERR);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
-    expect_string(__wrap__merror, formatted_msg, FIM_DB_ERROR_RM_NOT_SCANNED);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
-    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_set_all_unscanned, 0);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
+    expect_string(__wrap__merror, formatted_msg, FIM_DB_ERROR_RM_NOT_SCANNED);
 
     check_deleted_files();
 }
@@ -4616,8 +4579,8 @@ int main(void) {
         cmocka_unit_test(test_fim_check_db_state_90_percentage_to_80_percentage),
         cmocka_unit_test(test_fim_check_db_state_80_percentage_to_normal),
 #ifndef TEST_WINAGENT
-        cmocka_unit_test_teardown(test_fim_scan_no_realtime, teardown_fim_scan_realtime),
-        cmocka_unit_test_teardown(test_fim_scan_realtime_enabled, teardown_fim_scan_realtime),
+        cmocka_unit_test_setup_teardown(test_fim_scan_no_realtime, setup_fim_scan_realtime, teardown_fim_scan_realtime),
+        cmocka_unit_test_setup_teardown(test_fim_scan_realtime_enabled, setup_fim_scan_realtime, teardown_fim_scan_realtime),
 #endif
 
         /* fim_checker */
