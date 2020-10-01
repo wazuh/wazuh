@@ -38,6 +38,8 @@ All notable changes to this project will be documented in this file.
 - Changed multiple Wazuh API endpoints ([#2640](https://github.com/wazuh/wazuh/pull/2640)) ([#2413](https://github.com/wazuh/wazuh-documentation/issues/2413))
 - Refactored framework module in SDK and core ([#5263](https://github.com/wazuh/wazuh/issues/5263))
 - FIM Windows events handling refactored. ([#5144](https://github.com/wazuh/wazuh/pull/5144))
+- Changed framework to access global.db using wazuh-db ([#6095](https://github.com/wazuh/wazuh/pull/6095))
+- Changed agent-info synchronization task in Wazuh cluster. ([#5585](https://github.com/wazuh/wazuh/issues/5585))
 
 ### Fixed
 

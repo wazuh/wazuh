@@ -210,18 +210,52 @@ char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, const 
 
 STATIC int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task, const wm_manager_configs* manager_configs) {
     int validate_result = WM_UPGRADE_SUCCESS;
+    cJSON *agent_info = NULL;
+    cJSON *value = NULL;
 
     // Agent information
     agent_task->agent_info = wm_agent_upgrade_init_agent_info();
     agent_task->agent_info->agent_id = agent_id;
 
-    if (!wdb_agent_info(agent_id,
-                        &agent_task->agent_info->platform,
-                        &agent_task->agent_info->major_version,
-                        &agent_task->agent_info->minor_version,
-                        &agent_task->agent_info->architecture,
-                        &agent_task->agent_info->wazuh_version,
-                        &agent_task->agent_info->last_keep_alive)) {
+    agent_info = wdb_get_agent_info(agent_id);
+
+    if (agent_info && agent_info->child) {
+
+        // Platform
+        value = cJSON_GetObjectItem(agent_info->child, "os_platform");
+        if(cJSON_IsString(value) && value->valuestring != NULL){
+            os_strdup(value->valuestring, agent_task->agent_info->platform);
+        }
+
+        // Major version
+        value = cJSON_GetObjectItem(agent_info->child, "os_major");
+        if(cJSON_IsString(value) && value->valuestring != NULL){
+            os_strdup(value->valuestring, agent_task->agent_info->major_version);
+        }
+
+        // Minor version
+        value = cJSON_GetObjectItem(agent_info->child, "os_minor");
+        if(cJSON_IsString(value) && value->valuestring != NULL){
+            os_strdup(value->valuestring, agent_task->agent_info->minor_version);
+        }
+
+        // Architecture
+        value = cJSON_GetObjectItem(agent_info->child, "os_arch");
+        if(cJSON_IsString(value) && value->valuestring != NULL){
+            os_strdup(value->valuestring, agent_task->agent_info->architecture);
+        }
+
+        // Wazuh version
+        value = cJSON_GetObjectItem(agent_info->child, "version");
+        if(cJSON_IsString(value) && value->valuestring != NULL){
+            os_strdup(value->valuestring, agent_task->agent_info->wazuh_version);
+        }
+
+        // Last keep alive
+        value = cJSON_GetObjectItem(agent_info->child, "last_keepalive");
+        if(cJSON_IsNumber(value)){
+            agent_task->agent_info->last_keep_alive = value->valueint;
+        }
 
         // Validate agent and task information
         validate_result = wm_agent_upgrade_validate_agent_task(agent_task, manager_configs);
@@ -236,6 +270,9 @@ STATIC int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_tas
                 validate_result = WM_UPGRADE_UNKNOWN_ERROR;
             }
         }
+
+        cJSON_Delete(agent_info);
+
     } else {
         validate_result = WM_UPGRADE_GLOBAL_DB_FAILURE;
     }

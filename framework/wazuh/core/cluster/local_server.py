@@ -32,7 +32,7 @@ class LocalServerHandler(server.AbstractServerHandler):
         self.tag = "Local " + self.name
         # modify filter tags with context vars
         context_tag.set(self.tag)
-        self.logger.info('Connection received in local server.')
+        self.logger.debug('Connection received in local server.')
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
         """
@@ -254,6 +254,11 @@ class LocalServerHandlerWorker(LocalServerHandler):
                 raise WazuhClusterError(3023)
             asyncio.create_task(self.server.node.client.send_request(b'sendsync', self.name.encode() + b' ' + data))
             return None, None
+        elif command == b'sendasync':
+            if self.server.node.client is None:
+                raise WazuhClusterError(3023)
+            asyncio.create_task(self.server.node.client.send_request(b'sendsync', self.name.encode() + b' ' + data))
+            return b'ok', b'Added request to sendsync requests queue'
         else:
             return super().process_request(command, data)
 
