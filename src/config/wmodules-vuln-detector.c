@@ -551,6 +551,11 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
                         updates[os_index]->timeout);
             flags->update = 1;
 
+            if (updates[os_index]->path || updates[os_index]->url) {
+                // The feed is fetched from a custom location
+                updates[os_index]->custom_location = 1;
+            }
+
             if (updates[os_index]->path && updates[os_index]->url) {
                 os_free(updates[os_index]->url);
             }
@@ -603,6 +608,11 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
             updates[os_index]->update_from_year,
             updates[os_index]->timeout);
         flags->update = 1;
+
+        if (updates[os_index]->multi_path || updates[os_index]->multi_url) {
+                // The feed is fetched from a custom location
+                updates[os_index]->custom_location = 1;
+            }
 
         if (updates[os_index]->multi_path && updates[os_index]->multi_url) {
             os_free(updates[os_index]->multi_url);
