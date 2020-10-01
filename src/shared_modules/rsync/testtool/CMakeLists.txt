@@ -30,7 +30,6 @@ else()
 	target_link_libraries(rsync_test_tool
 	    rsync
 	    dbsync
-	    pthread
 	    dl
 	)
 
