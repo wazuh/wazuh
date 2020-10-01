@@ -14,17 +14,17 @@
 extern void __real_cJSON_Delete(cJSON *item);
 
 typedef struct test_struct {
-    wdb_t *socket;
+    wdb_t *wdb;
     char *output;
 } test_struct_t;
 
 static int test_setup(void **state) {
     test_struct_t *init_data = NULL;
     os_calloc(1,sizeof(test_struct_t),init_data);
-    os_calloc(1,sizeof(wdb_t),init_data->socket);
-    os_strdup("000",init_data->socket->id);
+    os_calloc(1,sizeof(wdb_t),init_data->wdb);
+    os_strdup("000",init_data->wdb->id);
     os_calloc(256,sizeof(char),init_data->output);
-    os_calloc(1,sizeof(sqlite3 *),init_data->socket->db);
+    os_calloc(1,sizeof(sqlite3 *),init_data->wdb->db);
     *state = init_data;
     return 0;
 }
@@ -32,9 +32,9 @@ static int test_setup(void **state) {
 static int test_teardown(void **state){
     test_struct_t *data  = (test_struct_t *)*state;
     os_free(data->output);
-    os_free(data->socket->id);
-    os_free(data->socket->db);
-    os_free(data->socket);
+    os_free(data->wdb->id);
+    os_free(data->wdb->db);
+    os_free(data->wdb);
     os_free(data);
     return 0;
 }
@@ -47,7 +47,7 @@ void test_wdb_global_get_agent_labels_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    output = wdb_global_get_agent_labels(data->socket, atoi(data->socket->id));
+    output = wdb_global_get_agent_labels(data->wdb, atoi(data->wdb->id));
     assert_null(output);
 }
 
@@ -60,7 +60,7 @@ void test_wdb_global_get_agent_labels_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    output = wdb_global_get_agent_labels(data->socket, atoi(data->socket->id));
+    output = wdb_global_get_agent_labels(data->wdb, atoi(data->wdb->id));
     assert_null(output);
 }
 
@@ -72,13 +72,13 @@ void test_wdb_global_get_agent_labels_bind_fail(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
    
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
 
-    output = wdb_global_get_agent_labels(data->socket, atoi(data->socket->id));
+    output = wdb_global_get_agent_labels(data->wdb, atoi(data->wdb->id));
     assert_null(output);
 }
 
@@ -96,7 +96,7 @@ void test_wdb_global_get_agent_labels_exec_fail(void **state)
     will_return(__wrap_wdb_exec_stmt, NULL);
     expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
 
-    output = wdb_global_get_agent_labels(data->socket, atoi(data->socket->id));
+    output = wdb_global_get_agent_labels(data->wdb, atoi(data->wdb->id));
     assert_null(output);
 }
 
@@ -112,7 +112,7 @@ void test_wdb_global_get_agent_labels_success(void **state)
     will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, (cJSON*)1);
 
-    output = wdb_global_get_agent_labels(data->socket, atoi(data->socket->id));
+    output = wdb_global_get_agent_labels(data->wdb, atoi(data->wdb->id));
     assert_ptr_equal(output, (cJSON*)1);
 }
 
@@ -124,7 +124,7 @@ void test_wdb_global_del_agent_labels_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_del_agent_labels(data->socket, atoi(data->socket->id));
+    result = wdb_global_del_agent_labels(data->wdb, atoi(data->wdb->id));
     assert_int_equal(result, OS_INVALID);
 }
 
@@ -137,7 +137,7 @@ void test_wdb_global_del_agent_labels_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_del_agent_labels(data->socket, atoi(data->socket->id));
+    result = wdb_global_del_agent_labels(data->wdb, atoi(data->wdb->id));
     assert_int_equal(result, OS_INVALID);
 }
 
@@ -149,12 +149,12 @@ void test_wdb_global_del_agent_labels_bind_fail(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_del_agent_labels(data->socket, atoi(data->socket->id));
+    result = wdb_global_del_agent_labels(data->wdb, atoi(data->wdb->id));
     assert_int_equal(result, OS_INVALID);
 }
 
@@ -166,13 +166,13 @@ void test_wdb_global_del_agent_labels_step_fail(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
-    result = wdb_global_del_agent_labels(data->socket, atoi(data->socket->id));
+    result = wdb_global_del_agent_labels(data->wdb, atoi(data->wdb->id));
     assert_int_equal(result, OS_INVALID);
 }
 
@@ -184,11 +184,11 @@ void test_wdb_global_del_agent_labels_success(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
-    result = wdb_global_del_agent_labels(data->socket, atoi(data->socket->id));
+    result = wdb_global_del_agent_labels(data->wdb, atoi(data->wdb->id));
     assert_int_equal(result, OS_SUCCESS);
 }
 
@@ -202,7 +202,7 @@ void test_wdb_global_set_agent_label_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_set_agent_label(data->socket, atoi(data->socket->id), key, value);
+    result = wdb_global_set_agent_label(data->wdb, atoi(data->wdb->id), key, value);
     assert_int_equal(result, OS_INVALID);
 }
 
@@ -217,7 +217,7 @@ void test_wdb_global_set_agent_label_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_set_agent_label(data->socket, atoi(data->socket->id), key, value);
+    result = wdb_global_set_agent_label(data->wdb, atoi(data->wdb->id), key, value);
     assert_int_equal(result, OS_INVALID);
 }
 
@@ -231,12 +231,12 @@ void test_wdb_global_set_agent_label_bind1_fail(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_set_agent_label(data->socket, atoi(data->socket->id), key, value);
+    result = wdb_global_set_agent_label(data->wdb, atoi(data->wdb->id), key, value);
     assert_int_equal(result, OS_INVALID);
 }
 
@@ -250,7 +250,7 @@ void test_wdb_global_set_agent_label_bind2_fail(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, "test_key");
@@ -258,7 +258,7 @@ void test_wdb_global_set_agent_label_bind2_fail(void **state)
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_set_agent_label(data->socket, atoi(data->socket->id), key, value);
+    result = wdb_global_set_agent_label(data->wdb, atoi(data->wdb->id), key, value);
     assert_int_equal(result, OS_INVALID);
 }
 
@@ -272,7 +272,7 @@ void test_wdb_global_set_agent_label_bind3_fail(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, "test_key");
@@ -283,7 +283,7 @@ void test_wdb_global_set_agent_label_bind3_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_set_agent_label(data->socket, atoi(data->socket->id), key, value);
+    result = wdb_global_set_agent_label(data->wdb, atoi(data->wdb->id), key, value);
     assert_int_equal(result, OS_INVALID);
 }
 
@@ -297,7 +297,7 @@ void test_wdb_global_set_agent_label_step_fail(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, "test_key");
@@ -309,7 +309,7 @@ void test_wdb_global_set_agent_label_step_fail(void **state)
     will_return(__wrap_wdb_step, SQLITE_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
-    result = wdb_global_set_agent_label(data->socket, atoi(data->socket->id), key, value);
+    result = wdb_global_set_agent_label(data->wdb, atoi(data->wdb->id), key, value);
     assert_int_equal(result, OS_INVALID);
 }
 
@@ -323,7 +323,7 @@ void test_wdb_global_set_agent_label_success(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, "test_key");
@@ -333,7 +333,7 @@ void test_wdb_global_set_agent_label_success(void **state)
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
-    result = wdb_global_set_agent_label(data->socket, atoi(data->socket->id), key, value);
+    result = wdb_global_set_agent_label(data->wdb, atoi(data->wdb->id), key, value);
     assert_int_equal(result, OS_SUCCESS);
 }
 
@@ -346,7 +346,7 @@ void test_wdb_global_set_sync_status_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_set_sync_status(data->socket, atoi(data->socket->id), status);
+    result = wdb_global_set_sync_status(data->wdb, atoi(data->wdb->id), status);
     assert_int_equal(result, OS_INVALID);
 }
 
@@ -360,7 +360,7 @@ void test_wdb_global_set_sync_status_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_set_sync_status(data->socket, atoi(data->socket->id), status);
+    result = wdb_global_set_sync_status(data->wdb, atoi(data->wdb->id), status);
     assert_int_equal(result, OS_INVALID);
 }
 
@@ -378,7 +378,7 @@ void test_wdb_global_set_sync_status_bind1_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_set_sync_status(data->socket, atoi(data->socket->id), status);
+    result = wdb_global_set_sync_status(data->wdb, atoi(data->wdb->id), status);
     assert_int_equal(result, OS_INVALID);
 }
 
@@ -394,12 +394,12 @@ void test_wdb_global_set_sync_status_bind2_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_set_sync_status(data->socket, atoi(data->socket->id), status);
+    result = wdb_global_set_sync_status(data->wdb, atoi(data->wdb->id), status);
     assert_int_equal(result, OS_INVALID);
 }
 
@@ -415,13 +415,13 @@ void test_wdb_global_set_sync_status_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
-    result = wdb_global_set_sync_status(data->socket, atoi(data->socket->id), status);
+    result = wdb_global_set_sync_status(data->wdb, atoi(data->wdb->id), status);
     assert_int_equal(result, OS_INVALID);
 }
 
@@ -437,11 +437,11 @@ void test_wdb_global_set_sync_status_success(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
-    result = wdb_global_set_sync_status(data->socket, atoi(data->socket->id), status);
+    result = wdb_global_set_sync_status(data->wdb, atoi(data->wdb->id), status);
     assert_int_equal(result, OS_SUCCESS);
 }
 
@@ -455,7 +455,7 @@ void test_wdb_global_sync_agent_info_get_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_sync_agent_info_get(data->socket, &last_agent_id, &output);
+    result = wdb_global_sync_agent_info_get(data->wdb, &last_agent_id, &output);
 
     assert_string_equal(output, "Cannot begin transaction");
     os_free(output);
@@ -473,7 +473,7 @@ void test_wdb_global_sync_agent_info_get_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_sync_agent_info_get(data->socket, &last_agent_id, &output);
+    result = wdb_global_sync_agent_info_get(data->wdb, &last_agent_id, &output);
 
     assert_string_equal(output, "Cannot cache statement");
     os_free(output);
@@ -495,7 +495,7 @@ void test_wdb_global_sync_agent_info_get_bind_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_sync_agent_info_get(data->socket, &last_agent_id, &output);
+    result = wdb_global_sync_agent_info_get(data->wdb, &last_agent_id, &output);
 
     assert_string_equal(output, "Cannot bind sql statement");
     os_free(output);
@@ -517,7 +517,7 @@ void test_wdb_global_sync_agent_info_get_no_agents(void **state)
     will_return(__wrap_wdb_exec_stmt, NULL);
     expect_function_call_any(__wrap_cJSON_Delete);
 
-    result = wdb_global_sync_agent_info_get(data->socket, &last_agent_id, &output);
+    result = wdb_global_sync_agent_info_get(data->wdb, &last_agent_id, &output);
 
     assert_string_equal(output, "[]");
     os_free(output);
@@ -586,7 +586,7 @@ void test_wdb_global_sync_agent_info_get_success(void **state)
     // No more agents
     will_return(__wrap_wdb_exec_stmt, NULL);
 
-    result = wdb_global_sync_agent_info_get(data->socket, &last_agent_id, &output);
+    result = wdb_global_sync_agent_info_get(data->wdb, &last_agent_id, &output);
 
     assert_string_equal(output, "[{\"id\":10,\"test_field\":\"test_value\",\"labels\":[{\"id\":10,\"key\":\"test_key\",\"value\":\"test_value\"}]}]");
     os_free(output);
@@ -644,7 +644,7 @@ void test_wdb_global_sync_agent_info_get_sync_fail(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "Cannot set sync_status for agent 10");
 
-    result = wdb_global_sync_agent_info_get(data->socket, &last_agent_id, &output);
+    result = wdb_global_sync_agent_info_get(data->wdb, &last_agent_id, &output);
 
     assert_string_equal(output, "Cannot set sync_status for agent 10");
     os_free(output);
@@ -699,7 +699,7 @@ void test_wdb_global_sync_agent_info_get_full(void **state)
     cJSON_AddItemToArray(json_labels, json_label);
     will_return(__wrap_wdb_exec_stmt, json_labels);
 
-    result = wdb_global_sync_agent_info_get(data->socket, &last_agent_id, &output);
+    result = wdb_global_sync_agent_info_get(data->wdb, &last_agent_id, &output);
 
     assert_string_equal(output, "[]");
     os_free(output);
@@ -716,7 +716,7 @@ void test_wdb_global_sync_agent_info_set_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_sync_agent_info_set(data->socket, json_agent);
+    result = wdb_global_sync_agent_info_set(data->wdb, json_agent);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -731,7 +731,7 @@ void test_wdb_global_sync_agent_info_set_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_sync_agent_info_set(data->socket, json_agent);
+    result = wdb_global_sync_agent_info_set(data->wdb, json_agent);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -758,7 +758,7 @@ void test_wdb_global_sync_agent_info_set_bind1_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_sync_agent_info_set(data->socket, json_agent);
+    result = wdb_global_sync_agent_info_set(data->wdb, json_agent);
 
     __real_cJSON_Delete(json_agent);
     assert_int_equal(result, OS_INVALID);
@@ -791,7 +791,7 @@ void test_wdb_global_sync_agent_info_set_bind2_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_sync_agent_info_set(data->socket, json_agent);
+    result = wdb_global_sync_agent_info_set(data->wdb, json_agent);
     __real_cJSON_Delete(json_agent);
     assert_int_equal(result, OS_INVALID);
 }
@@ -826,7 +826,7 @@ void test_wdb_global_sync_agent_info_set_bind3_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_sync_agent_info_set(data->socket, json_agent);
+    result = wdb_global_sync_agent_info_set(data->wdb, json_agent);
     __real_cJSON_Delete(json_agent);
     assert_int_equal(result, OS_INVALID);
 }
@@ -862,7 +862,7 @@ void test_wdb_global_sync_agent_info_set_step_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
-    result = wdb_global_sync_agent_info_set(data->socket, json_agent);
+    result = wdb_global_sync_agent_info_set(data->wdb, json_agent);
     __real_cJSON_Delete(json_agent);
     assert_int_equal(result, OS_INVALID);
 }
@@ -895,7 +895,7 @@ void test_wdb_global_sync_agent_info_set_success(void **state)
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
-    result = wdb_global_sync_agent_info_set(data->socket, json_agent);
+    result = wdb_global_sync_agent_info_set(data->wdb, json_agent);
     __real_cJSON_Delete(json_agent);
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -914,7 +914,7 @@ void test_wdb_global_insert_agent_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_insert_agent(data->socket, atoi(data->socket->id), name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, atoi(data->wdb->id), name, ip, register_ip, internal_key, group, date_add);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -934,7 +934,7 @@ void test_wdb_global_insert_agent_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_insert_agent(data->socket, atoi(data->socket->id), name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, atoi(data->wdb->id), name, ip, register_ip, internal_key, group, date_add);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -959,7 +959,7 @@ void test_wdb_global_insert_agent_bind1_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent(data->socket, atoi(data->socket->id), name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, atoi(data->wdb->id), name, ip, register_ip, internal_key, group, date_add);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -987,7 +987,7 @@ void test_wdb_global_insert_agent_bind2_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent(data->socket, atoi(data->socket->id), name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, atoi(data->wdb->id), name, ip, register_ip, internal_key, group, date_add);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -1018,7 +1018,7 @@ void test_wdb_global_insert_agent_bind3_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent(data->socket, atoi(data->socket->id), name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, atoi(data->wdb->id), name, ip, register_ip, internal_key, group, date_add);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -1052,7 +1052,7 @@ void test_wdb_global_insert_agent_bind4_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent(data->socket, atoi(data->socket->id), name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, atoi(data->wdb->id), name, ip, register_ip, internal_key, group, date_add);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -1089,7 +1089,7 @@ void test_wdb_global_insert_agent_bind5_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent(data->socket, atoi(data->socket->id), name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, atoi(data->wdb->id), name, ip, register_ip, internal_key, group, date_add);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -1129,7 +1129,7 @@ void test_wdb_global_insert_agent_bind6_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent(data->socket, atoi(data->socket->id), name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, atoi(data->wdb->id), name, ip, register_ip, internal_key, group, date_add);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -1172,7 +1172,7 @@ void test_wdb_global_insert_agent_bind7_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent(data->socket, atoi(data->socket->id), name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, atoi(data->wdb->id), name, ip, register_ip, internal_key, group, date_add);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -1216,7 +1216,7 @@ void test_wdb_global_insert_agent_step_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
-    result = wdb_global_insert_agent(data->socket, atoi(data->socket->id), name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, atoi(data->wdb->id), name, ip, register_ip, internal_key, group, date_add);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -1258,7 +1258,7 @@ void test_wdb_global_insert_agent_success(void **state)
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
-    result = wdb_global_insert_agent(data->socket, atoi(data->socket->id), name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, atoi(data->wdb->id), name, ip, register_ip, internal_key, group, date_add);
     
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -1272,7 +1272,7 @@ void test_wdb_global_update_agent_name_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_update_agent_name(data->socket, atoi(data->socket->id), name);
+    result = wdb_global_update_agent_name(data->wdb, atoi(data->wdb->id), name);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -1287,7 +1287,7 @@ void test_wdb_global_update_agent_name_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_update_agent_name(data->socket, atoi(data->socket->id), name);
+    result = wdb_global_update_agent_name(data->wdb, atoi(data->wdb->id), name);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -1306,7 +1306,7 @@ void test_wdb_global_update_agent_name_bind1_fail(void **state)
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
-    result = wdb_global_update_agent_name(data->socket, atoi(data->socket->id), name);
+    result = wdb_global_update_agent_name(data->wdb, atoi(data->wdb->id), name);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -1330,7 +1330,7 @@ void test_wdb_global_update_agent_name_bind2_fail(void **state)
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
-    result = wdb_global_update_agent_name(data->socket, atoi(data->socket->id), name);
+    result = wdb_global_update_agent_name(data->wdb, atoi(data->wdb->id), name);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -1355,7 +1355,7 @@ void test_wdb_global_update_agent_name_step_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
-    result = wdb_global_update_agent_name(data->socket, atoi(data->socket->id), name);
+    result = wdb_global_update_agent_name(data->wdb, atoi(data->wdb->id), name);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -1378,7 +1378,7 @@ void test_wdb_global_update_agent_name_success(void **state)
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
     
-    result = wdb_global_update_agent_name(data->socket, atoi(data->socket->id), name);
+    result = wdb_global_update_agent_name(data->wdb, atoi(data->wdb->id), name);
     
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -1407,7 +1407,7 @@ void test_wdb_global_update_agent_version_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_update_agent_version(data->socket, atoi(data->socket->id), os_name, os_version, os_major,
+    result = wdb_global_update_agent_version(data->wdb, atoi(data->wdb->id), os_name, os_version, os_major,
                                             os_minor, os_codename, os_platform, os_build, os_uname, os_arch, version,
                                             config_sum, merged_sum, manager_host, node_name, agent_ip, sync_status);
     
@@ -1440,7 +1440,7 @@ void test_wdb_global_update_agent_version_cache_fail(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_update_agent_version(data->socket, atoi(data->socket->id), os_name, os_version, os_major,
+    result = wdb_global_update_agent_version(data->wdb, atoi(data->wdb->id), os_name, os_version, os_major,
                                             os_minor, os_codename, os_platform, os_build, os_uname, os_arch, version,
                                             config_sum, merged_sum, manager_host, node_name, agent_ip, sync_status);
     
@@ -1478,7 +1478,7 @@ void test_wdb_global_update_agent_version_bind1_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_version(data->socket, atoi(data->socket->id), os_name, os_version, os_major,
+    result = wdb_global_update_agent_version(data->wdb, atoi(data->wdb->id), os_name, os_version, os_major,
                                             os_minor, os_codename, os_platform, os_build, os_uname, os_arch, version,
                                             config_sum, merged_sum, manager_host, node_name, agent_ip, sync_status);
     
@@ -1519,7 +1519,7 @@ void test_wdb_global_update_agent_version_bind2_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_version(data->socket, atoi(data->socket->id), os_name, os_version, os_major,
+    result = wdb_global_update_agent_version(data->wdb, atoi(data->wdb->id), os_name, os_version, os_major,
                                             os_minor, os_codename, os_platform, os_build, os_uname, os_arch, version,
                                             config_sum, merged_sum, manager_host, node_name, agent_ip, sync_status);
     
@@ -1564,7 +1564,7 @@ void test_wdb_global_update_agent_version_bind3_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_version(data->socket, atoi(data->socket->id), os_name, os_version, os_major,
+    result = wdb_global_update_agent_version(data->wdb, atoi(data->wdb->id), os_name, os_version, os_major,
                                             os_minor, os_codename, os_platform, os_build, os_uname, os_arch, version,
                                             config_sum, merged_sum, manager_host, node_name, agent_ip, sync_status);
     
@@ -1612,7 +1612,7 @@ void test_wdb_global_update_agent_version_bind4_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_version(data->socket, atoi(data->socket->id), os_name, os_version, os_major,
+    result = wdb_global_update_agent_version(data->wdb, atoi(data->wdb->id), os_name, os_version, os_major,
                                             os_minor, os_codename, os_platform, os_build, os_uname, os_arch, version,
                                             config_sum, merged_sum, manager_host, node_name, agent_ip, sync_status);
     
@@ -1663,7 +1663,7 @@ void test_wdb_global_update_agent_version_bind5_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_version(data->socket, atoi(data->socket->id), os_name, os_version, os_major,
+    result = wdb_global_update_agent_version(data->wdb, atoi(data->wdb->id), os_name, os_version, os_major,
                                             os_minor, os_codename, os_platform, os_build, os_uname, os_arch, version,
                                             config_sum, merged_sum, manager_host, node_name, agent_ip, sync_status);
     
@@ -1717,7 +1717,7 @@ void test_wdb_global_update_agent_version_bind6_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_version(data->socket, atoi(data->socket->id), os_name, os_version, os_major,
+    result = wdb_global_update_agent_version(data->wdb, atoi(data->wdb->id), os_name, os_version, os_major,
                                             os_minor, os_codename, os_platform, os_build, os_uname, os_arch, version,
                                             config_sum, merged_sum, manager_host, node_name, agent_ip, sync_status);
     
@@ -1774,7 +1774,7 @@ void test_wdb_global_update_agent_version_bind7_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_version(data->socket, atoi(data->socket->id), os_name, os_version, os_major,
+    result = wdb_global_update_agent_version(data->wdb, atoi(data->wdb->id), os_name, os_version, os_major,
                                             os_minor, os_codename, os_platform, os_build, os_uname, os_arch, version,
                                             config_sum, merged_sum, manager_host, node_name, agent_ip, sync_status);
     
@@ -1834,7 +1834,7 @@ void test_wdb_global_update_agent_version_bind8_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_version(data->socket, atoi(data->socket->id), os_name, os_version, os_major,
+    result = wdb_global_update_agent_version(data->wdb, atoi(data->wdb->id), os_name, os_version, os_major,
                                             os_minor, os_codename, os_platform, os_build, os_uname, os_arch, version,
                                             config_sum, merged_sum, manager_host, node_name, agent_ip, sync_status);
     
@@ -1897,7 +1897,7 @@ void test_wdb_global_update_agent_version_bind9_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_version(data->socket, atoi(data->socket->id), os_name, os_version, os_major,
+    result = wdb_global_update_agent_version(data->wdb, atoi(data->wdb->id), os_name, os_version, os_major,
                                             os_minor, os_codename, os_platform, os_build, os_uname, os_arch, version,
                                             config_sum, merged_sum, manager_host, node_name, agent_ip, sync_status);
     
@@ -1963,7 +1963,7 @@ void test_wdb_global_update_agent_version_bind10_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_version(data->socket, atoi(data->socket->id), os_name, os_version, os_major,
+    result = wdb_global_update_agent_version(data->wdb, atoi(data->wdb->id), os_name, os_version, os_major,
                                             os_minor, os_codename, os_platform, os_build, os_uname, os_arch, version,
                                             config_sum, merged_sum, manager_host, node_name, agent_ip, sync_status);
     
@@ -2032,7 +2032,7 @@ void test_wdb_global_update_agent_version_bind11_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_version(data->socket, atoi(data->socket->id), os_name, os_version, os_major,
+    result = wdb_global_update_agent_version(data->wdb, atoi(data->wdb->id), os_name, os_version, os_major,
                                             os_minor, os_codename, os_platform, os_build, os_uname, os_arch, version,
                                             config_sum, merged_sum, manager_host, node_name, agent_ip, sync_status);
     
@@ -2104,7 +2104,7 @@ void test_wdb_global_update_agent_version_bind12_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_version(data->socket, atoi(data->socket->id), os_name, os_version, os_major,
+    result = wdb_global_update_agent_version(data->wdb, atoi(data->wdb->id), os_name, os_version, os_major,
                                             os_minor, os_codename, os_platform, os_build, os_uname, os_arch, version,
                                             config_sum, merged_sum, manager_host, node_name, agent_ip, sync_status);
     
@@ -2179,7 +2179,7 @@ void test_wdb_global_update_agent_version_bind13_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_version(data->socket, atoi(data->socket->id), os_name, os_version, os_major,
+    result = wdb_global_update_agent_version(data->wdb, atoi(data->wdb->id), os_name, os_version, os_major,
                                             os_minor, os_codename, os_platform, os_build, os_uname, os_arch, version,
                                             config_sum, merged_sum, manager_host, node_name, agent_ip, sync_status);
     
@@ -2257,7 +2257,7 @@ void test_wdb_global_update_agent_version_bind14_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_version(data->socket, atoi(data->socket->id), os_name, os_version, os_major,
+    result = wdb_global_update_agent_version(data->wdb, atoi(data->wdb->id), os_name, os_version, os_major,
                                             os_minor, os_codename, os_platform, os_build, os_uname, os_arch, version,
                                             config_sum, merged_sum, manager_host, node_name, agent_ip, sync_status);
     
@@ -2338,7 +2338,7 @@ void test_wdb_global_update_agent_version_bind15_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_version(data->socket, atoi(data->socket->id), os_name, os_version, os_major,
+    result = wdb_global_update_agent_version(data->wdb, atoi(data->wdb->id), os_name, os_version, os_major,
                                             os_minor, os_codename, os_platform, os_build, os_uname, os_arch, version,
                                             config_sum, merged_sum, manager_host, node_name, agent_ip, sync_status);
     
@@ -2422,7 +2422,7 @@ void test_wdb_global_update_agent_version_bind16_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_version(data->socket, atoi(data->socket->id), os_name, os_version, os_major,
+    result = wdb_global_update_agent_version(data->wdb, atoi(data->wdb->id), os_name, os_version, os_major,
                                             os_minor, os_codename, os_platform, os_build, os_uname, os_arch, version,
                                             config_sum, merged_sum, manager_host, node_name, agent_ip, sync_status);
     
@@ -2502,14 +2502,14 @@ void test_wdb_global_update_agent_version_bind17_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, sync_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 17);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_version(data->socket, atoi(data->socket->id), os_name, os_version, os_major,
+    result = wdb_global_update_agent_version(data->wdb, atoi(data->wdb->id), os_name, os_version, os_major,
                                             os_minor, os_codename, os_platform, os_build, os_uname, os_arch, version,
                                             config_sum, merged_sum, manager_host, node_name, agent_ip, sync_status);
     
@@ -2589,14 +2589,14 @@ void test_wdb_global_update_agent_version_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, sync_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 17);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
-    result = wdb_global_update_agent_version(data->socket, atoi(data->socket->id), os_name, os_version, os_major,
+    result = wdb_global_update_agent_version(data->wdb, atoi(data->wdb->id), os_name, os_version, os_major,
                                             os_minor, os_codename, os_platform, os_build, os_uname, os_arch, version,
                                             config_sum, merged_sum, manager_host, node_name, agent_ip, sync_status);
     
@@ -2676,11 +2676,11 @@ void test_wdb_global_update_agent_version_success(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, sync_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 17);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
-    result = wdb_global_update_agent_version(data->socket, atoi(data->socket->id), os_name, os_version, os_major,
+    result = wdb_global_update_agent_version(data->wdb, atoi(data->wdb->id), os_name, os_version, os_major,
                                             os_minor, os_codename, os_platform, os_build, os_uname, os_arch, version,
                                             config_sum, merged_sum, manager_host, node_name, agent_ip, sync_status);
     
@@ -2697,7 +2697,7 @@ void test_wdb_global_update_agent_keepalive_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_update_agent_keepalive(data->socket, atoi(data->socket->id), status);
+    result = wdb_global_update_agent_keepalive(data->wdb, atoi(data->wdb->id), status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2713,7 +2713,7 @@ void test_wdb_global_update_agent_keepalive_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_update_agent_keepalive(data->socket, atoi(data->socket->id), status);
+    result = wdb_global_update_agent_keepalive(data->wdb, atoi(data->wdb->id), status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2734,7 +2734,7 @@ void test_wdb_global_update_agent_keepalive_bind1_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_keepalive(data->socket, atoi(data->socket->id), status);
+    result = wdb_global_update_agent_keepalive(data->wdb, atoi(data->wdb->id), status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2753,12 +2753,12 @@ void test_wdb_global_update_agent_keepalive_bind2_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
    
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
-    result = wdb_global_update_agent_keepalive(data->socket, atoi(data->socket->id), status);
+    result = wdb_global_update_agent_keepalive(data->wdb, atoi(data->wdb->id), status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2777,14 +2777,14 @@ void test_wdb_global_update_agent_keepalive_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
     
-    result = wdb_global_update_agent_keepalive(data->socket, atoi(data->socket->id), status);
+    result = wdb_global_update_agent_keepalive(data->wdb, atoi(data->wdb->id), status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2803,11 +2803,11 @@ void test_wdb_global_update_agent_keepalive_success(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
     
-    result = wdb_global_update_agent_keepalive(data->socket, atoi(data->socket->id), status);
+    result = wdb_global_update_agent_keepalive(data->wdb, atoi(data->wdb->id), status);
 
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -2821,7 +2821,7 @@ void test_wdb_global_delete_agent_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_delete_agent(data->socket, atoi(data->socket->id));
+    result = wdb_global_delete_agent(data->wdb, atoi(data->wdb->id));
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2836,7 +2836,7 @@ void test_wdb_global_delete_agent_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_delete_agent(data->socket, atoi(data->socket->id));
+    result = wdb_global_delete_agent(data->wdb, atoi(data->wdb->id));
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2851,12 +2851,12 @@ void test_wdb_global_delete_agent_bind_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, 1);
 
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_delete_agent(data->socket, atoi(data->socket->id));
+    result = wdb_global_delete_agent(data->wdb, atoi(data->wdb->id));
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2871,14 +2871,14 @@ void test_wdb_global_delete_agent_step_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, 1); 
 
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
     
-    result = wdb_global_delete_agent(data->socket, atoi(data->socket->id));
+    result = wdb_global_delete_agent(data->wdb, atoi(data->wdb->id));
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2893,11 +2893,11 @@ void test_wdb_global_delete_agent_success(void **state)
     will_return(__wrap_wdb_stmt_cache, 1); 
 
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
     
-    result = wdb_global_delete_agent(data->socket, atoi(data->socket->id));
+    result = wdb_global_delete_agent(data->wdb, atoi(data->wdb->id));
 
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -2911,7 +2911,7 @@ void test_wdb_global_select_agent_name_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_select_agent_name(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_name(data->wdb, atoi(data->wdb->id));
 
     assert_null(result);
 }
@@ -2926,7 +2926,7 @@ void test_wdb_global_select_agent_name_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_select_agent_name(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_name(data->wdb, atoi(data->wdb->id));
 
     assert_null(result);
 }
@@ -2941,12 +2941,12 @@ void test_wdb_global_select_agent_name_bind_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, 1);
     
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
     
-    result = wdb_global_select_agent_name(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_name(data->wdb, atoi(data->wdb->id));
 
     assert_null(result);
 }
@@ -2961,13 +2961,13 @@ void test_wdb_global_select_agent_name_exec_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, 1);
     
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, NULL);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
     
-    result = wdb_global_select_agent_name(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_name(data->wdb, atoi(data->wdb->id));
 
     assert_null(result);
 }
@@ -2982,11 +2982,11 @@ void test_wdb_global_select_agent_name_success(void **state)
     will_return(__wrap_wdb_stmt_cache, 1);
     
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, (cJSON*) 1);
     
-    result = wdb_global_select_agent_name(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_name(data->wdb, atoi(data->wdb->id));
 
     assert_ptr_equal(result, (cJSON*) 1);
 }
@@ -3000,7 +3000,7 @@ void test_wdb_global_select_agent_group_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_select_agent_group(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_group(data->wdb, atoi(data->wdb->id));
 
     assert_null(result);
 }
@@ -3015,7 +3015,7 @@ void test_wdb_global_select_agent_group_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_select_agent_group(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_group(data->wdb, atoi(data->wdb->id));
 
     assert_null(result);
 }
@@ -3030,12 +3030,12 @@ void test_wdb_global_select_agent_group_bind_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, 1);
     
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
     
-    result = wdb_global_select_agent_group(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_group(data->wdb, atoi(data->wdb->id));
 
     assert_null(result);
 }
@@ -3050,13 +3050,13 @@ void test_wdb_global_select_agent_group_exec_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, 1);
     
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, NULL);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
     
-    result = wdb_global_select_agent_group(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_group(data->wdb, atoi(data->wdb->id));
 
     assert_null(result);
 }
@@ -3071,11 +3071,11 @@ void test_wdb_global_select_agent_group_success(void **state)
     will_return(__wrap_wdb_stmt_cache, 1);
     
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, (cJSON*) 1);
     
-    result = wdb_global_select_agent_group(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_group(data->wdb, atoi(data->wdb->id));
 
     assert_ptr_equal(result, (cJSON*) 1);
 }
@@ -3089,7 +3089,7 @@ void test_wdb_global_select_agent_fim_offset_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_select_agent_fim_offset(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_fim_offset(data->wdb, atoi(data->wdb->id));
 
     assert_null(result);
 }
@@ -3104,7 +3104,7 @@ void test_wdb_global_select_agent_fim_offset_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_select_agent_fim_offset(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_fim_offset(data->wdb, atoi(data->wdb->id));
 
     assert_null(result);
 }
@@ -3119,12 +3119,12 @@ void test_wdb_global_select_agent_fim_offset_bind_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, 1);
     
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
     
-    result = wdb_global_select_agent_fim_offset(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_fim_offset(data->wdb, atoi(data->wdb->id));
 
     assert_null(result);
 }
@@ -3139,13 +3139,13 @@ void test_wdb_global_select_agent_fim_offset_exec_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, 1);
     
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, NULL);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
     
-    result = wdb_global_select_agent_fim_offset(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_fim_offset(data->wdb, atoi(data->wdb->id));
 
     assert_null(result);
 }
@@ -3160,11 +3160,11 @@ void test_wdb_global_select_agent_fim_offset_success(void **state)
     will_return(__wrap_wdb_stmt_cache, 1);
     
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, (cJSON*) 1);
     
-    result = wdb_global_select_agent_fim_offset(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_fim_offset(data->wdb, atoi(data->wdb->id));
 
     assert_ptr_equal(result, (cJSON*) 1);
 }
@@ -3178,7 +3178,7 @@ void test_wdb_global_select_agent_reg_offset_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_select_agent_reg_offset(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_reg_offset(data->wdb, atoi(data->wdb->id));
 
     assert_null(result);
 }
@@ -3193,7 +3193,7 @@ void test_wdb_global_select_agent_reg_offset_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_select_agent_reg_offset(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_reg_offset(data->wdb, atoi(data->wdb->id));
 
     assert_null(result);
 }
@@ -3208,12 +3208,12 @@ void test_wdb_global_select_agent_reg_offset_bind_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, 1);
     
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
     
-    result = wdb_global_select_agent_reg_offset(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_reg_offset(data->wdb, atoi(data->wdb->id));
 
     assert_null(result);
 }
@@ -3228,13 +3228,13 @@ void test_wdb_global_select_agent_reg_offset_exec_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, 1);
     
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, NULL);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
     
-    result = wdb_global_select_agent_reg_offset(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_reg_offset(data->wdb, atoi(data->wdb->id));
 
     assert_null(result);
 }
@@ -3249,11 +3249,11 @@ void test_wdb_global_select_agent_reg_offset_success(void **state)
     will_return(__wrap_wdb_stmt_cache, 1);
     
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, (cJSON*) 1);
     
-    result = wdb_global_select_agent_reg_offset(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_reg_offset(data->wdb, atoi(data->wdb->id));
 
     assert_ptr_equal(result, (cJSON*) 1);
 }
@@ -3267,7 +3267,7 @@ void test_wdb_global_select_agent_status_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_select_agent_status(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_status(data->wdb, atoi(data->wdb->id));
 
     assert_null(result);
 }
@@ -3282,7 +3282,7 @@ void test_wdb_global_select_agent_status_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_select_agent_status(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_status(data->wdb, atoi(data->wdb->id));
 
     assert_null(result);
 }
@@ -3297,12 +3297,12 @@ void test_wdb_global_select_agent_status_bind_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, 1);
     
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
     
-    result = wdb_global_select_agent_status(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_status(data->wdb, atoi(data->wdb->id));
 
     assert_null(result);
 }
@@ -3317,13 +3317,13 @@ void test_wdb_global_select_agent_status_exec_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, 1);
     
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, NULL);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
     
-    result = wdb_global_select_agent_status(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_status(data->wdb, atoi(data->wdb->id));
 
     assert_null(result);
 }
@@ -3338,11 +3338,11 @@ void test_wdb_global_select_agent_status_success(void **state)
     will_return(__wrap_wdb_stmt_cache, 1);
     
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, (cJSON*) 1);
     
-    result = wdb_global_select_agent_status(data->socket, atoi(data->socket->id));
+    result = wdb_global_select_agent_status(data->wdb, atoi(data->wdb->id));
 
     assert_ptr_equal(result, (cJSON*) 1);
 }
@@ -3356,7 +3356,7 @@ void test_wdb_global_select_groups_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_select_groups(data->socket);
+    result = wdb_global_select_groups(data->wdb);
 
     assert_null(result);
 }
@@ -3371,7 +3371,7 @@ void test_wdb_global_select_groups_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_select_groups(data->socket);
+    result = wdb_global_select_groups(data->wdb);
 
     assert_null(result);
 }
@@ -3389,7 +3389,7 @@ void test_wdb_global_select_groups_exec_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
     
-    result = wdb_global_select_groups(data->socket);
+    result = wdb_global_select_groups(data->wdb);
 
     assert_null(result);
 }
@@ -3404,7 +3404,7 @@ void test_wdb_global_select_groups_success(void **state)
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_wdb_exec_stmt, (cJSON*) 1);
     
-    result = wdb_global_select_groups(data->socket);
+    result = wdb_global_select_groups(data->wdb);
 
     assert_ptr_equal(result, (cJSON*) 1);
 }
@@ -3420,7 +3420,7 @@ void test_wdb_global_select_agent_keepalive_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_select_agent_keepalive(data->socket, name, ip);
+    result = wdb_global_select_agent_keepalive(data->wdb, name, ip);
 
     assert_null(result);
 }
@@ -3437,7 +3437,7 @@ void test_wdb_global_select_agent_keepalive_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_select_agent_keepalive(data->socket, name, ip);
+    result = wdb_global_select_agent_keepalive(data->wdb, name, ip);
 
     assert_null(result);
 }
@@ -3460,7 +3460,7 @@ void test_wdb_global_select_agent_keepalive_bind1_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_select_agent_keepalive(data->socket, name, ip);
+    result = wdb_global_select_agent_keepalive(data->wdb, name, ip);
 
     assert_null(result);
 }
@@ -3486,7 +3486,7 @@ void test_wdb_global_select_agent_keepalive_bind2_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_select_agent_keepalive(data->socket, name, ip);
+    result = wdb_global_select_agent_keepalive(data->wdb, name, ip);
 
     assert_null(result);
 }
@@ -3515,7 +3515,7 @@ void test_wdb_global_select_agent_keepalive_bind3_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
     
-    result = wdb_global_select_agent_keepalive(data->socket, name, ip);
+    result = wdb_global_select_agent_keepalive(data->wdb, name, ip);
 
     assert_null(result);
 }
@@ -3545,7 +3545,7 @@ void test_wdb_global_select_agent_keepalive_exec_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
     
-    result = wdb_global_select_agent_keepalive(data->socket, name, ip);
+    result = wdb_global_select_agent_keepalive(data->wdb, name, ip);
 
     assert_null(result);
 }
@@ -3572,7 +3572,7 @@ void test_wdb_global_select_agent_keepalive_success(void **state)
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, (cJSON*) 1);
     
-    result = wdb_global_select_agent_keepalive(data->socket, name, ip);
+    result = wdb_global_select_agent_keepalive(data->wdb, name, ip);
 
     assert_ptr_equal(result, (cJSON*) 1);
 }
@@ -3588,7 +3588,7 @@ void test_wdb_global_find_agent_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_find_agent(data->socket, name, ip);
+    result = wdb_global_find_agent(data->wdb, name, ip);
 
     assert_null(result);
 }
@@ -3605,7 +3605,7 @@ void test_wdb_global_find_agent_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_find_agent(data->socket, name, ip);
+    result = wdb_global_find_agent(data->wdb, name, ip);
 
     assert_null(result);
 }
@@ -3628,7 +3628,7 @@ void test_wdb_global_find_agent_bind1_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_find_agent(data->socket, name, ip);
+    result = wdb_global_find_agent(data->wdb, name, ip);
 
     assert_null(result);
 }
@@ -3654,7 +3654,7 @@ void test_wdb_global_find_agent_bind2_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_find_agent(data->socket, name, ip);
+    result = wdb_global_find_agent(data->wdb, name, ip);
 
     assert_null(result);
 }
@@ -3683,7 +3683,7 @@ void test_wdb_global_find_agent_bind3_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
     
-    result = wdb_global_find_agent(data->socket, name, ip);
+    result = wdb_global_find_agent(data->wdb, name, ip);
 
     assert_null(result);
 }
@@ -3713,7 +3713,7 @@ void test_wdb_global_find_agent_exec_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
     
-    result = wdb_global_find_agent(data->socket, name, ip);
+    result = wdb_global_find_agent(data->wdb, name, ip);
 
     assert_null(result);
 }
@@ -3740,7 +3740,7 @@ void test_wdb_global_find_agent_success(void **state)
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, (cJSON*) 1);
     
-    result = wdb_global_find_agent(data->socket, name, ip);
+    result = wdb_global_find_agent(data->wdb, name, ip);
 
     assert_ptr_equal(result, (cJSON*) 1);
 }
@@ -3755,7 +3755,7 @@ void test_wdb_global_update_agent_fim_offset_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_update_agent_fim_offset(data->socket, atoi(data->socket->id), offset);
+    result = wdb_global_update_agent_fim_offset(data->wdb, atoi(data->wdb->id), offset);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -3771,7 +3771,7 @@ void test_wdb_global_update_agent_fim_offset_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_update_agent_fim_offset(data->socket, atoi(data->socket->id), offset);
+    result = wdb_global_update_agent_fim_offset(data->wdb, atoi(data->wdb->id), offset);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -3792,7 +3792,7 @@ void test_wdb_global_update_agent_fim_offset_bind1_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_fim_offset(data->socket, atoi(data->socket->id), offset);
+    result = wdb_global_update_agent_fim_offset(data->wdb, atoi(data->wdb->id), offset);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -3811,12 +3811,12 @@ void test_wdb_global_update_agent_fim_offset_bind2_fail(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, offset);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
    
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
-    result = wdb_global_update_agent_fim_offset(data->socket, atoi(data->socket->id), offset);
+    result = wdb_global_update_agent_fim_offset(data->wdb, atoi(data->wdb->id), offset);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -3835,14 +3835,14 @@ void test_wdb_global_update_agent_fim_offset_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, offset);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
     
-    result = wdb_global_update_agent_fim_offset(data->socket, atoi(data->socket->id), offset);
+    result = wdb_global_update_agent_fim_offset(data->wdb, atoi(data->wdb->id), offset);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -3861,11 +3861,11 @@ void test_wdb_global_update_agent_fim_offset_success(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, offset);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
     
-    result = wdb_global_update_agent_fim_offset(data->socket, atoi(data->socket->id), offset);
+    result = wdb_global_update_agent_fim_offset(data->wdb, atoi(data->wdb->id), offset);
 
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -3880,7 +3880,7 @@ void test_wdb_global_update_agent_reg_offset_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_update_agent_reg_offset(data->socket, atoi(data->socket->id), offset);
+    result = wdb_global_update_agent_reg_offset(data->wdb, atoi(data->wdb->id), offset);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -3896,7 +3896,7 @@ void test_wdb_global_update_agent_reg_offset_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_update_agent_reg_offset(data->socket, atoi(data->socket->id), offset);
+    result = wdb_global_update_agent_reg_offset(data->wdb, atoi(data->wdb->id), offset);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -3917,7 +3917,7 @@ void test_wdb_global_update_agent_reg_offset_bind1_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_reg_offset(data->socket, atoi(data->socket->id), offset);
+    result = wdb_global_update_agent_reg_offset(data->wdb, atoi(data->wdb->id), offset);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -3936,12 +3936,12 @@ void test_wdb_global_update_agent_reg_offset_bind2_fail(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, offset);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
    
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
-    result = wdb_global_update_agent_reg_offset(data->socket, atoi(data->socket->id), offset);
+    result = wdb_global_update_agent_reg_offset(data->wdb, atoi(data->wdb->id), offset);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -3960,14 +3960,14 @@ void test_wdb_global_update_agent_reg_offset_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, offset);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
     
-    result = wdb_global_update_agent_reg_offset(data->socket, atoi(data->socket->id), offset);
+    result = wdb_global_update_agent_reg_offset(data->wdb, atoi(data->wdb->id), offset);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -3986,11 +3986,11 @@ void test_wdb_global_update_agent_reg_offset_success(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, offset);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
     
-    result = wdb_global_update_agent_reg_offset(data->socket, atoi(data->socket->id), offset);
+    result = wdb_global_update_agent_reg_offset(data->wdb, atoi(data->wdb->id), offset);
 
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -4005,7 +4005,7 @@ void test_wdb_global_update_agent_status_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_update_agent_status(data->socket, atoi(data->socket->id), agt_status);
+    result = wdb_global_update_agent_status(data->wdb, atoi(data->wdb->id), agt_status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -4021,7 +4021,7 @@ void test_wdb_global_update_agent_status_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_update_agent_status(data->socket, atoi(data->socket->id), agt_status);
+    result = wdb_global_update_agent_status(data->wdb, atoi(data->wdb->id), agt_status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -4042,7 +4042,7 @@ void test_wdb_global_update_agent_status_bind1_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_status(data->socket, atoi(data->socket->id), agt_status);
+    result = wdb_global_update_agent_status(data->wdb, atoi(data->wdb->id), agt_status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -4061,12 +4061,12 @@ void test_wdb_global_update_agent_status_bind2_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, agt_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
    
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
-    result = wdb_global_update_agent_status(data->socket, atoi(data->socket->id), agt_status);
+    result = wdb_global_update_agent_status(data->wdb, atoi(data->wdb->id), agt_status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -4085,14 +4085,14 @@ void test_wdb_global_update_agent_status_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, agt_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
     
-    result = wdb_global_update_agent_status(data->socket, atoi(data->socket->id), agt_status);
+    result = wdb_global_update_agent_status(data->wdb, atoi(data->wdb->id), agt_status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -4111,11 +4111,11 @@ void test_wdb_global_update_agent_status_success(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, agt_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
     
-    result = wdb_global_update_agent_status(data->socket, atoi(data->socket->id), agt_status);
+    result = wdb_global_update_agent_status(data->wdb, atoi(data->wdb->id), agt_status);
 
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -4130,7 +4130,7 @@ void test_wdb_global_update_agent_group_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_update_agent_group(data->socket, atoi(data->socket->id), agt_group);
+    result = wdb_global_update_agent_group(data->wdb, atoi(data->wdb->id), agt_group);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -4146,7 +4146,7 @@ void test_wdb_global_update_agent_group_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_update_agent_group(data->socket, atoi(data->socket->id), agt_group);
+    result = wdb_global_update_agent_group(data->wdb, atoi(data->wdb->id), agt_group);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -4167,7 +4167,7 @@ void test_wdb_global_update_agent_group_bind1_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_group(data->socket, atoi(data->socket->id), agt_group);
+    result = wdb_global_update_agent_group(data->wdb, atoi(data->wdb->id), agt_group);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -4186,12 +4186,12 @@ void test_wdb_global_update_agent_group_bind2_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, agt_group);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
    
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
-    result = wdb_global_update_agent_group(data->socket, atoi(data->socket->id), agt_group);
+    result = wdb_global_update_agent_group(data->wdb, atoi(data->wdb->id), agt_group);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -4210,14 +4210,14 @@ void test_wdb_global_update_agent_group_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, agt_group);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
     
-    result = wdb_global_update_agent_group(data->socket, atoi(data->socket->id), agt_group);
+    result = wdb_global_update_agent_group(data->wdb, atoi(data->wdb->id), agt_group);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -4236,11 +4236,11 @@ void test_wdb_global_update_agent_group_success(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, agt_group);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
     
-    result = wdb_global_update_agent_group(data->socket, atoi(data->socket->id), agt_group);
+    result = wdb_global_update_agent_group(data->wdb, atoi(data->wdb->id), agt_group);
 
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -4255,7 +4255,7 @@ void test_wdb_global_find_group_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_find_group(data->socket, group_name);
+    result = wdb_global_find_group(data->wdb, group_name);
 
     assert_null(result);
 }
@@ -4271,7 +4271,7 @@ void test_wdb_global_find_group_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_find_group(data->socket, group_name);
+    result = wdb_global_find_group(data->wdb, group_name);
 
     assert_null(result);
 }
@@ -4293,7 +4293,7 @@ void test_wdb_global_find_group_bind_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_find_group(data->socket, group_name);
+    result = wdb_global_find_group(data->wdb, group_name);
 
     assert_null(result);
 }
@@ -4316,7 +4316,7 @@ void test_wdb_global_find_group_exec_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
     
-    result = wdb_global_find_group(data->socket, group_name);
+    result = wdb_global_find_group(data->wdb, group_name);
 
     assert_null(result);
 }
@@ -4336,7 +4336,7 @@ void test_wdb_global_find_group_success(void **state)
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, (cJSON*) 1);
     
-    result = wdb_global_find_group(data->socket, group_name);
+    result = wdb_global_find_group(data->wdb, group_name);
 
     assert_ptr_equal(result, (cJSON*) 1);
 }
@@ -4350,7 +4350,7 @@ void test_wdb_global_insert_agent_group_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_insert_agent_group(data->socket, group_name);
+    result = wdb_global_insert_agent_group(data->wdb, group_name);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -4365,7 +4365,7 @@ void test_wdb_global_insert_agent_group_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_insert_agent_group(data->socket, group_name);
+    result = wdb_global_insert_agent_group(data->wdb, group_name);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -4385,7 +4385,7 @@ void test_wdb_global_insert_agent_group_bind_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent_group(data->socket, group_name);
+    result = wdb_global_insert_agent_group(data->wdb, group_name);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -4406,7 +4406,7 @@ void test_wdb_global_insert_agent_group_step_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
-    result = wdb_global_insert_agent_group(data->socket, group_name);
+    result = wdb_global_insert_agent_group(data->wdb, group_name);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -4424,7 +4424,7 @@ void test_wdb_global_insert_agent_group_success(void **state)
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);   
     will_return(__wrap_wdb_step, SQLITE_DONE);
  
-    result = wdb_global_insert_agent_group(data->socket, group_name);
+    result = wdb_global_insert_agent_group(data->wdb, group_name);
     
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -4439,7 +4439,7 @@ void test_wdb_global_insert_agent_belong_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_insert_agent_belong(data->socket, id_group, id_agent);
+    result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -4455,7 +4455,7 @@ void test_wdb_global_insert_agent_belong_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_insert_agent_belong(data->socket, id_group, id_agent);
+    result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -4476,7 +4476,7 @@ void test_wdb_global_insert_agent_belong_bind1_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent_belong(data->socket, id_group, id_agent);
+    result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -4501,7 +4501,7 @@ void test_wdb_global_insert_agent_belong_bind2_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent_belong(data->socket, id_group, id_agent);
+    result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -4527,7 +4527,7 @@ void test_wdb_global_insert_agent_belong_step_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
-    result = wdb_global_insert_agent_belong(data->socket, id_group, id_agent);
+    result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -4550,7 +4550,7 @@ void test_wdb_global_insert_agent_belong_success(void **state)
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK); 
     will_return(__wrap_wdb_step, SQLITE_DONE);
  
-    result = wdb_global_insert_agent_belong(data->socket, id_group, id_agent);
+    result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent);
     
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -4564,7 +4564,7 @@ void test_wdb_global_delete_group_belong_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_delete_group_belong(data->socket, group_name);
+    result = wdb_global_delete_group_belong(data->wdb, group_name);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -4579,7 +4579,7 @@ void test_wdb_global_delete_group_belong_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_delete_group_belong(data->socket, group_name);
+    result = wdb_global_delete_group_belong(data->wdb, group_name);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -4599,7 +4599,7 @@ void test_wdb_global_delete_group_belong_bind_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_delete_group_belong(data->socket, group_name);
+    result = wdb_global_delete_group_belong(data->wdb, group_name);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -4621,7 +4621,7 @@ void test_wdb_global_delete_group_belong_step_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
-    result = wdb_global_delete_group_belong(data->socket, group_name);
+    result = wdb_global_delete_group_belong(data->wdb, group_name);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -4640,7 +4640,7 @@ void test_wdb_global_delete_group_belong_success(void **state)
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
  
-    result = wdb_global_delete_group_belong(data->socket, group_name);
+    result = wdb_global_delete_group_belong(data->wdb, group_name);
     
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -4654,7 +4654,7 @@ void test_wdb_global_delete_group_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_delete_group(data->socket, group_name);
+    result = wdb_global_delete_group(data->wdb, group_name);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -4669,7 +4669,7 @@ void test_wdb_global_delete_group_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_delete_group(data->socket, group_name);
+    result = wdb_global_delete_group(data->wdb, group_name);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -4689,7 +4689,7 @@ void test_wdb_global_delete_group_bind_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_delete_group(data->socket, group_name);
+    result = wdb_global_delete_group(data->wdb, group_name);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -4711,7 +4711,7 @@ void test_wdb_global_delete_group_step_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
-    result = wdb_global_delete_group(data->socket, group_name);
+    result = wdb_global_delete_group(data->wdb, group_name);
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -4730,7 +4730,7 @@ void test_wdb_global_delete_group_success(void **state)
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
  
-    result = wdb_global_delete_group(data->socket, group_name);
+    result = wdb_global_delete_group(data->wdb, group_name);
     
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -4743,7 +4743,7 @@ void test_wdb_global_delete_agent_belong_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_delete_agent_belong(data->socket, atoi(data->socket->id));
+    result = wdb_global_delete_agent_belong(data->wdb, atoi(data->wdb->id));
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -4757,7 +4757,7 @@ void test_wdb_global_delete_agent_belong_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_delete_agent_belong(data->socket, atoi(data->socket->id));
+    result = wdb_global_delete_agent_belong(data->wdb, atoi(data->wdb->id));
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -4770,13 +4770,13 @@ void test_wdb_global_delete_agent_belong_bind_fail(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_delete_agent_belong(data->socket, atoi(data->socket->id));
+    result = wdb_global_delete_agent_belong(data->wdb, atoi(data->wdb->id));
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -4790,14 +4790,14 @@ void test_wdb_global_delete_agent_belong_step_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, 1);
 
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     
     will_return(__wrap_wdb_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");   
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
-    result = wdb_global_delete_agent_belong(data->socket, atoi(data->socket->id));
+    result = wdb_global_delete_agent_belong(data->wdb, atoi(data->wdb->id));
     
     assert_int_equal(result, OS_INVALID);
 }
@@ -4811,11 +4811,11 @@ void test_wdb_global_delete_agent_belong_success(void **state)
     will_return(__wrap_wdb_stmt_cache, 1);
 
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
  
-    result = wdb_global_delete_agent_belong(data->socket, atoi(data->socket->id));
+    result = wdb_global_delete_agent_belong(data->wdb, atoi(data->wdb->id));
     
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -4828,7 +4828,7 @@ void test_wdb_global_get_agent_info_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    output = wdb_global_get_agent_info(data->socket, atoi(data->socket->id));
+    output = wdb_global_get_agent_info(data->wdb, atoi(data->wdb->id));
     assert_null(output);
 }
 
@@ -4841,7 +4841,7 @@ void test_wdb_global_get_agent_info_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    output = wdb_global_get_agent_info(data->socket, atoi(data->socket->id));
+    output = wdb_global_get_agent_info(data->wdb, atoi(data->wdb->id));
     assert_null(output);
 }
 
@@ -4853,13 +4853,13 @@ void test_wdb_global_get_agent_info_bind_fail(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->socket->id));
+    expect_value(__wrap_sqlite3_bind_int, value, atoi(data->wdb->id));
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
    
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
 
-    output = wdb_global_get_agent_info(data->socket, atoi(data->socket->id));
+    output = wdb_global_get_agent_info(data->wdb, atoi(data->wdb->id));
     assert_null(output);
 }
 
@@ -4877,7 +4877,7 @@ void test_wdb_global_get_agent_info_exec_fail(void **state)
     will_return(__wrap_wdb_exec_stmt, NULL);
     expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
 
-    output = wdb_global_get_agent_info(data->socket, atoi(data->socket->id));
+    output = wdb_global_get_agent_info(data->wdb, atoi(data->wdb->id));
     assert_null(output);
 }
 
@@ -4893,7 +4893,7 @@ void test_wdb_global_get_agent_info_success(void **state)
     will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, (cJSON*)1);
 
-    output = wdb_global_get_agent_info(data->socket, atoi(data->socket->id));
+    output = wdb_global_get_agent_info(data->wdb, atoi(data->wdb->id));
     assert_ptr_equal(output, (cJSON*)1);
 }
 
@@ -4908,7 +4908,7 @@ void test_wdb_global_get_agents_by_keepalive_comparator_fail(void **state)
    
     expect_string(__wrap__merror, formatted_msg, "Invalid comparator");
 
-    result = wdb_global_get_agents_by_keepalive(data->socket, &last_agent_id, comparator, keep_alive, &output);
+    result = wdb_global_get_agents_by_keepalive(data->wdb, &last_agent_id, comparator, keep_alive, &output);
 
     assert_string_equal(output, "Invalid comparator");
     os_free(output);
@@ -4927,7 +4927,7 @@ void test_wdb_global_get_agents_by_keepalive_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_get_agents_by_keepalive(data->socket, &last_agent_id, comparator, keep_alive, &output);
+    result = wdb_global_get_agents_by_keepalive(data->wdb, &last_agent_id, comparator, keep_alive, &output);
 
     assert_string_equal(output, "Cannot begin transaction");
     os_free(output);
@@ -4947,7 +4947,7 @@ void test_wdb_global_get_agents_by_keepalive_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_get_agents_by_keepalive(data->socket, &last_agent_id, comparator, keep_alive, &output);
+    result = wdb_global_get_agents_by_keepalive(data->wdb, &last_agent_id, comparator, keep_alive, &output);
     
     assert_string_equal(output, "Cannot cache statement");
     os_free(output);
@@ -4971,7 +4971,7 @@ void test_wdb_global_get_agents_by_keepalive_bind1_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_get_agents_by_keepalive(data->socket, &last_agent_id, comparator, keep_alive, &output);
+    result = wdb_global_get_agents_by_keepalive(data->wdb, &last_agent_id, comparator, keep_alive, &output);
 
     assert_string_equal(output, "Cannot bind sql statement");
     os_free(output);
@@ -4999,7 +4999,7 @@ void test_wdb_global_get_agents_by_keepalive_bind2_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_get_agents_by_keepalive(data->socket, &last_agent_id, comparator, keep_alive, &output);
+    result = wdb_global_get_agents_by_keepalive(data->wdb, &last_agent_id, comparator, keep_alive, &output);
 
     assert_string_equal(output, "Cannot bind sql statement");
     os_free(output);
@@ -5027,7 +5027,7 @@ void test_wdb_global_get_agents_by_keepalive_no_agents(void **state)
     will_return(__wrap_wdb_exec_stmt, NULL);
     expect_function_call_any(__wrap_cJSON_Delete);
 
-    result = wdb_global_get_agents_by_keepalive(data->socket, &last_agent_id, comparator, keep_alive, &output);
+    result = wdb_global_get_agents_by_keepalive(data->wdb, &last_agent_id, comparator, keep_alive, &output);
 
     assert_string_equal(output, "");
     os_free(output);
@@ -5076,7 +5076,7 @@ void test_wdb_global_get_agents_by_keepalive_success(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, keep_alive);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
-    result = wdb_global_get_agents_by_keepalive(data->socket, &last_agent_id, comparator, keep_alive, &output);
+    result = wdb_global_get_agents_by_keepalive(data->wdb, &last_agent_id, comparator, keep_alive, &output);
 
     assert_string_equal(output, str_agt_id);
     
@@ -5113,7 +5113,7 @@ void test_wdb_global_get_agents_by_keepalive_full(void **state)
     expect_any_count(__wrap_sqlite3_bind_int, value, -1);
     will_return_count(__wrap_sqlite3_bind_int, SQLITE_OK, -1);
 
-    result = wdb_global_get_agents_by_keepalive(data->socket, &last_agent_id, comparator, keep_alive, &output);
+    result = wdb_global_get_agents_by_keepalive(data->wdb, &last_agent_id, comparator, keep_alive, &output);
 
     assert_non_null(output);
     os_free(output);
@@ -5131,7 +5131,7 @@ void test_wdb_global_get_all_agents_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_get_all_agents(data->socket, &last_agent_id, &output);
+    result = wdb_global_get_all_agents(data->wdb, &last_agent_id, &output);
 
     assert_string_equal(output, "Cannot begin transaction");
     os_free(output);
@@ -5149,7 +5149,7 @@ void test_wdb_global_get_all_agents_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_get_all_agents(data->socket, &last_agent_id, &output);
+    result = wdb_global_get_all_agents(data->wdb, &last_agent_id, &output);
 
     assert_string_equal(output, "Cannot cache statement");
     os_free(output);
@@ -5171,7 +5171,7 @@ void test_wdb_global_get_all_agents_bind_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_get_all_agents(data->socket, &last_agent_id, &output);
+    result = wdb_global_get_all_agents(data->wdb, &last_agent_id, &output);
 
     assert_string_equal(output, "Cannot bind sql statement");
     os_free(output);
@@ -5194,7 +5194,7 @@ void test_wdb_global_get_all_agents_no_agents(void **state)
     will_return(__wrap_wdb_exec_stmt, NULL);
     expect_function_call_any(__wrap_cJSON_Delete);
 
-    result = wdb_global_get_all_agents(data->socket, &last_agent_id, &output);
+    result = wdb_global_get_all_agents(data->wdb, &last_agent_id, &output);
 
     assert_string_equal(output, "");
     os_free(output);
@@ -5235,7 +5235,7 @@ void test_wdb_global_get_all_agents_success(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
-    result = wdb_global_get_all_agents(data->socket, &last_agent_id, &output);
+    result = wdb_global_get_all_agents(data->wdb, &last_agent_id, &output);
 
     assert_string_equal(output, str_agt_id);
     
@@ -5270,7 +5270,7 @@ void test_wdb_global_get_all_agents_full(void **state)
     expect_any_count(__wrap_sqlite3_bind_int, value, -1);
     will_return_count(__wrap_sqlite3_bind_int, SQLITE_OK, -1);
 
-    result = wdb_global_get_all_agents(data->socket, &last_agent_id, &output);
+    result = wdb_global_get_all_agents(data->wdb, &last_agent_id, &output);
 
     assert_non_null(output);
     os_free(output);
