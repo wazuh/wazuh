@@ -26,7 +26,7 @@
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
 
 typedef struct test_struct {
-    wdb_t *socket;
+    wdb_t *wdb;
     char *output;
 } test_struct_t;
 
@@ -36,10 +36,10 @@ int setup_wdb(void **state) {
     test_mode = 1;
     test_struct_t *init_data = NULL;
     os_calloc(1,sizeof(test_struct_t),init_data);
-    os_calloc(1,sizeof(wdb_t),init_data->socket);
-    os_strdup("000",init_data->socket->id);
+    os_calloc(1,sizeof(wdb_t),init_data->wdb);
+    os_strdup("000",init_data->wdb->id);
     os_calloc(256,sizeof(char),init_data->output);
-    os_calloc(1,sizeof(sqlite3 *),init_data->socket->db);
+    os_calloc(1,sizeof(sqlite3 *),init_data->wdb->db);
     *state = init_data;
     return 0;
 }
@@ -48,9 +48,9 @@ int teardown_wdb(void **state) {
     test_mode = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     os_free(data->output);
-    os_free(data->socket->id);
-    os_free(data->socket->db);
-    os_free(data->socket);
+    os_free(data->wdb->id);
+    os_free(data->wdb->db);
+    os_free(data->wdb);
     os_free(data);
     return 0;
 }
@@ -65,14 +65,14 @@ void test_wdb_open_global_pool_success(void **state)
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_value(__wrap_OSHash_Get, self, (OSHash*) 0);
     expect_string(__wrap_OSHash_Get, key, WDB_GLOB_NAME);
-    will_return(__wrap_OSHash_Get, data->socket);
+    will_return(__wrap_OSHash_Get, data->wdb);
 
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     ret = wdb_open_global();
 
-    assert_int_equal(ret, data->socket);
+    assert_int_equal(ret, data->wdb);
 }
 
 void test_wdb_open_global_create_fail(void **state)
