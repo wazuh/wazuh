@@ -292,9 +292,7 @@ void dump_syscheck_registry(syscheck_config *syscheck,
         syscheck->registry[pl].tag = NULL;
         syscheck->registry[pl + 1].tag = NULL;
         syscheck->registry[pl + 1].recursion_level = 0;
-        syscheck->registry[pl].recursion_level = recursion_level;
-        syscheck->registry[pl].arch = arch;
-        syscheck->registry[pl].opts = opts;
+        syscheck->registry[pl + 1].filerestrict = NULL;
         os_strdup(entry, syscheck->registry[pl].entry);
     } else {
         while (syscheck->registry[pl].entry != NULL) {
@@ -313,26 +311,29 @@ void dump_syscheck_registry(syscheck_config *syscheck,
             syscheck->registry[pl + 1].tag = NULL;
             syscheck->registry[pl + 1].recursion_level = 0;
             syscheck->registry[pl + 1].filerestrict = NULL;
-            syscheck->registry[pl].recursion_level = recursion_level;
-            syscheck->registry[pl].arch = arch;
             os_strdup(entry, syscheck->registry[pl].entry);
         } else {
-            OSMatch_FreePattern(syscheck->registry[pl].filerestrict);
-            os_free(syscheck->registry[pl].filerestrict);
+            if (syscheck->registry[pl].filerestrict) {
+                OSMatch_FreePattern(syscheck->registry[pl].filerestrict);
+                free(syscheck->registry[pl].filerestrict);
+            }
             os_free(syscheck->registry[pl].tag);
         }
-        if (restrictfile) {
-            os_calloc(1, sizeof(OSMatch), syscheck->registry[pl].filerestrict);
-            if (!OSMatch_Compile(restrictfile, syscheck->registry[pl].filerestrict, 0)) {
-                merror(REGEX_COMPILE, restrictfile, syscheck->registry[pl].filerestrict->error);
-                free(syscheck->registry[pl].filerestrict);
-                syscheck->registry[pl].filerestrict = NULL;
-            }
-        }
     }
+    syscheck->registry[pl].recursion_level = recursion_level;
+    syscheck->registry[pl].arch = arch;
+    syscheck->registry[pl].opts = opts;
+    syscheck->registry[pl].diff_size_limit = diff_size;
 
     if (tag) {
         os_strdup(tag, syscheck->registry[pl].tag);
+    }
+    if (restrictfile) {
+        os_calloc(1, sizeof(OSMatch), syscheck->registry[pl].filerestrict);
+        if (!OSMatch_Compile(restrictfile, syscheck->registry[pl].filerestrict, 0)) {
+            merror(REGEX_COMPILE, restrictfile, syscheck->registry[pl].filerestrict->error);
+            os_free(syscheck->registry[pl].filerestrict);
+        }
     }
 }
 #endif
@@ -481,6 +482,10 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
 
     if (attributes && values) {
         for (i = 0; attributes[i]; i++) {
+            if (values[i] == NULL) {
+                mdebug1("Empty value for attribute %s", attributes[i]);
+                break;
+            }
             if (strcmp(attributes[i], xml_tag) == 0) {
                 os_free(tag);
 
