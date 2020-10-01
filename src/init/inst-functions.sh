@@ -20,6 +20,7 @@ HEADER_TEMPLATE="./etc/templates/config/generic/header-comments.template"
 GLOBAL_TEMPLATE="./etc/templates/config/generic/global.template"
 GLOBAL_AR_TEMPLATE="./etc/templates/config/generic/global-ar.template"
 RULES_TEMPLATE="./etc/templates/config/generic/rules.template"
+RULE_TEST_TEMPLATE="./etc/templates/config/generic/rule_test.template"
 AR_COMMANDS_TEMPLATE="./etc/templates/config/generic/ar-commands.template"
 AR_DEFINITIONS_TEMPLATE="./etc/templates/config/generic/ar-definitions.template"
 ALERTS_TEMPLATE="./etc/templates/config/generic/alerts.template"
@@ -550,6 +551,10 @@ WriteManager()
     cat ${RULES_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
+    # Writting wazuh-logtest configuration
+    cat ${RULE_TEST_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
     # Writting auth configuration
     if [ "X${AUTHD}" = "Xyes" ]; then
         sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${AUTH_TEMPLATE}" >> $NEWCONFIG
@@ -665,6 +670,10 @@ WriteLocal()
 
     # Writting rules configuration
     cat ${RULES_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
+    # Writting wazuh-logtest configuration
+    cat ${RULE_TEST_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     echo "</ossec_config>" >> $NEWCONFIG
