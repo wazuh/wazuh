@@ -315,7 +315,7 @@ void dump_syscheck_registry(syscheck_config *syscheck,
         } else {
             if (syscheck->registry[pl].filerestrict) {
                 OSMatch_FreePattern(syscheck->registry[pl].filerestrict);
-                free(syscheck->registry[pl].filerestrict);
+                os_free(syscheck->registry[pl].filerestrict);
             }
             os_free(syscheck->registry[pl].tag);
         }
@@ -324,7 +324,6 @@ void dump_syscheck_registry(syscheck_config *syscheck,
     syscheck->registry[pl].arch = arch;
     syscheck->registry[pl].opts = opts;
     syscheck->registry[pl].diff_size_limit = diff_size;
-
     if (tag) {
         os_strdup(tag, syscheck->registry[pl].tag);
     }
@@ -471,10 +470,12 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
     const char *xml_check_perm = "check_perm";
     const char *xml_check_mtime = "check_mtime";
     const char *xml_check_type = "check_type";
+    const char *xml_restrict = "restrict";
 
     int i;
     char **entry;
     char *tag = NULL;
+    char *restrictfile = NULL;
     int arch = ARCH_32BIT;
     int recursion_level = MAX_REGISTRY_DEPTH;
     int opts = REGISTRY_CHECK_ALL;
@@ -490,7 +491,7 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
                 os_free(tag);
 
                 if (tag = os_strip_char(values[i], ' '), !tag) {
-                    merror("Processing tag '%s' for registry entry '%s'.", tag, entries);
+                    merror("Processing tag for registry entry '%s'.", entries);
                 }
             } else if (strcmp(attributes[i], xml_arch) == 0) {
                 if (strcmp(values[i], xml_32bit) == 0) {
@@ -522,7 +523,10 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
                     mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
                     goto clean_reg;
                 }
-            } else if (strcmp(attributes[i], xml_check_all)) {
+            } else if (strcmp(attributes[i], xml_restrict) == 0) {
+                os_free(restrictfile);
+                os_strdup(values[i], restrictfile);
+            } else if (strcmp(attributes[i], xml_check_all) == 0) {
                 if (strcmp(values[i], "yes") == 0) {
                     opts |= REGISTRY_CHECK_ALL;
                 } else if (strcmp(values[i], "no") == 0) {
@@ -531,7 +535,7 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
                     mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
                     goto clean_reg;
                 }
-            } else if (strcmp(attributes[i], xml_check_sum)) {
+            } else if (strcmp(attributes[i], xml_check_sum) == 0) {
                 if (strcmp(values[i], "yes") == 0) {
                     opts |= CHECK_SUM;
                 } else if (strcmp(values[i], "no") == 0) {
@@ -540,7 +544,7 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
                     mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
                     goto clean_reg;
                 }
-            } else if (strcmp(attributes[i], xml_check_md5sum)) {
+            } else if (strcmp(attributes[i], xml_check_md5sum) == 0) {
                 if (strcmp(values[i], "yes") == 0) {
                     opts |= CHECK_MD5SUM;
                 } else if (strcmp(values[i], "no") == 0) {
@@ -549,7 +553,7 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
                     mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
                     goto clean_reg;
                 }
-            } else if (strcmp(attributes[i], xml_check_sha1sum)) {
+            } else if (strcmp(attributes[i], xml_check_sha1sum) == 0) {
                 if (strcmp(values[i], "yes") == 0) {
                     opts |= CHECK_SHA1SUM;
                 } else if (strcmp(values[i], "no") == 0) {
@@ -558,7 +562,7 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
                     mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
                     goto clean_reg;
                 }
-            } else if (strcmp(attributes[i], xml_check_sha256sum)) {
+            } else if (strcmp(attributes[i], xml_check_sha256sum) == 0) {
                 if (strcmp(values[i], "yes") == 0) {
                     opts |= CHECK_SHA256SUM;
                 } else if (strcmp(values[i], "no") == 0) {
@@ -567,7 +571,7 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
                     mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
                     goto clean_reg;
                 }
-            } else if (strcmp(attributes[i], xml_check_size)) {
+            } else if (strcmp(attributes[i], xml_check_size) == 0) {
                 if (strcmp(values[i], "yes") == 0) {
                     opts |= CHECK_SIZE;
                 } else if (strcmp(values[i], "no") == 0) {
@@ -576,7 +580,7 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
                     mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
                     goto clean_reg;
                 }
-            } else if (strcmp(attributes[i], xml_check_owner)) {
+            } else if (strcmp(attributes[i], xml_check_owner) == 0) {
                 if (strcmp(values[i], "yes") == 0) {
                     opts |= CHECK_OWNER;
                 } else if (strcmp(values[i], "no") == 0) {
@@ -585,7 +589,7 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
                     mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
                     goto clean_reg;
                 }
-            } else if (strcmp(attributes[i], xml_check_group)) {
+            } else if (strcmp(attributes[i], xml_check_group) == 0) {
                 if (strcmp(values[i], "yes") == 0) {
                     opts |= CHECK_GROUP;
                 } else if (strcmp(values[i], "no") == 0) {
@@ -594,7 +598,7 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
                     mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
                     goto clean_reg;
                 }
-            } else if (strcmp(attributes[i], xml_check_perm)) {
+            } else if (strcmp(attributes[i], xml_check_perm) == 0) {
                 if (strcmp(values[i], "yes") == 0) {
                     opts |= CHECK_PERM;
                 } else if (strcmp(values[i], "no") == 0) {
@@ -603,7 +607,7 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
                     mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
                     goto clean_reg;
                 }
-            } else if (strcmp(attributes[i], xml_check_mtime)) {
+            } else if (strcmp(attributes[i], xml_check_mtime) == 0) {
                 if (strcmp(values[i], "yes") == 0) {
                     opts |= CHECK_MTIME;
                 } else if (strcmp(values[i], "no") == 0) {
@@ -612,7 +616,7 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
                     mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
                     goto clean_reg;
                 }
-            } else if (strcmp(attributes[i], xml_check_type)) {
+            } else if (strcmp(attributes[i], xml_check_type) == 0) {
                 if (strcmp(values[i], "yes") == 0) {
                     opts |= CHECK_TYPE;
                 } else if (strcmp(values[i], "no") == 0) {
@@ -632,7 +636,7 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
     entry = OS_StrBreak(',', entries, MAX_DIR_SIZE + 1); /* Max number */
 
     if (entry == NULL) {
-        return (0);
+        goto clean_reg;
     }
 
     for (i = 0; entry[i]; i++) {
@@ -667,10 +671,10 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
 
         /* Add new entry */
         if (arch == ARCH_BOTH) {
-            dump_syscheck_registry(syscheck, tmp_entry, opts, NULL, recursion_level, tag, ARCH_64BIT, -1);
-            dump_syscheck_registry(syscheck, tmp_entry, opts, NULL, recursion_level, tag, ARCH_32BIT, -1);
+            dump_syscheck_registry(syscheck, tmp_entry, opts, restrictfile, recursion_level, tag, ARCH_64BIT, -1);
+            dump_syscheck_registry(syscheck, tmp_entry, opts, restrictfile, recursion_level, tag, ARCH_32BIT, -1);
         } else {
-            dump_syscheck_registry(syscheck, tmp_entry, opts, NULL, recursion_level, tag, arch, -1);
+            dump_syscheck_registry(syscheck, tmp_entry, opts, restrictfile, recursion_level, tag, arch, -1);
         }
 
         /* Next entry */
@@ -681,7 +685,7 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
     retval = 1;
 clean_reg:
     os_free(tag);
-
+    os_free(restrictfile);
     return retval;
 }
 #endif /* WIN32 */
