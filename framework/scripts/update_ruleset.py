@@ -199,13 +199,13 @@ def get_branch():
 
         current_branch = lines[0].split('/')[-1].strip()
     except:
-        current_branch = 'stable'  # standalone script
+        current_branch = get_version_major_minor()  # standalone script
 
     return current_branch
 
 
 def get_ossec_version():
-    init_file = "{0}/etc/ossec-init.conf".format(ossec_path)
+    init_file = "{0}/etc/ossec-init.conf".format(common.ossec_path)
 
     try:
         ossec_v = "old"
@@ -229,6 +229,12 @@ def get_ossec_version():
         return is_wazuh, ossec_v
     except:
         exit(2, "Reading '{0}'.".format(init_file))
+
+
+def get_version_major_minor():
+    _, version = get_ossec_version()
+    parts = version[2:-1].split('.')
+    return '.'.join(parts[:-1])
 
 
 def get_ruleset_version():
@@ -574,7 +580,7 @@ def usage():
     \t-d, --debug         Debug mode.
     \t-u, --url           URL of ruleset zip (default: https://github.com/wazuh/wazuh-ruleset/archive/$BRANCH-NAME.zip)
     \t                    It requires -n parameter.
-    \t-n, --branch-name   Branch name (default: stable)
+    \t-n, --branch-name   Branch name (default: {0})
     """.format(branch)
     print(msg)
 

@@ -25,7 +25,7 @@ sleep 1
 
 # Manager configuration
 for py_file in /configuration_files/*.py; do
-  /usr/bin/python3 $py_file
+  /var/ossec/framework/python/bin/python3 $py_file
 done
 
 for sh_file in /configuration_files/*.sh; do
@@ -33,6 +33,12 @@ for sh_file in /configuration_files/*.sh; do
 done
 
 /var/ossec/bin/ossec-control restart
+
+sleep 1
+
+if [ "$3" == "master" ]; then
+  /var/ossec/framework/python/bin/python3 /configuration_files/master_only/update_agent_info.py
+fi
 
 # RBAC configuration
 for sql_file in /configuration_files/*.sql; do
