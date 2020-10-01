@@ -70,7 +70,8 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
 
     switch (wdb_metadata_table_check(wdb,"metadata")) {
     case OS_INVALID:
-        mdebug1("DB(%s) Error trying to find metadata table", wdb->id);
+        mwarn("DB(%s) Error trying to find metadata table", wdb->id);
+        wdb = wdb_backup_global(wdb, -1);
         return wdb;
     case 0:
         // The table doesn't exist, this is the global.db version 0
@@ -80,7 +81,8 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
             version = atoi(db_version);
         }
         else{
-            merror("DB(%s): Error trying to get DB version", wdb->id);
+            mwarn("DB(%s): Error trying to get DB version", wdb->id);
+            wdb = wdb_backup_global(wdb, -1);
             return wdb;
         }
     }
@@ -89,7 +91,8 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
         mdebug2("Updating database '%s' to version %d", wdb->id, i + 1);
 
         if (wdb_sql_exec(wdb, UPDATES[i]) == -1) {
-            merror("Failed to update global.db to version %d", i + 1);
+            mwarn("Failed to update global.db to version %d", i + 1);
+            wdb = wdb_backup_global(wdb, version);
             break;
         }
     }
@@ -134,6 +137,39 @@ wdb_t * wdb_backup(wdb_t *wdb, int version) {
     }
 
     free(sagent_id);
+    return new_wdb;
+}
+
+wdb_t * wdb_backup_global(wdb_t *wdb, int version) {
+    char path[PATH_MAX];
+    wdb_t * new_wdb = NULL;
+    sqlite3 * db;
+
+    snprintf(path, PATH_MAX, "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+
+    if (wdb_close(wdb, TRUE) != -1) {
+        if (wdb_create_backup_global(version) != -1) {
+            mwarn("Creating Global DB backup and creating empty DB");
+            unlink(path);
+            
+            if (OS_SUCCESS != wdb_create_global(path)) {
+                merror("Couldn't create SQLite database '%s'", path);
+                return NULL;
+            }
+
+            if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
+                merror("Can't open SQLite backup database '%s': %s", path, sqlite3_errmsg(db));
+                sqlite3_close_v2(db);
+                return NULL;
+            }
+
+            new_wdb = wdb_init(db, WDB_GLOB_NAME);
+            wdb_pool_append(new_wdb);
+        }
+    } else {
+        merror("Couldn't create SQLite Global backup database.");
+    }
+
     return new_wdb;
 }
 
@@ -187,6 +223,57 @@ int wdb_create_backup(const char * agent_id, int version) {
     }
 
     return 0;
+}
+
+int wdb_create_backup_global(int version) {
+    char path[OS_FLSIZE + 1];
+    char buffer[4096];
+    FILE *source;
+    FILE *dest;
+    size_t nbytes;
+    int result = 0;
+
+    snprintf(path, OS_FLSIZE, "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+
+    if (!(source = fopen(path, "r"))) {
+        merror("Couldn't open source '%s': %s (%d)", path, strerror(errno), errno);
+        return OS_INVALID;
+    }
+
+    snprintf(path, OS_FLSIZE, "%s/%s.db-oldv%d-%lu", WDB2_DIR, WDB_GLOB_NAME, version, (unsigned long)time(NULL));
+
+    if (!(dest = fopen(path, "w"))) {
+        merror("Couldn't open dest '%s': %s (%d)", path, strerror(errno), errno);
+        fclose(source);
+        return OS_INVALID;
+    }
+
+    while (nbytes = fread(buffer, 1, 4096, source), nbytes) {
+        if (fwrite(buffer, 1, nbytes, dest) != nbytes) {            
+            result = OS_INVALID;
+            break;
+        }
+    }
+
+    fclose(source);
+    if (fclose(dest) == -1) {
+        unlink(path);
+        merror("Couldn't create file %s completely.", path);
+        return OS_INVALID;
+    }
+
+    if (result < 0) {
+        unlink(path);
+        return OS_INVALID;
+    }
+
+    if (chmod(path, 0640) < 0) {
+        merror(CHMOD_ERROR, path, errno, strerror(errno));
+        unlink(path);
+        return OS_INVALID;
+    }
+
+    return OS_SUCCESS;
 }
 
 int wdb_adjust_upgrade(wdb_t *wdb, int upgrade_step) {
