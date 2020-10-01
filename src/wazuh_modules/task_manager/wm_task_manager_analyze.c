@@ -23,31 +23,56 @@
 #include "wm_task_manager_parsing.h"
 
 /**
- * Analyze a api task command.
- * @param command Command of the task to be analyzed.
- * @param error_code Variable to store an error code if something is wrong.
- * @param agent_id Agent id extracted from task_object.
- * @param task_id Task id extracted from task_object.
- * @return JSON object with the response for this task.
- * */
-//STATIC cJSON* wm_task_manager_analyze_task_api_module(char *command, int *error_code, int agent_id, int task_id) __attribute__((nonnull));
-
-/**
  * Analyze a upgrade_module task by command. Update the tasks DB when necessary.
+ * @param module Module name to be saved in db
  * @param command Command of the task to be analyzed.
  * @param error_code Variable to store an error code if something is wrong.
  * @param agent_id Agent id extracted from task_object.
  * @param task_id Task id extracted from task_object.
  * @param status Status extracted from task_object.
- * @param status Error string extracted from task_object.
  * @return JSON object with the response for this task.
  * */
-//STATIC cJSON* wm_task_manager_analyze_task_upgrade_module(char *command, int *error_code, int agent_id, int task_id, char *status, char *error) __attribute__((nonnull(1, 2)));
-
 STATIC cJSON* wm_task_manager_command_upgrade(char *module, char *command, int *error_code, int agent_id, int task_id, char *status);
+
+/**
+ * Analyze a upgrade_module task by command. Update the tasks DB when necessary.
+ * @param error_code Variable to store an error code if something is wrong.
+ * @param agent_id Agent id extracted from task_object.
+ * @param task_id Task id extracted from task_object.
+ * @param status Status extracted from task_object.
+ * @return JSON object with the response for this task.
+ * */
 STATIC cJSON* wm_task_manager_command_upgrade_get_status(int *error_code, int agent_id, int task_id, char *status);
+
+/**
+ * Analyze upgrade_update_status command. Update the tasks DB when necessary.
+ * @param error_code Variable to store an error code if something is wrong.
+ * @param agent_id Agent id extracted from task_object.
+ * @param task_id Task id extracted from task_object.
+ * @param status Status extracted from task_object.
+ * @param error Error string extracted from task_object.
+ * @return JSON object with the response for this task.
+ * */
 STATIC cJSON* wm_task_manager_command_upgrade_update_status(int *error_code, int agent_id, int task_id, char *status, char *error)__attribute__((nonnull));
+
+/**
+ * Analyze upgrade_result command.
+ * @param command Command of the task to be analyzed.
+ * @param error_code Variable to store an error code if something is wrong.
+ * @param agent_id Agent id extracted from task_object.
+ * @param task_id Task id extracted from task_object.
+ * @return JSON object with the response for this task.
+ * */
 STATIC cJSON* wm_task_manager_command_upgrade_result(char *command, int *error_code, int agent_id, int task_id);
+
+/**
+ * Analyze a task_result command.
+ * @param command Command of the task to be analyzed.
+ * @param error_code Variable to store an error code if something is wrong.
+ * @param agent_id Agent id extracted from task_object.
+ * @param task_id Task id extracted from task_object.
+ * @return JSON object with the response for this task.
+ * */
 STATIC cJSON* wm_task_manager_command_task_result(char *command, int *error_code, int agent_id, int task_id);
 
 cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
@@ -85,8 +110,8 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
             if (module){
                 response = wm_task_manager_command_upgrade(module, command, error_code, agent_id, task_id, status);
             } else {
-                *error_code = WM_TASK_INVALID_COMMAND;
-                response = wm_task_manager_parse_data_response(WM_TASK_INVALID_COMMAND, agent_id, task_id, status);
+                *error_code = WM_TASK_INVALID_MODULE;
+                response = wm_task_manager_parse_data_response(WM_TASK_INVALID_MODULE, agent_id, task_id, status);
             }
         } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_GET_STATUS], command)) {
             response = wm_task_manager_command_upgrade_get_status(error_code, agent_id, task_id, status);
@@ -97,8 +122,8 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
         } else if (!strcmp(task_manager_commands_list[WM_TASK_TASK_RESULT], command)) {
             response = wm_task_manager_command_task_result(command, error_code, agent_id, task_id);
         } else {
-            *error_code = WM_TASK_INVALID_MODULE;
-            response = wm_task_manager_parse_data_response(WM_TASK_INVALID_MODULE, agent_id, task_id, status);
+            *error_code = WM_TASK_INVALID_COMMAND;
+            response = wm_task_manager_parse_data_response(WM_TASK_INVALID_COMMAND, agent_id, task_id, status);
         }
     }
     

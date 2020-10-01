@@ -56,23 +56,21 @@ void* wm_task_manager_clean_db(void *arg) __attribute__((nonnull));
 int wm_task_manager_insert_task(int agent_id, const char *module, const char *command) __attribute__((nonnull));
 
 /**
- * Get the status of a task from the tasks DB.
+ * Get the status of a upgrade task from the tasks DB.
  * @param agent_id ID of the agent where the task is being executed.
- * @param module Name of the module where the message comes from.
  * @param status String where the status of the task will be stored.
  * @return 0 when succeed, !=0 otherwise.
  * */
 int wm_task_manager_get_upgrade_task_status(int agent_id, char **status) __attribute__((nonnull));
 
 /**
- * Update the status of a task in the tasks DB.
+ * Update the status of a upgrade task in the tasks DB.
  * @param agent_id ID of the agent where the task is being executed.
- * @param module Name of the module where the message comes from.
  * @param status New status of the task.
- * @param status Error string of the task in case of failure.
+ * @param error Error string of the task in case of failure.
  * @return 0 when succeed, !=0 otherwise.
  * */
-int wm_task_manager_update_upgrade_task_status(int agent_id, const char *status, const char *error) __attribute__((nonnull(2)));
+int wm_task_manager_update_upgrade_task_status(int agent_id, const char *status, const char *error);// __attribute__((nonnull(2)));
 
 /**
  * Get task by agent_id and module from the tasks DB.
