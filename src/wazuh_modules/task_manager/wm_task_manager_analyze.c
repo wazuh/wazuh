@@ -122,7 +122,7 @@ STATIC cJSON* wm_task_manager_analyze_task_upgrade_module(char *node, char *comm
 
         if (agent_id != OS_INVALID) {
             // Get upgrade task status
-            if (result = wm_task_manager_get_upgrade_task_status(agent_id, &status_result), result == OS_INVALID) {
+            if (result = wm_task_manager_get_upgrade_task_status(agent_id, node, &status_result), result == OS_INVALID) {
                 *error_code = WM_TASK_DATABASE_ERROR;
             } else if (result) {
                 *error_code = result;
@@ -139,7 +139,7 @@ STATIC cJSON* wm_task_manager_analyze_task_upgrade_module(char *node, char *comm
 
         if (agent_id != OS_INVALID) {
             // Update upgrade task status
-            if (result = wm_task_manager_update_upgrade_task_status(agent_id, status, error), result == OS_INVALID) {
+            if (result = wm_task_manager_update_upgrade_task_status(agent_id, node, status, error), result == OS_INVALID) {
                 *error_code = WM_TASK_DATABASE_ERROR;
             } else if (result) {
                 *error_code = result;

@@ -24,11 +24,11 @@ typedef enum _task_query {
     WM_TASK_INSERT_TASK,
     WM_TASK_GET_LAST_AGENT_TASK,
     WM_TASK_GET_LAST_AGENT_UPGRADE_TASK,
-    WM_TASK_GET_TASK_STATUS,
     WM_TASK_UPDATE_TASK_STATUS,
     WM_TASK_GET_TASK_BY_TASK_ID,
     WM_TASK_GET_TASK_BY_STATUS,
     WM_TASK_DELETE_OLD_TASKS,
+    WM_TASK_DELETE_TASK,
     WM_TASK_CANCEL_PENDING_UPGRADE_TASKS
 } task_query;
 
@@ -60,19 +60,21 @@ int wm_task_manager_insert_task(int agent_id, const char *node, const char *modu
 /**
  * Get the status of an upgrade task from the tasks DB.
  * @param agent_id ID of the agent where the task is being executed.
+ * @param node Node that executed the command.
  * @param status String where the status of the task will be stored.
  * @return 0 when succeed, !=0 otherwise.
  * */
-int wm_task_manager_get_upgrade_task_status(int agent_id, char **status) __attribute__((nonnull));
+int wm_task_manager_get_upgrade_task_status(int agent_id, const char *node, char **status) __attribute__((nonnull));
 
 /**
  * Update the status of a task in the tasks DB.
  * @param agent_id ID of the agent where the task is being executed.
+ * @param node Node that executed the command.
  * @param status New status of the task.
  * @param error Error string of the task in case of failure.
  * @return 0 when succeed, !=0 otherwise.
  * */
-int wm_task_manager_update_upgrade_task_status(int agent_id, const char *status, const char *error);
+int wm_task_manager_update_upgrade_task_status(int agent_id, const char *node, const char *status, const char *error);
 
 /**
  * Cancel the upgrade tasks of a given node in the tasks DB.
