@@ -416,7 +416,9 @@ cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, cJ
     cJSON_AddStringToObject(origin, task_manager_json_keys[WM_TASK_MODULE], task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
     cJSON_AddItemToObject(request, task_manager_json_keys[WM_TASK_ORIGIN], origin);
     cJSON_AddStringToObject(request, task_manager_json_keys[WM_TASK_COMMAND], task_manager_commands_list[command]);
-    cJSON_AddItemToObject(parameters, task_manager_json_keys[WM_TASK_AGENTS], agents_array);
+    if (agents_array) {
+        cJSON_AddItemToObject(parameters, task_manager_json_keys[WM_TASK_AGENTS], agents_array);
+    }
     if (status) {
         cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_STATUS], status);
     }

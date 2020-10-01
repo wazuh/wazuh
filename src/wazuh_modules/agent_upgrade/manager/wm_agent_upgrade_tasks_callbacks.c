@@ -18,14 +18,9 @@
 #include "shared.h"
 
 int wm_agent_upgrade_task_module_callback(cJSON *data_array, const cJSON* task_module_request, cJSON* (*success_callback)(int *error, cJSON* input_json), void (*error_callback)(int agent_id, int free)) {
-    int agents = 0;
     int error = OS_SUCCESS;
     cJSON *task_module_response = NULL;
     cJSON *error_json = NULL;
-
-    if (agents = cJSON_GetArraySize(cJSON_GetObjectItem(cJSON_GetObjectItem(task_module_request, task_manager_json_keys[WM_TASK_PARAMETERS]), task_manager_json_keys[WM_TASK_AGENTS])), !agents) {
-        return OS_INVALID;
-    }
 
     cJSON *temp_array = cJSON_CreateArray();
 
@@ -58,8 +53,11 @@ int wm_agent_upgrade_task_module_callback(cJSON *data_array, const cJSON* task_m
     }
 
     if (error) {
+        cJSON *agents_array = cJSON_GetObjectItem(cJSON_GetObjectItem(task_module_request, task_manager_json_keys[WM_TASK_PARAMETERS]), task_manager_json_keys[WM_TASK_AGENTS]);
+        int agents = cJSON_GetArraySize(agents_array);
+
         for(int i = 0; i < agents; i++) {
-            cJSON *agent_json = cJSON_GetArrayItem(cJSON_GetObjectItem(cJSON_GetObjectItem(task_module_request, task_manager_json_keys[WM_TASK_PARAMETERS]), task_manager_json_keys[WM_TASK_AGENTS]), i);
+            cJSON *agent_json = cJSON_GetArrayItem(agents_array, i);
 
             if (agent_json && (agent_json->type == cJSON_Number)) {
                 int agent_id = agent_json->valueint;
@@ -70,7 +68,7 @@ int wm_agent_upgrade_task_module_callback(cJSON *data_array, const cJSON* task_m
                 cJSON_AddItemToArray(data_array, error_json);
             }
         }
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INVALID_TASK_MAN_JSON);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_MANANAGER_ERROR);
     } else {
         while (cJSON_GetArraySize(temp_array) > 0) {
             cJSON *item = cJSON_DetachItemFromArray(temp_array, 0);

@@ -61,6 +61,12 @@ void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs)
         return;
     }
 
+    // Wait a few seconds until the task manager starts
+    sleep(WM_AGENT_UPGRADE_START_WAIT_TIME);
+
+    // Cancel pending upgrade tasks since they were lost
+    wm_agent_upgrade_cancel_pending_upgrades();
+
     // Start dispatch upgrades thread
     w_create_thread(wm_agent_upgrade_dispatch_upgrades, (void *)manager_configs);
 

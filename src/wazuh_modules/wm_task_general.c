@@ -39,6 +39,7 @@ const char *task_manager_commands_list[] = {
     [WM_TASK_UPGRADE_GET_STATUS] = "upgrade_get_status",
     [WM_TASK_UPGRADE_UPDATE_STATUS] = "upgrade_update_status",
     [WM_TASK_UPGRADE_RESULT] = "upgrade_result",
+    [WM_TASK_UPGRADE_CANCEL_TASKS] = "upgrade_cancel_tasks",
     [WM_TASK_TASK_RESULT] = "task_result"
 };
 

@@ -152,6 +152,15 @@ STATIC cJSON* wm_task_manager_analyze_task_upgrade_module(char *node, char *comm
             response = wm_task_manager_parse_data_response(WM_TASK_INVALID_AGENT_ID, agent_id, task_id, status);
         }
 
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_CANCEL_TASKS], command)) {
+
+        // Update cancel tasks
+        if (result = wm_task_manager_cancel_upgrade_tasks(node), result == OS_INVALID) {
+            *error_code = WM_TASK_DATABASE_ERROR;
+        } else {
+            response = wm_task_manager_parse_data_response(WM_TASK_SUCCESS, agent_id, task_id, status);
+        }
+
     } else {
         *error_code = WM_TASK_INVALID_COMMAND;
         response = wm_task_manager_parse_data_response(WM_TASK_INVALID_COMMAND, agent_id, task_id, status);

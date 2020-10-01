@@ -69,7 +69,7 @@ cJSON* wm_task_manager_parse_message(const char *msg) {
         return NULL;
     }
 
-    // Detect module
+    // Detect node
     if (name_json = cJSON_GetObjectItem(origin_json, task_manager_json_keys[WM_TASK_NAME]), !name_json || name_json->type != cJSON_String) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_NAME], 0);
         cJSON_Delete(event_json);
@@ -162,6 +162,21 @@ cJSON* wm_task_manager_parse_message(const char *msg) {
 
             task_index++;
         }
+
+    } else if (!agents_json && !tasks_json) {
+        cJSON *task = cJSON_CreateObject();
+
+        cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_NODE], name_json->valuestring);
+        cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_MODULE], module_json->valuestring);
+        cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_COMMAND], command_json->valuestring);
+        if (status_json && (status_json->type == cJSON_String)) {
+            cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_STATUS], status_json->valuestring);
+        }
+        if (error_msg_json && (error_msg_json->type == cJSON_String)) {
+            cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_ERROR_MSG], error_msg_json->valuestring);
+        }
+
+        cJSON_AddItemToArray(response_array, task);
     }
 
     cJSON_Delete(event_json);

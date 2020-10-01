@@ -52,7 +52,8 @@ static const char *task_queries[] = {
     [WM_TASK_UPDATE_TASK_STATUS] = "UPDATE " TASKS_TABLE " SET STATUS = ?, LAST_UPDATE_TIME = ?, ERROR_MESSAGE = ? WHERE TASK_ID = ?;",
     [WM_TASK_GET_TASK_BY_TASK_ID] = "SELECT * FROM " TASKS_TABLE " WHERE TASK_ID = ?;",
     [WM_TASK_GET_TASK_BY_STATUS] = "SELECT * FROM " TASKS_TABLE " WHERE STATUS = ?;",
-    [WM_TASK_DELETE_OLD_TASKS] = "DELETE FROM " TASKS_TABLE " WHERE CREATE_TIME <= ?;"
+    [WM_TASK_DELETE_OLD_TASKS] = "DELETE FROM " TASKS_TABLE " WHERE CREATE_TIME <= ?;",
+    [WM_TASK_CANCEL_PENDING_UPGRADE_TASKS] = "UPDATE " TASKS_TABLE " SET STATUS = '" WM_TASK_STATUS_CANCELLED "', LAST_UPDATE_TIME = ? WHERE NODE = ? AND STATUS = '" WM_TASK_STATUS_PENDING "';"
 };
 
 STATIC int wm_task_manager_sql_error(sqlite3 *db, sqlite3_stmt *stmt) {
@@ -480,6 +481,43 @@ int wm_task_manager_update_upgrade_task_status(int agent_id, const char *status,
         sqlite3_bind_text(stmt, 3, error, -1, NULL);
     }
     sqlite3_bind_int(stmt, 4, task_id);
+
+    if (result = wdb_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_STEP_ERROR);
+        w_mutex_unlock(&db_mutex);
+        return wm_task_manager_sql_error(db, stmt);
+    }
+
+    wdb_finalize(stmt);
+
+    sqlite3_close_v2(db);
+
+    w_mutex_unlock(&db_mutex);
+
+    return WM_TASK_SUCCESS;
+}
+
+int wm_task_manager_cancel_upgrade_tasks(const char *node) {
+    sqlite3 *db = NULL;
+    sqlite3_stmt *stmt = NULL;
+    int result = 0;
+
+    w_mutex_lock(&db_mutex);
+
+    if (sqlite3_open_v2(TASKS_DB, &db, SQLITE_OPEN_READWRITE, NULL)) {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_OPEN_DB_ERROR);
+        w_mutex_unlock(&db_mutex);
+        return wm_task_manager_sql_error(db, stmt);
+    }
+
+    if (wdb_prepare(db, task_queries[WM_TASK_CANCEL_PENDING_UPGRADE_TASKS], -1, &stmt, NULL) != SQLITE_OK) {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_PREPARE_ERROR);
+        w_mutex_unlock(&db_mutex);
+        return wm_task_manager_sql_error(db, stmt);
+    }
+
+    sqlite3_bind_int(stmt, 1, time(0));
+    sqlite3_bind_text(stmt, 2, node, -1, NULL);
 
     if (result = wdb_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SQL_STEP_ERROR);

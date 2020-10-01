@@ -28,7 +28,8 @@ typedef enum _task_query {
     WM_TASK_UPDATE_TASK_STATUS,
     WM_TASK_GET_TASK_BY_TASK_ID,
     WM_TASK_GET_TASK_BY_STATUS,
-    WM_TASK_DELETE_OLD_TASKS
+    WM_TASK_DELETE_OLD_TASKS,
+    WM_TASK_CANCEL_PENDING_UPGRADE_TASKS
 } task_query;
 
 extern char *schema_task_manager_sql;
@@ -72,6 +73,13 @@ int wm_task_manager_get_upgrade_task_status(int agent_id, char **status) __attri
  * @return 0 when succeed, !=0 otherwise.
  * */
 int wm_task_manager_update_upgrade_task_status(int agent_id, const char *status, const char *error);
+
+/**
+ * Cancel the upgrade tasks of a given node in the tasks DB.
+ * @param node Node that executed the upgrades.
+ * @return 0 when succeed, !=0 otherwise.
+ * */
+int wm_task_manager_cancel_upgrade_tasks(const char *node) __attribute__((nonnull));
 
 /**
  * Get task by agent_id and module from the tasks DB.
