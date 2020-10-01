@@ -75,6 +75,19 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
     strText = objFile.ReadAll
     objFile.Close
 
+    ' Enable syscheck in a fresh installation
+    strNewText = Replace(strText, "<teststring>", "<teststring>")
+    If InStr(strText,"<address>0.0.0.0</address>") > 0 Then
+        Set re = new regexp
+        re.Pattern = "<disabled>yes</disabled>"
+        re.Global = False
+        strNewText = re.Replace(strNewText, "<disabled>no</disabled>")
+        Set re = new regexp
+        re.Pattern = "<!-- By default it is disabled. In the Install you must choose to enable it. -->"
+        re.Global = True
+        strNewText = re.Replace(strNewText, "")
+    End If
+
     If address <> "" or server_port <> "" or protocol <> "" or notify_time <> "" or time_reconnect <> "" Then
         If address <> "" and InStr(address,";") > 0 Then 'list of address
             ip_list=Split(address,";")
@@ -155,13 +168,14 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
             End If
         End If
 
-         ' Writing the ossec.conf file
-          const ForWriting = 2
-          Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForWriting)
-          objFile.WriteLine strNewText
-          objFile.Close
 
     End If
+
+    ' Writing the ossec.conf file
+    const ForWriting = 2
+    Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForWriting)
+    objFile.WriteLine strNewText
+    objFile.Close
 
 	If Not objFSO.fileExists(home_dir & "local_internal_options.conf") Then
 
