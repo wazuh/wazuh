@@ -225,6 +225,26 @@ void test_wdb_upgrade_global_get_version_success(void **state)
     assert_int_equal(ret, data->socket);
 }
 
+void test_wdb_upgrade_global_fail_backup_fail(void **state)
+{   
+    wdb_t *ret = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+    
+    expect_string(__wrap_wdb_metadata_table_check, key, "metadata");
+    will_return(__wrap_wdb_metadata_table_check, 1);
+
+    expect_string(__wrap_wdb_metadata_get_entry, key, "db_version");
+    will_return(__wrap_wdb_metadata_get_entry, "1");
+    will_return(__wrap_wdb_metadata_get_entry, -1);
+    expect_string(__wrap__mwarn, formatted_msg, "DB(000): Error trying to get DB version");
+    will_return(__wrap_wdb_close, -1);
+    expect_string(__wrap__merror, formatted_msg, "Couldn't create SQLite Global backup database.");
+
+    ret = wdb_upgrade_global(data->socket);
+
+    assert_int_equal(ret, NULL);
+}
+
 void test_wdb_create_backup_global_success(void **state)
 {   
     int ret = 0;
@@ -455,8 +475,6 @@ void test_wdb_backup_global_qlite3_open_v2_fail(void **state)
 int main()
 {
 
-    bool block = true;
-    //while (block){;}
     const struct CMUnitTest tests[] = 
     {
         cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_table_fail, setup_wdb, teardown_wdb),
@@ -464,6 +482,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_update_fail, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_get_version_fail, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_get_version_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_fail_backup_fail, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_create_backup_global_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_create_backup_global_dst_fopen_fail, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_create_backup_global_src_fopen_fail, setup_wdb, teardown_wdb),
