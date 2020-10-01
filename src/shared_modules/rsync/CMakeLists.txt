@@ -57,7 +57,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  target_link_libraries(rsync cjson dbsync crypto gcov)
+  target_link_libraries(rsync cjson dbsync crypto gcov pthread)
   if(UNIT_TEST)
     include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
     include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
@@ -68,7 +68,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_subdirectory(integrationTests)
   endif(UNIT_TEST)
 else()
-    target_link_libraries(rsync dbsync cjson crypto)
+    target_link_libraries(rsync dbsync cjson crypto pthread)
 endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
 if(NOT DEFINED COVERITY)
