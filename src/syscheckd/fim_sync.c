@@ -53,7 +53,10 @@ void * fim_run_integrity(void * args) {
         mdebug1("Initializing FIM Integrity Synchronization check. Sync interval is %li seconds.", sync_interval);
 
         gettime(&start);
-        fim_sync_checksum();
+        fim_sync_checksum(FIM_TYPE_FILE, &syscheck.fim_entry_mutex);
+#ifdef WIN32
+        fim_sync_checksum(FIM_TYPE_REGISTRY, &syscheck.fim_registry_mutex);
+#endif
         gettime(&end);
 
         mdebug2("Finished calculating FIM integrity. Time: %.3f seconds.", time_diff(&start, &end));
@@ -92,41 +95,33 @@ void * fim_run_integrity(void * args) {
 }
 // LCOV_EXCL_STOP
 
-void fim_sync_checksum() {
+void fim_sync_checksum(fim_type type, pthread_mutex_t *mutex) {
     char *start = NULL;
     char *top = NULL;
     EVP_MD_CTX * ctx = EVP_MD_CTX_create();
     EVP_DigestInit(ctx, EVP_sha1());
 
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-#ifdef WIN32
-    w_mutex_lock(&syscheck.fim_registry_mutex);
-#endif
+    w_mutex_lock(mutex);
 
-    if (fim_db_get_row_path(syscheck.database, FIM_FIRST_ROW,
-        &start) != FIMDB_OK) {
-        merror(FIM_DB_ERROR_GET_ROW_PATH, "FIRST");
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
+    if (fim_db_get_first_path(syscheck.database, type, &start) != FIMDB_OK) {
+        merror(FIM_DB_ERROR_GET_ROW_PATH, "FIRST", type == FIM_TYPE_FILE ? "FILE" : "REGISTRY");
+        w_mutex_unlock(mutex);
         goto end;
     }
 
-    if (fim_db_get_row_path(syscheck.database, FIM_LAST_ROW,
-        &top) != FIMDB_OK) {
-        merror(FIM_DB_ERROR_GET_ROW_PATH, "LAST");
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
+    if (fim_db_get_last_path(syscheck.database, type, &top) != FIMDB_OK) {
+        merror(FIM_DB_ERROR_GET_ROW_PATH, "LAST", type == FIM_TYPE_FILE ? "FILE" : "REGISTRY");
+        w_mutex_unlock(mutex);
         goto end;
     }
 
-    if (fim_db_get_data_checksum(syscheck.database, (void*) ctx) != FIMDB_OK) {
+    if (fim_db_get_data_checksum(syscheck.database, type, (void*) ctx) != FIMDB_OK) {
         merror(FIM_DB_ERROR_CALC_CHECKSUM);
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
+        w_mutex_unlock(mutex);
         goto end;
     }
 
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
-#ifdef WIN32
-    w_mutex_unlock(&syscheck.fim_registry_mutex);
-#endif
+    w_mutex_unlock(mutex);
 
     fim_sync_cur_id = time(NULL);
 
@@ -138,13 +133,13 @@ void fim_sync_checksum() {
         EVP_DigestFinal_ex(ctx, digest, &digest_size);
         OS_SHA1_Hexdigest(digest, hexdigest);
 
-        char * plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_GLOBAL, fim_sync_cur_id, start, top, NULL, hexdigest);
+        char * plain = dbsync_check_msg(type == FIM_TYPE_FILE ? "fim_file" : "fim_registry", INTEGRITY_CHECK_GLOBAL, fim_sync_cur_id, start, top, NULL, hexdigest);
         fim_send_sync_msg(plain);
 
         os_free(plain);
 
     } else { // If database is empty
-        char * plain = dbsync_check_msg("syscheck", INTEGRITY_CLEAR, fim_sync_cur_id, NULL, NULL, NULL, NULL);
+        char * plain = dbsync_check_msg(type == FIM_TYPE_FILE ? "fim_file" : "fim_registry", INTEGRITY_CLEAR, fim_sync_cur_id, NULL, NULL, NULL, NULL);
         fim_send_sync_msg(plain);
         os_free(plain);
     }

@@ -108,17 +108,6 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
                         __attribute__((unused))void *w_evt);
 
 /**
- * @brief Get the last/first row from file_entry.
- *
- * @param fim_sql FIM database struct.
- * @param mode FIM_FIRST_ROW or FIM_LAST_ROW.
- * @param path pointer of pointer where the path will be stored.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_get_row_path(fdb_t *fim_sql, int mode, char **path);
-
-/**
  * @brief Set all entries from database to unscanned.
  *
  * @param fim_sql FIM database struct.

@@ -29,27 +29,19 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_GET_PATH] = "SELECT path, inode_id, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM file_entry INNER JOIN file_data ON path = ? AND file_data.rowid = file_entry.inode_id;",
     [FIMDB_STMT_UPDATE_DATA] = "UPDATE file_data SET size = ?, perm = ?, attributes = ?, uid = ?, gid = ?, user_name = ?, group_name = ?, hash_md5 = ?, hash_sha1 = ?, hash_sha256 = ?, mtime = ? WHERE rowid = ?;",
     [FIMDB_STMT_UPDATE_PATH] = "UPDATE file_entry SET inode_id = ?, mode = ?, last_event = ? = ?, scanned = ?, options = ?, checksum = ? WHERE path = ?;",
-#ifndef WIN32
     [FIMDB_STMT_GET_LAST_PATH] = "SELECT path FROM file_entry ORDER BY path DESC LIMIT 1;",
     [FIMDB_STMT_GET_FIRST_PATH] = "SELECT path FROM file_entry ORDER BY path ASC LIMIT 1;",
     [FIMDB_STMT_GET_ALL_CHECKSUMS] = "SELECT checksum FROM file_entry ORDER BY path ASC;",
-#else
-    [FIMDB_STMT_GET_LAST_PATH] = "SELECT path FROM sync_view ORDER BY path DESC LIMIT 1;",
-    [FIMDB_STMT_GET_FIRST_PATH] = "SELECT path FROM sync_view ORDER BY path ASC LIMIT 1;",
-    [FIMDB_STMT_GET_ALL_CHECKSUMS] = "SELECT checksum FROM sync_view ORDER BY path ASC;",
-#endif
     [FIMDB_STMT_GET_NOT_SCANNED] = "SELECT path, inode_id, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM file_data INNER JOIN file_entry ON inode_id = file_data.rowid WHERE scanned = 0 ORDER BY PATH ASC;",
     [FIMDB_STMT_SET_ALL_UNSCANNED] = "UPDATE file_entry SET scanned = 0;",
     [FIMDB_STMT_GET_PATH_COUNT] = "SELECT count(inode_id), inode_id FROM file_entry WHERE inode_id = (select inode_id from file_entry where path = ?);",
 #ifndef WIN32
     [FIMDB_STMT_GET_DATA_ROW] = "SELECT rowid FROM file_data WHERE inode = ? AND dev = ?;",
-    [FIMDB_STMT_GET_COUNT_RANGE] = "SELECT count(*) FROM file_entry INNER JOIN file_data ON file_data.rowid = file_entry.inode_id WHERE path BETWEEN ? and ? ORDER BY path;",
-    [FIMDB_STMT_GET_PATH_RANGE] = "SELECT path, checksum FROM file_entry WHERE path BETWEEN ? and ? ORDER BY path;",
 #else
     [FIMDB_STMT_GET_DATA_ROW] = "SELECT inode_id FROM file_entry WHERE path = ?",
-    [FIMDB_STMT_GET_COUNT_RANGE] = "SELECT count(*) FROM sync_view WHERE path BETWEEN ? and ? ORDER BY path;",
-    [FIMDB_STMT_GET_PATH_RANGE] = "SELECT path, checksum FROM sync_view WHERE path BETWEEN ? and ? ORDER BY path;",
 #endif
+    [FIMDB_STMT_GET_COUNT_RANGE] = "SELECT count(*) FROM file_entry INNER JOIN file_data ON file_data.rowid = file_entry.inode_id WHERE path BETWEEN ? and ? ORDER BY path;",
+    [FIMDB_STMT_GET_PATH_RANGE] = "SELECT path, checksum FROM file_entry WHERE path BETWEEN ? and ? ORDER BY path;",
     [FIMDB_STMT_DELETE_PATH] = "DELETE FROM file_entry WHERE path = ?;",
     [FIMDB_STMT_DELETE_DATA] = "DELETE FROM file_data WHERE rowid = ?;",
     [FIMDB_STMT_GET_PATHS_INODE] = "SELECT path FROM file_entry INNER JOIN file_data ON file_data.rowid=file_entry.inode_id WHERE file_data.inode=? AND file_data.dev=?;",
@@ -81,15 +73,19 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_GET_COUNT_REG_KEY_AND_DATA] = "SELECT count(*) FROM registry_key INNER JOIN registry_data WHERE registry_data.key_id = registry_key.id;",
     [FIMDB_STMT_GET_LAST_REG_KEY] = "SELECT path FROM registry_key ORDER BY path DESC LIMIT 1;",
     [FIMDB_STMT_GET_FIRST_REG_KEY] = "SELECT path FROM registry_key ORDER BY path ASC LIMIT 1;",
-    [FIMDB_STMT_GET_REG_COUNT_RANGE] = "SELECT count(*) FROM registry_key INNER JOIN registry_data ON registry_data.key_id = registry_key.id WHERE path BETWEEN ? and ? ORDER BY path;",
-    [FIMDB_STMT_GET_REG_PATH_RANGE] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, registry_key.scanned, registry_key.checksum, key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, registry_data.scanned, last_event, registry_data.checksum FROM registry_key INNER JOIN registry_data ON registry_data.key_id = registry_key.id WHERE path BETWEEN ? and ? ORDER BY path;",
+    // [FIMDB_STMT_GET_REG_PATH_RANGE] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, registry_key.scanned, registry_key.checksum, key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, registry_data.scanned, last_event, registry_data.checksum FROM registry_key INNER JOIN registry_data ON registry_data.key_id = registry_key.id WHERE path BETWEEN ? and ? ORDER BY path;",
     [FIMDB_STMT_SET_REG_DATA_SCANNED] = "UPDATE registry_data SET scanned = 1 WHERE name = ? AND key_id = ?;",
     [FIMDB_STMT_SET_REG_KEY_SCANNED] = "UPDATE registry_key SET scanned = 1 WHERE path = ? and arch = ?;",
     [FIMDB_STMT_GET_REG_KEY_ROWID] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, scanned, checksum FROM registry_key WHERE id = ?;",
     [FIMDB_STMT_GET_REG_DATA_ROWID] = "SELECT key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, scanned, last_event, checksum FROM registry_data WHERE key_id = ?;",
     [FIMDB_STMT_GET_REG_KEY_SYNC_VIEW_ENTRY] = "SELECT reg_key, reg_value FROM sync_view WHERE path = ?;",
     [FIMDB_STMT_GET_REG_FROM_SYNC_VIEW] = "SELECT registry_data.checksum, size, perm, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM registry_key INNER JOIN registry_data ON registry_key.id = registry_data.key_id WHERE arch = ? AND path = ? AND name = ?;",
+    [FIMDB_STMT_GET_REG_PATH_RANGE] = "SELECT path, checksum FROM registry_view WHERE path BETWEEN ? and ? ORDER BY path;",
 #endif
+    [FIMDB_STMT_GET_REG_LAST_PATH] = "SELECT path FROM registry_view ORDER BY path DESC LIMIT 1;",
+    [FIMDB_STMT_GET_REG_FIRST_PATH] = "SELECT path FROM registry_view ORDER BY path ASC LIMIT 1;",
+    [FIMDB_STMT_GET_REG_ALL_CHECKSUMS] = "SELECT checksum FROM registry_view ORDER BY path ASC;",
+    [FIMDB_STMT_GET_REG_COUNT_RANGE] = "SELECT count(*) FROM registry_view WHERE path BETWEEN ? and ? ORDER BY path;",
 };
 
 fdb_t *fim_db_init(int storage) {
@@ -679,10 +675,50 @@ char **fim_db_decode_string_array(sqlite3_stmt *stmt) {
     return retval;
 }
 
-int fim_db_get_data_checksum(fdb_t *fim_sql, void *arg) {
-    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_ALL_CHECKSUMS);
-    return fim_db_multiple_row_query(fim_sql, FIMDB_STMT_GET_ALL_CHECKSUMS, FIM_DB_DECODE_TYPE(fim_db_decode_string),
-                                     free, FIM_DB_CALLBACK_TYPE(fim_db_callback_calculate_checksum), 0, arg);
+int fim_db_get_string(fdb_t *fim_sql, int index, char **str) {
+    int result;
+
+    fim_db_clean_stmt(fim_sql, index);
+
+    if (result = sqlite3_step(fim_sql->stmt[index]), result != SQLITE_ROW && result != SQLITE_DONE) {
+        merror("Step error getting row string '%s': %s", *str, sqlite3_errmsg(fim_sql->db));
+        return FIMDB_ERR;
+    }
+
+    if (result == SQLITE_ROW) {
+        os_strdup((char *)sqlite3_column_text(fim_sql->stmt[index], 0), *str);
+    }
+
+    return FIMDB_OK;
+}
+
+int fim_db_get_last_path(fdb_t * fim_sql, int type, char **path) {
+    static const int LAST_PATH_QUERY[] = {
+        [FIM_TYPE_FILE] = FIMDB_STMT_GET_LAST_PATH,
+        [FIM_TYPE_REGISTRY] = FIMDB_STMT_GET_REG_LAST_PATH,
+    };
+
+    return fim_db_get_string(fim_sql, LAST_PATH_QUERY[type], path);
+}
+
+int fim_db_get_first_path(fdb_t * fim_sql, int type, char **path) {
+    static const int FIRST_PATH_QUERY[] = {
+        [FIM_TYPE_FILE] = FIMDB_STMT_GET_FIRST_PATH,
+        [FIM_TYPE_REGISTRY] = FIMDB_STMT_GET_REG_FIRST_PATH,
+    };
+
+    return fim_db_get_string(fim_sql, FIRST_PATH_QUERY[type], path);
+}
+
+int fim_db_get_data_checksum(fdb_t *fim_sql, fim_type type, void *arg) {
+    static const int CHECKSUM_QUERY[] = {
+        [FIM_TYPE_FILE] = FIMDB_STMT_GET_ALL_CHECKSUMS,
+        [FIM_TYPE_REGISTRY] = FIMDB_STMT_GET_REG_ALL_CHECKSUMS,
+    };
+
+    fim_db_clean_stmt(fim_sql, CHECKSUM_QUERY[type]);
+    return fim_db_multiple_row_query(fim_sql, CHECKSUM_QUERY[type], FIM_DB_DECODE_TYPE(fim_db_decode_string), free,
+                                     FIM_DB_CALLBACK_TYPE(fim_db_callback_calculate_checksum), 0, arg);
 }
 
 int fim_db_get_checksum_range(fdb_t *fim_sql,

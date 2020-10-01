@@ -311,14 +311,37 @@ void fim_db_callback_save_string(fdb_t * fim_sql, const char *str, int storage, 
 void fim_db_callback_calculate_checksum(fdb_t *fim_sql, char *checksum, int storage, void *arg);
 
 /**
+ * @brief Get the last/first row from file_entry.
+ *
+ * @param fim_sql FIM database struct.
+ * @param type FIM_TYPE_FILE or FIM_TYPE_REGISTRY.
+ * @param path pointer of pointer where the path will be stored.
+ *
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+int fim_db_get_last_path(fdb_t * fim_sql, int type, char **path);
+
+/**
+ * @brief Get the last/first row from file_entry.
+ *
+ * @param fim_sql FIM database struct.
+ * @param type FIM_TYPE_FILE or FIM_TYPE_REGISTRY.
+ * @param path pointer of pointer where the path will be stored.
+ *
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+int fim_db_get_first_path(fdb_t * fim_sql, int type, char **path);
+
+/**
  * @brief Get checksum of all file_data.
  *
  * @param fim_sql FIM database struct.
+ * @param type FIM_TYPE_FILE or FIM_TYPE_REGISTRY.
  * @param arg CTX object.
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_data_checksum(fdb_t *fim_sql, void * arg);
+int fim_db_get_data_checksum(fdb_t *fim_sql, fim_type type, void *arg);
 
 /**
  * @brief Read a single line from a fim_tmp_file.

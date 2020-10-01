@@ -24,12 +24,27 @@ static const char *FIM_EVENT_MODE[] = { "scheduled", "realtime", "whodata" };
  * @return A pointer to a cJSON object the translated value attributes.
  */
 cJSON *fim_registry_value_attributes_json(const fim_registry_value_data *data, const registry *configuration) {
+    static const char *REGISTRY_TYPE[] = {
+        [REG_NONE] = "REG_NONE",
+        [REG_SZ] = "REG_SZ",
+        [REG_EXPAND_SZ] = "REG_EXPAND_SZ",
+        [REG_BINARY] = "REG_BINARY",
+        [REG_DWORD] = "REG_DWORD",
+        [REG_DWORD_BIG_ENDIAN] = "REG_DWORD_BIG_ENDIAN",
+        [REG_LINK] = "REG_LINK",
+        [REG_MULTI_SZ] = "REG_MULTI_SZ",
+        [REG_RESOURCE_LIST] = "REG_RESOURCE_LIST",
+        [REG_FULL_RESOURCE_DESCRIPTOR] = "REG_FULL_RESOURCE_DESCRIPTOR",
+        [REG_RESOURCE_REQUIREMENTS_LIST] = "REG_RESOURCE_REQUIREMENTS_LIST",
+        [REG_QWORD] = "REG_QWORD",
+    };
+
     cJSON *attributes = cJSON_CreateObject();
 
     cJSON_AddStringToObject(attributes, "type", "registry_value");
 
     if (configuration->opts & CHECK_TYPE) {
-        cJSON_AddNumberToObject(attributes, "registry_type", data->type);
+        cJSON_AddStringToObject(attributes, "registry_type", REGISTRY_TYPE[data->type]);
     }
 
     if (configuration->opts & CHECK_SIZE) {

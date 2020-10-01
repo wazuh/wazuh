@@ -73,7 +73,8 @@ CREATE TABLE IF NOT EXISTS registry_data (
 
 CREATE INDEX IF NOT EXISTS key_name_index ON registry_data (key_id, name);
 
-CREATE VIEW IF NOT EXISTS sync_view (path, checksum, reg_key, reg_value) AS
-    SELECT arch || path || name, registry_data.checksum, path, name FROM registry_key INNER JOIN registry_data ON registry_key.id=registry_data.key_id
+CREATE VIEW IF NOT EXISTS registry_view (path, checksum) AS
+    SELECT arch || ' ' || replace(path, ':', '::'), checksum, FROM registry_key
     UNION ALL
-    SELECT path, checksum, '', '' FROM file_entry;
+    SELECT arch || ' ' || replace(path, ':', '::') || ':' || replace(name, ':', '::'), registry_data.checksum FROM registry_key INNER JOIN registry_data ON registry_key.id=registry_key.key_id
+    ORDER BY path;

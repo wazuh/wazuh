@@ -560,24 +560,6 @@ end:
     w_mutex_unlock(mutex);
 }
 
-int fim_db_get_row_path(fdb_t * fim_sql, int mode, char **path) {
-    int index = (mode)? FIMDB_STMT_GET_FIRST_PATH : FIMDB_STMT_GET_LAST_PATH;
-    int result;
-
-    fim_db_clean_stmt(fim_sql, index);
-
-    if (result = sqlite3_step(fim_sql->stmt[index]), result != SQLITE_ROW && result != SQLITE_DONE) {
-        merror("Step error getting row path '%s': %s", *path, sqlite3_errmsg(fim_sql->db));
-        return FIMDB_ERR;
-    }
-
-    if (result == SQLITE_ROW) {
-        os_strdup((char *)sqlite3_column_text(fim_sql->stmt[index], 0), *path);
-    }
-
-    return FIMDB_OK;
-}
-
 int fim_db_set_all_unscanned(fdb_t *fim_sql) {
     int retval = fim_db_exec_simple_wquery(fim_sql, SQL_STMT[FIMDB_STMT_SET_ALL_UNSCANNED]);
     fim_db_check_transaction(fim_sql);
