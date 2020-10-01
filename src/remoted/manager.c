@@ -242,7 +242,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             result = wdb_update_agent_data(agent_data);
 
             if (OS_INVALID == result)
-                mwarn("Unable to update information in global.db for agent: %s", key->id);
+                mdebug1("Unable to update information in global.db for agent: %s", key->id);
 
             wdb_free_agent_info_data(agent_data);
         }

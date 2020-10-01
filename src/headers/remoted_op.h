@@ -19,7 +19,7 @@
  *        be de-allocated by the caller.
  *
  * @param[in] os_header String that contains the architecture. Usually uname.
- * @retval A string pointer to the architecture.
+ * @retval A string pointer to the architecture. NULL if not found.
  */
 char * get_os_arch(char * os_header);
 

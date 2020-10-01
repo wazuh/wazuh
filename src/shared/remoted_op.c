@@ -19,10 +19,10 @@
  *        be de-allocated by the caller.
  *
  * @param[in] os_header String that contains the architecture. Usually uname.
- * @retval A string pointer to the architecture.
+ * @retval A string pointer to the architecture. NULL if not found.
  */
 char * get_os_arch(char * os_header) {
-    const char * ARCHS[] = { "x86_64", "i386", "i686", "sparc", "amd64", "ia64", "AIX", "armv6", "armv7", NULL };
+    const char * ARCHS[] = { "x86_64", "i386", "i686", "sparc", "amd64", "i86pc", "ia64", "AIX", "armv6", "armv7", NULL };
     char * os_arch = NULL;
     int i;
 
@@ -31,10 +31,6 @@ char * get_os_arch(char * os_header) {
             os_strdup(ARCHS[i], os_arch);
             break;
         }
-    }
-
-    if (!ARCHS[i]) {
-        os_strdup("", os_arch);
     }
 
     return os_arch;
@@ -121,8 +117,9 @@ void parse_uname_string (char *uname,
                     snprintf(osd->os_minor, match_size + 1, "%.*s", match_size, osd->os_version + match[1].rm_so);
                 }
 
-            } else
+            } else {
                 *(osd->os_name + strlen(osd->os_name) - 1) = '\0';
+            }
 
             // os_name|os_platform
             if (str_tmp = strstr(osd->os_name, "|"), str_tmp) {
@@ -131,9 +128,11 @@ void parse_uname_string (char *uname,
                 os_strdup(str_tmp, osd->os_platform);
             }
         }
-        str_tmp = get_os_arch(uname);
-        os_strdup(str_tmp, osd->os_arch);
-        os_free(str_tmp);
+
+        if (str_tmp = get_os_arch(uname), str_tmp) {
+            os_strdup(str_tmp, osd->os_arch);
+            os_free(str_tmp);
+        }
     }
 }
 
@@ -180,23 +179,27 @@ int parse_agent_update_msg (char *msg,
             break;
         default:
             // uname - wazuh version / config sum
-            if (str_tmp = strstr(line, " / "), str_tmp)
+            if (str_tmp = strstr(line, " - "), str_tmp)
             {
                 *str_tmp = '\0';
                 str_tmp += 3;
-                os_strdup(str_tmp, agent_data->config_sum);
-
-                if (str_tmp = strstr(line, " - "), str_tmp) {
-                    *str_tmp = '\0';
-                    str_tmp += 3;
-                    os_strdup(str_tmp, agent_data->version);
-                }
 
                 os_calloc(1, sizeof(os_data), agent_data->osd);
-
                 parse_uname_string(line, agent_data->osd);
-
                 os_strdup(line, agent_data->osd->os_uname);
+
+                line = str_tmp;
+                if (str_tmp = strstr(line, " / "), str_tmp) {
+                    *str_tmp = '\0';
+                    str_tmp += 3;
+                    os_strdup(line, agent_data->version);
+                    os_strdup(str_tmp, agent_data->config_sum);
+                }
+                else if (str_tmp = strstr(line, __ossec_name), str_tmp) {
+                    // If for some reason the separator between Wazuh version and config sum is
+                    // not found, we look for the Wazuh version in the second part of the line.
+                    os_strdup(str_tmp, agent_data->version);
+                }
             }
             // merged sum
             else if (str_tmp = strchr(line, ' '), str_tmp)
