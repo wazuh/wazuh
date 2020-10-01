@@ -1,6 +1,8 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+# [v4.1.0]
+
 ## [v4.0.0] -
 
 ### Added
