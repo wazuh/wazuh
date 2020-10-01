@@ -301,15 +301,16 @@ static int setup_fim_double_scan(void **state) {
     if (!dirent_st || !syscheck.database ) {
         return -1;
     }
-#ifndef TEST_WINAGENT
+
     strcpy(dirent_st->d_name, "test_file");
+
+#ifndef TEST_WINAGENT
     dirent_st->d_type = DT_REG;
     dirent_st->d_ino = 1;
 #else
     dirent_st->d_ino = 0;
     dirent_st->d_reclen = 0;
     dirent_st->d_namlen = 9;
-    strcpy(dirent_st->d_name, "test_file");
 #endif
     *state = dirent_st;
 
@@ -385,7 +386,6 @@ static int teardown_fim_scan_realtime(void **state) {
  * @param file Dirent structure for the file.
  */
 void prepare_win_double_scan_success (char *test_file_path, char *dir_file_path, struct dirent *file) {
-    will_return_count(__wrap_HasFilesystem, 0, 10);
 
     will_return(__wrap_fim_db_get_count_entry_path, 50000);
 
@@ -395,23 +395,22 @@ void prepare_win_double_scan_success (char *test_file_path, char *dir_file_path,
     will_return(__wrap_fim_db_get_not_scanned, NULL);
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
 
+    expect_string(__wrap_stat, __file, dir_file_path);
     will_return(__wrap_stat, S_IFDIR);
     will_return(__wrap_stat, 0);
-
     expect_string(__wrap_HasFilesystem, path, dir_file_path);
     will_return(__wrap_HasFilesystem, 0);
-
-    // fim_directory
     will_return(__wrap_opendir, 1);
     will_return(__wrap_readdir, file);
-    // fim_checker
+
+    expect_string(__wrap_stat, __file, test_file_path);
     will_return(__wrap_stat, S_IFREG);
     will_return(__wrap_stat, 0);
+    expect_string(__wrap_HasFilesystem, path, test_file_path);
+    will_return(__wrap_HasFilesystem, 0);
+
     // fim_file
     {
-
-        expect_string(__wrap_HasFilesystem, path, test_file_path);
-        will_return(__wrap_HasFilesystem, 0);
         // fim_get_data
 
         expect_string(__wrap_w_get_file_permissions, file_path, test_file_path);
@@ -424,7 +423,8 @@ void prepare_win_double_scan_success (char *test_file_path, char *dir_file_path,
         expect_string(__wrap_w_get_file_attrs, file_path, test_file_path);
         will_return(__wrap_w_get_file_attrs, 123456);
 
-        expect_value(__wrap_get_user, uid, 0);
+        expect_string(__wrap_get_user, path, test_file_path);
+        will_return(__wrap_get_user, "0");
         will_return(__wrap_get_user, strdup("user"));
 
         expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
@@ -2881,9 +2881,9 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
 }
 
 static void test_fim_scan_db_full_double_scan(void **state) {
+
     struct dirent *file = *state;
-    char *test_file_path = calloc(160, sizeof(char));
-    state[1] = test_file_path;
+    char test_file_path[160];
 
     char expanded_dirs[10][OS_SIZE_1024];
     char directories[10][OS_SIZE_256] = {
@@ -2914,22 +2914,25 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
-    // In fim_checker
-    expect_any_count(__wrap_stat, __file, 11);
-    will_return_always(__wrap_stat, 0);
-
     for(i = 0; i < 10; i++) {
         if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024)) {
             fail();
         }
         str_lowercase(expanded_dirs[i]);
+
+        expect_string(__wrap_stat, __file, expanded_dirs[i]);
+        will_return(__wrap_stat, S_IFDIR);
+        will_return(__wrap_stat, 0);
         expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
+        will_return(__wrap_HasFilesystem, 0);
+
+        will_return(__wrap_opendir, 1);
+        will_return(__wrap_readdir, NULL);
     }
 
     snprintf(test_file_path, 160, "%s\\test_file", expanded_dirs[0]);
 
     prepare_win_double_scan_success(test_file_path, expanded_dirs[0], file);
-
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
     will_return(__wrap_fim_db_get_count_entry_path, 50000);
@@ -2940,97 +2943,6 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
     fim_scan();
-}
-
-static void test_fim_scan_db_full_double_scan_winreg_check(void **state) {
-
-    struct dirent *file = *state;
-    char *test_file_path = calloc(160, sizeof(char));
-    state[1] = test_file_path;
-    char debug_msg[OS_MAXSTR];
-
-    char expanded_dirs[10][OS_SIZE_1024];
-    char directories[10][OS_SIZE_256] = {
-        "%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
-        "%WINDIR%",
-        "%WINDIR%\\SysNative",
-        "%WINDIR%\\SysNative\\drivers\\etc",
-        "%WINDIR%\\SysNative\\wbem",
-        "%WINDIR%\\SysNative\\WindowsPowerShell\\v1.0",
-        "%WINDIR%\\System32",
-        "%WINDIR%\\System32\\drivers\\etc",
-        "%WINDIR%\\System32\\wbem",
-        "%WINDIR%\\System32\\WindowsPowerShell\\v1.0",
-    };
-    int i;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
-    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
-
-    // fim_diff_folder_size
-    expect_string(__wrap_IsDir, file, "queue/diff/local");
-    will_return(__wrap_IsDir, 0);
-
-    expect_string(__wrap_DirSize, path, "queue/diff/local");
-    will_return(__wrap_DirSize, 0.0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
-
-    // In fim_checker
-    expect_any_count(__wrap_stat, __file, 10);
-    will_return_always(__wrap_stat, 0);
-
-    for(i = 0; i < 10; i++) {
-        if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024))
-            fail();
-
-        str_lowercase(expanded_dirs[i]);
-        expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
-    }
-
-    snprintf(test_file_path, 160, "%s\\test_file", expanded_dirs[0]);
-
-    will_return_count(__wrap_HasFilesystem, 0, 10);
-
-    // check_deleted_files
-    expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
-    will_return(__wrap_fim_db_get_not_scanned, NULL);
-    will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
-
-    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_set_all_unscanned, 0);
-
-    // fim_scan
-    will_return(__wrap_fim_db_get_count_entry_path, 45000);
-
-    expect_any_count(__wrap_stat, __file, 10);
-
-    for(i = 0; i < 10; i++) {
-        expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
-    }
-
-    will_return_count(__wrap_HasFilesystem, 0, 10);
-
-    will_return_count(__wrap_fim_db_get_count_entry_path, 45000, 11);
-
-    prepare_win_double_scan_success(test_file_path, expanded_dirs[0], file);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
-    will_return(__wrap_fim_db_get_count_entry_path, 45000);
-
-    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":45000,\"alert_type\":\"80_percentage\"}");
-    will_return(__wrap_send_log_msg, 1);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 0");
-
-    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
-    fim_scan();
-
-    _db_state = FIM_STATE_DB_FULL; // Set '_db_state' to the value expected by other tests
 }
 
 static void test_fim_scan_db_full_not_double_scan(void **state) {
@@ -3063,20 +2975,21 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
-    // In fim_checker
-    expect_any_count(__wrap_stat, __file, 10);
-    will_return_always(__wrap_stat, 0);
-
     for(i = 0; i < 10; i++) {
-        if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024))
+        if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024)) {
             fail();
-
+        }
         str_lowercase(expanded_dirs[i]);
-        expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
-    }
 
-    // os_winreg_check
-    will_return_count(__wrap_HasFilesystem, 0, 10);
+        expect_string(__wrap_stat, __file, expanded_dirs[i]);
+        will_return(__wrap_stat, S_IFDIR);
+        will_return(__wrap_stat, 0);
+        expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
+        will_return(__wrap_HasFilesystem, 0);
+
+        will_return(__wrap_opendir, 1);
+        will_return(__wrap_readdir, NULL);
+    }
 
     will_return(__wrap_fim_db_get_count_entry_path, 50000);
 
@@ -3129,52 +3042,34 @@ static void test_fim_scan_db_free(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
-    // In fim_checker
-    expect_any_count(__wrap_stat, __file, 10);
-    will_return_always(__wrap_stat, 0);
-
     for(i = 0; i < 10; i++) {
-        if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024))
+        if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024)) {
             fail();
-
+        }
         str_lowercase(expanded_dirs[i]);
+
+        expect_string(__wrap_stat, __file, expanded_dirs[i]);
+        will_return(__wrap_stat, S_IFDIR);
+        will_return(__wrap_stat, 0);
         expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
+        will_return(__wrap_HasFilesystem, 0);
+
+        will_return(__wrap_opendir, 1);
+        will_return(__wrap_readdir, NULL);
     }
 
-    will_return_count(__wrap_HasFilesystem, 0, 10);
-
-    // check_deleted_files
     will_return(__wrap_fim_db_get_count_entry_path, 1000);
 
+    // check_deleted_files
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_not_scanned, NULL);
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
 
-    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_set_all_unscanned, 0);
-
-    // fim_scan
     will_return(__wrap_fim_db_get_count_entry_path, 1000);
-
-    // In fim_checker
-    expect_any_count(__wrap_stat, __file, 10);
-
-    for(i = 0; i < 10; i++) {
-        if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024))
-            fail();
-
-        str_lowercase(expanded_dirs[i]);
-        expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
-    }
-
-    will_return_count(__wrap_HasFilesystem, 0, 10);
-
-    // fim_scan
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
 
-    will_return(__wrap_fim_db_get_count_entry_path, 1000);
     expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":1000,\"alert_type\":\"normal\"}");
     will_return(__wrap_send_log_msg, 1);
@@ -3216,20 +3111,23 @@ static void test_fim_scan_no_limit(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
-    // In fim_checker
-    expect_any_count(__wrap_stat, __file, 10);
-    will_return_always(__wrap_stat, 0);
-
     for(i = 0; i < 10; i++) {
-        if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024))
+        if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024)) {
             fail();
-
+        }
         str_lowercase(expanded_dirs[i]);
+
+        expect_string(__wrap_stat, __file, expanded_dirs[i]);
+        will_return(__wrap_stat, S_IFDIR);
+        will_return(__wrap_stat, 0);
         expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
+        will_return(__wrap_HasFilesystem, 0);
+
+        will_return(__wrap_opendir, 1);
+        will_return(__wrap_readdir, NULL);
     }
 
-    will_return_count(__wrap_HasFilesystem, 0, 10);
-
+    // check_deleted_files
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_not_scanned, NULL);
@@ -4545,9 +4443,6 @@ int main(void) {
 
         /* fim_scan */
         cmocka_unit_test_setup_teardown(test_fim_scan_db_full_double_scan, setup_fim_double_scan, teardown_fim_double_scan),
-#ifdef TEST_WINAGENT
-        cmocka_unit_test_setup_teardown(test_fim_scan_db_full_double_scan_winreg_check, setup_fim_double_scan, teardown_fim_double_scan),
-#endif
         cmocka_unit_test_setup_teardown(test_fim_scan_db_full_not_double_scan, setup_fim_not_double_scan, teardown_fim_not_double_scan),
         cmocka_unit_test(test_fim_scan_db_free),
         cmocka_unit_test_setup_teardown(test_fim_scan_no_limit, setup_file_limit, teardown_file_limit),
