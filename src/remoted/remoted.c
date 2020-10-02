@@ -116,13 +116,10 @@ void HandleRemote(int uid)
     if (logr.conn[position] == SECURE_CONN) {
         HandleSecure();
     }
-
     else if (logr.proto[position] == IPPROTO_TCP) {
         HandleSyslogTCP();
     }
-
-    /* If not, deal with syslog */
-    else {
+    else { /* If not, deal with syslog */
         HandleSyslog();
     }
 }

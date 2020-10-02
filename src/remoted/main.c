@@ -129,16 +129,14 @@ int main(int argc, char **argv)
 
     logr.nocmerged = nocmerged ? 1 : !getDefine_Int("remoted", "merge_shared", 0, 1);
 
-    // Don`t create the merged file in worker nodes of the cluster
-
     // Read the cluster status and the node type from the configuration file
-    int is_worker = w_is_worker();
-
-    switch (is_worker){
+    switch (w_is_worker()){
         case 0:
-            mdebug1("This is not a worker");
+            logr.worker_node = false;
+            mdebug1("This is not a worker");            
             break;
         case 1:
+            logr.worker_node = true;
             mdebug1("Cluster worker node: Disabling the merged.mg creation");
             logr.nocmerged = 1;
             break;
