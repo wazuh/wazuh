@@ -12,8 +12,9 @@ RUN git clone https://github.com/wazuh/wazuh && cd /wazuh && git checkout $agent
 ADD base/agent/preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
 RUN /wazuh/install.sh
 
+COPY scripts/xml_parser.py /scripts/
+COPY configurations/base/agent/config/ossec.conf /scripts/xml_templates
 COPY configurations/base/agent/config/test.keys /var/ossec/etc/test.keys
-COPY configurations/base/agent/config/ossec.conf /var/ossec/etc/ossec.conf
 COPY configurations/tmp/agent/ /configuration_files/
 
 ADD base/agent/entrypoint.sh /scripts/entrypoint.sh
