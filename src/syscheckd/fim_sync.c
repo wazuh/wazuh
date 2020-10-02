@@ -16,6 +16,7 @@
 #include "syscheck.h"
 #include "integrity_op.h"
 #include "db/fim_db.h"
+#include "registry/registry.h"
 
 #ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when unit testing */
@@ -95,6 +96,43 @@ void * fim_run_integrity(void * args) {
 }
 // LCOV_EXCL_STOP
 
+// Create file entry JSON from a FIM entry structure
+cJSON *fim_entry_json(const char *key, fim_entry *entry) {
+    assert(entry != NULL);
+    assert(key != NULL);
+
+    cJSON * attributes;
+    cJSON * root = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(root, "path", key);
+
+    if (entry->type == FIM_TYPE_FILE) {
+        cJSON_AddNumberToObject(root, "timestamp", entry->file_entry.data->last_event);
+
+        attributes = fim_attributes_json(entry->file_entry.data);
+    } else if (entry->registry_entry.value == NULL) {
+        registry *configuration = fim_registry_configuration(entry->registry_entry.key->path,
+                                                             entry->registry_entry.key->arch);
+
+        attributes = fim_registry_key_attributes_json(entry->registry_entry.key, configuration);
+    } else {
+        char buffer[OS_MAXSTR];
+        registry *configuration;
+
+        cJSON_AddNumberToObject(root, "timestamp", entry->registry_entry.value->last_event);
+
+        snprintf(buffer, OS_MAXSTR, "%s\\%s", entry->registry_entry.key->path, entry->registry_entry.value->name);
+
+        configuration = fim_registry_configuration(buffer, entry->registry_entry.key->arch);
+
+        attributes = fim_registry_value_attributes_json(entry->registry_entry.value, configuration);
+    }
+
+    cJSON_AddItemToObject(root, "attributes", attributes);
+
+    return root;
+}
+
 void fim_sync_checksum(fim_type type, pthread_mutex_t *mutex) {
     char *start = NULL;
     char *top = NULL;
@@ -154,7 +192,7 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
     fim_entry *entry = NULL;
     cJSON *file_data = NULL;
     fim_type type;
-    int range_size, arch;
+    int range_size;
     char *str_pathlh;
     char *str_pathuh;
     EVP_MD_CTX *ctx_left;
@@ -164,11 +202,9 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
 
     if (strncmp(start, "[x32]", 5) == 0) {
         type = FIM_TYPE_REGISTRY;
-        arch = ARCH_32BIT;
         mutex = &syscheck.fim_registry_mutex;
     } else if (strncmp(start, "[x64]", 5) == 0) {
         type = FIM_TYPE_REGISTRY;
-        arch = ARCH_64BIT;
         mutex = &syscheck.fim_registry_mutex;
     } else {
         type = FIM_TYPE_FILE;
@@ -188,7 +224,7 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
 
     case 1:
         w_mutex_lock(mutex);
-        entry = fim_db_get_entry_from_sync_msg(syscheck.database, type, arch, start);
+        entry = fim_db_get_entry_from_sync_msg(syscheck.database, type, start);
         w_mutex_unlock(mutex);
 
         if (entry == NULL) {
@@ -196,7 +232,7 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
             return;
         }
 
-        file_data = fim_entry_json(start, entry->file_entry.data);
+        file_data = fim_entry_json(start, entry);
         char * plain = dbsync_state_msg("syscheck", file_data);
         fim_send_sync_msg(plain);
         os_free(plain);
@@ -249,24 +285,29 @@ void fim_sync_send_list(const char *start, const char *top) {
     fim_tmp_file *file = NULL;
     int it;
     char *line;
+    fim_type type;
+    pthread_mutex_t *mutex;
 
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-#ifdef WIN32
-    w_mutex_lock(&syscheck.fim_registry_mutex);
-#endif
+    if (strncmp(start, "[x32]", 5) == 0) {
+        type = FIM_TYPE_REGISTRY;
+        mutex = &syscheck.fim_registry_mutex;
+    } else if (strncmp(start, "[x64]", 5) == 0) {
+        type = FIM_TYPE_REGISTRY;
+        mutex = &syscheck.fim_registry_mutex;
+    } else {
+        type = FIM_TYPE_FILE;
+        mutex = &syscheck.fim_entry_mutex;
+    }
 
-    if (fim_db_get_path_range(syscheck.database, start, top, &file, syscheck.database_store) != FIMDB_OK) {
+    w_mutex_lock(mutex);
+    if (fim_db_get_path_range(syscheck.database, type, start, top, &file, syscheck.database_store) != FIMDB_OK) {
         merror(FIM_DB_ERROR_SYNC_DB);
         if (file != NULL) {
             fim_db_clean_file(&file, syscheck.database_store);
         }
         return;
     }
-
-#ifdef WIN32
-    w_mutex_unlock(&syscheck.fim_registry_mutex);
-#endif
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
+    w_mutex_unlock(mutex);
 
     if (file == NULL) {
         return;
@@ -282,29 +323,22 @@ void fim_sync_send_list(const char *start, const char *top) {
         cJSON *file_data;
         char *plain;
 
-        w_mutex_lock(&syscheck.fim_entry_mutex);
-
-#ifdef WIN32
-        w_mutex_lock(&syscheck.fim_registry_mutex);
-        entry = fim_db_get_entry_from_sync_view(syscheck.database, line);
-        w_mutex_unlock(&syscheck.fim_registry_mutex);
-#else
-        entry = fim_db_get_path(syscheck.database, line);
-#endif
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
+        w_mutex_lock(mutex);
+        entry = fim_db_get_entry_from_sync_msg(syscheck.database, type, line);
+        w_mutex_unlock(mutex);
 
         if (entry == NULL) {
             merror(FIM_DB_ERROR_GET_PATH, line);
             os_free(line);
             continue;
         }
-        os_free(line);
 
-        file_data = fim_entry_json(entry->file_entry.path, entry->file_entry.data);
+        file_data = fim_entry_json(line, entry);
         plain = dbsync_state_msg("syscheck", file_data);
-        mdebug1("Sync Message for %s sent: %s", entry->file_entry.path, plain);
+        mdebug1("Sync Message for %s sent: %s", line, plain);
         fim_send_sync_msg(plain);
         os_free(plain);
+        os_free(line);
         free_entry(entry);
     }
 

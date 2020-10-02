@@ -287,20 +287,21 @@ void fim_db_clean_file(fim_tmp_file **file, int storage) {
 #ifndef WIN32
 fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql,
                                           __attribute__((unused)) fim_type type,
-                                          __attribute__((unused)) int arch,
                                           const char *path) {
     return fim_db_get_path(fim_sql, path);
 }
 #else
-fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, int arch, const char *path) {
-    char **split_path;
+fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const char *path) {
     char *full_path, *key_path, *value_name;
-    int i, key_id;
+    int arch;
+    unsigned int key_id;
     fim_entry *entry;
 
     if (type == FIM_TYPE_FILE) {
         return fim_db_get_path(fim_sql, path);
     }
+
+    arch = strncmp(path, "[x32]", 5) == 0 ? ARCH_32BIT : ARCH_64BIT;
 
     // If we got here, we are dealing with a registry entry.
     os_strdup(&path[6], full_path);
@@ -832,15 +833,24 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
     return FIMDB_OK;
 }
 
-int fim_db_get_path_range(fdb_t *fim_sql, const char *start, const char *top, fim_tmp_file **file, int storage) {
+int fim_db_get_path_range(fdb_t *fim_sql,
+                          fim_type type,
+                          const char *start,
+                          const char *top,
+                          fim_tmp_file **file,
+                          int storage) {
+    static const int RANGE_QUERY[] = {
+        [FIM_TYPE_FILE] = FIMDB_STMT_GET_PATH_RANGE,
+        [FIM_TYPE_REGISTRY] = FIMDB_STMT_GET_REG_PATH_RANGE,
+    };
     if ((*file = fim_db_create_temp_file(storage)) == NULL) {
         return FIMDB_ERR;
     }
 
-    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
-    fim_db_bind_range(fim_sql, FIMDB_STMT_GET_PATH_RANGE, start, top);
+    fim_db_clean_stmt(fim_sql, RANGE_QUERY[type]);
+    fim_db_bind_range(fim_sql, RANGE_QUERY[type], start, top);
 
-    int ret = fim_db_multiple_row_query(fim_sql, FIMDB_STMT_GET_PATH_RANGE, FIM_DB_DECODE_TYPE(fim_db_decode_string),
+    int ret = fim_db_multiple_row_query(fim_sql, RANGE_QUERY[type], FIM_DB_DECODE_TYPE(fim_db_decode_string),
                                         free, FIM_DB_CALLBACK_TYPE(fim_db_callback_save_string), storage,
                                         (void *)*file);
 

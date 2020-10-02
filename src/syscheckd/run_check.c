@@ -673,7 +673,7 @@ STATIC void fim_link_delete_range(int pos) {
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
-    if (fim_db_get_path_range(syscheck.database, first_entry,
+    if (fim_db_get_path_range(syscheck.database, FIM_TYPE_FILE, first_entry,
         last_entry, &file, syscheck.database_store) != FIMDB_OK) {
         merror(FIM_DB_ERROR_RM_RANGE, first_entry, last_entry);
     }

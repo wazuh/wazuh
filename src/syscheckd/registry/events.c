@@ -15,14 +15,6 @@ static const char *FIM_EVENT_TYPE[] = { "added", "deleted", "modified" };
 
 static const char *FIM_EVENT_MODE[] = { "scheduled", "realtime", "whodata" };
 
-/**
- * @brief Create a cJSON object holding the attributes associated with a fim_registry_value_data according to its
- * configuration.
- *
- * @param data A fim_registry_value_data object holding the value attributes to be tranlated.
- * @param configuration The configuration associated with the registry value.
- * @return A pointer to a cJSON object the translated value attributes.
- */
 cJSON *fim_registry_value_attributes_json(const fim_registry_value_data *data, const registry *configuration) {
     static const char *REGISTRY_TYPE[] = {
         [REG_NONE] = "REG_NONE",

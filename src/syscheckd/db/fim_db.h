@@ -130,12 +130,11 @@ void fim_db_clean_file(fim_tmp_file **file, int storage);
  * @param fim_sql FIM database struct.
   * @param type Variable to indicate if the query is for registries or for files. 0 (FIM_TYPE_FILE) for files
  *  1 (FIM_TYPE_REGISTRY) for registries.
- * @param arch An integer specifying the bit count of the register element, must be ARCH_32BIT or ARCH_64BIT.
  * @param path A string to the path of the object to map in a fim_entry.
  *
  * @return FIM entry struct on success, NULL on error.
  */
-fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, int arch, const char *path);
+fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const char *path);
 
 /**
  * @brief Get a registry key using its path.
@@ -193,6 +192,20 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
                               EVP_MD_CTX *ctx_right,
                               char **str_pathlh,
                               char **str_pathuh);
+
+/**
+ * @brief Get path list between @start and @top. (stored in @file).
+ *
+ * @param fim_sql FIM database struct.
+ * @param type FIM_TYPE_FILE or FIM_TYPE_REGISTRY.
+ * @param start First entry of the range.
+ * @param top Last entry of the range.
+ * @param file  Structure of the storage which contains all the paths.
+ * @param storage 1 Store database in memory, disk otherwise.
+ *
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+int fim_db_get_path_range(fdb_t *fim_sql, fim_type type, const char *start, const char *top, fim_tmp_file **file, int storage);
 
 /**
  * @brief Initialize FIM databases.

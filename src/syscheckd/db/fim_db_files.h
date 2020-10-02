@@ -138,19 +138,6 @@ int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage);
 int fim_db_delete_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage);
 
 /**
- * @brief Get path list between @start and @top. (stored in @file).
- *
- * @param fim_sql FIM database struct.
- * @param start First entry of the range.
- * @param top Last entry of the range.
- * @param file  Structure of the storage which contains all the paths.
- * @param storage 1 Store database in memory, disk otherwise.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_get_path_range(fdb_t *fim_sql, const char *start, const char *top, fim_tmp_file **file, int storage);
-
-/**
  * @brief Removes a range of paths from the database.
  *
  * The paths are alphabetically ordered.

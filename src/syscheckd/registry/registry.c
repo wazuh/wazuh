@@ -79,13 +79,6 @@ int fim_set_root_key(HKEY *root_key_handle, const char *full_key, const char **s
     return 0;
 }
 
-/**
- * @brief Retrieves the configuration associated with a given registry element.
- *
- * @param key A string holding the full path to the registry element.
- * @param arch An integer specifying the bit count of the register element, must be ARCH_32BIT or ARCH_64BIT.
- * @return A pointer to the associated registry configuration, NULL on error or if no valid configuration was found.
- */
 registry *fim_registry_configuration(const char *key, int arch) {
     int it = 0;
     int top = 0;

@@ -796,12 +796,12 @@ cJSON * fim_attributes_json(const fim_file_data * data);
  *   }
  * }
  *
- * @param path Pointer to file path string.
- * @param data Pointer to a FIM entry structure.
- * @pre data is mutex-blocked.
+ * @param key Pointer to the key used in the manager fim_entry DB.
+ * @param entry Pointer to a FIM entry structure.
+ * @pre entry is mutex-blocked.
  * @return Pointer to cJSON structure.
  */
-cJSON * fim_entry_json(const char * path, fim_file_data * data);
+cJSON *fim_entry_json(const char *key, fim_entry *entry);
 
 /**
  * @brief Create file attribute comparison JSON object
