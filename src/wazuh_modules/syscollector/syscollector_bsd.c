@@ -59,6 +59,7 @@ hw_info *get_system_bsd();    // Get system information
 OSHash *gateways;
 
 char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_id);
+static bool sys_convert_bin_plist(FILE **fp, char **magic_bytes, char *filepath);
 
 // Get installed programs inventory
 
@@ -246,10 +247,10 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
         // Check if valid Info.plist file
         if (fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) {
             if (!memcmp(read_buff, "bplist00", 8)) {  // Apple binary plist
-                sys_convert_bin_plist(&read_buff, &fp, filepath);
+                sys_convert_bin_plist(&fp, (char **)&read_buff, filepath);
             } 
             
-            if (!(strncmp(read_buff, "<?xml", 5)) { // XML plist
+            if (!(strncmp(read_buff, "<?xml", 5))) { // XML plist
                 while(fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) {
 
                     if (strstr(read_buff, "CFBundleName")) {
@@ -439,6 +440,9 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
  **/
 bool sys_convert_bin_plist(FILE **fp, char **magic_bytes, char *filepath) {
     char * bin = NULL;
+    char * xml = NULL;
+    uint32_t size = 0;
+    plist_t root_node = NULL;
     struct stat filestats = {0};
     int fd = fileno(*fp);
     bool status = false;
@@ -454,16 +458,13 @@ bool sys_convert_bin_plist(FILE **fp, char **magic_bytes, char *filepath) {
         goto clean;
     }
 
-    uint32_t size = 0;
-    plist_t root_node = NULL;
-
     plist_from_bin(bin, filestats.st_size, &root_node);
     plist_to_xml(root_node, &xml, &size);
     if (!xml || !size) {
         goto clean;
     }
 
-    fpclose(*fp);
+    fclose(*fp);
 
     if (*fp = tmpfile(), *fp == NULL) {
         mterror(WM_SYS_LOGTAG, "Failed to open tmpfile: %s", strerror(errno));
@@ -472,7 +473,7 @@ bool sys_convert_bin_plist(FILE **fp, char **magic_bytes, char *filepath) {
 
     fwrite(xml, size, sizeof(char), *fp);
     fseek(*fp, 0, SEEK_SET);
-    fgets(*magic_bytes, OS_MAXSTR - 1, fp); // Hopefully the expected XML format.
+    fgets(*magic_bytes, OS_MAXSTR - 1, *fp); // Hopefully the expected XML format.
 
     status = true;
 

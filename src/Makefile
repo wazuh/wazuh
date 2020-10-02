@@ -679,12 +679,12 @@ ifeq (${uname_S},Linux)
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 EXTERNAL_LIBS += ${AUDIT_LIB}
 endif
-ifeq (${uname_S},Darwin)
-EXTERNAL_LIBS += ${LIBPLIST_LIB}
-endif
 
 EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB)
 endif
+endif
+ifeq (${uname_S},Darwin)
+EXTERNAL_LIBS += ${LIBPLIST_LIB}
 endif
 
 .PHONY: external test_external
@@ -733,9 +733,7 @@ endif
 #### libplist ##########
 
 ${LIBPLIST_LIB}:
- ifeq (${uname_S},Darwin)
 	cd ${EXTERNAL_LIBPLIST} && mkdir bin && ./autogen.sh --prefix=${PWD}/${EXTERNAL_LIBPLIST}bin && ${MAKE} && ${MAKE} install
-endif
 
 #### libffi ##########
 
