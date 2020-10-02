@@ -45,10 +45,6 @@ size_t wcom_dispatch(char *command, char ** output){
         // unmerge [file_path]
         return wcom_unmerge(rcv_args, output);
 
-    } else if (strcmp(rcv_comm, "clear_upgrade_result") == 0){
-        // upgrade_result
-        return wcom_clear_upgrade_result(output);
-
     } else if (strcmp(rcv_comm, "uncompress") == 0){
         if (!rcv_args){
             mdebug1("WCOM uncompress needs arguments.");
@@ -184,22 +180,6 @@ size_t wcom_uncompress(const char * source, const char * target, char ** output)
 
     gzclose(fsource);
     fclose(ftarget);
-    return strlen(*output);
-}
-
-
-size_t wcom_clear_upgrade_result(char **output) {
-#ifndef WIN32
-    const char * PATH = isChroot() ? UPGRADE_DIR "/upgrade_result" : DEFAULTDIR UPGRADE_DIR "/upgrade_result";
-#else
-    const char * PATH = UPGRADE_DIR "\\upgrade_result";
-#endif
-    if (remove(PATH) == 0) {
-        os_strdup("ok ", *output);
-    } else {
-        os_strdup("err Could not erase upgrade_result file", *output);
-        mdebug1("At WCOM clear_upgrade_result: Could not erase file '%s'.", PATH);
-    }
     return strlen(*output);
 }
 
