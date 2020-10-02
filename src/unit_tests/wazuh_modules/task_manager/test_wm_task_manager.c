@@ -210,6 +210,7 @@ void test_wm_task_manager_dispatch_ok(void **state)
     char *response = NULL;
     char *message = "{"
                     "  \"origin\": {"
+                    "      \"name\": \"node05\","
                     "      \"module\": \"upgrade_module\""
                     "   },"
                     "  \"command\": \"upgrade\","
@@ -248,6 +249,7 @@ void test_wm_task_manager_dispatch_ok(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
                                                                                "  \"origin\": {"
+                                                                               "      \"name\": \"node05\","
                                                                                "      \"module\": \"upgrade_module\""
                                                                                "   },"
                                                                                "  \"command\": \"upgrade\","
@@ -283,6 +285,7 @@ void test_wm_task_manager_dispatch_module_err(void **state)
     char *response = NULL;
     char *message = "{"
                     "  \"origin\": {"
+                    "      \"name\": \"node05\","
                     "      \"module\": \"unknown\""
                     "   },"
                     "  \"command\": \"upgrade_custom\","
@@ -321,6 +324,7 @@ void test_wm_task_manager_dispatch_module_err(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
                                                                                "  \"origin\": {"
+                                                                               "      \"name\": \"node05\","
                                                                                "      \"module\": \"unknown\""
                                                                                "   },"
                                                                                "  \"command\": \"upgrade_custom\","
@@ -362,6 +366,7 @@ void test_wm_task_manager_dispatch_command_err(void **state)
     char *response = NULL;
     char *message = "{"
                     "  \"origin\": {"
+                    "      \"name\": \"node05\","
                     "      \"module\": \"upgrade_module\""
                     "   },"
                     "  \"command\": \"unknown\","
@@ -400,6 +405,7 @@ void test_wm_task_manager_dispatch_command_err(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
                                                                                "  \"origin\": {"
+                                                                               "      \"name\": \"node05\","
                                                                                "      \"module\": \"upgrade_module\""
                                                                                "   },"
                                                                                "  \"command\": \"unknown\","
@@ -441,6 +447,7 @@ void test_wm_task_manager_dispatch_agent_id_err(void **state)
     char *response = NULL;
     char *message = "{"
                     "  \"origin\": {"
+                    "      \"name\": \"node05\","
                     "      \"module\": \"upgrade_module\""
                     "   },"
                     "  \"command\": \"upgrade\","
@@ -478,6 +485,7 @@ void test_wm_task_manager_dispatch_agent_id_err(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
                                                                                "  \"origin\": {"
+                                                                               "      \"name\": \"node05\","
                                                                                "      \"module\": \"upgrade_module\""
                                                                                "   },"
                                                                                "  \"command\": \"upgrade\","
@@ -516,6 +524,7 @@ void test_wm_task_manager_dispatch_task_id_err(void **state)
     char *response = NULL;
     char *message = "{"
                     "  \"origin\": {"
+                    "      \"name\": \"node05\","
                     "      \"module\": \"api\""
                     "   },"
                     "  \"command\": \"task_result\","
@@ -541,6 +550,7 @@ void test_wm_task_manager_dispatch_task_id_err(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
                                                                                "  \"origin\": {"
+                                                                               "      \"name\": \"node05\","
                                                                                "      \"module\": \"api\""
                                                                                "   },"
                                                                                "  \"command\": \"task_result\","
@@ -575,6 +585,7 @@ void test_wm_task_manager_dispatch_status_err(void **state)
     char *response = NULL;
     char *message = "{"
                     "  \"origin\": {"
+                    "      \"name\": \"node05\","
                     "      \"module\": \"upgrade_module\""
                     "   },"
                     "  \"command\": \"upgrade_update_status\","
@@ -602,6 +613,7 @@ void test_wm_task_manager_dispatch_status_err(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
                                                                                "  \"origin\": {"
+                                                                               "      \"name\": \"node05\","
                                                                                "      \"module\": \"upgrade_module\""
                                                                                "   },"
                                                                                "  \"command\": \"upgrade_update_status\","
@@ -636,6 +648,7 @@ void test_wm_task_manager_dispatch_no_task_err(void **state)
     char *response = NULL;
     char *message = "{"
                     "  \"origin\": {"
+                    "      \"name\": \"node05\","
                     "      \"module\": \"upgrade_module\""
                     "   },"
                     "  \"command\": \"upgrade_update_status\","
@@ -663,6 +676,7 @@ void test_wm_task_manager_dispatch_no_task_err(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
                                                                                "  \"origin\": {"
+                                                                               "      \"name\": \"node05\","
                                                                                "      \"module\": \"upgrade_module\""
                                                                                "   },"
                                                                                "  \"command\": \"upgrade_update_status\","
@@ -697,6 +711,7 @@ void test_wm_task_manager_dispatch_db_err(void **state)
     char *response = NULL;
     char *message = "{"
                     "  \"origin\": {"
+                    "      \"name\": \"node05\","
                     "      \"module\": \"upgrade_module\""
                     "   },"
                     "  \"command\": \"upgrade_update_status\","
@@ -723,6 +738,7 @@ void test_wm_task_manager_dispatch_db_err(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
                                                                                "  \"origin\": {"
+                                                                               "      \"name\": \"node05\","
                                                                                "      \"module\": \"upgrade_module\""
                                                                                "   },"
                                                                                "  \"command\": \"upgrade_update_status\","
@@ -794,6 +810,7 @@ void test_wm_task_manager_main_ok(void **state)
 
     char *message = "{"
                     "  \"origin\": {"
+                    "      \"name\": \"node05\","
                     "      \"module\": \"upgrade_module\""
                     "   },"
                     "  \"command\": \"upgrade\","
@@ -857,6 +874,7 @@ void test_wm_task_manager_main_ok(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
                                                                                "  \"origin\": {"
+                                                                               "      \"name\": \"node05\","
                                                                                "      \"module\": \"upgrade_module\""
                                                                                "   },"
                                                                                "  \"command\": \"upgrade\","
@@ -897,6 +915,7 @@ void test_wm_task_manager_main_recv_max_err(void **state)
 
     char *message = "{"
                     "  \"origin\": {"
+                    "      \"name\": \"node05\","
                     "      \"module\": \"upgrade_module\""
                     "   },"
                     "  \"command\": \"upgrade\","
@@ -944,6 +963,7 @@ void test_wm_task_manager_main_recv_empty_err(void **state)
 
     char *message = "{"
                     "  \"origin\": {"
+                    "      \"name\": \"node05\","
                     "      \"module\": \"upgrade_module\""
                     "   },"
                     "  \"command\": \"upgrade\","
@@ -991,6 +1011,7 @@ void test_wm_task_manager_main_recv_err(void **state)
 
     char *message = "{"
                     "  \"origin\": {"
+                    "      \"name\": \"node05\","
                     "      \"module\": \"upgrade_module\""
                     "   },"
                     "  \"command\": \"upgrade\","
@@ -1038,6 +1059,7 @@ void test_wm_task_manager_main_sockterr_err(void **state)
 
     char *message = "{"
                     "  \"origin\": {"
+                    "      \"name\": \"node05\","
                     "      \"module\": \"upgrade_module\""
                     "   },"
                     "  \"command\": \"upgrade\","
@@ -1085,6 +1107,7 @@ void test_wm_task_manager_main_accept_err(void **state)
 
     char *message = "{"
                     "  \"origin\": {"
+                    "      \"name\": \"node05\","
                     "      \"module\": \"upgrade_module\""
                     "   },"
                     "  \"command\": \"upgrade\","
@@ -1139,6 +1162,7 @@ void test_wm_task_manager_main_select_empty_err(void **state)
 
     char *message = "{"
                     "  \"origin\": {"
+                    "      \"name\": \"node05\","
                     "      \"module\": \"upgrade_module\""
                     "   },"
                     "  \"command\": \"upgrade\","
@@ -1188,6 +1212,7 @@ void test_wm_task_manager_main_select_err(void **state)
 
     char *message = "{"
                     "  \"origin\": {"
+                    "      \"name\": \"node05\","
                     "      \"module\": \"upgrade_module\""
                     "   },"
                     "  \"command\": \"upgrade\","
@@ -1240,6 +1265,7 @@ void test_wm_task_manager_main_worker_err(void **state)
 
     char *message = "{"
                     "  \"origin\": {"
+                    "      \"name\": \"node05\","
                     "      \"module\": \"upgrade_module\""
                     "   },"
                     "  \"command\": \"upgrade\","

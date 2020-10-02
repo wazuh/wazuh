@@ -90,6 +90,10 @@ void test_wm_agent_upgrade_listen_messages_upgrade_command(void **state)
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
 
+    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+
+    will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
+
     will_return(__wrap_select, 1);
 
     will_return(__wrap_accept, peer);
@@ -183,6 +187,10 @@ void test_wm_agent_upgrade_listen_messages_upgrade_custom_command(void **state)
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
+
+    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+
+    will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
 
     will_return(__wrap_select, 1);
 
@@ -279,6 +287,10 @@ void test_wm_agent_upgrade_listen_messages_agent_update_status_command(void **st
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
 
+    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+
+    will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
+
     will_return(__wrap_select, 1);
 
     will_return(__wrap_accept, peer);
@@ -350,6 +362,10 @@ void test_wm_agent_upgrade_listen_messages_parse_error(void **state)
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
 
+    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+
+    will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
+
     will_return(__wrap_select, 1);
 
     will_return(__wrap_accept, peer);
@@ -400,6 +416,10 @@ void test_wm_agent_upgrade_listen_messages_parse_error_with_message(void **state
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
 
+    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+
+    will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
+
     will_return(__wrap_select, 1);
 
     will_return(__wrap_accept, peer);
@@ -441,6 +461,10 @@ void test_wm_agent_upgrade_listen_messages_receive_empty(void **state)
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
 
+    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+
+    will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
+
     will_return(__wrap_select, 1);
 
     will_return(__wrap_accept, peer);
@@ -467,6 +491,10 @@ void test_wm_agent_upgrade_listen_messages_receive_error(void **state)
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
+
+    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+
+    will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
 
     will_return(__wrap_select, 1);
 
@@ -495,6 +523,10 @@ void test_wm_agent_upgrade_listen_messages_receive_sock_error(void **state)
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
 
+    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+
+    will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
+
     will_return(__wrap_select, 1);
 
     will_return(__wrap_accept, peer);
@@ -522,6 +554,10 @@ void test_wm_agent_upgrade_listen_messages_accept_error_eintr(void **state)
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
+
+    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+
+    will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
 
     will_return(__wrap_select, 1);
 
@@ -554,6 +590,10 @@ void test_wm_agent_upgrade_listen_messages_accept_error(void **state)
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
+
+    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+
+    will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
 
     will_return(__wrap_select, 1);
 
@@ -589,6 +629,10 @@ void test_wm_agent_upgrade_listen_messages_select_zero(void **state)
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
 
+    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+
+    will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
+
     will_return(__wrap_select, 0);
 
     will_return(__wrap_select, 1);
@@ -619,6 +663,10 @@ void test_wm_agent_upgrade_listen_messages_select_error_eintr(void **state)
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
 
+    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+
+    will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
+
     will_return(__wrap_select, -1);
 
     will_return(__wrap_select, 1);
@@ -646,6 +694,10 @@ void test_wm_agent_upgrade_listen_messages_select_error(void **state)
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
+
+    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+
+    will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
 
     will_return(__wrap_select, -1);
 

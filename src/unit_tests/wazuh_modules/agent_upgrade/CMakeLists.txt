@@ -32,7 +32,7 @@ if(${TARGET} STREQUAL "server")
     list(APPEND upgrade_names "test_wm_agent_upgrade_manager")
     list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP \
                             -Wl,--wrap,wm_agent_upgrade_parse_message -Wl,--wrap,wm_agent_upgrade_process_upgrade_command -Wl,--wrap,wm_agent_upgrade_process_upgrade_custom_command -Wl,--wrap,wm_agent_upgrade_process_agent_result_command \
-                            -Wl,--wrap,wm_agent_upgrade_parse_response -Wl,--wrap,CreateThread -Wl,--wrap,getpid")
+                            -Wl,--wrap,wm_agent_upgrade_parse_response -Wl,--wrap,wm_agent_upgrade_cancel_pending_upgrades -Wl,--wrap,sleep -Wl,--wrap,CreateThread -Wl,--wrap,getpid")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_parsing")
     list(APPEND upgrade_flags "-Wl,--wrap,_mterror")

@@ -412,6 +412,8 @@ cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, cJ
 
     node_name = OS_GetOneContentforElement(&xml, xml_node);
 
+    OS_ClearXML(&xml);
+
     cJSON_AddStringToObject(origin, task_manager_json_keys[WM_TASK_NAME], node_name ? node_name : "");
     cJSON_AddStringToObject(origin, task_manager_json_keys[WM_TASK_MODULE], task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
     cJSON_AddItemToObject(request, task_manager_json_keys[WM_TASK_ORIGIN], origin);
