@@ -130,4 +130,18 @@ cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, cJ
  * */
 int wm_agent_upgrade_parse_agent_response(const char* agent_response, char **data);
 
+/**
+ * Parse a response message from the agent (Agent upgrade module format)
+ * @param agent_response json string with the response of the agent
+ * Exanple:
+ * {
+ *   "error" : 0,
+ *   "data"  : "ok"
+ * }
+ * @param data additional data of the response when success
+ * @return error code
+ * @retval OS_SUCCESS on success
+ * @retval OS_INVALID on errors
+ * */
+int wm_agent_upgrade_parse_agent_upgrade_command_response(const char* agent_response, char **data);
 #endif

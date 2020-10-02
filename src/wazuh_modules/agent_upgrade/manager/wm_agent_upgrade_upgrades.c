@@ -362,13 +362,13 @@ STATIC int wm_agent_upgrade_send_open(int agent_id, const char *wpk_file) {
     cJSON_AddStringToObject(command_info, "command", "open");
     cJSON_AddStringToObject(command_info, "mode", "wb");
     cJSON_AddStringToObject(command_info, "file", wpk_file);
-    snprintf(command, OS_MAXSTR, "%.3d agent-upgrade %s", agent_id, cJSON_Print(command_info));
+    snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
     cJSON_Delete(command_info);
 
     for (open_retries = 0; open_retries < WM_UPGRADE_WPK_OPEN_ATTEMPTS; ++open_retries) {
         os_free(response);
         response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
-        if (result = wm_agent_upgrade_parse_agent_response(response, NULL), !result) {
+        if (result = wm_agent_upgrade_parse_agent_upgrade_command_response(response, NULL), !result) {
             break;
         }
     }
@@ -394,14 +394,14 @@ STATIC int wm_agent_upgrade_send_write(int agent_id, const char *wpk_file, const
 
             cJSON *command_info = cJSON_CreateObject();
             cJSON_AddStringToObject(command_info, "command", "write");
-            cJSON_AddRawToObject(command_info, "buffer", buffer);
+            cJSON_AddStringToObject(command_info, "buffer", encode_base64(bytes, buffer));
             cJSON_AddNumberToObject(command_info, "length", bytes);
             cJSON_AddStringToObject(command_info, "file", wpk_file);
-            snprintf(command, OS_MAXSTR, "%.3d agent-upgrade %s", agent_id, cJSON_Print(command_info));
+            snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
             cJSON_Delete(command_info);
 
             response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
-            if (result = wm_agent_upgrade_parse_agent_response(response, NULL), result) {
+            if (result = wm_agent_upgrade_parse_agent_upgrade_command_response(response, NULL), result) {
                 break;
             }
         }
@@ -424,12 +424,12 @@ STATIC int wm_agent_upgrade_send_close(int agent_id, const char *wpk_file) {
     cJSON *command_info = cJSON_CreateObject();
     cJSON_AddStringToObject(command_info, "command", "close");
     cJSON_AddStringToObject(command_info, "file", wpk_file);
-    snprintf(command, OS_MAXSTR, "%.3d agent-upgrade %s", agent_id, cJSON_Print(command_info));
+    snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
     cJSON_Delete(command_info);
 
     response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
 
-    result = wm_agent_upgrade_parse_agent_response(response, NULL);
+    result = wm_agent_upgrade_parse_agent_upgrade_command_response(response, NULL);
 
     os_free(command);
     os_free(response);
@@ -448,12 +448,12 @@ STATIC int wm_agent_upgrade_send_sha1(int agent_id, const char *wpk_file, const 
     cJSON *command_info = cJSON_CreateObject();
     cJSON_AddStringToObject(command_info, "command", "sha1");
     cJSON_AddStringToObject(command_info, "file", wpk_file);
-    snprintf(command, OS_MAXSTR, "%.3d agent-upgrade %s", agent_id, cJSON_Print(command_info));
+    snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
     cJSON_Delete(command_info);
     
     response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
 
-    if (result = wm_agent_upgrade_parse_agent_response(response, &data), !result) {
+    if (result = wm_agent_upgrade_parse_agent_upgrade_command_response(response, &data), !result) {
         if (!data || strcmp(file_sha1, data)) {
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_AGENT_RESPONSE_SHA1_ERROR);
             result = OS_INVALID;
@@ -478,11 +478,11 @@ STATIC int wm_agent_upgrade_send_upgrade(int agent_id, const char *wpk_file, con
     cJSON_AddStringToObject(command_info, "command", "upgrade");
     cJSON_AddStringToObject(command_info, "file", wpk_file);
     cJSON_AddStringToObject(command_info, "installer", installer);
-    snprintf(command, OS_MAXSTR, "%.3d agent-upgrade %s", agent_id, cJSON_Print(command_info));
+    snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
     cJSON_Delete(command_info);
 
     response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
-    if (result = wm_agent_upgrade_parse_agent_response(response, &data), !result) {
+    if (result = wm_agent_upgrade_parse_agent_upgrade_command_response(response, &data), !result) {
         if (!data || strncmp("0", data, 1)) {
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_AGENT_RESPONSE_SCRIPT_ERROR);
             result = OS_INVALID;

@@ -111,7 +111,7 @@ size_t wcom_dispatch(char *command, size_t length, char ** output){
         return wcom_close(rcv_args, output);
 
     }else if (strcmp(rcv_comm, "sha1") == 0){
-        if (!rcv_args){
+        if (!rcv_args) {
             mdebug1("WCOM sha1 needs arguments.");
             os_strdup("err WCOM sha1 needs arguments", *output);
             return strlen(*output);

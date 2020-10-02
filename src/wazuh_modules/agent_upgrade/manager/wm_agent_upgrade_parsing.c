@@ -438,3 +438,39 @@ int wm_agent_upgrade_parse_agent_response(const char* agent_response, char **dat
 
     return error_code;
 }
+
+int wm_agent_upgrade_parse_agent_upgrade_command_response(const char* agent_response, char **data) {
+    char *error = NULL;
+    int error_code = OS_SUCCESS;
+
+    cJSON *json_response = cJSON_Parse(agent_response);
+    if (json_response) {
+        cJSON *error_obj = cJSON_GetObjectItem(json_response, "error");
+        cJSON *data_obj = cJSON_GetObjectItem(json_response, "data");
+        if (error_obj && (error_obj->type == cJSON_Number)) {
+            error_code = error_obj->valueint;
+        } else {
+            error_code = OS_INVALID;
+        }
+
+        if (data_obj && (data_obj->type == cJSON_String)) {
+            if (data) {
+                os_strdup(data_obj->valuestring, *data);
+            }
+            os_strdup(data_obj->valuestring, error);
+        } 
+    } else {
+        error_code = OS_INVALID;
+    }
+    cJSON_Delete(json_response);
+
+    if (error_code != OS_SUCCESS) {
+        if (error) {
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_AGENT_RESPONSE_MESSAGE_ERROR, error);
+        } else {
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_AGENT_RESPONSE_UNKNOWN_ERROR);
+        }
+    }
+    os_free(error);
+    return error_code;
+}
