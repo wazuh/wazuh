@@ -357,9 +357,6 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
                 mwarn("Ping operation could not be delivered completely (%d)", retval);
             }
 
-            if (sock_client >= 0)
-                _close_sock(&keys, sock_client);
-
             return;
 
     } else {

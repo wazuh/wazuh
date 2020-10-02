@@ -80,6 +80,9 @@ void sender_init();
 /* Send message to server */
 int send_msg(const char *msg, ssize_t msg_length);
 
+/* Send message to server */
+int send_message(const char *msg, ssize_t msg_size);
+
 /* Extract the shared files */
 char *getsharedfiles(void);
 
