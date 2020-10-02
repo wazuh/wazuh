@@ -187,7 +187,7 @@ static void w_agentd_keys_init (void) {
 
                 /* Try to enroll to server list */
                 while (agt->server[rc].rip && (registration_status != 0)) {
-                    if(agent_ping_to_server(rc)){
+                    if (agent_ping_to_server(rc)) {
                         registration_status = try_enroll_to_server(agt->server[rc].rip);
                     }
                     rc++;
@@ -292,7 +292,7 @@ static ssize_t receive_message(char *buffer, unsigned int max_lenght) {
  * */
 static bool agent_ping_to_server(int server_id) {
     ssize_t recv_b = 0;
-    char *msg = "ping";
+    char *msg = "#ping";
     char buffer[OS_MAXSTR + 1] = { '\0' };
 
     if (connect_server(server_id, true)) {
@@ -303,7 +303,7 @@ static bool agent_ping_to_server(int server_id) {
         recv_b = receive_message(buffer, OS_MAXSTR);
 
         if (recv_b > 0) {
-            if (strncmp(buffer, "pong", 4) == 0) {
+            if (strcmp(buffer, "#pong") == 0) {
                 return true;
             }
         }

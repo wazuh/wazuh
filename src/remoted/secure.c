@@ -340,18 +340,16 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
             return;
         }
-    } else if(strncmp(buffer, "ping", 4) == 0) {
+    } else if (strcmp(buffer, "#ping") == 0) {
             int retval = 0;
             int error;
-            char *msg = "pong";
+            char *msg = "#pong";
             size_t msg_size = strlen(msg);
 
             if (protocol == IPPROTO_UDP) {
                 retval = sendto(logr.sock, msg, msg_size, 0, (struct sockaddr *)peer_info, logr.peer_size) == msg_size ? 0 : -1;
-                error = errno;
             } else if (protocol == IPPROTO_TCP) {
                 retval = OS_SendSecureTCP(sock_client, msg_size, msg);
-                error = errno;
             } else {
                 mdebug1("Send ping operation cancelled due to closed socket.");
             }
