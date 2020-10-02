@@ -638,80 +638,80 @@ os_info *get_unix_version()
                 info->os_platform = strdup("darwin");
 
                 //plist
-                if(os_release = fopen("/System/Library/CoreServices/SystemVersion.plist", "r"), os_release) { 
-                    OS_XML xml;
-                    XML_NODE node;
-                    OS_ReadXML(os_release, &xml);
-                    OS_ApplyVariables(&xml);
-
-                    if (node = OS_GetElementsbyNode(&xml, NULL), !node) {
-                        merror("Cannot get the elements by node");
+                if (os_release = fopen("/System/Library/CoreServices/SystemVersion.plist","r"), os_release){
+                    bool build=false, name=false, version=false;
+                    while (fgets(buff, sizeof(buff) - 1, os_release)) {
+                        if(build){
+                            merror("\n %s \n", buff);  //temp
+                            id = strtok_r(buff, "><", &save_ptr);
+                            info->os_build = strdup(id);  //need fix
+                            build=false;
+                            merror("\n test \n %s \n", info->os_build);  //temp
+                        }
+                        if(name){
+                            merror("\n %s \n", buff);  //temp
+                            id = strtok_r(buff, "><", &save_ptr);
+                            info->os_name = strdup(id);
+                            name=false;
+                            merror("\n test \n %s \n", info->os_name);  //temp
+                        }
+                        if(version){
+                            merror("\n %s \n", buff);  //temp
+                            id = strtok_r(buff, "><", &save_ptr);
+                            info->os_version = strdup(id);
+                            version=false;
+                            merror("\n test \n %s \n", info->os_version);  //temp
+                        }
+                        if (strstr(buff,"ProductBuildVersion")){
+                            build=true;
+                        }
+                        if (strstr(buff,"ProductName")){
+                            name=true;
+                        }
+                        if (strstr(buff,"ProductVersion")){
+                            version=true;
+                        }
                     }
 
-                    for(int i=0; node[i]; i++){
-                        printf ("\n\n %s \n\n", node[i]);   //temporal
-                        if(strcmp(node[i]->element, "ProductBuildVersion")){
-                            ++i;
-                            info->os_build = strdup(node[i]->element);
-                        }
-                        
-                        if(strcmp(node[i]->element, "ProductName")){
-                            ++i;
-                            info->os_name = strdup(node[i]->element);
-                        }
-                        
-                        if(strcmp(node[i]->element, "ProductVersion")){
-                            ++i;
-                            info->os_version = strdup(node[i]->element);
-                        }
-                    }
-
-                    printf ("\n\n %s \n\n", info->os_build);    //temporal
-                    printf ("\n\n %s \n\n", info->os_name);     //temporal
-                    printf ("\n\n %s \n\n", info->os_version);  //temporal
-
-                    OS_ClearNode(node);
-                    OS_ClearXML(&xml);
-                    
-                    fclose(version_release);
+                    fclose(os_release);
                 }
                 //plist server
-                else if(os_release = fopen("/System/Library/CoreServices/ServerVersion.plist", "r"), os_release) {
-                    OS_XML xml;
-                    XML_NODE node;
-                    OS_ReadXML(os_release, &xml);
-                    OS_ApplyVariables(&xml);
-
-                    if (node = OS_GetElementsbyNode(&xml, NULL), !node) {
-                        merror("Cannot get the elements by node");
+                else if(os_release = fopen("/System/Library/CoreServices/ServerVersion.plist","r"), os_release) {
+                    bool build=false, name=false, version=false;
+                    while (fgets(buff, sizeof(buff) - 1, os_release)) {
+                        if(build){
+                            merror("\n %s \n", buff);
+                            id = strtok_r(buff, "><", &save_ptr);
+                            info->os_build = strdup(id);
+                            build=false;
+                            merror("\n test \n %s \n", info->os_build);
+                        }
+                        if(name){
+                            merror("\n %s \n", buff);
+                            id = strtok_r(buff, "><", &save_ptr);
+                            info->os_name = strdup(id);
+                            name=false;
+                            merror("\n test \n %s \n", info->os_name);
+                        }
+                        if(version){
+                            merror("\n %s \n", buff);
+                            id = strtok_r(buff, "><", &save_ptr);
+                            info->os_version = strdup(id);
+                            version=false;
+                            merror("\n test \n %s \n", info->os_version);
+                        }
+                        if (strstr(buff,"ProductBuildVersion")){
+                            build=true;
+                        }
+                        if (strstr(buff,"ProductName")){
+                            name=true;
+                        }
+                        if (strstr(buff,"ProductVersion")){
+                            version=true;
+                        }
                     }
 
-                    for(int i=0; node[i]; i++){
-                        printf ("\n\n %s \n\n", node[i]);   //temporal
-                        if(strcmp(node[i]->element, "ProductBuildVersion")){
-                            ++i;
-                            info->os_build = strdup(node[i]->element);
-                        }
-                        
-                        if(strcmp(node[i]->element, "ProductName")){
-                            ++i;
-                            info->os_name = strdup(node[i]->element);
-                        }
-                        
-                        if(strcmp(node[i]->element, "ProductVersion")){
-                            ++i;
-                            info->os_version = strdup(node[i]->element);
-                        }
-                    }
-
-                    printf ("\n\n %s \n\n", info->os_build);    //temporal
-                    printf ("\n\n %s \n\n", info->os_name);     //temporal
-                    printf ("\n\n %s \n\n", info->os_version);  //temporal
-
-                    OS_ClearNode(node);
-                    OS_ClearXML(&xml);
-                    
-                    fclose(version_release);
+                    fclose(os_release);
                 }
                 //cmd
                 else{ 
