@@ -70,16 +70,18 @@ STATIC int wm_agent_upgrade_send_lock_restart(int agent_id);
 /**
  * Send an open file command to an agent
  * @param agent_id id of the agent
+ * @param wpk_message_format 1 for new format, 0 for old
  * @param wpk_file name of the file to open in the agent
  * @return error code
  * @retval OS_SUCCESS on success
  * @retval OS_INVALID on errors
  * */
-STATIC int wm_agent_upgrade_send_open(int agent_id, const char *wpk_file) __attribute__((nonnull));
+STATIC int wm_agent_upgrade_send_open(int agent_id, int wpk_message_format, const char *wpk_file) __attribute__((nonnull));
 
 /**
  * Send a write file command to an agent
  * @param agent_id id of the agent
+ * @param wpk_message_format 1 for new format, 0 for old
  * @param wpk_file name of the file to write in the agent
  * @param file_path name of the file to read in the manager
  * @param chunk_size size of block to send WPK file
@@ -87,39 +89,42 @@ STATIC int wm_agent_upgrade_send_open(int agent_id, const char *wpk_file) __attr
  * @retval OS_SUCCESS on success
  * @retval OS_INVALID on errors
  * */
-STATIC int wm_agent_upgrade_send_write(int agent_id, const char *wpk_file, const char *file_path, int chunk_size) __attribute__((nonnull));
+STATIC int wm_agent_upgrade_send_write(int agent_id, int wpk_message_format, const char *wpk_file, const char *file_path, int chunk_size) __attribute__((nonnull));
 
 /**
  * Send a close file command to an agent
  * @param agent_id id of the agent
+ * @param wpk_message_format 1 for new format, 0 for old
  * @param wpk_file name of the file to close in the agent
  * @return error code
  * @retval OS_SUCCESS on success
  * @retval OS_INVALID on errors
  * */
-STATIC int wm_agent_upgrade_send_close(int agent_id, const char *wpk_file) __attribute__((nonnull));
+STATIC int wm_agent_upgrade_send_close(int agent_id, int wpk_message_format, const char *wpk_file) __attribute__((nonnull));
 
 /**
  * Send a sha1 command to an agent
  * @param agent_id id of the agent
+ * @param wpk_message_format 1 for new format, 0 for old
  * @param wpk_file name of the file to calculate sha1 in the agent
  * @param file_sha1 sha1 of the file in the manager to compare
  * @return error code
  * @retval OS_SUCCESS on success
  * @retval OS_INVALID on errors
  * */
-STATIC int wm_agent_upgrade_send_sha1(int agent_id, const char *wpk_file, const char *file_sha1) __attribute__((nonnull));
+STATIC int wm_agent_upgrade_send_sha1(int agent_id, int wpk_message_format, const char *wpk_file, const char *file_sha1) __attribute__((nonnull));
 
 /**
  * Send an upgrade command to an agent
  * @param agent_id id of the agent
+ * @param wpk_message_format 1 for new format, 0 for old
  * @param wpk_file name of the file with the installation files in the agent
  * @param installer name of the installer to run in the agent
  * @return error code
  * @retval OS_SUCCESS on success
  * @retval OS_INVALID on errors
  * */
-STATIC int wm_agent_upgrade_send_upgrade(int agent_id, const char *wpk_file, const char *installer) __attribute__((nonnull));
+STATIC int wm_agent_upgrade_send_upgrade(int agent_id, int wpk_message_format, const char *wpk_file, const char *installer) __attribute__((nonnull));
 
 void wm_agent_upgrade_init_upgrade_queue() {
     upgrade_queue = queue_init(MAX_AGENTS);
@@ -298,28 +303,30 @@ STATIC int wm_agent_upgrade_send_wpk_to_agent(const wm_agent_task *agent_task, c
         result = WM_UPGRADE_SEND_LOCK_RESTART_ERROR;
     }
 
+    int wpk_message_format = wm_agent_upgrade_compare_versions(strchr(agent_task->agent_info->wazuh_version, 'v'), WM_UPGRADE_NEW_UPGRADE_MECHANISM);
+
     // open wb
-    if ((result == WM_UPGRADE_SUCCESS) && wm_agent_upgrade_send_open(agent_task->agent_info->agent_id, wpk_path)) {
+    if ((result == WM_UPGRADE_SUCCESS) && wm_agent_upgrade_send_open(agent_task->agent_info->agent_id, wpk_message_format, wpk_path)) {
         result = WM_UPGRADE_SEND_OPEN_ERROR;
     }
 
     // write
-    if ((result == WM_UPGRADE_SUCCESS) && wm_agent_upgrade_send_write(agent_task->agent_info->agent_id, wpk_path, file_path, manager_configs->chunk_size)) {
+    if ((result == WM_UPGRADE_SUCCESS) && wm_agent_upgrade_send_write(agent_task->agent_info->agent_id, wpk_message_format, wpk_path, file_path, manager_configs->chunk_size)) {
         result = WM_UPGRADE_SEND_WRITE_ERROR;
     }
 
     // close
-    if ((result == WM_UPGRADE_SUCCESS) && wm_agent_upgrade_send_close(agent_task->agent_info->agent_id, wpk_path)) {
+    if ((result == WM_UPGRADE_SUCCESS) && wm_agent_upgrade_send_close(agent_task->agent_info->agent_id, wpk_message_format, wpk_path)) {
         result = WM_UPGRADE_SEND_CLOSE_ERROR;
     }
 
     // sha1
-    if ((result == WM_UPGRADE_SUCCESS) && wm_agent_upgrade_send_sha1(agent_task->agent_info->agent_id, wpk_path, file_sha1)) {
+    if ((result == WM_UPGRADE_SUCCESS) && wm_agent_upgrade_send_sha1(agent_task->agent_info->agent_id, wpk_message_format, wpk_path, file_sha1)) {
         result = WM_UPGRADE_SEND_SHA1_ERROR;
     }
 
     // upgrade
-    if ((result == WM_UPGRADE_SUCCESS) && wm_agent_upgrade_send_upgrade(agent_task->agent_info->agent_id, wpk_path, installer)) {
+    if ((result == WM_UPGRADE_SUCCESS) && wm_agent_upgrade_send_upgrade(agent_task->agent_info->agent_id, wpk_message_format, wpk_path, installer)) {
         result = WM_UPGRADE_SEND_UPGRADE_ERROR;
     }
 
@@ -350,7 +357,7 @@ STATIC int wm_agent_upgrade_send_lock_restart(int agent_id) {
     return result;
 }
 
-STATIC int wm_agent_upgrade_send_open(int agent_id, const char *wpk_file) {
+STATIC int wm_agent_upgrade_send_open(int agent_id, int wpk_message_format, const char *wpk_file) {
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;
@@ -358,17 +365,28 @@ STATIC int wm_agent_upgrade_send_open(int agent_id, const char *wpk_file) {
 
     os_calloc(OS_MAXSTR, sizeof(char), command);
 
-    cJSON *command_info = cJSON_CreateObject();
-    cJSON_AddStringToObject(command_info, "command", "open");
-    cJSON_AddStringToObject(command_info, "mode", "wb");
-    cJSON_AddStringToObject(command_info, "file", wpk_file);
-    snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
-    cJSON_Delete(command_info);
+    if (wpk_message_format >= 0) {
+        cJSON *command_info = cJSON_CreateObject();
+        cJSON_AddStringToObject(command_info, "command", "open");
+        cJSON_AddStringToObject(command_info, "mode", "wb");
+        cJSON_AddStringToObject(command_info, "file", wpk_file);
+        snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
+        cJSON_Delete(command_info);
+    } else {
+        snprintf(command, OS_MAXSTR, "%.3d com open wb %s", agent_id, wpk_file);
+    }
 
     for (open_retries = 0; open_retries < WM_UPGRADE_WPK_OPEN_ATTEMPTS; ++open_retries) {
         os_free(response);
         response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
-        if (result = wm_agent_upgrade_parse_agent_upgrade_command_response(response, NULL), !result) {
+
+        if (wpk_message_format >= 0) {
+            result = wm_agent_upgrade_parse_agent_upgrade_command_response(response, NULL);
+        } else {
+            result = wm_agent_upgrade_parse_agent_response(response, NULL);
+        }
+
+        if (!result) {
             break;
         }
     }
@@ -379,7 +397,7 @@ STATIC int wm_agent_upgrade_send_open(int agent_id, const char *wpk_file) {
     return result;
 }
 
-STATIC int wm_agent_upgrade_send_write(int agent_id, const char *wpk_file, const char *file_path, int chunk_size) {
+STATIC int wm_agent_upgrade_send_write(int agent_id,  int wpk_message_format, const char *wpk_file, const char *file_path, int chunk_size) {
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;
@@ -392,16 +410,29 @@ STATIC int wm_agent_upgrade_send_write(int agent_id, const char *wpk_file, const
     if (file) {
         while (bytes = fread(buffer, 1, sizeof(buffer), file), bytes) {
 
-            cJSON *command_info = cJSON_CreateObject();
-            cJSON_AddStringToObject(command_info, "command", "write");
-            cJSON_AddStringToObject(command_info, "buffer", encode_base64(bytes, buffer));
-            cJSON_AddNumberToObject(command_info, "length", bytes);
-            cJSON_AddStringToObject(command_info, "file", wpk_file);
-            snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
-            cJSON_Delete(command_info);
+            if (wpk_message_format >= 0) {
+                cJSON *command_info = cJSON_CreateObject();
+                cJSON_AddStringToObject(command_info, "command", "write");
+                cJSON_AddStringToObject(command_info, "buffer", encode_base64(bytes, buffer));
+                cJSON_AddNumberToObject(command_info, "length", bytes);
+                cJSON_AddStringToObject(command_info, "file", wpk_file);
+                snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
+                cJSON_Delete(command_info);
+            } else {
+                snprintf(command, OS_MAXSTR, "%.3d com write %ld %s ", agent_id, bytes, wpk_file);
+                int command_size = strlen(command);
+                for (size_t byte = 0; byte < bytes; ++byte) {
+                    sprintf(&command[command_size++], "%c", buffer[byte]);
+                }
+            }
 
             response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
-            if (result = wm_agent_upgrade_parse_agent_upgrade_command_response(response, NULL), result) {
+            if (wpk_message_format >= 0) {
+                result = wm_agent_upgrade_parse_agent_upgrade_command_response(response, NULL);
+            } else {
+                result = wm_agent_upgrade_parse_agent_response(response, NULL);
+            }
+            if (result) {
                 break;
             }
         }
@@ -414,22 +445,30 @@ STATIC int wm_agent_upgrade_send_write(int agent_id, const char *wpk_file, const
     return result;
 }
 
-STATIC int wm_agent_upgrade_send_close(int agent_id, const char *wpk_file) {
+STATIC int wm_agent_upgrade_send_close(int agent_id,  int wpk_message_format, const char *wpk_file) {
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;
 
     os_calloc(OS_MAXSTR, sizeof(char), command);
 
-    cJSON *command_info = cJSON_CreateObject();
-    cJSON_AddStringToObject(command_info, "command", "close");
-    cJSON_AddStringToObject(command_info, "file", wpk_file);
-    snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
-    cJSON_Delete(command_info);
+    if (wpk_message_format >= 0) {
+        cJSON *command_info = cJSON_CreateObject();
+        cJSON_AddStringToObject(command_info, "command", "close");
+        cJSON_AddStringToObject(command_info, "file", wpk_file);
+        snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
+        cJSON_Delete(command_info);
+    } else {
+        snprintf(command, OS_MAXSTR, "%.3d com close %s", agent_id, wpk_file);
+    }
 
     response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
 
-    result = wm_agent_upgrade_parse_agent_upgrade_command_response(response, NULL);
+    if (wpk_message_format >= 0) {
+        result = wm_agent_upgrade_parse_agent_upgrade_command_response(response, NULL);
+    } else {
+        result = wm_agent_upgrade_parse_agent_response(response, NULL);
+    }
 
     os_free(command);
     os_free(response);
@@ -437,7 +476,7 @@ STATIC int wm_agent_upgrade_send_close(int agent_id, const char *wpk_file) {
     return result;
 }
 
-STATIC int wm_agent_upgrade_send_sha1(int agent_id, const char *wpk_file, const char *file_sha1) {
+STATIC int wm_agent_upgrade_send_sha1(int agent_id,  int wpk_message_format, const char *wpk_file, const char *file_sha1) {
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;
@@ -445,15 +484,25 @@ STATIC int wm_agent_upgrade_send_sha1(int agent_id, const char *wpk_file, const 
 
     os_calloc(OS_MAXSTR, sizeof(char), command);
 
-    cJSON *command_info = cJSON_CreateObject();
-    cJSON_AddStringToObject(command_info, "command", "sha1");
-    cJSON_AddStringToObject(command_info, "file", wpk_file);
-    snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
-    cJSON_Delete(command_info);
+    if (wpk_message_format >= 0) {
+        cJSON *command_info = cJSON_CreateObject();
+        cJSON_AddStringToObject(command_info, "command", "sha1");
+        cJSON_AddStringToObject(command_info, "file", wpk_file);
+        snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
+        cJSON_Delete(command_info);
+    } else {
+        snprintf(command, OS_MAXSTR, "%.3d com sha1 %s", agent_id, wpk_file);
+    }
     
     response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
 
-    if (result = wm_agent_upgrade_parse_agent_upgrade_command_response(response, &data), !result) {
+    if (wpk_message_format >= 0) {
+        result = wm_agent_upgrade_parse_agent_upgrade_command_response(response, &data);
+    } else {
+        result = wm_agent_upgrade_parse_agent_response(response, &data);
+    }
+
+    if (!result) {
         if (!data || strcmp(file_sha1, data)) {
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_AGENT_RESPONSE_SHA1_ERROR);
             result = OS_INVALID;
@@ -466,7 +515,7 @@ STATIC int wm_agent_upgrade_send_sha1(int agent_id, const char *wpk_file, const 
     return result;
 }
 
-STATIC int wm_agent_upgrade_send_upgrade(int agent_id, const char *wpk_file, const char *installer) {
+STATIC int wm_agent_upgrade_send_upgrade(int agent_id,  int wpk_message_format, const char *wpk_file, const char *installer) {
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;
@@ -474,15 +523,25 @@ STATIC int wm_agent_upgrade_send_upgrade(int agent_id, const char *wpk_file, con
 
     os_calloc(OS_MAXSTR, sizeof(char), command);
 
-    cJSON *command_info = cJSON_CreateObject();
-    cJSON_AddStringToObject(command_info, "command", "upgrade");
-    cJSON_AddStringToObject(command_info, "file", wpk_file);
-    cJSON_AddStringToObject(command_info, "installer", installer);
-    snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
-    cJSON_Delete(command_info);
+    if (wpk_message_format >= 0) {
+        cJSON *command_info = cJSON_CreateObject();
+        cJSON_AddStringToObject(command_info, "command", "upgrade");
+        cJSON_AddStringToObject(command_info, "file", wpk_file);
+        cJSON_AddStringToObject(command_info, "installer", installer);
+        snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
+        cJSON_Delete(command_info);
+    } else {
+        snprintf(command, OS_MAXSTR, "%.3d com upgrade %s %s", agent_id, wpk_file, installer);
+    }
 
     response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
-    if (result = wm_agent_upgrade_parse_agent_upgrade_command_response(response, &data), !result) {
+    if (wpk_message_format >= 0) {
+        result = wm_agent_upgrade_parse_agent_upgrade_command_response(response, &data);
+    } else {
+        result = wm_agent_upgrade_parse_agent_response(response, &data);
+    }
+
+    if (!result) {
         if (!data || strncmp("0", data, 1)) {
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_AGENT_RESPONSE_SCRIPT_ERROR);
             result = OS_INVALID;
