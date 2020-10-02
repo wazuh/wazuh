@@ -140,6 +140,7 @@ STATIC cJSON* wm_task_manager_command_upgrade(char *module, char *command, int *
         if (task_id = wm_task_manager_insert_task(agent_id, module, command), task_id == OS_INVALID) {
             *error_code = WM_TASK_DATABASE_ERROR;
         } else {
+            *error_code = WM_TASK_SUCCESS;
             response = wm_task_manager_parse_data_response(WM_TASK_SUCCESS, agent_id, task_id, NULL);
         }
     } else {
@@ -163,6 +164,7 @@ STATIC cJSON* wm_task_manager_command_upgrade_get_status(int *error_code, int ag
             *error_code = result;
             response = wm_task_manager_parse_data_response(result, agent_id, OS_INVALID, NULL);
         } else {
+            *error_code = WM_TASK_SUCCESS;
             response = wm_task_manager_parse_data_response(WM_TASK_SUCCESS, agent_id, OS_INVALID, status_result);
         }
     } else {
@@ -186,6 +188,7 @@ STATIC cJSON* wm_task_manager_command_upgrade_update_status(int *error_code, int
             *error_code = result;
             response = wm_task_manager_parse_data_response(result, agent_id, OS_INVALID, status);
         } else {
+            *error_code = WM_TASK_SUCCESS;
             response = wm_task_manager_parse_data_response(WM_TASK_SUCCESS, agent_id, OS_INVALID, status);
         }
     } else {
@@ -214,6 +217,7 @@ STATIC cJSON* wm_task_manager_command_upgrade_result(char *command, int *error_c
             *error_code = WM_TASK_DATABASE_NO_TASK;
             response = wm_task_manager_parse_data_response(WM_TASK_DATABASE_NO_TASK, agent_id, OS_INVALID, status);
         } else {
+            *error_code = WM_TASK_SUCCESS;
             response = wm_task_manager_parse_data_response(WM_TASK_SUCCESS, agent_id, task_id, NULL);
             wm_task_manager_parse_data_result(response, module_result, command_result, status, error, create_time, last_update_time, command);
         }
@@ -248,6 +252,7 @@ STATIC cJSON* wm_task_manager_command_task_result(char *command, int *error_code
             *error_code = WM_TASK_DATABASE_NO_TASK;
             response = wm_task_manager_parse_data_response(WM_TASK_DATABASE_NO_TASK, OS_INVALID, task_id, status);
         } else {
+            *error_code = WM_TASK_SUCCESS;
             response = wm_task_manager_parse_data_response(WM_TASK_SUCCESS, agent_id, task_id, NULL);
             wm_task_manager_parse_data_result(response, module_result, command_result, status, error, create_time, last_update_time, command);
         }

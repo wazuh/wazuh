@@ -1940,6 +1940,7 @@ void test_wm_task_manager_get_upgrade_task_by_agent_id_ok(void **state)
     assert_string_equal(error, "Error string");
 
     os_free(error);
+    os_free(module);
 }
 
 void test_wm_task_manager_get_upgrade_task_by_agent_id_task_id_err(void **state)
