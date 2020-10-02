@@ -303,6 +303,7 @@ STATIC int wm_agent_upgrade_send_wpk_to_agent(const wm_agent_task *agent_task, c
         result = WM_UPGRADE_SEND_LOCK_RESTART_ERROR;
     }
 
+    // Compare actual agent version to know which command format to use
     int wpk_message_format = wm_agent_upgrade_compare_versions(strchr(agent_task->agent_info->wazuh_version, 'v'), WM_UPGRADE_NEW_UPGRADE_MECHANISM);
 
     // open wb
