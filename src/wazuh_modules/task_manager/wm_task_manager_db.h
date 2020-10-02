@@ -70,7 +70,7 @@ int wm_task_manager_get_upgrade_task_status(int agent_id, char **status) __attri
  * @param error Error string of the task in case of failure.
  * @return 0 when succeed, !=0 otherwise.
  * */
-int wm_task_manager_update_upgrade_task_status(int agent_id, const char *status, const char *error);// __attribute__((nonnull(2)));
+int wm_task_manager_update_upgrade_task_status(int agent_id, const char *status, const char *error);
 
 /**
  * Get task by agent_id and module from the tasks DB.

@@ -30,7 +30,7 @@ void __wrap_wm_task_manager_parse_data_result(cJSON *response, const char *modul
 
 int __wrap_wm_task_manager_insert_task(int agent_id, const char *module, const char *command);
 
-int __wrap_wm_task_manager_get_task_status(int agent_id, const char *module, char **status);
+int __wrap_wm_task_manager_get_upgrade_task_status(int agent_id, char **status);
 
 int __wrap_wm_task_manager_update_upgrade_task_status(int agent_id, const char *status, const char *error);
 

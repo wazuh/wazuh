@@ -895,10 +895,6 @@ void test_wm_task_manager_insert_task_ok(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, module);
-    will_return(__wrap_sqlite3_bind_text, 0);
-
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
@@ -956,10 +952,6 @@ void test_wm_task_manager_insert_task_task_id_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, module);
-    will_return(__wrap_sqlite3_bind_text, 0);
-
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
@@ -1016,10 +1008,6 @@ void test_wm_task_manager_insert_task_step2_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
-
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, module);
-    will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 
