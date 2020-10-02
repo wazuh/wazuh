@@ -7,6 +7,7 @@
  */
 
 #include "fim_db.h"
+#include "../registry/registry.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
@@ -55,7 +56,7 @@ const char *SQL_STMT[] = {
 #ifdef WIN32
     [FIMDB_STMT_REPLACE_REG_DATA] = "INSERT OR REPLACE INTO registry_data (key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, scanned, last_event, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     [FIMDB_STMT_REPLACE_REG_KEY] = "INSERT OR REPLACE INTO registry_key (id, path, perm, uid, gid, user_name, group_name, mtime, arch, scanned, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [FIMDB_STMT_GET_REG_KEY] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, scanned, checksum FROM registry_key WHERE path = ?;",
+    [FIMDB_STMT_GET_REG_KEY] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, scanned, checksum FROM registry_key WHERE arch = ? and path = ?;",
     [FIMDB_STMT_GET_REG_DATA] = "SELECT key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, scanned, last_event, checksum FROM registry_data WHERE name = ? AND key_id = ?;",
     [FIMDB_STMT_GET_ALL_REG_ENTRIES] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, registry_key.scanned, registry_key.checksum, key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, registry_data.scanned, last_event, registry_data.checksum FROM registry_data INNER JOIN registry_key ON registry_key.id = registry_data.key_id ORDER BY PATH ASC;",
     [FIMDB_STMT_GET_REG_KEY_NOT_SCANNED] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, scanned, checksum FROM registry_key WHERE scanned = 0;",
@@ -64,7 +65,7 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_SET_REG_KEY_UNSCANNED] = "UPDATE registry_key SET scanned = 0 WHERE path = ? and arch = ?;",
     [FIMDB_STMT_SET_ALL_REG_DATA_UNSCANNED] = "UPDATE registry_data SET scanned = 0;",
     [FIMDB_STMT_SET_REG_DATA_UNSCANNED] = "UPDATE registry_data SET scanned = 0 WHERE name = ? AND key_id = ?;",
-    [FIMDB_STMT_GET_REG_ROWID] = "SELECT id FROM registry_key WHERE path = ?;",
+    [FIMDB_STMT_GET_REG_ROWID] = "SELECT id FROM registry_key WHERE path = ? AND arch = ?;",
     [FIMDB_STMT_DELETE_REG_KEY_PATH] = "DELETE FROM registry_key WHERE path = ? and arch = ?;",
     [FIMDB_STMT_DELETE_REG_DATA] = "DELETE FROM registry_data WHERE name = ? AND key_id = ?;",
     [FIMDB_STMT_DELETE_REG_DATA_PATH] = "DELETE FROM registry_data WHERE key_id = (SELECT id FROM registry_key WHERE path = ? and arch = ?);",
@@ -73,15 +74,12 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_GET_COUNT_REG_KEY_AND_DATA] = "SELECT count(*) FROM registry_key INNER JOIN registry_data WHERE registry_data.key_id = registry_key.id;",
     [FIMDB_STMT_GET_LAST_REG_KEY] = "SELECT path FROM registry_key ORDER BY path DESC LIMIT 1;",
     [FIMDB_STMT_GET_FIRST_REG_KEY] = "SELECT path FROM registry_key ORDER BY path ASC LIMIT 1;",
-    // [FIMDB_STMT_GET_REG_PATH_RANGE] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, registry_key.scanned, registry_key.checksum, key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, registry_data.scanned, last_event, registry_data.checksum FROM registry_key INNER JOIN registry_data ON registry_data.key_id = registry_key.id WHERE path BETWEEN ? and ? ORDER BY path;",
     [FIMDB_STMT_SET_REG_DATA_SCANNED] = "UPDATE registry_data SET scanned = 1 WHERE name = ? AND key_id = ?;",
     [FIMDB_STMT_SET_REG_KEY_SCANNED] = "UPDATE registry_key SET scanned = 1 WHERE path = ? and arch = ?;",
     [FIMDB_STMT_GET_REG_KEY_ROWID] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, scanned, checksum FROM registry_key WHERE id = ?;",
     [FIMDB_STMT_GET_REG_DATA_ROWID] = "SELECT key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, scanned, last_event, checksum FROM registry_data WHERE key_id = ?;",
-    [FIMDB_STMT_GET_REG_KEY_SYNC_VIEW_ENTRY] = "SELECT reg_key, reg_value FROM sync_view WHERE path = ?;",
-    [FIMDB_STMT_GET_REG_FROM_SYNC_VIEW] = "SELECT registry_data.checksum, size, perm, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM registry_key INNER JOIN registry_data ON registry_key.id = registry_data.key_id WHERE arch = ? AND path = ? AND name = ?;",
-    [FIMDB_STMT_GET_REG_PATH_RANGE] = "SELECT path, checksum FROM registry_view WHERE path BETWEEN ? and ? ORDER BY path;",
 #endif
+    [FIMDB_STMT_GET_REG_PATH_RANGE] = "SELECT path, checksum FROM registry_view WHERE path BETWEEN ? and ? ORDER BY path;",
     [FIMDB_STMT_GET_REG_LAST_PATH] = "SELECT path FROM registry_view ORDER BY path DESC LIMIT 1;",
     [FIMDB_STMT_GET_REG_FIRST_PATH] = "SELECT path FROM registry_view ORDER BY path ASC LIMIT 1;",
     [FIMDB_STMT_GET_REG_ALL_CHECKSUMS] = "SELECT checksum FROM registry_view ORDER BY path ASC;",
@@ -286,62 +284,67 @@ void fim_db_clean_file(fim_tmp_file **file, int storage) {
     os_free((*file));
 }
 
-#ifdef WIN32
-fim_entry *fim_db_get_entry_from_sync_view(fdb_t *fim_sql, const char *path) {
-    char **keys;
+#ifndef WIN32
+fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql,
+                                          __attribute__((unused)) fim_type type,
+                                          __attribute__((unused)) int arch,
+                                          const char *path) {
+    return fim_db_get_path(fim_sql, path);
+}
+#else
+fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, int arch, const char *path) {
+    char **split_path;
+    char *full_path, *key_path, *value_name;
+    int i, key_id;
     fim_entry *entry;
-    sqlite3_stmt *keys_stmt = fim_sql->stmt[FIMDB_STMT_GET_REG_KEY_SYNC_VIEW_ENTRY];
-    sqlite3_stmt *data_stmt = fim_sql->stmt[FIMDB_STMT_GET_REG_FROM_SYNC_VIEW];
 
-    if (strncmp(path, "[x32]", 5) != 0 && strncmp(path, "[x64]", 5) != 0) {
+    if (type == FIM_TYPE_FILE) {
         return fim_db_get_path(fim_sql, path);
     }
 
     // If we got here, we are dealing with a registry entry.
-    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_REG_KEY_SYNC_VIEW_ENTRY);
-    sqlite3_bind_text(keys_stmt, 1, path, -1, NULL);
-    if (sqlite3_step(keys_stmt) != SQLITE_ROW) {
-        mwarn("No entry in sync view for '%s'", path);
-        return NULL;
+    os_strdup(&path[6], full_path);
+    value_name = full_path;
+
+    // Find where the key ends and the value starts
+    while ((value_name = strchr(value_name, ':'))) {
+        if (value_name[1] != ':') {
+            *value_name = '\0';
+            value_name++;
+            break;
+        }
     }
 
-    keys = fim_db_decode_string_array(keys_stmt);
+    key_path = wstr_replace(full_path, "::", ":");
 
-    if (keys == NULL) {
-        mwarn("Failed to decode registry keys for '%s'", path);
-        return NULL;
-    }
-
-    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_REG_FROM_SYNC_VIEW);
-    sqlite3_bind_text(data_stmt, 1, path, 5, NULL);
-    sqlite3_bind_text(data_stmt, 2, keys[0], -1, NULL);
-    sqlite3_bind_text(data_stmt, 3, keys[1], -1, NULL);
-    if (sqlite3_step(data_stmt) != SQLITE_ROW) {
-        mwarn("Unable to retrieve data for '[%.5s]%s%s'", path, keys[0], keys[1]);
-        free_strarray(keys);
-        return NULL;
-    }
-
-    // We got the registry data, we trick the sync code into thinking this is a file
     os_calloc(1, sizeof(fim_entry), entry);
+    entry->type = FIM_TYPE_REGISTRY;
+    entry->registry_entry.key = fim_db_get_registry_key(fim_sql, arch, key_path);
 
-    entry->type = FIM_TYPE_FILE;
-    os_strdup(path, entry->file_entry.path);
+    if (value_name == NULL) {
+        free(key_path);
+        free(full_path);
+        return entry;
+    }
 
-    os_calloc(1, sizeof(fim_file_data), entry->file_entry.data);
-    strncpy(entry->file_entry.data->checksum, (char *)sqlite3_column_text(data_stmt, 0), sizeof(os_sha1) - 1);
-    entry->file_entry.data->size = (unsigned int)sqlite3_column_int(data_stmt, 1);
-    sqlite_strdup((char *)sqlite3_column_text(data_stmt, 2), entry->file_entry.data->perm);
-    sqlite_strdup((char *)sqlite3_column_text(data_stmt, 3), entry->file_entry.data->uid);
-    sqlite_strdup((char *)sqlite3_column_text(data_stmt, 4), entry->file_entry.data->gid);
-    sqlite_strdup((char *)sqlite3_column_text(data_stmt, 5), entry->file_entry.data->user_name);
-    sqlite_strdup((char *)sqlite3_column_text(data_stmt, 6), entry->file_entry.data->group_name);
-    strncpy(entry->file_entry.data->hash_md5, (char *)sqlite3_column_text(data_stmt, 7), sizeof(os_md5) - 1);
-    strncpy(entry->file_entry.data->hash_sha1, (char *)sqlite3_column_text(data_stmt, 8), sizeof(os_sha1) - 1);
-    strncpy(entry->file_entry.data->hash_sha256, (char *)sqlite3_column_text(data_stmt, 9), sizeof(os_sha256) - 1);
-    entry->file_entry.data->mtime = (unsigned int)sqlite3_column_int(data_stmt, 10);
+    if (fim_db_get_registry_key_rowid(fim_sql, arch, key_path, &key_id) != FIMDB_OK) {
+        fim_registry_free_entry(entry);
+        free(key_path);
+        return NULL;
+    }
+    free(key_path);
 
-    free_strarray(keys);
+    value_name = wstr_replace(value_name, "::", ":");
+    free(full_path);
+
+    entry->registry_entry.value = fim_db_get_registry_data(fim_sql, key_id, key_path);
+
+    free(value_name);
+
+    if (entry->registry_entry.value == NULL) {
+        fim_registry_free_entry(entry);
+        return NULL;
+    }
     return entry;
 }
 #endif
@@ -640,6 +643,15 @@ int fim_db_process_read_file(fdb_t *fim_sql,
 }
 
 // General use functions
+
+/**
+ * @brief Binds data into a range data statement.
+ *
+ * @param fim_sql FIM database structure.
+ * @param index Index of the particular statement.
+ * @param start First entry of the range.
+ * @param top Last entry of the range.
+ */
 void fim_db_bind_range(fdb_t *fim_sql, int index, const char *start, const char *top) {
     if (index == FIMDB_STMT_GET_PATH_RANGE ||
         index == FIMDB_STMT_GET_COUNT_RANGE ) {
@@ -721,7 +733,28 @@ int fim_db_get_data_checksum(fdb_t *fim_sql, fim_type type, void *arg) {
                                      FIM_DB_CALLBACK_TYPE(fim_db_callback_calculate_checksum), 0, arg);
 }
 
+int fim_db_get_count_range(fdb_t *fim_sql, fim_type type, const char *start, const char *top, int *count) {
+    static const int RANGE_QUERY[] = {
+        [FIM_TYPE_FILE] = FIMDB_STMT_GET_COUNT_RANGE,
+        [FIM_TYPE_REGISTRY] = FIMDB_STMT_GET_REG_COUNT_RANGE,
+    };
+
+    // Clean and bind statements
+    fim_db_clean_stmt(fim_sql, RANGE_QUERY[type]);
+    fim_db_bind_range(fim_sql, RANGE_QUERY[type], start, top);
+
+    if (sqlite3_step(fim_sql->stmt[RANGE_QUERY[type]]) != SQLITE_ROW) {
+        merror("Step error getting count range 'start %s' 'top %s': %s", start, top, sqlite3_errmsg(fim_sql->db));
+        return FIMDB_ERR;
+    }
+
+    *count = sqlite3_column_int(fim_sql->stmt[RANGE_QUERY[type]], 0);
+
+    return FIMDB_OK;
+}
+
 int fim_db_get_checksum_range(fdb_t *fim_sql,
+                              fim_type type,
                               const char *start,
                               const char *top,
                               int n,
@@ -729,6 +762,10 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
                               EVP_MD_CTX *ctx_right,
                               char **str_pathlh,
                               char **str_pathuh) {
+    static const int RANGE_QUERY[] = {
+        [FIM_TYPE_FILE] = FIMDB_STMT_GET_PATH_RANGE,
+        [FIM_TYPE_REGISTRY] = FIMDB_STMT_GET_REG_PATH_RANGE,
+    };
     char **decoded_row = NULL;
     int m = n / 2;
     int i;
@@ -738,19 +775,19 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
     }
 
     // Clean statements
-    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
-    fim_db_bind_range(fim_sql, FIMDB_STMT_GET_PATH_RANGE, start, top);
+    fim_db_clean_stmt(fim_sql, RANGE_QUERY[type]);
+    fim_db_bind_range(fim_sql, RANGE_QUERY[type], start, top);
 
     // Calculate checksum of the first half
     for (i = 0; i < m; i++) {
         char *path, *checksum;
-        if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]) != SQLITE_ROW) {
+        if (sqlite3_step(fim_sql->stmt[RANGE_QUERY[type]]) != SQLITE_ROW) {
             merror("Step error getting path range, first half 'start %s' 'top %s' (i:%d): %s", start, top, i,
                    sqlite3_errmsg(fim_sql->db));
             return FIMDB_ERR;
         }
 
-        decoded_row = fim_db_decode_string_array(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]);
+        decoded_row = fim_db_decode_string_array(fim_sql->stmt[RANGE_QUERY[type]]);
         path = decoded_row[0];
         checksum = decoded_row[1];
 
@@ -765,14 +802,14 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
     //Calculate checksum of the second half
     for (i = m; i < n; i++) {
         char *path, *checksum;
-        if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]) != SQLITE_ROW) {
+        if (sqlite3_step(fim_sql->stmt[RANGE_QUERY[type]]) != SQLITE_ROW) {
             merror("Step error getting path range, second half 'start %s' 'top %s' (i:%d): %s", start, top, i,
                    sqlite3_errmsg(fim_sql->db));
             os_free(str_pathlh);
             os_free(str_pathuh);
             return FIMDB_ERR;
         }
-        decoded_row = fim_db_decode_string_array(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]);
+        decoded_row = fim_db_decode_string_array(fim_sql->stmt[RANGE_QUERY[type]]);
         path = decoded_row[0];
         checksum = decoded_row[1];
 

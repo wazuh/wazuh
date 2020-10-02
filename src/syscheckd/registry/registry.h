@@ -14,6 +14,12 @@
 
 #include "../syscheck.h"
 
+/**
+ * @brief Free all memory associated with a registry.
+ *
+ * @param data A fim_entry object to be free'd.
+ */
+void fim_registry_free_entry(fim_entry *entry);
 
 /**
  * @brief Main scheduled algorithm for registry scan

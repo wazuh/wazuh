@@ -485,6 +485,14 @@ void fim_registry_free_value_data(fim_registry_value_data *data) {
     }
 }
 
+void fim_registry_free_entry(fim_entry *entry) {
+    if (entry) {
+        fim_registry_free_key(entry->registry_entry.key);
+        fim_registry_free_value_data(entry->registry_entry.value);
+        free(entry);
+    }
+}
+
 /**
  * @brief Process and trigger delete events for a given registry value.
  *

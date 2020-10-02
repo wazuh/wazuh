@@ -21,17 +21,6 @@ static void fim_db_bind_insert_data(fdb_t *fim_sql, fim_file_data *entry);
 
 
 /**
- * @brief Binds data into a insert data statement.
- *
- * @param fim_sql FIM database structure.
- * @param index Index of the particular statement.
- * @param start First entry of the range.
- * @param top Last entry of the range.
- */
-void fim_db_bind_range(fdb_t *fim_sql, int index, const char *start, const char *top);
-
-
-/**
  * @brief Binds a range of paths.
  *
  * @param fim_sql FIM database structure.
@@ -315,21 +304,6 @@ char **fim_db_get_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsi
     fim_db_check_transaction(fim_sql);
 
     return paths;
-}
-
-int fim_db_get_count_range(fdb_t *fim_sql, const char *start, const char *top, int *count) {
-    // Clean and bind statements
-    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_COUNT_RANGE);
-    fim_db_bind_range(fim_sql, FIMDB_STMT_GET_COUNT_RANGE, start, top);
-
-    if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_COUNT_RANGE]) != SQLITE_ROW) {
-        merror("Step error getting count range 'start %s' 'top %s': %s", start, top, sqlite3_errmsg(fim_sql->db));
-        return FIMDB_ERR;
-    }
-
-    *count = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_COUNT_RANGE], 0);
-
-    return FIMDB_OK;
 }
 
 int fim_db_insert_data(fdb_t *fim_sql, fim_file_data *entry, int *row_id) {

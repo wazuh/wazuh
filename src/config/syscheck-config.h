@@ -64,14 +64,12 @@ typedef enum fdb_stmt {
     FIMDB_STMT_GET_COUNT_REG_KEY_AND_DATA,
     FIMDB_STMT_GET_LAST_REG_KEY,
     FIMDB_STMT_GET_FIRST_REG_KEY,
-    FIMDB_STMT_GET_REG_PATH_RANGE,
     FIMDB_STMT_SET_REG_DATA_SCANNED,
     FIMDB_STMT_SET_REG_KEY_SCANNED,
     FIMDB_STMT_GET_REG_KEY_ROWID,
     FIMDB_STMT_GET_REG_DATA_ROWID,
-    FIMDB_STMT_GET_REG_KEY_SYNC_VIEW_ENTRY,
-    FIMDB_STMT_GET_REG_FROM_SYNC_VIEW,
 #endif
+    FIMDB_STMT_GET_REG_PATH_RANGE,
     FIMDB_STMT_GET_REG_LAST_PATH,
     FIMDB_STMT_GET_REG_FIRST_PATH,
     FIMDB_STMT_GET_REG_ALL_CHECKSUMS,
@@ -396,9 +394,7 @@ typedef struct _config {
     pthread_mutex_t fim_entry_mutex;
     pthread_mutex_t fim_scan_mutex;
     pthread_mutex_t fim_realtime_mutex;
-#ifdef WIN32
     pthread_mutex_t fim_registry_mutex;
-#endif
 
     rtfim *realtime;
     fdb_t *database;

@@ -79,18 +79,6 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_file_data *ent
 int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_file_data *new, fim_file_data *saved);
 
 /**
- * @brief Count the number of entries between range @start and @top.
- *
- * @param fim_sql FIM database struct.
- * @param start First entry of the range.
- * @param top Last entry of the range.
- * @param counter Pointer which will hold the final count.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_get_count_range(fdb_t *fim_sql, const char *start, const char *top, int *counter);
-
-/**
  * @brief Delete entry using file path.
  *
  * @param fim_sql FIM database struct.

@@ -124,25 +124,24 @@ fim_tmp_file *fim_db_create_temp_file(int storage);
  */
 void fim_db_clean_file(fim_tmp_file **file, int storage);
 
-#ifdef WIN32
 /**
- * @brief Get a fim entry from a path in sync_view.
- *
- * The returned result is mapped to file type fim_entry, independently of
- * the original type. This function is meant to be used with the sync mechanism.
+ * @brief Get a fim entry from a path received in a failed synchronization.
  *
  * @param fim_sql FIM database struct.
+  * @param type Variable to indicate if the query is for registries or for files. 0 (FIM_TYPE_FILE) for files
+ *  1 (FIM_TYPE_REGISTRY) for registries.
+ * @param arch An integer specifying the bit count of the register element, must be ARCH_32BIT or ARCH_64BIT.
  * @param path A string to the path of the object to map in a fim_entry.
  *
  * @return FIM entry struct on success, NULL on error.
  */
-fim_entry *fim_db_get_entry_from_sync_view(fdb_t *fim_sql, const char *path);
-#endif
+fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, int arch, const char *path);
 
 /**
  * @brief Get a registry key using its path.
  *
  * @param fim_sql FIM database struct.
+ * @param arch An integer specifying the bit count of the register element, must be ARCH_32BIT or ARCH_64BIT.
  * @param path Path to registry key.
  * @param arch Architecture of the registry
  *
@@ -174,6 +173,7 @@ fim_registry_key *fim_db_get_registry_key(fdb_t *fim_sql, const char *path, unsi
  * be returned in their corresponding parameters.
  *
  * @param fim_sql FIM database struct.
+  * @param type FIM_TYPE_FILE or FIM_TYPE_REGISTRY.
  * @param start First entry of the range.
  * @param top Last entry of the range.
  * @param n Number of entries between start and stop.
@@ -185,6 +185,7 @@ fim_registry_key *fim_db_get_registry_key(fdb_t *fim_sql, const char *path, unsi
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 int fim_db_get_checksum_range(fdb_t *fim_sql,
+                              fim_type type,
                               const char *start,
                               const char *top,
                               int n,
@@ -273,6 +274,20 @@ int fim_db_clean_stmt(fdb_t *fim_sql, int index);
  * @return Number of entries in selected database.
 */
 int fim_db_get_count(fdb_t *fim_sql, int index);
+
+/**
+ * @brief Count the number of entries between range @start and @top.
+ *
+ * @param fim_sql FIM database struct.
+ * @param type FIM_TYPE_FILE or FIM_TYPE_REGISTRY.
+ * @param start First entry of the range.
+ * @param top Last entry of the range.
+ * @param counter Pointer which will hold the final count.
+ *
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+int fim_db_get_count_range(fdb_t *fim_sql, fim_type type, const char *start, const char *top, int *counter);
+
 
 // Callbacks
 

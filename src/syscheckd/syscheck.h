@@ -706,8 +706,10 @@ void *fim_run_integrity(void *args);
 /**
  * @brief Calculates the checksum of the FIM entry files and sends it to the database for integrity checking
  *
+ * @param type Must be FIM_TYPE_FILE or FIM_TYPE_REGISTRY.
+ * @param mutex A mutex associated with the DB tables to be synchronized.
  */
-void fim_sync_checksum();
+void fim_sync_checksum(fim_type type, pthread_mutex_t *mutex);
 
 /**
  * @brief Calculates the checksum of the FIM entry files starting from `start` letter and finishing at `top` letter
