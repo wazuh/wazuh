@@ -84,7 +84,14 @@ void wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config) {
 #ifndef WIN32
 STATIC void wm_agent_upgrade_listen_messages(__attribute__((unused)) void * arg) {
     // Initialize socket
-    int sock = OS_BindUnixDomain(AGENT_UPGRADE_SOCK, SOCK_STREAM, OS_MAXSTR);
+    char sockname[PATH_MAX + 1];
+    if (isChroot()) {
+		strcpy(sockname, AGENT_UPGRADE_SOCK);
+	} else {
+		strcpy(sockname, DEFAULTDIR AGENT_UPGRADE_SOCK);
+	}
+
+    int sock = OS_BindUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR);
     if (sock < 0) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_BIND_SOCK_ERROR, AGENT_UPGRADE_SOCK, strerror(errno));
         return;
