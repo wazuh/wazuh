@@ -716,9 +716,10 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
     wpk_repo = wpk_repo if wpk_repo else common.wpk_repo_url_4_x
     if version and not version.startswith('v'):
         version = f'v{version}'
-    msg = {
-        'command': 'upgrade' if not (installer or file_path) else 'upgrade_custom',
-        'parameters': {
+    msg = {'version': 1,
+           'origin': {'module': 'api'},
+           'command': 'upgrade' if not (installer or file_path) else 'upgrade_custom',
+           'parameters': {
             'agents': list(),
             'version': version,
             'force_upgrade': force,
@@ -775,7 +776,8 @@ def get_upgrade_result(agent_list=None):
 
     agent_list = list(map(int, agents_padding(result=result, agent_list=agent_list)))
     agents_result_chunks = [agent_list[x:x + 250] for x in range(0, len(agent_list), 250)]
-    msg = {'origin': {'module': 'api'}, 'command': 'upgrade_result', 'module': 'api', 'parameters': {'agents': list()}}
+    msg = {'version': 1, 'origin': {'module': 'api'}, 'command': 'upgrade_result',
+           'module': 'api', 'parameters': {'agents': list()}}
 
     task_results = list()
     for agents_chunk in agents_result_chunks:
