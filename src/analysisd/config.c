@@ -65,7 +65,7 @@ int GlobalConf(const char *cfgfile)
     Config.includes = NULL;
     Config.lists = NULL;
     Config.decoders = NULL;
-    Config.label_cache_maxage = 0;
+    Config.label_cache_maxage = 10;
     Config.show_hidden_labels = 0;
 
     Config.cluster_name = NULL;

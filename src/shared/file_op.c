@@ -1128,7 +1128,7 @@ const char *getuname()
                      uts_buf.machine,
                      __ossec_name, __ossec_version);
         } else {
-            snprintf(muname, 512, "No system info available -  %s %s",
+            snprintf(muname, 512, "No system info available - %s %s",
                      __ossec_name, __ossec_version);
         }
     }
