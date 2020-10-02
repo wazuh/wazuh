@@ -847,17 +847,12 @@ class Agent:
         return {'message': msg}
 
     def get_agent_attr(self, attr):
-        """Returns a string with an agent's os name
+        """Returns a string with an agent's attribute value
         """
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhInternalError(1600)
-
-        conn = Connection(db_global[0])
+        wdb_conn = WazuhDBBackend(query_format='global')
         query = "SELECT {0} FROM agent WHERE id = {1}".format(attr, self.id)
         request = {'attr': attr, 'id': self.id}
-        conn.execute(query, request)
-        query_value = str(conn.fetch())
+        query_value = wdb_conn.execute(query=query, request=request)[0][attr]
 
         return query_value
 

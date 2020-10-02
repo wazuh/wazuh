@@ -8,9 +8,9 @@
  * and/or modify it under the terms of GPLv2.
 */
 
-BEGIN;
-
 PRAGMA journal_mode=DELETE;
+
+BEGIN;
 
 CREATE TABLE IF NOT EXISTS labels (
     id INTEGER,
