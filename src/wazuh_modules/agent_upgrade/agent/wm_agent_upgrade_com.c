@@ -40,7 +40,8 @@ typedef enum _command_error_codes {
     ERROR_CLEAN_DIRECTORY,
     ERROR_UNMERGE,
     ERROR_CHMOD,
-    ERROR_EXEC
+    ERROR_EXEC,
+    ERROR_CLEAR_UPGRADE_FILE
 } command_error_codes;
 
 static const char * error_messages[] = {
@@ -60,7 +61,8 @@ static const char * error_messages[] = {
     [ERROR_CLEAN_DIRECTORY] = "Could not clean up upgrade directory",
     [ERROR_UNMERGE] = "Error unmerging file",
     [ERROR_CHMOD] = "Could not chmod",
-    [ERROR_EXEC] = "Error executing command"
+    [ERROR_EXEC] = "Error executing command",
+    [ERROR_CLEAR_UPGRADE_FILE] = "Could not erase upgrade_result file"
 };
 
 /**
@@ -130,6 +132,11 @@ static char * wm_agent_upgrade_com_sha1(const cJSON* json_object);
  * */
 static char * wm_agent_upgrade_com_upgrade(const cJSON* json_object);
 
+/**
+ * Process a command that clears the upgrade_result file
+ * */
+static char * wm_agent_upgrade_com_clear_result();
+
 /* Helpers methods */
 static int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename);
 static int _unsign(const char * source, char dest[PATH_MAX + 1]);
@@ -152,6 +159,8 @@ char *wm_agent_upgrade_process_command(const char* buffer) {
                 return wm_agent_upgrade_com_sha1(buffer_obj);
             } else if(strcmp(command, "upgrade") == 0) {
                 return wm_agent_upgrade_com_upgrade(buffer_obj);
+            } else if (strcmp(command, "clear_upgrade_result") == 0) {
+                return wm_agent_upgrade_com_clear_result();
             }
         }
         cJSON_Delete(buffer_obj);
@@ -174,18 +183,18 @@ static char * wm_agent_upgrade_com_open(const cJSON* json_object) {
     const cJSON *file_path_obj = cJSON_GetObjectItem(json_object, "file");
 
     if (*file.path) {
-        merror("File '%s' was opened. Closing.", file.path);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At open: File '%s' was opened. Closing.", file.path);
         fclose(file.fp);
         *file.path = '\0';
     }
 
     if (!mode_obj || (mode_obj->type != cJSON_String) || (strcmp(mode_obj->valuestring, "w") && strcmp(mode_obj->valuestring, "wb"))) {
-        merror("At WCOM open: Unsupported mode '%s'", mode_obj->valuestring);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At open: Unsupported mode '%s'", mode_obj->valuestring);
         return wm_agent_upgrade_command_ack(ERROR_UNSOPPORTED_MODE, error_messages[ERROR_UNSOPPORTED_MODE]);
     }
 
     if (!file_path_obj || (file_path_obj->type != cJSON_String) || _jailfile(final_path, INCOMING_DIR, file_path_obj->valuestring) < 0) {
-        merror("At WCOM open: Invalid file name");
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At open: Invalid file name");
         return wm_agent_upgrade_command_ack(ERROR_INVALID_FILE_NAME, error_messages[ERROR_INVALID_FILE_NAME]);
     }
 
@@ -211,20 +220,20 @@ static char * wm_agent_upgrade_com_write(const cJSON* json_object) {
 
     if (!*file.path) {
         if (file_path_obj && (file_path_obj->type == cJSON_String) && file_path_obj->valuestring) {
-            merror("At WCOM write: File not opened. Agent might have been auto-restarted during upgrade.");
+            mterror(WM_AGENT_UPGRADE_LOGTAG, "At write: File not opened. Agent might have been auto-restarted during upgrade.");
             return wm_agent_upgrade_command_ack(ERROR_FILE_NOT_OPENED, error_messages[ERROR_FILE_NOT_OPENED]);
         }
-        merror("At WCOM write: No file is opened.");
+       mterror(WM_AGENT_UPGRADE_LOGTAG, "At write: No file is opened.");
         return wm_agent_upgrade_command_ack(ERROR_FILE_NOT_OPENED2, error_messages[ERROR_FILE_NOT_OPENED2]);
     }
 
     if (!file_path_obj || (file_path_obj->type != cJSON_String) || _jailfile(final_path, INCOMING_DIR, file_path_obj->valuestring) < 0) {
-        merror("At WCOM write: Invalid file name");
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At write: Invalid file name");
         return wm_agent_upgrade_command_ack(ERROR_INVALID_FILE_NAME, error_messages[ERROR_INVALID_FILE_NAME]);
     }
 
     if (strcmp(file.path, final_path) != 0) {
-        merror("At WCOM write: The target file doesn't match the opened file (%s).", file.path);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At write: The target file doesn't match the opened file (%s).", file.path);
         return wm_agent_upgrade_command_ack(ERROR_TARGET_FILE_NOT_MATCH, error_messages[ERROR_TARGET_FILE_NOT_MATCH]);
     }
 
@@ -232,7 +241,7 @@ static char * wm_agent_upgrade_com_write(const cJSON* json_object) {
     if (value_obj && (value_obj->type == cJSON_Number) && fwrite(decode_base64(buffer_obj->valuestring), 1, value_obj->valueint, file.fp) == (unsigned)value_obj->valueint) {
         return wm_agent_upgrade_command_ack(ERROR_OK, error_messages[ERROR_OK]);
     } else {
-        merror("At WCOM write: Cannot write on '%s'", final_path);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At write: Cannot write on '%s'", final_path);
         return wm_agent_upgrade_command_ack(ERROR_WRITE_FILE, error_messages[ERROR_WRITE_FILE]);
     }
 }
@@ -242,24 +251,24 @@ static char * wm_agent_upgrade_com_close(const cJSON* json_object) {
     char final_path[PATH_MAX + 1];
 
     if (!*file.path) {
-        merror("At WCOM close: No file is opened.");
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At close: No file is opened.");
         return wm_agent_upgrade_command_ack(ERROR_FILE_NOT_OPENED2, error_messages[ERROR_FILE_NOT_OPENED2]);
     }
     
     if (!file_path_obj || (file_path_obj->type != cJSON_String) || _jailfile(final_path, INCOMING_DIR, file_path_obj->valuestring) < 0) {
-        merror("At WCOM open: Invalid file name");
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At close: Invalid file name");
         return wm_agent_upgrade_command_ack(ERROR_INVALID_FILE_NAME, error_messages[ERROR_INVALID_FILE_NAME]);
     }
 
     if (strcmp(file.path, final_path) != 0) {
-        merror("At WCOM close: The target file doesn't match the opened file (%s).", file.path);
+       mterror(WM_AGENT_UPGRADE_LOGTAG, "At close: The target file doesn't match the opened file (%s).", file.path);
         return wm_agent_upgrade_command_ack(ERROR_TARGET_FILE_NOT_MATCH, error_messages[ERROR_TARGET_FILE_NOT_MATCH]);
     }
      
     *file.path = '\0';
 
     if (fclose(file.fp)) {
-        merror("At WCOM close: %s", strerror(errno));
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At close: %s", strerror(errno));
         return wm_agent_upgrade_command_ack(ERROR_CLOSE, error_messages[ERROR_CLOSE]);
     }
 
@@ -272,12 +281,12 @@ static char * wm_agent_upgrade_com_sha1(const cJSON* json_object) {
     os_sha1 sha1;
 
     if (!file_path_obj || (file_path_obj->type != cJSON_String) || _jailfile(final_path, INCOMING_DIR, file_path_obj->valuestring) < 0) {
-        merror("At WCOM open: Invalid file name");
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At open: Invalid file name");
         return wm_agent_upgrade_command_ack(ERROR_INVALID_FILE_NAME, error_messages[ERROR_INVALID_FILE_NAME]);
     }
 
     if (OS_SHA1_File(final_path, sha1, OS_BINARY) < 0) {
-        merror("At WCOM sha1: Error generating SHA1.");
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At sha1: Error generating SHA1.");
         return wm_agent_upgrade_command_ack(ERROR_GEN_SHA1, error_messages[ERROR_GEN_SHA1]);
     }
 
@@ -299,14 +308,14 @@ static char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
     }
     // Unsign
     if (!package_obj || (package_obj->type != cJSON_String) || _unsign(package_obj->valuestring, compressed) < 0) {
-        merror("At WCOM Upgrade: %s", error_messages[ERROR_SIGNATURE]);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At Upgrade: %s", error_messages[ERROR_SIGNATURE]);
         return wm_agent_upgrade_command_ack(ERROR_SIGNATURE, error_messages[ERROR_SIGNATURE]);
     }
 
     // Uncompress
     if (_uncompress(compressed, package_obj->valuestring, merged) < 0) {
         unlink(compressed);
-        merror("At WCOM Upgrade: %s", error_messages[ERROR_COMPRESS]);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At Upgrade: %s", error_messages[ERROR_COMPRESS]);
         return wm_agent_upgrade_command_ack(ERROR_COMPRESS, error_messages[ERROR_COMPRESS]);
     }
 
@@ -316,7 +325,7 @@ static char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
 #else
     if (cldir_ex(UPGRADE_DIR)) {
 #endif
-        merror("At WCOM Upgrade: %s", error_messages[ERROR_CLEAN_DIRECTORY]);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At Upgrade: %s", error_messages[ERROR_CLEAN_DIRECTORY]);
         return wm_agent_upgrade_command_ack(ERROR_CLEAN_DIRECTORY, error_messages[ERROR_CLEAN_DIRECTORY]);
     }
 
@@ -327,7 +336,7 @@ static char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
     if (UnmergeFiles(merged, UPGRADE_DIR, OS_BINARY) == 0) {
 #endif
         unlink(merged);
-        merror("At WCOM upgrade: Error unmerging file: %s", merged);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At upgrade: Error unmerging file: %s", merged);
         return wm_agent_upgrade_command_ack(ERROR_UNMERGE, error_messages[ERROR_UNMERGE]);
     }
 
@@ -335,25 +344,39 @@ static char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
 
     // Installer executable file
     if (!installer_obj || (installer_obj->type != cJSON_String) || _jailfile(installer_j, UPGRADE_DIR, installer_obj->valuestring) < 0) {
-        merror("At WCOM open: Invalid file name");
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At open: Invalid file name");
         return wm_agent_upgrade_command_ack(ERROR_INVALID_FILE_NAME, error_messages[ERROR_INVALID_FILE_NAME]);
     }
 
     // Execute
 #ifndef WIN32
     if (chmod(installer_j, 0750) < 0) {
-        merror("At WCOM upgrade: Could not chmod '%s'", installer_j);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At upgrade: Could not chmod '%s'", installer_j);
         return wm_agent_upgrade_command_ack(ERROR_CHMOD, error_messages[ERROR_CHMOD]);
     }
 #endif
 
     if (wm_exec(installer_j, &out, &status, req_timeout, NULL) < 0) {
-        merror("At WCOM upgrade: Error executing command [%s]", installer_j);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At upgrade: Error executing command [%s]", installer_j);
         return wm_agent_upgrade_command_ack(ERROR_EXEC, error_messages[ERROR_EXEC]);
     } else {
         char status_str[5];
         sprintf(status_str, "%d", status);
         return wm_agent_upgrade_command_ack(ERROR_OK, status_str);
+    }
+}
+
+static char * wm_agent_upgrade_com_clear_result() {
+#ifndef WIN32
+    const char * PATH = isChroot() ? UPGRADE_DIR "/upgrade_result" : DEFAULTDIR UPGRADE_DIR "/upgrade_result";
+#else
+    const char * PATH = UPGRADE_DIR "\\upgrade_result";
+#endif
+    if (remove(PATH) == 0) {
+        return wm_agent_upgrade_command_ack(ERROR_OK, error_messages[ERROR_OK]);
+    } else {
+        mtdebug1(WM_AGENT_UPGRADE_LOGTAG, "At clear_upgrade_result: Could not erase file '%s'.", PATH);
+        return wm_agent_upgrade_command_ack(ERROR_CLEAR_UPGRADE_FILE, error_messages[ERROR_CLEAR_UPGRADE_FILE]);
     }
 }
 
