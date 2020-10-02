@@ -713,7 +713,6 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
                                       sort_fields=['task_id'], sort_ascending='True')
 
     agent_list = list(map(int, agents_padding(result=result, agent_list=agent_list)))
-
     wpk_repo = wpk_repo if wpk_repo else common.wpk_repo_url_4_x
     if version and not version.startswith('v'):
         version = f'v{version}'
@@ -731,7 +730,7 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
     }
 
     msg['parameters'] = {k: v for k, v in msg['parameters'].items() if v is not None}
-    agents_result_chunks = [agent_list[x:x+5000] for x in range(0, len(agent_list), 5000)]
+    agents_result_chunks = [agent_list[x:x+250] for x in range(0, len(agent_list), 250)]
 
     agent_results = list()
     for agents_chunk in agents_result_chunks:
@@ -775,7 +774,7 @@ def get_upgrade_result(agent_list=None):
                                       none_msg='No agent has been updated')
 
     agent_list = list(map(int, agents_padding(result=result, agent_list=agent_list)))
-    agents_result_chunks = [agent_list[x:x + 5000] for x in range(0, len(agent_list), 5000)]
+    agents_result_chunks = [agent_list[x:x + 250] for x in range(0, len(agent_list), 250)]
     msg = {'origin': {'module': 'api'}, 'command': 'upgrade_result', 'module': 'api', 'parameters': {'agents': list()}}
 
     task_results = list()
