@@ -383,8 +383,7 @@ int main(int argc, char **argv)
         }
 
         if (agt_id != -1) {
-            agt_status = get_agent_status(keys.keyentries[agt_id]->name,
-                                          keys.keyentries[agt_id]->ip->ip);
+            agt_status = get_agent_status(atoi(keys.keyentries[agt_id]->id));
 
             agt_info = get_agent_info(keys.keyentries[agt_id]->name,
                                       keys.keyentries[agt_id]->ip->ip,
@@ -400,7 +399,7 @@ int main(int argc, char **argv)
                 printf("   Agent Name: %s\n", keys.keyentries[agt_id]->name);
                 printf("   IP address: %s\n", final_ip);
                 printf("   Status:     %s\n\n", print_agent_status(agt_status));
-            }else if(json_output){
+            } else if (json_output) {
                 cJSON_AddStringToObject(json_data, "id", keys.keyentries[agt_id]->id);
                 cJSON_AddStringToObject(json_data, "name", keys.keyentries[agt_id]->name);
                 cJSON_AddStringToObject(json_data, "ip", final_ip);
@@ -413,7 +412,7 @@ int main(int argc, char **argv)
                        print_agent_status(agt_status));
             }
         } else {
-            agt_status = get_agent_status(NULL, NULL);
+            agt_status = GA_STATUS_ACTIVE;
             agt_info = get_agent_info(NULL, "127.0.0.1", "000");
 
             if (!csv_output && !json_output) {
@@ -421,7 +420,7 @@ int main(int argc, char **argv)
                 printf("   Agent Name: %s\n", shost);
                 printf("   IP address: 127.0.0.1\n");
                 printf("   Status:     %s/Local\n\n", print_agent_status(agt_status));
-            }else if(json_output){
+            } else if (json_output) {
                 cJSON_AddStringToObject(json_data, "id", "000");
                 cJSON_AddStringToObject(json_data, "name", shost);
                 cJSON_AddStringToObject(json_data, "ip", "127.0.0.1");
@@ -436,6 +435,7 @@ int main(int argc, char **argv)
         if (!csv_output && !json_output) {
             printf("   Operating system:    %s\n", agt_info->os);
             printf("   Client version:      %s\n", agt_info->version);
+            printf("   Configuration hash:  %s\n", agt_info->config_sum);
             printf("   Shared file hash:    %s\n", agt_info->merged_sum);
             printf("   Last keep alive:     %s\n\n", agt_info->last_keepalive);
 
@@ -448,18 +448,19 @@ int main(int argc, char **argv)
             } else {
                 printf("   Rootcheck last started at: %s\n", agt_info->rootcheck_time);
             }
-        }else if(json_output){
-                cJSON_AddStringToObject(json_data, "os", agt_info->os);
-                cJSON_AddStringToObject(json_data, "version", agt_info->version);
-                cJSON_AddStringToObject(json_data, "mergedSum", agt_info->merged_sum);
-                cJSON_AddStringToObject(json_data, "lastKeepAlive", agt_info->last_keepalive);
-                cJSON_AddStringToObject(json_data, "syscheckTime", agt_info->syscheck_time);
-                cJSON_AddStringToObject(json_data, "syscheckEndTime", agt_info->syscheck_endtime);
-                cJSON_AddStringToObject(json_data, "rootcheckTime", agt_info->rootcheck_time);
+        } else if (json_output) {
+            cJSON_AddStringToObject(json_data, "os", agt_info->os);
+            cJSON_AddStringToObject(json_data, "version", agt_info->version);
+            cJSON_AddStringToObject(json_data, "configSum", agt_info->config_sum);
+            cJSON_AddStringToObject(json_data, "mergedSum", agt_info->merged_sum);
+            cJSON_AddStringToObject(json_data, "lastKeepAlive", agt_info->last_keepalive);
+            cJSON_AddStringToObject(json_data, "syscheckTime", agt_info->syscheck_time);
+            cJSON_AddStringToObject(json_data, "syscheckEndTime", agt_info->syscheck_endtime);
+            cJSON_AddStringToObject(json_data, "rootcheckTime", agt_info->rootcheck_time);
 
-                if (end_time) {
-                    cJSON_AddStringToObject(json_data, "rootcheckEndTime", agt_info->rootcheck_endtime);
-                }
+            if (end_time) {
+                cJSON_AddStringToObject(json_data, "rootcheckEndTime", agt_info->rootcheck_endtime);
+            }
         } else {
             printf("%s,%s,%s,%s,%s,\n",
                    agt_info->os,
@@ -468,12 +469,16 @@ int main(int argc, char **argv)
                    agt_info->syscheck_time,
                    agt_info->rootcheck_time);
         }
+
         if(json_output){
             cJSON_AddNumberToObject(root, "error", 0);
             cJSON_AddItemToObject(root, "data", json_data);
             printf("%s",cJSON_PrintUnformatted(root));
             cJSON_Delete(root);
         }
+
+        os_free(agt_info);
+
         exit(0);
     }
 

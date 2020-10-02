@@ -346,7 +346,7 @@ start()
                         fi
                         sleep 1;
                         j=`expr $j + 1`;
-                        if [ "$j" = "${MAX_ITERATION}" ]; then
+                        if [ "$j" -ge "${MAX_ITERATION}" ]; then
                             failed=true
                         fi
                     done
@@ -413,17 +413,17 @@ pstatus()
 
     ls ${DIR}/var/run/${pfile}*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
-        for j in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
-            ps -p $j > /dev/null 2>&1
+        for pid in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
+            ps -p ${pid} > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 if [ $USE_JSON = false ]; then
-                    echo "${pfile}: Process $j not used by Wazuh, removing..."
+                    echo "${pfile}: Process ${pid} not used by Wazuh, removing..."
                 fi
-                rm -f ${DIR}/var/run/${pfile}-$j.pid
+                rm -f ${DIR}/var/run/${pfile}-${pid}.pid
                 continue;
             fi
 
-            kill -0 $j > /dev/null 2>&1
+            kill -0 ${pid} > /dev/null 2>&1
             if [ $? = 0 ]; then
                 return 1;
             fi

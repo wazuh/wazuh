@@ -641,7 +641,6 @@ void test_wm_agent_upgrade_validate_non_custom_version_custom_version_ok(void **
     wm_agent_info *agent = state[0];
     wm_upgrade_task *task = state[1];
     char *agent_version = "v3.9.1";
-    char *manager_version = NULL;
     char *versions = NULL;
 
     config.wpk_repository = WM_UPGRADE_WPK_REPO_URL;
@@ -654,12 +653,7 @@ void test_wm_agent_upgrade_validate_non_custom_version_custom_version_ok(void **
     task->force_upgrade = false;
     os_strdup("v3.12.0", task->custom_version);
 
-    os_strdup("v3.13.0", manager_version);
-
     os_strdup("v3.12.0 4a313b1312c23a213f2e3209fe0909dd\nv3.13.0 5387c3443b5c7234ba7232s2aadb4a7e", versions);
-
-    expect_value(__wrap_wdb_agent_version, id, MANAGER_ID);
-    will_return(__wrap_wdb_agent_version, manager_version);
 
     expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/windows/versions");
     will_return(__wrap_wurl_http_get, versions);
@@ -678,7 +672,6 @@ void test_wm_agent_upgrade_validate_non_custom_version_manager_version_ok(void *
     wm_agent_info *agent = state[0];
     wm_upgrade_task *task = state[1];
     char *agent_version = "v3.9.1";
-    char *manager_version = NULL;
     char *versions = NULL;
 
     config.wpk_repository = WM_UPGRADE_WPK_REPO_URL;
@@ -690,12 +683,7 @@ void test_wm_agent_upgrade_validate_non_custom_version_manager_version_ok(void *
     task->use_http = false;
     task->force_upgrade = false;
 
-    os_strdup("v3.13.0", manager_version);
-
     os_strdup("v3.12.0 4a313b1312c23a213f2e3209fe0909dd\nv3.13.0 5387c3443b5c7234ba7232s2aadb4a7e", versions);
-
-    expect_value(__wrap_wdb_agent_version, id, MANAGER_ID);
-    will_return(__wrap_wdb_agent_version, manager_version);
 
     expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/windows/versions");
     will_return(__wrap_wurl_http_get, versions);
@@ -714,7 +702,6 @@ void test_wm_agent_upgrade_validate_non_custom_version_less_current(void **state
     wm_agent_info *agent = state[0];
     wm_upgrade_task *task = state[1];
     char *agent_version = "v3.13.0";
-    char *manager_version = NULL;
     char *versions = NULL;
 
     config.wpk_repository = WM_UPGRADE_WPK_REPO_URL;
@@ -727,12 +714,7 @@ void test_wm_agent_upgrade_validate_non_custom_version_less_current(void **state
     task->force_upgrade = false;
     os_strdup("v3.12.0", task->custom_version);
 
-    os_strdup("v3.13.0", manager_version);
-
     os_strdup("v3.12.0 4a313b1312c23a213f2e3209fe0909dd\nv3.13.0 5387c3443b5c7234ba7232s2aadb4a7e", versions);
-
-    expect_value(__wrap_wdb_agent_version, id, MANAGER_ID);
-    will_return(__wrap_wdb_agent_version, manager_version);
 
     expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/windows/versions");
     will_return(__wrap_wurl_http_get, versions);
@@ -751,7 +733,6 @@ void test_wm_agent_upgrade_validate_non_custom_version_less_current_force(void *
     wm_agent_info *agent = state[0];
     wm_upgrade_task *task = state[1];
     char *agent_version = "v3.13.0";
-    char *manager_version = NULL;
     char *versions = NULL;
 
     config.wpk_repository = WM_UPGRADE_WPK_REPO_URL;
@@ -764,12 +745,7 @@ void test_wm_agent_upgrade_validate_non_custom_version_less_current_force(void *
     task->force_upgrade = true;
     os_strdup("v3.12.0", task->custom_version);
 
-    os_strdup("v3.13.0", manager_version);
-
     os_strdup("v3.12.0 4a313b1312c23a213f2e3209fe0909dd\nv3.13.0 5387c3443b5c7234ba7232s2aadb4a7e", versions);
-
-    expect_value(__wrap_wdb_agent_version, id, MANAGER_ID);
-    will_return(__wrap_wdb_agent_version, manager_version);
 
     expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/windows/versions");
     will_return(__wrap_wurl_http_get, versions);
@@ -788,7 +764,6 @@ void test_wm_agent_upgrade_validate_non_custom_version_greater_master(void **sta
     wm_agent_info *agent = state[0];
     wm_upgrade_task *task = state[1];
     char *agent_version = "v3.9.1";
-    char *manager_version = NULL;
     char *versions = NULL;
 
     config.wpk_repository = WM_UPGRADE_WPK_REPO_URL;
@@ -801,12 +776,7 @@ void test_wm_agent_upgrade_validate_non_custom_version_greater_master(void **sta
     task->force_upgrade = false;
     os_strdup("v4.0.0", task->custom_version);
 
-    os_strdup("v3.13.0", manager_version);
-
     os_strdup("v3.12.0 4a313b1312c23a213f2e3209fe0909dd\nv3.13.0 5387c3443b5c7234ba7232s2aadb4a7e\nv4.0.0 231ef123a32d312b4123c21313ee6780", versions);
-
-    expect_value(__wrap_wdb_agent_version, id, MANAGER_ID);
-    will_return(__wrap_wdb_agent_version, manager_version);
 
     expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/windows/versions");
     will_return(__wrap_wurl_http_get, versions);
@@ -825,7 +795,6 @@ void test_wm_agent_upgrade_validate_non_custom_version_greater_master_force(void
     wm_agent_info *agent = state[0];
     wm_upgrade_task *task = state[1];
     char *agent_version = "v3.9.1";
-    char *manager_version = NULL;
     char *versions = NULL;
 
     config.wpk_repository = WM_UPGRADE_WPK_REPO_URL;
@@ -838,12 +807,7 @@ void test_wm_agent_upgrade_validate_non_custom_version_greater_master_force(void
     task->force_upgrade = true;
     os_strdup("v4.0.0", task->custom_version);
 
-    os_strdup("v3.13.0", manager_version);
-
     os_strdup("v3.12.0 4a313b1312c23a213f2e3209fe0909dd\nv3.13.0 5387c3443b5c7234ba7232s2aadb4a7e\nv4.0.0 231ef123a32d312b4123c21313ee6780\n", versions);
-
-    expect_value(__wrap_wdb_agent_version, id, MANAGER_ID);
-    will_return(__wrap_wdb_agent_version, manager_version);
 
     expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/windows/versions");
     will_return(__wrap_wurl_http_get, versions);
@@ -854,29 +818,6 @@ void test_wm_agent_upgrade_validate_non_custom_version_greater_master_force(void
     assert_string_equal(task->wpk_repository, "https://packages.wazuh.com/4.x/wpk/windows/");
     assert_string_equal(task->wpk_file, "wazuh_agent_v4.0.0_windows.wpk");
     assert_string_equal(task->wpk_sha1, "231ef123a32d312b4123c21313ee6780");
-}
-
-void test_wm_agent_upgrade_validate_non_custom_version_manager_version_error(void **state)
-{
-    wm_manager_configs config;
-    wm_agent_info *agent = state[0];
-    wm_upgrade_task *task = state[1];
-    char *agent_version = "v3.9.1";
-    char *manager_version = NULL;
-
-    os_strdup("windows", agent->platform);
-    os_strdup("10", agent->major_version);
-    os_strdup("x64", agent->architecture);
-
-    expect_value(__wrap_wdb_agent_version, id, MANAGER_ID);
-    will_return(__wrap_wdb_agent_version, manager_version);
-
-    int ret = wm_agent_upgrade_validate_non_custom_version(agent_version, agent, task, &config);
-
-    assert_int_equal(ret, WM_UPGRADE_GLOBAL_DB_FAILURE);
-    assert_null(task->wpk_repository);
-    assert_null(task->wpk_file);
-    assert_null(task->wpk_sha1);
 }
 
 void test_wm_agent_upgrade_validate_non_custom_version_system_error(void **state)
@@ -904,7 +845,6 @@ void test_wm_agent_upgrade_validate_version_upgrade_ok(void **state)
     wm_manager_configs config;
     wm_agent_info *agent = state[0];
     wm_upgrade_task *task = state[1];
-    char *manager_version = NULL;
     char *versions = NULL;
 
     config.wpk_repository = WM_UPGRADE_WPK_REPO_URL;
@@ -918,12 +858,7 @@ void test_wm_agent_upgrade_validate_version_upgrade_ok(void **state)
     task->force_upgrade = false;
     os_strdup("v3.12.0", task->custom_version);
 
-    os_strdup("v3.13.0", manager_version);
-
     os_strdup("v3.12.0 4a313b1312c23a213f2e3209fe0909dd\nv3.13.0 5387c3443b5c7234ba7232s2aadb4a7e\n", versions);
-
-    expect_value(__wrap_wdb_agent_version, id, MANAGER_ID);
-    will_return(__wrap_wdb_agent_version, manager_version);
 
     expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/windows/versions");
     will_return(__wrap_wurl_http_get, versions);
@@ -1471,7 +1406,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_non_custom_version_less_current_force, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_non_custom_version_greater_master, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_non_custom_version_greater_master_force, setup_validate_wpk_version, teardown_validate_wpk_version),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_non_custom_version_manager_version_error, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_non_custom_version_system_error, setup_validate_wpk_version, teardown_validate_wpk_version),
         // wm_agent_upgrade_validate_version
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_ok, setup_validate_wpk_version, teardown_validate_wpk_version),
