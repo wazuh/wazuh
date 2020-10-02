@@ -18,7 +18,7 @@ else
     chown -R ossec:ossec /var/ossec/queue/agent-groups
     chown -R ossec:ossec /var/ossec/etc/shared
     chmod --reference=/var/ossec/etc/shared/default /var/ossec/etc/shared/group*
-    cd /var/ossec/etc/shared && find -name merged.mg -exec chown ossecr:ossec {} \;
+    cd /var/ossec/etc/shared && find -name merged.mg -exec chown ossecr:ossec {} \; && cd /
     chown root:ossec /var/ossec/etc/shared/ar.conf
     chown -R ossecr:ossec /var/ossec/queue/agent-info
 fi
