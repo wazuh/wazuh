@@ -1715,7 +1715,7 @@ int normalize_mac_package_name(const char * source_package, char ** vendor_name,
     } else {
         *next++ = '\0';
         for (i = 0; i < array_size_vendor; i++) {
-            if (!strcmp(package_cpy, vendor_in_package[i]) {
+            if (!strcmp(package_cpy, vendor_in_package[i])) {
                 os_strdup(package_cpy, *vendor_name);
                 os_strdup(next, *package_name);
                 os_free(package_cpy);
@@ -1723,8 +1723,8 @@ int normalize_mac_package_name(const char * source_package, char ** vendor_name,
             }
         }
         for (i = 0; i < array_size_version; i++) {
-            if (!strcmp(package_cpy, version_in_package[i]) {
-                os_strdup(next, *package_name);
+            if (!strcmp(package_cpy, version_in_package[i])) {
+                os_strdup(package_cpy, *package_name);
                 os_free(package_cpy);
                 return 1;
             }
