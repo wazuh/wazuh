@@ -17,7 +17,6 @@ def parse_section(og_root, section):
 
     if len(section) > 0:
         for element in section:
-            element.tail = ''
             children.append(element)
     else:
         children.text = section.text

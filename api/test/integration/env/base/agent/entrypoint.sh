@@ -13,7 +13,7 @@ for sh_file in /configuration_files/*.sh; do
   . $sh_file
 done
 
-sleep 1
+sleep 10
 
 /var/ossec/bin/ossec-control start
 
