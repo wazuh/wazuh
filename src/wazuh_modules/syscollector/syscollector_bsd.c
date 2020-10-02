@@ -27,7 +27,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-
+#include <plist/plist.h>
 
 #ifdef __MACH__
 

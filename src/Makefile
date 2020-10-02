@@ -26,6 +26,7 @@ EXTERNAL_LIBYAML=external/libyaml/
 EXTERNAL_CURL=external/curl/
 EXTERNAL_AUDIT=external/audit-userspace/
 EXTERNAL_LIBFFI=external/libffi/
+EXTERNAL_LIBPLIST=external/libplist/
 EXTERNAL_CPYTHON=external/cpython/
 EXTERNAL_MSGPACK=external/msgpack/
 EXTERNAL_BZIP2=external/bzip2/
@@ -655,7 +656,7 @@ win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 ZLIB_LIB    = $(EXTERNAL_ZLIB)/libz.a
 OPENSSL_LIB = $(EXTERNAL_OPENSSL)libssl.a
 CRYPTO_LIB = $(EXTERNAL_OPENSSL)libcrypto.a
-
+LIBPLIST_LIB = $(EXTERNAL_LIBPLIST)/bin/lib/libplist-2.0.a
 SQLITE_LIB  = $(EXTERNAL_SQLITE)libsqlite3.a
 JSON_LIB    = $(EXTERNAL_JSON)libcjson.a
 PROCPS_LIB  = $(EXTERNAL_PROCPS)/libproc.a
@@ -677,6 +678,9 @@ endif
 ifeq (${uname_S},Linux)
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 EXTERNAL_LIBS += ${AUDIT_LIB}
+endif
+ifeq (${uname_S},Darwin)
+EXTERNAL_LIBS += ${LIBPLIST_LIB}
 endif
 
 EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB)
@@ -724,6 +728,13 @@ else
 endif
 endif
 endif
+endif
+
+#### libplist ##########
+
+${LIBPLIST_LIB}:
+ ifeq (${uname_S},Darwin)
+	cd ${EXTERNAL_LIBPLIST} && mkdir bin && ./autogen.sh --prefix=${PWD}/${EXTERNAL_LIBPLIST}bin && ${MAKE} && ${MAKE} install
 endif
 
 #### libffi ##########
@@ -899,7 +910,7 @@ endif
 endif
 
 
-EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2
+EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 libplist
 EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
@@ -914,6 +925,12 @@ ifneq (,$(PRECOMPILED_RES))
 else
 	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
 endif
+	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
+	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
+	rm $(patsubst %.gz,%,$@)
+
+external/libplist.tar.gz:
+	cp libplist.tar.gz external/libplist.tar.gz
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	rm $(patsubst %.gz,%,$@)
