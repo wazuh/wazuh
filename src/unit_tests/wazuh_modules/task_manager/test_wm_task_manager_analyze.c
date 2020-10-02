@@ -62,18 +62,18 @@ void test_wm_task_manager_analyze_task_api_module_upgrade_result_ok(void **state
     will_return(__wrap_wm_task_manager_get_task_by_agent_id_and_module, last_update);
     will_return(__wrap_wm_task_manager_get_task_by_agent_id_and_module, task_id);
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_SUCCESS);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, agent_id);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, task_id);
-    will_return(__wrap_wm_task_manager_parse_response, res);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_SUCCESS);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, agent_id);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, task_id);
+    will_return(__wrap_wm_task_manager_parse_data_response, res);
 
-    expect_string(__wrap_wm_task_manager_parse_response_result, module, "upgrade_module");
-    expect_string(__wrap_wm_task_manager_parse_response_result, command, command_result);
-    expect_string(__wrap_wm_task_manager_parse_response_result, status, status_result);
-    expect_string(__wrap_wm_task_manager_parse_response_result, error, error_result);
-    expect_value(__wrap_wm_task_manager_parse_response_result, create_time, create_time);
-    expect_value(__wrap_wm_task_manager_parse_response_result, last_update_time, last_update);
-    expect_string(__wrap_wm_task_manager_parse_response_result, request_command, command);
+    expect_string(__wrap_wm_task_manager_parse_data_result, module, "upgrade_module");
+    expect_string(__wrap_wm_task_manager_parse_data_result, command, command_result);
+    expect_string(__wrap_wm_task_manager_parse_data_result, status, status_result);
+    expect_string(__wrap_wm_task_manager_parse_data_result, error, error_result);
+    expect_value(__wrap_wm_task_manager_parse_data_result, create_time, create_time);
+    expect_value(__wrap_wm_task_manager_parse_data_result, last_update_time, last_update);
+    expect_string(__wrap_wm_task_manager_parse_data_result, request_command, command);
 
     cJSON *response = wm_task_manager_analyze_task_api_module(command, &error_code, agent_id, task_id);
 
@@ -108,11 +108,11 @@ void test_wm_task_manager_analyze_task_api_module_upgrade_result_not_found_err(v
     will_return(__wrap_wm_task_manager_get_task_by_agent_id_and_module, last_update);
     will_return(__wrap_wm_task_manager_get_task_by_agent_id_and_module, task_id);
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_DATABASE_NO_TASK);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, agent_id);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, OS_INVALID);
-    expect_string(__wrap_wm_task_manager_parse_response, status, status_result);
-    will_return(__wrap_wm_task_manager_parse_response, res);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_DATABASE_NO_TASK);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, agent_id);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, OS_INVALID);
+    expect_string(__wrap_wm_task_manager_parse_data_response, status, status_result);
+    will_return(__wrap_wm_task_manager_parse_data_response, res);
 
     cJSON *response = wm_task_manager_analyze_task_api_module(command, &error_code, agent_id, task_id);
 
@@ -147,11 +147,11 @@ void test_wm_task_manager_analyze_task_api_module_upgrade_result_db_err(void **s
     will_return(__wrap_wm_task_manager_get_task_by_agent_id_and_module, last_update);
     will_return(__wrap_wm_task_manager_get_task_by_agent_id_and_module, task_id);
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_DATABASE_ERROR);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, agent_id);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, OS_INVALID);
-    expect_string(__wrap_wm_task_manager_parse_response, status, status_result);
-    will_return(__wrap_wm_task_manager_parse_response, res);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_DATABASE_ERROR);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, agent_id);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, OS_INVALID);
+    expect_string(__wrap_wm_task_manager_parse_data_response, status, status_result);
+    will_return(__wrap_wm_task_manager_parse_data_response, res);
 
     cJSON *response = wm_task_manager_analyze_task_api_module(command, &error_code, agent_id, task_id);
 
@@ -171,10 +171,10 @@ void test_wm_task_manager_analyze_task_api_module_upgrade_result_agent_id_err(vo
 
     cJSON* res = cJSON_CreateObject();
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_INVALID_AGENT_ID);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, agent_id);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, task_id);
-    will_return(__wrap_wm_task_manager_parse_response, res);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_INVALID_AGENT_ID);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, agent_id);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, task_id);
+    will_return(__wrap_wm_task_manager_parse_data_response, res);
 
     cJSON *response = wm_task_manager_analyze_task_api_module(command, &error_code, agent_id, task_id);
 
@@ -210,18 +210,18 @@ void test_wm_task_manager_analyze_task_api_module_task_result_ok(void **state)
     will_return(__wrap_wm_task_manager_get_task_by_task_id, last_update);
     will_return(__wrap_wm_task_manager_get_task_by_task_id, agent_id);
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_SUCCESS);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, agent_id);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, task_id);
-    will_return(__wrap_wm_task_manager_parse_response, res);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_SUCCESS);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, agent_id);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, task_id);
+    will_return(__wrap_wm_task_manager_parse_data_response, res);
 
-    expect_string(__wrap_wm_task_manager_parse_response_result, module, module_result);
-    expect_string(__wrap_wm_task_manager_parse_response_result, command, command_result);
-    expect_string(__wrap_wm_task_manager_parse_response_result, status, status_result);
-    expect_string(__wrap_wm_task_manager_parse_response_result, error, error_result);
-    expect_value(__wrap_wm_task_manager_parse_response_result, create_time, create_time);
-    expect_value(__wrap_wm_task_manager_parse_response_result, last_update_time, last_update);
-    expect_string(__wrap_wm_task_manager_parse_response_result, request_command, command);
+    expect_string(__wrap_wm_task_manager_parse_data_result, module, module_result);
+    expect_string(__wrap_wm_task_manager_parse_data_result, command, command_result);
+    expect_string(__wrap_wm_task_manager_parse_data_result, status, status_result);
+    expect_string(__wrap_wm_task_manager_parse_data_result, error, error_result);
+    expect_value(__wrap_wm_task_manager_parse_data_result, create_time, create_time);
+    expect_value(__wrap_wm_task_manager_parse_data_result, last_update_time, last_update);
+    expect_string(__wrap_wm_task_manager_parse_data_result, request_command, command);
 
     cJSON *response = wm_task_manager_analyze_task_api_module(command, &error_code, agent_id, task_id);
 
@@ -257,11 +257,11 @@ void test_wm_task_manager_analyze_task_api_module_task_result_not_found_err(void
     will_return(__wrap_wm_task_manager_get_task_by_task_id, last_update);
     will_return(__wrap_wm_task_manager_get_task_by_task_id, agent_id);
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_DATABASE_NO_TASK);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, OS_INVALID);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, task_id);
-    expect_string(__wrap_wm_task_manager_parse_response, status, status_result);
-    will_return(__wrap_wm_task_manager_parse_response, res);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_DATABASE_NO_TASK);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, OS_INVALID);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, task_id);
+    expect_string(__wrap_wm_task_manager_parse_data_response, status, status_result);
+    will_return(__wrap_wm_task_manager_parse_data_response, res);
 
     cJSON *response = wm_task_manager_analyze_task_api_module(command, &error_code, agent_id, task_id);
 
@@ -297,11 +297,11 @@ void test_wm_task_manager_analyze_task_api_module_task_result_db_err(void **stat
     will_return(__wrap_wm_task_manager_get_task_by_task_id, last_update);
     will_return(__wrap_wm_task_manager_get_task_by_task_id, agent_id);
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_DATABASE_ERROR);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, OS_INVALID);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, task_id);
-    expect_string(__wrap_wm_task_manager_parse_response, status, status_result);
-    will_return(__wrap_wm_task_manager_parse_response, res);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_DATABASE_ERROR);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, OS_INVALID);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, task_id);
+    expect_string(__wrap_wm_task_manager_parse_data_response, status, status_result);
+    will_return(__wrap_wm_task_manager_parse_data_response, res);
 
     cJSON *response = wm_task_manager_analyze_task_api_module(command, &error_code, agent_id, task_id);
 
@@ -321,10 +321,10 @@ void test_wm_task_manager_analyze_task_api_module_task_result_task_id_err(void *
 
     cJSON* res = cJSON_CreateObject();
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_INVALID_TASK_ID);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, agent_id);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, task_id);
-    will_return(__wrap_wm_task_manager_parse_response, res);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_INVALID_TASK_ID);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, agent_id);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, task_id);
+    will_return(__wrap_wm_task_manager_parse_data_response, res);
 
     cJSON *response = wm_task_manager_analyze_task_api_module(command, &error_code, agent_id, task_id);
 
@@ -344,10 +344,10 @@ void test_wm_task_manager_analyze_task_api_module_task_result_command_err(void *
 
     cJSON* res = cJSON_CreateObject();
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_INVALID_COMMAND);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, agent_id);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, task_id);
-    will_return(__wrap_wm_task_manager_parse_response, res);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_INVALID_COMMAND);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, agent_id);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, task_id);
+    will_return(__wrap_wm_task_manager_parse_data_response, res);
 
     cJSON *response = wm_task_manager_analyze_task_api_module(command, &error_code, agent_id, task_id);
 
@@ -372,10 +372,10 @@ void test_wm_task_manager_analyze_task_upgrade_module_upgrade_ok(void **state)
     expect_string(__wrap_wm_task_manager_insert_task, command, command);
     will_return(__wrap_wm_task_manager_insert_task, task_id);
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_SUCCESS);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, agent_id);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, task_id);
-    will_return(__wrap_wm_task_manager_parse_response, res);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_SUCCESS);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, agent_id);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, task_id);
+    will_return(__wrap_wm_task_manager_parse_data_response, res);
 
     cJSON *response = wm_task_manager_analyze_task_upgrade_module(command, &error_code, agent_id, task_id, NULL, NULL);
 
@@ -400,10 +400,10 @@ void test_wm_task_manager_analyze_task_upgrade_module_upgrade_custom_ok(void **s
     expect_string(__wrap_wm_task_manager_insert_task, command, command);
     will_return(__wrap_wm_task_manager_insert_task, task_id);
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_SUCCESS);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, agent_id);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, task_id);
-    will_return(__wrap_wm_task_manager_parse_response, res);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_SUCCESS);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, agent_id);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, task_id);
+    will_return(__wrap_wm_task_manager_parse_data_response, res);
 
     cJSON *response = wm_task_manager_analyze_task_upgrade_module(command, &error_code, agent_id, task_id, NULL, NULL);
 
@@ -441,10 +441,10 @@ void test_wm_task_manager_analyze_task_upgrade_module_upgrade_agent_id_err(void 
 
     cJSON* res = cJSON_CreateObject();
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_INVALID_AGENT_ID);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, agent_id);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, task_id);
-    will_return(__wrap_wm_task_manager_parse_response, res);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_INVALID_AGENT_ID);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, agent_id);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, task_id);
+    will_return(__wrap_wm_task_manager_parse_data_response, res);
 
     cJSON *response = wm_task_manager_analyze_task_upgrade_module(command, &error_code, agent_id, task_id, NULL, NULL);
 
@@ -470,11 +470,11 @@ void test_wm_task_manager_analyze_task_upgrade_module_upgrade_get_status_ok(void
     will_return(__wrap_wm_task_manager_get_task_status, status_result);
     will_return(__wrap_wm_task_manager_get_task_status, WM_TASK_SUCCESS);
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_SUCCESS);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, agent_id);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, OS_INVALID);
-    expect_string(__wrap_wm_task_manager_parse_response, status, status_result);
-    will_return(__wrap_wm_task_manager_parse_response, res);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_SUCCESS);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, agent_id);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, OS_INVALID);
+    expect_string(__wrap_wm_task_manager_parse_data_response, status, status_result);
+    will_return(__wrap_wm_task_manager_parse_data_response, res);
 
     cJSON *response = wm_task_manager_analyze_task_upgrade_module(command, &error_code, agent_id, OS_INVALID, NULL, NULL);
 
@@ -500,10 +500,10 @@ void test_wm_task_manager_analyze_task_upgrade_module_upgrade_get_status_task_er
     will_return(__wrap_wm_task_manager_get_task_status, status_result);
     will_return(__wrap_wm_task_manager_get_task_status, WM_TASK_DATABASE_NO_TASK);
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_DATABASE_NO_TASK);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, agent_id);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, OS_INVALID);
-    will_return(__wrap_wm_task_manager_parse_response, res);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_DATABASE_NO_TASK);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, agent_id);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, OS_INVALID);
+    will_return(__wrap_wm_task_manager_parse_data_response, res);
 
     cJSON *response = wm_task_manager_analyze_task_upgrade_module(command, &error_code, agent_id, OS_INVALID, NULL, NULL);
 
@@ -541,10 +541,10 @@ void test_wm_task_manager_analyze_task_upgrade_module_upgrade_get_status_agent_i
 
     cJSON* res = cJSON_CreateObject();
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_INVALID_AGENT_ID);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, agent_id);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, OS_INVALID);
-    will_return(__wrap_wm_task_manager_parse_response, res);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_INVALID_AGENT_ID);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, agent_id);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, OS_INVALID);
+    will_return(__wrap_wm_task_manager_parse_data_response, res);
 
     cJSON *response = wm_task_manager_analyze_task_upgrade_module(command, &error_code, agent_id, OS_INVALID, NULL, NULL);
 
@@ -569,11 +569,11 @@ void test_wm_task_manager_analyze_task_upgrade_module_upgrade_update_status_ok(v
     expect_string(__wrap_wm_task_manager_update_task_status, status, status);
     will_return(__wrap_wm_task_manager_update_task_status, WM_TASK_SUCCESS);
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_SUCCESS);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, agent_id);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, OS_INVALID);
-    expect_string(__wrap_wm_task_manager_parse_response, status, status);
-    will_return(__wrap_wm_task_manager_parse_response, res);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_SUCCESS);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, agent_id);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, OS_INVALID);
+    expect_string(__wrap_wm_task_manager_parse_data_response, status, status);
+    will_return(__wrap_wm_task_manager_parse_data_response, res);
 
     cJSON *response = wm_task_manager_analyze_task_upgrade_module(command, &error_code, agent_id, OS_INVALID, status, NULL);
 
@@ -600,11 +600,11 @@ void test_wm_task_manager_analyze_task_upgrade_module_upgrade_update_status_task
     expect_string(__wrap_wm_task_manager_update_task_status, status, status);
     will_return(__wrap_wm_task_manager_update_task_status, WM_TASK_DATABASE_NO_TASK);
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_DATABASE_NO_TASK);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, agent_id);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, OS_INVALID);
-    expect_string(__wrap_wm_task_manager_parse_response, status, status);
-    will_return(__wrap_wm_task_manager_parse_response, res);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_DATABASE_NO_TASK);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, agent_id);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, OS_INVALID);
+    expect_string(__wrap_wm_task_manager_parse_data_response, status, status);
+    will_return(__wrap_wm_task_manager_parse_data_response, res);
 
     cJSON *response = wm_task_manager_analyze_task_upgrade_module(command, &error_code, agent_id, OS_INVALID, status, NULL);
 
@@ -642,11 +642,11 @@ void test_wm_task_manager_analyze_task_upgrade_module_upgrade_update_status_agen
 
     cJSON* res = cJSON_CreateObject();
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_INVALID_AGENT_ID);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, agent_id);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, OS_INVALID);
-    expect_string(__wrap_wm_task_manager_parse_response, status, status);
-    will_return(__wrap_wm_task_manager_parse_response, res);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_INVALID_AGENT_ID);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, agent_id);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, OS_INVALID);
+    expect_string(__wrap_wm_task_manager_parse_data_response, status, status);
+    will_return(__wrap_wm_task_manager_parse_data_response, res);
 
     cJSON *response = wm_task_manager_analyze_task_upgrade_module(command, &error_code, agent_id, OS_INVALID, status, NULL);
 
@@ -665,10 +665,10 @@ void test_wm_task_manager_analyze_task_upgrade_module_upgrade_update_status_comm
 
     cJSON* res = cJSON_CreateObject();
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_INVALID_COMMAND);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, agent_id);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, OS_INVALID);
-    will_return(__wrap_wm_task_manager_parse_response, res);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_INVALID_COMMAND);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, agent_id);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, OS_INVALID);
+    will_return(__wrap_wm_task_manager_parse_data_response, res);
 
     cJSON *response = wm_task_manager_analyze_task_upgrade_module(command, &error_code, agent_id, OS_INVALID, NULL, NULL);
 
@@ -703,11 +703,11 @@ void test_wm_task_manager_analyze_task_upgrade_module_ok(void **state)
     expect_string(__wrap_wm_task_manager_update_task_status, error, error);
     will_return(__wrap_wm_task_manager_update_task_status, WM_TASK_SUCCESS);
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_SUCCESS);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, agent_id);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, OS_INVALID);
-    expect_string(__wrap_wm_task_manager_parse_response, status, status);
-    will_return(__wrap_wm_task_manager_parse_response, res);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_SUCCESS);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, agent_id);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, OS_INVALID);
+    expect_string(__wrap_wm_task_manager_parse_data_response, status, status);
+    will_return(__wrap_wm_task_manager_parse_data_response, res);
 
     cJSON *response = wm_task_manager_analyze_task(task, &error_code);
 
@@ -750,18 +750,18 @@ void test_wm_task_manager_analyze_task_api_module_ok(void **state)
     will_return(__wrap_wm_task_manager_get_task_by_task_id, last_update);
     will_return(__wrap_wm_task_manager_get_task_by_task_id, agent_id);
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_SUCCESS);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, agent_id);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, task_id);
-    will_return(__wrap_wm_task_manager_parse_response, res);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_SUCCESS);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, agent_id);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, task_id);
+    will_return(__wrap_wm_task_manager_parse_data_response, res);
 
-    expect_string(__wrap_wm_task_manager_parse_response_result, module, module_result);
-    expect_string(__wrap_wm_task_manager_parse_response_result, command, command_result);
-    expect_string(__wrap_wm_task_manager_parse_response_result, status, status_result);
-    expect_string(__wrap_wm_task_manager_parse_response_result, error, error_result);
-    expect_value(__wrap_wm_task_manager_parse_response_result, create_time, create_time);
-    expect_value(__wrap_wm_task_manager_parse_response_result, last_update_time, last_update);
-    expect_string(__wrap_wm_task_manager_parse_response_result, request_command, command);
+    expect_string(__wrap_wm_task_manager_parse_data_result, module, module_result);
+    expect_string(__wrap_wm_task_manager_parse_data_result, command, command_result);
+    expect_string(__wrap_wm_task_manager_parse_data_result, status, status_result);
+    expect_string(__wrap_wm_task_manager_parse_data_result, error, error_result);
+    expect_value(__wrap_wm_task_manager_parse_data_result, create_time, create_time);
+    expect_value(__wrap_wm_task_manager_parse_data_result, last_update_time, last_update);
+    expect_string(__wrap_wm_task_manager_parse_data_result, request_command, command);
 
     cJSON *response = wm_task_manager_analyze_task(task, &error_code);
 
@@ -789,10 +789,10 @@ void test_wm_task_manager_analyze_task_module_err(void **state)
 
     cJSON* res = cJSON_CreateObject();
 
-    expect_value(__wrap_wm_task_manager_parse_response, error_code, WM_TASK_INVALID_MODULE);
-    expect_value(__wrap_wm_task_manager_parse_response, agent_id, OS_INVALID);
-    expect_value(__wrap_wm_task_manager_parse_response, task_id, OS_INVALID);
-    will_return(__wrap_wm_task_manager_parse_response, res);
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_INVALID_MODULE);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, OS_INVALID);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, OS_INVALID);
+    will_return(__wrap_wm_task_manager_parse_data_response, res);
 
     cJSON *response = wm_task_manager_analyze_task(task, &error_code);
 

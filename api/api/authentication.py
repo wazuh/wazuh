@@ -9,7 +9,6 @@ import logging
 import os
 from secrets import token_urlsafe
 from shutil import chown
-from importlib import reload
 from time import time
 
 from jose import JWTError, jwt
@@ -110,13 +109,7 @@ def change_secret():
         jwt_secret.write(new_secret)
 
 
-def get_api_conf():
-    reload(configuration)
-    return copy.deepcopy(configuration.api_conf)
-
-
 def get_security_conf():
-    reload(configuration)
     return copy.deepcopy(configuration.security_conf)
 
 

@@ -25,13 +25,13 @@ int __wrap_wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_co
 
 int __wrap_wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_ids, char** error);
 
-char* __wrap_wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task, const wm_manager_configs* manager_configs, int *upgrade_agents);
+char* __wrap_wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task, const wm_manager_configs* manager_configs);
 
-char* __wrap_wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task, const wm_manager_configs* manager_configs, int *upgrade_agents);
+char* __wrap_wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task, const wm_manager_configs* manager_configs);
 
 char* __wrap_wm_agent_upgrade_process_agent_result_command(const int* agent_ids, wm_upgrade_agent_status_task* task);
 
-cJSON* __wrap_wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, int agent_id, const char* status, const char* error);
+cJSON* __wrap_wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, cJSON *agents_array, const char* status, const char* error);
 
 int __wrap_wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* task_module_request);
 
@@ -57,9 +57,11 @@ int __wrap_wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task *ta
 
 int __wrap_wm_agent_upgrade_create_task_entry(int agent_id, wm_agent_task* ag_task);
 
-int __wrap_wm_agent_upgrade_remove_entry(int agent_id);
+int __wrap_wm_agent_upgrade_remove_entry(int agent_id, int free);
 
-cJSON* __wrap_wm_agent_upgrade_parse_response_message(int error_id, const char* message, const int *agent_id, const int* task_id, const char* status);
+cJSON* __wrap_wm_agent_upgrade_parse_data_response(int error_id, const char* message, const int* agent_id);
+
+cJSON* __wrap_wm_agent_upgrade_parse_response(int error_id, cJSON *data);
 
 cJSON* __wrap_w_create_sendsync_payload(const char *daemon_name, cJSON *message);
 
@@ -73,6 +75,6 @@ char* __wrap_wm_agent_upgrade_send_command_to_agent(const char *command, const s
 
 cJSON* __wrap_wm_agent_upgrade_send_tasks_information(const cJSON *message_object);
 
-int __wrap_wm_agent_upgrade_start_upgrades(const wm_manager_configs* manager_configs);
+int __wrap_wm_agent_upgrade_prepare_upgrades();
 
 #endif

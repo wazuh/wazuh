@@ -62,8 +62,8 @@ void test_wm_upgrade_agent_send_ack_message_successful(void **state)
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue);
     expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
-                                               "\"params\":{\"error\":0," 
-                                                           "\"data\":\"Upgrade was successful\","
+                                               "\"parameters\":{\"error\":0," 
+                                                           "\"message\":\"Upgrade was successful\","
                                                            "\"status\":\"Done\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
     expect_value(__wrap_wm_sendmsg, loc, UPGRADE_MQ);
@@ -73,8 +73,8 @@ void test_wm_upgrade_agent_send_ack_message_successful(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
                                                    "'{\"command\":\"upgrade_update_status\","
-                                                     "\"params\":{\"error\":0," 
-                                                                 "\"data\":\"Upgrade was successful\","
+                                                     "\"parameters\":{\"error\":0," 
+                                                                 "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
     wm_upgrade_agent_send_ack_message(&queue, upgrade_state);
@@ -92,8 +92,8 @@ void test_wm_upgrade_agent_send_ack_message_failed(void **state)
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue);
     expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
-                                               "\"params\":{\"error\":2,"
-                                                           "\"data\":\"Upgrade failed\","
+                                               "\"parameters\":{\"error\":2,"
+                                                           "\"message\":\"Upgrade failed\","
                                                            "\"status\":\"Failed\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
     expect_value(__wrap_wm_sendmsg, loc, UPGRADE_MQ);
@@ -103,8 +103,8 @@ void test_wm_upgrade_agent_send_ack_message_failed(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
                                                    "'{\"command\":\"upgrade_update_status\","
-                                                     "\"params\":{\"error\":2,"
-                                                                 "\"data\":\"Upgrade failed\","
+                                                     "\"parameters\":{\"error\":2,"
+                                                                 "\"message\":\"Upgrade failed\","
                                                                  "\"status\":\"Failed\"}}'");
 
     wm_upgrade_agent_send_ack_message(&queue, upgrade_state);
@@ -122,8 +122,8 @@ void test_wm_upgrade_agent_send_ack_message_error(void **state)
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue);
     expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
-                                               "\"params\":{\"error\":2,"
-                                                           "\"data\":\"Upgrade failed\","
+                                               "\"parameters\":{\"error\":2,"
+                                                           "\"message\":\"Upgrade failed\","
                                                            "\"status\":\"Failed\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
     expect_value(__wrap_wm_sendmsg, loc, UPGRADE_MQ);
@@ -140,8 +140,8 @@ void test_wm_upgrade_agent_send_ack_message_error(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
                                                    "'{\"command\":\"upgrade_update_status\","
-                                                     "\"params\":{\"error\":2,"
-                                                                 "\"data\":\"Upgrade failed\","
+                                                     "\"parameters\":{\"error\":2,"
+                                                                 "\"message\":\"Upgrade failed\","
                                                                  "\"status\":\"Failed\"}}'");
 
     wm_upgrade_agent_send_ack_message(&queue, upgrade_state);
@@ -159,8 +159,8 @@ void test_wm_upgrade_agent_send_ack_message_error_exit(void **state)
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue);
     expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
-                                               "\"params\":{\"error\":2,"
-                                                           "\"data\":\"Upgrade failed\","
+                                               "\"parameters\":{\"error\":2,"
+                                                           "\"message\":\"Upgrade failed\","
                                                            "\"status\":\"Failed\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
     expect_value(__wrap_wm_sendmsg, loc, UPGRADE_MQ);
@@ -180,8 +180,8 @@ void test_wm_upgrade_agent_send_ack_message_error_exit(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
                                                    "'{\"command\":\"upgrade_update_status\","
-                                                     "\"params\":{\"error\":2,"
-                                                                 "\"data\":\"Upgrade failed\","
+                                                     "\"parameters\":{\"error\":2,"
+                                                                 "\"message\":\"Upgrade failed\","
                                                                  "\"status\":\"Failed\"}}'");
 
     wm_upgrade_agent_send_ack_message(&queue, upgrade_state);
@@ -214,8 +214,8 @@ void test_wm_upgrade_agent_search_upgrade_result_successful(void **state)
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue);
     expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
-                                               "\"params\":{\"error\":0," 
-                                                           "\"data\":\"Upgrade was successful\","
+                                               "\"parameters\":{\"error\":0," 
+                                                           "\"message\":\"Upgrade was successful\","
                                                            "\"status\":\"Done\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
     expect_value(__wrap_wm_sendmsg, loc, UPGRADE_MQ);
@@ -225,8 +225,8 @@ void test_wm_upgrade_agent_search_upgrade_result_successful(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
                                                    "'{\"command\":\"upgrade_update_status\","
-                                                     "\"params\":{\"error\":0," 
-                                                                 "\"data\":\"Upgrade was successful\","
+                                                     "\"parameters\":{\"error\":0," 
+                                                                 "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
     int ret = wm_upgrade_agent_search_upgrade_result(&queue);
@@ -260,8 +260,8 @@ void test_wm_upgrade_agent_search_upgrade_result_failed(void **state)
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue);
     expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
-                                               "\"params\":{\"error\":2,"
-                                                           "\"data\":\"Upgrade failed\","
+                                               "\"parameters\":{\"error\":2,"
+                                                           "\"message\":\"Upgrade failed\","
                                                            "\"status\":\"Failed\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
     expect_value(__wrap_wm_sendmsg, loc, UPGRADE_MQ);
@@ -271,8 +271,8 @@ void test_wm_upgrade_agent_search_upgrade_result_failed(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
                                                    "'{\"command\":\"upgrade_update_status\","
-                                                     "\"params\":{\"error\":2,"
-                                                                 "\"data\":\"Upgrade failed\","
+                                                     "\"parameters\":{\"error\":2,"
+                                                                 "\"message\":\"Upgrade failed\","
                                                                  "\"status\":\"Failed\"}}'");
 
     int ret = wm_upgrade_agent_search_upgrade_result(&queue);
@@ -365,8 +365,8 @@ void test_wm_agent_upgrade_check_status_successful(void **state)
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue);
     expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
-                                               "\"params\":{\"error\":0," 
-                                                           "\"data\":\"Upgrade was successful\","
+                                               "\"parameters\":{\"error\":0," 
+                                                           "\"message\":\"Upgrade was successful\","
                                                            "\"status\":\"Done\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
     expect_value(__wrap_wm_sendmsg, loc, UPGRADE_MQ);
@@ -376,8 +376,8 @@ void test_wm_agent_upgrade_check_status_successful(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
                                                    "'{\"command\":\"upgrade_update_status\","
-                                                     "\"params\":{\"error\":0," 
-                                                                 "\"data\":\"Upgrade was successful\","
+                                                     "\"parameters\":{\"error\":0," 
+                                                                 "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
 #ifdef TEST_WINAGENT
@@ -432,8 +432,8 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue);
     expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
-                                               "\"params\":{\"error\":0," 
-                                                           "\"data\":\"Upgrade was successful\","
+                                               "\"parameters\":{\"error\":0," 
+                                                           "\"message\":\"Upgrade was successful\","
                                                            "\"status\":\"Done\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
     expect_value(__wrap_wm_sendmsg, loc, UPGRADE_MQ);
@@ -443,8 +443,8 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
                                                    "'{\"command\":\"upgrade_update_status\","
-                                                     "\"params\":{\"error\":0," 
-                                                                 "\"data\":\"Upgrade was successful\","
+                                                     "\"parameters\":{\"error\":0," 
+                                                                 "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
 #ifdef TEST_WINAGENT
@@ -471,8 +471,8 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue);
     expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
-                                               "\"params\":{\"error\":0," 
-                                                           "\"data\":\"Upgrade was successful\","
+                                               "\"parameters\":{\"error\":0," 
+                                                           "\"message\":\"Upgrade was successful\","
                                                            "\"status\":\"Done\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
     expect_value(__wrap_wm_sendmsg, loc, UPGRADE_MQ);
@@ -482,8 +482,8 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
                                                    "'{\"command\":\"upgrade_update_status\","
-                                                     "\"params\":{\"error\":0," 
-                                                                 "\"data\":\"Upgrade was successful\","
+                                                     "\"parameters\":{\"error\":0," 
+                                                                 "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
 #ifdef TEST_WINAGENT
@@ -510,8 +510,8 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue);
     expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
-                                               "\"params\":{\"error\":0," 
-                                                           "\"data\":\"Upgrade was successful\","
+                                               "\"parameters\":{\"error\":0," 
+                                                           "\"message\":\"Upgrade was successful\","
                                                            "\"status\":\"Done\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
     expect_value(__wrap_wm_sendmsg, loc, UPGRADE_MQ);
@@ -521,8 +521,8 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
                                                    "'{\"command\":\"upgrade_update_status\","
-                                                     "\"params\":{\"error\":0," 
-                                                                 "\"data\":\"Upgrade was successful\","
+                                                     "\"parameters\":{\"error\":0," 
+                                                                 "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
 #ifdef TEST_WINAGENT
@@ -549,8 +549,8 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue);
     expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
-                                               "\"params\":{\"error\":0," 
-                                                           "\"data\":\"Upgrade was successful\","
+                                               "\"parameters\":{\"error\":0," 
+                                                           "\"message\":\"Upgrade was successful\","
                                                            "\"status\":\"Done\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
     expect_value(__wrap_wm_sendmsg, loc, UPGRADE_MQ);
@@ -560,8 +560,8 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
                                                    "'{\"command\":\"upgrade_update_status\","
-                                                     "\"params\":{\"error\":0," 
-                                                                 "\"data\":\"Upgrade was successful\","
+                                                     "\"parameters\":{\"error\":0," 
+                                                                 "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
 #ifdef TEST_WINAGENT

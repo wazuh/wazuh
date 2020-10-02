@@ -498,17 +498,13 @@ stages:
       json:
         data:
           affected_items:
-            - agentless: !anything
-              alerts: !anything
+            - alerts: !anything
               auth: !anything
               cis-cat: !anything
               cluster: !anything
               command: !anything
-              email_alerts: !anything
               global: !anything
-              integration: !anything
               localfile: !anything
-              open-scap: !anything
               osquery: !anything
               remote: !anything
               rootcheck: !anything
@@ -516,7 +512,6 @@ stages:
               sca: !anything
               syscheck: !anything
               syscollector: !anything
-              syslog_output: !anything
               vulnerability-detector: !anything
           failed_items: []
           total_affected_items: 1
@@ -786,6 +781,7 @@ stages:
         path: etc/rules/new-rules_corrupted.xml
     response:
       status_code: 200
+    delay_after: 5
 
   - name: Request cluster validation
     request:
@@ -828,6 +824,327 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
+
+---
+test_name: GET /cluster/api/config
+
+stages:
+
+  # GET /cluster/api/config
+  - name: Get API configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - node_name: "master-node"
+              node_api_config: &api_config
+                host: !anystr
+                port: !anyint
+                behind_proxy_server: !anybool
+                https:
+                  enabled: !anybool
+                  key: !anystr
+                  cert: !anystr
+                  use_ca: !anybool
+                  ca: !anystr
+                logs:
+                  level: !anystr
+                  path: !anystr
+                cors:
+                  enabled: !anybool
+                  source_route: !anystr
+                  expose_headers: !anystr
+                  allow_headers: !anystr
+                  allow_credentials: !anybool
+                cache:
+                  enabled: !anybool
+                  time: !anything
+                access:
+                  max_login_attempts: !anyint
+                  block_time: !anyint
+                  max_request_per_minute: !anyint
+                use_only_authd: !anybool
+                drop_privileges: !anybool
+                experimental_features: !anybool
+            - node_name: "worker1"
+              node_api_config:
+                <<: *api_config
+            - node_name: "worker2"
+              node_api_config:
+                <<: *api_config
+          total_affected_items: 3
+          total_failed_items: 0
+          failed_items: []
+
+  # GET /cluster/api/config/{node_list}
+  - name: Get API configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_nodes: 'worker1,worker2'
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - node_name: 'worker1'
+              node_api_config:
+                <<: *api_config
+            - node_name: 'worker2'
+              node_api_config:
+                <<: *api_config
+          total_affected_items: 2
+          total_failed_items: 0
+          failed_items: []
+
+---
+test_name: PUT /cluster/api/config
+
+stages:
+
+  # PUT /cluster/api/config
+  - name: Modify API configuration (some fields)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        cache:
+          enabled: false
+          time: 1
+    response:
+      status_code: 200
+      json: &update_api_config_ok
+        data:
+          affected_items: !anything
+          total_affected_items: 3
+          total_failed_items: 0
+          failed_items: []
+
+  # PUT /cluster/api/config
+  - name: Modify API configuration (all allowed fields)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_nodes: 'worker1,worker2'
+      method: PUT
+      json:
+        logs:
+          level: "debug"
+        cache:
+          enabled: true
+          time: 3
+        access:
+          block_time: 0
+        use_only_authd: true
+        experimental_features: true
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - worker1
+            - worker2
+          total_affected_items: 2
+          total_failed_items: 0
+          failed_items: []
+
+  # PUT /cluster/api/config
+  - name: Modify API configuration (forbidden field)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        logs:
+          path: "test"
+    response:
+      status_code: 400
+
+  # Restart nodes to apply changes
+  - name: Restart cluster
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+    delay_after: !float "{restart_delay}"
+
+  # GET /cluster/api/config
+  - name: Get API configuration that was set above
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - node_name: 'master-node'
+              node_api_config:
+                <<: *api_config
+            - node_name: 'worker1'
+              node_api_config: &modified_api_config
+                logs:
+                  level: "debug"
+                cache:
+                  enabled: true
+                  time: 3
+                use_only_authd: true
+                experimental_features: true
+            - node_name: 'worker2'
+              node_api_config:
+                <<: *modified_api_config
+          total_affected_items: 3
+          total_failed_items: 0
+          failed_items: []
+
+---
+test_name: DELETE /cluster/api/config
+
+stages:
+
+  # DELETE /cluster/api/config (worker1)
+  - name: Restore API configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_nodes: 'worker1'
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: !anything
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+
+  # Restart nodes to apply changes
+  - name: Restart cluster
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+    delay_after: !float "{restart_delay}"
+
+  # GET /cluster/api/config
+  - name: Get API default configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - node_name: 'master-node'
+              node_api_config:
+                <<: *api_config
+            - node_name: 'worker1'
+              node_api_config:
+                logs:
+                  level: "info"
+                cache:
+                  enabled: true
+                  time: 0.75
+                use_only_authd: false
+                experimental_features: false
+            - node_name: 'worker2'
+              node_api_config:
+                <<: *modified_api_config
+          total_affected_items: 3
+          total_failed_items: 0
+          failed_items: []
+
+  # DELETE /cluster/api/config (all nodes)
+  - name: Restore API configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: !anything
+          total_affected_items: 3
+          total_failed_items: 0
+          failed_items: []
+
+  # Restart nodes to apply changes
+  - name: Restart cluster
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+    delay_after: !float "{restart_delay}"
+
+  # GET /cluster/api/config
+  - name: Get API default configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - node_name: 'master-node'
+              node_api_config:
+                <<: *api_config
+            - node_name: 'worker1'
+              node_api_config:
+                <<: *api_config
+            - node_name: 'worker2'
+              node_api_config:
+                <<: *api_config
+          total_affected_items: 3
+          total_failed_items: 0
+          failed_items: []
 
 ---
 test_name: GET /cluster/{node_id}/configuration/{component}/{configuration}
@@ -967,45 +1284,6 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Try to show the config of csyslog/csyslog in the manager through a worker
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/csyslog/csyslog"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - syslog_output:
-              - format: !anystr
-                level: !anyint
-                port: !anyint
-                server: !anystr
-                use_fqdn: !anystr
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Try to show the config of integrator/integration in the manager through a worker
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/integrator/integration"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - integration: !anything
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
   - name: Try to show the config of analysis/internal through a worker
     request:
       verify: False
@@ -1099,67 +1377,6 @@ stages:
                   sample_log_length: !anyint
                   sock_fail_time: !anyint
                   vcheck_files: !anyint
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Try to show the config of mail/global in the manager trough a worker
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/mail/global"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - global:
-                email_maxperhour: !anyint
-                email_to: !anything
-                email_from: !anything
-                smtp_server: !anystr
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Try to show the config of mail/alerts in the manager trough a worker
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/mail/alerts"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - email_alerts:
-              - email_to: !anystr
-                format: !anystr
-                level: !anyint
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Try to show the config of mail/internal in the manager trough a worker
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/mail/internal"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - internal:
-                mail:
-                  grouping: !anyint
-                  strict_checking: !anyint
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -2454,291 +2671,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-
----
-test_name: GET /cluster/api/config
-
-stages:
-
-  # GET /cluster/api/config
-  - name: Get API configuration
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - node_name: "master-node"
-              node_api_config: &api_config
-                host: !anystr
-                port: !anyint
-                behind_proxy_server: !anybool
-                https:
-                  enabled: !anybool
-                  key: !anystr
-                  cert: !anystr
-                  use_ca: !anybool
-                  ca: !anystr
-                logs:
-                  level: !anystr
-                  path: !anystr
-                cors:
-                  enabled: !anybool
-                  source_route: !anystr
-                  expose_headers: !anystr
-                  allow_headers: !anystr
-                  allow_credentials: !anybool
-                cache:
-                  enabled: !anybool
-                  time: !anything
-                access:
-                  max_login_attempts: !anyint
-                  block_time: !anyint
-                  max_request_per_minute: !anyint
-                use_only_authd: !anybool
-                drop_privileges: !anybool
-                experimental_features: !anybool
-            - node_name: "worker1"
-              node_api_config:
-                <<: *api_config
-            - node_name: "worker2"
-              node_api_config:
-                <<: *api_config
-          total_affected_items: 3
-          total_failed_items: 0
-          failed_items: []
-
-  # GET /cluster/api/config/{node_list}
-  - name: Get API configuration
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        list_nodes: 'worker1,worker2'
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - node_name: 'worker1'
-              node_api_config:
-                <<: *api_config
-            - node_name: 'worker2'
-              node_api_config:
-                <<: *api_config
-          total_affected_items: 2
-          total_failed_items: 0
-          failed_items: []
-
----
-test_name: PUT /cluster/api/config
-
-stages:
-
-  # PUT /cluster/api/config
-  - name: Modify API configuration (some fields)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: PUT
-      json:
-        cache:
-          enabled: false
-          time: 1
-    response:
-      status_code: 200
-      json: &update_api_config_ok
-        data:
-          affected_items: !anything
-          total_affected_items: 3
-          total_failed_items: 0
-          failed_items: []
-
-  # PUT /cluster/api/config
-  - name: Modify API configuration (all allowed fields)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        list_nodes: 'worker1,worker2'
-      method: PUT
-      json:
-        logs:
-          level: "debug"
-        cache:
-          enabled: true
-          time: 3
-        access:
-          block_time: 0
-        use_only_authd: true
-        experimental_features: true
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - worker1
-            - worker2
-          total_affected_items: 2
-          total_failed_items: 0
-          failed_items: []
-
-  # PUT /cluster/api/config
-  - name: Modify API configuration (forbidden field)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: PUT
-      json:
-        logs:
-          path: "test"
-    response:
-      status_code: 400
-
-  # GET /cluster/api/config
-  - name: Get API configuration that was set above
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - node_name: 'master-node'
-              node_api_config:
-                <<: *api_config
-            - node_name: 'worker1'
-              node_api_config: &modified_api_config
-                logs:
-                  level: "debug"
-                cache:
-                  enabled: true
-                  time: 3
-                use_only_authd: true
-                experimental_features: true
-            - node_name: 'worker2'
-              node_api_config:
-                <<: *modified_api_config
-          total_affected_items: 3
-          total_failed_items: 0
-          failed_items: []
-
----
-test_name: DELETE /cluster/api/config
-
-stages:
-
-  # DELETE /cluster/api/config (worker1)
-  - name: Restore API configuration
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        list_nodes: 'worker1'
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items: !anything
-          total_affected_items: 1
-          total_failed_items: 0
-          failed_items: []
-
-  # GET /cluster/api/config
-  - name: Get API default configuration
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - node_name: 'master-node'
-              node_api_config:
-                <<: *api_config
-            - node_name: 'worker1'
-              node_api_config:
-                logs:
-                  level: "info"
-                cache:
-                  enabled: true
-                  time: 0.75
-                use_only_authd: false
-                experimental_features: false
-            - node_name: 'worker2'
-              node_api_config:
-                <<: *modified_api_config
-          total_affected_items: 3
-          total_failed_items: 0
-          failed_items: []
-
-  # DELETE /cluster/api/config (all nodes)
-  - name: Restore API configuration
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items: !anything
-          total_affected_items: 3
-          total_failed_items: 0
-          failed_items: []
-
-  # GET /cluster/api/config
-  - name: Get API default configuration
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - node_name: 'master-node'
-              node_api_config:
-                <<: *api_config
-            - node_name: 'worker1'
-              node_api_config:
-                <<: *api_config
-            - node_name: 'worker2'
-              node_api_config:
-                <<: *api_config
-          total_affected_items: 3
-          total_failed_items: 0
-          failed_items: []
 
 ---
 test_name: PUT /cluster/restart

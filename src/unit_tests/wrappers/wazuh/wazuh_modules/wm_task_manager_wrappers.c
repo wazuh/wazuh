@@ -32,7 +32,7 @@ cJSON* __wrap_wm_task_manager_analyze_task(const cJSON *task_object, int *error_
     return mock_type(cJSON*);
 }
 
-cJSON* __wrap_wm_task_manager_parse_response(int error_code, int agent_id, int task_id, char *status) {
+cJSON* __wrap_wm_task_manager_parse_data_response(int error_code, int agent_id, int task_id, char *status) {
     check_expected(error_code);
     check_expected(agent_id);
     check_expected(task_id);
@@ -67,7 +67,7 @@ int __wrap_wm_task_manager_get_task_by_task_id(int task_id, char **module, char 
     return mock();
 }
 
-void __wrap_wm_task_manager_parse_response_result(__attribute__ ((__unused__)) cJSON *response, const char *module, const char *command, char *status, char *error, int create_time, int last_update_time, char *request_command) {
+void __wrap_wm_task_manager_parse_data_result(__attribute__ ((__unused__)) cJSON *response, const char *module, const char *command, char *status, char *error, int create_time, int last_update_time, char *request_command) {
     check_expected(module);
     check_expected(command);
     check_expected(status);

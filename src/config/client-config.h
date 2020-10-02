@@ -59,6 +59,6 @@ void Free_Client(agent * config);
 bool Validate_Address(agent_server *servers);
 
 #define DEFAULT_MAX_RETRIES 5
-#define DEFAULT_RETRY_INTERVAL 5
+#define DEFAULT_RETRY_INTERVAL 10
 
 #endif /* CAGENTD_H */

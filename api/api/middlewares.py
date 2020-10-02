@@ -3,18 +3,16 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import concurrent.futures
-from base64 import b64decode
-from json import loads
 from logging import getLogger
 from time import time
-from connexion.problem import problem as connexion_problem
-from connexion.exceptions import ProblemException, ExtraParameterProblem, OAuthProblem
 
 from aiohttp import web
+from connexion.exceptions import ProblemException, OAuthProblem
+from connexion.problem import problem as connexion_problem
 
-from api.authentication import get_api_conf
+from api.configuration import api_conf
 from api.util import raise_if_exc
-from wazuh.core.exception import WazuhError, WazuhTooManyRequests, WazuhPermissionError
+from wazuh.core.exception import WazuhTooManyRequests, WazuhPermissionError
 
 logger = getLogger('wazuh')
 pool = concurrent.futures.ThreadPoolExecutor()
@@ -34,21 +32,25 @@ request_counter = 0
 current_time = None
 
 
-async def prevent_bruteforce_attack(request, block_time=300, attempts=5):
+async def unlock_ip(request, block_time):
+    """This function blocks/unblocks the IPs that are requesting an API token"""
+    global ip_block, ip_stats
+    try:
+        if time() - block_time >= ip_stats[request.remote]['timestamp']:
+            ip_stats.pop(request.remote)
+            ip_block.remove(request.remote)
+    except (KeyError, ValueError):
+        pass
+
+    if request.remote in ip_block:
+        logger.warning(f'IP blocked due to exceeded number of logins attempts: {request.remote}')
+        raise_if_exc(WazuhPermissionError(6000))
+
+
+async def prevent_bruteforce_attack(request, attempts=5):
     """This function checks that the IPs that are requesting an API token do not do so repeatedly"""
     global ip_stats, ip_block
-    if request.path == '/security/user/authenticate' and request.method == 'GET':
-        try:
-            if time() - block_time >= ip_stats[request.remote]['timestamp']:
-                ip_stats.pop(request.remote)
-                ip_block.remove(request.remote)
-        except (KeyError, ValueError):
-            pass
-
-        if request.remote in ip_block:
-            logger.warning(f'IP blocked due to exceeded number of logins attempts: {request.remote}')
-            raise_if_exc(WazuhPermissionError(6000))
-
+    if request.path == '/security/user/authenticate' and request.method in ['GET', 'POST']:
         if request.remote not in ip_stats.keys():
             ip_stats[request.remote] = dict()
             ip_stats[request.remote]['attempts'] = 1
@@ -60,47 +62,29 @@ async def prevent_bruteforce_attack(request, block_time=300, attempts=5):
             ip_block.add(request.remote)
 
 
-request_counter = 0
-current_time = None
-
-
 @web.middleware
 async def prevent_denial_of_service(request, max_requests=300):
     """This function checks that the maximum number of requests per minute set in the configuration is not exceeded"""
-    if 'authenticate' not in request.path:
-        global current_time, request_counter
-        if not current_time:
-            current_time = time()
+    global current_time, request_counter
+    if not current_time:
+        current_time = time()
 
-        if time() - 60 <= current_time:
-            request_counter += 1
-        else:
-            request_counter = 0
-            current_time = time()
+    if time() - 60 <= current_time:
+        request_counter += 1
+    else:
+        request_counter = 0
+        current_time = time()
 
-        if request_counter > max_requests:
-            logger.debug(f'Request rejected due to high request per minute: Source IP: {request.remote}')
-            user = None
-            payload = dict(request.raw_headers)
-
-            if b'Authorization' in payload.keys():
-                payload = dict(request.raw_headers)[b'Authorization'].decode().split('.')[1]
-            elif b'authorization' in payload.keys():
-                payload = dict(request.raw_headers)[b'authorization'].decode().split('.')[1]
-            else:
-                user = 'unknown_user'
-
-            payload += "=" * ((4 - len(payload) % 4) % 4)
-            request['user'] = loads(b64decode(payload).decode())['sub'] if not user else user
-            raise_if_exc(WazuhTooManyRequests(6001))
+    if request_counter > max_requests:
+        logger.debug(f'Request rejected due to high request per minute: Source IP: {request.remote}')
+        raise_if_exc(WazuhTooManyRequests(6001))
 
 
 @web.middleware
 async def security_middleware(request, handler):
-    access_conf = get_api_conf()['access']
-    await prevent_bruteforce_attack(request, block_time=access_conf['block_time'],
-                                    attempts=access_conf['max_login_attempts'])
+    access_conf = api_conf['access']
     await prevent_denial_of_service(request, max_requests=access_conf['max_request_per_minute'])
+    await unlock_ip(request=request, block_time=access_conf['block_time'])
 
     response = await handler(request)
 
@@ -113,6 +97,7 @@ async def response_postprocessing(request, handler):
 
     Additionally, it cleans the output given by connexion's exceptions. If no exception is raised during the
     'await handler(request) it means the output will be a 200 response and no fields needs to be removed."""
+
     def cleanup_detail_field(detail):
         return ' '.join(str(detail).replace("\n\n", ". ").replace("\n", "").split())
 
@@ -134,7 +119,12 @@ async def response_postprocessing(request, handler):
                                     detail=cleanup_detail_field(ex.__dict__['detail']) if 'detail' in ex.__dict__ else '',
                                     ext=ex.__dict__['ext'] if 'ext' in ex.__dict__ else None)
     except OAuthProblem:
-        problem = connexion_problem(401, "Unauthorized", type="about:blank", detail="No authorization token provided")
+        if request.path == '/security/user/authenticate' and request.method in ['GET', 'POST']:
+            await prevent_bruteforce_attack(request=request, attempts=api_conf['access']['max_login_attempts'])
+            problem = connexion_problem(401, "Unauthorized", type="about:blank", detail="Invalid credentials")
+        else:
+            problem = connexion_problem(401, "Unauthorized", type="about:blank",
+                                        detail="No authorization token provided")
     finally:
         if problem:
             remove_unwanted_fields()

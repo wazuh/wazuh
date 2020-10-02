@@ -244,7 +244,6 @@ static int reported_upgrade_module = 0;
 pthread_mutex_t decode_syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_check_hour_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t lf_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Reported mutexes */
 static pthread_mutex_t writer_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -2363,20 +2362,28 @@ void * w_dispatch_upgrade_module_thread(__attribute__((unused)) void * args) {
 
         // Inserts agent id into incomming message and sends it to upgrade module
         cJSON *message_obj = cJSON_Parse(lf->log);
+
         if (message_obj) {
-            int sock = OS_ConnectUnixDomain(WM_UPGRADE_SOCK, SOCK_STREAM, OS_MAXSTR);
-            if (sock == OS_SOCKTERR) {
-                merror("Could not connect to upgrade module socket at '%s'. Error: %s", WM_UPGRADE_SOCK, strerror(errno));
+            cJSON *message_params = cJSON_GetObjectItem(message_obj, "parameters");
+
+            if (message_params) {
+                int sock = OS_ConnectUnixDomain(WM_UPGRADE_SOCK, SOCK_STREAM, OS_MAXSTR);
+
+                if (sock == OS_SOCKTERR) {
+                    merror("Could not connect to upgrade module socket at '%s'. Error: %s", WM_UPGRADE_SOCK, strerror(errno));
+                } else {
+                    int agent = atoi(lf->agent_id);
+                    cJSON* agents = cJSON_CreateIntArray(&agent, 1);
+                    cJSON_AddItemToObject(message_params, "agents", agents);
+
+                    char *message = cJSON_PrintUnformatted(message_obj);
+                    OS_SendSecureTCP(sock, strlen(message), message);
+                    os_free(message);
+
+                    close(sock);
+                }
             } else {
-                int agent = atoi(lf->agent_id);
-                cJSON* agents = cJSON_CreateIntArray(&agent, 1);
-                cJSON_AddItemToObject(message_obj, "agents", agents);
-                
-                char *message = cJSON_PrintUnformatted(message_obj);
-                OS_SendSecureTCP(sock, strlen(message), message);
-                os_free(message);
-                
-                close(sock);
+                merror("Could not get parameters from upgrade message: %s", lf->log);
             }
             cJSON_Delete(message_obj);
         } else {
@@ -2496,9 +2503,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         }
 
         // Insert labels
-        w_mutex_lock(&lf_mutex);
         lf->labels = labels_find(lf);
-        w_mutex_unlock(&lf_mutex);
 
         /* Check the rules */
         DEBUG_MSG("%s: DEBUG: Checking the rules - %d ",
