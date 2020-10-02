@@ -259,7 +259,7 @@ void * req_receiver(__attribute__((unused)) void * arg) {
         } else if (strncmp(node->target, "logcollector", 12) == 0) {
             length = lccom_dispatch(node->buffer, &buffer);
         } else if (strncmp(node->target, "com", 3) == 0) {
-            length = wcom_dispatch(node->buffer, node->length, &buffer);
+            length = wcom_dispatch(node->buffer, &buffer);
         } else if (strncmp(node->target, "syscheck", 8) == 0) {
             length = syscom_dispatch(node->buffer, &buffer);
         } else if (strncmp(node->target, "wmodules", 8) == 0) {
