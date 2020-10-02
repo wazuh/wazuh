@@ -614,9 +614,10 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     mdebug1("Dispatch thread ready");
 
     while (running) {
-        const struct timespec timeout = { .tv_sec = time(NULL) + 1 };
+        struct timespec timeout;
+        clock_gettime(CLOCK_MONOTONIC, &timeout);
+        timeout.tv_sec += 1;
         struct client *client = queue_pop_ex_timedwait(client_queue, &timeout);
-
 
         if (!client)
             continue;

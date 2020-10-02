@@ -13,13 +13,17 @@
 
 w_queue_t * queue_init(size_t size) {
     w_queue_t * queue;
+    pthread_condattr_t attr;
     os_calloc(1, sizeof(w_queue_t), queue);
     os_malloc(size * sizeof(void *), queue->data);
     queue->size = size;
     queue->elements = 0;
     w_mutex_init(&queue->mutex, NULL);
-    w_cond_init(&queue->available, NULL);
-    w_cond_init(&queue->available_not_empty, NULL);
+    w_condattr_init(&attr);
+    w_condattr_setclock(&attr, CLOCK_MONOTONIC);
+    w_cond_init(&queue->available, &attr);
+    w_cond_init(&queue->available_not_empty, &attr);
+    w_condattr_destroy(&attr);
     return queue;
 }
 

@@ -60,13 +60,17 @@ void * fim_run_integrity(void * args) {
 
         mdebug2("Finished calculating FIM integrity. Time: %.3f seconds.", time_diff(&start, &end));
 
-        struct timespec timeout = { .tv_sec = time(NULL) + sync_interval };
+        struct timespec timeout;
+        clock_gettime(CLOCK_MONOTONIC, &timeout);
+        timeout.tv_sec += sync_interval;
 
         // Get messages until timeout
         char * msg;
 
         while ((msg = queue_pop_ex_timedwait(fim_sync_queue, &timeout))) {
-            long margin = time(NULL) + syscheck.sync_response_timeout;
+            struct timespec margin_time;
+            clock_gettime(CLOCK_MONOTONIC, &margin_time);
+            long margin = margin_time.tv_sec + syscheck.sync_response_timeout;
 
             fim_sync_dispatch(msg);
             free(msg);
