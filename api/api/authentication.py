@@ -7,6 +7,7 @@ import concurrent.futures
 import copy
 import logging
 import os
+from importlib import reload
 from secrets import token_urlsafe
 from shutil import chown
 from time import time
@@ -110,6 +111,7 @@ def change_secret():
 
 
 def get_security_conf():
+    reload(configuration)
     return copy.deepcopy(configuration.security_conf)
 
 
