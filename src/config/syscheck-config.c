@@ -293,6 +293,7 @@ void dump_syscheck_registry(syscheck_config *syscheck,
         syscheck->registry[pl + 1].tag = NULL;
         syscheck->registry[pl + 1].recursion_level = 0;
         syscheck->registry[pl + 1].filerestrict = NULL;
+        syscheck->registry[pl + 1].diff_size_limit = -1;
         os_strdup(entry, syscheck->registry[pl].entry);
     } else {
         while (syscheck->registry[pl].entry != NULL) {
@@ -311,6 +312,7 @@ void dump_syscheck_registry(syscheck_config *syscheck,
             syscheck->registry[pl + 1].tag = NULL;
             syscheck->registry[pl + 1].recursion_level = 0;
             syscheck->registry[pl + 1].filerestrict = NULL;
+            syscheck->registry[pl + 1].diff_size_limit = -1;
             os_strdup(entry, syscheck->registry[pl].entry);
         } else {
             if (syscheck->registry[pl].filerestrict) {
@@ -471,6 +473,7 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
     const char *xml_check_mtime = "check_mtime";
     const char *xml_check_type = "check_type";
     const char *xml_restrict = "restrict";
+    const char *xml_diff_size_limit = "diff_size_limit";
 
     int i;
     char **entry;
@@ -480,6 +483,7 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
     int recursion_level = MAX_REGISTRY_DEPTH;
     int opts = REGISTRY_CHECK_ALL;
     int retval = 0;
+    int tmp_diff_size = -1;
 
     if (attributes && values) {
         for (i = 0; attributes[i]; i++) {
@@ -625,6 +629,21 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
                     mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
                     goto clean_reg;
                 }
+            } else if (strcmp(attributes[i], xml_diff_size_limit) == 0) {
+                if (values[i]) {
+                    tmp_diff_size = read_data_unit(values[i]);
+                    if (tmp_diff_size == -1) {
+                        mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                        goto clean_reg;
+                    }
+                    if (tmp_diff_size < 1) {
+                        tmp_diff_size = 1;      // 1 KB is the minimum
+                    }
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+
             } else {
                 merror(XML_INVATTR, attributes[i], entries);
                 goto clean_reg;
@@ -671,10 +690,10 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
 
         /* Add new entry */
         if (arch == ARCH_BOTH) {
-            dump_syscheck_registry(syscheck, tmp_entry, opts, restrictfile, recursion_level, tag, ARCH_64BIT, -1);
-            dump_syscheck_registry(syscheck, tmp_entry, opts, restrictfile, recursion_level, tag, ARCH_32BIT, -1);
+            dump_syscheck_registry(syscheck, tmp_entry, opts, restrictfile, recursion_level, tag, ARCH_64BIT, tmp_diff_size);
+            dump_syscheck_registry(syscheck, tmp_entry, opts, restrictfile, recursion_level, tag, ARCH_32BIT, tmp_diff_size);
         } else {
-            dump_syscheck_registry(syscheck, tmp_entry, opts, restrictfile, recursion_level, tag, arch, -1);
+            dump_syscheck_registry(syscheck, tmp_entry, opts, restrictfile, recursion_level, tag, arch, tmp_diff_size);
         }
 
         /* Next entry */

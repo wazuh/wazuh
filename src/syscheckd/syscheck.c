@@ -169,6 +169,9 @@ int Start_win32_Syscheck()
             minfo(FIM_MONITORING_REGISTRY, syscheck.registry[r].entry,
                   syscheck.registry[r].arch == ARCH_64BIT ? " [x64]" : "",
                   syscheck_opts2str(optstr, sizeof(optstr), syscheck.registry[r].opts));
+            if (syscheck.file_size_enabled){
+                minfo(FIM_DIFF_FILE_SIZE_LIMIT, syscheck.registry[r].diff_size_limit, syscheck.registry[r].entry);
+            }
             r++;
         }
 
