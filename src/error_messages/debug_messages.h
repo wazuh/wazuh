@@ -242,5 +242,6 @@
 #define FIM_DIFF_FOLDER_SIZE                "(6348): Size of '%s' folder: %.5f KB."
 #define FIM_BIG_FILE_REPORT_CHANGES         "(6349): File '%s' is too big for configured maximum size to perform diff operation."
 #define FIM_DISK_QUOTA_LIMIT_REACHED        "(6350): The maximum configured size for the '%s' folder has been reached, the diff operation cannot be performed."
+#define FIM_DIFF_FOLDER_DELETED             "(6351): Folder '%s' has been deleted."
 
 #endif /* DEBUG_MESSAGES_H */
