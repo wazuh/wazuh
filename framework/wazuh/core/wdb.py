@@ -257,6 +257,8 @@ class WazuhDBConnection:
                     send_request_to_wdb(query_lower, step, off, response)
             except ValueError as e:
                 raise WazuhError(2006, str(e))
+            except WazuhError as e:
+                raise e
             except Exception as e:
                 raise WazuhInternalError(2007, str(e))
 
