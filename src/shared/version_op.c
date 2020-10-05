@@ -642,25 +642,22 @@ os_info *get_unix_version()
                     bool build=false, name=false, version=false;
                     while (fgets(buff, sizeof(buff) - 1, os_release)) {
                         if(build){
-                            merror("\n %s \n", buff);  //temp
-                            id = strtok_r(buff, "><", &save_ptr);
-                            info->os_build = strdup(id);  //need fix
+                            strtok_r(buff, ">", &save_ptr);
+                            id=strtok_r(NULL, "<", &save_ptr);
+                            info->os_build = strdup(id);
                             build=false;
-                            merror("\n test \n %s \n", info->os_build);  //temp
                         }
                         if(name){
-                            merror("\n %s \n", buff);  //temp
-                            id = strtok_r(buff, "><", &save_ptr);
+                            strtok_r(buff, ">", &save_ptr);
+                            id=strtok_r(NULL, "<", &save_ptr);
                             info->os_name = strdup(id);
                             name=false;
-                            merror("\n test \n %s \n", info->os_name);  //temp
                         }
                         if(version){
-                            merror("\n %s \n", buff);  //temp
-                            id = strtok_r(buff, "><", &save_ptr);
+                            strtok_r(buff, ">", &save_ptr);
+                            id=strtok_r(NULL, "<", &save_ptr);
                             info->os_version = strdup(id);
                             version=false;
-                            merror("\n test \n %s \n", info->os_version);  //temp
                         }
                         if (strstr(buff,"ProductBuildVersion")){
                             build=true;
@@ -680,25 +677,22 @@ os_info *get_unix_version()
                     bool build=false, name=false, version=false;
                     while (fgets(buff, sizeof(buff) - 1, os_release)) {
                         if(build){
-                            merror("\n %s \n", buff);
-                            id = strtok_r(buff, "><", &save_ptr);
-                            info->os_build = strdup(id);
+                            strtok_r(buff, ">", &save_ptr);
+                            id=strtok_r(NULL, "<", &save_ptr);
+                            info->os_build = strdup(id); 
                             build=false;
-                            merror("\n test \n %s \n", info->os_build);
                         }
                         if(name){
-                            merror("\n %s \n", buff);
-                            id = strtok_r(buff, "><", &save_ptr);
+                            strtok_r(buff, ">", &save_ptr);
+                            id=strtok_r(NULL, "<", &save_ptr);
                             info->os_name = strdup(id);
                             name=false;
-                            merror("\n test \n %s \n", info->os_name);
                         }
                         if(version){
-                            merror("\n %s \n", buff);
-                            id = strtok_r(buff, "><", &save_ptr);
+                            strtok_r(buff, ">", &save_ptr);
+                            id=strtok_r(NULL, "<", &save_ptr);
                             info->os_version = strdup(id);
                             version=false;
-                            merror("\n test \n %s \n", info->os_version);
                         }
                         if (strstr(buff,"ProductBuildVersion")){
                             build=true;
