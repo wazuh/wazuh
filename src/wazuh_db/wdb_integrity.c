@@ -18,7 +18,9 @@
 #include <openssl/evp.h>
 
 static const char * COMPONENT_NAMES[] = {
-    [WDB_FIM] = "fim"
+    [WDB_FIM] = "fim",
+    [WDB_FIM_FILE] = "fim_file",
+    [WDB_FIM_REGISTRY] = "fim_registry",
 };
 
 #ifdef WAZUH_UNIT_TESTING
@@ -50,7 +52,11 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
     assert(wdb != NULL);
     assert(hexdigest != NULL);
 
-    const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_SELECT_CHECKSUM_RANGE };
+    const int INDEXES[] = {
+        [WDB_FIM] = WDB_STMT_FIM_SELECT_CHECKSUM_RANGE,
+        [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_SELECT_CHECKSUM_RANGE,
+        [WDB_FIM_REGISTRY] = WDB_STMT_FIM_REGISTRY_SELECT_CHECKSUM_RANGE,
+    };
     assert(component < sizeof(INDEXES) / sizeof(int));
 
     if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
@@ -114,8 +120,16 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
 
     assert(wdb != NULL);
 
-    const int INDEXES_AROUND[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_AROUND };
-    const int INDEXES_RANGE[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_RANGE };
+    const int INDEXES_AROUND[] = {
+        [WDB_FIM] = WDB_STMT_FIM_DELETE_AROUND,
+        [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_DELETE_AROUND,
+        [WDB_FIM_REGISTRY] = WDB_STMT_FIM_REGISTRY_DELETE_AROUND,
+    };
+    const int INDEXES_RANGE[] = {
+        [WDB_FIM] = WDB_STMT_FIM_DELETE_RANGE,
+        [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_DELETE_RANGE,
+        [WDB_FIM_REGISTRY] = WDB_STMT_FIM_REGISTRY_DELETE_RANGE,
+    };
     assert(component < sizeof(INDEXES_AROUND) / sizeof(int));
     assert(component < sizeof(INDEXES_RANGE) / sizeof(int));
 
@@ -291,7 +305,11 @@ end:
 
 // Query a complete table clear
 int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payload) {
-    const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_CLEAR };
+    const int INDEXES[] = {
+        [WDB_FIM] = WDB_STMT_FIM_CLEAR,
+        [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_CLEAR,
+        [WDB_FIM_REGISTRY] = WDB_STMT_FIM_REGISTRY_CLEAR,
+    };
     assert(component < sizeof(INDEXES) / sizeof(int));
 
     int retval = -1;

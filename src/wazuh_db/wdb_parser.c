@@ -86,7 +86,25 @@ int wdb_parse(char * input, char * output) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", query);
                 result = -1;
             } else {
-                result = wdb_parse_syscheck(wdb, next, output);
+                result = wdb_parse_syscheck(wdb, WDB_FIM, next, output);
+            }
+        } else if (strcmp(query, "fim_file") == 0) {
+            if (!next) {
+                mdebug1("DB(%s) Invalid FIM file query syntax.", sagent_id);
+                mdebug2("DB(%s) FIM file query error near: %s", sagent_id, query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", query);
+                result = -1;
+            } else {
+                result = wdb_parse_syscheck(wdb, WDB_FIM_FILE, next, output);
+            }
+        } else if (strcmp(query, "fim_registry") == 0) {
+            if (!next) {
+                mdebug1("DB(%s) Invalid FIM registry query syntax.", sagent_id);
+                mdebug2("DB(%s) FIM registry query error near: %s", sagent_id, query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", query);
+                result = -1;
+            } else {
+                result = wdb_parse_syscheck(wdb, WDB_FIM_REGISTRY, next, output);
             }
         } else if (strcmp(query, "sca") == 0) {
             if (!next) {
@@ -399,7 +417,7 @@ int wdb_parse(char * input, char * output) {
     }
 }
 
-int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
+int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, char * output) {
     char * curr;
     char * next;
     char * checksum;
@@ -556,7 +574,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         snprintf(output, OS_MAXSTR + 1, "ok");
         return 0;
     } else if (strncmp(curr, "integrity_check_", 16) == 0) {
-        switch (wdbi_query_checksum(wdb, WDB_FIM, curr, next)) {
+        switch (wdbi_query_checksum(wdb, component, curr, next)) {
         case -1:
             mdebug1("DB(%s) Cannot query FIM range checksum.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot perform range checksum");
@@ -576,7 +594,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
 
         return 0;
     } else if (strcmp(curr, "integrity_clear") == 0) {
-        switch (wdbi_query_clear(wdb, WDB_FIM, next)) {
+        switch (wdbi_query_clear(wdb, component, next)) {
         case -1:
             mdebug1("DB(%s) Cannot query FIM range checksum.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot perform range checksum");
