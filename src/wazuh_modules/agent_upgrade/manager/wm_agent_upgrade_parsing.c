@@ -401,16 +401,14 @@ cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, cJ
     cJSON *origin = cJSON_CreateObject();
     cJSON *parameters = cJSON_CreateObject();
 
-    char* node_name;
+    char* node_name = NULL;
     OS_XML xml;
 
     const char *(xml_node[]) = {"ossec_config", "cluster", "node_name", NULL};
 
-    if (OS_ReadXML(DEFAULTCPATH, &xml) < 0) {
-        merror_exit(XML_ERROR, DEFAULTCPATH, xml.err, xml.err_line);
+    if (OS_ReadXML(DEFAULTCPATH, &xml) >= 0) {
+        node_name = OS_GetOneContentforElement(&xml, xml_node);
     }
-
-    node_name = OS_GetOneContentforElement(&xml, xml_node);
 
     OS_ClearXML(&xml);
 

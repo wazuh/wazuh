@@ -35,7 +35,7 @@ if(${TARGET} STREQUAL "server")
                             -Wl,--wrap,wm_agent_upgrade_parse_response -Wl,--wrap,wm_agent_upgrade_cancel_pending_upgrades -Wl,--wrap,sleep -Wl,--wrap,CreateThread -Wl,--wrap,getpid")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_parsing")
-    list(APPEND upgrade_flags "-Wl,--wrap,_mterror")
+    list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mterror_exit -Wl,--wrap,OS_ReadXML -Wl,--wrap,OS_GetOneContentforElement -Wl,--wrap,OS_ClearXML")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_validate")
     list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,wurl_http_get -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,OS_SHA1_File -Wl,--wrap,wurl_request -Wl,--wrap,sleep \
