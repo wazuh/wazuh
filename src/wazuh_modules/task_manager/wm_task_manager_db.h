@@ -67,7 +67,7 @@ int wm_task_manager_insert_task(int agent_id, const char *node, const char *modu
 int wm_task_manager_get_upgrade_task_status(int agent_id, const char *node, char **status) __attribute__((nonnull));
 
 /**
- * Update the status of a task in the tasks DB.
+ * Update the status of a upgrade task in the tasks DB.
  * @param agent_id ID of the agent where the task is being executed.
  * @param node Node that executed the command.
  * @param status New status of the task.

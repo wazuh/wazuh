@@ -1219,7 +1219,7 @@ void test_wm_task_manager_insert_task_open_err(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wm_task_manager_get_task_status_ok(void **state)
+void test_wm_task_manager_get_upgrade_task_status_ok(void **state)
 {
     int agent_id = 78;
     char *node = "node03";
@@ -1258,7 +1258,7 @@ void test_wm_task_manager_get_task_status_ok(void **state)
     assert_string_equal(status, "In progress");
 }
 
-void test_wm_task_manager_get_task_status_no_task_id_ok(void **state)
+void test_wm_task_manager_get_upgrade_task_status_no_task_id_ok(void **state)
 {
     int agent_id = 78;
     char *node = "node03";
@@ -1289,7 +1289,7 @@ void test_wm_task_manager_get_task_status_no_task_id_ok(void **state)
     assert_null(status);
 }
 
-void test_wm_task_manager_get_task_status_step_err(void **state)
+void test_wm_task_manager_get_upgrade_task_status_step_err(void **state)
 {
     int agent_id = 78;
     char *node = "node03";
@@ -1325,7 +1325,7 @@ void test_wm_task_manager_get_task_status_step_err(void **state)
     assert_null(status);
 }
 
-void test_wm_task_manager_get_task_status_prepare_err(void **state)
+void test_wm_task_manager_get_upgrade_task_status_prepare_err(void **state)
 {
     int agent_id = 78;
     char *node = "node03";
@@ -1355,7 +1355,7 @@ void test_wm_task_manager_get_task_status_prepare_err(void **state)
     assert_null(status);
 }
 
-void test_wm_task_manager_get_task_status_open_err(void **state)
+void test_wm_task_manager_get_upgrade_task_status_open_err(void **state)
 {
     int agent_id = 78;
     char *node = "node03";
@@ -1383,7 +1383,7 @@ void test_wm_task_manager_get_task_status_open_err(void **state)
     assert_null(status);
 }
 
-void test_wm_task_manager_update_task_status_ok(void **state)
+void test_wm_task_manager_update_upgrade_task_status_ok(void **state)
 {
     int agent_id = 115;
     char *node = "node03";
@@ -1445,7 +1445,7 @@ void test_wm_task_manager_update_task_status_ok(void **state)
     assert_int_equal(ret, WM_TASK_SUCCESS);
 }
 
-void test_wm_task_manager_update_task_status_old_status_err(void **state)
+void test_wm_task_manager_update_upgrade_task_status_old_status_err(void **state)
 {
     int agent_id = 115;
     char *node = "node03";
@@ -1483,7 +1483,7 @@ void test_wm_task_manager_update_task_status_old_status_err(void **state)
     assert_int_equal(ret, WM_TASK_DATABASE_NO_TASK);
 }
 
-void test_wm_task_manager_update_task_status_task_id_err(void **state)
+void test_wm_task_manager_update_upgrade_task_status_task_id_err(void **state)
 {
     int agent_id = 115;
     char *node = "node03";
@@ -1513,7 +1513,7 @@ void test_wm_task_manager_update_task_status_task_id_err(void **state)
     assert_int_equal(ret, WM_TASK_DATABASE_NO_TASK);
 }
 
-void test_wm_task_manager_update_task_status_status_err(void **state)
+void test_wm_task_manager_update_upgrade_task_status_status_err(void **state)
 {
     int agent_id = 115;
     char *node = "node03";
@@ -1524,7 +1524,7 @@ void test_wm_task_manager_update_task_status_status_err(void **state)
     assert_int_equal(ret, WM_TASK_INVALID_STATUS);
 }
 
-void test_wm_task_manager_update_task_status_step2_err(void **state)
+void test_wm_task_manager_update_upgrade_task_status_step2_err(void **state)
 {
     int agent_id = 115;
     char *node = "node03";
@@ -1589,7 +1589,7 @@ void test_wm_task_manager_update_task_status_step2_err(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wm_task_manager_update_task_status_prepare2_err(void **state)
+void test_wm_task_manager_update_upgrade_task_status_prepare2_err(void **state)
 {
     int agent_id = 115;
     char *node = "node03";
@@ -1637,7 +1637,7 @@ void test_wm_task_manager_update_task_status_prepare2_err(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wm_task_manager_update_task_status_step_err(void **state)
+void test_wm_task_manager_update_upgrade_task_status_step_err(void **state)
 {
     int agent_id = 115;
     char *node = "node03";
@@ -1672,7 +1672,7 @@ void test_wm_task_manager_update_task_status_step_err(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wm_task_manager_update_task_status_prepare_err(void **state)
+void test_wm_task_manager_update_upgrade_task_status_prepare_err(void **state)
 {
     int agent_id = 115;
     char *node = "node03";
@@ -1701,7 +1701,7 @@ void test_wm_task_manager_update_task_status_prepare_err(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wm_task_manager_update_task_status_open_err(void **state)
+void test_wm_task_manager_update_upgrade_task_status_open_err(void **state)
 {
     int agent_id = 115;
     char *node = "node03";
@@ -1728,7 +1728,7 @@ void test_wm_task_manager_update_task_status_open_err(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wm_task_manager_get_task_by_agent_id_and_module_ok(void **state)
+void test_wm_task_manager_get_upgrade_task_by_agent_id_ok(void **state)
 {
     int agent_id = 88;
     char *node = NULL;
@@ -1798,7 +1798,7 @@ void test_wm_task_manager_get_task_by_agent_id_and_module_ok(void **state)
     os_free(error);
 }
 
-void test_wm_task_manager_get_task_by_agent_id_and_module_task_id_err(void **state)
+void test_wm_task_manager_get_upgrade_task_by_agent_id_task_id_err(void **state)
 {
     int agent_id = 88;
     char *node = NULL;
@@ -1831,13 +1831,14 @@ void test_wm_task_manager_get_task_by_agent_id_and_module_task_id_err(void **sta
     int ret = wm_task_manager_get_upgrade_task_by_agent_id(agent_id, &node, &module, &command, &status, &error, &update_time, &last_update);
 
     assert_int_equal(ret, OS_NOTFOUND);
+    assert_null(module);
     assert_null(command);
     assert_int_equal(update_time, 0);
     assert_int_equal(last_update, 0);
     assert_null(status);
 }
 
-void test_wm_task_manager_get_task_by_agent_id_and_module_step_err(void **state)
+void test_wm_task_manager_get_upgrade_task_by_agent_id_step_err(void **state)
 {
     int agent_id = 88;
     char *node = NULL;
@@ -1875,13 +1876,14 @@ void test_wm_task_manager_get_task_by_agent_id_and_module_step_err(void **state)
     int ret = wm_task_manager_get_upgrade_task_by_agent_id(agent_id, &node, &module, &command, &status, &error, &update_time, &last_update);
 
     assert_int_equal(ret, OS_INVALID);
+    assert_null(module);
     assert_null(command);
     assert_int_equal(update_time, 0);
     assert_int_equal(last_update, 0);
     assert_null(status);
 }
 
-void test_wm_task_manager_get_task_by_agent_id_and_module_prepare_err(void **state)
+void test_wm_task_manager_get_upgrade_task_by_agent_id_prepare_err(void **state)
 {
     int agent_id = 88;
     char *node = NULL;
@@ -1913,13 +1915,14 @@ void test_wm_task_manager_get_task_by_agent_id_and_module_prepare_err(void **sta
     int ret = wm_task_manager_get_upgrade_task_by_agent_id(agent_id, &node, &module, &command, &status, &error, &update_time, &last_update);
 
     assert_int_equal(ret, OS_INVALID);
+    assert_null(module);
     assert_null(command);
     assert_int_equal(update_time, 0);
     assert_int_equal(last_update, 0);
     assert_null(status);
 }
 
-void test_wm_task_manager_get_task_by_agent_id_and_module_open_err(void **state)
+void test_wm_task_manager_get_upgrade_task_by_agent_id_open_err(void **state)
 {
     int agent_id = 88;
     char *node = NULL;
@@ -1949,6 +1952,7 @@ void test_wm_task_manager_get_task_by_agent_id_and_module_open_err(void **state)
     int ret = wm_task_manager_get_upgrade_task_by_agent_id(agent_id, &node, &module, &command, &status, &error, &update_time, &last_update);
 
     assert_int_equal(ret, OS_INVALID);
+    assert_null(module);
     assert_null(command);
     assert_int_equal(update_time, 0);
     assert_int_equal(last_update, 0);
@@ -2214,27 +2218,27 @@ int main(void) {
         cmocka_unit_test(test_wm_task_manager_insert_task_prepare_err),
         cmocka_unit_test(test_wm_task_manager_insert_task_open_err),
         //wm_task_manager_get_upgrade_task_status
-        cmocka_unit_test_teardown(test_wm_task_manager_get_task_status_ok, teardown_strings),
-        cmocka_unit_test(test_wm_task_manager_get_task_status_no_task_id_ok),
-        cmocka_unit_test(test_wm_task_manager_get_task_status_step_err),
-        cmocka_unit_test(test_wm_task_manager_get_task_status_prepare_err),
-        cmocka_unit_test(test_wm_task_manager_get_task_status_open_err),
+        cmocka_unit_test_teardown(test_wm_task_manager_get_upgrade_task_status_ok, teardown_strings),
+        cmocka_unit_test(test_wm_task_manager_get_upgrade_task_status_no_task_id_ok),
+        cmocka_unit_test(test_wm_task_manager_get_upgrade_task_status_step_err),
+        cmocka_unit_test(test_wm_task_manager_get_upgrade_task_status_prepare_err),
+        cmocka_unit_test(test_wm_task_manager_get_upgrade_task_status_open_err),
         // wm_task_manager_update_upgrade_task_status
-        cmocka_unit_test(test_wm_task_manager_update_task_status_ok),
-        cmocka_unit_test(test_wm_task_manager_update_task_status_old_status_err),
-        cmocka_unit_test(test_wm_task_manager_update_task_status_task_id_err),
-        cmocka_unit_test(test_wm_task_manager_update_task_status_status_err),
-        cmocka_unit_test(test_wm_task_manager_update_task_status_step2_err),
-        cmocka_unit_test(test_wm_task_manager_update_task_status_prepare2_err),
-        cmocka_unit_test(test_wm_task_manager_update_task_status_step_err),
-        cmocka_unit_test(test_wm_task_manager_update_task_status_prepare_err),
-        cmocka_unit_test(test_wm_task_manager_update_task_status_open_err),
+        cmocka_unit_test(test_wm_task_manager_update_upgrade_task_status_ok),
+        cmocka_unit_test(test_wm_task_manager_update_upgrade_task_status_old_status_err),
+        cmocka_unit_test(test_wm_task_manager_update_upgrade_task_status_task_id_err),
+        cmocka_unit_test(test_wm_task_manager_update_upgrade_task_status_status_err),
+        cmocka_unit_test(test_wm_task_manager_update_upgrade_task_status_step2_err),
+        cmocka_unit_test(test_wm_task_manager_update_upgrade_task_status_prepare2_err),
+        cmocka_unit_test(test_wm_task_manager_update_upgrade_task_status_step_err),
+        cmocka_unit_test(test_wm_task_manager_update_upgrade_task_status_prepare_err),
+        cmocka_unit_test(test_wm_task_manager_update_upgrade_task_status_open_err),
         // wm_task_manager_get_upgrade_task_by_agent_id
-        cmocka_unit_test_teardown(test_wm_task_manager_get_task_by_agent_id_and_module_ok, teardown_strings),
-        cmocka_unit_test(test_wm_task_manager_get_task_by_agent_id_and_module_task_id_err),
-        cmocka_unit_test(test_wm_task_manager_get_task_by_agent_id_and_module_step_err),
-        cmocka_unit_test(test_wm_task_manager_get_task_by_agent_id_and_module_prepare_err),
-        cmocka_unit_test(test_wm_task_manager_get_task_by_agent_id_and_module_open_err),
+        cmocka_unit_test_teardown(test_wm_task_manager_get_upgrade_task_by_agent_id_ok, teardown_strings),
+        cmocka_unit_test(test_wm_task_manager_get_upgrade_task_by_agent_id_task_id_err),
+        cmocka_unit_test(test_wm_task_manager_get_upgrade_task_by_agent_id_step_err),
+        cmocka_unit_test(test_wm_task_manager_get_upgrade_task_by_agent_id_prepare_err),
+        cmocka_unit_test(test_wm_task_manager_get_upgrade_task_by_agent_id_open_err),
         // wm_task_manager_get_task_by_task_id
         cmocka_unit_test_teardown(test_wm_task_manager_get_task_by_task_id_ok, teardown_strings),
         cmocka_unit_test(test_wm_task_manager_get_task_by_task_id_task_id_err),

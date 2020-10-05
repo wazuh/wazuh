@@ -36,6 +36,7 @@ static const char *upgrade_statuses[] = {
 static const char *error_codes[] = {
     [WM_TASK_SUCCESS] = "Success",
     [WM_TASK_INVALID_MESSAGE] = "Invalid message",
+    [WM_TASK_INVALID_NODE] = "Invalid node",
     [WM_TASK_INVALID_MODULE] = "Invalid module",
     [WM_TASK_INVALID_COMMAND] = "Invalid command",
     [WM_TASK_INVALID_AGENT_ID] = "Invalid agent ID",

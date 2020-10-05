@@ -319,7 +319,7 @@ void test_wm_task_manager_dispatch_module_err(void **state)
     cJSON_AddStringToObject(response2, "message", "Invalid module");
     cJSON_AddNumberToObject(response2, "agent", 2);
 
-    char *result = "{\"error\":0,\"data\":[{\"error\":2,\"message\":\"Invalid module\",\"agent\":1},{\"error\":2,\"message\":\"Invalid module\",\"agent\":2}],\"message\":\"Success\"}";
+    char *result = "{\"error\":0,\"data\":[{\"error\":3,\"message\":\"Invalid module\",\"agent\":1},{\"error\":3,\"message\":\"Invalid module\",\"agent\":2}],\"message\":\"Success\"}";
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
@@ -351,7 +351,7 @@ void test_wm_task_manager_dispatch_module_err(void **state)
     expect_string(__wrap__mterror, formatted_msg, "(8261): Invalid 'module' at index '1'");
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":0,\"data\":[{\"error\":2,\"message\":\"Invalid module\",\"agent\":1},{\"error\":2,\"message\":\"Invalid module\",\"agent\":2}],\"message\":\"Success\"}'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":0,\"data\":[{\"error\":3,\"message\":\"Invalid module\",\"agent\":1},{\"error\":3,\"message\":\"Invalid module\",\"agent\":2}],\"message\":\"Success\"}'");
 
     int ret = wm_task_manager_dispatch(message, &response);
 
@@ -400,7 +400,7 @@ void test_wm_task_manager_dispatch_command_err(void **state)
     cJSON_AddStringToObject(response2, "message", "Invalid command");
     cJSON_AddNumberToObject(response2, "agent", 2);
 
-    char *result = "{\"error\":0,\"data\":[{\"error\":3,\"message\":\"Invalid command\",\"agent\":1},{\"error\":3,\"message\":\"Invalid command\",\"agent\":2}],\"message\":\"Success\"}";
+    char *result = "{\"error\":0,\"data\":[{\"error\":4,\"message\":\"Invalid command\",\"agent\":1},{\"error\":4,\"message\":\"Invalid command\",\"agent\":2}],\"message\":\"Success\"}";
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
@@ -432,7 +432,7 @@ void test_wm_task_manager_dispatch_command_err(void **state)
     expect_string(__wrap__mterror, formatted_msg, "(8261): Invalid 'command' at index '1'");
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":0,\"data\":[{\"error\":3,\"message\":\"Invalid command\",\"agent\":1},{\"error\":3,\"message\":\"Invalid command\",\"agent\":2}],\"message\":\"Success\"}'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":0,\"data\":[{\"error\":4,\"message\":\"Invalid command\",\"agent\":1},{\"error\":4,\"message\":\"Invalid command\",\"agent\":2}],\"message\":\"Success\"}'");
 
     int ret = wm_task_manager_dispatch(message, &response);
 
@@ -480,7 +480,7 @@ void test_wm_task_manager_dispatch_agent_id_err(void **state)
     cJSON_AddStringToObject(response2, "message", "Success");
     cJSON_AddNumberToObject(response2, "agent", 2);
 
-    char *result = "{\"error\":0,\"data\":[{\"error\":4,\"message\":\"Invalid agent\"},{\"error\":0,\"message\":\"Success\",\"agent\":2}],\"message\":\"Success\"}";
+    char *result = "{\"error\":0,\"data\":[{\"error\":5,\"message\":\"Invalid agent\"},{\"error\":0,\"message\":\"Success\",\"agent\":2}],\"message\":\"Success\"}";
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
@@ -509,7 +509,7 @@ void test_wm_task_manager_dispatch_agent_id_err(void **state)
     will_return(__wrap_wm_task_manager_analyze_task, response2);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":0,\"data\":[{\"error\":4,\"message\":\"Invalid agent\"},{\"error\":0,\"message\":\"Success\",\"agent\":2}],\"message\":\"Success\"}'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":0,\"data\":[{\"error\":5,\"message\":\"Invalid agent\"},{\"error\":0,\"message\":\"Success\",\"agent\":2}],\"message\":\"Success\"}'");
 
     int ret = wm_task_manager_dispatch(message, &response);
 
@@ -545,7 +545,7 @@ void test_wm_task_manager_dispatch_task_id_err(void **state)
     cJSON_AddNumberToObject(response1, "error", WM_TASK_INVALID_TASK_ID);
     cJSON_AddStringToObject(response1, "message", "Invalid task");
 
-    char *result = "{\"error\":0,\"data\":[{\"error\":5,\"message\":\"Invalid task\"}],\"message\":\"Success\"}";
+    char *result = "{\"error\":0,\"data\":[{\"error\":6,\"message\":\"Invalid task\"}],\"message\":\"Success\"}";
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
@@ -570,7 +570,7 @@ void test_wm_task_manager_dispatch_task_id_err(void **state)
     expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'task_id' not found at index '0'");
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":0,\"data\":[{\"error\":5,\"message\":\"Invalid task\"}],\"message\":\"Success\"}'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":0,\"data\":[{\"error\":6,\"message\":\"Invalid task\"}],\"message\":\"Success\"}'");
 
     int ret = wm_task_manager_dispatch(message, &response);
 
@@ -608,7 +608,7 @@ void test_wm_task_manager_dispatch_status_err(void **state)
     cJSON_AddStringToObject(response1, "message", "Invalid status");
     cJSON_AddNumberToObject(response1, "agent", 2);
 
-    char *result = "{\"error\":0,\"data\":[{\"error\":6,\"message\":\"Invalid status\",\"agent\":2}],\"message\":\"Success\"}";
+    char *result = "{\"error\":0,\"data\":[{\"error\":7,\"message\":\"Invalid status\",\"agent\":2}],\"message\":\"Success\"}";
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
@@ -633,7 +633,7 @@ void test_wm_task_manager_dispatch_status_err(void **state)
     expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'status' not found at index '0'");
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":0,\"data\":[{\"error\":6,\"message\":\"Invalid status\",\"agent\":2}],\"message\":\"Success\"}'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":0,\"data\":[{\"error\":7,\"message\":\"Invalid status\",\"agent\":2}],\"message\":\"Success\"}'");
 
     int ret = wm_task_manager_dispatch(message, &response);
 
@@ -671,7 +671,7 @@ void test_wm_task_manager_dispatch_no_task_err(void **state)
     cJSON_AddStringToObject(response1, "message", "No task in DB");
     cJSON_AddNumberToObject(response1, "agent", 1);
 
-    char *result = "{\"error\":0,\"data\":[{\"error\":7,\"message\":\"No task in DB\",\"agent\":1}],\"message\":\"Success\"}";
+    char *result = "{\"error\":0,\"data\":[{\"error\":8,\"message\":\"No task in DB\",\"agent\":1}],\"message\":\"Success\"}";
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
@@ -696,7 +696,7 @@ void test_wm_task_manager_dispatch_no_task_err(void **state)
     expect_string(__wrap__mterror, formatted_msg, "(8262): Couldn't find task in DB at index '0'");
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":0,\"data\":[{\"error\":7,\"message\":\"No task in DB\",\"agent\":1}],\"message\":\"Success\"}'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":0,\"data\":[{\"error\":8,\"message\":\"No task in DB\",\"agent\":1}],\"message\":\"Success\"}'");
 
     int ret = wm_task_manager_dispatch(message, &response);
 
@@ -733,7 +733,7 @@ void test_wm_task_manager_dispatch_db_err(void **state)
     cJSON_AddNumberToObject(response1, "error", WM_TASK_DATABASE_ERROR);
     cJSON_AddStringToObject(response1, "message", "Database error");
 
-    char *result = "{\"error\":8,\"data\":[{\"error\":8,\"message\":\"Database error\"}],\"message\":\"Database error\"}";
+    char *result = "{\"error\":9,\"data\":[{\"error\":9,\"message\":\"Database error\"}],\"message\":\"Database error\"}";
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
