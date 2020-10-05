@@ -48,7 +48,7 @@ STATIC cJSON* wm_task_manager_command_upgrade_get_status(int *error_code, int ag
  * @param error Error string extracted from task_object.
  * @return JSON object with the response for this task.
  * */
-STATIC cJSON* wm_task_manager_command_upgrade_update_status(int *error_code, int agent_id, char *status, char *error) __attribute__((nonnull));
+STATIC cJSON* wm_task_manager_command_upgrade_update_status(int *error_code, int agent_id, char *status, char *error) __attribute__((nonnull(1)));
 
 /**
  * Analyze upgrade_result command.
@@ -98,9 +98,9 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
         os_strdup(tmp->valuestring, error);
     }
 
-    if (command){
+    if (command) {
         if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE], command) || !strcmp(task_manager_commands_list[WM_TASK_UPGRADE_CUSTOM], command)) {
-            if (module){
+            if (module) {
                 response = wm_task_manager_command_upgrade(module, command, error_code, agent_id);
             } else {
                 *error_code = WM_TASK_INVALID_MODULE;
@@ -122,7 +122,7 @@ cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
         *error_code = WM_TASK_INVALID_COMMAND;
         response = wm_task_manager_parse_data_response(WM_TASK_INVALID_COMMAND, agent_id, task_id, status);
     }
-    
+
     os_free(module);
     os_free(command);
     os_free(status);
