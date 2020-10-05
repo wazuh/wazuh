@@ -83,7 +83,6 @@ int wdbc_query(const int sock, const char *query, char *response, const int len)
 
     switch (recv_len) {
     case OS_SOCKTERR:
-        retval = -2;
         merror("Cannot receive message: response size is bigger than expected");
         break;
     case -1:
@@ -132,21 +131,25 @@ int wdbc_query_ex(int *sock, const char *query, char *response, const int len) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             merror("database socket is full");
             return retval;
-        } else if (errno == EPIPE || retval == -2) {
-            // Retry to connect
-            merror("Connection with wazuh-db lost. Reconnecting.");
-            close(*sock);
-            if (*sock = wdbc_connect(), *sock < 0) {
-                return retval;
-            }
-            // Send query
-            if (retval = wdbc_query(*sock, query, response, len), retval != 0) {
-                return retval;
-            }
-        } else {
-            merror("Cannot send message: (%d) '%s'.", errno, strerror(errno));
+        }
+
+        if (errno == EPIPE) {
+            mwarn("Connection with wazuh-db lost. Reconnecting.");
+        } 
+        else {
+            merror("Cannot send message: (%d) '%s'. Reconnecting.", errno, strerror(errno));
+        }       
+
+        // Retry to connect        
+        close(*sock);
+        if (*sock = wdbc_connect(), *sock < 0) {
             return retval;
         }
+        // Send query
+        if (retval = wdbc_query(*sock, query, response, len), retval != 0) {
+            return retval;
+        }
+       
     }
 
     return retval;
