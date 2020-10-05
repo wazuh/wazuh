@@ -2239,6 +2239,7 @@ components:
           type: string
           description: "Wazuh component that logged the event"
           enum:
+            - agent_control
             - ossec-agentlessd
             - ossec-analysisd
             - ossec-authd

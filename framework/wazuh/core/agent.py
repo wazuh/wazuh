@@ -851,12 +851,12 @@ class Agent:
     def get_agent_attr(self, attr):
         """Returns a string with an agent's attribute value
         """
-        wdb_conn = WazuhDBBackend(query_format='global')
-        query = "SELECT {0} FROM agent WHERE id = {1}".format(attr, self.id)
-        request = {'attr': attr, 'id': self.id}
-        query_value = wdb_conn.execute(query=query, request=request)[0][attr]
+        query = WazuhDBQueryAgents(select=[attr.replace('_', '.')], filters={'id': [self.id]})
 
-        return query_value
+        try:
+            return query.run()['items'][0]['os']['name']
+        except KeyError:
+            return 'null'
 
     @staticmethod
     def get_agents_overview(offset=0, limit=common.database_limit, sort=None, search=None, select=None,
