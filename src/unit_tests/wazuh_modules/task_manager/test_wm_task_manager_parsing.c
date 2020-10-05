@@ -646,7 +646,6 @@ void test_wm_task_manager_parse_message_agents_status(void **state)
 {
     char *message = "{"
                     "  \"origin\": {"
-                    "      \"name\": \"node05\","
                     "      \"module\": \"upgrade_module\""
                     "   },"
                     "  \"command\": \"upgrade_update_status\","
@@ -664,8 +663,7 @@ void test_wm_task_manager_parse_message_agents_status(void **state)
     assert_non_null(response);
     assert_int_equal(cJSON_GetArraySize(response), 1);
     cJSON *agent1 = cJSON_GetArrayItem(response, 0);
-    assert_non_null(cJSON_GetObjectItem(agent1, "node"));
-    assert_string_equal(cJSON_GetObjectItem(agent1, "node")->valuestring, "node05");
+    assert_null(cJSON_GetObjectItem(agent1, "node"));
     assert_non_null(cJSON_GetObjectItem(agent1, "module"));
     assert_string_equal(cJSON_GetObjectItem(agent1, "module")->valuestring, "upgrade_module");
     assert_non_null(cJSON_GetObjectItem(agent1, "command"));
@@ -764,8 +762,7 @@ void test_wm_task_manager_parse_message_tasks_status(void **state)
 {
     char *message = "{"
                     "  \"origin\": {"
-                    "      \"name\": \"node05\","
-                    "      \"module\": \"upgrade_module\""
+                    "      \"name\": \"node05\""
                     "   },"
                     "  \"command\": \"upgrade_update_status\","
                     "  \"parameters\": {"
@@ -784,8 +781,7 @@ void test_wm_task_manager_parse_message_tasks_status(void **state)
     cJSON *agent1 = cJSON_GetArrayItem(response, 0);
     assert_non_null(cJSON_GetObjectItem(agent1, "node"));
     assert_string_equal(cJSON_GetObjectItem(agent1, "node")->valuestring, "node05");
-    assert_non_null(cJSON_GetObjectItem(agent1, "module"));
-    assert_string_equal(cJSON_GetObjectItem(agent1, "module")->valuestring, "upgrade_module");
+    assert_null(cJSON_GetObjectItem(agent1, "module"));
     assert_non_null(cJSON_GetObjectItem(agent1, "command"));
     assert_string_equal(cJSON_GetObjectItem(agent1, "command")->valuestring, "upgrade_update_status");
     assert_null(cJSON_GetObjectItem(agent1, "agent"));
@@ -940,46 +936,6 @@ void test_wm_task_manager_parse_message_origin_err(void **state)
     assert_null(response);
 }
 
-void test_wm_task_manager_parse_message_module_err(void **state)
-{
-    char *message = "{"
-                    "  \"origin\": {"
-                    "      \"name\": \"node05\""
-                    "   },"
-                    "  \"command\": \"upgrade\","
-                    "  \"parameters\": {"
-                    "      \"agents\": [1, 2]"
-                    "   }"
-                    "}";
-
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'module' not found at index '0'");
-
-    cJSON *response = wm_task_manager_parse_message(message);
-
-    assert_null(response);
-}
-
-void test_wm_task_manager_parse_message_name_err(void **state)
-{
-    char *message = "{"
-                    "  \"origin\": {"
-                    "      \"module\": \"upgrade_module\""
-                    "   },"
-                    "  \"command\": \"upgrade\","
-                    "  \"parameters\": {"
-                    "      \"agents\": [1, 2]"
-                    "   }"
-                    "}";
-
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'name' not found at index '0'");
-
-    cJSON *response = wm_task_manager_parse_message(message);
-
-    assert_null(response);
-}
-
 void test_wm_task_manager_parse_message_parameters_err(void **state)
 {
     char *message = "{"
@@ -1050,8 +1006,6 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_task_manager_parse_message_status, teardown_json),
         cmocka_unit_test(test_wm_task_manager_parse_message_command_err),
         cmocka_unit_test(test_wm_task_manager_parse_message_origin_err),
-        cmocka_unit_test(test_wm_task_manager_parse_message_module_err),
-        cmocka_unit_test(test_wm_task_manager_parse_message_name_err),
         cmocka_unit_test(test_wm_task_manager_parse_message_parameters_err),
         cmocka_unit_test(test_wm_task_manager_parse_message_invalid_json_err)
     };
