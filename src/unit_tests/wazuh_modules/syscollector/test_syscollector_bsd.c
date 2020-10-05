@@ -28,28 +28,33 @@ static void test_normalize_mac_package_name(void **state) {
     int i;
     char * vendor = NULL;
     char * package = NULL;
-    char * source_package[6][3] = {
+    char * source_package[8][3] = {
         {"Microsoft Word", "Microsoft", "Word"},
-        {"Microsoft Word", "Microsoft", "Excel"},
+        {"Microsoft Excel", "Microsoft", "Excel"},
         {"VMware Fusion", "VMware", "Fusion"},
-        {"VMware Fusion", "VMware", "Horizon Client"},
+        {"VMware Horizon Client", "VMware", "Horizon Client"},
         {"1Password 7", NULL, "1Password"},
         {"zoom.us", NULL, "zoom"},
+        {"Foxit Reader", NULL, NULL},
+        {NULL, NULL, NULL},
     };
 
-    for (i = 0; i < 6; i++) {
+    for (i = 0; i < 8; i++) {
         ret = normalize_mac_package_name(source_package[i][0], &vendor, &package);
-        assert_int_equal(ret, 1);
-        if (source_package[i][1]) {
-            assert_string_equal(vendor, source_package[i][1]);
-            os_free(vendor);
+        if (i < 6) {
+            assert_int_equal(ret, 1);
+            if (source_package[i][1]) {
+                assert_string_equal(vendor, source_package[i][1]);
+                os_free(vendor);
+            }
+            assert_string_equal(package, source_package[i][2]);
+            os_free(package);
+        } else {
+            assert_int_equal(ret, 0);
+            assert_null(package);
+            assert_null(vendor);
         }
-        assert_string_equal(package, source_package[i][2]);
-        os_free(package);
     }
-
-    assert_int_equal(0, normalize_mac_package_name("Foxit Reader", &vendor, &package));
-    os_free(package);
 #endif
 }
 
