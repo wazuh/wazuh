@@ -97,15 +97,17 @@ def main():
         # Avoid empty events
         if not event:
             continue
+        # Empty line to separate input from processing
+        logging.info('')
 
         # Process log event
         try:
             output = w_logtest.process_log(event, session_token)
-        except ValueError:
-            logging.error('Error when handling output')
+        except ValueError as error:
+            logging.error('** Wazuh-logtest error ' + str(error))
             continue
         except ConnectionError:
-            logging.error('Error when connecting with logtest')
+            logging.error('** Wazuh-logtest error when connecting with ossec-analysisd')
             continue
 
         # Check and alert to user if new session was created
@@ -168,6 +170,10 @@ class WazuhDeamonProtocol:
         # Convert string to json
         json_msg = json.loads(msg)
         # Get only the payload
+        if json_msg['error']:
+            error_msg = ['\n\t{0}'.format(i) for i in json_msg['message']]
+            error_n = json_msg['error']
+            raise ValueError(str(error_n) + ''.join(error_msg))
         data = json_msg['data']
         return data
 
@@ -242,9 +248,15 @@ class WazuhLogtest:
         logging.debug('Request: %s\n', request)
         recv_packet = self.socket.send(request)
 
-        # Get logtest payload
+        # Get logtest reply
         reply = self.protocol.unwrap(recv_packet)
         logging.debug('Reply: %s\n', reply)
+
+        if reply['codemsg']:
+            error_msg = ['\n\t{0}'.format(i) for i in reply['messages']]
+            error_n = reply['codemsg']
+            raise ValueError(str(error_n) + ''.join(error_msg))
+
         # Save the token
         self.last_token = reply['token']
 
@@ -312,7 +324,6 @@ class WazuhLogtest:
         """
         output_data = output['output']
         # Pre-decoding phase
-        logging.info('')
         logging.info('**Phase 1: Completed pre-decoding.')
         # Check in case rule has no_full_log attribute
         if 'full_log' in output_data:
@@ -324,7 +335,8 @@ class WazuhLogtest:
         logging.info('**Phase 2: Completed decoding.')
         if 'decoder' in output_data and output_data['decoder']:
             WazuhLogtest.show_phase_info(output_data['decoder'], ['name', 'parent'])
-            WazuhLogtest.show_phase_info(output_data['data'])
+            if 'data' in output_data:
+                WazuhLogtest.show_phase_info(output_data['data'])
         else:
             logging.info('\tNo decoder matched.')
         # Rule phase
