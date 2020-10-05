@@ -436,7 +436,7 @@ void fim_read_values(HKEY key_handle,
     DWORD i;
 
     if (new->registry_entry.key->id == 0) {
-        if (fim_db_get_registry_key_rowid(syscheck.database, new->registry_entry.key->path,
+        if (fim_db_get_registry_key_rowid(syscheck.database, new->registry_entry.key->path, new->registry_entry.key->arch,
                                           &new->registry_entry.key->id) != FIMDB_OK) {
             mwarn(FIM_REGISTRY_FAIL_TO_GET_KEY_ID, new->registry_entry.key->arch == ARCH_32BIT ? "[x32]" : "[x64]",
                   new->registry_entry.key->path);
@@ -544,7 +544,7 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
     new.registry_entry.value = NULL;
 
     saved.type = FIM_TYPE_REGISTRY;
-    saved.registry_entry.key = fim_db_get_registry_key(syscheck.database, full_key);
+    saved.registry_entry.key = fim_db_get_registry_key(syscheck.database, full_key, arch);
     saved.registry_entry.value = NULL;
 
     if (saved.registry_entry.key != NULL) {
@@ -571,7 +571,7 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
             cJSON_Delete(json_event);
         }
 
-        fim_db_set_registry_key_scanned(syscheck.database, full_key);
+        fim_db_set_registry_key_scanned(syscheck.database, full_key, arch);
     }
 
     if (value_count) {

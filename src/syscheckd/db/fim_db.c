@@ -55,8 +55,6 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_REPLACE_REG_KEY] = "INSERT OR REPLACE INTO registry_key (id, path, perm, uid, gid, user_name, group_name, mtime, arch, scanned, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     [FIMDB_STMT_GET_REG_KEY] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, scanned, checksum FROM registry_key WHERE path = ?;",
     [FIMDB_STMT_GET_REG_DATA] = "SELECT key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, scanned, last_event, checksum FROM registry_data WHERE name = ? AND key_id = ?;",
-    [FIMDB_STMT_UPDATE_REG_DATA] = "UPDATE registry_data SET type = ?, size = ?, hash_md5 = ?, hash_sha1 = ?, hash_sha256 = ?, scanned = ?, last_event = ?, checksum = ? WHERE key_id = ? AND name = ?;",
-    [FIMDB_STMT_UPDATE_REG_KEY] = "UPDATE registry_key SET perm = ?, uid = ?, gid = ?, user_name = ?, group_name = ?, mtime = ?, arch = ?, scanned = ?, checksum = ? WHERE path = ? and arch = ?;",
     [FIMDB_STMT_GET_ALL_REG_ENTRIES] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, registry_key.scanned, registry_key.checksum, key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, registry_data.scanned, last_event, registry_data.checksum FROM registry_data INNER JOIN registry_key ON registry_key.id = registry_data.key_id ORDER BY PATH ASC;",
     [FIMDB_STMT_GET_REG_KEY_NOT_SCANNED] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, scanned, checksum FROM registry_key WHERE scanned = 0;",
     [FIMDB_STMT_GET_REG_DATA_NOT_SCANNED] = "SELECT key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, scanned, last_event, checksum FROM registry_data WHERE scanned = 0;",
@@ -424,7 +422,7 @@ void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry
         write_buffer = wstr_escape_json(path);
         line_length = strlen(write_buffer);
     } else {
-        os_calloc(MAX_DIR_SIZE, sizeof(char*), write_buffer);
+        os_calloc(MAX_DIR_SIZE, sizeof(char), write_buffer);
         line_length = snprintf(write_buffer, MAX_DIR_SIZE, "%d %s", entry->registry_entry.key->arch, wstr_escape_json(path));
     }
 
@@ -512,6 +510,8 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, int type, pthre
                 os_calloc(1, sizeof(fim_entry), entry);
                 unsigned int arch =  strtoul(line, &split, 10);
                 if (*split != ' ') {
+                    os_free(path);
+                    free_entry(entry);
                     merror("Temporary path file '%s' is corrupt: Wrong format", file->path);
                     continue;
                 }
