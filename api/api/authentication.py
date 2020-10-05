@@ -117,7 +117,7 @@ def get_security_conf():
     return copy.deepcopy(conf.security_conf)
 
 
-def generate_token(user_id=None, roles=None):
+def generate_token(user_id=None, data=None):
     """Generate an encoded jwt token. This method should be called once a user is properly logged on.
 
     Parameters
@@ -146,7 +146,7 @@ def generate_token(user_id=None, roles=None):
         "nbf": int(timestamp),
         "exp": int(timestamp + result['auth_token_exp_timeout']),
         "sub": str(user_id),
-        "rbac_roles": roles,
+        "rbac_roles": data['roles'],
         "rbac_mode": result['rbac_mode']
     }
 
@@ -216,6 +216,8 @@ def decode_token(token):
         if not data.to_dict()['result']['valid']:
             raise Unauthorized
 
+        payload['rbac_policies'] = data['policies']
+        payload['rbac_policies']['rbac_mode'] = payload.pop('rbac_mode')
         # Detect local changes
         dapi = DistributedAPI(f=get_security_conf,
                               request_type='local_master',
@@ -226,7 +228,7 @@ def decode_token(token):
         result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
         current_rbac_mode = result['rbac_mode']
         current_expiration_time = result['auth_token_exp_timeout']
-        if payload['rbac_mode'] != current_rbac_mode or (payload['exp'] - payload['nbf']) != current_expiration_time:
+        if payload['rbac_policies']['rbac_mode'] != current_rbac_mode or (payload['exp'] - payload['nbf']) != current_expiration_time:
             raise Unauthorized
 
         return payload

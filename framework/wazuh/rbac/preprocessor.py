@@ -1,13 +1,13 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import re
 
 from wazuh.core.exception import WazuhError, WazuhPermissionError
+from wazuh.core.results import WazuhResult
 from wazuh.rbac.auth_context import RBAChecker, get_policies_from_roles
 from wazuh.rbac.orm import AuthenticationManager
-from wazuh.core.results import WazuhResult
 
 
 class PreProcessor:
@@ -129,4 +129,8 @@ def get_permissions(user_id=None, auth_context=None):
         else:
             roles = get_roles(user_id=user_id)
 
-        return roles
+        result = {
+            'roles': roles
+        }
+
+        return WazuhResult(result)

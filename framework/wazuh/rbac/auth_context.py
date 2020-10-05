@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -332,7 +332,7 @@ class RBAChecker:
     def run_user_role_link_roles(user_id):
         """This function will return the roles in the RBAC database for an user"""
         with orm.UserRolesManager() as urm:
-            user_roles = list(role for role in urm.get_all_roles_from_user(user_id=user_id))
+            user_roles = list(role.id for role in urm.get_all_roles_from_user(user_id=user_id))
 
         return user_roles
 
