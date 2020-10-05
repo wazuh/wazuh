@@ -7,7 +7,6 @@ import concurrent.futures
 import copy
 import logging
 import os
-from importlib import reload
 from secrets import token_urlsafe
 from shutil import chown
 from time import time
@@ -15,7 +14,8 @@ from time import time
 from jose import JWTError, jwt
 from werkzeug.exceptions import Unauthorized
 
-import api.configuration as configuration
+import api.configuration as conf
+from api.constants import SECURITY_CONFIG_PATH
 from api.constants import SECURITY_PATH
 from api.util import raise_if_exc
 from wazuh import WazuhInternalError
@@ -111,8 +111,9 @@ def change_secret():
 
 
 def get_security_conf():
-    reload(configuration)
-    return copy.deepcopy(configuration.security_conf)
+    conf.security_conf.update(conf.read_yaml_config(config_file=SECURITY_CONFIG_PATH,
+                                                    default_conf=conf.default_security_configuration))
+    return copy.deepcopy(conf.security_conf)
 
 
 def generate_token(user_id=None, rbac_policies=None):
