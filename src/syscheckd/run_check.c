@@ -74,10 +74,9 @@ STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
 }
 
 // Send a data synchronization control message
-
-void fim_send_sync_msg(const char * msg) {
+void fim_send_sync_msg(const char *location, const char * msg) {
     mdebug2(FIM_DBSYNC_SEND, msg);
-    fim_send_msg(DBSYNC_MQ, SYSCHECK, msg);
+    fim_send_msg(DBSYNC_MQ, location, msg);
 
     if (syscheck.sync_max_eps == 0) {
         return;

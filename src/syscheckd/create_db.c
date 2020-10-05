@@ -1166,6 +1166,11 @@ void free_file_data(fim_file_data * data) {
 
 void free_entry(fim_entry * entry) {
     if (entry) {
+#ifndef WIN32
+        os_free(entry->file_entry.path);
+        free_file_data(entry->file_entry.data);
+        free(entry);
+#else
         if (entry->type == FIM_TYPE_FILE) {
             os_free(entry->file_entry.path);
             free_file_data(entry->file_entry.data);
@@ -1173,6 +1178,7 @@ void free_entry(fim_entry * entry) {
         } else {
             fim_registry_free_entry(entry);
         }
+#endif
     }
 }
 

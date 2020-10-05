@@ -31,6 +31,9 @@ extern void mock_assert(const int result, const char* const expression,
 
 #endif
 
+#define FIM_COMPONENT_FILE      "fim_file"
+#define FIM_COMPONENT_REGISTRY  "fim_registry"
+
 static long fim_sync_cur_id;
 static w_queue_t * fim_sync_queue;
 
@@ -106,6 +109,11 @@ cJSON *fim_entry_json(const char *key, fim_entry *entry) {
 
     cJSON_AddStringToObject(root, "path", key);
 
+#ifndef WIN32
+    cJSON_AddNumberToObject(root, "timestamp", entry->file_entry.data->last_event);
+
+    attributes = fim_attributes_json(entry->file_entry.data);
+#else
     if (entry->type == FIM_TYPE_FILE) {
         cJSON_AddNumberToObject(root, "timestamp", entry->file_entry.data->last_event);
 
@@ -127,6 +135,7 @@ cJSON *fim_entry_json(const char *key, fim_entry *entry) {
 
         attributes = fim_registry_value_attributes_json(entry->registry_entry.value, configuration);
     }
+#endif
 
     cJSON_AddItemToObject(root, "attributes", attributes);
 
@@ -136,6 +145,7 @@ cJSON *fim_entry_json(const char *key, fim_entry *entry) {
 void fim_sync_checksum(fim_type type, pthread_mutex_t *mutex) {
     char *start = NULL;
     char *top = NULL;
+    const char *component = type == FIM_TYPE_FILE ? FIM_COMPONENT_FILE : FIM_COMPONENT_REGISTRY;
     EVP_MD_CTX * ctx = EVP_MD_CTX_create();
     EVP_DigestInit(ctx, EVP_sha1());
 
@@ -171,14 +181,14 @@ void fim_sync_checksum(fim_type type, pthread_mutex_t *mutex) {
         EVP_DigestFinal_ex(ctx, digest, &digest_size);
         OS_SHA1_Hexdigest(digest, hexdigest);
 
-        char * plain = dbsync_check_msg(type == FIM_TYPE_FILE ? "fim_file" : "fim_registry", INTEGRITY_CHECK_GLOBAL, fim_sync_cur_id, start, top, NULL, hexdigest);
-        fim_send_sync_msg(plain);
+        char * plain = dbsync_check_msg(component, INTEGRITY_CHECK_GLOBAL, fim_sync_cur_id, start, top, NULL, hexdigest);
+        fim_send_sync_msg(component, plain);
 
         os_free(plain);
 
     } else { // If database is empty
-        char * plain = dbsync_check_msg(type == FIM_TYPE_FILE ? "fim_file" : "fim_registry", INTEGRITY_CLEAR, fim_sync_cur_id, NULL, NULL, NULL, NULL);
-        fim_send_sync_msg(plain);
+        char * plain = dbsync_check_msg(component, INTEGRITY_CLEAR, fim_sync_cur_id, NULL, NULL, NULL, NULL);
+        fim_send_sync_msg(component, plain);
         os_free(plain);
     }
 
@@ -193,6 +203,7 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
     cJSON *file_data = NULL;
     fim_type type;
     int range_size;
+    const char *component;
     char *str_pathlh;
     char *str_pathuh;
     EVP_MD_CTX *ctx_left;
@@ -202,12 +213,15 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
 
     if (strncmp(start, "[x32]", 5) == 0) {
         type = FIM_TYPE_REGISTRY;
+        component = FIM_COMPONENT_REGISTRY;
         mutex = &syscheck.fim_registry_mutex;
     } else if (strncmp(start, "[x64]", 5) == 0) {
         type = FIM_TYPE_REGISTRY;
+        component = FIM_COMPONENT_REGISTRY;
         mutex = &syscheck.fim_registry_mutex;
     } else {
         type = FIM_TYPE_FILE;
+        component = FIM_COMPONENT_FILE;
         mutex = &syscheck.fim_entry_mutex;
     }
 
@@ -233,8 +247,8 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
         }
 
         file_data = fim_entry_json(start, entry);
-        char * plain = dbsync_state_msg("syscheck", file_data);
-        fim_send_sync_msg(plain);
+        char * plain = dbsync_state_msg(component, file_data);
+        fim_send_sync_msg(component, plain);
         os_free(plain);
         free_entry(entry);
         return;
@@ -260,15 +274,15 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
             // Send message with checksum of first half
             EVP_DigestFinal_ex(ctx_left, digest, &digest_size);
             OS_SHA1_Hexdigest(digest, hexdigest);
-            plain = dbsync_check_msg(type == FIM_TYPE_FILE ? "fim_file" : "fim_registry", INTEGRITY_CHECK_LEFT, id, start, str_pathlh, str_pathuh, hexdigest);
-            fim_send_sync_msg(plain);
+            plain = dbsync_check_msg(component, INTEGRITY_CHECK_LEFT, id, start, str_pathlh, str_pathuh, hexdigest);
+            fim_send_sync_msg(component, plain);
             os_free(plain);
 
             // Send message with checksum of second half
             EVP_DigestFinal_ex(ctx_right, digest, &digest_size);
             OS_SHA1_Hexdigest(digest, hexdigest);
-            plain = dbsync_check_msg(type == FIM_TYPE_FILE ? "fim_file" : "fim_registry", INTEGRITY_CHECK_RIGHT, id, str_pathuh, top, "", hexdigest);
-            fim_send_sync_msg(plain);
+            plain = dbsync_check_msg(component, INTEGRITY_CHECK_RIGHT, id, str_pathuh, top, "", hexdigest);
+            fim_send_sync_msg(component, plain);
             os_free(plain);
         }
 
@@ -286,16 +300,20 @@ void fim_sync_send_list(const char *start, const char *top) {
     int it;
     char *line;
     fim_type type;
+    const char *component;
     pthread_mutex_t *mutex;
 
     if (strncmp(start, "[x32]", 5) == 0) {
         type = FIM_TYPE_REGISTRY;
+        component = FIM_COMPONENT_REGISTRY;
         mutex = &syscheck.fim_registry_mutex;
     } else if (strncmp(start, "[x64]", 5) == 0) {
         type = FIM_TYPE_REGISTRY;
+        component = FIM_COMPONENT_REGISTRY;
         mutex = &syscheck.fim_registry_mutex;
     } else {
         type = FIM_TYPE_FILE;
+        component = FIM_COMPONENT_FILE;
         mutex = &syscheck.fim_entry_mutex;
     }
 
@@ -334,9 +352,9 @@ void fim_sync_send_list(const char *start, const char *top) {
         }
 
         file_data = fim_entry_json(line, entry);
-        plain = dbsync_state_msg("syscheck", file_data);
+        plain = dbsync_state_msg(component, file_data);
         mdebug1("Sync Message for %s sent: %s", line, plain);
-        fim_send_sync_msg(plain);
+        fim_send_sync_msg(component, plain);
         os_free(plain);
         os_free(line);
         free_entry(entry);

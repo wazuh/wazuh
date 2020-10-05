@@ -366,9 +366,10 @@ void send_syscheck_msg(const char *msg) __attribute__((nonnull));
 /**
  * @brief Send a data synchronization control message
  *
+ * @param location Specifies if the synchronization message is for files or registries.
  * @param msg The message to be sent
  */
-void fim_send_sync_msg(const char *msg);
+void fim_send_sync_msg(const char *location, const char * msg);
 
 // TODO
 /**
