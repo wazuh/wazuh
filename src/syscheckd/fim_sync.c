@@ -107,20 +107,25 @@ cJSON *fim_entry_json(const char *key, fim_entry *entry) {
     cJSON * attributes;
     cJSON * root = cJSON_CreateObject();
 
+#ifndef WIN32
     cJSON_AddStringToObject(root, "path", key);
 
-#ifndef WIN32
     cJSON_AddNumberToObject(root, "timestamp", entry->file_entry.data->last_event);
 
     attributes = fim_attributes_json(entry->file_entry.data);
 #else
     if (entry->type == FIM_TYPE_FILE) {
+        cJSON_AddStringToObject(root, "path", key);
+
         cJSON_AddNumberToObject(root, "timestamp", entry->file_entry.data->last_event);
 
         attributes = fim_attributes_json(entry->file_entry.data);
     } else if (entry->registry_entry.value == NULL) {
         registry *configuration = fim_registry_configuration(entry->registry_entry.key->path,
                                                              entry->registry_entry.key->arch);
+
+        cJSON_AddStringToObject(root, "path", entry->registry_entry.key->path);
+        cJSON_AddStringToObject(root, "arch", entry->registry_entry.key->arch == ARCH_64BIT ? "[x64]" : "[x32]");
 
         attributes = fim_registry_key_attributes_json(entry->registry_entry.key, configuration);
     } else {
@@ -132,6 +137,10 @@ cJSON *fim_entry_json(const char *key, fim_entry *entry) {
         snprintf(buffer, OS_MAXSTR, "%s\\%s", entry->registry_entry.key->path, entry->registry_entry.value->name);
 
         configuration = fim_registry_configuration(buffer, entry->registry_entry.key->arch);
+
+        cJSON_AddStringToObject(root, "path", entry->registry_entry.key->path);
+        cJSON_AddStringToObject(root, "arch", entry->registry_entry.key->arch == ARCH_64BIT ? "[x64]" : "[x32]");
+        cJSON_AddStringToObject(root, "value_name", entry->registry_entry.value->name);
 
         attributes = fim_registry_value_attributes_json(entry->registry_entry.value, configuration);
     }

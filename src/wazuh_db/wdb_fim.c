@@ -485,24 +485,41 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
 // LCOV_EXCL_STOP
 
 int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
+    cJSON *json_path, *json_arch, *json_value_name;
+    char *path, *arch, *value_name;
     if (!wdb) {
         merror("WDB object cannot be null.");
         return -1;
     }
 
-    cJSON *json_path = cJSON_GetObjectItem(data, "path");
+    json_path = cJSON_GetObjectItem(data, "path");
 
     if (!json_path) {
         merror("DB(%s) fim/save request with no file path argument.", wdb->id);
         return -1;
     }
 
-    char * path = cJSON_GetStringValue(json_path);
+    path = cJSON_GetStringValue(json_path);
     cJSON * timestamp = cJSON_GetObjectItem(data, "timestamp");
 
     if (!cJSON_IsNumber(timestamp)) {
         merror("DB(%s) fim/save request with no timestamp path argument.", wdb->id);
         return -1;
+    }
+
+    json_arch = cJSON_GetObjectItem(data, "arch");
+    if (!json_arch) {
+        arch = NULL;
+        value_name = NULL;
+    } else {
+        arch = cJSON_GetStringValue(json_arch);
+
+        json_value_name = cJSON_GetObjectItem(data, "value_name");
+        if (!json_value_name) {
+            value_name = NULL;
+        } else {
+            value_name = cJSON_GetStringValue(json_value_name);
+        }
     }
 
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
@@ -520,6 +537,8 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
     sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_FIM_INSERT_ENTRY2];
     sqlite3_bind_text(stmt, 1, path, -1, NULL);
     sqlite3_bind_int64(stmt, 3, (long)timestamp->valuedouble);
+    sqlite3_bind_text(stmt, 18, arch, -1, NULL);
+    sqlite3_bind_text(stmt, 19, value_name, -1, NULL);
 
     cJSON * element;
 
@@ -568,10 +587,8 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
                 sqlite3_bind_text(stmt, 17, element->valuestring, -1, NULL);
             } else if (strcmp(element->string, "attributes") == 0) {
                 sqlite3_bind_text(stmt, 15, element->valuestring, -1, NULL);
-            } else if (strcmp(element->string, "value_name") == 0) {
-                sqlite3_bind_text(stmt, 18, element->valuestring, -1, NULL);
             } else if (strcmp(element->string, "value_type") == 0) {
-                sqlite3_bind_text(stmt, 19, element->valuestring, -1, NULL);
+                sqlite3_bind_text(stmt, 20, element->valuestring, -1, NULL);
             } else {
                 merror("DB(%s) Invalid attribute name: %s", wdb->id, element->string);
                 return -1;

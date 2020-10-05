@@ -322,7 +322,7 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
     entry->type = FIM_TYPE_REGISTRY;
     entry->registry_entry.key = fim_db_get_registry_key(fim_sql, arch, key_path);
 
-    if (value_name == NULL) {
+    if (value_name == NULL || *value_name == '\0') {
         free(key_path);
         free(full_path);
         return entry;
