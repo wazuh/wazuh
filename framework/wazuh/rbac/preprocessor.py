@@ -5,7 +5,7 @@
 import re
 
 from wazuh.core.exception import WazuhError, WazuhPermissionError
-from wazuh.rbac.auth_context import RBAChecker
+from wazuh.rbac.auth_context import RBAChecker, get_policies_from_roles
 from wazuh.rbac.orm import AuthenticationManager
 from wazuh.core.results import WazuhResult
 
@@ -86,7 +86,22 @@ class PreProcessor:
         return self.odict
 
 
-def optimize_resources(auth_context=None, user_id=None):
+def optimize_resources(roles=None):
+    """This function preprocess the policies of the user for a more easy treatment in the decorator of the RBAC
+
+    :param roles: Authorization context of the current user
+    :param user_id: Username of the current user
+    """
+    policies = get_policies_from_roles(roles=roles)
+
+    preprocessor = PreProcessor()
+    for policy in policies:
+        preprocessor.process_policy(policy)
+
+    return preprocessor.get_optimize_dict()
+
+
+def get_roles(auth_context=None, user_id=None):
     """This function preprocess the policies of the user for a more easy treatment in the decorator of the RBAC
 
     :param auth_context: Authorization context of the current user
@@ -97,18 +112,12 @@ def optimize_resources(auth_context=None, user_id=None):
     rbac = RBAChecker(auth_context=auth_context, user_id=user_id)
     # Authorization Context method
     if auth_context:
-        data = rbac.run_auth_context()
+        roles = rbac.run_auth_context_roles()
     # User-role link method
     else:
-        data = rbac.run_user_role_link(user_id)
-    policies = data['policies']
-    roles = data['roles']
+        roles = rbac.run_user_role_link_roles(user_id)
 
-    preprocessor = PreProcessor()
-    for policy in policies:
-        preprocessor.process_policy(policy)
-
-    return preprocessor.get_optimize_dict(), roles
+    return roles
 
 
 def get_permissions(user_id=None, auth_context=None):
@@ -116,13 +125,8 @@ def get_permissions(user_id=None, auth_context=None):
         if not auth.user_allow_run_as(user_id) and auth_context:
             raise WazuhPermissionError(code=6004)
         elif auth.user_allow_run_as(user_id):
-            permissions, roles = optimize_resources(auth_context=auth_context, user_id=user_id)
+            roles = get_roles(auth_context=auth_context, user_id=user_id)
         else:
-            permissions, roles = optimize_resources(user_id=user_id)
+            roles = get_roles(user_id=user_id)
 
-        result = {
-            'policies': permissions,
-            'roles': roles
-        }
-
-        return WazuhResult(result)
+        return roles

@@ -21,6 +21,7 @@ from api.util import raise_if_exc
 from wazuh import WazuhInternalError
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.rbac.orm import AuthenticationManager, TokenManager, UserRolesManager, Roles
+from wazuh.rbac.preprocessor import optimize_resources
 
 pool = concurrent.futures.ThreadPoolExecutor()
 
@@ -116,7 +117,7 @@ def get_security_conf():
     return copy.deepcopy(conf.security_conf)
 
 
-def generate_token(user_id=None, rbac_policies=None):
+def generate_token(user_id=None, roles=None):
     """Generate an encoded jwt token. This method should be called once a user is properly logged on.
 
     Parameters
@@ -138,9 +139,7 @@ def generate_token(user_id=None, rbac_policies=None):
                           )
     result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).dikt
     timestamp = int(time())
-    roles = rbac_policies['roles']
-    rbac_policies = rbac_policies['policies']
-    rbac_policies['rbac_mode'] = result['rbac_mode']
+
     payload = {
         "iss": JWT_ISSUER,
         "aud": "Wazuh API REST",
@@ -148,7 +147,7 @@ def generate_token(user_id=None, rbac_policies=None):
         "exp": int(timestamp + result['auth_token_exp_timeout']),
         "sub": str(user_id),
         "rbac_roles": roles,
-        "rbac_policies": rbac_policies
+        "rbac_mode": result['rbac_mode']
     }
 
     return jwt.encode(payload, generate_secret(), algorithm=JWT_ALGORITHM)
@@ -185,7 +184,9 @@ def check_token(username, roles, token_nbf_time):
                     if not tm.is_token_valid(role_id=role, user_id=user_id, token_nbf_time=int(token_nbf_time)):
                         return {'valid': False}
 
-    return {'valid': True}
+    policies = optimize_resources(roles)
+
+    return {'valid': True, 'policies': policies}
 
 
 def decode_token(token):
@@ -225,8 +226,7 @@ def decode_token(token):
         result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
         current_rbac_mode = result['rbac_mode']
         current_expiration_time = result['auth_token_exp_timeout']
-        if payload['rbac_policies']['rbac_mode'] != current_rbac_mode or \
-                (payload['exp'] - payload['nbf']) != current_expiration_time:
+        if payload['rbac_mode'] != current_rbac_mode or (payload['exp'] - payload['nbf']) != current_expiration_time:
             raise Unauthorized
 
         return payload

@@ -308,6 +308,12 @@ class RBAChecker:
 
         return user_roles_policies
 
+    def run_auth_context_roles(self):
+        """This function will return the roles of aun user matching the authorization context"""
+        user_roles = self.get_user_roles()
+
+        return user_roles
+
     @staticmethod
     def run_user_role_link(user_id):
         """This function will return the final policies of an user according to its roles in the RBAC database"""
@@ -321,3 +327,22 @@ class RBAChecker:
                 user_roles_policies['roles'].append(role.id)
 
         return user_roles_policies
+
+    @staticmethod
+    def run_user_role_link_roles(user_id):
+        """This function will return the roles in the RBAC database for an user"""
+        with orm.UserRolesManager() as urm:
+            user_roles = list(role for role in urm.get_all_roles_from_user(user_id=user_id))
+
+        return user_roles
+
+
+def get_policies_from_roles(roles=None):
+    """This function will return the final policies of an user according to the roles"""
+    policies = list()
+    with orm.RolesPoliciesManager() as rpm:
+        for role in roles:
+            for policy in rpm.get_all_policies_from_role(role):
+                policies.append(json.loads(policy.policy))
+
+    return policies

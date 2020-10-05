@@ -57,11 +57,11 @@ async def login_user(request, user: str, raw=False):
                           is_async=False,
                           logger=logger
                           )
-    data = raise_if_exc(await dapi.distribute_function())
+    roles = raise_if_exc(await dapi.distribute_function())
 
     token = None
     try:
-        token = generate_token(user_id=user, rbac_policies=data.dikt)
+        token = generate_token(user_id=user, roles=roles)
     except WazuhException as e:
         raise_if_exc(e)
 
