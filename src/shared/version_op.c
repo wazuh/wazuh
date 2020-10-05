@@ -846,6 +846,12 @@ os_info *get_unix_version()
             info->os_minor = malloc(match_size +1);
             snprintf(info->os_minor, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
         }
+        // Get os_patch
+        if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", info->os_version, 2, match)) {
+            match_size = match[1].rm_eo - match[1].rm_so;
+            info->os_patch = malloc(match_size +1);
+            snprintf(info->os_patch, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
+        }
         // Get OSX codename
         if (info->os_platform && strcmp(info->os_platform,"darwin") == 0) {
             if (info->os_codename) {
@@ -878,6 +884,7 @@ void free_osinfo(os_info * osinfo) {
         free(osinfo->os_name);
         free(osinfo->os_major);
         free(osinfo->os_minor);
+        free(osinfo->os_patch);
         free(osinfo->os_build);
         free(osinfo->os_version);
         free(osinfo->os_codename);

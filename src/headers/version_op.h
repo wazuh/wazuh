@@ -18,6 +18,7 @@ typedef struct os_info {
     char *os_name;      ///< Operating system name.
     char *os_major;     ///< OS version number (major).
     char *os_minor;     ///< OS version number (minor).
+    char *os_patch;     ///< OS version number (patch).
     char *os_build;     ///< OS version number (build).
     char *os_version;   ///< OS version (major.minor[.build])
     char *os_codename;  ///< OS version codename.
