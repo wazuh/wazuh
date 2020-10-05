@@ -34,4 +34,6 @@ int __wrap_wm_task_manager_get_upgrade_task_status(int agent_id, const char *nod
 
 int __wrap_wm_task_manager_update_upgrade_task_status(int agent_id, const char *node, const char *status, const char *error);
 
+int __wrap_wm_task_manager_cancel_upgrade_tasks(const char *node);
+
 #endif

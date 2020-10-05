@@ -106,3 +106,9 @@ int __wrap_wm_task_manager_update_upgrade_task_status(int agent_id, const char *
 
     return mock();
 }
+
+int __wrap_wm_task_manager_cancel_upgrade_tasks(const char *node) {
+    check_expected(node);
+
+    return mock();
+}
