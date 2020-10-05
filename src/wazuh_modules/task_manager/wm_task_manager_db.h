@@ -23,6 +23,7 @@
 typedef enum _task_query {
     WM_TASK_INSERT_TASK,
     WM_TASK_GET_LAST_AGENT_TASK,
+    WM_TASK_GET_LAST_AGENT_UPGRADE_TASK,
     WM_TASK_GET_TASK_STATUS,
     WM_TASK_UPDATE_TASK_STATUS,
     WM_TASK_GET_TASK_BY_TASK_ID,
@@ -55,23 +56,21 @@ void* wm_task_manager_clean_db(void *arg) __attribute__((nonnull));
 int wm_task_manager_insert_task(int agent_id, const char *module, const char *command) __attribute__((nonnull));
 
 /**
- * Get the status of a task from the tasks DB.
+ * Get the status of a upgrade task from the tasks DB.
  * @param agent_id ID of the agent where the task is being executed.
- * @param module Name of the module where the message comes from.
  * @param status String where the status of the task will be stored.
  * @return 0 when succeed, !=0 otherwise.
  * */
-int wm_task_manager_get_task_status(int agent_id, const char *module, char **status) __attribute__((nonnull));
+int wm_task_manager_get_upgrade_task_status(int agent_id, char **status) __attribute__((nonnull));
 
 /**
- * Update the status of a task in the tasks DB.
+ * Update the status of a upgrade task in the tasks DB.
  * @param agent_id ID of the agent where the task is being executed.
- * @param module Name of the module where the message comes from.
  * @param status New status of the task.
- * @param status Error string of the task in case of failure.
+ * @param error Error string of the task in case of failure.
  * @return 0 when succeed, !=0 otherwise.
  * */
-int wm_task_manager_update_task_status(int agent_id, const char *module, const char *status, const char *error) __attribute__((nonnull(2)));
+int wm_task_manager_update_upgrade_task_status(int agent_id, const char *status, const char *error);
 
 /**
  * Get task by agent_id and module from the tasks DB.
@@ -84,7 +83,7 @@ int wm_task_manager_update_task_status(int agent_id, const char *module, const c
  * @param last_update_time Integer where the last_update_time of the task will be stored.
  * @return task_id when succeed, < 0 otherwise.
  * */
-int wm_task_manager_get_task_by_agent_id_and_module(int agent_id, const char *module, char **command, char **status, char **error, int *create_time, int *last_update_time) __attribute__((nonnull));
+int wm_task_manager_get_upgrade_task_by_agent_id(int agent_id, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time) __attribute__((nonnull));
 
 /**
  * Get task by task_id from the tasks DB.
