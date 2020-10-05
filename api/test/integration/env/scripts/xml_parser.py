@@ -12,16 +12,15 @@ def parse_section(og_root, section):
         original_xml.write(or_xml_name)
         return
 
-    previous_tail = children.tail
-    children.clear()
-
     if len(section) > 0:
         for element in section:
-            children.append(element)
+            try:
+                subelement = next(iter(children.iter(element.tag)))
+                subelement.text = element.text
+            except StopIteration:
+                children.append(element)
     else:
         children.text = section.text
-
-    children.tail = previous_tail
 
 
 if __name__ == '__main__':
