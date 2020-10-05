@@ -624,14 +624,13 @@ char *get_file_user(const char *path, char **sid) {
     char *result;
 
     // Get the handle of the file object.
-    hFile = CreateFile(
-                        TEXT(path),
-                        GENERIC_READ,
-                        FILE_SHARE_READ | FILE_SHARE_WRITE,
-                        NULL,
-                        OPEN_EXISTING,
-                        FILE_ATTRIBUTE_NORMAL,
-                        NULL);
+    hFile = CreateFile(TEXT(path),
+                       GENERIC_READ,
+                       FILE_SHARE_READ | FILE_SHARE_WRITE,
+                       NULL,
+                       OPEN_EXISTING,
+                       FILE_ATTRIBUTE_NORMAL,
+                       NULL);
 
     // Check GetLastError for CreateFile error code.
     if (hFile == INVALID_HANDLE_VALUE) {
@@ -640,7 +639,7 @@ char *get_file_user(const char *path, char **sid) {
         LPSTR end;
 
         FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-                        NULL, dwErrorCode, 0, (LPTSTR) &messageBuffer, 0, NULL);
+                      NULL, dwErrorCode, 0, (LPTSTR) &messageBuffer, 0, NULL);
 
         if (end = strchr(messageBuffer, '\r'), end) {
             *end = '\0';
@@ -684,8 +683,7 @@ char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_
     }
 
     // Get the owner SID of the file or registry
-    dwRtnCode = GetSecurityInfo(
-                                hndl,                       // Object handle
+    dwRtnCode = GetSecurityInfo(hndl,                       // Object handle
                                 object_type,                // Object type (file or registry)
                                 OWNER_SECURITY_INFORMATION, // Security information bit flags
                                 &pSidOwner,                 // Owner SID
@@ -698,15 +696,9 @@ char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_
         dwSecurityInfoErrorCode = GetLastError();
     }
 
-    char *aux_sid;
-
-    if (!ConvertSidToStringSid(pSidOwner, &aux_sid)) {
+    if (!ConvertSidToStringSid(pSidOwner, sid)) {
         *sid = NULL;
         mdebug1("The user's SID could not be extracted.");
-    }
-    else {
-        os_strdup(aux_sid, *sid);
-        LocalFree(aux_sid);
     }
 
     // Check GetLastError for GetSecurityInfo error condition.
@@ -717,8 +709,7 @@ char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_
     }
 
     // Second call to LookupAccountSid to get the account name.
-    bRtnBool = LookupAccountSid(
-                                NULL,                   // Name of local or remote computer
+    bRtnBool = LookupAccountSid(NULL,                   // Name of local or remote computer
                                 pSidOwner,              // Security identifier
                                 AcctName,               // Account name buffer
                                 (LPDWORD)&dwAcctName,   // Size of account name buffer
@@ -940,8 +931,7 @@ char *get_registry_group(char **sid, HANDLE hndl) {
     char *result;
 
     // Get the owner SID of the file or registry
-    dwRtnCode = GetSecurityInfo(
-                                hndl,                       // Object handle
+    dwRtnCode = GetSecurityInfo(hndl,                       // Object handle
                                 SE_REGISTRY_KEY,            // Object type (file or registry)
                                 GROUP_SECURITY_INFORMATION, // Security information bit flags
                                 NULL,                       // Owner SID
@@ -952,29 +942,18 @@ char *get_registry_group(char **sid, HANDLE hndl) {
 
     if (dwRtnCode != ERROR_SUCCESS) {
         dwSecurityInfoErrorCode = GetLastError();
-    }
-
-    char *aux_sid;
-
-    if (!ConvertSidToStringSid(pSidGroup, &aux_sid)) {
-        *sid = NULL;
-        mdebug1("The user's SID could not be extracted.");
-    }
-    else {
-        os_strdup(aux_sid, *sid);
-        LocalFree(aux_sid);
-    }
-
-    // Check GetLastError for GetSecurityInfo error condition.
-    if (dwRtnCode != ERROR_SUCCESS) {
         merror("GetSecurityInfo error = %lu", dwSecurityInfoErrorCode);
         *GrpName = '\0';
         goto end;
     }
 
+    if (!ConvertSidToStringSid(pSidGroup, sid)) {
+        *sid = NULL;
+        mdebug1("The user's SID could not be extracted.");
+    }
+
     // Second call to LookupAccountSid to get the account name.
-    bRtnBool = LookupAccountSid(
-                                NULL,                   // Name of local or remote computer
+    bRtnBool = LookupAccountSid(NULL,                   // Name of local or remote computer
                                 pSidGroup,              // Security identifier
                                 GrpName,                // Group name buffer
                                 (LPDWORD)&dwGrpName,    // Size of group name buffer
@@ -1041,36 +1020,34 @@ DWORD get_registry_permissions(HKEY hndl, char *perm_key) {
     }
 
     // Retrieve a pointer to the DACL in the security descriptor.
-    bRtnBool = GetSecurityDescriptorDacl(
-                                         pSecurityDescriptor,   // Structure that contains the DACL
+    bRtnBool = GetSecurityDescriptorDacl(pSecurityDescriptor,   // Structure that contains the DACL
                                          &fDaclPresent,         // Indicates the presence of a DACL
                                          &pDacl,                // Pointer to ACL
                                          &fDaclDefaulted);      // Flag set to the value of the SE_DACL_DEFAULTED flag
 
     if (bRtnBool == FALSE) {
         dwErrorCode = GetLastError();
-        mwarn("GetSecurityDescriptorDacl failed. GetLastError returned: %ld", dwErrorCode);
+        mdebug2("GetSecurityDescriptorDacl failed. GetLastError returned: %ld", dwErrorCode);
         os_free(pSecurityDescriptor);
         return dwErrorCode;
     }
 
     // Check whether no DACL or a NULL DACL was retrieved from the security descriptor buffer.
     if (fDaclPresent == FALSE || pDacl == NULL) {
-        mwarn("No DACL was found (all access is denied), or a NULL DACL (unrestricted access) was found.");
+        mdebug2("No DACL was found (all access is denied), or a NULL DACL (unrestricted access) was found.");
         os_free(pSecurityDescriptor);
         return -1;
     }
 
     // Retrieve the ACL_SIZE_INFORMATION structure to find the number of ACEs in the DACL.
-    bRtnBool = GetAclInformation(
-                                 pDacl,                 // Pointer to an ACL
+    bRtnBool = GetAclInformation(pDacl,                 // Pointer to an ACL
                                  &aclsizeinfo,          // Pointer to a buffer to receive the requested information
                                  sizeof(aclsizeinfo),   // The size, in bytes, of the buffer
                                  AclSizeInformation);   // Fill the buffer with an ACL_SIZE_INFORMATION structure
 
     if (bRtnBool == FALSE) {
         dwErrorCode = GetLastError();
-        mwarn("GetAclInformation failed. GetLastError returned: %ld", dwErrorCode);
+        mdebug2("GetAclInformation failed. GetLastError returned: %ld", dwErrorCode);
         os_free(pSecurityDescriptor);
         return dwErrorCode;
     }
@@ -1079,7 +1056,7 @@ DWORD get_registry_permissions(HKEY hndl, char *perm_key) {
     for (cAce = 0; cAce < aclsizeinfo.AceCount; cAce++) {
         // Get ACE info
         if (GetAce(pDacl, cAce, (LPVOID*)&pAce) == FALSE) {
-            mwarn("GetAce failed. GetLastError returned: %ld", GetLastError());
+            mdebug2("GetAce failed. GetLastError returned: %ld", GetLastError());
             continue;
         }
 
@@ -1098,22 +1075,6 @@ DWORD get_registry_permissions(HKEY hndl, char *perm_key) {
     return ERROR_SUCCESS;
 }
 
-unsigned int FILETIME_to_POSIX(FILETIME ft) {
-    // takes the last modified date
-    LARGE_INTEGER date, adjust;
-    date.HighPart = ft.dwHighDateTime;
-    date.LowPart = ft.dwLowDateTime;
-
-    // 100-nanoseconds = milliseconds * 10000
-    adjust.QuadPart = 11644473600000 * 10000;
-
-    // removes the diff between 1970 and 1601
-    date.QuadPart -= adjust.QuadPart;
-
-    // converts back from 100-nanoseconds to seconds
-    return date.QuadPart / 10000000;
-}
-
 unsigned int get_registry_mtime(HKEY hndl) {
     FILETIME lpftLastWriteTime;
     DWORD dwRtnCode = 0;
@@ -1122,9 +1083,10 @@ unsigned int get_registry_mtime(HKEY hndl) {
 
     if (dwRtnCode != ERROR_SUCCESS) {
         mwarn("Couldn't get modification time for registry key.");
+        return 0;
     }
 
-    return FILETIME_to_POSIX(lpftLastWriteTime);
+    return get_windows_file_time_epoch(lpftLastWriteTime);
 }
 
 /* Send a one-way message to Syscheck */

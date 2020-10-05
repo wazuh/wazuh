@@ -189,7 +189,12 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
 
     os_calloc(1, sizeof(fim_registry_key), key);
 
-    if (configuration->opts & CHECK_OWNER) {
+    os_calloc(MAX_KEY, sizeof(char), key->path);
+    snprintf(key->path, MAX_KEY, "%s", path);
+
+    key->arch = configuration->arch;
+
+     if (configuration->opts & CHECK_OWNER) {
         key->user_name = get_registry_user(path, &key->uid, key_handle);
     }
 
@@ -226,8 +231,18 @@ void fim_registry_free_key(fim_registry_key *key) {
     if (key) {
         os_free(key->path);
         os_free(key->perm);
-        os_free(key->uid);
-        os_free(key->gid);
+
+        // UID and GID need to be freed with the LocalFree function according to ConvertSidToStringSid documentation
+        if (key->uid) {
+            LocalFree(key->uid);
+            key->uid = NULL;
+        }
+
+        if (key->gid) {
+            LocalFree(key->gid);
+            key->gid = NULL;
+        }
+
         os_free(key->user_name);
         os_free(key->group_name);
         free(key);

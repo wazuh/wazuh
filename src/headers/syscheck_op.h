@@ -370,15 +370,6 @@ char *get_registry_group(char **sid, HANDLE hndl);
 DWORD get_registry_permissions(HKEY hndl, char *perm_key);
 
 /**
- * @brief Convert FILETIME time format to POSIX.
- *
- * @param ft Time in FILETIME format.
- *
- * @return Time in POSIX format.
-*/
-unsigned int FILETIME_to_POSIX(FILETIME ft);
-
-/**
  * @brief Get last modification time from registry key.
  *
  * @param hndl Handle for the registry key to check the permissions of.
