@@ -554,6 +554,8 @@ void seechanges_delete_compressed_file(const char *path){
                 syscheck.diff_folder_size = 0;
             }
         }
+
+        mdebug2(FIM_DIFF_FOLDER_DELETED, containing_folder);
     }
 }
 
