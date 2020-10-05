@@ -56,18 +56,18 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_GET_REG_KEY] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, scanned, checksum FROM registry_key WHERE path = ?;",
     [FIMDB_STMT_GET_REG_DATA] = "SELECT key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, scanned, last_event, checksum FROM registry_data WHERE name = ? AND key_id = ?;",
     [FIMDB_STMT_UPDATE_REG_DATA] = "UPDATE registry_data SET type = ?, size = ?, hash_md5 = ?, hash_sha1 = ?, hash_sha256 = ?, scanned = ?, last_event = ?, checksum = ? WHERE key_id = ? AND name = ?;",
-    [FIMDB_STMT_UPDATE_REG_KEY] = "UPDATE registry_key SET perm = ?, uid = ?, gid = ?, user_name = ?, group_name = ?, mtime = ?, arch = ?, scanned = ?, checksum = ? WHERE path = ?;",
+    [FIMDB_STMT_UPDATE_REG_KEY] = "UPDATE registry_key SET perm = ?, uid = ?, gid = ?, user_name = ?, group_name = ?, mtime = ?, arch = ?, scanned = ?, checksum = ? WHERE path = ? and arch = ?;",
     [FIMDB_STMT_GET_ALL_REG_ENTRIES] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, registry_key.scanned, registry_key.checksum, key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, registry_data.scanned, last_event, registry_data.checksum FROM registry_data INNER JOIN registry_key ON registry_key.id = registry_data.key_id ORDER BY PATH ASC;",
     [FIMDB_STMT_GET_REG_KEY_NOT_SCANNED] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, scanned, checksum FROM registry_key WHERE scanned = 0;",
     [FIMDB_STMT_GET_REG_DATA_NOT_SCANNED] = "SELECT key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, scanned, last_event, checksum FROM registry_data WHERE scanned = 0;",
     [FIMDB_STMT_SET_ALL_REG_KEY_UNSCANNED] = "UPDATE registry_key SET scanned = 0;",
-    [FIMDB_STMT_SET_REG_KEY_UNSCANNED] = "UPDATE registry_key SET scanned = 0 WHERE path = ?;",
+    [FIMDB_STMT_SET_REG_KEY_UNSCANNED] = "UPDATE registry_key SET scanned = 0 WHERE path = ? and arch = ?;",
     [FIMDB_STMT_SET_ALL_REG_DATA_UNSCANNED] = "UPDATE registry_data SET scanned = 0;",
     [FIMDB_STMT_SET_REG_DATA_UNSCANNED] = "UPDATE registry_data SET scanned = 0 WHERE name = ? AND key_id = ?;",
     [FIMDB_STMT_GET_REG_ROWID] = "SELECT id FROM registry_key WHERE path = ?;",
-    [FIMDB_STMT_DELETE_REG_KEY_PATH] = "DELETE FROM registry_key WHERE path = ?;",
+    [FIMDB_STMT_DELETE_REG_KEY_PATH] = "DELETE FROM registry_key WHERE path = ? and arch = ?;",
     [FIMDB_STMT_DELETE_REG_DATA] = "DELETE FROM registry_data WHERE name = ? AND key_id = ?;",
-    [FIMDB_STMT_DELETE_REG_DATA_PATH] = "DELETE FROM registry_data WHERE key_id = (SELECT id FROM registry_key WHERE path = ?);",
+    [FIMDB_STMT_DELETE_REG_DATA_PATH] = "DELETE FROM registry_data WHERE key_id = (SELECT id FROM registry_key WHERE path = ? and arch = ?);",
     [FIMDB_STMT_GET_COUNT_REG_KEY] = "SELECT count(*) FROM registry_key;",
     [FIMDB_STMT_GET_COUNT_REG_DATA] = "SELECT count(*) FROM registry_data;",
     [FIMDB_STMT_GET_COUNT_REG_KEY_AND_DATA] = "SELECT count(*) FROM registry_key INNER JOIN registry_data WHERE registry_data.key_id = registry_key.id;",
@@ -76,7 +76,7 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_GET_REG_COUNT_RANGE] = "SELECT count(*) FROM registry_key INNER JOIN registry_data ON registry_data.key_id = registry_key.id WHERE path BETWEEN ? and ? ORDER BY path;",
     [FIMDB_STMT_GET_REG_PATH_RANGE] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, registry_key.scanned, registry_key.checksum, key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, registry_data.scanned, last_event, registry_data.checksum FROM registry_key INNER JOIN registry_data ON registry_data.key_id = registry_key.id WHERE path BETWEEN ? and ? ORDER BY path;",
     [FIMDB_STMT_SET_REG_DATA_SCANNED] = "UPDATE registry_data SET scanned = 1 WHERE name = ? AND key_id = ?;",
-    [FIMDB_STMT_SET_REG_KEY_SCANNED] = "UPDATE registry_key SET scanned = 1 WHERE path = ?;",
+    [FIMDB_STMT_SET_REG_KEY_SCANNED] = "UPDATE registry_key SET scanned = 1 WHERE path = ? and arch = ?;",
     [FIMDB_STMT_GET_REG_KEY_ROWID] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, scanned, checksum FROM registry_key WHERE id = ?;",
     [FIMDB_STMT_GET_REG_DATA_ROWID] = "SELECT key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, scanned, last_event, checksum FROM registry_data WHERE key_id = ?;",
 #endif
@@ -417,14 +417,24 @@ end:
 void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry *entry, int storage, void *arg) {
     char *path = entry->type == FIM_TYPE_FILE ? entry->file_entry.path : entry->registry_entry.key->path;
 
-    char *base = wstr_escape_json(path);
-    if (base == NULL) {
+    char *write_buffer;
+    size_t line_length;
+
+    if (entry->type == FIM_TYPE_FILE) {
+        write_buffer = wstr_escape_json(path);
+        line_length = strlen(write_buffer);
+    } else {
+        os_calloc(MAX_DIR_SIZE, sizeof(char*), write_buffer);
+        line_length = snprintf(write_buffer, MAX_DIR_SIZE, "%d %s", entry->registry_entry.key->arch, wstr_escape_json(path));
+    }
+
+    if (write_buffer == NULL) {
         merror("Error escaping '%s'", path);
         return;
     }
 
     if (storage == FIM_DB_DISK) { // disk storage enabled
-        if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", base) != (strlen(base) + sizeof(char))) {
+        if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", write_buffer) != (line_length + sizeof(char))) {
             merror("%s - %s", path, strerror(errno));
             goto end;
         }
@@ -432,13 +442,13 @@ void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry
         fflush(((fim_tmp_file *) arg)->fd);
 
     } else {
-        W_Vector_insert(((fim_tmp_file *) arg)->list, base);
+        W_Vector_insert(((fim_tmp_file *) arg)->list, write_buffer);
     }
 
     ((fim_tmp_file *) arg)->elements++;
 
 end:
-    os_free(base);
+    os_free(write_buffer);
 }
 
 int fim_db_get_count(fdb_t *fim_sql, int index) {
@@ -461,6 +471,7 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, int type, pthre
                              int storage, void * alert, void * mode, void * w_evt) {
     char line[PATH_MAX + 1];
     char *path = NULL;
+    char *split = NULL;
     int i = 0;
 
     if (storage == FIM_DB_DISK) {
@@ -497,10 +508,16 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, int type, pthre
                 entry = fim_db_get_path(fim_sql, path);
             }
             else {
-                os_calloc(1, sizeof(fim_entry), entry);
 
+                os_calloc(1, sizeof(fim_entry), entry);
+                unsigned int arch =  strtoul(line, &split, 10);
+                if (*split != ' ') {
+                    merror("Temporary path file '%s' is corrupt: Wrong format", file->path);
+                    continue;
+                }
+                split++;
                 entry->type = FIM_TYPE_REGISTRY;
-                entry->registry_entry.key = fim_db_get_registry_key(fim_sql, path);
+                entry->registry_entry.key = fim_db_get_registry_key(fim_sql, split, arch);
             }
 
             w_mutex_unlock(mutex);

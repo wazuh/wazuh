@@ -155,10 +155,11 @@ fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path);
  *
  * @param fim_sql FIM database struct.
  * @param path Path to registry key.
+ * @param arch Architecture of the registry
  *
  * @return FIM registry key struct on success, NULL on error.
 */
-fim_registry_key *fim_db_get_registry_key(fdb_t *fim_sql, const char *path);
+fim_registry_key *fim_db_get_registry_key(fdb_t *fim_sql, const char *path, unsigned int arch);
 
 /**
  * @brief Read paths and registry paths which are stored in a temporal storage.
