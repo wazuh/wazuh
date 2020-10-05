@@ -7,12 +7,12 @@
  */
 
 CREATE TABLE IF NOT EXISTS fim_entry (
-    file TEXT PRIMARY KEY,
+    file TEXT,
     type TEXT NOT NULL CHECK (type IN ('file', 'registry')),
     date INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
     changes INTEGER NOT NULL DEFAULT 1,
-    arch TEXT NOT NULL CHECK (arch IN ('', '[x64]', '[x32]')),
-    value_name TEXT,
+    arch TEXT NOT NULL DEFAULT '' CHECK (arch IN ('', '[x64]', '[x32]')),
+    value_name TEXT NOT NULL DEFAULT '',
     value_type TEXT,
     size INTEGER,
     perm TEXT,

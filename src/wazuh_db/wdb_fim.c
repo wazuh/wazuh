@@ -568,6 +568,10 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
                 sqlite3_bind_text(stmt, 17, element->valuestring, -1, NULL);
             } else if (strcmp(element->string, "attributes") == 0) {
                 sqlite3_bind_text(stmt, 15, element->valuestring, -1, NULL);
+            } else if (strcmp(element->string, "value_name") == 0) {
+                sqlite3_bind_text(stmt, 18, element->valuestring, -1, NULL);
+            } else if (strcmp(element->string, "value_type") == 0) {
+                sqlite3_bind_text(stmt, 19, element->valuestring, -1, NULL);
             } else {
                 merror("DB(%s) Invalid attribute name: %s", wdb->id, element->string);
                 return -1;
