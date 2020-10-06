@@ -171,3 +171,21 @@ int __wrap_wdb_sql_exec(__attribute__((unused)) wdb_t *wdb,
     check_expected(sql_exec);
     return mock();
 }
+
+wdb_t* __wrap_wdb_init(__attribute__((unused)) sqlite3* db, const char* id) {
+    check_expected(id);
+    return mock_ptr_type(wdb_t*);
+}
+
+int __wrap_wdb_close(__attribute__((unused)) wdb_t * wdb, __attribute__((unused))bool commit) {
+    return mock();
+}
+
+int __wrap_wdb_create_global(const char *path) {
+    check_expected(path);
+    return mock();
+}
+
+void __wrap_wdb_pool_append(wdb_t * wdb) {
+    check_expected(wdb);
+}

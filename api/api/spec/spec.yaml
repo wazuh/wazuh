@@ -2239,6 +2239,7 @@ components:
           type: string
           description: "Wazuh component that logged the event"
           enum:
+            - agent_control
             - ossec-agentlessd
             - ossec-analysisd
             - ossec-authd
@@ -14111,6 +14112,40 @@ paths:
           $ref: '#/components/responses/UnauthorizedResponse'
         '403':
           $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+
+  /security/users/me/policies:
+    get:
+      tags:
+        - security
+      summary: "Get current user processed policies"
+      description: "Get the processed policies information for the current user"
+      operationId: api.controllers.security_controller.get_user_me_policies
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+      responses:
+        '200':
+          description: "Information about current user processed policies"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+              example:
+                data:
+                  syscheck:run:
+                    agent:id:*: allow
+                  syscollector:read:
+                    agent:id:*: allow
+                  rbac_mode: black
+                message: "Current user processed policies information was returned"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':

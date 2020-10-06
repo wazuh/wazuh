@@ -1290,6 +1290,9 @@ class WazuhDBQuery(object):
     def run(self):
         """Generic function that will redirect the information
         to the function that needs to be used for the specific case"""
+        if self.legacy_filters is None:
+            return self.general_run()
+
         rbac_ids = set(self.legacy_filters.get('rbac_ids', set()))
         return self.general_run() if len(str(rbac_ids)) < common.MAX_QUERY_FILTERS_RESERVED_SIZE else \
             self.oversized_run()
