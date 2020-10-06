@@ -185,7 +185,41 @@ int fim_registry_validate_path(const char *entry_path, const registry *configura
  * @return A fim_registry_key object holding the information from the queried key, NULL on error.
  */
 fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, const registry *configuration) {
-    return NULL;
+    fim_registry_key *key;
+
+    os_calloc(1, sizeof(fim_registry_key), key);
+
+    os_calloc(MAX_KEY, sizeof(char), key->path);
+    snprintf(key->path, MAX_KEY, "%s", path);
+
+    key->arch = configuration->arch;
+
+     if (configuration->opts & CHECK_OWNER) {
+        key->user_name = get_registry_user(path, &key->uid, key_handle);
+    }
+
+    if (configuration->opts & CHECK_GROUP) {
+        key->group_name = get_registry_group(&key->gid, key_handle);
+    }
+
+    if (configuration->opts & CHECK_PERM) {
+        char permissions[OS_SIZE_6144 + 1];
+        int retval = 0;
+
+        retval = get_registry_permissions(key_handle, permissions);
+
+        if (retval != ERROR_SUCCESS) {
+            mwarn(FIM_EXTRACT_PERM_FAIL, path, retval);
+        } else {
+            key->perm = decode_win_permissions(permissions);
+        }
+    }
+
+    if (configuration->opts & CHECK_MTIME) {
+        key->mtime = get_registry_mtime(key_handle);
+    }
+
+    return key;
 }
 
 /**
@@ -197,8 +231,18 @@ void fim_registry_free_key(fim_registry_key *key) {
     if (key) {
         os_free(key->path);
         os_free(key->perm);
-        os_free(key->uid);
-        os_free(key->gid);
+
+        // UID and GID need to be freed with the LocalFree function according to ConvertSidToStringSid documentation
+        if (key->uid) {
+            LocalFree(key->uid);
+            key->uid = NULL;
+        }
+
+        if (key->gid) {
+            LocalFree(key->gid);
+            key->gid = NULL;
+        }
+
         os_free(key->user_name);
         os_free(key->group_name);
         free(key);
