@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS registry_key (
     mtime INTEGER,
     arch TEXT CHECK (arch IN ('[x32]', '[x64]')),
     scanned INTEGER,
+    last_event INTEGER,
     checksum TEXT NOT NULL
 );
 

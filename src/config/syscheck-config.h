@@ -269,6 +269,7 @@ typedef struct fim_registry_key {
     int arch;
 
     unsigned int scanned;
+    time_t last_event;
     // perm:uid:user_name:gid:group_name:mtime
     os_sha1 checksum;
 } fim_registry_key;

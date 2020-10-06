@@ -291,6 +291,8 @@ cJSON *fim_registry_key_json_event(const fim_registry_key *new_data,
     cJSON_AddStringToObject(data, "path", new_data->path);
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE[type]);
+    cJSON_AddStringToObject(data, "arch", new_data->arch == ARCH_32BIT ? "[x32]" : "[x64]");
+    cJSON_AddNumberToObject(data, "timestamp", new_data->last_event);
 
     cJSON_AddItemToObject(data, "attributes", fim_registry_key_attributes_json(new_data, configuration));
 

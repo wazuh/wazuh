@@ -126,6 +126,7 @@ cJSON *fim_entry_json(const char *key, fim_entry *entry) {
 
         cJSON_AddStringToObject(root, "path", entry->registry_entry.key->path);
         cJSON_AddStringToObject(root, "arch", entry->registry_entry.key->arch == ARCH_64BIT ? "[x64]" : "[x32]");
+        cJSON_AddNumberToObject(root, "timestamp", entry->registry_entry.key->last_event);
 
         attributes = fim_registry_key_attributes_json(entry->registry_entry.key, configuration);
     } else {

@@ -144,7 +144,8 @@ static void fim_db_bind_insert_registry_key(fdb_t *fim_sql, fim_registry_key *re
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 8, registry_key->mtime);
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 9, registry_arch[registry_key->arch], -1, NULL);
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 10, registry_key->scanned);
-    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 11, registry_key->checksum, -1, NULL);
+    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 11, registry_key->last_event);
+    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 12, registry_key->checksum, -1, NULL);
 }
 
 static void fim_db_bind_get_registry_key_id(fdb_t *fim_sql, unsigned int id) {
@@ -212,8 +213,8 @@ fim_registry_key *fim_db_decode_registry_key(sqlite3_stmt *stmt) {
     entry->mtime = (unsigned int)sqlite3_column_int(stmt, 7);
     entry->arch = strcmp((char *)sqlite3_column_text(stmt, 8), "[x64]") == 0 ? ARCH_64BIT : ARCH_32BIT;
     entry->scanned = (unsigned int)sqlite3_column_int(stmt, 9);
-    strncpy(entry->checksum, (char *)sqlite3_column_text(stmt, 10), sizeof(os_sha1) - 1);
-    entry->scanned = (unsigned int)sqlite3_column_int(stmt, 11);
+    entry->last_event = sqlite3_column_int(stmt, 10);
+    strncpy(entry->checksum, (char *)sqlite3_column_text(stmt, 11), sizeof(os_sha1) - 1);
 
     return entry;
 }
