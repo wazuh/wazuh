@@ -21,6 +21,8 @@ typedef uint16_t u_int16_t;
 
 int __wrap_OS_ConnectUnixDomain(const char *path, int type, int max_msg_size);
 
+int __wrap_OS_SendUDPbySize(int sock, int size, const char *msg);
+
 int __wrap_OS_SendSecureTCP(int sock, uint32_t size, const void * msg);
 
 int __wrap_OS_RecvSecureTCP(int sock, char * ret, uint32_t size);
