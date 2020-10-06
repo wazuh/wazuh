@@ -364,8 +364,9 @@ stages:
     response:
       status_code: 200
       json:
-        auth_token_exp_timeout: !anyint
-        rbac_mode: !anystr
+        data:
+          auth_token_exp_timeout: !anyint
+          rbac_mode: !anystr
 
 ---
 test_name: UPDATE SECURITY CONFIG
