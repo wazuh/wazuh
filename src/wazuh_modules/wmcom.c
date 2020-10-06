@@ -32,9 +32,9 @@ size_t wmcom_dispatch(char * command, char ** output){
         }
         return wmcom_getconfig(rcv_args, output);
 
-    } else if (strcmp(rcv_comm, "sync") == 0){
+    } else if (strcmp(rcv_comm, "sync") == 0) {
         // sync section
-        if (!rcv_args){
+        if (!rcv_args) {
             mdebug1("WMCOM sync needs arguments.");
             os_strdup("err WMCOM sync needs arguments", *output);
             return strlen(*output);
