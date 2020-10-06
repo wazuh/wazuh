@@ -348,11 +348,10 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
             if (protocol == IPPROTO_UDP) {
                 retval = sendto(logr.sock, msg, msg_size, 0, (struct sockaddr *)peer_info, logr.peer_size) == msg_size ? 0 : -1;
-            } else if (protocol == IPPROTO_TCP) {
-                retval = OS_SendSecureTCP(sock_client, msg_size, msg);
             } else {
-                mdebug1("Send ping operation cancelled due to closed socket.");
+                retval = OS_SendSecureTCP(sock_client, msg_size, msg);
             }
+
             if (retval < 0) {
                 mwarn("Ping operation could not be delivered completely (%d)", retval);
             }
