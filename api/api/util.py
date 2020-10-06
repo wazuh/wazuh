@@ -297,9 +297,8 @@ def raise_if_exc(obj):
 
 
 from aiohttp import web
-from api.encoder import dumps, prettify
 
-def json_response_wazuh(data=None, status=200, dumps=None, **kwargs):
+def json_response_error_code(data=None, status=200, dumps=None, **kwargs):
     response_dict = data
 
     if 'data' in response_dict:

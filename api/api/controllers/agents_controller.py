@@ -13,7 +13,7 @@ from api.encoder import dumps, prettify
 from api.models.agent_added import AgentAddedModel
 from api.models.agent_inserted import AgentInsertedModel
 from api.models.base_model_ import Data, Body
-from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc, json_response_wazuh
+from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import database_limit
@@ -116,7 +116,7 @@ async def get_agents(request, pretty=False, wait_for_complete=False, list_agents
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    return json_response_wazuh(data=data, dumps=prettify if pretty else dumps)
+    return web.json_response(data=data, dumps=prettify if pretty else dumps)
 
 
 async def add_agent(request, pretty=False, wait_for_complete=False):

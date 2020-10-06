@@ -15,7 +15,7 @@ from api.models.base_model_ import Body
 from api.models.configuration import SecurityConfigurationModel
 from api.models.security import CreateUserModel, UpdateUserModel, RoleModel, PolicyModel, RuleModel
 from api.models.token_response import TokenResponseModel
-from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param, json_response_wazuh
+from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
 from wazuh import security
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI

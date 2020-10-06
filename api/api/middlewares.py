@@ -109,6 +109,8 @@ async def response_postprocessing(request, handler):
                 del problem.body[field]
         if 'detail' in problem.body and problem.body['detail'] == '':
             del problem.body['detail']
+        if 'code' in problem.body:
+            problem.body['error'] = problem.body.pop('code')
 
     problem = None
 
