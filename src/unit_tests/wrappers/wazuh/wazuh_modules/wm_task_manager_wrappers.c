@@ -41,9 +41,10 @@ cJSON* __wrap_wm_task_manager_parse_data_response(int error_code, int agent_id, 
     return mock_type(cJSON*);
 }
 
-int __wrap_wm_task_manager_get_upgrade_task_by_agent_id(int agent_id, const char **module, char **command, char **status, char **error, int *create_time, int *last_update_time) {
+int __wrap_wm_task_manager_get_upgrade_task_by_agent_id(int agent_id, char **node, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time) {
     check_expected(agent_id);
 
+    os_strdup(mock_type(char*), *node);
     os_strdup(mock_type(char*), *module);
     os_strdup(mock_type(char*), *command);
     os_strdup(mock_type(char*), *status);
@@ -54,9 +55,10 @@ int __wrap_wm_task_manager_get_upgrade_task_by_agent_id(int agent_id, const char
     return mock();
 }
 
-int __wrap_wm_task_manager_get_task_by_task_id(int task_id, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time) {
+int __wrap_wm_task_manager_get_task_by_task_id(int task_id, char **node, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time) {
     check_expected(task_id);
 
+    os_strdup(mock_type(char*), *node);
     os_strdup(mock_type(char*), *module);
     os_strdup(mock_type(char*), *command);
     os_strdup(mock_type(char*), *status);
@@ -67,7 +69,8 @@ int __wrap_wm_task_manager_get_task_by_task_id(int task_id, char **module, char 
     return mock();
 }
 
-void __wrap_wm_task_manager_parse_data_result(__attribute__ ((__unused__)) cJSON *response, const char *module, const char *command, char *status, char *error, int create_time, int last_update_time, char *request_command) {
+void __wrap_wm_task_manager_parse_data_result(__attribute__ ((__unused__)) cJSON *response, const char *node, const char *module, const char *command, char *status, char *error, int create_time, int last_update_time, char *request_command) {
+    check_expected(node);
     check_expected(module);
     check_expected(command);
     check_expected(status);
@@ -77,26 +80,35 @@ void __wrap_wm_task_manager_parse_data_result(__attribute__ ((__unused__)) cJSON
     check_expected(request_command);
 }
 
-int __wrap_wm_task_manager_insert_task(int agent_id, const char *module, const char *command) {
+int __wrap_wm_task_manager_insert_task(int agent_id, const char *node, const char *module, const char *command) {
     check_expected(agent_id);
+    check_expected(node);
     check_expected(module);
     check_expected(command);
 
     return mock();
 }
 
-int __wrap_wm_task_manager_get_upgrade_task_status(int agent_id, char **status) {
+int __wrap_wm_task_manager_get_upgrade_task_status(int agent_id, const char *node, char **status) {
     check_expected(agent_id);
+    check_expected(node);
 
     os_strdup(mock_type(char*), *status);
 
     return mock();
 }
 
-int __wrap_wm_task_manager_update_upgrade_task_status(int agent_id, const char *status, const char *error) {
+int __wrap_wm_task_manager_update_upgrade_task_status(int agent_id, const char *node, const char *status, const char *error) {
     check_expected(agent_id);
+    check_expected(node);
     if (status) check_expected(status);
     if (error) check_expected(error);
+
+    return mock();
+}
+
+int __wrap_wm_task_manager_cancel_upgrade_tasks(const char *node) {
+    check_expected(node);
 
     return mock();
 }
