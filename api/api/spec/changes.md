@@ -514,6 +514,12 @@ This API call expects a full valid XML file with the shared configuration tags/s
 ### GET ​   /security/users
 * New endpoint. Get user information.
 
+### GET ​   /security/users/me
+* New endpoint. Get current user information.
+
+### GET ​   /security/users/me/policies
+* New endpoint. Get current user processed policies information.
+
 ### POST ​  /security/users
 * New endpoint. Create new user.
 
