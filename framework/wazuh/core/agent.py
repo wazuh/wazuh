@@ -1070,8 +1070,7 @@ class Agent:
 
         return protocol
 
-    def _get_versions(self, wpk_repo=common.wpk_repo_url_4_x, version=None,
-                      use_http=False):
+    def _get_versions(self, wpk_repo=None, version=None, use_http=False):
         """Generates a list of available versions for its distribution and version.
         """
         invalid_platforms = ["darwin", "solaris", "aix", "hpux", "bsd"]
@@ -1082,10 +1081,11 @@ class Agent:
             error = "The WPK for this platform is not available."
             raise WazuhInternalError(1713, extra_message=str(error))
 
-        if (version is None) or (WazuhVersion(version) >= WazuhVersion("v4.0.0")):
-            wpk_repo = common.wpk_repo_url_4_x
-        elif WazuhVersion(version) < WazuhVersion("v4.0.0"):
-            wpk_repo = common.wpk_repo_url_3_x
+        if not wpk_repo:
+            if (version is None) or (WazuhVersion(version) >= WazuhVersion("v4.0.0")):
+                wpk_repo = common.wpk_repo_url_4_x
+            elif WazuhVersion(version) < WazuhVersion("v4.0.0"):
+                wpk_repo = common.wpk_repo_url_3_x
 
         protocol = self._get_protocol(wpk_repo, use_http)
 
