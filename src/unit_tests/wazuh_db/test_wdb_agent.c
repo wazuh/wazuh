@@ -2235,7 +2235,7 @@ void test_wdb_get_agent_keepalive_error_no_name_nor_ip(void **state) {
     char *name = NULL;
     char *ip = NULL;
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Empty agent name or ip when trying to get last keepalive. Agent: ((null)) IP: ((null))");
+    expect_string(__wrap__mdebug1, formatted_msg, "Empty agent name or ip when trying to get last keepalive.");
 
     keepalive = wdb_get_agent_keepalive(name, ip);
 
@@ -2356,7 +2356,7 @@ void test_wdb_find_agent_error_invalid_parameters(void **state)
     char *name = NULL;
     char *ip = NULL;
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Empty agent name or ip when trying to get agent name. Agent: ((null)) IP: ((null))");
+    expect_string(__wrap__mdebug1, formatted_msg, "Empty agent name or ip when trying to get agent ID.");
 
     ret = wdb_find_agent(name, ip);
 
@@ -2404,7 +2404,7 @@ void test_wdb_find_agent_error_json_output(void **state)
     will_return(__wrap_wdbc_query_parse_json, NULL);
 
     // Handling result
-    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB for agent name.");
+    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB for agent ID.");
 
     ret = wdb_find_agent(name_str, ip_str);
 
