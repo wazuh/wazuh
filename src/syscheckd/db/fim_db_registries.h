@@ -70,10 +70,10 @@ int fim_db_get_registry_data_checksum(fdb_t *fim_sql, void * arg);
  * @param fim_sql FIM database struct
  * @param path Path of the key to look for
  * @param rowid Variable where the rowid will be stored
- *
+ * @param arch Architecture of the registry
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_registry_key_rowid(fdb_t *fim_sql, const char *path, unsigned int *rowid);
+int fim_db_get_registry_key_rowid(fdb_t *fim_sql, const char *path, unsigned int arch, unsigned int *rowid);
 
 /**
  * @brief Get registry data using its key_id and name.
@@ -216,10 +216,10 @@ int fim_db_set_all_registry_data_unscanned(fdb_t *fim_sql);
  *
  * @param fim_sql FIM database struct.
  * @param path Registry key path.
- *
+ * @param arch Architecture of the registry
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_set_registry_key_scanned(fdb_t *fim_sql, const char *path);
+int fim_db_set_registry_key_scanned(fdb_t *fim_sql, const char *path, unsigned int arch);
 
 /**
  * @brief Set a registry data as scanned.
@@ -309,7 +309,8 @@ int fim_db_get_count_registry_key(fdb_t *fim_sql);
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  *
  */
-int fim_db_get_registry_keys_range(fdb_t *fim_sql, const char *start, const char *top, fim_tmp_file **file, int storage) ;
+int fim_db_get_registry_keys_range(fdb_t *fim_sql, const char *start, const char *top, fim_tmp_file **file,
+                                   int storage);
 
 /**
  * @brief Get registry keys between @start and @top. (stored in @file).
@@ -323,7 +324,8 @@ int fim_db_get_registry_keys_range(fdb_t *fim_sql, const char *start, const char
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  *
  */
-int fim_db_get_registry_value_range(fdb_t *fim_sql, const char *start, const char *top, fim_tmp_file **file, int storage) ;
+int fim_db_get_registry_value_range(fdb_t *fim_sql, const char *start, const char *top, fim_tmp_file **file,
+                                    int storage);
 
 /**
  * @brief Removes a range of registry keys from the database.
