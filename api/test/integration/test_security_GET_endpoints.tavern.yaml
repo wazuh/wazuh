@@ -857,6 +857,24 @@ stages:
           failed_items: []
 
 ---
+test_name: GET /security/users/me/policies
+
+stages:
+
+  - name: Get information about the current user processed policies
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/me/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        data: !anything
+        message: !anystr
+
+---
 test_name: GET /security/users
 
 stages:
