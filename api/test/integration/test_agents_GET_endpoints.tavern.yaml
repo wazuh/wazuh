@@ -125,7 +125,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 2003
+        error: 2003
 
   - name: Try to show agents with limit 0
     request:
@@ -185,7 +185,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
   - name: Search
     request:
@@ -272,7 +272,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1724
+        error: 1724
 
   - name: Try to show agents using not allowed selector (invalid character)
     request:
@@ -747,7 +747,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1408
+        error: 1408
 
   - name: Try to show agents using an invalid query
     request:
@@ -943,7 +943,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1724
+        error: 1724
 
   # GET /agents?list_agents=000&select=param_%_test
   - name: Try show agents with not allowed selector (invalid character)
