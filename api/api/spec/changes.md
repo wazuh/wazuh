@@ -508,6 +508,18 @@ This API call expects a full valid XML file with the shared configuration tags/s
 ### POST    /security/user/authenticate/run_as
 * New endpoint. Auth_context based authentication to get an access token.
 
+### GET     /security/config
+* New endpoint. Get the security configuration in JSON format.
+
+### PUT     /security/config
+* New endpoint. Update the security configuration with the data contained in the API request
+
+### DELETE     /security/config
+* New endpoint. Replaces the security configuration with the original one
+
+### GET         /security/resources
+* New endpoint. Get all the current defined RBAC resources.
+
 ### PUT ​   /security/user/revoke
 * New endpoint. Revoke all active JWT tokens.
 
