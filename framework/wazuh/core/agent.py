@@ -848,13 +848,13 @@ class Agent:
 
         return {'message': msg}
 
-    def get_agent_attr(self, attr):
-        """Returns a string with an agent's attribute value
+    def get_agent_os_name(self):
+        """Returns a string with an agent's os name
         """
-        query = WazuhDBQueryAgents(select=[attr.replace('_', '.')], filters={'id': [self.id]})
+        query = WazuhDBQueryAgents(select=['os.name'], filters={'id': [self.id]})
 
         try:
-            return query.run()['items'][0]['os']['name']
+            return query.run()['items'][0]['os'].get('name', 'null')
         except KeyError:
             return 'null'
 
@@ -1070,8 +1070,7 @@ class Agent:
 
         return protocol
 
-    def _get_versions(self, wpk_repo=common.wpk_repo_url_4_x, version=None,
-                      use_http=False):
+    def _get_versions(self, wpk_repo=None, version=None, use_http=False):
         """Generates a list of available versions for its distribution and version.
         """
         invalid_platforms = ["darwin", "solaris", "aix", "hpux", "bsd"]
@@ -1082,10 +1081,11 @@ class Agent:
             error = "The WPK for this platform is not available."
             raise WazuhInternalError(1713, extra_message=str(error))
 
-        if (version is None) or (WazuhVersion(version) >= WazuhVersion("v4.0.0")):
-            wpk_repo = common.wpk_repo_url_4_x
-        elif WazuhVersion(version) < WazuhVersion("v4.0.0"):
-            wpk_repo = common.wpk_repo_url_3_x
+        if not wpk_repo:
+            if (version is None) or (WazuhVersion(version) >= WazuhVersion("v4.0.0")):
+                wpk_repo = common.wpk_repo_url_4_x
+            elif WazuhVersion(version) < WazuhVersion("v4.0.0"):
+                wpk_repo = common.wpk_repo_url_3_x
 
         protocol = self._get_protocol(wpk_repo, use_http)
 
