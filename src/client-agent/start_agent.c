@@ -36,12 +36,12 @@ static void send_msg_on_startup(void);
 /**
  * @brief Connects to a specified server
  * @param server_id index of the specified server from agt servers list
- * @param is_ping The connection is just for pinging the remote service. Lower verbose.
+ * @param verbose Be verbose or not.
  * @post The remote IP id (rip_id) is set to server_id if and only if this function succeeds.
  * @retval true on success
  * @retval false when failed
  * */
-bool connect_server(int server_id, bool is_ping)
+bool connect_server(int server_id, bool verbose)
 {
     timeout = getDefine_Int("agent", "recv_timeout", 1, 600);
 
@@ -51,7 +51,7 @@ bool connect_server(int server_id, bool is_ping)
         agt->sock = -1;
 
         if (agt->server[agt->rip_id].rip) {
-            if(!is_ping) {
+            if (verbose) {
                 minfo("Closing connection to server (%s:%d/%s).",
                     agt->server[agt->rip_id].rip,
                     agt->server[agt->rip_id].port,
@@ -88,7 +88,7 @@ bool connect_server(int server_id, bool is_ping)
         return false;
     }
 
-    if(!is_ping) {
+    if (verbose) {
         minfo("Trying to connect to server (%s:%d/%s).",
             agt->server[server_id].rip,
             agt->server[server_id].port,
@@ -102,11 +102,14 @@ bool connect_server(int server_id, bool is_ping)
 
     if (agt->sock < 0) {
         agt->sock = -1;
-        #ifdef WIN32
-            merror(CONNS_ERROR, tmp_str, agt->server[server_id].port, agt->server[server_id].protocol == IPPROTO_UDP ? "udp" : "tcp", win_strerror(WSAGetLastError()));
-        #else
-            merror(CONNS_ERROR, tmp_str, agt->server[server_id].port, agt->server[server_id].protocol == IPPROTO_UDP ? "udp" : "tcp", strerror(errno));
-        #endif
+
+        if (verbose) {
+            #ifdef WIN32
+                merror(CONNS_ERROR, tmp_str, agt->server[server_id].port, agt->server[server_id].protocol == IPPROTO_UDP ? "udp" : "tcp", win_strerror(WSAGetLastError()));
+            #else
+                merror(CONNS_ERROR, tmp_str, agt->server[server_id].port, agt->server[server_id].protocol == IPPROTO_UDP ? "udp" : "tcp", strerror(errno));
+            #endif
+        }
     } else {
         #ifdef WIN32
             if (agt->server[server_id].protocol == IPPROTO_UDP) {
@@ -295,7 +298,7 @@ static bool agent_ping_to_server(int server_id) {
     char *msg = "#ping";
     char buffer[OS_MAXSTR + 1] = { '\0' };
 
-    if (connect_server(server_id, true)) {
+    if (connect_server(server_id, false)) {
         /* Send the ping message */
 
         if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
@@ -352,7 +355,7 @@ static bool agent_handshake_to_server(int server_id, bool is_startup) {
 
     snprintf(msg, OS_MAXSTR, "%s%s", CONTROL_HEADER, HC_STARTUP);
 
-    if (connect_server(server_id, false)) {
+    if (connect_server(server_id, true)) {
         /* Send start up message */
         send_msg(msg, -1);
 
