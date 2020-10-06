@@ -296,7 +296,7 @@ int modulesSync(const char* args) {
             break;
         }
     }
-    if (!ret) {
+    if (ret) {
         merror("At modulesSync(): Unable to sync module: (%d)", ret);
     }
     return ret;
