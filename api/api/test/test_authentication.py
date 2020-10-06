@@ -5,7 +5,7 @@
 import os
 import sys
 from unittest.mock import patch, MagicMock, ANY, call
-
+from copy import deepcopy
 from werkzeug.exceptions import Unauthorized
 
 with patch('wazuh.common.ossec_uid'):
@@ -28,7 +28,7 @@ security_conf = WazuhResult({
     'auth_token_exp_timeout': 3600,
     'rbac_mode': 'black'
 })
-payload = {
+decoded_payload = {
     "iss": 'wazuh',
     "aud": 'Wazuh API REST',
     "nbf": 0,
@@ -36,6 +36,16 @@ payload = {
     "sub": '001',
     "rbac_policies": {'value': 'test', 'rbac_mode': security_conf['rbac_mode']},
     "rbac_roles": [1]
+}
+
+original_payload = {
+    "iss": 'wazuh',
+    "aud": 'Wazuh API REST',
+    "nbf": 0,
+    "exp": security_conf['auth_token_exp_timeout'],
+    "sub": '001',
+    "rbac_roles": [1],
+    "rbac_mode": security_conf['rbac_mode']
 }
 
 
@@ -116,8 +126,7 @@ def test_generate_token(mock_raise_if_exc, mock_submit, mock_distribute_function
                         mock_encode, mock_time):
     """Verify if result is as expected"""
     mock_raise_if_exc.return_value = security_conf
-    result = authentication.generate_token('001', {'policies': {'value': 'test',
-                                                                'rbac_mode': security_conf['rbac_mode']}, 'roles': [1]})
+    result = authentication.generate_token('001', {'roles': [1]})
     assert result == 'test_token', 'Result is not as expected'
 
     # Check all functions are called with expected params
@@ -126,13 +135,13 @@ def test_generate_token(mock_raise_if_exc, mock_submit, mock_distribute_function
     mock_distribute_function.assert_called_once_with()
     mock_raise_if_exc.assert_called_once()
     mock_generate_secret.assert_called_once()
-    mock_encode.assert_called_once_with(payload, 'test_secret_token', algorithm='HS256')
+    mock_encode.assert_called_once_with(original_payload, 'test_secret_token', algorithm='HS256')
 
 
 @patch('api.authentication.TokenManager')
 def test_check_token(mock_tokenmanager):
     result = authentication.check_token('wazuh_user', [1], 3600)
-    assert result == {'valid': ANY}
+    assert result == {'valid': ANY, 'policies': ANY}
 
 
 @patch('api.authentication.jwt.decode')
@@ -143,15 +152,16 @@ def test_check_token(mock_tokenmanager):
 @patch('api.authentication.raise_if_exc', side_effect=None)
 def test_decode_token(mock_raise_if_exc, mock_submit, mock_distribute_function, mock_dapi, mock_generate_secret,
                       mock_decode):
-    mock_decode.return_value = payload
-    mock_raise_if_exc.side_effect = [WazuhResult({'valid': True}), WazuhResult(security_conf)]
+    mock_decode.return_value = deepcopy(original_payload)
+    mock_raise_if_exc.side_effect = [WazuhResult({'valid': True, 'policies': {'value': 'test'}}),
+                                     WazuhResult(security_conf)]
 
     result = authentication.decode_token('test_token')
-    assert result == payload
+    assert result == decoded_payload
 
     # Check all functions are called with expected params
-    calls = [call(f=ANY, f_kwargs={'username': payload['sub'], 'token_nbf_time': payload['nbf'],
-                                   'roles': payload['rbac_roles']},
+    calls = [call(f=ANY, f_kwargs={'username': original_payload['sub'], 'token_nbf_time': original_payload['nbf'],
+                                   'roles': original_payload['rbac_roles']},
                   request_type='local_master', is_async=False, wait_for_complete=True, logger=ANY),
              call(f=ANY, request_type='local_master', is_async=False, wait_for_complete=True, logger=ANY)]
     mock_dapi.assert_has_calls(calls)
@@ -176,14 +186,14 @@ def test_decode_token_ko(mock_generate_secret, mock_raise_if_exc, mock_submit, m
             with patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None):
                 with patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function'):
                     with patch('api.authentication.raise_if_exc') as mock_raise_if_exc:
-                        mock_decode.return_value = payload
+                        mock_decode.return_value = deepcopy(original_payload)
 
                         with pytest.raises(Unauthorized):
                             mock_raise_if_exc.side_effect = [WazuhResult({'valid': False})]
                             authentication.decode_token(token='test_token')
 
                         with pytest.raises(Unauthorized):
-                            mock_raise_if_exc.side_effect = [WazuhResult({'valid': True}),
+                            mock_raise_if_exc.side_effect = [WazuhResult({'valid': True, 'policies': {'value': 'test'}}),
                                                              WazuhResult({'auth_token_exp_timeout': 3600,
                                                                           'rbac_mode': 'white'})]
                             authentication.decode_token(token='test_token')

@@ -46,7 +46,7 @@ stages:
     response: &permission_denied
       status_code: 403
       json:
-        code: 4000
+        error: 4000
         dapi_errors:
           unknown-node: # No permission to see node
             error: !anystr
