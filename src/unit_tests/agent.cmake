@@ -1,5 +1,5 @@
 # Find the wazuh shared library
-if(${OS} STREQUAL "mac")
+if(${TARGET} STREQUAL "mac")
   find_library(WAZUHEXT NAMES libwazuhext.dylib HINTS "${SRC_FOLDER}")
 else()
   find_library(WAZUHEXT NAMES libwazuhext.so HINTS "${SRC_FOLDER}")
@@ -13,7 +13,7 @@ endif()
 add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT -DENABLE_AUDIT -DINOTIFY_ENABLED)
 
 # Set tests dependencies
-if(${OS} STREQUAL "mac")
+if(${TARGET} STREQUAL "mac")
     set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -lcmocka -I/usr/local/include/cmocka.h -fprofile-arcs -ftest-coverage)
 else()
     set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -lcmocka -fprofile-arcs -ftest-coverage)
