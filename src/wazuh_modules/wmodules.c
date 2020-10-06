@@ -283,6 +283,24 @@ cJSON *getModulesConfig(void) {
     return root;
 }
 
+// sync data
+int modulesSync(const char* args) {
+    int ret = -1;
+    wmodule *cur_module = NULL;
+    for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
+        if (strcmp(args, cur_module->context->name) == 0) {
+            ret = 0;
+            if (cur_module->context->sync != NULL) {
+                ret = cur_module->context->sync(args);
+            }
+            break;
+        }
+    }
+    if (!ret) {
+        merror("At modulesSync(): Unable to sync module: (%d)", ret);
+    }
+    return ret;
+}
 
 cJSON *getModulesInternalOptions(void) {
 
@@ -298,7 +316,6 @@ cJSON *getModulesInternalOptions(void) {
 
     return root;
 }
-
 
 // Send message to a queue waiting for a specific delay
 int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, char loc) {
