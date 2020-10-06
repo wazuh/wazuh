@@ -3404,17 +3404,18 @@ stages:
       verify: False
       <<: *agents_outdated_request
       params:
-        q: id<5;id!=2;manager~waz;(os.major=16,os.major=18)
+        q: id>5;id!=9;name~waz;(os.major=16,os.major=18)
+        limit: 30
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - id: '001'
-            - id: '003'
-            - id: '004'
+            - id: '010'
+              name: !anystr
+              version: !anystr
           failed_items: []
-          total_affected_items: !anyint
+          total_affected_items: 1
           total_failed_items: 0
 
   - name: Try show agents with bad query
