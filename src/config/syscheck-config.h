@@ -105,6 +105,11 @@ typedef enum fdb_stmt {
 #define SCHEDULED_ACTIVE    00400000
 #ifdef WIN32
 #define CHECK_TYPE          01000000
+
+#define REGISTRY_CHECK_ALL                                                                                  \
+    (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | CHECK_PERM | \
+     CHECK_MTIME | CHECK_TYPE)
+#define CHECK_SUM (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM)
 #endif
 
 #define ARCH_32BIT          0
@@ -430,16 +435,38 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node);
  * @param syscheck Syscheck configuration structure
  * @param entry Entry to be dumped
  * @param vals Indicates the attributes for folders or registries to be set
- * @param reg 1 if it's a registry, 0 if not
  * @param restrictfile The restrict regex to be set
  * @param recursion_level The recursion level to be set
  * @param tag The tag to be set
  * @param link If the added entry is pointed by a symbolic link for folders and arch for registries
  * @param diff_size Maximum size to calculate diff for files in the directory
  */
-void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg, const char *restrictfile,
+void dump_syscheck_file(syscheck_config *syscheck, char *entry, int vals, const char *restrictfile,
                             int recursion_level, const char *tag, const char *link,
                             int diff_size) __attribute__((nonnull(1, 2)));
+
+#ifdef WIN32
+/**
+ * @brief Adds (or overwrite if exists) an entry to the syscheck configuration structure
+ *
+ * @param syscheck Syscheck configuration structure
+ * @param entry Entry to be dumped
+ * @param opts Indicates the attributes for registries to be set
+ * @param restrictfile The restrict regex to be set
+ * @param recursion_level The recursion level to be set
+ * @param tag The tag to be set
+ * @param arch Indicates whether to monitor the 64 or 32 version of the registry
+ * @param diff_size Maximum size to calculate diff for files in the directory
+ */
+void dump_syscheck_registry(syscheck_config *syscheck,
+                            char *entry,
+                            int opts,
+                            const char *restrictfile,
+                            int recursion_level,
+                            const char *tag,
+                            int arch,
+                            int diff_size) __attribute__((nonnull(1, 2)));
+#endif
 
 /**
  * @brief Converts a bit mask with syscheck options to a human readable format

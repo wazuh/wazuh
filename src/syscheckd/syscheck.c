@@ -117,7 +117,7 @@ int Start_win32_Syscheck()
         /* Disabled */
         if (!syscheck.dir) {
             minfo(FIM_DIRECTORY_NOPROVIDED);
-            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL, NULL, -1);
+            dump_syscheck_file(&syscheck, "", 0, NULL, 0, NULL, NULL, -1);
         } else if (!syscheck.dir[0]) {
             minfo(FIM_DIRECTORY_NOPROVIDED);
         }
@@ -131,7 +131,7 @@ int Start_win32_Syscheck()
         }
 
         if (!syscheck.registry) {
-            dump_syscheck_entry(&syscheck, "", 0, 1, NULL, 0, NULL, NULL, -1);
+            dump_syscheck_registry(&syscheck, "", 0, NULL, 0, NULL, 0, -1);
         }
         os_free(syscheck.registry[0].entry);
 
@@ -165,7 +165,13 @@ int Start_win32_Syscheck()
         r = 0;
         // TODO: allow sha256 sum on registries
         while (syscheck.registry[r].entry != NULL) {
-            minfo(FIM_MONITORING_REGISTRY, syscheck.registry[r].entry, syscheck.registry[r].arch == ARCH_64BIT ? " [x64]" : "");
+            char optstr[1024];
+            minfo(FIM_MONITORING_REGISTRY, syscheck.registry[r].entry,
+                  syscheck.registry[r].arch == ARCH_64BIT ? " [x64]" : "",
+                  syscheck_opts2str(optstr, sizeof(optstr), syscheck.registry[r].opts));
+            if (syscheck.file_size_enabled){
+                minfo(FIM_DIFF_FILE_SIZE_LIMIT, syscheck.registry[r].diff_size_limit, syscheck.registry[r].entry);
+            }
             r++;
         }
 

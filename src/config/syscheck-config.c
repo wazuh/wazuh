@@ -123,222 +123,222 @@ void organize_syscheck_dirs(syscheck_config *syscheck)
     }
 }
 
-void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg, const char *restrictfile,
-                         int recursion_limit, const char *tag, const char *link, int diff_size) {
+void dump_syscheck_file(syscheck_config *syscheck,
+                        char *entry,
+                        int vals,
+                        const char *restrictfile,
+                        int recursion_limit,
+                        const char *tag,
+                        const char *link,
+                        int diff_size) {
 
     unsigned int pl = 0;
     int overwrite = -1;
     int j;
 
-    if (!reg) {
-        for (j = 0; syscheck->dir && syscheck->dir[j]; j++) {
-            /* Duplicate entry */
-            if (strcmp(syscheck->dir[j], entry) == 0) {
-                mdebug2("Overwriting the file entry %s", entry);
-                overwrite = j;
-            }
-        }
-
-        /* If overwrite < 0, syscheck entry is added at the end */
-        if(overwrite != -1) {
-            pl = overwrite;
-        }
-
-        if (syscheck->dir == NULL) {
-            os_calloc(2, sizeof(char *), syscheck->dir);
-            os_calloc(strlen(entry) + 2, sizeof(char), syscheck->dir[0]);
-            if (link && !(CHECK_FOLLOW & vals)) {
-                // Taking the link itself if follow_symbolic_link is not enabled
-                snprintf(syscheck->dir[0], strlen(link) + 1, "%s", link);
-            }
-            else {
-                snprintf(syscheck->dir[0], strlen(entry) + 1, "%s", entry);
-            }
-            syscheck->dir[1] = NULL;
-
-#ifdef WIN32
-            os_calloc(2, sizeof(whodata_dir_status), syscheck->wdata.dirs_status);
-#endif
-            os_calloc(2, sizeof(char *), syscheck->symbolic_links);
-            syscheck->symbolic_links[0] = NULL;
-            syscheck->symbolic_links[1] = NULL;
-            if (link) {
-                os_strdup(link, syscheck->symbolic_links[0]);
-            }
-
-            os_calloc(2, sizeof(int), syscheck->opts);
-            syscheck->opts[0] = vals;
-
-            os_calloc(2, sizeof(int), syscheck->diff_size_limit);
-
-            // If diff_size has not been set in read_attr, assign -1 to modify it later with the global value
-            if (diff_size == -1) {
-                syscheck->diff_size_limit[0] = -1;
-            }
-            else {
-                syscheck->diff_size_limit[0] = diff_size;
-            }
-
-            os_calloc(2, sizeof(OSMatch *), syscheck->filerestrict);
-
-            os_calloc(2, sizeof(int), syscheck->recursion_level);
-            syscheck->recursion_level[0] = recursion_limit;
-
-            os_calloc(2, sizeof(char *), syscheck->tag);
-        } else if (overwrite < 0) {
-            while (syscheck->dir[pl] != NULL) {
-                pl++;
-            }
-            os_realloc(syscheck->dir, (pl + 2) * sizeof(char *), syscheck->dir);
-            syscheck->dir[pl + 1] = NULL;
-            os_calloc(strlen(entry) + 2, sizeof(char), syscheck->dir[pl]);
-            if (link && !(CHECK_FOLLOW & vals)) {
-                // Taking the link itself if follow_symbolic_link is not enabled
-                snprintf(syscheck->dir[pl], strlen(link) + 1, "%s", link);
-            }
-            else {
-                snprintf(syscheck->dir[pl], strlen(entry) + 1, "%s", entry);
-            }
-
-#ifdef WIN32
-            os_realloc(syscheck->wdata.dirs_status, (pl + 2) * sizeof(whodata_dir_status),
-                    syscheck->wdata.dirs_status);
-            memset(syscheck->wdata.dirs_status + pl, 0, 2 * sizeof(whodata_dir_status));
-#endif
-
-            os_realloc(syscheck->symbolic_links, (pl + 2) * sizeof(char *), syscheck->symbolic_links);
-            syscheck->symbolic_links[pl] = NULL;
-            syscheck->symbolic_links[pl + 1] = NULL;
-            if (link) {
-                os_strdup(link, syscheck->symbolic_links[pl]);
-            }
-
-            os_realloc(syscheck->opts, (pl + 2) * sizeof(int),
-                       syscheck->opts);
-            syscheck->opts[pl] = vals;
-            syscheck->opts[pl + 1] = 0;
-
-            os_realloc(syscheck->diff_size_limit, (pl + 2) * sizeof(int), syscheck->diff_size_limit);
-
-            if (diff_size == -1) {
-                syscheck->diff_size_limit[pl] = -1;
-            }
-            else {
-                syscheck->diff_size_limit[pl] = diff_size;
-            }
-
-            syscheck->diff_size_limit[pl + 1] = 0;
-
-            os_realloc(syscheck->filerestrict, (pl + 2) * sizeof(OSMatch *),
-                    syscheck->filerestrict);
-            syscheck->filerestrict[pl] = NULL;
-            syscheck->filerestrict[pl + 1] = NULL;
-
-            os_realloc(syscheck->recursion_level, (pl + 2) * sizeof(int),
-                       syscheck->recursion_level);
-            syscheck->recursion_level[pl] = recursion_limit;
-            syscheck->recursion_level[pl + 1] = 0;
-
-            os_realloc(syscheck->tag, (pl + 2) * sizeof(char *),
-                       syscheck->tag);
-            syscheck->tag[pl] = NULL;
-            syscheck->tag[pl + 1] = NULL;
-        } else {
-            if (link) {
-                os_free(syscheck->symbolic_links[pl]);
-                os_strdup(link, syscheck->symbolic_links[pl]);
-            }
-            syscheck->opts[pl] = vals;
-
-            if (diff_size == -1) {
-                syscheck->diff_size_limit[pl] = -1;
-            }
-            else {
-                syscheck->diff_size_limit[pl] = diff_size;
-            }
-
-            os_free(syscheck->filerestrict[pl]);
-            syscheck->recursion_level[pl] = recursion_limit;
-            os_free(syscheck->tag[pl]);
-        }
-
-        if (restrictfile) {
-            os_calloc(1, sizeof(OSMatch), syscheck->filerestrict[pl]);
-            if (!OSMatch_Compile(restrictfile, syscheck->filerestrict[pl], 0)) {
-                OSMatch *ptm;
-
-                ptm = syscheck->filerestrict[pl];
-
-                merror(REGEX_COMPILE, restrictfile, ptm->error);
-                free(syscheck->filerestrict[pl]);
-                syscheck->filerestrict[pl] = NULL;
-            }
-        }
-        if (tag) {
-            os_strdup(tag, syscheck->tag[pl]);
+    for (j = 0; syscheck->dir && syscheck->dir[j]; j++) {
+        /* Duplicate entry */
+        if (strcmp(syscheck->dir[j], entry) == 0) {
+            mdebug2("Overwriting the file entry %s", entry);
+            overwrite = j;
         }
     }
+
+    /* If overwrite < 0, syscheck entry is added at the end */
+    if (overwrite != -1) {
+        pl = overwrite;
+    }
+
+    if (syscheck->dir == NULL) {
+        os_calloc(2, sizeof(char *), syscheck->dir);
+        os_calloc(strlen(entry) + 2, sizeof(char), syscheck->dir[0]);
+        if (link && !(CHECK_FOLLOW & vals)) {
+            // Taking the link itself if follow_symbolic_link is not enabled
+            snprintf(syscheck->dir[0], strlen(link) + 1, "%s", link);
+        } else {
+            snprintf(syscheck->dir[0], strlen(entry) + 1, "%s", entry);
+        }
+        syscheck->dir[1] = NULL;
+
 #ifdef WIN32
-    else {
-        if (syscheck->registry == NULL) {
-            os_calloc(2, sizeof(registry), syscheck->registry);
+        os_calloc(2, sizeof(whodata_dir_status), syscheck->wdata.dirs_status);
+#endif
+        os_calloc(2, sizeof(char *), syscheck->symbolic_links);
+        syscheck->symbolic_links[0] = NULL;
+        syscheck->symbolic_links[1] = NULL;
+        if (link) {
+            os_strdup(link, syscheck->symbolic_links[0]);
+        }
+
+        os_calloc(2, sizeof(int), syscheck->opts);
+        syscheck->opts[0] = vals;
+
+        os_calloc(2, sizeof(int), syscheck->diff_size_limit);
+
+        // If diff_size has not been set in read_attr, assign -1 to modify it later with the global value
+        if (diff_size == -1) {
+            syscheck->diff_size_limit[0] = -1;
+        } else {
+            syscheck->diff_size_limit[0] = diff_size;
+        }
+
+        os_calloc(2, sizeof(OSMatch *), syscheck->filerestrict);
+
+        os_calloc(2, sizeof(int), syscheck->recursion_level);
+        syscheck->recursion_level[0] = recursion_limit;
+
+        os_calloc(2, sizeof(char *), syscheck->tag);
+    } else if (overwrite < 0) {
+        while (syscheck->dir[pl] != NULL) {
+            pl++;
+        }
+        os_realloc(syscheck->dir, (pl + 2) * sizeof(char *), syscheck->dir);
+        syscheck->dir[pl + 1] = NULL;
+        os_calloc(strlen(entry) + 2, sizeof(char), syscheck->dir[pl]);
+        if (link && !(CHECK_FOLLOW & vals)) {
+            // Taking the link itself if follow_symbolic_link is not enabled
+            snprintf(syscheck->dir[pl], strlen(link) + 1, "%s", link);
+        } else {
+            snprintf(syscheck->dir[pl], strlen(entry) + 1, "%s", entry);
+        }
+
+#ifdef WIN32
+        os_realloc(syscheck->wdata.dirs_status, (pl + 2) * sizeof(whodata_dir_status), syscheck->wdata.dirs_status);
+        memset(syscheck->wdata.dirs_status + pl, 0, 2 * sizeof(whodata_dir_status));
+#endif
+
+        os_realloc(syscheck->symbolic_links, (pl + 2) * sizeof(char *), syscheck->symbolic_links);
+        syscheck->symbolic_links[pl] = NULL;
+        syscheck->symbolic_links[pl + 1] = NULL;
+        if (link) {
+            os_strdup(link, syscheck->symbolic_links[pl]);
+        }
+
+        os_realloc(syscheck->opts, (pl + 2) * sizeof(int), syscheck->opts);
+        syscheck->opts[pl] = vals;
+        syscheck->opts[pl + 1] = 0;
+
+        os_realloc(syscheck->diff_size_limit, (pl + 2) * sizeof(int), syscheck->diff_size_limit);
+
+        if (diff_size == -1) {
+            syscheck->diff_size_limit[pl] = -1;
+        } else {
+            syscheck->diff_size_limit[pl] = diff_size;
+        }
+
+        syscheck->diff_size_limit[pl + 1] = 0;
+
+        os_realloc(syscheck->filerestrict, (pl + 2) * sizeof(OSMatch *), syscheck->filerestrict);
+        syscheck->filerestrict[pl] = NULL;
+        syscheck->filerestrict[pl + 1] = NULL;
+
+        os_realloc(syscheck->recursion_level, (pl + 2) * sizeof(int), syscheck->recursion_level);
+        syscheck->recursion_level[pl] = recursion_limit;
+        syscheck->recursion_level[pl + 1] = 0;
+
+        os_realloc(syscheck->tag, (pl + 2) * sizeof(char *), syscheck->tag);
+        syscheck->tag[pl] = NULL;
+        syscheck->tag[pl + 1] = NULL;
+    } else {
+        if (link) {
+            os_free(syscheck->symbolic_links[pl]);
+            os_strdup(link, syscheck->symbolic_links[pl]);
+        }
+        syscheck->opts[pl] = vals;
+
+        if (diff_size == -1) {
+            syscheck->diff_size_limit[pl] = -1;
+        } else {
+            syscheck->diff_size_limit[pl] = diff_size;
+        }
+
+        os_free(syscheck->filerestrict[pl]);
+        syscheck->recursion_level[pl] = recursion_limit;
+        os_free(syscheck->tag[pl]);
+    }
+
+    if (restrictfile) {
+        os_calloc(1, sizeof(OSMatch), syscheck->filerestrict[pl]);
+        if (!OSMatch_Compile(restrictfile, syscheck->filerestrict[pl], 0)) {
+            OSMatch *ptm;
+
+            ptm = syscheck->filerestrict[pl];
+
+            merror(REGEX_COMPILE, restrictfile, ptm->error);
+            free(syscheck->filerestrict[pl]);
+            syscheck->filerestrict[pl] = NULL;
+        }
+    }
+    if (tag) {
+        os_strdup(tag, syscheck->tag[pl]);
+    }
+}
+
+#ifdef WIN32
+void dump_syscheck_registry(syscheck_config *syscheck,
+                            char *entry,
+                            int opts,
+                            const char *restrictfile,
+                            int recursion_level,
+                            const char *tag,
+                            int arch,
+                            int diff_size) {
+    unsigned int pl = 0;
+    int overwrite = -1;
+
+    if (syscheck->registry == NULL) {
+        os_calloc(2, sizeof(registry), syscheck->registry);
+        syscheck->registry[pl + 1].entry = NULL;
+        syscheck->registry[pl].tag = NULL;
+        syscheck->registry[pl + 1].tag = NULL;
+        syscheck->registry[pl + 1].recursion_level = 0;
+        syscheck->registry[pl + 1].filerestrict = NULL;
+        syscheck->registry[pl + 1].diff_size_limit = -1;
+        os_strdup(entry, syscheck->registry[pl].entry);
+    } else {
+        while (syscheck->registry[pl].entry != NULL) {
+            /* Duplicated entry */
+            if (strcmp(syscheck->registry[pl].entry, entry) == 0 && arch == syscheck->registry[pl].arch) {
+                overwrite = pl;
+                mdebug2("Duplicated registration entry: %s", syscheck->registry[pl].entry);
+                break;
+            }
+            pl++;
+        }
+        if (overwrite < 0) {
+            os_realloc(syscheck->registry, (pl + 2) * sizeof(registry), syscheck->registry);
             syscheck->registry[pl + 1].entry = NULL;
             syscheck->registry[pl].tag = NULL;
             syscheck->registry[pl + 1].tag = NULL;
             syscheck->registry[pl + 1].recursion_level = 0;
-            syscheck->registry[pl].recursion_level = recursion_limit;
-            syscheck->registry[pl].arch = (int)*link;
-            syscheck->registry[pl].opts = vals;
-            syscheck->registry[pl].filerestrict = NULL;
             syscheck->registry[pl + 1].filerestrict = NULL;
+            syscheck->registry[pl + 1].diff_size_limit = -1;
             os_strdup(entry, syscheck->registry[pl].entry);
         } else {
-            while (syscheck->registry[pl].entry != NULL) {
-                /* Duplicated entry */
-                if (strcmp(syscheck->registry[pl].entry, entry) == 0 && (int)*link == syscheck->registry[pl].arch) {
-                    overwrite = pl;
-                    mdebug2("Duplicated registration entry: %s", syscheck->registry[pl].entry);
-                    break;
-                }
-                pl++;
+            if (syscheck->registry[pl].filerestrict) {
+                OSMatch_FreePattern(syscheck->registry[pl].filerestrict);
+                os_free(syscheck->registry[pl].filerestrict);
             }
-            if (overwrite < 0) {
-                os_realloc(syscheck->registry, (pl + 2) * sizeof(registry),
-                        syscheck->registry);
-                syscheck->registry[pl + 1].entry = NULL;
-                syscheck->registry[pl].tag = NULL;
-                syscheck->registry[pl + 1].tag = NULL;
-                syscheck->registry[pl + 1].recursion_level = 0;
-                syscheck->registry[pl].recursion_level = recursion_limit;
-                syscheck->registry[pl].arch = (int)*link;
-                syscheck->registry[pl].filerestrict = NULL;
-                syscheck->registry[pl + 1].filerestrict = NULL;
-                os_strdup(entry, syscheck->registry[pl].entry);
-            } else {
-                os_free(syscheck->registry[pl].tag);
-                if (syscheck->registry[pl].filerestrict){
-                    OSMatch_FreePattern(syscheck->registry[pl].filerestrict);
-                    free(syscheck->registry[pl].filerestrict);
-                    syscheck->registry[pl].filerestrict = NULL;
-                }
-            }
-        }
-
-        if (restrictfile) {
-            os_calloc(1, sizeof(OSMatch), syscheck->registry[pl].filerestrict);
-            if (!OSMatch_Compile(restrictfile, syscheck->registry[pl].filerestrict, 0)) {
-                merror(REGEX_COMPILE, restrictfile, syscheck->registry[pl].filerestrict->error);
-                free(syscheck->registry[pl].filerestrict);
-                syscheck->registry[pl].filerestrict = NULL;
-            }
-        }
-
-        if (tag) {
-            os_strdup(tag, syscheck->registry[pl].tag);
+            os_free(syscheck->registry[pl].tag);
         }
     }
-#endif
+    syscheck->registry[pl].recursion_level = recursion_level;
+    syscheck->registry[pl].arch = arch;
+    syscheck->registry[pl].opts = opts;
+    syscheck->registry[pl].diff_size_limit = diff_size;
+    if (tag) {
+        os_strdup(tag, syscheck->registry[pl].tag);
+    }
+    if (restrictfile) {
+        os_calloc(1, sizeof(OSMatch), syscheck->registry[pl].filerestrict);
+        if (!OSMatch_Compile(restrictfile, syscheck->registry[pl].filerestrict, 0)) {
+            merror(REGEX_COMPILE, restrictfile, syscheck->registry[pl].filerestrict->error);
+            os_free(syscheck->registry[pl].filerestrict);
+        }
+    }
 }
+#endif
+
 
 #ifdef WIN32
 
@@ -453,74 +453,259 @@ int dump_registry_nodiff_regex(syscheck_config *syscheck, const char *regex, int
 }
 
 /* Read Windows registry configuration */
-int read_reg(syscheck_config *syscheck,
-             char *entries,
-             int arch,
-             char *tag,
-             int vals,
-             const char *restrictfile,
-             int recursion_level) {
-    int j;
+int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, char **values) {
+    const char *xml_arch = "arch";
+    const char *xml_32bit = "32bit";
+    const char *xml_64bit = "64bit";
+    const char *xml_both = "both";
+    const char *xml_tag = "tags";
+    const char *xml_recursion_level = "recursion_level";
+    const char *xml_report_changes = "report_changes";
+    const char *xml_check_all = "check_all";
+    const char *xml_check_sum = "check_sum";
+    const char *xml_check_md5sum = "check_md5sum";
+    const char *xml_check_sha1sum = "check_sha1sum";
+    const char *xml_check_sha256sum = "check_sha256sum";
+    const char *xml_check_size = "check_size";
+    const char *xml_check_owner = "check_owner";
+    const char *xml_check_group = "check_group";
+    const char *xml_check_perm = "check_perm";
+    const char *xml_check_mtime = "check_mtime";
+    const char *xml_check_type = "check_type";
+    const char *xml_restrict = "restrict";
+    const char *xml_diff_size_limit = "diff_size_limit";
+
+    int i;
     char **entry;
-    char *tmp_str;
+    char *tag = NULL;
+    char *restrictfile = NULL;
+    int arch = ARCH_32BIT;
+    int recursion_level = MAX_REGISTRY_DEPTH;
+    int opts = REGISTRY_CHECK_ALL;
+    int retval = 0;
+    int tmp_diff_size = -1;
+
+    if (attributes && values) {
+        for (i = 0; attributes[i]; i++) {
+            if (values[i] == NULL) {
+                mdebug1("Empty value for attribute %s", attributes[i]);
+                break;
+            }
+            if (strcmp(attributes[i], xml_tag) == 0) {
+                os_free(tag);
+
+                if (tag = os_strip_char(values[i], ' '), !tag) {
+                    merror("Processing tag for registry entry '%s'.", entries);
+                }
+            } else if (strcmp(attributes[i], xml_arch) == 0) {
+                if (strcmp(values[i], xml_32bit) == 0) {
+                } else if (strcmp(values[i], xml_64bit) == 0) {
+                    arch = ARCH_64BIT;
+                } else if (strcmp(values[i], xml_both) == 0) {
+                    arch = ARCH_BOTH;
+                } else {
+                    merror(XML_INVATTR, attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_recursion_level) == 0) {
+                if (!OS_StrIsNum(values[i])) {
+                    merror(XML_VALUEERR, xml_recursion_level, entries);
+                    goto clean_reg;
+                }
+                recursion_level = atoi(values[i]);
+                if (recursion_level < 0 || recursion_level > MAX_REGISTRY_DEPTH) {
+                    mwarn("Invalid recursion level value: %d. Setting default (%d).", recursion_level,
+                          MAX_REGISTRY_DEPTH);
+                    recursion_level = MAX_REGISTRY_DEPTH;
+                }
+            } else if (strcmp(attributes[i], xml_report_changes) == 0) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= CHECK_SEECHANGES;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~CHECK_SEECHANGES;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_restrict) == 0) {
+                os_free(restrictfile);
+                os_strdup(values[i], restrictfile);
+            } else if (strcmp(attributes[i], xml_check_all) == 0) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= REGISTRY_CHECK_ALL;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~REGISTRY_CHECK_ALL;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_check_sum) == 0) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= CHECK_SUM;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~CHECK_SUM;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_check_md5sum) == 0) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= CHECK_MD5SUM;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~CHECK_MD5SUM;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_check_sha1sum) == 0) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= CHECK_SHA1SUM;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~CHECK_SHA1SUM;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_check_sha256sum) == 0) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= CHECK_SHA256SUM;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~CHECK_SHA256SUM;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_check_size) == 0) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= CHECK_SIZE;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~CHECK_SIZE;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_check_owner) == 0) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= CHECK_OWNER;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~CHECK_OWNER;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_check_group) == 0) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= CHECK_GROUP;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~CHECK_GROUP;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_check_perm) == 0) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= CHECK_PERM;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~CHECK_PERM;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_check_mtime) == 0) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= CHECK_MTIME;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~CHECK_MTIME;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_check_type) == 0) {
+                if (strcmp(values[i], "yes") == 0) {
+                    opts |= CHECK_TYPE;
+                } else if (strcmp(values[i], "no") == 0) {
+                    opts &= ~CHECK_TYPE;
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+            } else if (strcmp(attributes[i], xml_diff_size_limit) == 0) {
+                if (values[i]) {
+                    tmp_diff_size = read_data_unit(values[i]);
+                    if (tmp_diff_size == -1) {
+                        mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                        goto clean_reg;
+                    }
+                    if (tmp_diff_size < 1) {
+                        tmp_diff_size = 1;      // 1 KB is the minimum
+                    }
+                } else {
+                    mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
+                    goto clean_reg;
+                }
+
+            } else {
+                merror(XML_INVATTR, attributes[i], entries);
+                goto clean_reg;
+            }
+        }
+    }
 
     /* Get each entry separately */
     entry = OS_StrBreak(',', entries, MAX_DIR_SIZE + 1); /* Max number */
 
     if (entry == NULL) {
-        return (0);
+        goto clean_reg;
     }
 
-    for (j = 0; entry[j]; j++) {
+    for (i = 0; entry[i]; i++) {
         char *tmp_entry;
-        char * clean_tag = NULL;
-
-        tmp_entry = entry[j];
-
 
         /* When the maximum number of registries monitored in the same tag is reached,
            the excess is discarded and warned */
-        if (j >= MAX_DIR_SIZE){
-            mwarn(FIM_WARN_MAX_REG_REACH, MAX_DIR_SIZE, tmp_entry);
-            free(entry[j]);
+        if (i >= MAX_DIR_SIZE) {
+            mwarn(FIM_WARN_MAX_REG_REACH, MAX_DIR_SIZE, entry[i]);
+            free(entry[i]);
             continue;
         }
 
+        /* Remove spaces at the end */
+        tmp_entry = entry[i] + strlen(entry[i]) - 1;
+        while(*tmp_entry == ' ') {
+            *tmp_entry = '\0';
+            tmp_entry--;
+        }
+
         /* Remove spaces at the beginning */
+        tmp_entry = entry[i];
         while (*tmp_entry == ' ') {
             tmp_entry++;
         }
 
-        /* Remove spaces at the end */
-        tmp_str = strchr(tmp_entry, ' ');
-        if (tmp_str) {
-            tmp_str++;
-
-            /* Check if it is really at the end */
-            if ((*tmp_str == '\0') || (*tmp_str == ' ')) {
-                tmp_str--;
-                *tmp_str = '\0';
-            }
+        if (*tmp_entry == '\0') {
+            mdebug2(FIM_EMPTY_REGISTRY_CONFIG);
+            free(entry[i]);
+            continue;
         }
 
-        /* Remove spaces from tag */
-
-        if (tag) {
-            if (clean_tag = os_strip_char(tag, ' '), !clean_tag)
-                merror("Processing tag '%s' for registry entry '%s'.", tag, tmp_entry);
-        }
         /* Add new entry */
-        dump_syscheck_entry(syscheck, tmp_entry, vals, 1, restrictfile, recursion_level, clean_tag, &arch, -1);
-
-        if (clean_tag)
-            free(clean_tag);
+        if (arch == ARCH_BOTH) {
+            dump_syscheck_registry(syscheck, tmp_entry, opts, restrictfile, recursion_level, tag, ARCH_64BIT, tmp_diff_size);
+            dump_syscheck_registry(syscheck, tmp_entry, opts, restrictfile, recursion_level, tag, ARCH_32BIT, tmp_diff_size);
+        } else {
+            dump_syscheck_registry(syscheck, tmp_entry, opts, restrictfile, recursion_level, tag, arch, tmp_diff_size);
+        }
 
         /* Next entry */
-        free(entry[j]);
+        free(entry[i]);
     }
     free(entry);
 
-    return (1);
+    retval = 1;
+clean_reg:
+    os_free(tag);
+    os_free(restrictfile);
+    return retval;
 }
 #endif /* WIN32 */
 
@@ -931,7 +1116,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     }
 
                     str_lowercase(real_path);
-                    dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL,
+                    dump_syscheck_file(syscheck, real_path, opts, restrictfile, recursion_limit, clean_tag, NULL,
                                         tmp_diff_size);
                 }
                 os_free(env_variable[i]);
@@ -977,7 +1162,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         }
 
         str_lowercase(real_path);
-        dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL,
+        dump_syscheck_file(syscheck, real_path, opts, restrictfile, recursion_limit, clean_tag, NULL,
                             tmp_diff_size);
 
 #else
@@ -996,7 +1181,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                             }
                         }
 
-                        dump_syscheck_entry(syscheck, env_variable[i], opts, 0, restrictfile, recursion_limit,
+                        dump_syscheck_file(syscheck, env_variable[i], opts, restrictfile, recursion_limit,
                                             clean_tag, NULL, tmp_diff_size);
                     }
                     os_free(env_variable[i]);
@@ -1047,10 +1232,10 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
                 if (resolved_path = realpath(g.gl_pathv[gindex], NULL), resolved_path) {
                     if (!strcmp(resolved_path, g.gl_pathv[gindex])) {
-                        dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0, restrictfile, recursion_limit,
+                        dump_syscheck_file(syscheck, g.gl_pathv[gindex], opts, restrictfile, recursion_limit,
                                             clean_tag, NULL, tmp_diff_size);
                     } else {
-                        dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile, recursion_limit, clean_tag,
+                        dump_syscheck_file(syscheck, resolved_path, opts, restrictfile, recursion_limit, clean_tag,
                                             g.gl_pathv[gindex], tmp_diff_size);
                     }
                     os_free(resolved_path);
@@ -1068,11 +1253,11 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             char *resolved_path = realpath(real_path, NULL);
 
             if (resolved_path && strcmp(resolved_path, real_path)) {
-                dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile, recursion_limit, clean_tag,
+                dump_syscheck_file(syscheck, resolved_path, opts, restrictfile, recursion_limit, clean_tag,
                                     real_path, tmp_diff_size);
             }
             else {
-                dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL,
+                dump_syscheck_file(syscheck, real_path, opts, restrictfile, recursion_limit, clean_tag, NULL,
                                     tmp_diff_size);
             }
 
@@ -1523,10 +1708,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_32bit = "32bit";
     const char *xml_64bit = "64bit";
     const char *xml_both = "both";
-    const char *xml_tag = "tags";
-    const char *xml_recursion_level = "recursion_level";
-    const char *xml_report_changes = "report_changes";
-    const char *xml_restrict = "restrict";
 #endif
     const char *xml_whodata_options = "whodata";
     const char *xml_audit_key = "audit_key";
@@ -1590,93 +1771,9 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         /* Get Windows registry */
         else if (strcmp(node[i]->element, xml_registry) == 0) {
 #ifdef WIN32
-            char *tag = NULL;
-            char *restrictfile = NULL;
-            char arch[6] = "32bit";
-            int reg_recursion_level = MAX_REGISTRY_DEPTH;
-            int opts = 0;
-
-            if (node[i]->attributes) {
-                int j = 0;
-
-                while(node[i]->attributes[j]) {
-                    if (strcmp(node[i]->attributes[j], xml_tag) == 0) {
-                        os_free(tag);
-                        os_strdup(node[i]->values[j], tag);
-                    } else if (strcmp(node[i]->attributes[j], xml_arch) == 0) {
-                        if (strcmp(node[i]->values[j], xml_32bit) == 0) {
-                        } else if (strcmp(node[i]->values[j], xml_64bit) == 0) {
-                            snprintf(arch, 6, "%s", "64bit");
-                        } else if (strcmp(node[i]->values[j], xml_both) == 0) {
-                            snprintf(arch, 6, "%s", "both");
-                        } else {
-                            merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
-                            os_free(tag);
-                            os_free(restrictfile);
-                            return OS_INVALID;
-                        }
-                    } else if (strcmp(node[i]->attributes[j], xml_recursion_level) == 0) {
-                        if (!OS_StrIsNum(node[i]->values[j])) {
-                            merror(XML_VALUEERR, xml_recursion_level, node[i]->content);
-                            os_free(tag);
-                            os_free(restrictfile);
-                            return OS_INVALID;
-                        }
-                        reg_recursion_level = atoi(node[i]->values[j]);
-                        if (reg_recursion_level < 0 || reg_recursion_level > MAX_REGISTRY_DEPTH) {
-                            mwarn("Invalid recursion level value: %d. Setting default (%d).", reg_recursion_level, MAX_REGISTRY_DEPTH);
-                            reg_recursion_level = MAX_REGISTRY_DEPTH;
-                        }
-                    } else if (strcmp(node[i]->attributes[j], xml_report_changes) == 0) {
-                        if (strcmp(node[i]->values[j], "yes") == 0) {
-                            opts |= CHECK_SEECHANGES;
-                        } else if (strcmp(node[i]->values[j], "no") == 0) {
-                            opts &= ~ CHECK_SEECHANGES;
-                        } else {
-                            mwarn(FIM_INVALID_REG_OPTION_SKIP, node[i]->values[j], node[i]->attributes[j], node[i]->content);
-                            free(tag);
-                            os_free(restrictfile);
-                            return OS_INVALID;
-                        }
-                    } else if (strcmp(node[i]->attributes[j], xml_restrict) == 0) {
-                        os_free(restrictfile);
-                        os_strdup(node[i]->values[j], restrictfile);
-                    } else {
-                        merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
-                        os_free(tag);
-                        os_free(restrictfile);
-                        return OS_INVALID;
-                    }
-                    j++;
-                }
+            if (!read_reg(syscheck, node[i]->content, node[i]->attributes, node[i]->values)) {
+                return (OS_INVALID);
             }
-
-            if (strcmp(arch, "both") == 0) {
-                if (!(read_reg(syscheck, node[i]->content, ARCH_32BIT, tag, opts, restrictfile, reg_recursion_level) &&
-                read_reg(syscheck, node[i]->content, ARCH_64BIT, tag, opts, restrictfile, reg_recursion_level))) {
-                    free(tag);
-                    os_free(restrictfile);
-                    return (OS_INVALID);
-                }
-
-            } else if (strcmp(arch, "64bit") == 0) {
-                if (!read_reg(syscheck, node[i]->content, ARCH_64BIT, tag, opts, restrictfile, reg_recursion_level)) {
-                    free(tag);
-                    os_free(restrictfile);
-                    return (OS_INVALID);
-                }
-
-            } else {
-                if (!read_reg(syscheck, node[i]->content, ARCH_32BIT, tag, opts, restrictfile, reg_recursion_level)) {
-                    free(tag);
-                    os_free(restrictfile);
-                    return (OS_INVALID);
-                }
-            }
-
-            if (tag)
-                free(tag);
-            os_free(restrictfile);
 #endif
         }
         /* Get windows audit interval */

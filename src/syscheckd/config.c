@@ -138,6 +138,14 @@ int Read_Syscheck_Config(const char *cfgfile)
     }
     if (!syscheck.registry) {
             syscheck.registry = REGISTRY_EMPTY;
+    } else {
+        it = 0;
+        while (syscheck.registry[it].entry) {
+            if (syscheck.registry[it].diff_size_limit == -1) {
+                syscheck.registry[it].diff_size_limit = syscheck.file_size_limit;
+            }
+            it++;
+        }
     }
     if ((syscheck.dir[0] == NULL) && (syscheck.registry[0].entry == NULL)) {
         return (1);
