@@ -4,9 +4,9 @@
 
 import json
 import re
+from collections import defaultdict
 
 from wazuh.rbac import orm
-from collections import defaultdict
 
 
 class RBAChecker:
@@ -296,7 +296,7 @@ class RBAChecker:
         return list_roles
 
     def run_auth_context(self):
-        """This function will return the final policies of an user according to the roles matching the authorization
+        """This function will return the final policies of a user according to the roles matching the authorization
         context"""
         user_roles = self.get_user_roles()
         user_roles_policies = defaultdict(list)
@@ -316,7 +316,7 @@ class RBAChecker:
 
     @staticmethod
     def run_user_role_link(user_id):
-        """This function will return the final policies of an user according to its roles in the RBAC database"""
+        """This function will return the final policies of a user according to its roles in the RBAC database"""
         with orm.UserRolesManager() as urm:
             user_roles = list(role for role in urm.get_all_roles_from_user(user_id=user_id))
         user_roles_policies = defaultdict(list)
@@ -330,7 +330,7 @@ class RBAChecker:
 
     @staticmethod
     def run_user_role_link_roles(user_id):
-        """This function will return the roles in the RBAC database for an user"""
+        """This function will return the roles in the RBAC database for a user"""
         with orm.UserRolesManager() as urm:
             user_roles = list(role.id for role in urm.get_all_roles_from_user(user_id=user_id))
 
@@ -338,7 +338,7 @@ class RBAChecker:
 
 
 def get_policies_from_roles(roles=None):
-    """This function will return the final policies of an user according to the roles"""
+    """This function will return the final policies of a user according to its roles"""
     policies = list()
     with orm.RolesPoliciesManager() as rpm:
         for role in roles:

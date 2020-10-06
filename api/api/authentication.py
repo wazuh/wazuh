@@ -4,14 +4,14 @@
 
 import asyncio
 import concurrent.futures
-import copy
 import logging
 import os
-from secrets import token_urlsafe
 from shutil import chown
 from time import time
 
+import copy
 from jose import JWTError, jwt
+from secrets import token_urlsafe
 from werkzeug.exceptions import Unauthorized
 
 import api.configuration as conf
@@ -124,8 +124,8 @@ def generate_token(user_id=None, data=None):
     ----------
     user_id : str
         Unique username
-    rbac_policies : dict
-        Permissions for the user
+    data : dict
+        Roles permissions for the user
 
     Returns
     -------
@@ -190,7 +190,7 @@ def check_token(username, roles, token_nbf_time):
 
 
 def decode_token(token):
-    """Decode a jwt formatted token. Raise an Unauthorized exception in case validation fails.
+    """Decode a jwt formatted token and add processed policies. Raise an Unauthorized exception in case validation fails.
 
     Parameters
     ----------
@@ -202,7 +202,10 @@ def decode_token(token):
     Dict payload ot the token
     """
     try:
+        # Decode JWT token with local secret
         payload = jwt.decode(token, generate_secret(), algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
+
+        # Check token and add processed policies in the Master node
         dapi = DistributedAPI(f=check_token,
                               f_kwargs={'username': payload['sub'],
                                         'roles': payload['rbac_roles'], 'token_nbf_time': payload['nbf']},
@@ -211,13 +214,13 @@ def decode_token(token):
                               wait_for_complete=True,
                               logger=logging.getLogger('wazuh')
                               )
-        data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
+        data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).to_dict()
 
-        if not data.to_dict()['result']['valid']:
+        if not data['result']['valid']:
             raise Unauthorized
-
-        payload['rbac_policies'] = data['policies']
+        payload['rbac_policies'] = data['result']['policies']
         payload['rbac_policies']['rbac_mode'] = payload.pop('rbac_mode')
+
         # Detect local changes
         dapi = DistributedAPI(f=get_security_conf,
                               request_type='local_master',
@@ -226,9 +229,11 @@ def decode_token(token):
                               logger=logging.getLogger('wazuh')
                               )
         result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
+
         current_rbac_mode = result['rbac_mode']
         current_expiration_time = result['auth_token_exp_timeout']
-        if payload['rbac_policies']['rbac_mode'] != current_rbac_mode or (payload['exp'] - payload['nbf']) != current_expiration_time:
+        if payload['rbac_policies']['rbac_mode'] != current_rbac_mode \
+                or (payload['exp'] - payload['nbf']) != current_expiration_time:
             raise Unauthorized
 
         return payload
