@@ -51,7 +51,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
         # MinGW generates position-independent-code for DLL by default
   )
-  target_link_libraries(rsync ssl ws2_32 crypt32)
+  target_link_libraries(rsync crypto ssl ws2_32 crypt32)
 
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     
