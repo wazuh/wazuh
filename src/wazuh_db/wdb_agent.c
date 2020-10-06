@@ -625,9 +625,9 @@ int* wdb_get_all_agents(bool include_manager, int *sock) {
                 char *savedptr = NULL;
                 for (agent_id = strtok_r(payload, sdelim, &savedptr); agent_id; agent_id = strtok_r(NULL, sdelim, &savedptr)) {
                     array[len] = atoi(agent_id);
+                    last_id = array[len];
                     len++;
                 }
-                last_id = array[len-1];
             }
         }
         else {
@@ -675,9 +675,9 @@ int* wdb_get_agents_by_keepalive(const char* condition, int keepalive, bool incl
                 char *savedptr = NULL;
                 for (agent_id = strtok_r(payload, sdelim, &savedptr); agent_id; agent_id = strtok_r(NULL, sdelim, &savedptr)) {
                     array[len] = atoi(agent_id);
+                    last_id = array[len];
                     len++;
                 }
-                last_id = array[len-1];
             }
         }
         else {
@@ -710,7 +710,7 @@ int wdb_find_agent(const char *name, const char *ip, int *sock) {
     int aux_sock = -1;
 
     if (!name || !ip) {
-        mdebug1("Empty agent name or ip when trying to get agent name. Agent: (%s) IP: (%s)", name, ip);
+        mdebug1("Empty agent name or ip when trying to get agent ID.");
         return OS_INVALID;
     }
 
@@ -736,7 +736,7 @@ int wdb_find_agent(const char *name, const char *ip, int *sock) {
     }
     
     if (!root) {
-        merror("Error querying Wazuh DB for agent name.");
+        merror("Error querying Wazuh DB for agent ID.");
         return OS_INVALID;
     }
 
@@ -892,7 +892,7 @@ time_t wdb_get_agent_keepalive(const char *name, const char *ip, int *sock){
     int aux_sock = -1;
 
     if (!name || !ip) {
-        mdebug1("Empty agent name or ip when trying to get last keepalive. Agent: (%s) IP: (%s)", name, ip);
+        mdebug1("Empty agent name or ip when trying to get last keepalive.");
         return OS_INVALID;
     }
 
