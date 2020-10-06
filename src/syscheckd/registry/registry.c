@@ -436,6 +436,8 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
         key->mtime = get_registry_mtime(key_handle);
     }
 
+    fim_registry_get_checksum_key(key);
+
     return key;
 }
 

@@ -56,7 +56,7 @@ const char *SQL_STMT[] = {
 #ifdef WIN32
     [FIMDB_STMT_REPLACE_REG_DATA] = "INSERT OR REPLACE INTO registry_data (key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, scanned, last_event, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     [FIMDB_STMT_REPLACE_REG_KEY] = "INSERT OR REPLACE INTO registry_key (id, path, perm, uid, gid, user_name, group_name, mtime, arch, scanned, last_event, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [FIMDB_STMT_GET_REG_KEY] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, scanned, last_event, checksum FROM registry_key WHERE arch = ? and path = ?;",
+    [FIMDB_STMT_GET_REG_KEY] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, scanned, last_event, checksum FROM registry_key WHERE path = ? AND arch = ?;",
     [FIMDB_STMT_GET_REG_DATA] = "SELECT key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, scanned, last_event, checksum FROM registry_data WHERE name = ? AND key_id = ?;",
     [FIMDB_STMT_GET_REG_KEY_NOT_SCANNED] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, scanned, last_event, checksum FROM registry_key WHERE scanned = 0;",
     [FIMDB_STMT_GET_REG_DATA_NOT_SCANNED] = "SELECT key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, scanned, last_event, checksum FROM registry_data WHERE scanned = 0;",
@@ -319,7 +319,7 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
 
     os_calloc(1, sizeof(fim_entry), entry);
     entry->type = FIM_TYPE_REGISTRY;
-    entry->registry_entry.key = fim_db_get_registry_key(fim_sql, arch, key_path);
+    entry->registry_entry.key = fim_db_get_registry_key(fim_sql, key_path, arch);
 
     if (value_name == NULL || *value_name == '\0') {
         free(key_path);
@@ -327,7 +327,7 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
         return entry;
     }
 
-    if (fim_db_get_registry_key_rowid(fim_sql, arch, key_path, &key_id) != FIMDB_OK) {
+    if (fim_db_get_registry_key_rowid(fim_sql, key_path, arch, &key_id) != FIMDB_OK) {
         fim_registry_free_entry(entry);
         free(key_path);
         return NULL;
@@ -571,7 +571,9 @@ int fim_db_process_read_file(fdb_t *fim_sql,
                              void *w_evt) {
     char line[PATH_MAX + 1];
     char *path = NULL;
+#ifdef WIN32
     char *split = NULL;
+#endif
     int i = 0;
 
     if (storage == FIM_DB_DISK) {

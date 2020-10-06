@@ -245,5 +245,6 @@
 #define FIM_DIFF_IDENTICAL_MD5_FILES        "(6352): The files are identical, don't compute differences"
 #define FIM_DIFF_COMMAND_OUTPUT_EQUAL       "(6353): Command diff/fc output 0, files are the same"
 #define FIM_EMPTY_REGISTRY_CONFIG           "(6354): Empty windows_registry tag found in the configuration."
+#define FIM_REGISTRY_ENTRIES_INFO           "(6355): Fim registry entries: %d"
 
 #endif /* DEBUG_MESSAGES_H */

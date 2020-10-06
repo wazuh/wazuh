@@ -1148,7 +1148,11 @@ void free_file_data(fim_file_data * data) {
         os_free(data->attributes);
     }
     if (data->uid) {
+#ifndef WIN32
         os_free(data->uid);
+#else
+        LocalFree(data->uid);
+#endif
     }
     if (data->gid) {
         os_free(data->gid);
@@ -1219,6 +1223,7 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
 
 #ifdef WIN32
     mdebug1(FIM_ENTRIES_INFO, fim_db_get_count_file_entry(syscheck.database));
+    mdebug1(FIM_REGISTRY_ENTRIES_INFO, fim_db_get_count_registry_key(syscheck.database) + fim_db_get_count_registry_data(syscheck.database));
 #else
     unsigned inode_items = 0;
     unsigned inode_paths = 0;
