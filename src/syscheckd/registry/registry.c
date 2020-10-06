@@ -436,8 +436,8 @@ void fim_read_values(HKEY key_handle,
     DWORD i;
 
     if (new->registry_entry.key->id == 0) {
-        if (fim_db_get_registry_key_rowid(syscheck.database, new->registry_entry.key->path, new->registry_entry.key->arch,
-                                          &new->registry_entry.key->id) != FIMDB_OK) {
+        if (fim_db_get_registry_key_rowid(syscheck.database, new->registry_entry.key->path,
+                                          new->registry_entry.key->arch, &new->registry_entry.key->id) != FIMDB_OK) {
             mwarn(FIM_REGISTRY_FAIL_TO_GET_KEY_ID, new->registry_entry.key->arch == ARCH_32BIT ? "[x32]" : "[x64]",
                   new->registry_entry.key->path);
             return;

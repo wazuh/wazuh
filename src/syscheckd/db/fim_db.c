@@ -414,21 +414,22 @@ end:
 
 void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry *entry, int storage, void *arg) {
     char *path = entry->type == FIM_TYPE_FILE ? entry->file_entry.path : entry->registry_entry.key->path;
-
+    char *base = NULL;
     char *write_buffer;
     size_t line_length;
 
+
+    if(base = wstr_escape_json(path), base == NULL) {
+        merror("Error escaping '%s'", path);
+        return;
+    }
+
     if (entry->type == FIM_TYPE_FILE) {
-        write_buffer = wstr_escape_json(path);
+        write_buffer = base;
         line_length = strlen(write_buffer);
     } else {
         os_calloc(MAX_DIR_SIZE, sizeof(char), write_buffer);
-        line_length = snprintf(write_buffer, MAX_DIR_SIZE, "%d %s", entry->registry_entry.key->arch, wstr_escape_json(path));
-    }
-
-    if (write_buffer == NULL) {
-        merror("Error escaping '%s'", path);
-        return;
+        line_length = snprintf(write_buffer, MAX_DIR_SIZE, "%d %s", entry->registry_entry.key->arch, base);
     }
 
     if (storage == FIM_DB_DISK) { // disk storage enabled
@@ -447,6 +448,7 @@ void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry
 
 end:
     os_free(write_buffer);
+    os_free(base);
 }
 
 int fim_db_get_count(fdb_t *fim_sql, int index) {

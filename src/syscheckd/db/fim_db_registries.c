@@ -162,8 +162,10 @@ int fim_db_remove_registry_key(fdb_t *fim_sql, fim_entry *entry) {
 
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_DELETE_REG_DATA_PATH);
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_DELETE_REG_KEY_PATH);
-    fim_db_bind_registry_path(fim_sql, FIMDB_STMT_DELETE_REG_DATA_PATH, entry->registry_entry.key->path, entry->registry_entry.key->arch);
-    fim_db_bind_registry_path(fim_sql, FIMDB_STMT_DELETE_REG_KEY_PATH, entry->registry_entry.key->path, entry->registry_entry.key->arch);
+    fim_db_bind_registry_path(fim_sql, FIMDB_STMT_DELETE_REG_DATA_PATH, entry->registry_entry.key->path,
+                              entry->registry_entry.key->arch);
+    fim_db_bind_registry_path(fim_sql, FIMDB_STMT_DELETE_REG_KEY_PATH, entry->registry_entry.key->path,
+                              entry->registry_entry.key->arch);
 
     if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_DELETE_REG_DATA_PATH]) != SQLITE_DONE) {
         merror("Step error deleting data value from key '%s': %s", entry->registry_entry.key->path,
@@ -348,7 +350,7 @@ int fim_db_set_registry_data_scanned(fdb_t *fim_sql, const char *name, unsigned 
     return FIMDB_OK;
 }
 
-    int fim_db_get_registry_key_rowid(fdb_t *fim_sql, const char *path, unsigned int arch, unsigned int *rowid) {
+int fim_db_get_registry_key_rowid(fdb_t *fim_sql, const char *path, unsigned int arch, unsigned int *rowid) {
     int res;
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_REG_ROWID);
     fim_db_bind_registry_path(fim_sql, FIMDB_STMT_GET_REG_ROWID, path, arch);
@@ -520,7 +522,8 @@ int fim_db_insert_registry(fdb_t *fim_sql, fim_entry *new) {
     int res_key = 0;
 
     res_key = fim_db_insert_registry_key(fim_sql, new->registry_entry.key, new->registry_entry.key->id);
-    fim_db_get_registry_key_rowid(fim_sql, new->registry_entry.key->path, new->registry_entry.key->arch, &new->registry_entry.key->id);
+    fim_db_get_registry_key_rowid(fim_sql, new->registry_entry.key->path, new->registry_entry.key->arch,
+                                  &new->registry_entry.key->id);
     res_data = fim_db_insert_registry_data(fim_sql, new->registry_entry.value, new->registry_entry.key->id);
 
     fim_db_check_transaction(fim_sql);

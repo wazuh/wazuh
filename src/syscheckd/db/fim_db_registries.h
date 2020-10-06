@@ -309,7 +309,8 @@ int fim_db_get_count_registry_key(fdb_t *fim_sql);
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  *
  */
-int fim_db_get_registry_keys_range(fdb_t *fim_sql, const char *start, const char *top, fim_tmp_file **file, int storage);
+int fim_db_get_registry_keys_range(fdb_t *fim_sql, const char *start, const char *top, fim_tmp_file **file,
+                                   int storage);
 
 /**
  * @brief Get registry keys between @start and @top. (stored in @file).
@@ -323,7 +324,8 @@ int fim_db_get_registry_keys_range(fdb_t *fim_sql, const char *start, const char
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  *
  */
-int fim_db_get_registry_value_range(fdb_t *fim_sql, const char *start, const char *top, fim_tmp_file **file, int storage);
+int fim_db_get_registry_value_range(fdb_t *fim_sql, const char *start, const char *top, fim_tmp_file **file,
+                                    int storage);
 
 /**
  * @brief Removes a range of registry keys from the database.
