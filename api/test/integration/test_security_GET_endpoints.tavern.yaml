@@ -1324,18 +1324,19 @@ stages:
     response:
       status_code: 200
       json:
-        rules:read:
-          description: !anystr
-          resources:
-            - rule:file
-          example:
-            actions:
-              - rules:read
+        data:
+          rules:read:
+            description: !anystr
             resources:
-              - rule:file:0610-win-ms_logs_rules.xml
-            effect: allow
-          related_endpoints:
-            - GET /rules/files
+              - rule:file
+            example:
+              actions:
+                - rules:read
+              resources:
+                - rule:file:0610-win-ms_logs_rules.xml
+              effect: allow
+            related_endpoints:
+              - GET /rules/files
 
 ---
 test_name: GET /security/resources
@@ -1384,8 +1385,9 @@ stages:
     response:
       status_code: 200
       json:
-        agent:id:
-          description: Reference agents via agent ID (i.e. agent:id:001)
+        data:
+          agent:id:
+            description: Reference agents via agent ID (i.e. agent:id:001)
 
 ---
 test_name: GET /security/config
