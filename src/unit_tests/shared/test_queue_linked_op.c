@@ -129,6 +129,7 @@ void test_linked_pop(void **state) {
     assert_int_equal(queue->elements, 1);
     assert_ptr_not_equal(data, NULL);
     assert_int_equal(*data, 5);
+    os_free(data);
     data = linked_queue_pop(queue);
     assert_int_equal(queue->elements, 0);
     assert_ptr_not_equal(data, NULL);
@@ -136,6 +137,7 @@ void test_linked_pop(void **state) {
     // Check queue is now empty
     assert_ptr_equal(queue->first, NULL);
     assert_ptr_equal(queue->last, NULL);
+    os_free(data);
 }
 
 void test_linked_pop_ex(void **state) {
@@ -147,6 +149,7 @@ void test_linked_pop_ex(void **state) {
     assert_int_equal(queue->elements, 1);
     assert_ptr_not_equal(data, NULL);
     assert_int_equal(*data, 5);
+    os_free(data);
     data = linked_queue_pop_ex(queue);
     assert_int_equal(queue->elements, 0);
     assert_ptr_not_equal(data, NULL);
@@ -154,13 +157,13 @@ void test_linked_pop_ex(void **state) {
     // Check queue is now empty
     assert_ptr_equal(queue->first, NULL);
     assert_ptr_equal(queue->last, NULL);
+    os_free(data);
     expect_value(__wrap_pthread_cond_wait, cond, &queue->available);
     expect_value(__wrap_pthread_cond_wait, mutex, &queue->mutex);
     expect_value(__wrap_pthread_cond_signal, cond, &queue->available);
     callback_ptr = callback_queue_push_ex;
     data = linked_queue_pop_ex(queue);
-
-    
+    os_free(data);
 }
 /************************************************/
 int main(void) {
