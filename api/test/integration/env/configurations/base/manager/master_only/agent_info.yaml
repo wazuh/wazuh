@@ -12,6 +12,8 @@
     version: Wazuh v3.9.2
     config_sum: 0e013cb9c7120a83351399a83a660c20
     merged_sum: c5c0409668664e790a295bce215b4fa2
+    node_name: master-node
+    manager_host: wazuh-master
   labels:
     '#"_agent_ip"': 172.28.0.14
     '#"_manager_hostname"': wazuh-master
@@ -34,6 +36,8 @@
     version: Wazuh v3.9.2
     config_sum: e2f47d482da37c099fa1d6e4c43b523c
     merged_sum: 5c503afb7c6a5bfafabf10ce548120f5
+    node_name: master-node
+    manager_host: wazuh-master
   labels:
     '#"_agent_ip"': 172.28.0.15
     '#"_manager_hostname"': wazuh-master
