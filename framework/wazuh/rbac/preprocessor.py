@@ -43,7 +43,7 @@ class PreProcessor:
 
     @staticmethod
     def is_combination(resource):
-        """This function checks whether a given resource is a combination or not.
+        """Check whether a given resource is a combination or not.
 
         :param resource: Resource to be checked
         :return Tuple with a flag that indicates whether it is a combination or not and if so,
@@ -56,8 +56,7 @@ class PreProcessor:
         return False, [resource]
 
     def process_policy(self, policy):
-        """Receives an unprocessed policy and transforms it into a specific format for
-        treatment in the decorator.
+        """Receive an unprocessed policy and transforms it into a specific format for treatment in the decorator.
 
         :param policy: Policy of the user
         """
@@ -80,17 +79,13 @@ class PreProcessor:
                 self.odict[action]['&'.join(resource)] = policy['effect']
 
     def get_optimize_dict(self):
-        """This function preprocess the policies of the user for a more easy treatment
-        in the decorator of the RBAC
-        """
         return self.odict
 
 
 def optimize_resources(roles=None):
-    """This function preprocess the policies of the user for a more easy treatment in the decorator of the RBAC
+    """Preprocess the policies of the user for a more easy treatment in the decorator of the RBAC
 
-    :param roles: Authorization context of the current user
-    :param user_id: Username of the current user
+    :param roles: Roles of the current user
     """
     policies = get_policies_from_roles(roles=roles)
 
@@ -102,7 +97,7 @@ def optimize_resources(roles=None):
 
 
 def get_roles(auth_context=None, user_id=None):
-    """This function preprocess the policies of the user for a more easy treatment in the decorator of the RBAC
+    """Obtain the roles of a user using auth_context or user_id
 
     :param auth_context: Authorization context of the current user
     :param user_id: Username of the current user
@@ -121,6 +116,11 @@ def get_roles(auth_context=None, user_id=None):
 
 
 def get_permissions(user_id=None, auth_context=None):
+    """Obtain the permissions of a user using auth_context or user_id
+
+    :param auth_context: Authorization context of the current user
+    :param user_id: Username of the current user
+    """
     with AuthenticationManager() as auth:
         if not auth.user_allow_run_as(user_id) and auth_context:
             raise WazuhPermissionError(code=6004)

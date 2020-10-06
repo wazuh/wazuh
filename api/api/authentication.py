@@ -1,17 +1,17 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
 import concurrent.futures
+import copy
 import logging
 import os
+from secrets import token_urlsafe
 from shutil import chown
 from time import time
 
-import copy
 from jose import JWTError, jwt
-from secrets import token_urlsafe
 from werkzeug.exceptions import Unauthorized
 
 import api.configuration as conf

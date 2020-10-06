@@ -309,7 +309,7 @@ class RBAChecker:
         return user_roles_policies
 
     def run_auth_context_roles(self):
-        """This function will return the roles of aun user matching the authorization context"""
+        """This function will return the roles of a user matching the authorization context"""
         user_roles = self.get_user_roles()
 
         return user_roles
