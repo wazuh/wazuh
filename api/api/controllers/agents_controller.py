@@ -82,7 +82,6 @@ async def get_agents(request, pretty=False, wait_for_complete=False, list_agents
     :param ip: Filters by agent IP
     :return: AllItemsResponseAgents
     """
-
     f_kwargs = {'agent_list': list_agents,
                 'offset': offset,
                 'limit': limit,
