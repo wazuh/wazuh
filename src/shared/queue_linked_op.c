@@ -27,12 +27,14 @@ w_linked_queue_t *linked_queue_init() {
     queue->first = NULL;
     queue->last = NULL;
     w_mutex_init(&queue->mutex, NULL);
+    w_cond_init(&queue->available, NULL);
     return queue;
 }
 
 void linked_queue_free(w_linked_queue_t *queue) {
     if (queue) {
         w_mutex_destroy(&queue->mutex);
+        w_cond_destroy(&queue->available);
         os_free(queue);
     }
 }
@@ -52,6 +54,7 @@ void linked_queue_push_ex(w_linked_queue_t * queue, void * data) {
     node->next = NULL;
     w_mutex_lock(&queue->mutex);
     linked_queue_append_node(queue, node);
+    w_cond_signal(&queue->available);
     w_mutex_unlock(&queue->mutex);
 }
 
@@ -71,7 +74,9 @@ void * linked_queue_pop_ex(w_linked_queue_t * queue) {
     void * data;
 
     w_mutex_lock(&queue->mutex);
-    data = linked_queue_pop(queue);
+    while (data = linked_queue_pop(queue), !data) {
+        w_cond_wait(&queue->available, &queue->mutex);
+    }
     w_mutex_unlock(&queue->mutex);
 
     return data;

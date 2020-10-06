@@ -29,6 +29,7 @@ typedef struct linked_queue_node_t {
 
 typedef struct linked_queue_t {
     pthread_mutex_t mutex; ///> mutex for mutual exclusion
+    pthread_cond_t available; ///> condition variable when queue is empty
     unsigned int elements; ///> counts the number of elements stored in the queue
     w_linked_queue_node_t *first; ///> points to the first node that would go out the queue
     w_linked_queue_node_t *last; ///> pointer to the last node in the queue
