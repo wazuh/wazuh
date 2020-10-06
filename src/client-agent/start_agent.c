@@ -296,8 +296,17 @@ static bool agent_ping_to_server(int server_id) {
     char buffer[OS_MAXSTR + 1] = { '\0' };
 
     if (connect_server(server_id, true)) {
-        /* Send start up message */
-        send_message(msg, strlen(msg));
+        /* Send the ping message */
+
+        if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
+            recv_b = OS_SendUDPbySize(agt->sock, strlen(msg), msg);
+        } else {
+            recv_b = OS_SendSecureTCP(agt->sock, strlen(msg), msg);
+        }
+
+        if (recv_b != 0) {
+            return false;
+        }
 
         /* Read until our reply comes back */
         recv_b = receive_message(buffer, OS_MAXSTR);

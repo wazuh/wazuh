@@ -80,9 +80,6 @@ void sender_init();
 /* Send message to server */
 int send_msg(const char *msg, ssize_t msg_length);
 
-/* Send message to server */
-int send_message(const char *msg, ssize_t msg_size);
-
 /* Extract the shared files */
 char *getsharedfiles(void);
 
@@ -95,7 +92,7 @@ void start_agent(int is_startup);
 /* Connect to the server */
 bool connect_server(int initial_id, bool is_ping);
 
-/** 
+/**
  * Tries to enroll to a server indicated by server_rip
  * @return 0 on success
  *         -1 on error
