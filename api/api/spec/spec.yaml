@@ -6482,6 +6482,16 @@ paths:
             application/xml:
               schema:
                 type: string
+              example: |
+                <agent_config>
+                  <!-- Shared agent configuration here -->
+                  <agent_config os="Linux">
+                    <localfile>
+                      <location>/var/log/linux.log</location>
+                      <log_format>syslog</log_format>
+                    </localfile>
+                  </agent_config>
+                </agent_config>
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10461,6 +10471,57 @@ paths:
             application/xml:
               schema:
                 type: string
+              example: |
+                <!--
+                  -  Rules config
+                  -  Author: Daniel Cid.
+                  -  Updated by Wazuh, Inc.
+                  -  Copyright (C) 2015-2020, Wazuh Inc.
+                  -  Copyright (C) 2009 Trend Micro Inc.
+                  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+                -->
+                <group name="syslog,">
+                  <rule id="1" level="0" noalert="1">
+                    <category>syslog</category>
+                    <description>Generic template for all syslog rules.</description>
+                  </rule>
+                </group>
+                <group name="firewall,">
+                  <rule id="2" level="0" noalert="1">
+                    <category>firewall</category>
+                    <description>Generic template for all firewall rules.</description>
+                  </rule>
+                </group>
+                <group name="ids,">
+                  <rule id="3" level="0" noalert="1">
+                    <category>ids</category>
+                    <description>Generic template for all ids rules.</description>
+                  </rule>
+                </group>
+                <group name="web-log,">
+                  <rule id="4" level="0" noalert="1">
+                    <category>web-log</category>
+                    <description>Generic template for all web rules.</description>
+                  </rule>
+                </group>
+                <group name="squid,">
+                  <rule id="5" level="0" noalert="1">
+                    <category>squid</category>
+                    <description>Generic template for all web proxy rules.</description>
+                  </rule>
+                </group>
+                <group name="windows,">
+                  <rule id="6" level="0" noalert="1">
+                    <category>windows</category>
+                    <description>Generic template for all windows rules.</description>
+                  </rule>
+                </group>
+                <group name="ossec,">
+                  <rule id="7" level="0" noalert="1">
+                    <category>ossec</category>
+                    <description>Generic template for all ossec rules.</description>
+                  </rule>
+                </group>
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -11011,6 +11072,21 @@ paths:
             application/xml:
               schema:
                 type: string
+              example: |
+                  <!--
+                  - JSON Decoders
+                  - Copyright (C) 2015-2020, Wazuh Inc.
+                  - April 21, 2017.
+                  -
+                  - This program is a free software; you can redistribute it
+                  - and/or modify it under the terms of the GNU General Public
+                  - License (version 2) as published by the FSF - Free Software
+                  - Foundation.
+                  -->
+                  <decoder name="json">
+                    <prematch>^{\s*"</prematch>
+                    <plugin_decoder>JSON_Decoder</plugin_decoder>
+                  </decoder>
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13003,6 +13079,12 @@ paths:
       responses:
         '200':
           description: "Tokens were successfully revoked"
+          content:
+            application/json:
+              schema:
+                type: string
+              example:
+                message: "Tokens were successfully revoked"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14540,6 +14622,12 @@ paths:
       responses:
         '200':
           description: 'Configuration successfully updated'
+          content:
+            application/json:
+              schema:
+                type: string
+              example:
+                message: 'Configuration successfully updated'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14564,7 +14652,13 @@ paths:
         - $ref: "#/components/parameters/wait_for_complete"
       responses:
         '200':
-          description: 'Configuration successfully restored'
+          description: 'Configuration successfully updated'
+          content:
+            application/json:
+              schema:
+                type: string
+              example:
+                message: 'Configuration successfully updated'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
