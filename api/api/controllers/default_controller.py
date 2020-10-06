@@ -9,6 +9,7 @@ import time
 from aiohttp import web
 from api.encoder import dumps, prettify
 from api.models.basic_info import BasicInfo
+from api.models.base_model_ import Data
 from wazuh.core.security import load_spec
 
 logger = logging.getLogger('wazuh')
@@ -32,6 +33,6 @@ async def default_info(pretty=False):
         'hostname': socket.gethostname(),
         'timestamp': timestamp
     }
-    response = BasicInfo.from_dict(data)
+    response = Data(BasicInfo.from_dict(data))
 
     return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)

@@ -865,7 +865,7 @@ def revoke_current_user_tokens():
         with AuthenticationManager() as am:
             tm.add_user_roles_rules(users={am.get_user(common.current_user.get())['id']})
 
-    return WazuhResult({'msg': f'User {common.current_user.get()} was successfully logged out'})
+    return WazuhResult({'message': f'User {common.current_user.get()} was successfully logged out'})
 
 
 @expose_resources(actions=['security:revoke'], resources=['*:*:*'],
@@ -875,7 +875,7 @@ def wrapper_revoke_tokens():
     """ Revoke all tokens """
     revoke_tokens()
 
-    return WazuhResult({'msg': 'Tokens were successfully revoked'})
+    return WazuhResult({'message': 'Tokens were successfully revoked'})
 
 
 @lru_cache(maxsize=None)
