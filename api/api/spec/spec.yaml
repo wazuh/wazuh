@@ -1761,6 +1761,12 @@ components:
         roles:
           type: array
           description: "User's roles"
+    Token:
+      type: object
+      properties:
+        token:
+          type: string
+          description: "User's token"
 
     # Cluster and manager models
     WazuhDaemonsStatus:
@@ -12788,10 +12794,12 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  token:
-                    type: string
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Token'
               example:
                 token: "<generated_token>"
             text/plain:

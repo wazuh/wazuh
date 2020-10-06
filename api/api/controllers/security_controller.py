@@ -11,11 +11,11 @@ from aiohttp import web
 from api.authentication import generate_token
 from api.configuration import default_security_configuration
 from api.encoder import dumps, prettify
-from api.models.base_model_ import Body
+from api.models.base_model_ import Body, Data
 from api.models.configuration import SecurityConfigurationModel
 from api.models.security import CreateUserModel, UpdateUserModel, RoleModel, PolicyModel, RuleModel
 from api.models.token_response import TokenResponseModel
-from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
+from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param, json_response_wazuh
 from wazuh import security
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -68,7 +68,8 @@ async def login_user(request, user: str, raw=False):
     if raw:
         return web.Response(text=token, content_type='text/plain', status=200)
     else:
-        return web.json_response(data=TokenResponseModel(token=token), status=200, dumps=dumps)
+        response = Data(TokenResponseModel(token=token))
+        return web.json_response(data=response, status=200, dumps=dumps)
 
 
 async def get_user_me(request, pretty=False, wait_for_complete=False):
@@ -953,8 +954,8 @@ async def get_rbac_resources(resource: str = None, pretty: bool = False):
                           logger=logger
                           )
     data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    response = Data(data)
+    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_rbac_actions(pretty: bool = False, endpoint: str = None):
@@ -982,8 +983,9 @@ async def get_rbac_actions(pretty: bool = False, endpoint: str = None):
                           logger=logger
                           )
     data = raise_if_exc(await dapi.distribute_function())
+    response = Data(data)
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
 
 
 async def revoke_all_tokens(request, pretty: bool = False):
