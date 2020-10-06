@@ -115,7 +115,8 @@ async def get_agents(request, pretty=False, wait_for_complete=False, list_agents
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    return web.json_response(data=data, dumps=prettify if pretty else dumps)
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def add_agent(request, pretty=False, wait_for_complete=False):
