@@ -646,6 +646,23 @@ stages:
           total_affected_items: 4
           total_failed_items: 0
 
+  - name: Filter by agent status 3 (Upper and lowercase letters in values)
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        status: DiScoNNected
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - id: '009'
+            - id: '010'
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+
   - name: Try to show agents with a non existing status
     request:
       verify: False
