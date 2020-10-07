@@ -911,11 +911,11 @@ def get_rbac_resources(resource: str = None):
         RBAC resources
     """
     if not resource:
-        return WazuhResult(load_spec()['x-rbac-catalog']['resources'])
+        return WazuhResult({'data': load_spec()['x-rbac-catalog']['resources']})
     else:
         if resource not in load_spec()['x-rbac-catalog']['resources'].keys():
             raise WazuhError(4019)
-        return WazuhResult({resource: load_spec()['x-rbac-catalog']['resources'][resource]})
+        return WazuhResult({'data': {resource: load_spec()['x-rbac-catalog']['resources'][resource]}})
 
 
 @lru_cache(maxsize=None)
@@ -955,13 +955,13 @@ def get_rbac_actions(endpoint: str = None):
             except KeyError:
                 pass
 
-    return WazuhResult(data)
+    return WazuhResult({'data': data})
 
 
 @expose_resources(actions=['security:read_config'], resources=['*:*:*'])
 def get_security_config():
     """Returns current security configuration."""
-    return configuration.security_conf
+    return WazuhResult({'data': configuration.security_conf})
 
 
 @expose_resources(actions=['security:update_config'], resources=['*:*:*'])
