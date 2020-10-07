@@ -75,7 +75,7 @@ int wdb_delete_pm(int id) {
     int result;
 
     char *name = id ? wdb_get_agent_name(id, &sock) : strdup("localhost");
-    if (sock >= 0) close(sock);
+    wdbc_close(sock);
 
     if (!name)
         return -1;
@@ -105,7 +105,7 @@ void wdb_delete_pm_all() {
     int sock = -1;
 
     int *agents = wdb_get_all_agents(FALSE, &sock);
-    if (sock >= 0) close(sock);
+    wdbc_close(sock);
 
     if (agents) {
         wdb_delete_pm(0);

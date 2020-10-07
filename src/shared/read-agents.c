@@ -1104,7 +1104,7 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const c
     /* Getting all the information of the agent */
     int sock = -1;
     json_agt_info = wdb_get_agent_info(atoi(agent_id), &sock);
-    if (sock >= 0) close(sock);
+    wdbc_close(sock);
 
     if (!json_agt_info) {
         mdebug1("Failed to get agent '%s' information from Wazuh DB.",agent_id);
@@ -1155,7 +1155,7 @@ agent_status_t get_agent_status(int agent_id){
 
     int sock = -1;
     json_agt_info = wdb_get_agent_info(agent_id, &sock);
-    if (sock >= 0) close(sock);
+    wdbc_close(sock);
 
     if (!json_agt_info) {
         mdebug1("Failed to get agent '%d' information from Wazuh DB.", agent_id);
@@ -1203,7 +1203,7 @@ char **get_agents(int flag){
 
     if(!id_array){
         mdebug1("Failed getting agent's ID array.");
-        if (sock >= 0) close(sock);
+        wdbc_close(sock);
         return (NULL);
     }
 
@@ -1251,7 +1251,7 @@ char **get_agents(int flag){
                 break;
             default:
                 mwarn("Invalid flag '%d' trying to get all agents.", flag);
-                if (sock >= 0) close(sock);
+                wdbc_close(sock);
                 os_free(id_array);
                 return NULL;
         }
@@ -1275,7 +1275,7 @@ char **get_agents(int flag){
         array_size++;
     }
 
-    if (sock >= 0) close(sock);
+    wdbc_close(sock);
     os_free(id_array);
     return (agents_array);
 }
@@ -1304,7 +1304,7 @@ char **get_agents_by_last_keepalive(int flag, int delta){
 
     if (!id_array) {
         mdebug1("Failed getting agent's ID array.");
-        if (sock >= 0) close(sock);
+        wdbc_close(sock);
         return (NULL);
     }
 
@@ -1333,7 +1333,7 @@ char **get_agents_by_last_keepalive(int flag, int delta){
         cJSON_Delete(json_agt_info);
     }
 
-    if (sock >= 0) close(sock);
+    wdbc_close(sock);
     os_free(id_array);
     return agents_array;
 }
