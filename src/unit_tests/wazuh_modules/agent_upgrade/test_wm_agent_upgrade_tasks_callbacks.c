@@ -404,7 +404,7 @@ void test_wm_agent_upgrade_task_module_callback_no_callbacks_error(void **state)
     will_return(__wrap_wm_agent_upgrade_parse_data_response, error2);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8105): Response from task manager does not have a valid JSON format.");
+    expect_string(__wrap__mterror, formatted_msg, "(8123): There has been an error executing the request in the tasks manager.");
 
     int result = wm_agent_upgrade_task_module_callback(output, input, NULL, NULL);
 
@@ -487,7 +487,7 @@ void test_wm_agent_upgrade_task_module_callback_error_callback_error(void **stat
     will_return(__wrap_wm_agent_upgrade_parse_data_response, error2);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8105): Response from task manager does not have a valid JSON format.");
+    expect_string(__wrap__mterror, formatted_msg, "(8123): There has been an error executing the request in the tasks manager.");
 
     int result = wm_agent_upgrade_task_module_callback(output, input, NULL, wm_agent_upgrade_remove_entry);
 
@@ -597,7 +597,7 @@ void test_wm_agent_upgrade_task_module_callback_success_error_callback_error(voi
     will_return(__wrap_wm_agent_upgrade_parse_data_response, error2);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8105): Response from task manager does not have a valid JSON format.");
+    expect_string(__wrap__mterror, formatted_msg, "(8123): There has been an error executing the request in the tasks manager.");
 
     int result = wm_agent_upgrade_task_module_callback(output, input, wm_agent_upgrade_upgrade_success_callback, wm_agent_upgrade_remove_entry);
 
@@ -623,21 +623,6 @@ void test_wm_agent_upgrade_task_module_callback_success_error_callback_error(voi
     assert_null(cJSON_GetArrayItem(output, 2));
 }
 
-void test_wm_agent_upgrade_task_module_callback_request_error(void **state)
-{
-    cJSON *input = cJSON_CreateArray();
-    cJSON *output = cJSON_CreateArray();
-
-    int result = wm_agent_upgrade_task_module_callback(output, input, NULL, NULL);
-
-    state[0] = (void *)input;
-    state[1] = (void *)output;
-
-    assert_int_equal(result, OS_INVALID);
-    assert_int_equal(cJSON_GetArraySize(output), 0);
-    assert_null(cJSON_GetArrayItem(output, 0));
-}
-
 int main(void) {
     const struct CMUnitTest tests[] = {
         // wm_agent_upgrade_upgrade_success_callback
@@ -653,8 +638,7 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_agent_upgrade_task_module_callback_success_callback_ok, teardown_jsons),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_task_module_callback_no_callbacks_error, teardown_jsons),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_task_module_callback_error_callback_error, teardown_jsons),
-        cmocka_unit_test_teardown(test_wm_agent_upgrade_task_module_callback_success_error_callback_error, teardown_jsons),
-        cmocka_unit_test_teardown(test_wm_agent_upgrade_task_module_callback_request_error, teardown_jsons)
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_task_module_callback_success_error_callback_error, teardown_jsons)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
