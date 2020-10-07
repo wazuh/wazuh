@@ -798,7 +798,7 @@ time_t wdb_get_agent_keepalive(const char *name, const char *ip, int *sock){
     return output;
 }
 
-long wdb_get_agent_offset(int id, int type) {
+long wdb_get_agent_offset(int id, int type, int *sock) {
     long int output = 0;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -819,7 +819,7 @@ long wdb_get_agent_offset(int id, int type) {
         return OS_INVALID;
     }
 
-    root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+    root = wdbc_query_parse_json(sock, wdbquery, wdboutput, sizeof(wdboutput));
     if (!root) {
         merror("Error querying Wazuh DB to get agent offset.");
         return OS_INVALID;

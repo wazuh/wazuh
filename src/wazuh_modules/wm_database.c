@@ -620,7 +620,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
     switch (type) {
     case WDB_SYSCHECK:
     case WDB_SYSCHECK_REGISTRY:
-        if ((offset = wdb_get_agent_offset(id_agent, type)) < 0) {
+        if ((offset = wdb_get_agent_offset(id_agent, type, &wdb_wmdb_sock)) < 0) {
             mterror(WM_DATABASE_LOGTAG, "Couldn't file offset from database for agent '%d'.", id_agent);
             return -1;
         }
