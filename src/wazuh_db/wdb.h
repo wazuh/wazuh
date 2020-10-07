@@ -399,9 +399,17 @@ void wdb_free_agent_info_data(agent_info_data *agent_data);
  * @param[in] internal_key The client key of the agent.
  * @param[in] group The agent group.
  * @param[in] keep_date If 1, the addition date will be taken from agents-timestamp. If 0, the addition date is the current time.
+ * @param[in] sock The Wazuh DB socket connection.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *internal_key, const char *group, int keep_date);
+int wdb_insert_agent(int id,
+                     const char *name,
+                     const char *ip,
+                     const char *register_ip, 
+                     const char *internal_key,
+                     const char *group,
+                     int keep_date,
+                     int *sock);
 
 /**
  * @brief Insert a new group.
