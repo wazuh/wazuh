@@ -17,7 +17,7 @@
 #include "../../headers/shared.h"
 
 /* Forward declarations */
-void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length);
+void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *wdb_sock);
 
 /* setup/teardown */
 

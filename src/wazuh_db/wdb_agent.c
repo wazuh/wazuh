@@ -225,7 +225,7 @@ int wdb_update_agent_name(int id, const char *name) {
     return result;
 }
 
-int wdb_update_agent_data(agent_info_data *agent_data) {
+int wdb_update_agent_data(agent_info_data *agent_data, int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -270,7 +270,7 @@ int wdb_update_agent_data(agent_info_data *agent_data) {
 
     cJSON_Delete(data_in);
 
-    result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex(sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
         case OS_SUCCESS:
@@ -292,7 +292,7 @@ int wdb_update_agent_data(agent_info_data *agent_data) {
     return result;
 }
 
-int wdb_update_agent_keepalive(int id, const char *sync_status) {
+int wdb_update_agent_keepalive(int id, const char *sync_status, int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -313,7 +313,7 @@ int wdb_update_agent_keepalive(int id, const char *sync_status) {
 
     cJSON_Delete(data_in);
 
-    result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex(sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
         case OS_SUCCESS:

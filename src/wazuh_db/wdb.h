@@ -433,18 +433,20 @@ int wdb_update_agent_name(int id, const char *name);
  * @brief Update agent data in global.db.
  * 
  * @param[in] agent_data A pointer to an agent_info_data structure with the agent information.
+ * @param[in] sock The Wazuh DB socket connection.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_update_agent_data(agent_info_data *agent_data);
+int wdb_update_agent_data(agent_info_data *agent_data, int *sock);
 
 /**
  * @brief Update agent's last keepalive ond modifies the cluster synchronization status.
  * 
  * @param[in] id Id of the agent for whom the keepalive must be updated.
  * @param[in] sync_status String with the cluster synchronization status to be set.
+ * @param[in] sock The Wazuh DB socket connection.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_update_agent_keepalive(int id, const char *sync_status);
+int wdb_update_agent_keepalive(int id, const char *sync_status, int *sock);
 
 /**
  * @brief Set agent updating status.
