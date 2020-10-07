@@ -6,44 +6,52 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Wazuh API:
-  - Embedded Wazuh API with Wazuh Manager, there is no need to install Wazuh API ([9860823](https://github.com/wazuh/wazuh/commit/9860823d568f5e6d93550d9b139507c04d2c2eb9))
-  - Migrated Wazuh API server from nodejs to python ([#2640](https://github.com/wazuh/wazuh/pull/2640))
-  - Added asynchronous aiohttp server for the Wazuh API ([#4474](https://github.com/wazuh/wazuh/issues/4474))
-  - New Wazuh API is approximately 5 times faster on average ([#5834](https://github.com/wazuh/wazuh/issues/5834))
-  - Added OpenAPI based Wazuh API specification ([#2413](https://github.com/wazuh/wazuh/issues/2413))
-  - Improved Wazuh API reference documentation based on OpenAPI spec using redoc ([#4967](https://github.com/wazuh/wazuh/issues/4967))
-  - Added new yaml Wazuh API configuration file ([#2570](https://github.com/wazuh/wazuh/issues/2570))
-  - Added new endpoints to manage API configuration and deprecated configure_api.sh ([#2570](https://github.com/wazuh/wazuh/issues/4822))
-  - Added RBAC support to Wazuh API ([#3287](https://github.com/wazuh/wazuh/issues/3287))
-  - Added new endpoints for Wazuh API security management ([#3410](https://github.com/wazuh/wazuh/issues/3410))
-  - Added SQLAlchemy ORM based database for RBAC ([#3375](https://github.com/wazuh/wazuh/issues/3375))
-  - Added new JWT authentication method ([7080ac3](https://github.com/wazuh/wazuh/commit/7080ac352774bb0feaf07cab76df58ea5503ff4b))
-  - Wazuh API up and running by default in all nodes for a clustered environment
-  - Added new and improved error handling ([#2843](https://github.com/wazuh/wazuh/issues/2843) ([#5345](https://github.com/wazuh/wazuh/issues/5345))
-  - Added tavern and docker based Wazuh API integration tests ([#3612](https://github.com/wazuh/wazuh/issues/3612))
-  - Added new and unified Wazuh API responses structure ([3421015](https://github.com/wazuh/wazuh/commit/34210154016f0a63211a81707744dce0ec0a54f9))
-  - Added new endpoints for Wazuh API users management ([#3280](https://github.com/wazuh/wazuh/issues/3280))
-  - Added new endpoint to restart agents which belong to a node ([#5381](https://github.com/wazuh/wazuh/issues/5381))
-  - Added and improved q filter in several endpoints ([#5431](https://github.com/wazuh/wazuh/pull/5431))
-  - Tested and improved Wazuh API security ([#5318](https://github.com/wazuh/wazuh/issues/5318))
-    - Added DDOS blocking system ([#5318](https://github.com/wazuh/wazuh/issues/5318#issuecomment-654303933))
-    - Added brute force attack blocking system ([#5318](https://github.com/wazuh/wazuh/issues/5318#issuecomment-652892858))
-    - Added content-type validation ([#5318](https://github.com/wazuh/wazuh/issues/5318#issuecomment-654807980))
-- Added and updated framework unit tests to increase coverage ([#3287](https://github.com/wazuh/wazuh/issues/3287))
+  - Embedded Wazuh API with Wazuh Manager, there is no need to install Wazuh API. ([9860823](https://github.com/wazuh/wazuh/commit/9860823d568f5e6d93550d9b139507c04d2c2eb9))
+  - Migrated Wazuh API server from nodejs to python. ([#2640](https://github.com/wazuh/wazuh/pull/2640))
+  - Added asynchronous aiohttp server for the Wazuh API. ([#4474](https://github.com/wazuh/wazuh/issues/4474))
+  - New Wazuh API is approximately 5 times faster on average. ([#5834](https://github.com/wazuh/wazuh/issues/5834))
+  - Added OpenAPI based Wazuh API specification. ([#2413](https://github.com/wazuh/wazuh/issues/2413))
+  - Improved Wazuh API reference documentation based on OpenAPI spec using redoc. ([#4967](https://github.com/wazuh/wazuh/issues/4967))
+  - Added new yaml Wazuh API configuration file. ([#2570](https://github.com/wazuh/wazuh/issues/2570))
+  - Added new endpoints to manage API configuration and deprecated configure_api.sh. ([#2570](https://github.com/wazuh/wazuh/issues/4822))
+  - Added RBAC support to Wazuh API. ([#3287](https://github.com/wazuh/wazuh/issues/3287))
+  - Added new endpoints for Wazuh API security management. ([#3410](https://github.com/wazuh/wazuh/issues/3410))
+  - Added SQLAlchemy ORM based database for RBAC. ([#3375](https://github.com/wazuh/wazuh/issues/3375))
+  - Added new JWT authentication method. ([7080ac3](https://github.com/wazuh/wazuh/commit/7080ac352774bb0feaf07cab76df58ea5503ff4b))
+  - Wazuh API up and running by default in all nodes for a clustered environment.
+  - Added new and improved error handling. ([#2843](https://github.com/wazuh/wazuh/issues/2843) ([#5345](https://github.com/wazuh/wazuh/issues/5345))
+  - Added tavern and docker based Wazuh API integration tests. ([#3612](https://github.com/wazuh/wazuh/issues/3612))
+  - Added new and unified Wazuh API responses structure. ([3421015](https://github.com/wazuh/wazuh/commit/34210154016f0a63211a81707744dce0ec0a54f9))
+  - Added new endpoints for Wazuh API users management. ([#3280](https://github.com/wazuh/wazuh/issues/3280))
+  - Added new endpoint to restart agents which belong to a node. ([#5381](https://github.com/wazuh/wazuh/issues/5381))
+  - Added and improved q filter in several endpoints. ([#5431](https://github.com/wazuh/wazuh/pull/5431))
+  - Tested and improved Wazuh API security. ([#5318](https://github.com/wazuh/wazuh/issues/5318))
+    - Added DDOS blocking system. ([#5318](https://github.com/wazuh/wazuh/issues/5318#issuecomment-654303933))
+    - Added brute force attack blocking system. ([#5318](https://github.com/wazuh/wazuh/issues/5318#issuecomment-652892858))
+    - Added content-type validation. ([#5318](https://github.com/wazuh/wazuh/issues/5318#issuecomment-654807980))
+- Added and updated framework unit tests to increase coverage. ([#3287](https://github.com/wazuh/wazuh/issues/3287))
 - Added improved support for monitoring paths from environment variables. ([#4961](https://github.com/wazuh/wazuh/pull/4961))
 - Added auto enrollment capability. Agents are now able to request a key from the manager if current key is missing or wrong. ([#5609](https://github.com/wazuh/wazuh/pull/5609))
+- Vulnerability Detector:
+  - Redhat vulnerabilities are now fetched from OVAL benchmarks. ([#5352](https://github.com/wazuh/wazuh/pull/5352))
+  - Debian vulnerable packages are now fetched from the Security Tracker. ([#5304](https://github.com/wazuh/wazuh/pull/5304))
+  - The Debian Security Tracker feed can be loaded from a custom location. ([#5449](https://github.com/wazuh/wazuh/pull/5449))
+  - Allow compressed feeds for offline updates. ([#5745](https://github.com/wazuh/wazuh/pull/5745))
+  - The manager now updates the MSU feed automatically. ([#5678](https://github.com/wazuh/wazuh/pull/5678))
+  - CVEs with no affected version defined in all the feeds are now reported. ([#5284](https://github.com/wazuh/wazuh/pull/5284))
+  - CVEs vulnerable for the vendor and missing in the NVD are now reported. ([#5305](https://github.com/wazuh/wazuh/pull/5305))
 
 ### Changed
 
-- Changed multiple Wazuh API endpoints ([#2640](https://github.com/wazuh/wazuh/pull/2640)) ([#2413](https://github.com/wazuh/wazuh-documentation/issues/2413))
-- Refactored framework module in SDK and core ([#5263](https://github.com/wazuh/wazuh/issues/5263))
+- Changed multiple Wazuh API endpoints. ([#2640](https://github.com/wazuh/wazuh/pull/2640)) ([#2413](https://github.com/wazuh/wazuh-documentation/issues/2413))
+- Refactored framework module in SDK and core. ([#5263](https://github.com/wazuh/wazuh/issues/5263))
 - FIM Windows events handling refactored. ([#5144](https://github.com/wazuh/wazuh/pull/5144))
-- Changed framework to access global.db using wazuh-db ([#6095](https://github.com/wazuh/wazuh/pull/6095))
+- Changed framework to access global.db using wazuh-db. ([#6095](https://github.com/wazuh/wazuh/pull/6095))
 - Changed agent-info synchronization task in Wazuh cluster. ([#5585](https://github.com/wazuh/wazuh/issues/5585))
 
 ### Fixed
 
-- Fixed an error with last scan time in syscheck endpoints ([a9acd3a](https://github.com/wazuh/wazuh/commit/a9acd3a216a7e0075a8efa5a91b2587659782fd8))
+- Fixed an error with last scan time in syscheck endpoints. ([a9acd3a](https://github.com/wazuh/wazuh/commit/a9acd3a216a7e0075a8efa5a91b2587659782fd8))
 - Added support for monitoring directories which contain commas. ([#4961](https://github.com/wazuh/wazuh/pull/4961))
 - Fixed a bug where configuring a directory to be monitored as realtime and whodata resulted in realtime prevailing. ([#4961](https://github.com/wazuh/wazuh/pull/4961))
 - Fixed using an incorrect mutex while deleting inotify watches. ([#5126](https://github.com/wazuh/wazuh/pull/5126))
@@ -53,12 +61,19 @@ All notable changes to this project will be documented in this file.
 - Fixed an error where monitoring a drive in Windows under scheduled or realtime mode would generate alerts from the recycle bin. ([#4771](https://github.com/wazuh/wazuh/pull/4771))
 - When monitoring a drive in Windows in the format `U:`, it will monitor `U:\` instead of the agent's working directory. ([#5259](https://github.com/wazuh/wazuh/pull/5259))
 - Fixed a bug where monitoring a drive in Windows with recursion_level set to 0 would trigger alerts from files inside its subdirectories. ([#5235](https://github.com/wazuh/wazuh/pull/5235))
+- Vulnerability Detector:
+  - Vulnerabilities of Windows Server 2019 which not affects to Windows 10 were not being reported. ([#5524](https://github.com/wazuh/wazuh/pull/5524))
+  - Vulnerabilities patched by a Microsoft update with no supersedence were not being reported. ([#5524](https://github.com/wazuh/wazuh/pull/5524))
+  - Vulnerabilities patched by more than one Microsoft update were not being evaluated agains all the patches. ([#5717](https://github.com/wazuh/wazuh/pull/5717))
+  - Duplicated alerts in Windows 10. ([#5600](https://github.com/wazuh/wazuh/pull/5600))
+  - Syscollector now discards hotfixes that are not fully installed. ([#5792](https://github.com/wazuh/wazuh/pull/5792))
+  - Syscollector now collects hotfixes that were not being parsed. ([#5792](https://github.com/wazuh/wazuh/pull/5792))
 
 ### Removed
 
-- Removed Wazuh API cache endpoints ([#3042](https://github.com/wazuh/wazuh/pull/3042))
-- Removed Wazuh API rootcheck endpoints ([#5246](https://github.com/wazuh/wazuh/issues/5246))
-
+- Removed Wazuh API cache endpoints. ([#3042](https://github.com/wazuh/wazuh/pull/3042))
+- Removed Wazuh API rootcheck endpoints. ([#5246](https://github.com/wazuh/wazuh/issues/5246))
+- Deprecated Debian Jessie and Wheezy for Vulnerability Detector (EOL). ([#5660](https://github.com/wazuh/wazuh/pull/5660))
 
 ## [v3.13.2] - 2020-09-21
 
