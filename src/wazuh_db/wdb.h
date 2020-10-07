@@ -590,16 +590,17 @@ int wdb_get_agent_status(int id_agent, int *sock);
  * @param [in] sock The Wazuh DB socket connection.
  * @return Returns this value, 0 on NULL or OS_INVALID on error.
  */
-time_t wdb_get_agent_keepalive (const char *name, const char *ip, int *sock);
+time_t wdb_get_agent_keepalive(const char *name, const char *ip, int *sock);
 
 /**
  * @brief Get the file offset either for syscheck as well as registry.
  * 
  * @param[in] id ID of the agent.
  * @param[in] type An enumerator indicating the offset type. WDB_SYSCHECK or WDB_SYSCHECK_REGISTRY.
+ * @param [in] sock The Wazuh DB socket connection.
  * @return Returns the offset if success. OS_INVALID on error.
  */
-long wdb_get_agent_offset(int id, int type);
+long wdb_get_agent_offset(int id, int type, int *sock);
 
 /**
  * @brief Find group by name.
