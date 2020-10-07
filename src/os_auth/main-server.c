@@ -811,12 +811,15 @@ void* run_writer(__attribute__((unused)) void *arg) {
             OS_RemoveAgentTimestamp(cur->id);
             OS_RemoveAgentGroup(cur->id);
 
-            if (wdb_remove_agent(atoi(cur->id)) != OS_SUCCESS) {
+            if (wdb_remove_agent(atoi(cur->id), &wdb_sock) != OS_SUCCESS) {
                 mdebug1("Could not remove the information stored in Wazuh DB of the agent %s.", cur->id);
             }
 
             snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
             wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+            if (wdb_sock >= 0)
+                close(wdb_sock);
 
             free(cur->id);
             free(cur->name);

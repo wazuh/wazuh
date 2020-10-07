@@ -699,7 +699,7 @@ cJSON* wdb_get_agent_labels(int id, int *sock) {
     return root;
 }
 
-char* wdb_get_agent_name(int id) {
+char* wdb_get_agent_name(int id, int *sock) {
     char *output = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -707,7 +707,7 @@ char* wdb_get_agent_name(int id) {
     cJSON *json_name = NULL;
 
     snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_AGENT_NAME], id);
-    root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+    root = wdbc_query_parse_json(sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!root) {
         merror("Error querying Wazuh DB to get the agent's %d name.", id);
@@ -942,7 +942,7 @@ int wdb_update_groups(const char *dirname, int *sock) {
     return result;
 }
 
-int wdb_remove_agent(int id) {
+int wdb_remove_agent(int id, int *sock) {
     int result = 0 ;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -950,10 +950,10 @@ int wdb_remove_agent(int id) {
     char *name = NULL;
 
     // Getting the agent's name before removing it from global.db
-    name = wdb_get_agent_name(id);
+    name = wdb_get_agent_name(id, sock);
 
     snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DELETE_AGENT], id);
-    result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex(sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
         case OS_SUCCESS:
