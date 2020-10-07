@@ -260,7 +260,7 @@ void wm_sync_manager() {
         // Don't print error if stat fails because syscheck and rootcheck must not exist
 
         if (!stat(path, &buffer) && buffer.st_size > 0) {
-            switch (wdb_get_agent_status(0)) {
+            switch (wdb_get_agent_status(0), &wdb_wmdb_sock) {
             case -1:
                 mterror(WM_DATABASE_LOGTAG, "Couldn't get database status for manager.");
                 break;
@@ -552,7 +552,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
             return -1;
         }
 
-        if (wdb_get_agent_status(id_agent) < 0) {
+        if (wdb_get_agent_status(id_agent, &wdb_wmdb_sock) < 0) {
             snprintf(del_path, PATH_MAX - 1, DEFAULTDIR GROUPS_DIR "/%03d", id_agent);
             unlink(del_path);
             wdb_delete_agent_belongs(id_agent, &wdb_wmdb_sock);
@@ -607,7 +607,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
         }
     }
 
-    switch (wdb_get_agent_status(id_agent)) {
+    switch (wdb_get_agent_status(id_agent, &wdb_wmdb_sock)) {
     case -1:
         mterror(WM_DATABASE_LOGTAG, "Couldn't get database status for agent '%d'.", id_agent);
         return -1;
