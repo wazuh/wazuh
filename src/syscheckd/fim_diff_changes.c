@@ -509,7 +509,7 @@ diff_data *initialize_file_diff_data(const char *filename){
     strcpy(abs_diff_dir_path, DIFF_DIR_PATH);
 #endif
 
-    snprintf(buffer, PATH_MAX, "%s/local/%s", abs_diff_dir_path, filename);
+    snprintf(buffer, PATH_MAX, "%s/local/%s", abs_diff_dir_path, diff->file_origin);
     os_strdup(buffer, diff->compress_folder);
 
     snprintf(buffer, PATH_MAX, "%s/last-entry.gz", diff->compress_folder);
@@ -696,10 +696,14 @@ char *fim_diff_generate(const diff_data *diff) {
 
     status = system(diff_cmd);
 
-    if (status == 1){
-        diff_str = gen_diff_str(diff);
-    } else if (status == 0){
+#ifndef WIN32
+    if (status == 256){
+#else
+    if (status == 0){
         mdebug2(FIM_DIFF_COMMAND_OUTPUT_EQUAL);
+    } else if (status == 1){
+#endif
+        diff_str = gen_diff_str(diff);
     } else {
         merror(FIM_DIFF_COMMAND_OUTPUT_ERROR);
     }
