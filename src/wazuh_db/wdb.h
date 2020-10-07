@@ -568,9 +568,10 @@ char* wdb_get_agent_name(int id, int *sock);
  * @brief Get group from agent table in global.db by using its ID.
  * 
  * @param[in] id Id of the agent that the name must be selected.
+ * @param[in] sock The Wazuh DB socket connection.
  * @return A string with the agent group on success or NULL on failure.
  */
-char* wdb_get_agent_group(int id);
+char* wdb_get_agent_group(int id, int *sock);
 
 /**
  * @brief Get agent updating status.

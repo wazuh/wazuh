@@ -20,8 +20,6 @@
 #define WDBQUERY_SIZE OS_BUFFER_SIZE
 #define WDBOUTPUT_SIZE OS_MAXSTR
 
-int wdb_sock_agent = -1;
-
 static const char *global_db_commands[] = {
     [WDB_INSERT_AGENT] = "global insert-agent %s",
     [WDB_INSERT_AGENT_GROUP] = "global insert-agent-group %s",
@@ -723,7 +721,7 @@ char* wdb_get_agent_name(int id, int *sock) {
     return output;
 }
 
-char* wdb_get_agent_group(int id) {
+char* wdb_get_agent_group(int id, int *sock) {
     char *output = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -731,7 +729,7 @@ char* wdb_get_agent_group(int id) {
     cJSON *json_group = NULL;
 
     snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_AGENT_GROUP], id);
-    root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+    root = wdbc_query_parse_json(sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!root) {
         merror("Error querying Wazuh DB to get the agent's %d group.", id);
@@ -1226,7 +1224,7 @@ int wdb_agent_belongs_first_time(int *sock){
     if ((agents = wdb_get_all_agents(FALSE, sock))) {
 
         for (i = 0; agents[i] != -1; i++) {
-            group = wdb_get_agent_group(agents[i]);
+            group = wdb_get_agent_group(agents[i], sock);
 
             if (group) {
                 wdb_update_agent_multi_group(agents[i],group, sock);
