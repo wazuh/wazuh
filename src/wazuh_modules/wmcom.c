@@ -32,6 +32,16 @@ size_t wmcom_dispatch(char * command, char ** output){
         }
         return wmcom_getconfig(rcv_args, output);
 
+    } else if (strcmp(rcv_comm, "sync") == 0) {
+        // sync section
+        if (!rcv_args) {
+            mdebug1("WMCOM sync needs arguments.");
+            os_strdup("err WMCOM sync needs arguments", *output);
+            return strlen(*output);
+        }
+        wmcom_sync(rcv_args, output);
+        return strlen(*output);
+
     } else {
         mdebug1("WMCOM Unrecognized command '%s'.", rcv_comm);
         os_strdup("err Unrecognized command", *output);
@@ -73,6 +83,17 @@ error:
     mdebug1("At WMCOM getconfig: Could not get '%s' section", section);
     os_strdup("err Could not get requested section", *output);
     return strlen(*output);
+}
+
+void wmcom_sync(const char * section, char ** output) {
+    const int ret = modulesSync(section);
+    if(ret) {
+        mdebug1("At WMCOM sync: Could not sync '%s' section", section);
+        os_strdup("err Could not sync section", *output);
+    } else {
+        os_strdup("ok", *output);
+    }
+
 }
 
 #ifndef WIN32
