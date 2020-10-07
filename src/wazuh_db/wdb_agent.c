@@ -832,7 +832,7 @@ long wdb_get_agent_offset(int id, int type, int *sock) {
     return output;
 }
 
-int wdb_find_group(const char *name) {
+int wdb_find_group(const char *name, int *sock) {
     int output = OS_INVALID;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -840,7 +840,7 @@ int wdb_find_group(const char *name) {
     cJSON *json_group = NULL;
 
     snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_FIND_GROUP], name);
-    root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+    root = wdbc_query_parse_json(sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!root) {
         merror("Error querying Wazuh DB to get the agent group id.");
@@ -929,7 +929,7 @@ int wdb_update_groups(const char *dirname, int *sock) {
             snprintf(path,PATH_MAX,"%s/%s",dirname,dirent->d_name);
 
             if (!IsDir(path)) {
-                if (wdb_find_group(dirent->d_name) <= 0){
+                if (wdb_find_group(dirent->d_name, sock) <= 0){
                     wdb_insert_group(dirent->d_name, sock);
                 }
             }
@@ -1187,10 +1187,10 @@ int wdb_update_agent_multi_group(int id, char *group, int *sock) {
 
             while (multi_group != NULL) {
                 /* Update de groups table */
-                int id_group = wdb_find_group(multi_group);
+                int id_group = wdb_find_group(multi_group, sock);
 
                 if(id_group <= 0 && OS_SUCCESS == wdb_insert_group(multi_group, sock)) {
-                    id_group = wdb_find_group(multi_group);
+                    id_group = wdb_find_group(multi_group, sock);
                 }
 
                 if (OS_SUCCESS != wdb_update_agent_belongs(id_group, id, sock)) {
@@ -1201,10 +1201,10 @@ int wdb_update_agent_multi_group(int id, char *group, int *sock) {
             }
         } else {
             /* Update de groups table */
-            int id_group = wdb_find_group(group);
+            int id_group = wdb_find_group(group, sock);
 
             if (id_group <= 0 && OS_SUCCESS == wdb_insert_group(group, sock)) {
-                id_group = wdb_find_group(group);
+                id_group = wdb_find_group(group, sock);
             }
 
             if (OS_SUCCESS != wdb_update_agent_belongs(id_group, id, sock)) {

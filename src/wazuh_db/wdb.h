@@ -606,9 +606,10 @@ long wdb_get_agent_offset(int id, int type, int *sock);
  * @brief Find group by name.
  * 
  * @param[in] name The group name.
+ * @param [in] sock The Wazuh DB socket connection.
  * @return Returns id if success or OS_INVALID on failure.
  */
-int wdb_find_group(const char *name);
+int wdb_find_group(const char *name, int *sock);
 
 /**
  * @brief Update groups table.
