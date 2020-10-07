@@ -646,9 +646,10 @@ int wdb_delete_agent_belongs(int id, int *sock);
  * @brief Delete group from belongs table.
  * 
  * @param[in] name The group name.
+ * @param[in] sock The Wazuh DB socket connection.
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_remove_group_from_belongs_db(const char *name);
+int wdb_remove_group_from_belongs_db(const char *name, int *sock);
 
 /**
  * @brief Create database for agent from profile.

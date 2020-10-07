@@ -990,7 +990,7 @@ int wdb_remove_group_db(const char *name, int *sock) {
     char wdboutput[WDBOUTPUT_SIZE] = "";
     char *payload = NULL;
 
-    if (OS_INVALID == wdb_remove_group_from_belongs_db(name)) {
+    if (OS_INVALID == wdb_remove_group_from_belongs_db(name, sock)) {
         merror("At wdb_remove_group_from_belongs_db(): couldn't delete '%s' from 'belongs' table.", name);
         return OS_INVALID;
     }
@@ -1047,14 +1047,14 @@ int wdb_delete_agent_belongs(int id, int *sock) {
     return result;
 }
 
-int wdb_remove_group_from_belongs_db(const char *name) {
+int wdb_remove_group_from_belongs_db(const char *name, int *sock) {
     int result = 0;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
     char *payload = NULL;
 
     snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DELETE_GROUP_BELONG], name);
-    result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex(sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
         case OS_SUCCESS:
