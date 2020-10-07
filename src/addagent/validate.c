@@ -179,14 +179,14 @@ int OS_RemoveAgent(const char *u_id) {
         merror("Could not remove the DB of the agent %s. Error: %d.", u_id, error);
     }
 
-    if (sock >= 0) {
-        close(sock);
-    }
-
     os_free(wdboutput);
 
-    if (wdb_remove_agent(atoi(u_id)) != OS_SUCCESS) {
+    if (wdb_remove_agent(atoi(u_id), &sock) != OS_SUCCESS) {
         mdebug1("Could not remove the information stored in Wazuh DB of the agent %s.", u_id);
+    }
+
+    if (sock >= 0) {
+        close(sock);
     }
 
     /* Remove counter for ID */

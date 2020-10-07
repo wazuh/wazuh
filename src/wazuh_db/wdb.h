@@ -559,9 +559,10 @@ cJSON* wdb_get_agent_labels(int id, int *sock);
  * @brief Get name from agent table in global.db by using its ID.
  * 
  * @param[in] id Id of the agent that the name must be selected.
+ * @param[in] sock The Wazuh DB socket connection.
  * @return A string with the agent name on success or NULL on failure.
  */
-char* wdb_get_agent_name(int id);
+char* wdb_get_agent_name(int id, int *sock);
 
 /**
  * @brief Get group from agent table in global.db by using its ID.
@@ -618,9 +619,10 @@ int wdb_update_groups(const char *dirname, int *sock);
  * @brief Delete an agent from agent table in global.db by using its ID.
  * 
  * @param[in] id Id of the agent to be deleted.
+ * @param[in] sock The Wazuh DB socket connection.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_remove_agent(int id);
+int wdb_remove_agent(int id, int *sock);
 
 /**
  * @brief Delete group.
