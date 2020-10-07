@@ -3896,14 +3896,16 @@ stages:
       params:
         force: True
         list_agents: 001,002,000
+        version: 4.0.0
+        wpk_repo: packages-dev.wazuh.com/pre-release/wpk
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - agent_id: !anystr
+            - agent: !anystr
               task_id: 1
-            - agent_id: !anystr
+            - agent: !anystr
               task_id: 2
           total_affected_items: 2
           total_failed_items: 1
@@ -3956,7 +3958,7 @@ stages:
               id:
                 - '000'
             - error:
-                code: 1817
+                code: 1818
                 message: !anystr
                 remediation: !anything
               id:

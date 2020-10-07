@@ -720,15 +720,15 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
            'origin': {'module': 'api'},
            'command': 'upgrade' if not (installer or file_path) else 'upgrade_custom',
            'parameters': {
-            'agents': list(),
-            'version': version,
-            'force_upgrade': force,
-            'use_http': use_http,
-            'wpk_repo': f'{wpk_repo}/' if not wpk_repo.endswith('/') else wpk_repo,
-            'file_path': file_path,
-            'installer': installer
-        }
-    }
+                'agents': list(),
+                'version': version,
+                'force_upgrade': force,
+                'use_http': use_http,
+                'wpk_repo': f'{wpk_repo}/' if not wpk_repo.endswith('/') else wpk_repo,
+                'file_path': file_path,
+                'installer': installer
+            }
+           }
 
     msg['parameters'] = {k: v for k, v in msg['parameters'].items() if v is not None}
     agents_result_chunks = [agent_list[x:x+250] for x in range(0, len(agent_list), 250)]
