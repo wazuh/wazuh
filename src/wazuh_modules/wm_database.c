@@ -61,6 +61,7 @@ char * wm_inotify_pop();
 #endif // INOTIFY_ENABLED
 
 wm_database *module;
+int wdb_wmdb_sock = -1;
 
 // Module main function. It won't return
 static void* wm_database_main(wm_database *data);
@@ -244,7 +245,7 @@ void wm_sync_manager() {
         os_strdup(__ossec_name " " __ossec_version, manager_data->version);
         os_strdup("synced", manager_data->sync_status);
 
-        wdb_update_agent_data(manager_data);
+        wdb_update_agent_data(manager_data, &wdb_wmdb_sock);
 
         os_free(os_uname);
     }
