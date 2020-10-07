@@ -7,6 +7,7 @@
  */
 
 CREATE TABLE IF NOT EXISTS fim_entry (
+    full_path TEXT NOT NULL PRIMARY KEY,
     file TEXT,
     type TEXT NOT NULL CHECK (type IN ('file', 'registry')),
     date INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
@@ -27,8 +28,7 @@ CREATE TABLE IF NOT EXISTS fim_entry (
     sha256 TEXT,
     attributes TEXT,
     symbolic_path TEXT,
-    checksum TEXT,
-    PRIMARY KEY(arch, file, value_name)
+    checksum TEXT
 );
 
 CREATE INDEX IF NOT EXISTS fim_file_index ON fim_entry (file);

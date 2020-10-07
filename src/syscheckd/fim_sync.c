@@ -363,7 +363,6 @@ void fim_sync_send_list(const char *start, const char *top) {
 
         file_data = fim_entry_json(line, entry);
         plain = dbsync_state_msg(component, file_data);
-        mdebug1("Sync Message for %s sent: %s", line, plain);
         fim_send_sync_msg(component, plain);
         os_free(plain);
         os_free(line);

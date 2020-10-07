@@ -16,7 +16,7 @@ static const char *FIM_EVENT_TYPE[] = { "added", "deleted", "modified" };
 static const char *FIM_EVENT_MODE[] = { "scheduled", "realtime", "whodata" };
 
 cJSON *fim_registry_value_attributes_json(const fim_registry_value_data *data, const registry *configuration) {
-    static const char *REGISTRY_TYPE[] = {
+    static const char *VALUE_TYPE[] = {
         [REG_NONE] = "REG_NONE",
         [REG_SZ] = "REG_SZ",
         [REG_EXPAND_SZ] = "REG_EXPAND_SZ",
@@ -36,7 +36,7 @@ cJSON *fim_registry_value_attributes_json(const fim_registry_value_data *data, c
     cJSON_AddStringToObject(attributes, "type", "registry");
 
     if (configuration->opts & CHECK_TYPE) {
-        cJSON_AddStringToObject(attributes, "registry_type", REGISTRY_TYPE[data->type]);
+        cJSON_AddStringToObject(attributes, "value_type", VALUE_TYPE[data->type]);
     }
 
     if (configuration->opts & CHECK_SIZE) {
@@ -120,7 +120,6 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
                                      __attribute__((unused)) whodata_evt *w_evt,
                                      const char *diff) {
     cJSON *changed_attributes;
-    char path[OS_SIZE_512];
 
     if (old_data != NULL && old_data->registry_entry.value != NULL) {
         changed_attributes = fim_registry_compare_value_attrs(new_data->registry_entry.value,
@@ -138,10 +137,11 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
     cJSON *data = cJSON_CreateObject();
     cJSON_AddItemToObject(json_event, "data", data);
 
-    snprintf(path, OS_SIZE_512, "%s\\%s", new_data->registry_entry.key->path, new_data->registry_entry.value->name);
-    cJSON_AddStringToObject(data, "path", path);
+    cJSON_AddStringToObject(data, "path", new_data->registry_entry.key->path);
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE[type]);
+    cJSON_AddStringToObject(data, "arch", new_data->registry_entry.key->arch == ARCH_32BIT ? "[x32]" : "[x64]");
+    cJSON_AddStringToObject(data, "value_name", new_data->registry_entry.value->name);
     cJSON_AddNumberToObject(data, "timestamp", new_data->registry_entry.value->last_event);
 
     cJSON_AddItemToObject(data, "attributes",
