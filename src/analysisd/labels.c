@@ -38,7 +38,7 @@ int labels_init() {
     return (1);
 }
 
-wlabel_t* labels_find(const Eventinfo *lf) {
+wlabel_t* labels_find(const Eventinfo *lf, int *sock) {
     cJSON *json_labels = NULL;
     wlabel_data_t *data = NULL;
     time_t mtime = 0;
@@ -119,7 +119,7 @@ wlabel_t* labels_find(const Eventinfo *lf) {
         mdebug1("Updating labels for agent %s.", lf->agent_id);
 
         // Update labels
-        json_labels = wdb_get_agent_labels(atoi(lf->agent_id));
+        json_labels = wdb_get_agent_labels(atoi(lf->agent_id), sock);
 
         if (!json_labels) {
             mdebug1("No labels in Wazuh DB for agent %s.", lf->agent_id);

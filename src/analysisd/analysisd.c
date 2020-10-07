@@ -2319,6 +2319,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
     memset(&rule_match, 0, sizeof(regex_matching));
     Eventinfo *lf_cpy = NULL;
     Eventinfo *lf_logall = NULL;
+    int sock = -1;
 
     /* Stats */
     RuleInfo *stats_rule = NULL;
@@ -2417,7 +2418,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         }
 
         // Insert labels
-        lf->labels = labels_find(lf);
+        lf->labels = labels_find(lf, &sock);
 
         /* Check the rules */
         DEBUG_MSG("%s: DEBUG: Checking the rules - %d ",
