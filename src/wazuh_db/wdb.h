@@ -485,9 +485,10 @@ int wdb_update_agent_group(int id,char *group, int *sock);
  * @param[in] id ID of the agent.
  * @param[in] type An enumerator indicating the offset type. WDB_SYSCHECK or WDB_SYSCHECK_REGISTRY.
  * @param[in] offset to be set in the database.
+ * @param[in] sock The Wazuh DB socket connection.
  * @return Returns OS_SUCCESS if success. OS_INVALID on error.
  */
-int wdb_set_agent_offset(int id, int type, long offset);
+int wdb_set_agent_offset(int id, int type, long offset, int *sock);
 
 /**
  * @brief Update agent's labels.
