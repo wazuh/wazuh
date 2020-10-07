@@ -190,7 +190,7 @@ def test_validate_auth_context(response, expected_roles=None):
     expected_roles : list
         List of expected roles after checking the authorization context
     """
-    token = response.json()['token'].split('.')[1]
+    token = response.json()['data']['token'].split('.')[1]
     payload = loads(b64decode(token + '===').decode())
     assert payload['rbac_roles'] == expected_roles
 
