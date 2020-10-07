@@ -49,10 +49,11 @@ SHARED=so
 SELINUX_MODULE=selinux/wazuh.mod
 SELINUX_ENFORCEMENT=selinux/wazuh.te
 SELINUX_POLICY=selinux/wazuh.pp
-DBSYNC=shared_modules/dbsync/
-RSYNC=shared_modules/rsync/
+SHARED_MODULES=shared_modules/
+DBSYNC=${SHARED_MODULES}dbsync/
+RSYNC=${SHARED_MODULES}rsync/
+SHARED_UTILS_TEST=${SHARED_MODULES}utils/tests/
 SYSCOLLECTOR=wazuh_modules/syscollector/
-SHARED_UTILS_TEST=shared_modules/utils/tests/
 
 USE_PRELUDE?=no
 USE_ZEROMQ?=no
@@ -254,6 +255,13 @@ endif #DEBUG
 
 OSSEC_CFLAGS+=${OFLAGS}
 OSSEC_LDFLAGS+=${OFLAGS}
+SHARED_MODULES_LDFLAGS=
+ifeq (${TARGET}, winagent)
+	SHARED_MODULES_LDFLAGS=-L${DBSYNC}build/bin -L${RSYNC}build/bin -ldbsync -lrsync
+else
+	SHARED_MODULES_LDFLAGS=-L${DBSYNC}build/lib -L${RSYNC}build/lib -ldbsync -lrsync
+endif
+
 
 ifneq (,$(filter ${CLEANFULL},YES yes y Y 1))
 	DEFINES+=-DCLEANFULL
@@ -273,7 +281,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${DBSYNC}include -I${RSYNC}include
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${RSYNC}include
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
@@ -1700,7 +1708,11 @@ wmodulesd_c := wazuh_modules/main.c
 wmodulesd_o := $(wmodulesd_c:.c=.o)
 
 wazuh-modulesd: ${wmodulesd_o} ${syscollector_o}
+ifeq (${TARGET}, agent)
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SHARED_MODULES_LDFLAGS} -o $@
+else
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+endif
 
 ### wazuh-framework ##
 ifneq (,$(filter ${USE_FRAMEWORK_LIB},YES yes y Y 1))
@@ -1951,10 +1963,10 @@ win32/ui/%.o: win32/ui/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"ossec-win32ui\" -c $^ -o $@
 
 win32/ossec-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o ${syscollector_o} ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o wazuh_modules/syscollector/syscollector_win_ext.dll
-	${OSSEC_CCBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SHARED_MODULES_LDFLAGS} -o $@
 
 win32/ossec-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out syscheckd/main-event.o, ${syscollector_o} ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o wazuh_modules/syscollector/syscollector_win_ext.dll
-	${OSSEC_CCBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SHARED_MODULES_LDFLAGS} -o $@
 
 win32/ossec-rootcheck.exe: win32/icon.o win32/win_service_rk.o ${rootcheck_rk_o}
 	${OSSEC_CCBIN} -DARGV0=\"ossec-rootcheck\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@

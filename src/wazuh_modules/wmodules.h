@@ -56,6 +56,7 @@ typedef struct wm_context {
     const char *name;                   // Name for module
     wm_routine start;                   // Main function
     wm_routine destroy;                 // Destructor
+    int (* sync)(const char*);          // Sync
     cJSON *(* dump)(const void *);
 } wm_context;
 
@@ -106,6 +107,7 @@ extern int wm_debug_level;
 int wm_config();
 cJSON *getModulesConfig(void);
 cJSON *getModulesInternalOptions(void);
+int modulesSync(const char* args);
 
 // Add module to the global list
 void wm_add(wmodule *module);
@@ -190,6 +192,7 @@ void * wmcom_main(void * arg);
 #endif
 size_t wmcom_dispatch(char * command, char ** output);
 size_t wmcom_getconfig(const char * section, char ** output);
+void wmcom_sync(const char * section, char** output);
 
 #ifdef __MACH__
 void freegate(gateway *gate);
