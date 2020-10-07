@@ -302,7 +302,6 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
 
     arch = strncmp(path, "[x32]", 5) == 0 ? ARCH_32BIT : ARCH_64BIT;
 
-    // If we got here, we are dealing with a registry entry.
     os_strdup(&path[6], full_path);
     value_name = full_path;
 
@@ -313,6 +312,7 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
             value_name++;
             break;
         }
+        value_name += 2;
     }
 
     key_path = wstr_replace(full_path, "::", ":");
@@ -337,7 +337,7 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
     value_name = wstr_replace(value_name, "::", ":");
     free(full_path);
 
-    entry->registry_entry.value = fim_db_get_registry_data(fim_sql, key_id, key_path);
+    entry->registry_entry.value = fim_db_get_registry_data(fim_sql, key_id, value_name);
 
     free(value_name);
 
