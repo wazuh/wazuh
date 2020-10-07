@@ -792,7 +792,7 @@ void test_wdb_update_agent_name_error_json(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "Error creating data JSON for Wazuh DB.");
 
-    ret = wdb_update_agent_name(id, name);
+    ret = wdb_update_agent_name(id, name, &sock);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -874,7 +874,7 @@ void test_wdb_update_agent_name_error_sql_execution(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-agent-name {\"id\":1,\"name\":\"agent1\"}");
 
-    ret = wdb_update_agent_name(id, name);
+    ret = wdb_update_agent_name(id, name, &sock);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -1957,7 +1957,6 @@ void test_wdb_get_agent_name_success(void **state) {
 /* Tests wdb_remove_agent_db */
 
 void test_wdb_remove_agent_db_error_removing_db(void **state) {
-    int sock = -1;
     int ret = 0;
     int id = 1;
     char *name = "agent1";
@@ -1967,13 +1966,12 @@ void test_wdb_remove_agent_db_error_removing_db(void **state) {
     expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db");
     will_return(__wrap_remove, OS_INVALID);
 
-    ret = wdb_remove_agent_db(id, name, &sock);
+    ret = wdb_remove_agent_db(id, name);
 
     assert_int_equal(OS_INVALID, ret);
 }
 
 void test_wdb_remove_agent_db_error_removing_db_shm_wal(void **state) {
-    int sock = -1;
     int ret = 0;
     int id = 1;
     char *name = "agent1";
@@ -1993,13 +1991,12 @@ void test_wdb_remove_agent_db_error_removing_db_shm_wal(void **state) {
     will_return(__wrap_strerror, "error");
     expect_string(__wrap__mdebug2, formatted_msg, "(1129): Could not unlink file 'var/db/agents/001-agent1.db-wal' due to [(0)-(error)].");
 
-    ret = wdb_remove_agent_db(id, name, &sock);
+    ret = wdb_remove_agent_db(id, name);
 
     assert_int_equal(OS_SUCCESS, ret);
 }
 
 void test_wdb_remove_agent_db_success(void **state) {
-    int sock = -1;
     int ret = 0;
     int id = 1;
     char *name = "agent1";
@@ -2013,7 +2010,7 @@ void test_wdb_remove_agent_db_success(void **state) {
     expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db-wal");
     will_return(__wrap_remove, OS_SUCCESS);
 
-    ret = wdb_remove_agent_db(id, name, &sock);
+    ret = wdb_remove_agent_db(id, name);
 
     assert_int_equal(OS_SUCCESS, ret);
 }
@@ -4912,7 +4909,6 @@ void test_wdb_agent_belongs_first_time_success(void **state) {
 /* Tests get_agent_date_added */
 
 void test_get_agent_date_added_error_open_file(void **state) {
-    int sock = -1;
     time_t date_add = 0;
     int agent_id = 1;
 
@@ -4923,13 +4919,12 @@ void test_get_agent_date_added_error_open_file(void **state) {
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
 
-    date_add = get_agent_date_added(agent_id, &sock);
+    date_add = get_agent_date_added(agent_id);
 
     assert_int_equal(0, date_add);
 }
 
 void test_get_agent_date_added_error_no_data(void **state) {
-    int sock = -1;
     time_t date_add = 0;
     int agent_id = 1;
 
@@ -4947,13 +4942,12 @@ void test_get_agent_date_added_error_no_data(void **state) {
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, OS_SUCCESS);
 
-    date_add = get_agent_date_added(agent_id, &sock);
+    date_add = get_agent_date_added(agent_id);
 
     assert_int_equal(0, date_add);
 }
 
 void test_get_agent_date_added_error_no_date(void **state) {
-    int sock = -1;
     time_t date_add = 0;
     int agent_id = 1;
 
@@ -4971,13 +4965,12 @@ void test_get_agent_date_added_error_no_date(void **state) {
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, OS_SUCCESS);
 
-    date_add = get_agent_date_added(agent_id, &sock);
+    date_add = get_agent_date_added(agent_id);
 
     assert_int_equal(0, date_add);
 }
 
 void test_get_agent_date_added_error_invalid_date(void **state) {
-    int sock = -1;
     time_t date_add = 0;
     int agent_id = 1;
 
@@ -4997,13 +4990,12 @@ void test_get_agent_date_added_error_invalid_date(void **state) {
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, OS_SUCCESS);
 
-    date_add = get_agent_date_added(agent_id, &sock);
+    date_add = get_agent_date_added(agent_id);
 
     assert_int_equal(0, date_add);
 }
 
 void test_get_agent_date_added_success(void **state) {
-    int sock = -1;
     time_t date_add = 0;
     int agent_id = 1;
     struct tm test_time;
@@ -5023,7 +5015,7 @@ void test_get_agent_date_added_success(void **state) {
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, OS_SUCCESS);
 
-    date_add = get_agent_date_added(agent_id, &sock);
+    date_add = get_agent_date_added(agent_id);
 
     // The date_returned variable is the date 2020-01-01 01:01:01 transformed to INT
     test_time.tm_year = 2020-1900; 
