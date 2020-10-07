@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-#if defined(ENABLE_SYSC) || defined(WAZUH_UNIT_TESTING)
+#ifdef ENABLE_SYSC
 
 #include "../wmodules.h"
 #include "shared.h"
