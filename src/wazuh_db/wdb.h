@@ -415,9 +415,10 @@ int wdb_insert_agent(int id,
  * @brief Insert a new group.
  * 
  * @param[in] name The group name.
+ * @param[in] sock The Wazuh DB socket connection.
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_insert_group(const char *name);
+int wdb_insert_group(const char *name, int *sock);
 
 /**
  * @brief Update agent belongs table.
@@ -470,9 +471,10 @@ int wdb_set_agent_status(int id_agent, int status);
  * 
  * @param[in] id ID of the agent.
  * @param[in] group The group to be set.
+ * @param[in] sock The Wazuh DB socket connection.
  * @return Returns OS_SUCCESS if success. OS_INVALID on error.
  */
-int wdb_update_agent_group(int id,char *group);
+int wdb_update_agent_group(int id,char *group, int *sock);
 
 /**
  * @brief Set the file offset either for syscheck as well as registry.
@@ -601,9 +603,10 @@ int wdb_find_group(const char *name);
  * @brief Update groups table.
  * 
  * @param[in] name The groups directory.
+ * @param[in] sock The Wazuh DB socket connection.
  * @return Returns OS_SUCCESS if success or OS_INVALID on failure.
  */
-int wdb_update_groups(const char *dirname);
+int wdb_update_groups(const char *dirname, int *sock);
 
 /**
  * @brief Delete an agent from agent table in global.db by using its ID.
@@ -668,9 +671,10 @@ int wdb_remove_agent_db(int id, const char * name);
  * 
  * @param[in] id The agent id.
  * @param[in] group The group name.
+ * @param[in] sock The Wazuh DB socket connection.
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_update_agent_multi_group(int id, char *group);
+int wdb_update_agent_multi_group(int id, char *group, int *sock);
 
 /**
  * @brief Fill belongs table on start.
