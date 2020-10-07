@@ -85,11 +85,7 @@
 #define HOTFIX_SUPERSEDED 80
 #define HOTFIX_STAGED     64
 
-/* MAC package search paths */
-
-#define MAC_APPS        "/Applications"
-#define UTILITIES       "/Applications/Utilities"
-#define HOMEBREW_APPS   "/usr/local/Cellar"
+/* MAC package scan */
 #define INFO_FILE       "Contents/Info.plist"
 
 typedef struct rpm_data {
