@@ -430,7 +430,7 @@ void wm_clean_dangling_db() {
 
 void wm_sync_multi_groups(const char *dirname) {
 
-    wdb_update_groups(dirname);
+    wdb_update_groups(dirname, &wdb_wmdb_sock);
 }
 
 #endif // LOCAL
@@ -443,7 +443,7 @@ int wm_sync_agent_group(int id_agent, const char *fname) {
 
     get_agent_group(fname, group, OS_SIZE_65536);
 
-    if (OS_SUCCESS != wdb_update_agent_group(id_agent, *group ? group : NULL)) {
+    if (OS_SUCCESS != wdb_update_agent_group(id_agent, *group ? group : NULL, &wdb_wmdb_sock)) {
         mterror(WM_DATABASE_LOGTAG, "Couldn't sync agent '%s' group.", fname);
         wdb_delete_agent_belongs(id_agent);
         result = -1;
@@ -471,7 +471,7 @@ int wm_sync_shared_group(const char *fname) {
     }
     else {
         if(wdb_find_group(fname) <= 0){
-            wdb_insert_group(fname);
+            wdb_insert_group(fname, &wdb_wmdb_sock);
         }
         closedir(dp);
     }
