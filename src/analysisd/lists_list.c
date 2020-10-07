@@ -246,13 +246,12 @@ static int OS_DBSearchKeyAddressValue(ListRule *lrule, char *key)
         if (cdb_find(&lrule->db->cdb, key, strlen(key)) > 0 ) {
             vpos = cdb_datapos(&lrule->db->cdb);
             vlen = cdb_datalen(&lrule->db->cdb);
-            if (val = (char *) malloc(vlen), val) {
-                w_mutex_lock(&lrule->db->cdb.mutex)
-                cdb_read(&lrule->db->cdb, val, vlen, vpos);
-                w_mutex_unlock(&lrule->db->cdb.mutex)
-                result = OSMatch_Execute(val, vlen, lrule->matcher);
-                free(val);
-            }
+            os_malloc(vlen, val);
+            w_mutex_lock(&lrule->db->cdb.mutex)
+            cdb_read(&lrule->db->cdb, val, vlen, vpos);
+            w_mutex_unlock(&lrule->db->cdb.mutex)
+            result = OSMatch_Execute(val, vlen, lrule->matcher);
+            free(val);
             return result;
         } else {
             /* IP address not found, look for matching subnets */
