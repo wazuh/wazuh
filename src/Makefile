@@ -1690,10 +1690,6 @@ install_mitre: install_python
 CFLAGS_TEST=-g -O0 --coverage -DWAZUH_UNIT_TESTING
 LIBS_TEST=-lcmocka
 
-ifeq (${uname_S},Darwin)
-	CFLAGS_TEST+=-I/usr/local/include/cmocka.h
-endif
-
 # LIBS_TEST = -lcheck -lm -lrt -lsubunit
 
 unit_tests/wrappers/%.o: unit_tests/wrappers/%.c

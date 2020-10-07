@@ -9,13 +9,12 @@ if(NOT WAZUHEXT)
     message(FATAL_ERROR "libwazuhext not found! Aborting...")
 endif()
 
-# Add compiling flags
-add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT -DENABLE_AUDIT -DINOTIFY_ENABLED)
-
-# Set tests dependencies
+# # Add compiling flags and set tests dependencies
 if(${TARGET} STREQUAL "mac")
-    set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -lcmocka -I/usr/local/include/cmocka.h -fprofile-arcs -ftest-coverage)
+    set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -fprofile-arcs -ftest-coverage)
+    add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT -DENABLE_AUDIT -DINOTIFY_ENABLED -I/usr/local/include)
 else()
+    add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT -DENABLE_AUDIT -DINOTIFY_ENABLED)
     set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -lcmocka -fprofile-arcs -ftest-coverage)
 endif()
 
