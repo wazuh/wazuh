@@ -624,6 +624,12 @@ int fim_db_process_read_file(fdb_t *fim_sql,
                 split++;
                 entry->type = FIM_TYPE_REGISTRY;
                 entry->registry_entry.key = fim_db_get_registry_key(fim_sql, split, arch);
+
+                if (entry->registry_entry.key == NULL) {
+                    os_free(entry);
+                    os_free(path);
+                    continue;
+                }
             }
 #endif
 
