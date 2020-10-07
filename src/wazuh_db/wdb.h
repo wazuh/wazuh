@@ -425,9 +425,10 @@ int wdb_insert_group(const char *name, int *sock);
  * 
  * @param[in] id_group Id of the group to be updated.
  * @param[in] id_agent Id of the agent to be updated.
+ * @param[in] sock The Wazuh DB socket connection.
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_update_agent_belongs(int id_group, int id_agent);
+int wdb_update_agent_belongs(int id_group, int id_agent, int *sock);
 
 /**
  * @brief Update agent name in global.db.

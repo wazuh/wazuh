@@ -147,7 +147,7 @@ int wdb_insert_group(const char *name, int *sock) {
     return result;
 }
 
-int wdb_update_agent_belongs(int id_group, int id_agent) {
+int wdb_update_agent_belongs(int id_group, int id_agent, int *sock) {
     int result = 0;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -167,7 +167,7 @@ int wdb_update_agent_belongs(int id_group, int id_agent) {
 
     cJSON_Delete(data_in);
 
-    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex(sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
         case OS_SUCCESS:
@@ -1192,7 +1192,7 @@ int wdb_update_agent_multi_group(int id, char *group, int *sock) {
                     id_group = wdb_find_group(multi_group);
                 }
 
-                if (OS_SUCCESS != wdb_update_agent_belongs(id_group,id)) {
+                if (OS_SUCCESS != wdb_update_agent_belongs(id_group, id, sock)) {
                     return OS_INVALID;
                 }
 
@@ -1206,7 +1206,7 @@ int wdb_update_agent_multi_group(int id, char *group, int *sock) {
                 id_group = wdb_find_group(group);
             }
 
-            if (OS_SUCCESS != wdb_update_agent_belongs(id_group,id)) {
+            if (OS_SUCCESS != wdb_update_agent_belongs(id_group, id, sock)) {
                 return OS_INVALID;
             }
         }
