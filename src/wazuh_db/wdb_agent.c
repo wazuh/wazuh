@@ -53,7 +53,14 @@ static const char *global_db_commands[] = {
     [WDB_DELETE_GROUP_BELONG] = "global delete-group-belong %s"
 };
 
-int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *internal_key, const char *group, int keep_date) {
+int wdb_insert_agent(int id,
+                     const char *name,
+                     const char *ip,
+                     const char *register_ip,
+                     const char *internal_key,
+                     const char *group,
+                     int keep_date,
+                     int *sock) {
     int result = 0;
     time_t date_add = 0;
     cJSON *data_in = NULL;
@@ -86,7 +93,7 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
 
     cJSON_Delete(data_in);
 
-    result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex(sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
         case OS_SUCCESS:
