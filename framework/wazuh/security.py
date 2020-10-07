@@ -961,7 +961,7 @@ def get_rbac_actions(endpoint: str = None):
 @expose_resources(actions=['security:read_config'], resources=['*:*:*'])
 def get_security_config():
     """Returns current security configuration."""
-    return {'data': configuration.security_conf }
+    return WazuhResult({'data': configuration.security_conf})
 
 
 @expose_resources(actions=['security:update_config'], resources=['*:*:*'])

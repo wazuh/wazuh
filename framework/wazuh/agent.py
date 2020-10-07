@@ -65,7 +65,7 @@ def get_agents_summary_status(agent_list=None):
     :param agent_list: List of agents ID's.
     :return: WazuhResult.
     """
-    result = WazuhResult({'data': {'active': 0, 'disconnected': 0, 'never_connected': 0, 'pending': 0, 'total': 0}})
+    summary = {'active': 0, 'disconnected': 0, 'never_connected': 0, 'pending': 0, 'total': 0}
     if len(agent_list) != 0:
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
@@ -73,10 +73,10 @@ def get_agents_summary_status(agent_list=None):
         data = db_query.run()
 
         for agent in data['items']:
-            result['data'][agent['status']] += 1
-            result['data']['total'] += 1
+            summary[agent['status']] += 1
+            summary['total'] += 1
 
-    return result
+    return WazuhResult({'data': summary})
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
@@ -862,7 +862,7 @@ def get_full_overview() -> WazuhResult:
     except IndexError:  # an IndexError could happen if there are not registered agents
         last_registered_agent = []
     # combine results in an unique dictionary
-    result = {'data': {'nodes': stats_distinct_node, 'groups': groups, 'agent_os': stats_distinct_os, 'agent_status': summary,
-              'agent_version': stats_version, 'last_registered_agent': last_registered_agent}}
+    result = {'nodes': stats_distinct_node, 'groups': groups, 'agent_os': stats_distinct_os, 'agent_status': summary,
+              'agent_version': stats_version, 'last_registered_agent': last_registered_agent}
 
-    return WazuhResult(result)
+    return WazuhResult({'data': result})
