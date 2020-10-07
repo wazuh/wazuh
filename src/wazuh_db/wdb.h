@@ -532,9 +532,10 @@ int* wdb_get_agents_by_keepalive(const char* condition, int keepalive, bool incl
  * 
  * @param[in] name Name of the agent.
  * @param[in] ip IP address of the agent.
+ * @param[in] sock The Wazuh DB socket connection.
  * @return Returns id if success. OS_INVALID on error.
  */
-int wdb_find_agent(const char *name, const char *ip);
+int wdb_find_agent(const char *name, const char *ip, int *sock);
 
 /**
  * @brief Returns a JSON with all the agent's information.
