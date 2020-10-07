@@ -718,6 +718,7 @@ stages:
       params:
         force: True
         wait_for_complete: 'true'
+        version: 3.13.2
     response:
       status_code:
         - 200
@@ -728,6 +729,7 @@ stages:
 
     # PUT /agents/006/upgrade
   - name: Try to upgrade an agent that is updated to the latest version
+    skip: True # At this time this test does not work because the 4.0.0 packages of the agents are not in production server
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/006/upgrade"
@@ -759,6 +761,7 @@ stages:
 
     # PUT /agents/004/upgrade
   - name: Upgrade an agent using http
+    skip: True # At this time this test does not work because the 4.0.0 packages of the agents are not in production server
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/004/upgrade"
@@ -778,6 +781,7 @@ stages:
 
     # PUT /agents/005/upgrade
   - name: Upgrade an agent using wkp repo to a 4.x version
+    skip: True # At this time this test does not work because the 4.0.0 packages of the agents are not in production server
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/005/upgrade"

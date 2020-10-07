@@ -97,9 +97,9 @@ def test_validate_data_dict_field(response, fields_dict):
 
 
 def test_validate_upgrade(response):
-    # We accept the test as passed if it either ugprades correctly or the version is not available
+    # We accept the test as passed if it either upgrades correctly or the version is not available
     assert response.json().get('message', None) == "Upgrade procedure started" \
-           or response.json().get('code', None) == 1718
+           or response.json().get('error', None) == 1718
     if response.json().get('message', None) == "Upgrade procedure started":
         time.sleep(45)
         return Box({"upgraded": 1})
@@ -113,11 +113,11 @@ def test_validate_upgrade_result(response, upgraded):
         assert response.json().get('message', None) == "Agent was successfully upgraded"
     else:
         # If upgrade didnt work because no version was available, we expect an empty upgrade_result with error 1716
-        assert response.json().get('code', None) == 1716
+        assert response.json().get('error', None) == 1716
 
 
 def test_validate_update_latest_version(response):
-    assert response.json().get('code', None) == 1749 or response.json().get('code', None) == 1718
+    assert response.json().get('error', None) == 1749 or response.json().get('error', None) == 1718
 
 
 def test_count_elements(response, n_expected_items):
