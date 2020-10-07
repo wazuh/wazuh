@@ -5903,7 +5903,6 @@ paths:
                     - error:
                         code: 1753
                         message: Could not assign group. Agent status is never_connected
-                        error: 0
                         remediation: Please select another agent or connect your agent before assigning groups
                       id:
                         - '011'
