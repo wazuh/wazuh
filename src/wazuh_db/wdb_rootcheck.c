@@ -98,8 +98,11 @@ int wdb_delete_pm(int id) {
 
 /* Delete PM events of all agents */
 void wdb_delete_pm_all() {
-    int *agents = wdb_get_all_agents(FALSE);
     int i;
+    int sock = -1;
+
+    int *agents = wdb_get_all_agents(FALSE, &sock);
+    if (sock >= 0) close(sock);
 
     if (agents) {
         wdb_delete_pm(0);
