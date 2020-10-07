@@ -14,7 +14,7 @@
 #include "headers/shared.h"
 #include "headers/queue_linked_op.h"
 
-void __wrap_linked_queue_push_ex(w_linked_queue_t * queue, void * data);
+w_linked_queue_node_t * __wrap_linked_queue_push_ex(w_linked_queue_t * queue, void * data);
 
 void * __wrap_linked_queue_pop_ex(w_linked_queue_t * queue);
 #endif

@@ -13,7 +13,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-void __wrap_linked_queue_push_ex(w_linked_queue_t * queue, void * data) {
+w_linked_queue_node_t * __wrap_linked_queue_push_ex(w_linked_queue_t * queue, void * data) {
     check_expected_ptr(queue);
     check_expected(data);
 
@@ -34,6 +34,7 @@ void __wrap_linked_queue_push_ex(w_linked_queue_t * queue, void * data) {
         queue->last = node;
     }
     queue->elements++;
+    return node;
 }
 
 void * __wrap_linked_queue_pop_ex(w_linked_queue_t * queue) {
@@ -48,13 +49,13 @@ void * __wrap_linked_queue_pop_ex(w_linked_queue_t * queue) {
             data = NULL;
         } else {
             data = queue->last->data;
-            w_linked_queue_node_t *tmp = queue->last;
-            queue->last = queue->last->prev;
-            if (queue->last) {
-                queue->last->next = NULL;
+            w_linked_queue_node_t *tmp = queue->first;
+            queue->first = queue->first->next;
+            if (queue->first) {
+                queue->first->prev = NULL;
             } else {
-                // queue is now empty
-                queue->first = NULL;
+                // Also clean last node
+                queue->last = NULL;
             }
             queue->elements--;
             os_free(tmp);
