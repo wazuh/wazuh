@@ -359,7 +359,7 @@ void wm_sync_agents() {
 
     /* Delete old keys */
 
-    if ((agents = wdb_get_all_agents(FALSE))) {
+    if ((agents = wdb_get_all_agents(FALSE, &wdb_wmdb_sock))) {
         char id[9];
 
         for (i = 0; agents[i] != -1; i++) {
@@ -1082,7 +1082,7 @@ void wm_inotify_setup(wm_database * data) {
 
         wm_sync_agents();
         wm_sync_multi_groups(DEFAULTDIR SHAREDCFG_DIR);
-        wdb_agent_belongs_first_time();
+        wdb_agent_belongs_first_time(&wdb_wmdb_sock);
     }
 
 #endif

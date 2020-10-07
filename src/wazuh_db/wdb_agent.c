@@ -523,7 +523,7 @@ int wdb_set_agent_labels(int id, const char *labels) {
     return result;
 }
 
-int* wdb_get_all_agents(bool include_manager) {
+int* wdb_get_all_agents(bool include_manager, int *sock) {
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
     int last_id = include_manager ? -1 : 0;
@@ -534,7 +534,7 @@ int* wdb_get_all_agents(bool include_manager) {
     while (status == WDBC_DUE) {
         // Query WazuhDB
         snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_ALL_AGENTS], last_id);
-        if (wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
+        if (wdbc_query_ex(sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
             // Parse result
             char* payload = NULL;
             status = wdbc_parse_result(wdboutput, &payload);
@@ -568,7 +568,7 @@ int* wdb_get_all_agents(bool include_manager) {
     return array;
 }
 
-int* wdb_get_agents_by_keepalive(const char* condition, int keepalive, bool include_manager) {
+int* wdb_get_agents_by_keepalive(const char* condition, int keepalive, bool include_manager, int *sock) {
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
     int last_id = include_manager ? -1 : 0;
@@ -579,7 +579,7 @@ int* wdb_get_agents_by_keepalive(const char* condition, int keepalive, bool incl
     while (status == WDBC_DUE) {
         // Query WazuhDB
         snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_AGENTS_BY_KEEPALIVE], condition, keepalive, last_id);
-        if (wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
+        if (wdbc_query_ex(sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
             // Parse result
             char* payload = NULL;
             status = wdbc_parse_result(wdboutput, &payload);
@@ -657,13 +657,13 @@ int wdb_find_agent(const char *name, const char *ip) {
     return output;
 }
 
-cJSON* wdb_get_agent_info(int id) {
+cJSON* wdb_get_agent_info(int id, int *sock) {
     cJSON *root = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
 
     sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_commands[WDB_GET_AGENT_INFO], id);
-    root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+    root = wdbc_query_parse_json(sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!root) {
         merror("Error querying Wazuh DB to get the agent's %d information.", id);
@@ -1208,12 +1208,12 @@ int wdb_update_agent_multi_group(int id, char *group) {
     return OS_SUCCESS;
 }
 
-int wdb_agent_belongs_first_time(){
+int wdb_agent_belongs_first_time(int *sock){
     int i;
     char *group;
     int *agents;
 
-    if ((agents = wdb_get_all_agents(FALSE))) {
+    if ((agents = wdb_get_all_agents(FALSE, sock))) {
 
         for (i = 0; agents[i] != -1; i++) {
             group = wdb_get_agent_group(agents[i]);

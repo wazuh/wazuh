@@ -492,10 +492,11 @@ int wdb_set_agent_labels(int id, const char *labels);
  * The array is heap allocated memory that must be freed by the caller.
  * 
  * @param [in] include_manager flag to include the manager on agents list
+ * @param [in] sock The Wazuh DB socket connection.
  * @return Pointer to the array, on success.
  * @retval NULL on errors.
  */
-int* wdb_get_all_agents(bool include_manager);
+int* wdb_get_all_agents(bool include_manager, int *sock);
 
 /**
  * @brief Returns an array containing the ID of every agent (except 0), ended with -1 based on its keep_alive.
@@ -506,9 +507,10 @@ int* wdb_get_all_agents(bool include_manager);
  * @param [in] condition The symbol ">" or "<". The condition to match keep alive.
  * @param [in] keepalive The keep_alive to search the agents.
  * @param [in] include_manager flag to include the manager on agents list.
+ * @param [in] sock The Wazuh DB socket connection.
  * @return Pointer to the array, on success. NULL on errors.
  */
-int* wdb_get_agents_by_keepalive(const char* condition, int keepalive, bool include_manager);
+int* wdb_get_agents_by_keepalive(const char* condition, int keepalive, bool include_manager, int *sock);
 
 /**
  * @brief Find agent id by name and address.
@@ -523,9 +525,10 @@ int wdb_find_agent(const char *name, const char *ip);
  * @brief Returns a JSON with all the agent's information.
  * 
  * @param[in] id Id of the agent for whom the information is requested.
+ * @param[in] sock The Wazuh DB socket connection.
  * @return JSON* with the information on success or NULL on failure.
  */
-cJSON* wdb_get_agent_info(int id);
+cJSON* wdb_get_agent_info(int id, int *sock);
 
 /**
  * @brief Returns a JSON with all the agent's labels.
@@ -663,10 +666,11 @@ int wdb_update_agent_multi_group(int id, char *group);
 
 /**
  * @brief Fill belongs table on start.
+ * @param [in] sock The Wazuh DB socket connection.
  * 
  * @return Returns OS_SUCCESS.
  */
-int wdb_agent_belongs_first_time();
+int wdb_agent_belongs_first_time(int *sock);
 
 /**
  * @brief Get the agent first registration date.
