@@ -431,17 +431,19 @@ void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
 
     if(regexec(regexCompiled, lf->full_log, 2, match, 0) == 0){
         match_size = match[1].rm_eo - match[1].rm_so;
-        agent_hostname = malloc(match_size + 1);
-        snprintf (agent_hostname, match_size + 1, "%.*s", match_size, lf->full_log + match[1].rm_so);
 
-        if (!cJSON_HasObjectItem(root, "predecoder")) {
-            cJSON_AddItemToObject(root, "predecoder", predecoder = cJSON_CreateObject());
-        } else {
-            predecoder = cJSON_GetObjectItem(root, "predecoder");
+        if (agent_hostname = malloc(match_size + 1), agent_hostname) {
+            snprintf (agent_hostname, match_size + 1, "%.*s", match_size, lf->full_log + match[1].rm_so);
+
+            if (!cJSON_HasObjectItem(root, "predecoder")) {
+                cJSON_AddItemToObject(root, "predecoder", predecoder = cJSON_CreateObject());
+            } else {
+                predecoder = cJSON_GetObjectItem(root, "predecoder");
+            }
+
+            cJSON_AddStringToObject(predecoder, "hostname", agent_hostname);
+            free(agent_hostname);
         }
-
-        cJSON_AddStringToObject(predecoder, "hostname", agent_hostname);
-        free(agent_hostname);
     }
 }
 // Parse timestamp

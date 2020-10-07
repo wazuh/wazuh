@@ -225,10 +225,11 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
         if (logJSON->string) {
             if (parent) {
                 n = strlen(parent);
-                key = malloc(n + strlen(logJSON->string) + 2);
-                strcpy(key, parent);
-                key[n++] = '.';
-                strcpy(key + n, logJSON->string);
+                if (key = malloc(n + strlen(logJSON->string) + 2), key) {
+                    strcpy(key, parent);
+                    key[n++] = '.';
+                    strcpy(key + n, logJSON->string);
+                }
             }
             else {
                 os_strdup(logJSON->string, key);

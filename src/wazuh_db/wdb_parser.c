@@ -4307,9 +4307,6 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
         }
     }
 
-    snprintf(output, OS_MAXSTR + 1, "ok");
-    cJSON_Delete(agent_data);
-
     return OS_SUCCESS;
 }
 
