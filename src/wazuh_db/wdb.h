@@ -628,9 +628,10 @@ int wdb_remove_agent(int id, int *sock);
  * @brief Delete group.
  * 
  * @param[in] name The group name.
+ * @param[in] sock The Wazuh DB socket connection.
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_remove_group_db(const char *name);
+int wdb_remove_group_db(const char *name, int *sock);
 
 /**
  * @brief Delete an agent from belongs table in global.db by using its ID.

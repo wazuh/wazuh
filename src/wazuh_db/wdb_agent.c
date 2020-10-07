@@ -905,7 +905,7 @@ int wdb_update_groups(const char *dirname, int *sock) {
 
         /* Group doesnt exists anymore, delete it */
         if (!dp) {
-            if (wdb_remove_group_db((char *)array[i]) < 0) {
+            if (wdb_remove_group_db((char *)array[i], sock) < 0) {
                 free_strarray(array);
                 return OS_INVALID;
             }
@@ -984,7 +984,7 @@ int wdb_remove_agent(int id, int *sock) {
     return result;
 }
 
-int wdb_remove_group_db(const char *name) {
+int wdb_remove_group_db(const char *name, int *sock) {
     int result = 0;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -996,7 +996,7 @@ int wdb_remove_group_db(const char *name) {
     }
 
     snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DELETE_GROUP], name);
-    result = wdbc_query_ex( &wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex(sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
         case OS_SUCCESS:
