@@ -2322,21 +2322,22 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output) {
 
         version = curr;
         *next++ = '\0';
+        curr = next;
 
         if (!strcmp(version, "NULL"))
             version = NULL;
 
-        os_patch = curr;
-        *next++ = '\0';
-        curr = next;
-
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid OS info query syntax.");
-            mdebug2("OS info query: %s", os_patch);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", os_patch);
+            mdebug2("OS info query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", curr);
             return -1;
         }
 
+        os_patch = curr;
+        *next++ = '\0';
+        curr = next;
+        
         if (!strcmp(os_patch, "NULL"))
             os_patch = NULL;
 

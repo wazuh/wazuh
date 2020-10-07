@@ -847,7 +847,7 @@ os_info *get_unix_version()
             snprintf(info->os_minor, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
         }
         // Get os_patch
-        if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", info->os_version, 2, match)) {
+        if (w_regexec("^[0-9]+\\.[0-9]+\\.([0-9]+)*", info->os_version, 2, match)) {
             match_size = match[1].rm_eo - match[1].rm_so;
             info->os_patch = malloc(match_size +1);
             snprintf(info->os_patch, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
