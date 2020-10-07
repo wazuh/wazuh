@@ -27,8 +27,9 @@ int labels_init();
  * @brief Finds the label array of an agent that generated an event.
  * 
  * @param lf The Eventinfo data structure.
+ * @param sock The Wazuh DB socket connection.
  * @retval The agent's labels array on success. NULL on error.
  */
-wlabel_t* labels_find(const Eventinfo *lf);
+wlabel_t* labels_find(const Eventinfo *lf, int *sock);
 
 #endif

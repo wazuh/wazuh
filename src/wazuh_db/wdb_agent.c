@@ -673,13 +673,13 @@ cJSON* wdb_get_agent_info(int id) {
     return root;
 }
 
-cJSON* wdb_get_agent_labels(int id) {
+cJSON* wdb_get_agent_labels(int id, int *sock) {
     cJSON *root = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
 
     snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_AGENT_LABELS], id);
-    root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+    root = wdbc_query_parse_json(sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!root) {
         merror("Error querying Wazuh DB to get the agent's %d labels.", id);

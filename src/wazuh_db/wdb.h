@@ -529,9 +529,10 @@ cJSON* wdb_get_agent_info(int id);
  * @brief Returns a JSON with all the agent's labels.
  * 
  * @param[in] id Id of the agent for whom the labels are requested.
+ * @param[in] sock The Wazuh DB socket connection.
  * @return JSON* with the labels on success or NULL on failure.
  */
-cJSON* wdb_get_agent_labels(int id);
+cJSON* wdb_get_agent_labels(int id, int *sock);
 
 /**
  * @brief Get name from agent table in global.db by using its ID.
