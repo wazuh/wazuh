@@ -5897,7 +5897,6 @@ paths:
                     - error:
                         code: 1701
                         message: Agent does not exist
-                        error: 0
                         remediation: Please, use `GET /agents?select=id,name` to find all available agents
                       id:
                         - '999'
