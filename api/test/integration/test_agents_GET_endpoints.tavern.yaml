@@ -1610,7 +1610,7 @@ stages:
     response: &resource_not_found
       status_code: 404
       json:
-        code: 1701
+        error: 1701
 
   - name: Try to show config of an invalid agent
     request:
@@ -1906,7 +1906,7 @@ stages:
       status_code: 400 # /groups now uses WazuhDBQuery and SQLite cannot handle too large integers
       json:
         detail: !anystr
-        code: 2003
+        error: 2003
 
   - name: Try show groups with limit 0
     request:
@@ -1971,7 +1971,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
   - name: Search
     request:
@@ -2138,7 +2138,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 2003
+        error: 2003
 
   - name: Try show agents with limit 0
     request:
@@ -2181,7 +2181,7 @@ stages:
     response: &resource_not_found_group
       status_code: 404
       json:
-        code: 1710
+        error: 1710
 
   - name: Params, invalid group name (not alphanumeric)
     request:
@@ -2223,7 +2223,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
   - name: Search
     request:
@@ -2309,7 +2309,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1724
+        error: 1724
 
   - name: Try show agents with not allowed selector (invalid character)
     request:
@@ -2394,7 +2394,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1408
+        error: 1408
 
   - name: Try show agents with bad query (invalid character)
     request:
@@ -2782,7 +2782,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
   - name: Search
     request:
@@ -3027,7 +3027,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1724
+        error: 1724
 
 ---
 test_name: GET /agents/no_group
@@ -3100,7 +3100,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 2003
+        error: 2003
 
   - name: Try show agents with limit 0
     request:
@@ -3159,7 +3159,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
   - name: Search
     request:
@@ -3209,7 +3209,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1408
+        error: 1408
 
   - name: Try show agents with bad query (invalid character)
     request:
@@ -3342,7 +3342,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 2003
+        error: 2003
 
   - name: Try show agents with limit 0
     request:
@@ -3384,7 +3384,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
   - name: Filter agents by query
     request:
@@ -3427,7 +3427,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1408
+        error: 1408
 
   - name: Try show agents with bad query (invalid character)
     request:
@@ -3519,7 +3519,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1724
+        error: 1724
 
   - name: Get the different combinations for os.platform, search
     request:
@@ -3557,7 +3557,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1724
+        error: 1724
 
   - name: Pagination
     request:
@@ -3607,7 +3607,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 2003
+        error: 2003
 
   - name: Try show agents with limit 0
     request:
@@ -3660,7 +3660,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
   - name: Search
     request:
@@ -3701,7 +3701,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1408
+        error: 1408
 
   - name: Try show agents with bad query (invalid character)
     request:
@@ -3838,7 +3838,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1703
+        error: 1703
 
   - name: Try get upgrade result not existing agent
     request:
@@ -3872,7 +3872,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: !anyint
+        error: !anyint
         dapi_errors: !anything
         detail: !anystr
         title: !anystr

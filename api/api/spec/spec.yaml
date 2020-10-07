@@ -13082,7 +13082,7 @@ paths:
           content:
             application/json:
               schema:
-                type: string
+                type: object
               example:
                 message: "Tokens were successfully revoked"
         '400':
@@ -14659,7 +14659,7 @@ paths:
           content:
             application/json:
               schema:
-                type: string
+                type: object
               example:
                 message: 'Configuration successfully updated'
         '400':
@@ -14690,7 +14690,7 @@ paths:
           content:
             application/json:
               schema:
-                type: string
+                type: object
               example:
                 message: 'Configuration successfully updated'
         '400':

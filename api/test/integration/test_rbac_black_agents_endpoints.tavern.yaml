@@ -40,7 +40,7 @@ stages:
     response: &permission_denied
       status_code: 403
       json:
-        code: 4000
+        error: 4000
 
   - name: Get a list of agents (Partially allowed, user aware)
     request:
@@ -658,7 +658,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1734
+        error: 1734
 
   - name: Remove agent 005 from group1 (Allowed)
     request:
@@ -1266,7 +1266,7 @@ stages:
     response:
       status_code: 403
       json:
-        code: 4000
+        error: 4000
 
     # PUT /agents/group/group2/restart
   - name: Restart all agents from group2 (Only agent 005 will have both permissions -> group:read & agent:restart)
@@ -1474,7 +1474,7 @@ stages:
     response:
       status_code: 403
       json:
-        code: 4000
+        error: 4000
         dapi_errors:
           master-node: # We have permission to see node name
             error: !anystr

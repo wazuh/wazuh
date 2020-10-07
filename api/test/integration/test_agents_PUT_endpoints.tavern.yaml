@@ -19,7 +19,7 @@ stages:
     response: &resource_not_found_group
       status_code: 404
       json:
-        code: 1710
+        error: 1710
 
     # PUT /agents/group?group_id=wrong_group&list_agents=wrong_agent
   - name: Try to assign an invalid agent_id to a non existing group
@@ -250,7 +250,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 2007
+        error: 2007
 
     # PUT /groups/group1/configuration
   - name: Try to update configuration using an invalid configuration file
@@ -266,7 +266,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1113
+        error: 1113
 
     # PUT /groups/group1/configuration
   - name: Try to update configuration using a wrong configuration file
@@ -282,7 +282,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1114
+        error: 1114
 
 ---
 test_name: PUT /agents/group/{group_id}/restart
@@ -301,7 +301,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1755
+        error: 1755
 
     # PUT /agents/group/group2/restart (Agents 009 and 010 are disconnected)
   - name: Restart all agents from group2
@@ -679,7 +679,7 @@ stages:
     response: &resource_not_found
       status_code: 404
       json:
-        code: 1701
+        error: 1701
 
     # PUT /agents/000/upgrade
   - name: Try to upgrade agent 000 (manager)
@@ -692,7 +692,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1703
+        error: 1703
 
     # PUT /agents/wrong_id/upgrade
   - name: Try to upgrade an agent using an invalid id
@@ -847,7 +847,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1703
+        error: 1703
 
     # PUT /agents/wrong_id/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
   - name: Try to customly upgrade an agent using an invalid id
@@ -892,7 +892,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1716
+        error: 1716
 
     # PUT /agents/007/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
   - name: Customly upgrade agent 007 selecting installer
