@@ -497,7 +497,7 @@ int wdb_set_agent_offset(int id, int type, long offset, int *sock) {
     return result;
 }
 
-int wdb_set_agent_labels(int id, const char *labels) {
+int wdb_set_agent_labels(int id, const char *labels, int *sock) {
     int result = 0;
     // Making use of a big buffer for the query because it
     // will contain all the keys and values.
@@ -508,7 +508,7 @@ int wdb_set_agent_labels(int id, const char *labels) {
 
     snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SET_AGENT_LABELS], id, labels);
 
-    result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex(sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result){
         case OS_SUCCESS:
