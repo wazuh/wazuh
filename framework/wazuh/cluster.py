@@ -57,7 +57,7 @@ def get_status_json():
 
     :return: Dictionary with the cluster status.
     """
-    return get_cluster_status()
+    return {'data': get_cluster_status(), 'error': 0}
 
 
 @expose_resources(actions=['cluster:read'], resources=['node:id:{filter_node}'], post_proc_func=async_list_handler)

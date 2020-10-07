@@ -12,7 +12,7 @@ from api import configuration
 from api.encoder import dumps, prettify
 from api.models.agent_added import AgentAddedModel
 from api.models.agent_inserted import AgentInsertedModel
-from api.models.base_model_ import Data, Body
+from api.models.base_model_ import Body
 from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -153,9 +153,8 @@ async def add_agent(request, pretty=False, wait_for_complete=False):
                           )
 
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def restart_agents(request, pretty=False, wait_for_complete=False, list_agents='*'):
@@ -243,9 +242,8 @@ async def get_agent_config(request, pretty=False, wait_for_complete=False, agent
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def delete_single_agent_multiple_groups(request, agent_id, list_groups=None, pretty=False, wait_for_complete=False):
@@ -485,9 +483,8 @@ async def post_new_agent(request, agent_name, pretty=False, wait_for_complete=Fa
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_agent_upgrade(request, agent_id, timeout=3, pretty=False, wait_for_complete=False):
@@ -722,7 +719,7 @@ async def get_group_config(request, group_id, pretty=False, wait_for_complete=Fa
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=Data(data), status=200, dumps=prettify if pretty else dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def put_group_config(request, body, group_id, pretty=False, wait_for_complete=False):
@@ -817,9 +814,8 @@ async def get_group_file_json(request, group_id, file_name, pretty=False, wait_f
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data['data']['affected_items'])
 
-    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
+    return web.json_response(data=data['data']['affected_items'], status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_group_file_xml(request, group_id, file_name, pretty=False, wait_for_complete=False):
@@ -907,9 +903,8 @@ async def insert_agent(request, pretty=False, wait_for_complete=False):
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_agent_no_group(request, pretty=False, wait_for_complete=False, offset=0, limit=database_limit,
@@ -1038,9 +1033,8 @@ async def get_agent_summary_status(request, pretty=False, wait_for_complete=Fals
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_agent_summary_os(request, pretty=False, wait_for_complete=False):
