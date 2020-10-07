@@ -679,7 +679,7 @@ winagent: external win32/shared_modules win32/libwinpthread-1.dll wazuh_modules/
 	cd win32/ && makensis ossec-installer.nsi
 
 
-win32/shared_modules:
+win32/shared_modules: external
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && make
 	cd ${RSYNC} &&  mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${RSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && make
 ifneq (,$(filter ${TEST},YES yes y Y 1))
