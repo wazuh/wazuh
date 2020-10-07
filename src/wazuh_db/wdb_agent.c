@@ -958,7 +958,7 @@ int wdb_remove_agent(int id, int *sock) {
     switch (result) {
         case OS_SUCCESS:
             if (WDBC_OK == wdbc_parse_result(wdboutput, &payload)) {
-                result = wdb_delete_agent_belongs(id);
+                result = wdb_delete_agent_belongs(id, sock);
 
                 if ((OS_SUCCESS == result) && name &&
                      OS_INVALID == wdb_remove_agent_db(id, name)) {
@@ -1018,14 +1018,14 @@ int wdb_remove_group_db(const char *name, int *sock) {
     return result;
 }
 
-int wdb_delete_agent_belongs(int id) {
+int wdb_delete_agent_belongs(int id, int *sock) {
     int result = 0;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
     char *payload = NULL;
 
     snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DELETE_AGENT_BELONG], id);
-    result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex(sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
         case OS_SUCCESS:
@@ -1170,7 +1170,7 @@ int wdb_remove_agent_db(int id, const char * name) {
 
 int wdb_update_agent_multi_group(int id, char *group, int *sock) {
     /* Wipe out the agent multi groups relation for this agent */
-    if (wdb_delete_agent_belongs(id) < 0) {
+    if (wdb_delete_agent_belongs(id, sock) < 0) {
         return OS_INVALID;
     }
 
