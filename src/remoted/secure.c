@@ -342,9 +342,8 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         }
     } else if (strcmp(buffer, "#ping") == 0) {
             int retval = 0;
-            int error;
             char *msg = "#pong";
-            size_t msg_size = strlen(msg);
+            ssize_t msg_size = strlen(msg);
 
             if (protocol == IPPROTO_UDP) {
                 retval = sendto(logr.sock, msg, msg_size, 0, (struct sockaddr *)peer_info, logr.peer_size) == msg_size ? 0 : -1;
