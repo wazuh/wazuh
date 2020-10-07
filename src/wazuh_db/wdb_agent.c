@@ -771,7 +771,7 @@ int wdb_get_agent_status(int id_agent, int *sock) {
     return output;
 }
 
-time_t wdb_get_agent_keepalive(const char *name, const char *ip){
+time_t wdb_get_agent_keepalive(const char *name, const char *ip, int *sock){
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
     time_t output = 0;
@@ -784,7 +784,7 @@ time_t wdb_get_agent_keepalive(const char *name, const char *ip){
     }
 
     snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_KEEPALIVE], name, ip);
-    root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+    root = wdbc_query_parse_json(sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!root) {
         merror("Error querying Wazuh DB to get the last agent keepalive.");

@@ -260,7 +260,7 @@ void wm_sync_manager() {
         // Don't print error if stat fails because syscheck and rootcheck must not exist
 
         if (!stat(path, &buffer) && buffer.st_size > 0) {
-            switch (wdb_get_agent_status(0), &wdb_wmdb_sock) {
+            switch (wdb_get_agent_status(0, &wdb_wmdb_sock)) {
             case -1:
                 mterror(WM_DATABASE_LOGTAG, "Couldn't get database status for manager.");
                 break;

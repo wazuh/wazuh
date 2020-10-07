@@ -587,9 +587,10 @@ int wdb_get_agent_status(int id_agent, int *sock);
  * 
  * @param [in] name String with the name of the agent.
  * @param [in] ip String with the ip of the agent.
+ * @param [in] sock The Wazuh DB socket connection.
  * @return Returns this value, 0 on NULL or OS_INVALID on error.
  */
-time_t wdb_get_agent_keepalive (const char *name, const char *ip);
+time_t wdb_get_agent_keepalive (const char *name, const char *ip, int *sock);
 
 /**
  * @brief Get the file offset either for syscheck as well as registry.
