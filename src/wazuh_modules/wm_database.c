@@ -445,7 +445,7 @@ int wm_sync_agent_group(int id_agent, const char *fname) {
 
     if (OS_SUCCESS != wdb_update_agent_group(id_agent, *group ? group : NULL, &wdb_wmdb_sock)) {
         mterror(WM_DATABASE_LOGTAG, "Couldn't sync agent '%s' group.", fname);
-        wdb_delete_agent_belongs(id_agent);
+        wdb_delete_agent_belongs(id_agent, &wdb_wmdb_sock);
         result = -1;
     }
 
@@ -555,7 +555,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
         if (wdb_get_agent_status(id_agent) < 0) {
             snprintf(del_path, PATH_MAX - 1, DEFAULTDIR GROUPS_DIR "/%03d", id_agent);
             unlink(del_path);
-            wdb_delete_agent_belongs(id_agent);
+            wdb_delete_agent_belongs(id_agent, &wdb_wmdb_sock);
             return -1;
         }
 
