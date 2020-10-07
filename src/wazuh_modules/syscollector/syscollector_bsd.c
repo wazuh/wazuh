@@ -25,9 +25,6 @@
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <string.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <plist/plist.h>
 
 #ifdef __MACH__
 
@@ -39,6 +36,9 @@
 #include <sys/proc.h>
 #include <sys/proc_info.h>
 #include <netdb.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <plist/plist.h>
 
 #if !HAVE_SOCKADDR_SA_LEN
 #define SA_LEN(sa)      af_to_len(sa->sa_family)
