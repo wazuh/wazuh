@@ -76,7 +76,7 @@ void * linked_queue_pop(w_linked_queue_t * queue) {
     if (!queue->first) {
        data = NULL;
     } else {
-        data = queue->last->data;
+        data = queue->first->data;
         linked_queue_pop_node(queue);
     }
     return data;
@@ -111,13 +111,13 @@ static void linked_queue_append_node(w_linked_queue_t *queue, w_linked_queue_nod
 }
 
 static void linked_queue_pop_node(w_linked_queue_t *queue) {
-    w_linked_queue_node_t *tmp = queue->last;
-    queue->last = queue->last->prev;
-    if (queue->last) {
-        queue->last->next = NULL;
+    w_linked_queue_node_t *tmp = queue->first;
+    queue->first = queue->first->next;
+    if (queue->first) {
+        queue->first->prev = NULL;
     } else {
-        // queue is now empty
-        queue->first = NULL;
+        // Also clean last node
+        queue->last = NULL;
     }
     queue->elements--;
     os_free(tmp);

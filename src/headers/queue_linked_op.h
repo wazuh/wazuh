@@ -93,4 +93,5 @@ void * linked_queue_pop_ex(w_linked_queue_t * queue);
  * @param node node to be unlinked from the queue
  * */
 void linked_queue_unlink_and_push_node(w_linked_queue_t * queue, w_linked_queue_node_t *node);
+
 #endif
