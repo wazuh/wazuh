@@ -445,7 +445,7 @@ int wdb_update_agent_group(int id, char *group, int *sock) {
     return result;
 }
 
-int wdb_set_agent_offset(int id, int type, long offset) {
+int wdb_set_agent_offset(int id, int type, long offset, int *sock) {
     int result = 0;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -475,7 +475,7 @@ int wdb_set_agent_offset(int id, int type, long offset) {
 
     cJSON_Delete(data_in);
 
-    result = wdbc_query_ex(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex(sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
         case OS_SUCCESS:
