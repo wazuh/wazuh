@@ -5909,7 +5909,7 @@ paths:
                   total_affected_items: 2
                   total_failed_items: 2
                 message: Some agents were not assigned to group2 and removed from the other groups
-                error: 0
+                error: 2
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
