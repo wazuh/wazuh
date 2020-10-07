@@ -495,9 +495,10 @@ int wdb_set_agent_offset(int id, int type, long offset, int *sock);
  * 
  * @param[in] id Id of the agent for whom the labels must be updated.
  * @param[in] labels String with the key-values separated by EOL.
+ * @param[in] sock The Wazuh DB socket connection.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_set_agent_labels(int id, const char *labels);
+int wdb_set_agent_labels(int id, const char *labels, int *sock);
 
 /**
  * @brief Returns an array containing the ID of every agent (except 0), ended with -1.
