@@ -270,7 +270,7 @@ void wm_sync_manager() {
             }
         }
 
-        if (OS_SUCCESS != wdb_set_agent_status(0, WDB_AGENT_UPDATED)) {
+        if (OS_SUCCESS != wdb_set_agent_status(0, WDB_AGENT_UPDATED, &wdb_wmdb_sock)) {
             mterror(WM_DATABASE_LOGTAG, "Couldn't write agent status on database for manager.");
         }
     }
@@ -609,7 +609,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
         return -1;
     case WDB_AGENT_PENDING:
         mtwarn(WM_DATABASE_LOGTAG, "Agent '%d' database status was 'pending'. Data could be lost.", id_agent);
-        wdb_set_agent_status(id_agent, WDB_AGENT_UPDATED);
+        wdb_set_agent_status(id_agent, WDB_AGENT_UPDATED, &wdb_wmdb_sock);
         break;
     }
 
@@ -632,7 +632,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
                 return -1;
             }
 
-            if (OS_SUCCESS != wdb_set_agent_status(id_agent, WDB_AGENT_PENDING)) {
+            if (OS_SUCCESS != wdb_set_agent_status(id_agent, WDB_AGENT_PENDING, &wdb_wmdb_sock)) {
                 mterror(WM_DATABASE_LOGTAG, "Couldn't write agent status on database for agent %d (%s).", id_agent, name);
                 sqlite3_close_v2(db);
                 return -1;
@@ -647,7 +647,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
             offset = wm_fill_syscheck(db, path, offset, is_registry);
             sqlite3_close_v2(db);
 
-            if (OS_SUCCESS != wdb_set_agent_status(id_agent, WDB_AGENT_UPDATED)) {
+            if (OS_SUCCESS != wdb_set_agent_status(id_agent, WDB_AGENT_UPDATED, &wdb_wmdb_sock)) {
                 mterror(WM_DATABASE_LOGTAG, "Couldn't write agent status on database for agent %d (%s).", id_agent, name);
                 return -1;
             }
@@ -672,7 +672,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
             return -1;
         }
 
-        if (OS_SUCCESS != wdb_set_agent_status(id_agent, WDB_AGENT_PENDING)) {
+        if (OS_SUCCESS != wdb_set_agent_status(id_agent, WDB_AGENT_PENDING, &wdb_wmdb_sock)) {
             mterror(WM_DATABASE_LOGTAG, "Couldn't write agent status on database for agent %d (%s).", id_agent, name);
             sqlite3_close_v2(db);
             return -1;
@@ -681,7 +681,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
         result = wm_fill_rootcheck(db, path);
         sqlite3_close_v2(db);
 
-        if (OS_SUCCESS != wdb_set_agent_status(id_agent, WDB_AGENT_UPDATED)) {
+        if (OS_SUCCESS != wdb_set_agent_status(id_agent, WDB_AGENT_UPDATED, &wdb_wmdb_sock)) {
             mterror(WM_DATABASE_LOGTAG, "Couldn't write agent status on database for agent %d (%s).", id_agent, name);
             return -1;
         }
