@@ -45,6 +45,7 @@ __attribute__((noreturn))
 static void help_logtest(void)
 {
     print_header();
+    print_out("\nSince Wazuh v4.0.0 this binary is deprecated. Use wazuh-logtest instead\n");
     print_out("  %s: -[Vhdtva] [-c config] [-D dir] [-U rule:alert:decoder]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
@@ -343,9 +344,25 @@ int main(int argc, char **argv)
             {
                 char **listfiles;
                 listfiles = Config.lists;
+                /* Error and warning messages */
+                OSList * list_msg = OSList_Create();
+                OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
+
                 while (listfiles && *listfiles) {
                     mdebug1("Reading the lists file: '%s'", *listfiles);
-                    if (Lists_OP_LoadList(*listfiles, &os_analysisd_cdblists) < 0) {
+                    if (Lists_OP_LoadList(*listfiles, &os_analysisd_cdblists, list_msg) < 0) {
+                        char * msg;
+                        OSListNode * node_log_msg;
+                        node_log_msg = OSList_GetFirstNode(list_msg);
+                        while (node_log_msg) {
+                            os_analysisd_log_msg_t * data_msg = node_log_msg->data;
+                            msg = os_analysisd_string_log_msg(data_msg);
+                            merror("%s", msg);
+                            os_free(msg);
+                            os_analysisd_free_log_msg(&data_msg);
+                            OSList_DeleteCurrentlyNode(list_msg);
+                            node_log_msg = OSList_GetFirstNode(list_msg);
+                        }
                         merror_exit(LISTS_ERROR, *listfiles);
                     }
                     free(*listfiles);
@@ -353,6 +370,7 @@ int main(int argc, char **argv)
                 }
                 free(Config.lists);
                 Config.lists = NULL;
+                os_free(list_msg);
             }
             Lists_OP_MakeAll(0, 0, &os_analysisd_cdblists);
         }
@@ -454,6 +472,9 @@ int main(int argc, char **argv)
 
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
+
+    /* Inform that binary is deprecated */
+    print_out("\nSince Wazuh v4.0.0 this binary is deprecated. Use wazuh-logtest instead\n");
 
     /* Going to main loop */
     OS_ReadMSG(ut_str);
@@ -618,7 +639,7 @@ void OS_ReadMSG(char *ut_str)
 
                 /* Check each rule */
                 else if (currently_rule = OS_CheckIfRuleMatch(lf, os_analysisd_last_events, &os_analysisd_cdblists,
-                         rulenode_pt, &rule_match, &os_analysisd_fts_list, &os_analysisd_fts_store), !currently_rule) {
+                         rulenode_pt, &rule_match, &os_analysisd_fts_list, &os_analysisd_fts_store, false), !currently_rule) {
                     continue;
                 }
 

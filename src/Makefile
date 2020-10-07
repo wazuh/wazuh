@@ -981,6 +981,9 @@ wrappers_externals_audit_o := $(wrappers_externals_audit_c:.c=.o)
 wrappers_externals_bzip2_c := $(wildcard unit_tests/wrappers/externals/bzip2/*.c)
 wrappers_externals_bzip2_o := $(wrappers_externals_bzip2_c:.c=.o)
 
+wrappers_externals_zlib_c := $(wildcard unit_tests/wrappers/externals/zlib/*.c)
+wrappers_externals_zlib_o := $(wrappers_externals_zlib_c:.c=.o)
+
 wrappers_externals_cJSON_c := $(wildcard unit_tests/wrappers/externals/cJSON/*.c)
 wrappers_externals_cJSON_o := $(wrappers_externals_cJSON_c:.c=.o)
 
@@ -1053,6 +1056,7 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS:=${wrappers_common_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_bzip2_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_externals_zlib_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_cJSON_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_openssl_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_sqlite_o}
@@ -1665,6 +1669,7 @@ install_python:
 python_dependencies := requirements.txt
 
 install_dependencies: install_python
+	${WPYTHON_DIR}/bin/pip3 install --upgrade pip --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
 	LD_LIBRARY_PATH="${PREFIX}/lib" LDFLAGS="-L${PREFIX}/lib" ${WPYTHON_DIR}/bin/pip3 install -r ../framework/${python_dependencies}  --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
 
 install_framework: install_python
@@ -1673,7 +1678,7 @@ install_framework: install_python
 	chmod -R o=- ${WPYTHON_DIR}
 
 install_api: install_python
-	cd ../api && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR}
+	cd ../api && ${WPYTHON_DIR}/bin/python3 setup.py clean --all install --prefix=${WPYTHON_DIR}
 
 install_mitre: install_python
 	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${PREFIX}/var/db/mitre.db
@@ -1968,6 +1973,7 @@ clean-unit-tests:
 	rm -f ${wrappers_externals_o}
 	rm -f ${wrappers_externals_audit_o}
 	rm -f ${wrappers_externals_bzip2_o}
+	rm -f ${wrappers_externals_zlib_o}
 	rm -f ${wrappers_externals_cJSON_o}
 	rm -f ${wrappers_externals_openssl_o}
 	rm -f ${wrappers_externals_procpc_o}

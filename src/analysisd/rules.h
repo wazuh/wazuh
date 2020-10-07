@@ -247,11 +247,13 @@ RuleInfo *zerorulemember(int id, int level, int maxsize, int frequency,
  * @param cdblists list of cdbs
  * @param curr_node rule to compare with the event "lf"
  * @param rule_match stores the regex of the rule
+ * @param save_fts_value determine if fts value can be saved in fts-queue file
  * @return the rule information if it matches, otherwise null
  */
-RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events, ListNode **cdblists,
-                              RuleNode *curr_node, regex_matching *rule_match,
-                              OSList **fts_list, OSHash **fts_store);
+RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
+                              ListNode **cdblists, RuleNode *curr_node,
+                              regex_matching *rule_match, OSList **fts_list,
+                              OSHash **fts_store, const bool save_fts_value);
 
 /**
  * @brief Set os_analysisd_rulelist to null

@@ -17,6 +17,13 @@
 #include "plugin_decoders.h"
 #include "config.h"
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 /* Internal functions */
 
 /**
@@ -29,7 +36,7 @@
  * @return char* The new string.
  * @warning This function assumes that "at" reserved memory is `OS_SIZE_1024`.
  */
-static char *_loadmemory(char *at, char* str, OSList* log_msg);
+STATIC char *_loadmemory(char *at, char* str, OSList* log_msg);
 
 /**
  * @brief Save internal decoder 'name' in 'decoder_store' list
@@ -37,7 +44,7 @@ static char *_loadmemory(char *at, char* str, OSList* log_msg);
  * @param decoder_store Decoder list which save the internals decoder
  * @return 1 on success, otherwise return 0
  */
-static int addDecoder2list(const char *name, OSStore **decoder_store);
+STATIC int addDecoder2list(const char *name, OSStore **decoder_store);
 
 /**
  * @brief Set decoders ids
@@ -45,9 +52,9 @@ static int addDecoder2list(const char *name, OSStore **decoder_store);
  * @param decoder_store all decoder list
  * @return 1 on success, otherwise return 0
  */
-static int os_setdecoderids(OSDecoderNode **decoderlist, OSStore **decoder_list);
+STATIC int os_setdecoderids(OSDecoderNode **decoderlist, OSStore **decoder_list);
 
-static int ReadDecodeAttrs(char *const *names, char *const *values);
+STATIC int ReadDecodeAttrs(char *const *names, char *const *values);
 
 
 int getDecoderfromlist(const char *name, OSStore **decoder_store) {
@@ -59,7 +66,7 @@ int getDecoderfromlist(const char *name, OSStore **decoder_store) {
     return (0);
 }
 
-static int addDecoder2list(const char *name, OSStore **decoder_store)
+STATIC int addDecoder2list(const char *name, OSStore **decoder_store)
 {
     if (*decoder_store == NULL) {
         *decoder_store = OSStore_Create();
@@ -78,7 +85,7 @@ static int addDecoder2list(const char *name, OSStore **decoder_store)
     return (1);
 }
 
-static int os_setdecoderids(OSDecoderNode **decoderlist, OSStore **decoder_list)
+STATIC int os_setdecoderids(OSDecoderNode **decoderlist, OSStore **decoder_list)
 {
     OSDecoderNode *node;
     OSDecoderNode *child_node;
@@ -135,7 +142,7 @@ static int os_setdecoderids(OSDecoderNode **decoderlist, OSStore **decoder_list)
     return (1);
 }
 
-static int ReadDecodeAttrs(char *const *names, char *const *values)
+STATIC int ReadDecodeAttrs(char *const *names, char *const *values)
 {
     if (!names || !values) {
         return (0);
@@ -528,6 +535,10 @@ int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
                     if (strlen(word) == 0) {
                         smerror(log_msg, "decode-xml: Wrong field '%s' in the order"
                                   " of decoder '%s'", *norder, pi->name);
+                        for (int i = 0; i < Config.decoder_order_size; i++) {
+                            os_free(s_norder[i]);
+                        }
+                        os_free(s_norder);
                         goto cleanup;
                     }
 
@@ -606,6 +617,10 @@ int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
                     if (strlen(word) == 0) {
                         smerror(log_msg, "decode-xml: Wrong field '%s' in the fts"
                                   " decoder '%s'", *norder, pi->name);
+                        for (int i = 0; i < Config.decoder_order_size; i++ ) {
+                            os_free(s_norder[i]);
+                        }
+                        os_free(s_norder);
                         goto cleanup;
                     }
 
@@ -642,6 +657,10 @@ int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
                             if (!pi->fields[i]) {
                                 smerror(log_msg, "decode-xml: Wrong field '%s' in the fts"
                                         " decoder '%s'", *norder, pi->name);
+                                for (int i = 0; i < Config.decoder_order_size; i++ ) {
+                                    os_free(s_norder[i]);
+                                }
+                                os_free(s_norder);
                                 goto cleanup;
                             }
 
@@ -650,7 +669,7 @@ int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
                         }
                     }
 
-                    free(*norder);
+                    os_free(*norder);
                     norder++;
                 }
 

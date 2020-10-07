@@ -224,7 +224,6 @@ static int reported_dbsync;
 pthread_mutex_t decode_syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_check_hour_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t lf_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Reported mutexes */
 static pthread_mutex_t writer_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -566,6 +565,7 @@ int main_analysisd(int argc, char **argv)
             if (error_exit) {
                 merror_exit(DEC_PLUGIN_ERR);
             }
+            os_free(list_msg);
         }
         {
             /* Load Lists */
@@ -573,6 +573,10 @@ int main_analysisd(int argc, char **argv)
             Lists_OP_CreateLists();
             /* Load each list into list struct */
             {
+                /* Error and warning messages */
+                OSList * list_msg = OSList_Create();
+                OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
+
                 char **listfiles;
                 listfiles = Config.lists;
                 while (listfiles && *listfiles) {
@@ -580,12 +584,25 @@ int main_analysisd(int argc, char **argv)
                     if (!test_config) {
                         mdebug1("Reading the lists file: '%s'", *listfiles);
                     }
-                    if (Lists_OP_LoadList(*listfiles, &os_analysisd_cdblists) < 0) {
+                    if (Lists_OP_LoadList(*listfiles, &os_analysisd_cdblists, list_msg) < 0) {
+                        char * msg;
+                        OSListNode * node_log_msg;
+                        node_log_msg = OSList_GetFirstNode(list_msg);
+                        while (node_log_msg) {
+                            os_analysisd_log_msg_t * data_msg = node_log_msg->data;
+                            msg = os_analysisd_string_log_msg(data_msg);
+                            merror("%s", msg);
+                            os_free(msg);
+                            os_analysisd_free_log_msg(&data_msg);
+                            OSList_DeleteCurrentlyNode(list_msg);
+                            node_log_msg = OSList_GetFirstNode(list_msg);
+                        }
                         merror_exit(LISTS_ERROR, *listfiles);
                     }
 
                     listfiles++;
                 }
+                os_free(list_msg);
             }
             Lists_OP_MakeAll(0, 0, &os_analysisd_cdblists);
         }
@@ -645,6 +662,7 @@ int main_analysisd(int argc, char **argv)
 
                     rulesfiles++;
                 }
+                os_free(list_msg);
             }
 
             /* Find all rules that require list lookups and attache the the
@@ -1882,9 +1900,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         }
 
         // Insert labels
-        w_mutex_lock(&lf_mutex);
         lf->labels = labels_find(lf);
-        w_mutex_unlock(&lf_mutex);
 
         /* Check the rules */
         DEBUG_MSG("%s: DEBUG: Checking the rules - %d ",
@@ -1912,7 +1928,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
             /* Check each rule */
             else if (t_currently_rule = OS_CheckIfRuleMatch(lf, os_analysisd_last_events, &os_analysisd_cdblists,
-                     rulenode_pt, &rule_match, &os_analysisd_fts_list, &os_analysisd_fts_store), !t_currently_rule) {
+                     rulenode_pt, &rule_match, &os_analysisd_fts_list, &os_analysisd_fts_store, true), !t_currently_rule) {
 
                 continue;
             }

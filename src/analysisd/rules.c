@@ -14,15 +14,22 @@
 #include "compiled_rules/compiled_rules.h"
 #include "analysisd.h"
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 /* Global definition */
 RuleInfo *currently_rule;
 int default_timeframe;
 
 /* Do diff mutex */
-static pthread_mutex_t do_diff_mutex = PTHREAD_MUTEX_INITIALIZER;
+STATIC pthread_mutex_t do_diff_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Hourly alerts mutex */
-static pthread_mutex_t hourly_alert_mutex = PTHREAD_MUTEX_INITIALIZER;
+STATIC pthread_mutex_t hourly_alert_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Change path for test rule */
 #ifdef TESTRULE
@@ -31,17 +38,17 @@ static pthread_mutex_t hourly_alert_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 /* Prototypes */
-static int getattributes(char **attributes,
+STATIC int getattributes(char **attributes,
                   char **values,
                   int *id, int *level,
                   int *maxsize, int *timeframe,
                   int *frequency, int *accuracy,
                   int *noalert, int *ignore_time, int *overwrite,
                   OSList* log_msg);
-static int doesRuleExist(int sid, RuleNode *r_node);
-static void Rule_AddAR(RuleInfo *config_rule);
-static char *loadmemory(char *at, const char *str, OSList* log_msg);
-static void printRuleinfo(const RuleInfo *rule, int node);
+STATIC int doesRuleExist(int sid, RuleNode *r_node);
+STATIC void Rule_AddAR(RuleInfo *config_rule);
+STATIC char *loadmemory(char *at, const char *str, OSList* log_msg);
+STATIC void printRuleinfo(const RuleInfo *rule, int node);
 
 /* Will initialize the rules list */
 void Rules_OP_CreateRules() {
@@ -1784,7 +1791,7 @@ cleanup:
  * If *at already exist, realloc the memory and cat str on it.
  * Returns the new string
  */
-static char *loadmemory(char *at, const char *str, OSList* log_msg)
+STATIC char *loadmemory(char *at, const char *str, OSList* log_msg)
 {
     if (at == NULL) {
         size_t strsize = 0;
@@ -1993,7 +2000,7 @@ int get_info_attributes(char **attributes, char **values, OSList* log_msg)
 }
 
 /* Get the attributes */
-static int getattributes(char **attributes, char **values,
+STATIC int getattributes(char **attributes, char **values,
                   int *id, int *level,
                   int *maxsize, int *timeframe,
                   int *frequency, int *accuracy,
@@ -2111,7 +2118,7 @@ static int getattributes(char **attributes, char **values,
 }
 
 /* Bind active responses to a rule */
-static void Rule_AddAR(RuleInfo *rule_config)
+STATIC void Rule_AddAR(RuleInfo *rule_config)
 {
     unsigned int rule_ar_size = 0;
     int mark_to_ar = 0;
@@ -2242,7 +2249,7 @@ static void Rule_AddAR(RuleInfo *rule_config)
     return;
 }
 
-static void printRuleinfo(const RuleInfo *rule, int node)
+STATIC void printRuleinfo(const RuleInfo *rule, int node)
 {
     mdebug1("%d : rule:%d, level %d, timeout: %d",
            node,
@@ -2307,7 +2314,7 @@ int _setlevels(RuleNode *node, int nnode)
 /* Test if a rule id exists
  * return 1 if exists, otherwise 0
  */
-static int doesRuleExist(int sid, RuleNode *r_node)
+STATIC int doesRuleExist(int sid, RuleNode *r_node)
 {
     while (r_node) {
         /* Check if the sigid matches */
@@ -2332,8 +2339,10 @@ static int doesRuleExist(int sid, RuleNode *r_node)
 
 
 /* Checks if the current_rule matches the event information */
-RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events, ListNode **cdblists, RuleNode *curr_node,
-                              regex_matching *rule_match, OSList **fts_list, OSHash **fts_store) {
+RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
+                              ListNode **cdblists, RuleNode *curr_node,
+                              regex_matching *rule_match, OSList **fts_list,
+                              OSHash **fts_store, const bool save_fts_value) {
 
     /* We check for:
      * decoded_as,
@@ -2669,25 +2678,30 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events, Lis
 
     /* Check for the FTS flag */
     if (rule->alert_opts & DO_FTS) {
+
         /** FTS CHECKS **/
         if (lf->decoder_info->fts || lf->rootcheck_fts) {
+
             char * _line = NULL;
             char * _line_cpy;
-            if ((lf->decoder_info->fts & FTS_DONE) || (lf->rootcheck_fts & FTS_DONE))  {
+
+            if ((lf->decoder_info->fts & FTS_DONE) || (lf->rootcheck_fts & FTS_DONE)) {
                 /* We already did the fts in here */
             } else if (_line = FTS(lf, fts_list, fts_store), _line == NULL) {
-                return (NULL);
+                return NULL;
             }
 
-            if(_line){
+            if (_line && save_fts_value) {
                 os_strdup(_line, _line_cpy);
-                free(_line);
                 if (queue_push_ex_block(writer_queue_log_fts, _line_cpy) < 0) {
-                    free(_line_cpy);
+                    os_free(_line_cpy);
                 }
             }
+
+            os_free(_line);
+
         } else {
-            return (NULL);
+            return NULL;
         }
     }
 
@@ -2867,7 +2881,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events, Lis
 
         while (child_node) {
             child_rule = OS_CheckIfRuleMatch(lf, last_events, cdblists, child_node, rule_match,
-                                             &os_analysisd_fts_list, &os_analysisd_fts_store);
+                                             fts_list, fts_store, save_fts_value);
             if (child_rule != NULL) {
                 if (!child_rule->prev_rule) {
                     child_rule->prev_rule = rule;

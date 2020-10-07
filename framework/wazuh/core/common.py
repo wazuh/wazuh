@@ -90,6 +90,10 @@ AUTHD_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'auth')
 REQUEST_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'request')
 LOGTEST_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'logtest')
 
+# Wdb
+MAX_SOCKET_BUFFER_SIZE = 64 * 1024  # 64KB
+MAX_QUERY_FILTERS_RESERVED_SIZE = MAX_SOCKET_BUFFER_SIZE - 4 * 1024  # MAX_BUFFER_SIZE - 4KB
+
 # Agent upgrading variables
 wpk_repo_url_4_x = "packages.wazuh.com/4.x/wpk/"
 wpk_repo_url_3_x = "packages.wazuh.com/wpk/"

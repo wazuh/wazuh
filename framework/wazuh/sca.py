@@ -31,9 +31,9 @@ def get_sca_list(agent_list=None, q="", offset=0, limit=common.database_limit, s
     :param filters: Define field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
     :return: AffectedItemsWazuhResult
     """
-    result = AffectedItemsWazuhResult(all_msg='All selected sca information is shown',
-                                      some_msg='Some sca information is not shown',
-                                      none_msg='No sca information is shown'
+    result = AffectedItemsWazuhResult(all_msg='All selected sca information was returned',
+                                      some_msg='Some sca information was not returned',
+                                      none_msg='No sca information was returned'
                                       )
 
     if len(agent_list) != 0:
@@ -67,9 +67,9 @@ def get_sca_checks(policy_id=None, agent_list=None, q="", offset=0, limit=common
     :param filters: Define field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
     :return: AffectedItemsWazuhResult
     """
-    result = AffectedItemsWazuhResult(all_msg='All selected sca/policy information is shown',
-                                      some_msg='Some sca/policy information is not shown',
-                                      none_msg='No sca/policy information is shown'
+    result = AffectedItemsWazuhResult(all_msg='All selected sca/policy information was returned',
+                                      some_msg='Some sca/policy information was not returned',
+                                      none_msg='No sca/policy information was returned'
                                       )
     if len(agent_list) != 0:
         if agent_list[0] in get_agents_info():

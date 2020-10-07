@@ -7,6 +7,7 @@ import re
 from json import JSONDecodeError
 
 from aiohttp import web
+
 from api.authentication import generate_token
 from api.configuration import default_security_configuration
 from api.encoder import dumps, prettify
@@ -18,7 +19,7 @@ from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
 from wazuh import security
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.exception import WazuhPermissionError, WazuhException, WazuhInternalError
+from wazuh.core.exception import WazuhPermissionError, WazuhException
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.security import revoke_tokens
 from wazuh.rbac import preprocessor

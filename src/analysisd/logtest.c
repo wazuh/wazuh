@@ -155,17 +155,14 @@ void * w_logtest_clients_handler(w_logtest_connection_t * connection) {
 char *w_logtest_generate_error_response(char * msg){
 
     cJSON * json_response = NULL;
-    cJSON * json_msg_list = NULL;
     cJSON * json_msg = NULL;
     char * str_response = NULL;
 
-    json_response =  cJSON_CreateObject();
-    json_msg_list = cJSON_CreateArray();
+    json_response = cJSON_CreateObject();
     json_msg = cJSON_CreateString(msg);
 
-    cJSON_AddItemToArray(json_msg_list, json_msg);
-    cJSON_AddItemToObject(json_response,W_LOGTEST_JSON_MESSAGES, json_msg_list);
-    cJSON_AddNumberToObject(json_response, W_LOGTEST_JSON_CODE, W_LOGTEST_RCODE_ERROR_INPUT);
+    cJSON_AddItemToObject(json_response, W_LOGTEST_JSON_MESSAGE, json_msg);
+    cJSON_AddNumberToObject(json_response, W_LOGTEST_JSON_ERROR, W_LOGTEST_CODE_MSG_TOO_LARGE);
 
     str_response = cJSON_PrintUnformatted(json_response);
 
@@ -175,10 +172,13 @@ char *w_logtest_generate_error_response(char * msg){
 }
 
 
-cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, OSList * list_msg) {
+cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, bool * alert_generated, OSList * list_msg) {
 
     cJSON *output = NULL;
     Eventinfo *lf = NULL;
+    cJSON * rule  = NULL;
+    cJSON * level = NULL;
+    int check_add_event;
 
     /* Initialize eventinfo which will contain alert information */
     os_calloc(1, sizeof(Eventinfo), lf);
@@ -187,8 +187,8 @@ cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, OSL
 
     /* Preprocessing */
     if (w_logtest_preprocessing_phase(lf, request) != 0) {
-        os_free(lf->fields);
-        os_free(lf);
+        Free_Eventinfo(lf);
+        smerror(list_msg, FORMAT_ERROR);
         return output;
     }
 
@@ -201,14 +201,15 @@ cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, OSL
     }
 
     /* Rules matching */
-    if (w_logtest_rulesmatching_phase(lf, session, list_msg) != 0) {
+    if (check_add_event = w_logtest_rulesmatching_phase(lf, session, list_msg), check_add_event == -1) {
         Free_Eventinfo(lf);
         return output;
     }
 
-    /* Add alert description to the event if exist a match */
+    /* Add alert description to the event and check alert level if exist a match */
     if (lf->generated_rule) {
         lf->comment = ParseRuleComment(lf);
+        *alert_generated = ((check_add_event == 1) && Config.logbylevel <= lf->generated_rule->level) ? true : false;
     }
 
     /* Parse the alert */
@@ -216,8 +217,16 @@ cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, OSL
     output = cJSON_Parse(output_str);
     os_free(output_str);
 
+    /* Add rule level 0 */
+    rule = cJSON_GetObjectItemCaseSensitive(output, "rule");
+    if (level = cJSON_GetObjectItemCaseSensitive(rule, "level"), lf->generated_rule && !level) {
+        cJSON_AddNumberToObject(rule, "level", lf->generated_rule->level);
+    }
+
     /* Clear the memory if the event was not added to the stateful memory */
-    w_free_event_info(lf);
+    if (check_add_event == 0) {
+        Free_Eventinfo(lf);
+    }
 
     return output;
 }
@@ -232,25 +241,18 @@ int w_logtest_preprocessing_phase(Eventinfo * lf, cJSON * request) {
     cJSON * location = NULL;
     bool event_json = false;
 
-    if (event = cJSON_GetObjectItem(request, W_LOGTEST_JSON_EVENT), !event) {
-        return -1;
-    }
+    event = cJSON_GetObjectItemCaseSensitive(request, W_LOGTEST_JSON_EVENT);
 
     if (event->child) {
         event_json = true;
-        if (event_str = cJSON_PrintUnformatted(event), !event_str) return -1;
+        event_str = cJSON_PrintUnformatted(event);
     }
     else {
-        if (event_str = cJSON_GetStringValue(event), !event_str) return -1;
+        event_str = cJSON_GetStringValue(event);
     }
 
-    if (location = cJSON_GetObjectItem(request, W_LOGTEST_JSON_LOCATION), !location) {
-        return -1;
-    }
-
-    if (location_str = cJSON_GetStringValue(location), !location_str) {
-        return -1;
-    }
+    location = cJSON_GetObjectItemCaseSensitive(request, W_LOGTEST_JSON_LOCATION);
+    location_str = cJSON_GetStringValue(location);
 
     int logsize = strlen(location_str) + strlen(event_str) + 4;
 
@@ -258,7 +260,6 @@ int w_logtest_preprocessing_phase(Eventinfo * lf, cJSON * request) {
     snprintf(log, logsize, "1:%s:%s", location_str, event_str);
 
     if (OS_CleanMSG(log, lf) < 0) {
-        Free_Eventinfo(lf);
         os_free(log);
         if (event_json) os_free(event_str);
         return -1;
@@ -291,6 +292,7 @@ int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
 
     RuleNode * rulenode = NULL;
     RuleInfo * ruleinformation = NULL;
+    bool added_list_event = false;
 
     if (rulenode = session->rule_list, !rulenode) {
         return -1;
@@ -309,7 +311,7 @@ int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
 
         /* Search the rule that match */
         if (ruleinformation = OS_CheckIfRuleMatch(lf, session->eventlist, &session->cdblistnode,
-            rulenode, &session->rule_match, &session->fts_list, &session->fts_store), !ruleinformation) {
+            rulenode, &session->rule_match, &session->fts_list, &session->fts_store, false), !ruleinformation) {
             continue;
         }
 
@@ -336,9 +338,9 @@ int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
 
         /* Check if we should ignore it */
         if (ruleinformation->ckignore && IGnore(lf, 0)) {
-            lf->generated_rule = NULL;
             break;
         }
+
 
         /* Copy the structure to the state memory of if_matched_sid */
         if (ruleinformation->sid_prev_matched) {
@@ -352,26 +354,31 @@ int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
 
         /* Group list */
         else if (ruleinformation->group_prev_matched) {
-
+            OSListNode *node;
+            os_calloc(ruleinformation->group_prev_matched_sz, sizeof(OSListNode *), lf->group_node_to_delete);
             for (unsigned int i = 0; i < ruleinformation->group_prev_matched_sz; i++) {
-                if (!OSList_AddData(ruleinformation->group_prev_matched[i], lf)) {
+                if (node = OSList_AddData(ruleinformation->group_prev_matched[i], lf), node) {
+                    lf->group_node_to_delete[i] = node;
+                } else {
                     smerror(list_msg, "Unable to add data to grp list.");
                 }
             }
         }
 
         OS_AddEvent(lf, session->eventlist);
+        added_list_event = true;
         break;
 
     } while(rulenode = rulenode->next, rulenode);
 
-    return 0;
+    return added_list_event ? 1 : 0;
 }
 
 
 w_logtest_session_t *w_logtest_initialize_session(char *token, OSList* list_msg) {
 
     w_logtest_session_t * session;
+    bool retval = true;
 
     char **files;
 
@@ -396,7 +403,7 @@ w_logtest_session_t *w_logtest_initialize_session(char *token, OSList* list_msg)
     while (files && *files) {
         if (!ReadDecodeXML(*files, &session->decoderlist_forpname,
             &session->decoderlist_nopname, &session->decoder_store, list_msg)) {
-            return NULL;
+            goto cleanup;
         }
         files++;
     }
@@ -410,8 +417,8 @@ w_logtest_session_t *w_logtest_initialize_session(char *token, OSList* list_msg)
     files = Config.lists;
 
     while (files && *files) {
-        if (Lists_OP_LoadList(*files, &session->cdblistnode) < 0) {
-            return NULL;
+        if (Lists_OP_LoadList(*files, &session->cdblistnode, list_msg) < 0) {
+            goto cleanup;
         }
         files++;
     }
@@ -426,7 +433,7 @@ w_logtest_session_t *w_logtest_initialize_session(char *token, OSList* list_msg)
     while (files && *files) {
         if (Rules_OP_ReadRules(*files, &session->rule_list, &session->cdblistnode,
                             &session->eventlist, &session->decoder_store, list_msg) < 0) {
-            return NULL;
+            goto cleanup;
         }
         files++;
     }
@@ -439,24 +446,70 @@ w_logtest_session_t *w_logtest_initialize_session(char *token, OSList* list_msg)
 
     /* Creating rule hash */
     if (session->g_rules_hash = OSHash_Create(), !session->g_rules_hash) {
-        return NULL;
+        goto cleanup;
     }
 
     AddHash_Rule(session->rule_list);
 
     /* Initiate the FTS list */
     if (!w_logtest_fts_init(&session->fts_list, &session->fts_store)) {
-        return NULL;
+        goto cleanup;
     }
 
     /* Initialize the Accumulator */
     if (!Accumulate_Init(&session->acm_store, &session->acm_lookups, &session->acm_purge_ts)) {
-        return NULL;
+        goto cleanup;
     }
 
     /* Set rule_match and decoder_match to zero */
     memset(&session->decoder_match, 0, sizeof(regex_matching));
     memset(&session->rule_match, 0, sizeof(regex_matching));
+
+    retval = false;
+
+cleanup:
+
+    if (retval) {
+
+        /* Remove list of previous events */
+        os_remove_eventlist(session->eventlist);
+
+        /* Remove rule list and rule hash */
+        os_remove_rules_list(session->rule_list);
+        if (session->g_rules_hash) {
+            OSHash_Free(session->g_rules_hash);
+        }
+
+        /* Remove decoder lists */
+        os_remove_decoders_list(session->decoderlist_forpname, session->decoderlist_nopname);
+        OSStore_Free(session->decoder_store);
+
+        /* Remove cdblistnode and cdblistrule */
+        os_remove_cdblist(&session->cdblistnode);
+        os_remove_cdbrules(&session->cdblistrule);
+
+        /* Remove fts list and hash */
+        if (session->fts_store) {
+            OSHash_Free(session->fts_store);
+        }
+        os_free(session->fts_list);
+
+        /* Remove accumulator hash */
+        if (session->acm_store) {
+            OSHash_Free(session->acm_store);
+        }
+
+        /* Remove session */
+        w_mutex_destroy(&session->mutex);
+
+        /* Free memory allocated in OSRegex execution */
+        OSRegex_free_regex_matching(&session->decoder_match);
+        OSRegex_free_regex_matching(&session->rule_match);
+
+        /* Remove session */
+        os_free(session);
+    }
+
 
     return session;
 }
@@ -466,8 +519,12 @@ void w_logtest_remove_session(char *token) {
 
     w_logtest_session_t *session;
 
+    char* token_session;
+    os_strdup(token, token_session);
+
     /* Remove session from hash */
     if (session = OSHash_Delete_ex(w_logtest_sessions, token), !session) {
+        os_free(token_session);
         return;
     }
 
@@ -499,6 +556,9 @@ void w_logtest_remove_session(char *token) {
     /* Free memory allocated in OSRegex execution */
     OSRegex_free_regex_matching(&session->decoder_match);
     OSRegex_free_regex_matching(&session->rule_match);
+
+    mdebug1(LOGTEST_INFO_SESSION_REMOVE, token_session);
+    os_free(token_session);
 
     /* Remove token and session */
     os_free(session->token);
@@ -576,21 +636,21 @@ int w_logtest_fts_init(OSList **fts_list, OSHash **fts_store) {
         return 0;
     }
 
+    OSHash_SetFreeDataPointer(*fts_store, &free);
+    
     return 1;
 }
 
 
-int w_logtest_check_input(char * input_json, cJSON ** req, OSList * list_msg) {
+int w_logtest_check_input(char * input_json, cJSON ** req, char ** command_value, char ** msg, OSList * list_msg) {
 
     /* Node JSON input */
     cJSON * root;
 
-    int retval = W_LOGTEST_REQUEST_ERROR;
-
     /* Parse raw JSON input */
     const char * jsonErrPtr;
     root = cJSON_ParseWithOpts(input_json, &jsonErrPtr, 0);
-    *req = root;
+
     if (!root) {
         char * slice_json;
         char * pos;
@@ -602,69 +662,117 @@ int w_logtest_check_input(char * input_json, cJSON ** req, OSList * list_msg) {
 
         snprintf(slice_json, W_LOGTEST_ERROR_JSON_PARSE_NSTR + 1, "%s", pos);
 
-        mdebug1(LOGTEST_ERROR_JSON_PARSE);
-        smerror(list_msg, LOGTEST_ERROR_JSON_PARSE);
-
         mdebug1(LOGTEST_ERROR_JSON_PARSE_POS, (int) (jsonErrPtr - input_json), slice_json);
-        smerror(list_msg, LOGTEST_ERROR_JSON_PARSE_POS, (int) (jsonErrPtr - input_json), slice_json);
+
+        int size_msg = strlen(LOGTEST_ERROR_JSON_PARSE_POS) + strlen(slice_json) + 3;
+        os_calloc(size_msg, sizeof(char), *msg);
+        snprintf(*msg, size_msg, LOGTEST_ERROR_JSON_PARSE_POS, (int) (jsonErrPtr - input_json), slice_json);
 
         os_free(slice_json);
-        return retval;
+
+        return W_LOGTEST_CODE_ERROR_PARSING;
     }
 
-    if (cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_REMOVE_SESSION)) {
-        retval = w_logtest_check_input_remove_session(root, list_msg);
-    } else {
-        retval = w_logtest_check_input_request(root, list_msg);
+    *req = root;
+
+    cJSON *parameters;
+    if (parameters = cJSON_GetObjectItemCaseSensitive(root, w_LOGTEST_JSON_PARAMETERS), !parameters) {
+        mdebug1(LOGTEST_ERROR_FIELD_NOT_FOUND, w_LOGTEST_JSON_PARAMETERS);
+        int size_msg = strlen(LOGTEST_ERROR_FIELD_NOT_FOUND) + strlen(w_LOGTEST_JSON_PARAMETERS) + 1;
+        os_calloc(size_msg, sizeof(char), *msg);
+        snprintf(*msg, size_msg, LOGTEST_ERROR_FIELD_NOT_FOUND, w_LOGTEST_JSON_PARAMETERS);
+        return W_LOGTEST_CODE_INVALID_JSON;
     }
 
+    if (!cJSON_IsObject(parameters)) {
+        mdebug1(LOGTEST_ERROR_FIELD_NOT_VALID, w_LOGTEST_JSON_PARAMETERS);
+        int size_msg = strlen(LOGTEST_ERROR_FIELD_NOT_VALID) + strlen(w_LOGTEST_JSON_PARAMETERS) + 1;
+        os_calloc(size_msg, sizeof(char), *msg);
+        snprintf(*msg, size_msg, LOGTEST_ERROR_FIELD_NOT_VALID, w_LOGTEST_JSON_PARAMETERS);
+        return W_LOGTEST_CODE_INVALID_JSON;
+    }
 
-    return retval;
+    cJSON *command;
+    if (command = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_COMMAND), !command) {
+        mdebug1(LOGTEST_ERROR_FIELD_NOT_FOUND, W_LOGTEST_JSON_COMMAND);
+        int size_msg = strlen(LOGTEST_ERROR_FIELD_NOT_FOUND) + strlen(W_LOGTEST_JSON_COMMAND) + 1;
+        os_calloc(size_msg, sizeof(char), *msg);
+        snprintf(*msg, size_msg, LOGTEST_ERROR_FIELD_NOT_FOUND, W_LOGTEST_JSON_COMMAND);
+        return W_LOGTEST_CODE_INVALID_JSON;
+    }
+
+    if (*command_value = cJSON_GetStringValue(command), !(*command_value)) {
+        mdebug1(LOGTEST_ERROR_FIELD_NOT_VALID, W_LOGTEST_JSON_COMMAND);
+        int size_msg = strlen(LOGTEST_ERROR_FIELD_NOT_VALID) + strlen(W_LOGTEST_JSON_COMMAND) + 1;
+        os_calloc(size_msg, sizeof(char), *msg);
+        snprintf(*msg, size_msg, LOGTEST_ERROR_FIELD_NOT_VALID, W_LOGTEST_JSON_COMMAND);
+        return W_LOGTEST_CODE_INVALID_JSON;
+    }
+
+    if (!strcmp(*command_value, W_LOGTEST_COMMAND_REMOVE_SESSION)) {
+        return w_logtest_check_input_remove_session(parameters, msg);
+    }
+    else if (!strcmp(*command_value, W_LOGTEST_COMMAND_LOG_PROCESSING)) {
+        return w_logtest_check_input_request(parameters, msg, list_msg);
+    }
+    else {
+        mdebug1(LOGTEST_ERROR_COMMAND_NOT_ALLOWED);
+        int size_msg = strlen(LOGTEST_ERROR_COMMAND_NOT_ALLOWED) + 1;
+        os_calloc(size_msg, sizeof(char), *msg);
+        snprintf(*msg, size_msg, LOGTEST_ERROR_COMMAND_NOT_ALLOWED);
+        return W_LOGTEST_CODE_COMMAND_NOT_ALLOWED;
+    }
 }
 
-int w_logtest_check_input_remove_session(cJSON * root, OSList * list_msg) {
+
+int w_logtest_check_input_remove_session(cJSON * root, char ** msg) {
 
     cJSON * token;
+    token = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_TOKEN);
 
-    int retval = W_LOGTEST_REQUEST_TYPE_REMOVE_SESSION;
-
-    token = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_REMOVE_SESSION);
-    if (!cJSON_IsString(token) || (cJSON_IsString(token) && token->valuestring == NULL) ) {
+    if (!cJSON_IsString(token) || (cJSON_IsString(token) && token->valuestring == NULL)) {
 
         mdebug1(LOGTEST_ERROR_TOKEN_INVALID_TYPE);
-        smerror(list_msg, LOGTEST_ERROR_TOKEN_INVALID_TYPE);
+        int size_msg = strlen(LOGTEST_ERROR_TOKEN_INVALID_TYPE) + 1;
+        os_calloc(size_msg, sizeof(char), *msg);
+        snprintf(*msg, size_msg, LOGTEST_ERROR_TOKEN_INVALID_TYPE);
 
-        retval = W_LOGTEST_REQUEST_ERROR;
+        return W_LOGTEST_CODE_INVALID_TOKEN;
 
-    } else if (cJSON_IsString(token) && token->valuestring != NULL
+    }
+
+    if (cJSON_IsString(token) && token->valuestring != NULL
                && strlen(token->valuestring) != W_LOGTEST_TOKEN_LENGH) {
 
         mdebug1(LOGTEST_ERROR_TOKEN_INVALID, token->valuestring);
-        smerror(list_msg, LOGTEST_ERROR_TOKEN_INVALID, token->valuestring);
+        int size_msg = strlen(LOGTEST_ERROR_TOKEN_INVALID) + strlen(token->valuestring) + 1;
+        os_calloc(size_msg, sizeof(char), *msg);
+        snprintf(*msg, size_msg, LOGTEST_ERROR_TOKEN_INVALID, token->valuestring);
 
-        retval = W_LOGTEST_REQUEST_ERROR;
+        return W_LOGTEST_CODE_INVALID_TOKEN;
     }
 
-    return retval;
+    return W_LOGTEST_CODE_SUCCESS;
 
 }
 
-int w_logtest_check_input_request(cJSON * root, OSList * list_msg) {
+
+int w_logtest_check_input_request(cJSON * root, char ** msg, OSList * list_msg) {
 
     cJSON * location;
     cJSON * log_format;
     cJSON * event;
     cJSON * token;
 
-    int retval = W_LOGTEST_REQUEST_TYPE_LOG_PROCESSING;
-
     /* Check JSON fields */
     location = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_LOCATION);
     if (!(cJSON_IsString(location) && location->valuestring != NULL && strlen(location->valuestring) > 0)) {
 
         mdebug1(LOGTEST_ERROR_JSON_REQUIRED_SFIELD, W_LOGTEST_JSON_LOCATION);
-        smerror(list_msg, LOGTEST_ERROR_JSON_REQUIRED_SFIELD, W_LOGTEST_JSON_LOCATION);
-        retval = W_LOGTEST_REQUEST_ERROR;
+        int size_msg = strlen(LOGTEST_ERROR_JSON_REQUIRED_SFIELD) + strlen(W_LOGTEST_JSON_LOCATION) + 1;
+        os_calloc(size_msg, sizeof(char), *msg);
+        snprintf(*msg, size_msg, LOGTEST_ERROR_JSON_REQUIRED_SFIELD, W_LOGTEST_JSON_LOCATION);
+        return W_LOGTEST_CODE_INVALID_JSON;
     }
 
     log_format = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_LOGFORMAT);
@@ -672,29 +780,50 @@ int w_logtest_check_input_request(cJSON * root, OSList * list_msg) {
           && strlen(log_format->valuestring) > 0)) {
 
         mdebug1(LOGTEST_ERROR_JSON_REQUIRED_SFIELD, W_LOGTEST_JSON_LOGFORMAT);
-        smerror(list_msg, LOGTEST_ERROR_JSON_REQUIRED_SFIELD, W_LOGTEST_JSON_LOGFORMAT);
-        retval = W_LOGTEST_REQUEST_ERROR;
+        int size_msg = strlen(LOGTEST_ERROR_JSON_REQUIRED_SFIELD) + strlen(W_LOGTEST_JSON_LOGFORMAT) + 1;
+        os_calloc(size_msg, sizeof(char), *msg);
+        snprintf(*msg, size_msg, LOGTEST_ERROR_JSON_REQUIRED_SFIELD, W_LOGTEST_JSON_LOGFORMAT);
+        return W_LOGTEST_CODE_INVALID_JSON;
     }
 
     /* An event can be a string or a json object */
-    event = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_EVENT);
-    if ( !(cJSON_IsString(event) && event->valuestring != NULL && strlen(event->valuestring) > 0)
+    if (event = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_EVENT), !event) {
+        mdebug1(LOGTEST_ERROR_FIELD_NOT_FOUND, W_LOGTEST_JSON_EVENT);
+        int size_msg = strlen(LOGTEST_ERROR_FIELD_NOT_FOUND) + strlen(W_LOGTEST_JSON_EVENT) + 1;
+        os_calloc(size_msg, sizeof(char), *msg);
+        snprintf(*msg, size_msg, LOGTEST_ERROR_FIELD_NOT_FOUND, W_LOGTEST_JSON_EVENT);
+        return W_LOGTEST_CODE_INVALID_JSON;
+    }
+
+    if (!(cJSON_IsString(event) && event->valuestring != NULL && strlen(event->valuestring) > 0)
          && !(cJSON_IsObject(event) && event->child != NULL)) {
 
-        mdebug1(LOGTEST_ERROR_FIELD_NOT_FOUND, W_LOGTEST_JSON_EVENT);
-        smerror(list_msg, LOGTEST_ERROR_FIELD_NOT_FOUND, W_LOGTEST_JSON_EVENT);
-        retval = W_LOGTEST_REQUEST_ERROR;
+        mdebug1(LOGTEST_ERROR_FIELD_NOT_VALID, W_LOGTEST_JSON_EVENT);
+        int size_msg = strlen(LOGTEST_ERROR_FIELD_NOT_VALID) + strlen(W_LOGTEST_JSON_EVENT) + 1;
+        os_calloc(size_msg, sizeof(char), *msg);
+        snprintf(*msg, size_msg, LOGTEST_ERROR_FIELD_NOT_VALID, W_LOGTEST_JSON_EVENT);
+        return W_LOGTEST_CODE_INVALID_JSON;
     }
 
     token = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_TOKEN);
-    if (cJSON_IsString(token) && token->valuestring != NULL && strlen(token->valuestring) != W_LOGTEST_TOKEN_LENGH) {
+    if (token && (!cJSON_IsString(token) || !valid_str_session(token, W_LOGTEST_TOKEN_LENGH)) {
+        
+        char * str_token = NULL;
+        
+        if (cJSON_IsString(token)) {
+            os_strdup(token->valuestring, str_token);
+        } else {
+            str_token = cJSON_PrintUnformatted(token);
+        }
 
-        mdebug1(LOGTEST_ERROR_TOKEN_INVALID, token->valuestring);
-        smwarn(list_msg, LOGTEST_ERROR_TOKEN_INVALID, token->valuestring);
+        mdebug1(LOGTEST_ERROR_TOKEN_INVALID, str_token);
+        smwarn(list_msg, LOGTEST_ERROR_TOKEN_INVALID, str_token);
+        os_free(str_token);
+
         cJSON_DeleteItemFromObjectCaseSensitive(root, W_LOGTEST_JSON_TOKEN);
     }
 
-    return retval;
+    return W_LOGTEST_CODE_SUCCESS;
 }
 
 
@@ -741,6 +870,7 @@ w_logtest_session_t * w_logtest_get_session(cJSON * req, OSList * list_msg, w_lo
     } else {
         smerror(list_msg, LOGTEST_ERROR_INITIALIZE_SESSION, s_token);
         mdebug1(LOGTEST_ERROR_INITIALIZE_SESSION, s_token);
+        os_free(s_token);
     }
 
     return session;
@@ -763,6 +893,7 @@ void w_logtest_register_session(w_logtest_connection_t * connection, w_logtest_s
     OSHash_Add_ex(w_logtest_sessions, session->token, session);
 }
 
+
 void w_logtest_remove_old_session(w_logtest_connection_t * connection) {
 
         OSHashNode * hash_node;
@@ -772,7 +903,10 @@ void w_logtest_remove_old_session(w_logtest_connection_t * connection) {
         w_logtest_session_t * old_session = NULL;
         bool exchange = false;
 
-        hash_node = OSHash_Begin(w_logtest_sessions, &inode_it);
+        if(hash_node = OSHash_Begin(w_logtest_sessions, &inode_it), !hash_node) {
+            return;
+        }
+
         old_session = hash_node->data;
         hash_node = OSHash_Next(w_logtest_sessions, &inode_it, hash_node);
 
@@ -800,6 +934,7 @@ void w_logtest_remove_old_session(w_logtest_connection_t * connection) {
         w_logtest_remove_session(old_session->token);
 }
 
+
 char * w_logtest_generate_token() {
 
     char * str_token;
@@ -810,28 +945,6 @@ char * w_logtest_generate_token() {
     snprintf(str_token, W_LOGTEST_TOKEN_LENGH + 1, "%08x", int_token);
 
     return str_token;
-}
-
-int w_logtest_get_rule_level(cJSON * json_log_processed) {
-
-    cJSON * rule;
-    cJSON * level;
-    int ret = 0;
-
-    if (!json_log_processed) {
-        mdebug1(LOGTEST_INFO_LOG_EMPTY);
-        ret = 0;
-    } else if (rule = cJSON_GetObjectItemCaseSensitive(json_log_processed, "rule"), !rule) {
-        mdebug1(LOGTEST_INFO_LOG_NOALERT);
-        ret = 0;
-    } else if (level = cJSON_GetObjectItemCaseSensitive(rule, "level"), !level) {
-        mdebug1(LOGTEST_INFO_LOG_NOLEVEL);
-        ret = 0;
-    } else if (cJSON_IsNumber(level)) {
-        ret = level->valueint;
-    }
-
-    return ret;
 }
 
 
@@ -845,8 +958,9 @@ void w_logtest_add_msg_response(cJSON * response, OSList * list_msg, int * error
     if (node_log_msg = OSList_GetFirstNode(list_msg), !node_log_msg) {
         return;
     }
+
     /* check if exist messages in the response */
-    else if (json_arr_msg = cJSON_GetObjectItemCaseSensitive(response, W_LOGTEST_JSON_MESSAGES), !json_arr_msg) {
+    if (json_arr_msg = cJSON_GetObjectItemCaseSensitive(response, W_LOGTEST_JSON_MESSAGES), !json_arr_msg) {
         json_arr_msg = cJSON_CreateArray();
         cJSON_AddItemToObject(response, W_LOGTEST_JSON_MESSAGES, json_arr_msg);
     }
@@ -861,20 +975,23 @@ void w_logtest_add_msg_response(cJSON * response, OSList * list_msg, int * error
         raw_msg = os_analysisd_string_log_msg(data_msg);
 
         /* Add header and set max level of msgs */
-        if (data_msg->level == LOGLEVEL_ERROR) {
+        switch (data_msg->level) {
 
+        case LOGLEVEL_ERROR:
             ret_level = W_LOGTEST_RCODE_ERROR_PROCESS;
             wm_strcat(&json_str_msj, "ERROR: ", 0);
+        break;
 
-        } else if (data_msg->level == LOGLEVEL_WARNING) {
-
+        case LOGLEVEL_WARNING:
             if (ret_level != W_LOGTEST_RCODE_ERROR_PROCESS) {
                 ret_level = W_LOGTEST_RCODE_WARNING;
             }
             wm_strcat(&json_str_msj, "WARNING: ", 0);
+        break;
 
-        } else {
+        default:
             wm_strcat(&json_str_msj, "INFO: ", 0);
+        break;
         }
 
         /* Add to json array */
@@ -892,46 +1009,56 @@ void w_logtest_add_msg_response(cJSON * response, OSList * list_msg, int * error
     }
 
     *error_code = ret_level;
-    return;
 }
 
 
 char * w_logtest_process_request(char * raw_request, w_logtest_connection_t * connection) {
 
     char * str_response = NULL;
-    int request_type;
+    char * input_error_msg = NULL;
+    char * command_value = NULL;
     cJSON * json_request = NULL;
     cJSON * json_response = NULL;
+    cJSON * data = NULL;
 
     /* error & message handlers */
-    int retval = W_LOGTEST_RCODE_SUCCESS;
+    int retval;
     OSList * list_msg = OSList_Create();
+
     if (!list_msg) {
         merror(LIST_ERROR);
         return NULL;
     }
+
     OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
 
     /* Check message and generate a request */
     json_response = cJSON_CreateObject();
-    request_type = w_logtest_check_input(raw_request, &json_request, list_msg);
+    data = cJSON_CreateObject();
 
-    if (request_type == W_LOGTEST_REQUEST_ERROR) {
+    retval = w_logtest_check_input(raw_request, &json_request, &command_value, &input_error_msg, list_msg);
 
-        w_logtest_add_msg_response(json_response, list_msg, &retval);
-        retval = W_LOGTEST_RCODE_ERROR_INPUT;
+    if (retval == W_LOGTEST_CODE_SUCCESS) {
+        int codemsg;
 
-    } else if (request_type == W_LOGTEST_REQUEST_TYPE_LOG_PROCESSING) {
+        cJSON * parameters = cJSON_GetObjectItemCaseSensitive(json_request, w_LOGTEST_JSON_PARAMETERS);
 
-        retval = w_logtest_process_request_log_processing(json_request, json_response, list_msg, connection);
+        if (!strcmp(command_value, W_LOGTEST_COMMAND_REMOVE_SESSION)) {
+            codemsg = w_logtest_process_request_remove_session(parameters, data, list_msg, connection);
+        } else {
+            codemsg = w_logtest_process_request_log_processing(parameters, data, list_msg, connection);
+        }
 
-    } else if (request_type == W_LOGTEST_REQUEST_TYPE_REMOVE_SESSION) {
-
-        retval = w_logtest_process_request_remove_session(json_request, json_response, list_msg, connection);
-
+        cJSON_AddNumberToObject(data, W_LOGTEST_JSON_CODE, codemsg);
     }
 
-    cJSON_AddNumberToObject(json_response, W_LOGTEST_JSON_CODE, retval);
+    if (input_error_msg) {
+        cJSON_AddStringToObject(json_response, W_LOGTEST_JSON_MESSAGE, input_error_msg);
+        os_free(input_error_msg);
+    }
+
+    cJSON_AddNumberToObject(json_response, W_LOGTEST_JSON_ERROR, retval);
+    cJSON_AddItemToObject(json_response, W_LOGTEST_JSON_DATA, data);
 
     str_response = cJSON_PrintUnformatted(json_response);
     cJSON_Delete(json_response);
@@ -941,6 +1068,7 @@ char * w_logtest_process_request(char * raw_request, w_logtest_connection_t * co
     return str_response;
 }
 
+
 int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_response, OSList * list_msg,
                                              w_logtest_connection_t * connection) {
 
@@ -948,6 +1076,7 @@ int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_
     cJSON * json_log_processed = NULL;
 
     int retval = W_LOGTEST_RCODE_SUCCESS;
+    bool alert_generated = false;
 
     /* Get session */
     current_session = w_logtest_get_session(json_request, list_msg, connection);
@@ -959,7 +1088,7 @@ int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_
     /* Proccess log */
     if (retval >= W_LOGTEST_RCODE_SUCCESS && current_session) {
 
-        json_log_processed = w_logtest_process_log(json_request, current_session, list_msg);
+        json_log_processed = w_logtest_process_log(json_request, current_session, &alert_generated, list_msg);
         if (json_log_processed) {
             cJSON_AddItemToObject(json_response, W_LOGTEST_JSON_OUTPUT, json_log_processed);
         } else {
@@ -971,13 +1100,12 @@ int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_
 
     /* Check alert level */
     if (retval >= W_LOGTEST_RCODE_SUCCESS) {
-        uint8_t rule_level = (uint8_t) w_logtest_get_rule_level(json_log_processed);
-        int alert = (Config.logbylevel <= rule_level) ? 1 : 0;
-        cJSON_AddBoolToObject(json_response, W_LOGTEST_JSON_ALERT, alert);
+        cJSON_AddBoolToObject(json_response, W_LOGTEST_JSON_ALERT, alert_generated ? 1 : 0);
     }
 
     return retval;
 }
+
 
 int w_logtest_process_request_remove_session(cJSON * json_request, cJSON * json_response, OSList * list_msg,
                                              w_logtest_connection_t * connection) {
@@ -987,7 +1115,7 @@ int w_logtest_process_request_remove_session(cJSON * json_request, cJSON * json_
     cJSON * j_token = NULL;
     char * s_token = NULL;
 
-    j_token = cJSON_GetObjectItemCaseSensitive(json_request, W_LOGTEST_JSON_REMOVE_SESSION);
+    j_token = cJSON_GetObjectItemCaseSensitive(json_request, W_LOGTEST_JSON_TOKEN);
 
     if (j_token && j_token->valuestring != NULL) {
         s_token = j_token->valuestring;
@@ -995,7 +1123,6 @@ int w_logtest_process_request_remove_session(cJSON * json_request, cJSON * json_
         w_mutex_lock(&connection->mutex_hash_table);
 
         if (session = OSHash_Get_ex(w_logtest_sessions, s_token), session) {
-
             connection->active_client -= 1;
             w_logtest_remove_session(s_token);
             sminfo(list_msg, LOGTEST_INFO_SESSION_REMOVE, s_token);

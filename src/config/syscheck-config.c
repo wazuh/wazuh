@@ -1129,6 +1129,7 @@ int read_data_unit(const char *content) {
                 }
             }
             else {
+                os_free(value_str);
                 return -1;
             }
 

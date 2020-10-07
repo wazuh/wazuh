@@ -23,7 +23,7 @@ fi
 AUTHOR="Wazuh Inc."
 USE_JSON=false
 INITCONF="/etc/ossec-init.conf"
-DAEMONS="wazuh-clusterd wazuh-modulesd ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ossec-authd ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd"
+DAEMONS="wazuh-clusterd wazuh-modulesd ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ossec-authd ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd wazuh-apid"
 OP_DAEMONS="wazuh-clusterd ossec-maild ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd"
 
 # Reverse order of daemons
@@ -43,20 +43,6 @@ MAX_ITERATION="10"
 
 MAX_KILL_TRIES=600
 
-start_api()
-{
-    ${DIR}/bin/wazuh-apid start
-}
-
-stop_api()
-{
-    ${DIR}/bin/wazuh-apid stop
-}
-
-status_api()
-{
-    ${DIR}/bin/wazuh-apid status
-}
 
 checkpid()
 {
@@ -242,7 +228,6 @@ status()
     if [ $USE_JSON = true ]; then
         echo -n ']}'
     fi
-    status_api
 }
 
 testconfig()
@@ -361,7 +346,7 @@ start()
                         fi
                         sleep 1;
                         j=`expr $j + 1`;
-                        if [ "$j" = "${MAX_ITERATION}" ]; then
+                        if [ "$j" -ge "${MAX_ITERATION}" ]; then
                             failed=true
                         fi
                     done
@@ -393,8 +378,6 @@ start()
             fi
         fi
     done
-
-    start_api
 
     # After we start we give 2 seconds for the daemons
     # to internally create their PID files.
@@ -430,17 +413,17 @@ pstatus()
 
     ls ${DIR}/var/run/${pfile}*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
-        for j in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
-            ps -p $j > /dev/null 2>&1
+        for pid in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
+            ps -p ${pid} > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 if [ $USE_JSON = false ]; then
-                    echo "${pfile}: Process $j not used by Wazuh, removing..."
+                    echo "${pfile}: Process ${pid} not used by Wazuh, removing..."
                 fi
-                rm -f ${DIR}/var/run/${pfile}-$j.pid
+                rm -f ${DIR}/var/run/${pfile}-${pid}.pid
                 continue;
             fi
 
-            kill -0 $j > /dev/null 2>&1
+            kill -0 ${pid} > /dev/null 2>&1
             if [ $? = 0 ]; then
                 return 1;
             fi
@@ -516,8 +499,6 @@ stopa()
         fi
         rm -f ${DIR}/var/run/${i}*.pid
     done
-
-    stop_api
 
     if [ $USE_JSON = true ]; then
         echo -n ']}'
