@@ -464,9 +464,10 @@ int wdb_update_agent_keepalive(int id, const char *sync_status, int *sock);
  * 
  * @param[in] id ID of the agent.
  * @param[in] status The status to be set. WDB_AGENT_EMPTY, WDB_AGENT_PENDING or WDB_AGENT_UPDATED.
+ * @param[in] sock The Wazuh DB socket connection.
  * @return Returns OS_SUCCESS if success. OS_INVALID on error.
  */
-int wdb_set_agent_status(int id_agent, int status);
+int wdb_set_agent_status(int id_agent, int status, int *sock);
 
 /**
  * @brief Update agent group. If the group is not specified, it is set to NULL.
