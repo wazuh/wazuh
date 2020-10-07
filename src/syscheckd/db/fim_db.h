@@ -339,6 +339,16 @@ void fim_db_callback_save_string(fdb_t * fim_sql, const char *str, int storage, 
 void fim_db_callback_calculate_checksum(fdb_t *fim_sql, char *checksum, int storage, void *arg);
 
 /**
+ * @brief Binds data into a range data statement.
+ *
+ * @param fim_sql FIM database structure.
+ * @param index Index of the particular statement.
+ * @param start First entry of the range.
+ * @param top Last entry of the range.
+ */
+void fim_db_bind_range(fdb_t *fim_sql, int index, const char *start, const char *top);
+
+/**
  * @brief Get the last/first row from file_entry.
  *
  * @param fim_sql FIM database struct.

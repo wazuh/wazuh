@@ -82,7 +82,7 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_GET_REG_LAST_PATH] = "SELECT path FROM registry_view ORDER BY path DESC LIMIT 1;",
     [FIMDB_STMT_GET_REG_FIRST_PATH] = "SELECT path FROM registry_view ORDER BY path ASC LIMIT 1;",
     [FIMDB_STMT_GET_REG_ALL_CHECKSUMS] = "SELECT checksum FROM registry_view ORDER BY path ASC;",
-    [FIMDB_STMT_GET_REG_COUNT_RANGE] = "SELECT count(*) FROM registry_view WHERE path BETWEEN ? and ? ORDER BY path;",
+    [FIMDB_STMT_GET_REG_COUNT_RANGE] = "SELECT count(*) FROM registry_view WHERE path BETWEEN ? AND ? ORDER BY path;",
 };
 
 fdb_t *fim_db_init(int storage) {
@@ -646,17 +646,11 @@ int fim_db_process_read_file(fdb_t *fim_sql,
 
 // General use functions
 
-/**
- * @brief Binds data into a range data statement.
- *
- * @param fim_sql FIM database structure.
- * @param index Index of the particular statement.
- * @param start First entry of the range.
- * @param top Last entry of the range.
- */
 void fim_db_bind_range(fdb_t *fim_sql, int index, const char *start, const char *top) {
     if (index == FIMDB_STMT_GET_PATH_RANGE ||
-        index == FIMDB_STMT_GET_COUNT_RANGE ) {
+        index == FIMDB_STMT_GET_REG_PATH_RANGE ||
+        index == FIMDB_STMT_GET_COUNT_RANGE ||
+        index == FIMDB_STMT_GET_REG_COUNT_RANGE ) {
         sqlite3_bind_text(fim_sql->stmt[index], 1, start, -1, NULL);
         sqlite3_bind_text(fim_sql->stmt[index], 2, top, -1, NULL);
     }

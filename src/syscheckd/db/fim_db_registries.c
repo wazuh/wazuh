@@ -37,17 +37,6 @@ static void fim_db_bind_registry_data_name_key_id(fdb_t *fim_sql, int index, con
 */
 static void fim_db_bind_registry_path(fdb_t *fim_sql, unsigned int index, const char *path, unsigned int arch);
 
-
-/**
- * @brief Binds start and top paths into select range statements
- *
- * @param fim_sql FIM database structure.
- * @param index Index of the particular statement.
- * @param start First entry of the range.
- * @param top Last entry of the range.
-*/
-static void fim_db_bind_registry_path_range(fdb_t *fim_sql, int index, const char *start, const char *top);
-
 /**
  * @brief Bind registry data into an insert registry data statement
  *
@@ -104,15 +93,6 @@ static void fim_db_bind_registry_path(fdb_t *fim_sql, unsigned int index, const 
 
         sqlite3_bind_text(fim_sql->stmt[index], 1, path, -1, NULL);
         sqlite3_bind_text(fim_sql->stmt[index], 2, registry_arch[arch], -1, NULL);
-    }
-}
-
-static void fim_db_bind_registry_path_range(fdb_t *fim_sql, int index, const char *start, const char *top) {
-    if (index == FIMDB_STMT_GET_REG_COUNT_RANGE ||
-        index == FIMDB_STMT_GET_REG_PATH_RANGE) {
-
-        sqlite3_bind_text(fim_sql->stmt[index], 1, start, -1, NULL);
-        sqlite3_bind_text(fim_sql->stmt[index], 2, top, -1, NULL);
     }
 }
 
@@ -459,7 +439,7 @@ int fim_db_get_registry_keys_range(fdb_t *fim_sql, const char *start, const char
     }
 
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_REG_PATH_RANGE);
-    fim_db_bind_registry_path_range(fim_sql, FIMDB_STMT_GET_REG_PATH_RANGE, start, top);
+    fim_db_bind_range(fim_sql, FIMDB_STMT_GET_REG_PATH_RANGE, start, top);
 
     int ret = fim_db_process_get_query(fim_sql, FIM_TYPE_REGISTRY, FIMDB_STMT_GET_REG_PATH_RANGE,
                                        fim_db_callback_save_reg_data_name, storage, (void*) *file);
