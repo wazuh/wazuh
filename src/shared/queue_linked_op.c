@@ -39,15 +39,16 @@ void linked_queue_free(w_linked_queue_t *queue) {
     }
 }
 
-void linked_queue_push(w_linked_queue_t * queue, void * data) {
+w_linked_queue_node_t *linked_queue_push(w_linked_queue_t * queue, void * data) {
     w_linked_queue_node_t *node;
     os_calloc(1, sizeof(w_linked_queue_node_t), node);
     node->data = data;
     node->next = NULL;
     linked_queue_append_node(queue, node);
+    return node;
 }
 
-void linked_queue_push_ex(w_linked_queue_t * queue, void * data) {
+w_linked_queue_node_t *linked_queue_push_ex(w_linked_queue_t * queue, void * data) {
     w_linked_queue_node_t *node;
     os_calloc(1, sizeof(w_linked_queue_node_t), node);
     node->data = data;
@@ -56,6 +57,17 @@ void linked_queue_push_ex(w_linked_queue_t * queue, void * data) {
     linked_queue_append_node(queue, node);
     w_cond_signal(&queue->available);
     w_mutex_unlock(&queue->mutex);
+    return node;
+}
+
+void linked_queue_unlink_and_push_node(w_linked_queue_t * queue, w_linked_queue_node_t *node) {
+    w_mutex_lock(&queue->mutex);
+    node->prev->next = node->next;
+    node->next->prev = node->prev;
+    node->prev = NULL;
+    node->next = NULL;
+    linked_queue_append_node(queue, node);
+    w_mutex_unlock(&queue->mutex); 
 }
 
 void * linked_queue_pop(w_linked_queue_t * queue) {
