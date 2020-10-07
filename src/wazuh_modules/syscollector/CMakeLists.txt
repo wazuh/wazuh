@@ -31,11 +31,21 @@ include_directories(${CMAKE_SOURCE_DIR}/)
 link_directories(${SRC_FOLDER}/external/sqlite/)
 link_directories(${SRC_FOLDER}/external/cJSON/)
 
-file(GLOB SYSCOLLECTOR_SRC
-    "${CMAKE_SOURCE_DIR}/*.cpp")
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  file(GLOB SYSCOLLECTOR_SRC
+      "${CMAKE_SOURCE_DIR}/syscollectorWin.cpp")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  file(GLOB SYSCOLLECTOR_SRC
+      "${CMAKE_SOURCE_DIR}/syscollectorLinux.cpp")
+else(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  file(GLOB SYSCOLLECTOR_SRC
+      "${CMAKE_SOURCE_DIR}/syscollectorMac.cpp")
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+
 
 add_library(syscollector OBJECT 
-    ${SYSCOLLECTOR_SRC} )
+    ${SYSCOLLECTOR_SRC}
+    "${CMAKE_SOURCE_DIR}/syscollectorCommon.cpp" )
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   target_link_libraries(syscollector sqlite3 cjson gcov)
@@ -50,7 +60,7 @@ endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
  add_custom_target(copy-files ALL
     COMMAND ${CMAKE_COMMAND} -E copy
-    ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/syscollector.dir/*.o
+    ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/syscollector.dir/*.o*
     ${CMAKE_SOURCE_DIR}/
     DEPENDS syscollector
     )

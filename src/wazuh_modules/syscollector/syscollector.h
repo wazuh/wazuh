@@ -11,6 +11,7 @@
 
 #ifdef ENABLE_SYSC
 
+
 #include "../wmodules.h"
 #include "shared.h"
 #include "version_op.h"
@@ -27,6 +28,10 @@
 
 #ifndef WM_SYSCOLLECTOR
 #define WM_SYSCOLLECTOR
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define WORKING_BUFFER_SIZE 15000
 #define MAX_TRIES 3
@@ -150,6 +155,7 @@ typedef struct gateway {
 } gateway;
 
 extern const wm_context WM_SYS_CONTEXT;     // Context
+void* function1();
 
 // Parse XML configuration
 int wm_sys_read(XML_NODE node, wmodule *module);
@@ -259,6 +265,9 @@ int getIfaceslist(char **ifaces_list, struct ifaddrs *ifaddr);
 int wm_sys_get_random_id();
 // Initialize hw_info struct values
 void init_hw_info(hw_info *info);
+#ifdef _cplusplus
+}
+#endif
 
 #endif
 #endif
