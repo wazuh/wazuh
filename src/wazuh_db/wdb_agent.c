@@ -621,7 +621,7 @@ int* wdb_get_agents_by_keepalive(const char* condition, int keepalive, bool incl
     return array;
 }
 
-int wdb_find_agent(const char *name, const char *ip) {
+int wdb_find_agent(const char *name, const char *ip, int *sock) {
     int output = OS_INVALID;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -648,7 +648,7 @@ int wdb_find_agent(const char *name, const char *ip) {
 
     cJSON_Delete(data_in);
 
-    root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+    root = wdbc_query_parse_json(sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!root) {
         merror("Error querying Wazuh DB for agent name.");
@@ -658,6 +658,9 @@ int wdb_find_agent(const char *name, const char *ip) {
     json_id = cJSON_GetObjectItem(root->child,"id");
     if (cJSON_IsNumber(json_id)) {
         output = json_id->valueint;
+    }
+    else {
+        output = -2;
     }
 
     cJSON_Delete(root);
