@@ -2069,6 +2069,7 @@ clean-internals: clean-unit-tests
 	rm -f ${os_auth_o}
 	rm -f ${all_analysisd_o} ${all_analysisd_libs} analysisd/compiled_rules/compiled_rules.h
 	rm -f ${integrator_o}
+	rm -f ${syscollector_o}
 	rm -f ${wmodulesd_o} ${wmodules_o}
 	rm -f ${wdb_o}
 	rm -f ${SELINUX_MODULE}
@@ -2116,7 +2117,7 @@ clean-framework:
 clean-windows:
 	rm -f libwazuh.a
 	rm -f libwazuhext.dll
-	rm -f wazuh_modules/syscollector/*.o
+	rm -f wazuh_modules/syscollector/*.o wazuh_modules/syscollector/*.obj
 	rm -f wazuh_modules/syscollector/syscollector_win_ext.dll
 	rm -f win32/LICENSE.txt
 	rm -f win32/help_win.txt
