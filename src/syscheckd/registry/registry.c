@@ -672,7 +672,7 @@ void fim_registry_process_value_event(fim_entry *new,
     }
 
     json_event = fim_registry_event(new, saved, configuration, mode,
-                                    saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFIED, NULL, diff);
+                                    saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFICATION, NULL, diff);
 
     if (json_event) {
         if (fim_db_insert_registry_data(syscheck.database, new->registry_entry.value, new->registry_entry.key->id) !=

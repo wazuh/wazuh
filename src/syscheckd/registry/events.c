@@ -119,7 +119,7 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
                                      unsigned int type,
                                      __attribute__((unused)) whodata_evt *w_evt,
                                      const char *diff) {
-    cJSON *changed_attributes;
+    cJSON *changed_attributes = NULL;
 
     if (old_data != NULL && old_data->registry_entry.value != NULL) {
         changed_attributes = fim_registry_compare_value_attrs(new_data->registry_entry.value,
