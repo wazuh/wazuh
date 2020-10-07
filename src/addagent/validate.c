@@ -185,9 +185,7 @@ int OS_RemoveAgent(const char *u_id) {
         mdebug1("Could not remove the information stored in Wazuh DB of the agent %s.", u_id);
     }
 
-    if (sock >= 0) {
-        close(sock);
-    }
+    wdbc_close(sock);
 
     /* Remove counter for ID */
     OS_RemoveCounter(u_id);
@@ -533,7 +531,7 @@ double OS_AgentAntiquity(const char *name, const char *ip){
 
     output = wdb_get_agent_keepalive(name, ip, &sock);
 
-    if (sock >= 0) close(sock);
+    wdbc_close(sock);
 
     return output == OS_INVALID ? OS_INVALID : difftime(time(NULL), output);
 }
