@@ -5070,7 +5070,7 @@ int wdb_parse_global_get_agents_by_keepalive(wdb_t* wdb, char* input, char* outp
 
     /* Get keepalive condition */
     next = strtok_r(input, delim, &savedptr);
-    if (next == NULL || strcmp(input, "condition") != 0) {
+    if (next == NULL || strcmp(next, "condition") != 0) {
         mdebug1("Invalid arguments 'condition' not found.");
         snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'condition' not found");
         return OS_INVALID;
@@ -5122,7 +5122,7 @@ int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output) {
     
     /* Get last_id*/
     next = strtok_r(input, delim, &savedptr);
-    if (next == NULL || strcmp(input, "last_id") != 0) {
+    if (next == NULL || strcmp(next, "last_id") != 0) {
         mdebug1("Invalid arguments 'last_id' not found.");
         snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'last_id' not found");
         return OS_INVALID;
