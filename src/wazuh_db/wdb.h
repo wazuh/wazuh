@@ -435,9 +435,10 @@ int wdb_update_agent_belongs(int id_group, int id_agent, int *sock);
  * 
  * @param[in] id The agent ID.
  * @param[in] name The agent name.
+ * @param[in] sock The Wazuh DB socket connection.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_update_agent_name(int id, const char *name);
+int wdb_update_agent_name(int id, const char *name, int *sock);
 
 /**
  * @brief Update agent data in global.db.

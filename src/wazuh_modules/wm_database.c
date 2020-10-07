@@ -215,7 +215,7 @@ void wm_sync_manager() {
     os_calloc(HOST_NAME_MAX, sizeof(char), manager_data->manager_host);
 
     if (gethostname(manager_data->manager_host, HOST_NAME_MAX) == 0)
-        wdb_update_agent_name(0, manager_data->manager_host);
+        wdb_update_agent_name(0, manager_data->manager_host, &wdb_wmdb_sock);
     else
         mterror(WM_DATABASE_LOGTAG, "Couldn't get manager's hostname: %s.", strerror(errno));
 
