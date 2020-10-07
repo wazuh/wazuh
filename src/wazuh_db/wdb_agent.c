@@ -745,7 +745,7 @@ char* wdb_get_agent_group(int id, int *sock) {
     return output;
 }
 
-int wdb_get_agent_status(int id_agent) {
+int wdb_get_agent_status(int id_agent, int *sock) {
     int output = -1;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -753,7 +753,7 @@ int wdb_get_agent_status(int id_agent) {
     cJSON *json_status = NULL;
 
     snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_AGENT_STATUS], id_agent);
-    root = wdbc_query_parse_json(&wdb_sock_agent, wdbquery, wdboutput, sizeof(wdboutput));
+    root = wdbc_query_parse_json(sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!root) {
         merror("Error querying Wazuh DB to get the agent status.");

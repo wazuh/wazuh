@@ -577,9 +577,10 @@ char* wdb_get_agent_group(int id, int *sock);
  * @brief Get agent updating status.
  * 
  * @param[in] id_agent ID of the agent.
+ * @param[in] sock The Wazuh DB socket connection.
  * @return Returns the WDB_AGENT_* status if success. OS_INVALID on error.
  */
-int wdb_get_agent_status(int id_agent);
+int wdb_get_agent_status(int id_agent, int *sock);
 
 /**
  * @brief Function to get the agent last keepalive.
