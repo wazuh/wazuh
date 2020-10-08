@@ -268,7 +268,7 @@ char *fim_registry_value_diff(const char *key_name,
     }
 
     if (is_registry_nodiff(key_name, value_name, configuration->arch)) {
-        diff_changes = "<Diff truncated because nodiff option>";
+        os_strdup("<Diff truncated because nodiff option>", diff_changes);
         syscheck.diff_folder_size += backup_file_size;
         goto cleanup;
     }
@@ -444,7 +444,7 @@ char *fim_file_diff(const char *filename) {
     }
 
     if (is_file_nodiff(diff->file_origin)) {
-        diff_changes = "<Diff truncated because nodiff option>";
+        os_strdup("<Diff truncated because nodiff option>", diff_changes);
         syscheck.diff_folder_size += backup_file_size;
         goto cleanup;
     }
