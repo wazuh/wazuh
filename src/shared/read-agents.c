@@ -1102,9 +1102,7 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const c
     char keepalive_str[OS_SIZE_512] = "";
 
     /* Getting all the information of the agent */
-    int sock = -1;
-    json_agt_info = wdb_get_agent_info(atoi(agent_id), &sock);
-    wdbc_close(sock);
+    json_agt_info = wdb_get_agent_info(atoi(agent_id), NULL);
 
     if (!json_agt_info) {
         mdebug1("Failed to get agent '%s' information from Wazuh DB.",agent_id);
@@ -1153,9 +1151,7 @@ agent_status_t get_agent_status(int agent_id){
     cJSON *json_field = NULL;
     int last_keepalive = -1;
 
-    int sock = -1;
-    json_agt_info = wdb_get_agent_info(agent_id, &sock);
-    wdbc_close(sock);
+    json_agt_info = wdb_get_agent_info(agent_id, NULL);
 
     if (!json_agt_info) {
         mdebug1("Failed to get agent '%d' information from Wazuh DB.", agent_id);
