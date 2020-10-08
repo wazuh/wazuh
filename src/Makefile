@@ -620,8 +620,6 @@ ifneq (,$(filter ${USE_FRAMEWORK_LIB},YES yes y Y 1))
 BUILD_SERVER+=wazuh-framework
 endif
 
-BUILD_AGENT+=build_shared_modules
-BUILD_AGENT+=build_syscollector
 BUILD_AGENT+=ossec-agentd
 BUILD_AGENT+=agent-auth
 BUILD_AGENT+=ossec-logcollector
@@ -655,6 +653,7 @@ ifeq (${MAKECMDGOALS},agent)
 $(error Do not use 'agent' directly, use 'TARGET=agent')
 endif
 agent: external
+	${MAKE} build_syscollector
 	${MAKE} ${BUILD_AGENT}
 
 ifneq (,$(filter ${USE_SELINUX},YES yes y Y 1))
