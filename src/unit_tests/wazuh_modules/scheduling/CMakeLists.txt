@@ -58,8 +58,8 @@ foreach(counter RANGE ${count})
         ${test_name}
         ${WAZUHLIB}
         ${WAZUHEXT}
-        MODULESD_O
-        SYSCOLLECTOR_O
+        SCHEDULING_MODULESD_O
+        SCHEDULING_SYSCOLLECTOR_O
         -lcmocka
         -fprofile-arcs
         -ftest-coverage

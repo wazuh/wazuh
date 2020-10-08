@@ -1,5 +1,6 @@
 # Find the wazuh shared library
 find_library(WAZUHEXT NAMES libwazuhext.so HINTS "${SRC_FOLDER}")
+set(uname "Linux")
 
 if(NOT WAZUHEXT)
     message(FATAL_ERROR "libwazuhext not found! Aborting...")
