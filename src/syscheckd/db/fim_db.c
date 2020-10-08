@@ -614,11 +614,13 @@ int fim_db_process_read_file(fdb_t *fim_sql,
                 entry = fim_db_get_path(fim_sql, path);
             } else {
                 os_calloc(1, sizeof(fim_entry), entry);
-                unsigned int arch =  strtoul(line, &split, 10);
+                unsigned int arch =  strtoul(path, &split, 10);
                 if (*split != ' ') {
                     os_free(path);
                     free_entry(entry);
+                    w_mutex_unlock(mutex);
                     merror("Temporary path file '%s' is corrupt: Wrong format", file->path);
+                    i++;
                     continue;
                 }
                 split++;
@@ -626,8 +628,10 @@ int fim_db_process_read_file(fdb_t *fim_sql,
                 entry->registry_entry.key = fim_db_get_registry_key(fim_sql, split, arch);
 
                 if (entry->registry_entry.key == NULL) {
-                    os_free(entry);
+                    free_entry(entry);
                     os_free(path);
+                    w_mutex_unlock(mutex);
+                    i++;
                     continue;
                 }
             }
