@@ -752,8 +752,14 @@ void fim_read_values(HKEY key_handle,
  * @param sub_key A string holding the path to the key to scan, excluding the root key part of the path.
  * @param arch An integer specifying the bit count of the register to scan, must be ARCH_32BIT or ARCH_64BIT.
  * @param mode A value specifying if the event has been triggered in scheduled, realtime or whodata mode.
+ * @param parent_configuration A pointer to the configuration of this key's "parent".
  */
-void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_key, int arch, fim_event_mode mode) {
+void fim_open_key(HKEY root_key_handle,
+                  const char *full_key,
+                  const char *sub_key,
+                  int arch,
+                  fim_event_mode mode,
+                  registry *parent_configuration) {
     HKEY current_key_handle = NULL;
     REGSAM access_rights;
     DWORD sub_key_count = 0;
@@ -769,6 +775,11 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
 
     configuration = fim_registry_configuration(full_key, arch);
     if (configuration == NULL) {
+        return;
+    }
+
+    if (mode == FIM_SCHEDULED && parent_configuration != NULL && parent_configuration != configuration) {
+        // If a more specific configuration is available in scheduled mode, we will scan this registry later.
         return;
     }
 
@@ -810,7 +821,7 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
         }
 
         /* Open sub_key */
-        fim_open_key(root_key_handle, new_full_key, new_sub_key, arch, mode);
+        fim_open_key(root_key_handle, new_full_key, new_sub_key, arch, mode, configuration);
     }
     // Done scanning sub_keys, trigger an alert on the current key if required.
     new.type = FIM_TYPE_REGISTRY;
@@ -893,7 +904,8 @@ void fim_registry_scan() {
             *syscheck.registry[i].entry = '\0';
             continue;
         }
-        fim_open_key(root_key_handle, syscheck.registry[i].entry, sub_key, syscheck.registry[i].arch, FIM_SCHEDULED);
+        fim_open_key(root_key_handle, syscheck.registry[i].entry, sub_key, syscheck.registry[i].arch, FIM_SCHEDULED,
+                     NULL);
     }
 
     fim_registry_process_unscanned_entries();
