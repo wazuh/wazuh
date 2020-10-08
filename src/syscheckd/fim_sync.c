@@ -214,8 +214,8 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
     fim_type type;
     int range_size;
     const char *component;
-    char *str_pathlh;
-    char *str_pathuh;
+    char *str_pathlh = NULL;
+    char *str_pathuh = NULL;
     EVP_MD_CTX *ctx_left;
     EVP_MD_CTX *ctx_right;
     pthread_mutex_t *mutex;

@@ -450,18 +450,8 @@ void fim_registry_free_key(fim_registry_key *key) {
     if (key) {
         os_free(key->path);
         os_free(key->perm);
-
-        // UID and GID need to be freed with the LocalFree function according to ConvertSidToStringSid documentation
-        if (key->uid) {
-            LocalFree(key->uid);
-            key->uid = NULL;
-        }
-
-        if (key->gid) {
-            LocalFree(key->gid);
-            key->gid = NULL;
-        }
-
+        os_free(key->uid);
+        os_free(key->gid);
         os_free(key->user_name);
         os_free(key->group_name);
         free(key);
