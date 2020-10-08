@@ -66,19 +66,6 @@
             "description": "user CDB lists"
         },
 
-        "/queue/agent-info/": {
-            "permissions": "0o660",
-            "source": "worker",
-            "files": [
-                "agent-info.merged"
-            ],
-            "recursive": false,
-            "restart": false,
-            "remove_subdirs_if_empty": false,
-            "extra_valid": false,
-            "description": "agent status"
-        },
-
         "/queue/agent-groups/": {
             "permissions": "0o660",
             "source": "master",

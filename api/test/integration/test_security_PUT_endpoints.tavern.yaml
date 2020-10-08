@@ -532,18 +532,6 @@ test_name: PUT /security/config (Check)
 
 stages:
 
-  # Restart nodes to apply changes
-  - name: Restart cluster
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-    delay_after: !float "{restart_delay}"
-
   - name: Get security configuration to check if PUT method worked correctly
     request:
       verify: False

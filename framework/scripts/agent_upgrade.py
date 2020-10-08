@@ -71,9 +71,7 @@ def main():
 
     agent = Agent(id=args.agent)
     agent.load_info_from_db()
-
-    agent_info = "{0}/queue/agent-info/{1}-{2}".format(common.ossec_path, agent.name, agent.registerIP)
-    if not os.path.isfile(agent_info):
+    if agent.status != 'active':
         raise WazuhError(1720)
 
     # Evaluate if the version is correct
@@ -93,7 +91,7 @@ def main():
                                                       debug=args.debug,
                                                       show_progress=print_progress if not args.silent else None,
                                                       chunk_size=args.chunk_size,
-                                                      rl_timeout=-1 if args.timeout == None else args.timeout)
+                                                      rl_timeout=-1 if args.timeout is None else args.timeout)
         if not args.silent:
             if not args.debug:
                 print("\n{0}... Please wait.".format(upgrade_command_result))
@@ -101,14 +99,15 @@ def main():
                 print(upgrade_command_result)
 
         counter = 0
-        agent_info_stat = os.stat(agent_info).st_mtime
+        last_keep_alive = agent.lastKeepAlive
 
         sleep(10)
-        while agent_info_stat == os.stat(agent_info).st_mtime and counter < common.agent_info_retries:
+        while last_keep_alive == agent.lastKeepAlive and counter < common.agent_info_retries:
             sleep(common.agent_info_sleep)
+            agent.load_info_from_db()
             counter = counter + 1
 
-        if agent_info_stat == os.stat(agent_info).st_mtime:
+        if last_keep_alive == agent.lastKeepAlive:
             raise WazuhError(1716, "Timeout waiting for agent reconnection.")
 
         upgrade_result = agent.upgrade_result(debug=args.debug)
@@ -122,7 +121,7 @@ def main():
                                                force=args.force,
                                                show_progress=print_progress if not args.silent else None,
                                                chunk_size=args.chunk_size,
-                                               rl_timeout=-1 if args.timeout == None else args.timeout,
+                                               rl_timeout=-1 if args.timeout is None else args.timeout,
                                                use_http=use_http)
         if not args.silent:
             if not args.debug:
@@ -131,13 +130,14 @@ def main():
                 print(upgrade_command_result)
 
         counter = 0
-        agent_info_stat = os.stat(agent_info).st_mtime
+        last_keep_alive = agent.lastKeepAlive
 
-        while agent_info_stat == os.stat(agent_info).st_mtime and counter < common.agent_info_retries:
+        while last_keep_alive == agent.lastKeepAlive and counter < common.agent_info_retries:
             sleep(common.agent_info_sleep)
+            agent.load_info_from_db()
             counter = counter + 1
 
-        if agent_info_stat == os.stat(agent_info).st_mtime:
+        if last_keep_alive == agent.lastKeepAlive:
             raise WazuhError(1716, "Timeout waiting for agent reconnection.")
 
         sleep(10)
