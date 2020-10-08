@@ -635,6 +635,7 @@ ifeq (${MAKECMDGOALS},server)
 $(error Do not use 'server' directly, use 'TARGET=server')
 endif
 server: external
+	${MAKE} build_syscollector
 	${MAKE} ${BUILD_SERVER}
 
 ifeq (${MAKECMDGOALS},local)
@@ -1707,11 +1708,7 @@ wmodulesd_c := wazuh_modules/main.c
 wmodulesd_o := $(wmodulesd_c:.c=.o)
 
 wazuh-modulesd: ${wmodulesd_o} ${syscollector_o}
-ifeq (${TARGET}, agent)
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SHARED_MODULES_LDFLAGS} -o $@
-else
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-endif
 
 ### wazuh-framework ##
 ifneq (,$(filter ${USE_FRAMEWORK_LIB},YES yes y Y 1))
