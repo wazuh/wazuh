@@ -527,11 +527,8 @@ double OS_AgentAntiquity_ID(const char *id) {
  */
 double OS_AgentAntiquity(const char *name, const char *ip){
     time_t output = 0;
-    int sock = -1;
 
-    output = wdb_get_agent_keepalive(name, ip, &sock);
-
-    wdbc_close(sock);
+    output = wdb_get_agent_keepalive(name, ip, NULL);
 
     return output == OS_INVALID ? OS_INVALID : difftime(time(NULL), output);
 }

@@ -144,7 +144,6 @@ int mon_send_agent_msg(char *agent, char *msg) {
     char *ag_ip = NULL;
     char *found = agent;
     size_t name_size;
-    int sock = -1;
 
     while (found = strchr(found, '-'), found) {
         ag_ip = ++found;
@@ -160,8 +159,7 @@ int mon_send_agent_msg(char *agent, char *msg) {
 
     snprintf(ag_name, name_size, "%s", agent);
 
-    if (ag_id = wdb_find_agent(ag_name, ag_ip, &sock), ag_id > 0) {
-        wdbc_close(sock);
+    if (ag_id = wdb_find_agent(ag_name, ag_ip, NULL), ag_id > 0) {
 
         snprintf(header, OS_SIZE_256, "[%03d] (%s) %s", ag_id, ag_name, ag_ip);
         if (SendMSG(mond.a_queue, msg, header, SECURE_MQ) < 0) {
@@ -171,11 +169,8 @@ int mon_send_agent_msg(char *agent, char *msg) {
         }
         return 0;
     } else if (ag_id == -2) {
-        wdbc_close(sock);
         return 2;
     }
-
-    wdbc_close(sock);
 
     return 1;
 }

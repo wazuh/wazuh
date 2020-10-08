@@ -71,11 +71,9 @@ int wdb_update_pm(sqlite3 *db, const rk_event_t *event) {
 int wdb_delete_pm(int id) {
     sqlite3 *db;
     sqlite3_stmt *stmt;
-    int sock = -1;
     int result;
 
-    char *name = id ? wdb_get_agent_name(id, &sock) : strdup("localhost");
-    wdbc_close(sock);
+    char *name = id ? wdb_get_agent_name(id, NULL) : strdup("localhost");
 
     if (!name)
         return -1;
@@ -102,10 +100,7 @@ int wdb_delete_pm(int id) {
 /* Delete PM events of all agents */
 void wdb_delete_pm_all() {
     int i;
-    int sock = -1;
-
-    int *agents = wdb_get_all_agents(FALSE, &sock);
-    wdbc_close(sock);
+    int *agents = wdb_get_all_agents(FALSE, NULL);
 
     if (agents) {
         wdb_delete_pm(0);
