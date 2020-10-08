@@ -329,6 +329,7 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
 
     if (fim_db_get_registry_key_rowid(fim_sql, key_path, arch, &key_id) != FIMDB_OK) {
         fim_registry_free_entry(entry);
+        free(full_path);
         free(key_path);
         return NULL;
     }
@@ -509,7 +510,7 @@ void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry
     }
 
     if (entry->type == FIM_TYPE_FILE) {
-        write_buffer = base;
+        os_strdup(base, write_buffer);
         line_length = strlen(write_buffer);
     } else {
         os_calloc(MAX_DIR_SIZE, sizeof(char), write_buffer);
@@ -784,6 +785,12 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
         }
 
         decoded_row = fim_db_decode_string_array(fim_sql->stmt[RANGE_QUERY[type]]);
+        if (decoded_row == NULL || decoded_row[0] == NULL || decoded_row[1] == NULL) {
+            free_strarray(decoded_row);
+            merror("Failed to decode checksum range query");
+            return FIMDB_ERR;
+        }
+
         path = decoded_row[0];
         checksum = decoded_row[1];
 
@@ -806,6 +813,12 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
             return FIMDB_ERR;
         }
         decoded_row = fim_db_decode_string_array(fim_sql->stmt[RANGE_QUERY[type]]);
+        if (decoded_row == NULL || decoded_row[0] == NULL || decoded_row[1] == NULL) {
+            free_strarray(decoded_row);
+            merror("Failed to decode checksum range query");
+            return FIMDB_ERR;
+        }
+
         path = decoded_row[0];
         checksum = decoded_row[1];
 
@@ -858,7 +871,7 @@ int fim_db_get_path_range(fdb_t *fim_sql,
 }
 
 char *fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it) {
-    char *retval;
+    char *retval = NULL;
     char line[OS_MAXSTR];
 
     if (it == file->elements) {

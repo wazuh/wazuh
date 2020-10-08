@@ -548,11 +548,13 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
 
     if (!cJSON_IsObject(attributes)) {
         merror("DB(%s) fim/save request with no valid attributes.", wdb->id);
+        os_free(full_path);
         return -1;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_FIM_INSERT_ENTRY2) < 0) {
         merror("DB(%s) Can't cache statement", wdb->id);
+        os_free(full_path);
         return -1;
     }
 
