@@ -65,6 +65,7 @@ int wdb_insert_agent(int id,
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
     char *payload = NULL;
+    int aux_sock = -1;
 
     if(keep_date) {
         date_add = get_agent_date_added(id);
@@ -91,8 +92,12 @@ int wdb_insert_agent(int id,
 
     cJSON_Delete(data_in);
 
-    result = wdbc_query_ex(sock, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
+    if (!sock) {
+        wdbc_close(aux_sock);
+    }
+    
     switch (result) {
         case OS_SUCCESS:
             if (WDBC_OK == wdbc_parse_result(wdboutput, &payload)) {
