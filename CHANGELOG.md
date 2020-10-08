@@ -68,6 +68,7 @@ All notable changes to this project will be documented in this file.
   - Duplicated alerts in Windows 10. ([#5600](https://github.com/wazuh/wazuh/pull/5600))
   - Syscollector now discards hotfixes that are not fully installed. ([#5792](https://github.com/wazuh/wazuh/pull/5792))
   - Syscollector now collects hotfixes that were not being parsed. ([#5792](https://github.com/wazuh/wazuh/pull/5792))
+- Fixed an Azure wodle dependency error. The package azure-storage-blob>12.0.0 does not include a component used. ([#6109](https://github.com/wazuh/wazuh/pull/6109))
 
 ### Removed
 
