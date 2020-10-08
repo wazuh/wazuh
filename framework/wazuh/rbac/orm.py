@@ -1006,8 +1006,8 @@ class RulesManager:
             rule_id = None
             try:
                 if check_default and \
-                        self.session.query(Policies).order_by(desc(Policies.id)
-                                                              ).limit(1).scalar().id < max_id_reserved:
+                        self.session.query(Rules).order_by(desc(Rules.id)
+                                                           ).limit(1).scalar().id < max_id_reserved:
                     rule_id = max_id_reserved + 1
             except (TypeError, AttributeError):
                 pass
