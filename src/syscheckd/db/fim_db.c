@@ -605,7 +605,7 @@ int fim_db_process_read_file(fdb_t *fim_sql,
 
         if (path) {
             w_mutex_lock(mutex);
-            fim_entry *entry;
+            fim_entry *entry = NULL;
 
 #ifndef WIN32
             entry = fim_db_get_path(fim_sql, path);
@@ -613,29 +613,22 @@ int fim_db_process_read_file(fdb_t *fim_sql,
             if (type == FIM_TYPE_FILE) {
                 entry = fim_db_get_path(fim_sql, path);
             } else {
-                os_calloc(1, sizeof(fim_entry), entry);
                 unsigned int arch =  strtoul(path, &split, 10);
-                if (*split != ' ') {
-                    os_free(path);
-                    free_entry(entry);
-                    w_mutex_unlock(mutex);
+                if (split == NULL || *split != ' ') {
                     merror("Temporary path file '%s' is corrupt: Wrong format", file->path);
-                    i++;
-                    continue;
-                }
-                split++;
-                entry->type = FIM_TYPE_REGISTRY;
-                entry->registry_entry.key = fim_db_get_registry_key(fim_sql, split, arch);
+                } else {
+                    os_calloc(1, sizeof(fim_entry), entry);
+                    entry->type = FIM_TYPE_REGISTRY;
 
-                if (entry->registry_entry.key == NULL) {
-                    free_entry(entry);
-                    os_free(path);
-                    w_mutex_unlock(mutex);
-                    i++;
-                    continue;
+                    entry->registry_entry.key = fim_db_get_registry_key(fim_sql, (split + 1), arch);
+                    if (entry->registry_entry.key == NULL) {
+                        free_entry(entry);
+                        entry = NULL;
+                    }
                 }
             }
 #endif
+
 
             w_mutex_unlock(mutex);
 
