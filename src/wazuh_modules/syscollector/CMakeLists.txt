@@ -33,19 +33,19 @@ link_directories(${SRC_FOLDER}/external/cJSON/)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   file(GLOB SYSCOLLECTOR_SRC
-      "${CMAKE_SOURCE_DIR}/syscollectorWin.cpp")
+      "${CMAKE_SOURCE_DIR}/*Win.cpp")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   file(GLOB SYSCOLLECTOR_SRC
-      "${CMAKE_SOURCE_DIR}/syscollectorLinux.cpp")
+      "${CMAKE_SOURCE_DIR}/*Linux.cpp")
 else(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   file(GLOB SYSCOLLECTOR_SRC
-      "${CMAKE_SOURCE_DIR}/syscollectorMac.cpp")
+      "${CMAKE_SOURCE_DIR}/*Mac.cpp")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 
 add_library(syscollector OBJECT 
     ${SYSCOLLECTOR_SRC}
-    "${CMAKE_SOURCE_DIR}/syscollectorCommon.cpp" )
+    "${CMAKE_SOURCE_DIR}/syscollectorImp.cpp" )
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   target_link_libraries(syscollector sqlite3 cjson gcov)

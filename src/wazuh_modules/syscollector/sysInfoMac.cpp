@@ -8,3 +8,10 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include "sysInfo.hpp"
+
+
+nlohmann::json SysInfo::hardware()
+{
+	return {};
+}
