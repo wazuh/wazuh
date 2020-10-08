@@ -436,6 +436,8 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
         key->mtime = get_registry_mtime(key_handle);
     }
 
+    key->last_event = time(NULL);
+
     fim_registry_get_checksum_key(key);
 
     return key;
@@ -749,6 +751,7 @@ void fim_read_values(HKEY key_handle,
         new->registry_entry.value->name = value_buffer;
         new->registry_entry.value->type = data_type;
         new->registry_entry.value->size = data_size;
+        new->registry_entry.value->last_event = time(NULL);
 
         fim_registry_process_value_event(new, saved, arch, mode, data_buffer);
     }
