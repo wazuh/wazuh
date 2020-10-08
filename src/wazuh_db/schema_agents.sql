@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS fim_entry (
     checksum TEXT
 );
 
+CREATE INDEX IF NOT EXISTS fim_full_path_index ON fim_entry (full_path);
 CREATE INDEX IF NOT EXISTS fim_file_index ON fim_entry (file);
 CREATE INDEX IF NOT EXISTS fim_date_index ON fim_entry (date);
 
@@ -325,7 +326,7 @@ CREATE TABLE IF NOT EXISTS sync_info (
 
 BEGIN;
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '5');
+INSERT INTO metadata (key, value) VALUES ('db_version', '6');
 INSERT INTO scan_info (module) VALUES ('fim');
 INSERT INTO scan_info (module) VALUES ('syscollector');
 INSERT INTO sync_info (component) VALUES ('fim');
