@@ -882,11 +882,11 @@ stages:
       json:
         <<: *error_spec
 
-    # PUT /agents/003/upgrade_custom?installer=invalid.sh&file_path=custom_wpk_path
+    # PUT /agents/007/upgrade_custom?installer=invalid.sh&file_path=custom_wpk_path
   - name: Try to customly upgrade an agent with an invalid installer
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/003/upgrade_custom"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/007/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
