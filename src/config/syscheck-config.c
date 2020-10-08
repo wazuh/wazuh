@@ -1291,6 +1291,7 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
     const char *xml_response_timeout = "response_timeout";
     const char *xml_sync_queue_size = "queue_size";
     const char *xml_max_eps = "max_eps";
+    const char *xml_registry_enabled = "registry_enabled";
 
     for (int i = 0; node[i]; i++) {
         if (strcmp(node[i]->element, xml_enabled) == 0) {
@@ -1343,6 +1344,16 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
             } else {
                 syscheck->sync_max_eps = value;
             }
+        } else if (strcmp(node[i]->element, xml_registry_enabled) == 0) {
+#ifdef WIN32
+            int r = w_parse_bool(node[i]->content);
+
+            if (r < 0) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                syscheck->enable_registry_synchronization = r;
+            }
+#endif
         } else {
             mwarn(XML_INVELEM, node[i]->element);
         }

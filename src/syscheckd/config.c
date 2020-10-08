@@ -62,6 +62,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.max_fd_win_rt  = 0;
     syscheck.registry_nodiff = NULL;
     syscheck.registry_nodiff_regex = NULL;
+    syscheck.enable_registry_synchronization = 1;
 #endif
     syscheck.prefilter_cmd  = NULL;
     syscheck.sync_interval  = 300;
@@ -439,6 +440,10 @@ cJSON *getSyscheckConfig(void) {
 
     cJSON * synchronization = cJSON_CreateObject();
     cJSON_AddStringToObject(synchronization, "enabled", syscheck.enable_synchronization ? "yes" : "no");
+#ifdef WIN32
+    cJSON_AddStringToObject(synchronization, "registry_enabled",
+                            syscheck.enable_registry_synchronization ? "yes" : "no");
+#endif
     cJSON_AddNumberToObject(synchronization, "max_interval", syscheck.max_sync_interval);
     cJSON_AddNumberToObject(synchronization, "interval", syscheck.sync_interval);
     cJSON_AddNumberToObject(synchronization, "response_timeout", syscheck.sync_response_timeout);

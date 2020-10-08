@@ -59,7 +59,9 @@ void * fim_run_integrity(void * args) {
         gettime(&start);
         fim_sync_checksum(FIM_TYPE_FILE, &syscheck.fim_entry_mutex);
 #ifdef WIN32
-        fim_sync_checksum(FIM_TYPE_REGISTRY, &syscheck.fim_registry_mutex);
+        if (syscheck.enable_registry_synchronization) {
+            fim_sync_checksum(FIM_TYPE_REGISTRY, &syscheck.fim_registry_mutex);
+        }
 #endif
         gettime(&end);
 
