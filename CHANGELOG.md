@@ -51,6 +51,7 @@ All notable changes to this project will be documented in this file.
 - Fixed an error where monitoring a drive in Windows under scheduled or realtime mode would generate alerts from the recycle bin. ([#4771](https://github.com/wazuh/wazuh/pull/4771))
 - When monitoring a drive in Windows in the format `U:`, it will monitor `U:\` instead of the agent's working directory. ([#5259](https://github.com/wazuh/wazuh/pull/5259))
 - Fixed a bug where monitoring a drive in Windows with recursion_level set to 0 would trigger alerts from files inside its subdirectories. ([#5235](https://github.com/wazuh/wazuh/pull/5235))
+- Fixed an Azure wodle dependency error. The package azure-storage-blob>12.0.0 does not include a component used. ([#6109](https://github.com/wazuh/wazuh/pull/6109))
 
 ### Removed
 
