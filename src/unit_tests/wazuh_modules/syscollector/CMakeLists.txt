@@ -13,15 +13,15 @@ endif()
 list(APPEND use_shared_libs 1)
 
 # Generate modulesd library
-file(GLOB modulesd_files ../../../wazuh_modules/*.o)
-list(REMOVE_ITEM modulesd_files ../../../wazuh_modules/main.o)
-file(GLOB syscollector_files ../../../wazuh_modules/syscollector/*.o)
+file(GLOB syscollector_files
+    ${SRC_FOLDER}/wazuh_modules/*.o
+    ${SRC_FOLDER}/wazuh_modules/vulnerability_detector/*.o
+    ${SRC_FOLDER}/wrapper/macos/libc/*.o)
+list(REMOVE_ITEM vulndetector_files ${SRC_FOLDER}/wazuh_modules/main.o)
 
-add_library(MODULESD_O STATIC ${modulesd_files})
 add_library(SYSCOLLECTOR_O STATIC ${syscollector_files})
 
 set_source_files_properties(
-  ${modulesd_files}
   ${syscollector_files}
   PROPERTIES
   EXTERNAL_OBJECT true
@@ -29,13 +29,12 @@ set_source_files_properties(
   )
 
 set_target_properties(
-  MODULESD_O
   SYSCOLLECTOR_O
   PROPERTIES
   LINKER_LANGUAGE C
 )
 
-target_link_libraries(MODULESD_O SYSCOLLECTOR_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+target_link_libraries(SYSCOLLECTOR_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 
 # Compiling tests
@@ -57,7 +56,6 @@ foreach(counter RANGE ${count})
         ${test_name}
         ${WAZUHLIB}
         ${WAZUHEXT}
-        MODULESD_O
         SYSCOLLECTOR_O
         -lcmocka
         -fprofile-arcs
