@@ -16,7 +16,7 @@ if(${uname} STREQUAL "Darwin")
     set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -fprofile-arcs -ftest-coverage)
     add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT -I/usr/local/include -DENABLE_SYSC -DWAZUH_UNIT_TESTING)
 else()
-    add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT -DWAZUH_UNIT_TESTING)
+    add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT -DENABLE_AUDIT -DINOTIFY_ENABLED)
     set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -lcmocka -fprofile-arcs -ftest-coverage)
 endif()
 
