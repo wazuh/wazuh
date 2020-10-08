@@ -18,6 +18,10 @@
  * */
 static void linked_queue_append_node(w_linked_queue_t *queue, w_linked_queue_node_t *node);
 
+/**
+ * Unlinks the last node of the queue
+ * @param queue to be modified
+ * */
 static void linked_queue_pop_node(w_linked_queue_t *queue);
 
 w_linked_queue_t *linked_queue_init() {

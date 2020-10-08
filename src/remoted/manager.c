@@ -1180,6 +1180,7 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
             read_controlmsg(agent_id, msg);
         }
         os_free(agent_id);
+        os_free(msg);
 
         // Mark message as dispatched
         w_mutex_lock(&lastmsg_mutex);
@@ -1187,8 +1188,6 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
             data->changed = 0;
         }
         w_mutex_unlock(&lastmsg_mutex);
-
-        free(msg);
     }
 
     return (NULL);
@@ -1340,4 +1339,8 @@ void manager_init()
     if (!m_hash || !pending_data) merror_exit("At manager_init(): OSHash_Create() failed");
 
     OSHash_SetFreeDataPointer(pending_data, (void (*)(void *))free_pending_data);
+}
+
+void manager_free() {
+    linked_queue_free(pending_queue);
 }

@@ -48,7 +48,7 @@ void * __wrap_linked_queue_pop_ex(w_linked_queue_t * queue) {
         if (!queue->first) {
             data = NULL;
         } else {
-            data = queue->last->data;
+            data = queue->first->data;
             w_linked_queue_node_t *tmp = queue->first;
             queue->first = queue->first->next;
             if (queue->first) {

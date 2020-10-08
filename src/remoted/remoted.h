@@ -94,6 +94,9 @@ void *SCFGA_Forward(void *arg) __attribute__((noreturn));
 /* Initialize the manager */
 void manager_init();
 
+/* Free the manager */
+void manager_free();
+
 /* Wait for messages from the agent to analyze */
 void *wait_for_msgs(void *none);
 

@@ -11,10 +11,10 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <stdio.h>
+#include "../wrappers/posix/pthread_wrappers.h"
 
 #include "shared.h"
 
-static void (*callback_ptr)(void) = NULL;
 static w_linked_queue_t *queue_ptr = NULL; // Local ptr to queue
 /****************SETUP/TEARDOWN******************/
 void callback_queue_push_ex() {
@@ -55,32 +55,6 @@ int setup_queue_with_values(void **state) {
     return 0;
 }
 
-
-/*****************WRAPS********************/
-int __wrap_pthread_mutex_lock(pthread_mutex_t *mutex) {
-    check_expected_ptr(mutex);
-    return 0;
-}
-
-int __wrap_pthread_mutex_unlock(pthread_mutex_t *mutex) {
-    check_expected_ptr(mutex);
-    return 0;
-}
-
-int __wrap_pthread_cond_wait(pthread_cond_t *cond,pthread_mutex_t *mutex) {
-    check_expected_ptr(cond);
-    check_expected_ptr(mutex);
-    // callback function to avoid infinite loops when testing 
-    if (callback_ptr)
-        callback_ptr();
-    return 0;
-}
-
-int __wrap_pthread_cond_signal(pthread_cond_t *cond) {
-    check_expected_ptr(cond);
-    return 0;
-}
-
 /****************TESTS***************************/
 void test_linked_queue_push(void **state) {
     w_linked_queue_t *queue = *state;
@@ -101,14 +75,16 @@ void test_linked_queue_push_ex(void **state) {
     w_linked_queue_t *queue = *state;
     int *ptr = malloc(sizeof(int));
     *ptr = 2;
-    expect_value_count(__wrap_pthread_mutex_lock, mutex, &queue->mutex, 2);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
     expect_value_count(__wrap_pthread_cond_signal, cond, &queue->available, 2);
-    expect_value_count(__wrap_pthread_mutex_unlock, mutex, &queue->mutex, 2);
     linked_queue_push_ex(queue, ptr);
     assert_ptr_equal(queue->first->data, ptr);
     assert_ptr_equal(queue->last->data, ptr);
     int *ptr2 = malloc(sizeof(int));
     *ptr2 = 5;
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
     linked_queue_push_ex(queue, ptr2);
     assert_ptr_equal(queue->first->data, ptr);
     assert_ptr_equal(queue->last->data, ptr2);
@@ -143,13 +119,15 @@ void test_linked_pop(void **state) {
 void test_linked_pop_ex(void **state) {
     w_linked_queue_t *queue = *state;
     assert_int_equal(queue->elements, 2);
-    expect_value_count(__wrap_pthread_mutex_lock, mutex, &queue->mutex, 4);
-    expect_value_count(__wrap_pthread_mutex_unlock, mutex, &queue->mutex, 4);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
     int *data = linked_queue_pop_ex(queue);
     assert_int_equal(queue->elements, 1);
     assert_ptr_not_equal(data, NULL);
     assert_int_equal(*data, 3);
     os_free(data);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
     data = linked_queue_pop_ex(queue);
     assert_int_equal(queue->elements, 0);
     assert_ptr_not_equal(data, NULL);
@@ -158,10 +136,12 @@ void test_linked_pop_ex(void **state) {
     assert_ptr_equal(queue->first, NULL);
     assert_ptr_equal(queue->last, NULL);
     os_free(data);
+    expect_function_calls(__wrap_pthread_mutex_lock, 2);
+    expect_function_calls(__wrap_pthread_mutex_unlock, 2);
     expect_value(__wrap_pthread_cond_wait, cond, &queue->available);
     expect_value(__wrap_pthread_cond_wait, mutex, &queue->mutex);
     expect_value(__wrap_pthread_cond_signal, cond, &queue->available);
-    callback_ptr = callback_queue_push_ex;
+    pthread_callback_ptr = callback_queue_push_ex;
     data = linked_queue_pop_ex(queue);
     os_free(data);
 }
@@ -178,8 +158,8 @@ void test_linked_queue_unlink_and_push(void **state) {
     ptr3 = malloc(sizeof(int));
     *ptr3 = 3;
     w_linked_queue_node_t *node3 = linked_queue_push(queue, ptr3);
-    expect_value(__wrap_pthread_mutex_lock, mutex, &queue->mutex);
-    expect_value(__wrap_pthread_mutex_unlock, mutex, &queue->mutex);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
     linked_queue_unlink_and_push_node(queue, node2);
     int *ret = linked_queue_pop(queue);
     assert_ptr_equal(ptr, ret);
