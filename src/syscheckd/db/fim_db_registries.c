@@ -270,7 +270,7 @@ void fim_db_callback_save_reg_data_name(__attribute__((unused))fdb_t * fim_sql, 
 
     if (storage == FIM_DB_DISK) { // disk storage enabled
         if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", buffer) != (strlen(buffer) + sizeof(char))) {
-            merror("%s - %s", entry->registry_entry.value->name, strerror(errno));
+            merror("Can't save entry: %s %s", entry->registry_entry.value->name, strerror(errno));
             goto end;
         }
 

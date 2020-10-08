@@ -482,7 +482,7 @@ void fim_db_callback_save_string(__attribute__((unused))fdb_t * fim_sql, const c
 
     if (storage == FIM_DB_DISK) { // disk storage enabled
         if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", base) != (strlen(base) + sizeof(char))) {
-            merror("%s - %s", str, strerror(errno));
+            merror("Can't save entry: %s %s", str, strerror(errno));
             free(base);
             return;
         }
@@ -513,13 +513,13 @@ void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry
         os_strdup(base, write_buffer);
         line_length = strlen(write_buffer);
     } else {
-        os_calloc(MAX_DIR_SIZE, sizeof(char), write_buffer);
-        line_length = snprintf(write_buffer, MAX_DIR_SIZE, "%d %s", entry->registry_entry.key->arch, base);
+        os_calloc(OS_MAXSTR, sizeof(char), write_buffer);
+        line_length = snprintf(write_buffer, OS_MAXSTR, "%d %s", entry->registry_entry.key->arch, base);
     }
 
     if (storage == FIM_DB_DISK) { // disk storage enabled
         if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", write_buffer) != (line_length + sizeof(char))) {
-            merror("%s - %s", path, strerror(errno));
+            merror("Can't save entry: %s %s", path, strerror(errno));
             goto end;
         }
 
