@@ -54,8 +54,9 @@ void linked_queue_free(w_linked_queue_t *queue);
  * 
  * @param queue the queue
  * @param data data to be inserted
+ * @return node structure pushed to the queue
  * */
-void linked_queue_push(w_linked_queue_t * queue, void * data);
+w_linked_queue_node_t * linked_queue_push(w_linked_queue_t * queue, void * data);
 
 /** 
  * @brief Same as queue_push but with mutual exclusion 
@@ -63,8 +64,9 @@ void linked_queue_push(w_linked_queue_t * queue, void * data);
  * 
  * @param queue the queue
  * @param data data to be inserted
+ * @return node structure pushed to the queue
  * */
-void linked_queue_push_ex(w_linked_queue_t * queue, void * data);
+w_linked_queue_node_t * linked_queue_push_ex(w_linked_queue_t * queue, void * data);
 
 /**
  * @brief Retrieves next item in the queue
@@ -83,5 +85,13 @@ void * linked_queue_pop(w_linked_queue_t * queue);
  * @return next element in the queue
  * */
 void * linked_queue_pop_ex(w_linked_queue_t * queue);
+
+/**
+ * @brief Unlinks an existent node from the queue and pushes it again to the end
+ * 
+ * @param queue the queue
+ * @param node node to be unlinked from the queue
+ * */
+void linked_queue_unlink_and_push_node(w_linked_queue_t * queue, w_linked_queue_node_t *node);
 
 #endif

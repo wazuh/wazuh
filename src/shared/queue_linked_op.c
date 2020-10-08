@@ -39,15 +39,16 @@ void linked_queue_free(w_linked_queue_t *queue) {
     }
 }
 
-void linked_queue_push(w_linked_queue_t * queue, void * data) {
+w_linked_queue_node_t *linked_queue_push(w_linked_queue_t * queue, void * data) {
     w_linked_queue_node_t *node;
     os_calloc(1, sizeof(w_linked_queue_node_t), node);
     node->data = data;
     node->next = NULL;
     linked_queue_append_node(queue, node);
+    return node;
 }
 
-void linked_queue_push_ex(w_linked_queue_t * queue, void * data) {
+w_linked_queue_node_t *linked_queue_push_ex(w_linked_queue_t * queue, void * data) {
     w_linked_queue_node_t *node;
     os_calloc(1, sizeof(w_linked_queue_node_t), node);
     node->data = data;
@@ -56,6 +57,17 @@ void linked_queue_push_ex(w_linked_queue_t * queue, void * data) {
     linked_queue_append_node(queue, node);
     w_cond_signal(&queue->available);
     w_mutex_unlock(&queue->mutex);
+    return node;
+}
+
+void linked_queue_unlink_and_push_node(w_linked_queue_t * queue, w_linked_queue_node_t *node) {
+    w_mutex_lock(&queue->mutex);
+    node->prev->next = node->next;
+    node->next->prev = node->prev;
+    node->prev = NULL;
+    node->next = NULL;
+    linked_queue_append_node(queue, node);
+    w_mutex_unlock(&queue->mutex); 
 }
 
 void * linked_queue_pop(w_linked_queue_t * queue) {
@@ -64,7 +76,7 @@ void * linked_queue_pop(w_linked_queue_t * queue) {
     if (!queue->first) {
        data = NULL;
     } else {
-        data = queue->last->data;
+        data = queue->first->data;
         linked_queue_pop_node(queue);
     }
     return data;
@@ -99,13 +111,13 @@ static void linked_queue_append_node(w_linked_queue_t *queue, w_linked_queue_nod
 }
 
 static void linked_queue_pop_node(w_linked_queue_t *queue) {
-    w_linked_queue_node_t *tmp = queue->last;
-    queue->last = queue->last->prev;
-    if (queue->last) {
-        queue->last->next = NULL;
+    w_linked_queue_node_t *tmp = queue->first;
+    queue->first = queue->first->next;
+    if (queue->first) {
+        queue->first->prev = NULL;
     } else {
-        // queue is now empty
-        queue->first = NULL;
+        // Also clean last node
+        queue->last = NULL;
     }
     queue->elements--;
     os_free(tmp);
