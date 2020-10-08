@@ -399,8 +399,8 @@ void test_wdb_insert_agent_error_socket(void **state)
     const char *group = "default";
     int keep_date = 0;
 
-    const char *json_str = "{\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
-\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}";
+    const char *json_str = strdup("{\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
+\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}");
     const char *query_str = "global insert-agent {\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
 \"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}";
     const char *response = "err";
@@ -458,8 +458,8 @@ void test_wdb_insert_agent_error_sql_execution(void **state)
     const char *group = "default";
     int keep_date = 0;
 
-    const char *json_str = "{\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
-\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}";
+    const char *json_str = strdup("{\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
+\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}");
     const char *query_str = "global insert-agent {\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
 \"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}";
     const char *response = "err";
@@ -517,8 +517,8 @@ void test_wdb_insert_agent_error_result(void **state)
     const char *group = "default";
     int keep_date = 0;
 
-    const char *json_str = "{\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
-\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}";
+    const char *json_str = strdup("{\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
+\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}");
     const char *query_str = "global insert-agent {\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
 \"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}";
     const char *response = "err";
@@ -575,8 +575,8 @@ void test_wdb_insert_agent_success(void **state)
     const char *group = "default";
     int keep_date = 0;
 
-    const char *json_str = "{\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
-\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}";
+    const char *json_str = strdup("{\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
+\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}");
     const char *query_str = "global insert-agent {\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
 \"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}";
     const char *response = "ok";
@@ -668,8 +668,8 @@ void test_wdb_insert_agent_success_keep_date(void **state)
     struct tm test_time;
     time_t date_returned = 0;
 
-    const char *json_str = "{\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
-\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1577851261}";
+    const char *json_str = strdup("{\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
+\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1577851261}");
     const char *query_str = "global insert-agent {\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
 \"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1577851261}";
     const char *response = "ok";
@@ -796,7 +796,7 @@ void test_wdb_update_agent_name_error_socket(void **state)
     int id = 1;
     const char *name = "agent1";
 
-    const char *json_str = "{\"id\":1,\"name\":\"agent1\"}";
+    const char *json_str = strdup("{\"id\":1,\"name\":\"agent1\"}");
     const char *query_str = "global update-agent-name {\"id\":1,\"name\":\"agent1\"}";
     const char *response = "err";
 
@@ -836,7 +836,7 @@ void test_wdb_update_agent_name_error_sql_execution(void **state)
     int id = 1;
     const char *name = "agent1";
 
-    const char *json_str = "{\"id\":1,\"name\":\"agent1\"}";
+    const char *json_str = strdup("{\"id\":1,\"name\":\"agent1\"}");
     const char *query_str = "global update-agent-name {\"id\":1,\"name\":\"agent1\"}";
     const char *response = "err";
 
@@ -876,7 +876,7 @@ void test_wdb_update_agent_name_error_result(void **state)
     int id = 1;
     const char *name = "agent1";
 
-    const char *json_str = "{\"id\":1,\"name\":\"agent1\"}";
+    const char *json_str = strdup("{\"id\":1,\"name\":\"agent1\"}");
     const char *query_str = "global update-agent-name {\"id\":1,\"name\":\"agent1\"}";
     const char *response = "err";
 
@@ -917,7 +917,7 @@ void test_wdb_update_agent_name_success(void **state)
     int id = 1;
     const char *name = "agent1";
 
-    const char *json_str = "{\"id\":1,\"name\":\"agent1\"}";
+    const char *json_str = strdup("{\"id\":1,\"name\":\"agent1\"}");
     const char *query_str = "global update-agent-name {\"id\":1,\"name\":\"agent1\"}";
     const char *response = "ok";
 
@@ -1020,12 +1020,12 @@ void test_wdb_update_agent_data_error_socket(void **state)
     os_strdup("\"label1\":value1\n\"label2\":value2", agent_data->labels);
     os_strdup("syncreq", agent_data->sync_status);
 
-    const char *json_str = "{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
+    const char *json_str = strdup("{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
 \"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
-\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}";
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}");
     const char *query_str = "global update-agent-data {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
@@ -1133,12 +1133,12 @@ void test_wdb_update_agent_data_error_sql_execution(void **state)
     os_strdup("\"label1\":value1\n\"label2\":value2", agent_data->labels);
     os_strdup("syncreq", agent_data->sync_status);
 
-    const char *json_str = "{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
+    const char *json_str = strdup("{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
 \"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
-\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}";
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}");
     const char *query_str = "global update-agent-data {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
@@ -1246,12 +1246,12 @@ void test_wdb_update_agent_data_error_result(void **state)
     os_strdup("\"label1\":value1\n\"label2\":value2", agent_data->labels);
     os_strdup("syncreq", agent_data->sync_status);
 
-    const char *json_str = "{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
+    const char *json_str = strdup("{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
 \"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
-\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}";
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}");
     const char *query_str = "global update-agent-data {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
@@ -1354,12 +1354,12 @@ void test_wdb_update_agent_data_success(void **state)
     os_strdup("\"label1\":value1\n\"label2\":value2", agent_data->labels);
     os_strdup("syncreq", agent_data->sync_status);
 
-    const char *json_str = "{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
+    const char *json_str = strdup("{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
 \"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
 \"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"labels\":\
-\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}";
+\"\"label1\":value1\n\"label2\":value2\",\"sync_status\":\"syncreq\"}");
     const char *query_str = "global update-agent-data {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
 \"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
 \"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
@@ -1618,7 +1618,7 @@ void test_wdb_update_agent_keepalive_error_socket(void **state)
     int id = 1;
     const char *sync_status = "synced";
 
-    const char *json_str = "{\"id\":1,\"sync_status\":\"synced\"}";
+    const char *json_str = strdup("{\"id\":1,\"sync_status\":\"synced\"}");
     const char *query_str = "global update-keepalive {\"id\":1,\"sync_status\":\"synced\"}";
     const char *response = "err";
 
@@ -1658,7 +1658,7 @@ void test_wdb_update_agent_keepalive_error_sql_execution(void **state)
     int id = 1;
     const char *sync_status = "synced";
 
-    const char *json_str = "{\"id\":1,\"sync_status\":\"synced\"}";
+    const char *json_str = strdup("{\"id\":1,\"sync_status\":\"synced\"}");
     const char *query_str = "global update-keepalive {\"id\":1,\"sync_status\":\"synced\"}";
     const char *response = "err";
 
@@ -1698,7 +1698,7 @@ void test_wdb_update_agent_keepalive_error_result(void **state)
     int id = 1;
     const char *sync_status = "synced";
 
-    const char *json_str = "{\"id\":1,\"sync_status\":\"synced\"}";
+    const char *json_str = strdup("{\"id\":1,\"sync_status\":\"synced\"}");
     const char *query_str = "global update-keepalive {\"id\":1,\"sync_status\":\"synced\"}";
     const char *response = "err";
 
@@ -1739,7 +1739,7 @@ void test_wdb_update_agent_keepalive_success(void **state)
     int id = 1;
     const char *sync_status = "synced";
 
-    const char *json_str = "{\"id\":1,\"sync_status\":\"synced\"}";
+    const char *json_str = strdup("{\"id\":1,\"sync_status\":\"synced\"}");
     const char *query_str = "global update-keepalive {\"id\":1,\"sync_status\":\"synced\"}";
     const char *response = "ok";
 
@@ -2384,7 +2384,7 @@ void test_wdb_find_agent_error_json_output(void **state)
     const char *name_str = "agent1";
     const char *ip_str = "any";
 
-    const char *json_str = "{\"name\":\"agent1\",\"ip\":\"any\"}";
+    const char *json_str = strdup("{\"name\":\"agent1\",\"ip\":\"any\"}");
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddStringToObject, 1);
@@ -2419,7 +2419,7 @@ void test_wdb_find_agent_success(void **state)
     cJSON *root = NULL;
     cJSON *row = NULL;
 
-    const char *json_str = "{\"name\":\"agent1\",\"ip\":\"any\"}";
+    const char *json_str = strdup("{\"name\":\"agent1\",\"ip\":\"any\"}");
 
     root = __real_cJSON_CreateArray();
     row = __real_cJSON_CreateObject();
@@ -2568,9 +2568,11 @@ void test_wdb_set_agent_offset_error_invalid_type(void **state)
     int id = 1;
     int type = -1; // Invalid type
     long offset = 100;
+    const char *json_str = strdup("");
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
 
     // Adding data to JSON
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
@@ -2592,7 +2594,7 @@ void test_wdb_set_agent_offset_error_socket(void **state)
     int type = WDB_SYSCHECK;
     long offset = 100;
 
-    const char *json_str = "{\"id\":1,\"offset\":100}";
+    const char *json_str = strdup("{\"id\":1,\"offset\":100}");
     const char *query_str = "global update-fim-offset {\"id\":1,\"offset\":100}";
     const char *response = "err";
 
@@ -2632,7 +2634,7 @@ void test_wdb_set_agent_offset_error_sql_execution(void **state)
     int type = WDB_SYSCHECK;
     long offset = 100;
 
-    const char *json_str = "{\"id\":1,\"offset\":100}";
+    const char *json_str = strdup("{\"id\":1,\"offset\":100}");
     const char *query_str = "global update-fim-offset {\"id\":1,\"offset\":100}";
     const char *response = "err";
 
@@ -2672,7 +2674,7 @@ void test_wdb_set_agent_offset_error_result(void **state)
     int type = WDB_SYSCHECK;
     long offset = 100;
 
-    const char *json_str = "{\"id\":1,\"offset\":100}";
+    const char *json_str = strdup("{\"id\":1,\"offset\":100}");
     const char *query_str = "global update-fim-offset {\"id\":1,\"offset\":100}";
     const char *response = "err";
 
@@ -2713,7 +2715,7 @@ void test_wdb_set_agent_offset_success_fim(void **state)
     int type = WDB_SYSCHECK;
     long offset = 100;
 
-    const char *json_str = "{\"id\":1,\"offset\":100}";
+    const char *json_str = strdup("{\"id\":1,\"offset\":100}");
     const char *query_str = "global update-fim-offset {\"id\":1,\"offset\":100}";
     const char *response = "ok";
 
@@ -2753,7 +2755,7 @@ void test_wdb_set_agent_offset_success_reg(void **state)
     int type = WDB_SYSCHECK_REGISTRY;
     long offset = 100;
 
-    const char *json_str = "{\"id\":1,\"offset\":100}";
+    const char *json_str = strdup("{\"id\":1,\"offset\":100}");
     const char *query_str = "global update-reg-offset {\"id\":1,\"offset\":100}";
     const char *response = "ok";
 
@@ -2893,7 +2895,7 @@ void test_wdb_set_agent_status_error_socket(void **state)
     int id = 1;
     int status = WDB_AGENT_EMPTY;
 
-    const char *json_str = "{\"id\":1,\"status\":\"empty\"}";
+    const char *json_str = strdup("{\"id\":1,\"status\":\"empty\"}");
     const char *query_str = "global update-agent-status {\"id\":1,\"status\":\"empty\"}";
     const char *response = "err";
 
@@ -2933,7 +2935,7 @@ void test_wdb_set_agent_status_error_sql_execution(void **state)
     int id = 1;
     int status = WDB_AGENT_EMPTY;
 
-    const char *json_str = "{\"id\":1,\"status\":\"empty\"}";
+    const char *json_str = strdup("{\"id\":1,\"status\":\"empty\"}");
     const char *query_str = "global update-agent-status {\"id\":1,\"status\":\"empty\"}";
     const char *response = "err";
 
@@ -2973,7 +2975,7 @@ void test_wdb_set_agent_status_error_result(void **state)
     int id = 1;
     int status = WDB_AGENT_EMPTY;
 
-    const char *json_str = "{\"id\":1,\"status\":\"empty\"}";
+    const char *json_str = strdup("{\"id\":1,\"status\":\"empty\"}");
     const char *query_str = "global update-agent-status {\"id\":1,\"status\":\"empty\"}";
     const char *response = "err";
 
@@ -3014,7 +3016,7 @@ void test_wdb_set_agent_status_success_empty(void **state)
     int id = 1;
     int status = WDB_AGENT_EMPTY;
 
-    const char *json_str = "{\"id\":1,\"status\":\"empty\"}";
+    const char *json_str = strdup("{\"id\":1,\"status\":\"empty\"}");
     const char *query_str = "global update-agent-status {\"id\":1,\"status\":\"empty\"}";
     const char *response = "ok";
 
@@ -3054,7 +3056,7 @@ void test_wdb_set_agent_status_success_pending(void **state)
     int id = 1;
     int status = WDB_AGENT_PENDING;
 
-    const char *json_str = "{\"id\":1,\"status\":\"pending\"}";
+    const char *json_str = strdup("{\"id\":1,\"status\":\"pending\"}");
     const char *query_str = "global update-agent-status {\"id\":1,\"status\":\"pending\"}";
     const char *response = "ok";
 
@@ -3094,7 +3096,7 @@ void test_wdb_set_agent_status_success_updated(void **state)
     int id = 1;
     int status = WDB_AGENT_UPDATED;
 
-    const char *json_str = "{\"id\":1,\"status\":\"updated\"}";
+    const char *json_str = strdup("{\"id\":1,\"status\":\"updated\"}");
     const char *query_str = "global update-agent-status {\"id\":1,\"status\":\"updated\"}";
     const char *response = "err";
 
@@ -3300,7 +3302,7 @@ void test_wdb_update_agent_group_error_socket(void **state)
     int id = 1;
     char *test_group = "test_group";
 
-    const char *json_str = "{\"id\":1,\"group\":\"test_group\"}";
+    const char *json_str = strdup("{\"id\":1,\"group\":\"test_group\"}");
     const char *query_str = "global update-agent-group {\"id\":1,\"group\":\"test_group\"}";
     const char *response = "err";
 
@@ -3340,7 +3342,7 @@ void test_wdb_update_agent_group_error_sql_execution(void **state)
     int id = 1;
     char *test_group = "test_group";
 
-    const char *json_str = "{\"id\":1,\"group\":\"test_group\"}";
+    const char *json_str = strdup("{\"id\":1,\"group\":\"test_group\"}");
     const char *query_str = "global update-agent-group {\"id\":1,\"group\":\"test_group\"}";
     const char *response = "err";
 
@@ -3380,7 +3382,7 @@ void test_wdb_update_agent_group_error_result(void **state)
     int id = 1;
     char *test_group = "test_group";
 
-    const char *json_str = "{\"id\":1,\"group\":\"test_group\"}";
+    const char *json_str = strdup("{\"id\":1,\"group\":\"test_group\"}");
     const char *query_str = "global update-agent-group {\"id\":1,\"group\":\"test_group\"}";
     const char *response = "err";
 
@@ -3421,7 +3423,7 @@ void test_wdb_update_agent_group_error_multi_group(void **state)
     int id = 1;
     char *test_group = "test_group";
 
-    const char *json_str = "{\"id\":1,\"group\":\"test_group\"}";
+    const char *json_str = strdup("{\"id\":1,\"group\":\"test_group\"}");
     const char *query_str = "global update-agent-group {\"id\":1,\"group\":\"test_group\"}";
     const char *response = "ok";
 
@@ -3476,7 +3478,7 @@ void test_wdb_update_agent_group_success(void **state)
     int id = 1;
     char *test_group = "test_group";
 
-    const char *json_str = "{\"id\":1,\"group\":\"test_group\"}";
+    const char *json_str = strdup("{\"id\":1,\"group\":\"test_group\"}");
     const char *query_str = "global update-agent-group {\"id\":1,\"group\":\"test_group\"}";
     const char *response = "ok";
 
@@ -3558,7 +3560,7 @@ void test_wdb_update_agent_group_success(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     //// wdb_update_agent_belongs error
-    json_str = "{\"id_group\":1,\"id_agent\":1}";
+    json_str = strdup("{\"id_group\":1,\"id_agent\":1}");
     query_str = "global insert-agent-belong {\"id_group\":1,\"id_agent\":1}";
     response = "ok";
 
@@ -3756,7 +3758,7 @@ void test_wdb_update_agent_belongs_error_socket(void **state)
     int id_group = 1;
     int id_agent = 2;
 
-    const char *json_str = "{\"id_group\":1,\"id_agent\":2}";
+    const char *json_str = strdup("{\"id_group\":1,\"id_agent\":2}");
     const char *query_str = "global insert-agent-belong {\"id_group\":1,\"id_agent\":2}";
     const char *response = "err";
 
@@ -3795,7 +3797,7 @@ void test_wdb_update_agent_belongs_error_sql_execution(void **state)
     int id_group = 1;
     int id_agent = 2;
 
-    const char *json_str = "{\"id_group\":1,\"id_agent\":2}";
+    const char *json_str = strdup("{\"id_group\":1,\"id_agent\":2}");
     const char *query_str = "global insert-agent-belong {\"id_group\":1,\"id_agent\":2}";
     const char *response = "err";
 
@@ -3834,7 +3836,7 @@ void test_wdb_update_agent_belongs_error_result(void **state)
     int id_group = 1;
     int id_agent = 2;
 
-    const char *json_str = "{\"id_group\":1,\"id_agent\":2}";
+    const char *json_str = strdup("{\"id_group\":1,\"id_agent\":2}");
     const char *query_str = "global insert-agent-belong {\"id_group\":1,\"id_agent\":2}";
     const char *response = "err";
 
@@ -3874,7 +3876,7 @@ void test_wdb_update_agent_belongs_success(void **state)
     int id_group = 1;
     int id_agent = 2;
 
-    const char *json_str = "{\"id_group\":1,\"id_agent\":2}";
+    const char *json_str = strdup("{\"id_group\":1,\"id_agent\":2}");
     const char *query_str = "global insert-agent-belong {\"id_group\":1,\"id_agent\":2}";
     const char *response = "ok";
 
@@ -4062,7 +4064,7 @@ void test_wdb_update_agent_multi_group_error_update_belongs_multi(void **state) 
     expect_function_call(__wrap_cJSON_Delete);
 
     //// wdb_update_agent_belongs success
-    const char *json_str = "{\"id_group\":1,\"id_agent\":2}";
+    const char *json_str = strdup("{\"id_group\":1,\"id_agent\":2}");
     query_str = "global insert-agent-belong {\"id_group\":1,\"id_agent\":2}";
 
     will_return(__wrap_cJSON_CreateObject, 1);

@@ -62,6 +62,7 @@ int wdb_insert_agent(int id,
     int result = 0;
     time_t date_add = 0;
     cJSON *data_in = NULL;
+    char *data_in_str = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
     char *payload = NULL;
@@ -88,9 +89,10 @@ int wdb_insert_agent(int id,
     cJSON_AddStringToObject(data_in, "group", group);
     cJSON_AddNumberToObject(data_in, "date_add", date_add);
 
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_INSERT_AGENT], cJSON_PrintUnformatted(data_in));
-
+    data_in_str = cJSON_PrintUnformatted(data_in);
     cJSON_Delete(data_in);
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_INSERT_AGENT], data_in_str);
+    os_free(data_in_str);
 
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
@@ -161,7 +163,7 @@ int wdb_update_agent_belongs(int id_group, int id_agent, int *sock) {
     char wdboutput[WDBOUTPUT_SIZE] = "";
     char *payload = NULL;
     int aux_sock = -1;
-
+    char *data_in_str = NULL;
     cJSON *data_in = cJSON_CreateObject();
 
     if (!data_in) {
@@ -172,9 +174,10 @@ int wdb_update_agent_belongs(int id_group, int id_agent, int *sock) {
     cJSON_AddNumberToObject(data_in, "id_group", id_group);
     cJSON_AddNumberToObject(data_in, "id_agent", id_agent);
 
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_INSERT_AGENT_BELONG], cJSON_PrintUnformatted(data_in));
-
+    data_in_str = cJSON_PrintUnformatted(data_in);
     cJSON_Delete(data_in);
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_INSERT_AGENT_BELONG], data_in_str);
+    os_free(data_in_str);
 
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
@@ -205,6 +208,7 @@ int wdb_update_agent_belongs(int id_group, int id_agent, int *sock) {
 int wdb_update_agent_name(int id, const char *name, int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
+    char* data_in_str = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
     char *payload = NULL;
@@ -219,10 +223,10 @@ int wdb_update_agent_name(int id, const char *name, int *sock) {
 
     cJSON_AddNumberToObject(data_in, "id", id);
     cJSON_AddStringToObject(data_in, "name", name);
-
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_NAME], cJSON_PrintUnformatted(data_in));
-
+    data_in_str = cJSON_PrintUnformatted(data_in);
     cJSON_Delete(data_in);
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_NAME], data_in_str);
+    os_free(data_in_str);
 
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
@@ -253,6 +257,7 @@ int wdb_update_agent_name(int id, const char *name, int *sock) {
 int wdb_update_agent_data(agent_info_data *agent_data, int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
+    char *data_in_str = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
     char *payload = NULL;
@@ -292,9 +297,10 @@ int wdb_update_agent_data(agent_info_data *agent_data, int *sock) {
         cJSON_AddStringToObject(data_in, "os_arch", agent_data->osd->os_arch);
     }
 
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_DATA], cJSON_PrintUnformatted(data_in));
-
+    data_in_str = cJSON_PrintUnformatted(data_in);
     cJSON_Delete(data_in);
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_DATA], data_in_str);
+    os_free(data_in_str);
 
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
@@ -325,6 +331,7 @@ int wdb_update_agent_data(agent_info_data *agent_data, int *sock) {
 int wdb_update_agent_keepalive(int id, const char *sync_status, int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
+    char *data_in_str = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
     char *payload = NULL;
@@ -340,9 +347,10 @@ int wdb_update_agent_keepalive(int id, const char *sync_status, int *sock) {
     cJSON_AddNumberToObject(data_in, "id", id);
     cJSON_AddStringToObject(data_in, "sync_status", sync_status);
 
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_KEEPALIVE], cJSON_PrintUnformatted(data_in));
-
+    data_in_str = cJSON_PrintUnformatted(data_in);
     cJSON_Delete(data_in);
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_KEEPALIVE], data_in_str);
+    os_free(data_in_str);   
 
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
@@ -377,6 +385,7 @@ int wdb_set_agent_status(int id_agent, int status, int *sock) {
     char wdboutput[WDBOUTPUT_SIZE] = "";
     char *payload = NULL;
     cJSON *data_in = NULL;
+    char *data_in_str = NULL;
     int aux_sock = -1;
 
     switch (status) {
@@ -403,9 +412,10 @@ int wdb_set_agent_status(int id_agent, int status, int *sock) {
     cJSON_AddNumberToObject(data_in, "id", id_agent);
     cJSON_AddStringToObject(data_in, "status", str_status);
 
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_STATUS], cJSON_PrintUnformatted(data_in));
-
+    data_in_str = cJSON_PrintUnformatted(data_in);
     cJSON_Delete(data_in);
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_STATUS], data_in_str);
+    os_free(data_in_str);   
 
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
@@ -439,7 +449,7 @@ int wdb_update_agent_group(int id, char *group, int *sock) {
     char wdboutput[WDBOUTPUT_SIZE] = "";
     char *payload = NULL;
     int aux_sock = -1;
-
+    char *data_in_str = NULL;
     cJSON *data_in = cJSON_CreateObject();
 
     if (!data_in) {
@@ -450,9 +460,10 @@ int wdb_update_agent_group(int id, char *group, int *sock) {
     cJSON_AddNumberToObject(data_in, "id", id);
     cJSON_AddStringToObject(data_in, "group", group);
 
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_GROUP], cJSON_PrintUnformatted(data_in));
-
+    data_in_str = cJSON_PrintUnformatted(data_in);
     cJSON_Delete(data_in);
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_GROUP], data_in_str);
+    os_free(data_in_str);   
 
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
@@ -495,7 +506,7 @@ int wdb_set_agent_offset(int id, int type, long offset, int *sock) {
     char wdboutput[WDBOUTPUT_SIZE] = "";
     char *payload = NULL;
     int aux_sock = -1;
-
+    char *data_in_str = NULL;
     cJSON *data_in = cJSON_CreateObject();
 
     if (!data_in) {
@@ -506,19 +517,22 @@ int wdb_set_agent_offset(int id, int type, long offset, int *sock) {
     cJSON_AddNumberToObject(data_in, "id", id);
     cJSON_AddNumberToObject(data_in, "offset", offset);
 
+    data_in_str = cJSON_PrintUnformatted(data_in);
+    cJSON_Delete(data_in);
+
     switch (type) {
     case WDB_SYSCHECK:
-        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_FIM_OFFSET], cJSON_PrintUnformatted(data_in));
+        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_FIM_OFFSET], data_in_str);
         break;
     case WDB_SYSCHECK_REGISTRY:
-        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_REG_OFFSET], cJSON_PrintUnformatted(data_in));
+        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_REG_OFFSET], data_in_str);
         break;
     default:
-        cJSON_Delete(data_in);
+        os_free(data_in_str);
         return OS_INVALID;
     }
 
-    cJSON_Delete(data_in);
+    os_free(data_in_str);
 
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
@@ -690,6 +704,7 @@ int wdb_find_agent(const char *name, const char *ip, int *sock) {
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
     cJSON *data_in = NULL;
+    char *data_in_str = NULL;
     cJSON *root = NULL;
     cJSON *json_id = NULL;
     int aux_sock = -1;
@@ -709,9 +724,10 @@ int wdb_find_agent(const char *name, const char *ip, int *sock) {
     cJSON_AddStringToObject(data_in, "name", name);
     cJSON_AddStringToObject(data_in, "ip", ip);
 
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_FIND_AGENT], cJSON_PrintUnformatted(data_in));
-
+    data_in_str = cJSON_PrintUnformatted(data_in);
     cJSON_Delete(data_in);
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_FIND_AGENT], data_in_str);
+    os_free(data_in_str); 
 
     root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
