@@ -22,17 +22,17 @@
 #include <pthread.h>
 
 typedef struct linked_queue_node_t {
-    void *data;
-    struct linked_queue_node_t *next;
-    struct linked_queue_node_t *prev;
+    void *data;                       ///< pointer to the node data
+    struct linked_queue_node_t *next; ///< pointer to next node
+    struct linked_queue_node_t *prev; ///< pointer to prev node
 } w_linked_queue_node_t;
 
 typedef struct linked_queue_t {
-    pthread_mutex_t mutex; ///> mutex for mutual exclusion
-    pthread_cond_t available; ///> condition variable when queue is empty
-    unsigned int elements; ///> counts the number of elements stored in the queue
-    w_linked_queue_node_t *first; ///> points to the first node that would go out the queue
-    w_linked_queue_node_t *last; ///> pointer to the last node in the queue
+    pthread_mutex_t mutex;        ///< mutex for mutual exclusion
+    pthread_cond_t available;     ///< condition variable when queue is empty
+    unsigned int elements;        ///< counts the number of elements stored in the queue
+    w_linked_queue_node_t *first; ///< points to the first node that would go out the queue
+    w_linked_queue_node_t *last;  ///< pointer to the last node in the queue
 } w_linked_queue_t;
 
 /**
