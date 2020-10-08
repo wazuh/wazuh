@@ -24,7 +24,7 @@ with patch('wazuh.common.ossec_uid'):
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-        from wazuh.logtest import get_logtest_output, end_logtest_session
+        from wazuh.logtest import run_logtest, end_logtest_session
 
 
 def send_logtest_msg_mock(arg):
@@ -36,7 +36,7 @@ def send_logtest_msg_mock(arg):
     ['token_value', 'event_value', 'log_format_value', 'location_value'],
 ])
 def test_get_logtest_output(logtest_param_values):
-    """Test `get_logtest_output` function from module logtest.
+    """Test `run_logtest` function from module logtest.
 
     Parameters
     ----------
@@ -47,15 +47,15 @@ def test_get_logtest_output(logtest_param_values):
     kwargs = {key: value for key, value in zip(kwargs_keys, logtest_param_values)}
     with patch('wazuh.logtest.send_logtest_msg') as send_mock:
         send_mock.side_effect = send_logtest_msg_mock
-        result = get_logtest_output(**kwargs)
+        result = run_logtest(**kwargs)
         assert result
         assert result.items() <= kwargs.items()
 
 
 def test_get_logtest_output_ko():
-    """Test `get_logtest_output` exceptions."""
+    """Test `run_logtest` exceptions."""
     try:
-        get_logtest_output(invalid_field=None)
+        run_logtest(invalid_field=None)
     except WazuhError as e:
         assert e.code == 7000
 

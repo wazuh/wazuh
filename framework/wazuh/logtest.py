@@ -8,13 +8,12 @@ from wazuh.rbac.decorators import expose_resources
 
 
 @expose_resources(actions=['logtest:run'], resources=['*:*:*'])
-def get_logtest_output(**kwargs):
+def run_logtest(token=None, event=None, log_format=None, location=None):
     """Get the logtest output after sending a JSON to its socket.
 
     Parameters
     ----------
-    kwargs : dict of str
-        Dict of parameters. They must be token, event, log_format and location.
+    TODO
 
     Raises
     ------
@@ -26,12 +25,13 @@ def get_logtest_output(**kwargs):
     dict
         Logtest response after analyzing the event.
     """
-    for kwarg in kwargs.keys():
-        if kwarg not in ['token', 'event', 'log_format', 'location']:
-            # kwargs are not valid
-            raise WazuhError(7000)
+    # Token could not be present
+    if locals()['token'] is None:
+        del locals()['token']
 
-    response = send_logtest_msg({param: value for param, value in kwargs.items() if value is not None})
+    response = send_logtest_msg(command='log_processing', params=locals())
+    if response['error'] != 0:
+        raise WazuhError(code=7000, extra_message=response.get('message', 'Could not parse error message'))
 
     return response
 
@@ -53,6 +53,6 @@ def end_logtest_session(token: str = None):
     if token is None:
         raise WazuhError(7001)
 
-    response = send_logtest_msg({'remove_session': token})
+    response = send_logtest_msg(command='remove_session', params={'token': token})
 
     return response
