@@ -205,6 +205,8 @@ def remove_users(user_ids):
                 result.add_failed_item(id_=user_id, error=WazuhError(5001))
             elif query == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=user_id, error=WazuhError(5004))
+            elif query == SecurityError.RELATIONSHIP_ERROR:
+                result.add_failed_item(id_=user_id, error=WazuhError(4025))
             elif user:
                 result.affected_items.append(user)
                 result.total_affected_items += 1
@@ -268,6 +270,8 @@ def remove_roles(role_ids):
             role_delete = rm.delete_role(int(r_id))
             if role_delete == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=r_id, error=WazuhError(4008))
+            elif role_delete == SecurityError.RELATIONSHIP_ERROR:
+                result.add_failed_item(id_=r_id, error=WazuhError(4025))
             elif not role_delete:
                 result.add_failed_item(id_=r_id, error=WazuhError(4002))
             elif role:
@@ -388,6 +392,8 @@ def remove_policies(policy_ids=None):
             policy_delete = pm.delete_policy(int(p_id))
             if policy_delete == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=p_id, error=WazuhError(4008))
+            elif policy_delete == SecurityError.RELATIONSHIP_ERROR:
+                result.add_failed_item(id_=p_id, error=WazuhError(4025))
             elif not policy_delete:
                 result.add_failed_item(id_=p_id, error=WazuhError(4007))
             elif policy:
@@ -535,6 +541,8 @@ def remove_rules(rule_ids=None):
             role_delete = rum.delete_rule(int(r_id))
             if role_delete == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=r_id, error=WazuhError(4008))
+            elif role_delete == SecurityError.RELATIONSHIP_ERROR:
+                result.add_failed_item(id_=r_id, error=WazuhError(4025))
             elif not role_delete:
                 result.add_failed_item(id_=r_id, error=WazuhError(4022))
             elif rule:

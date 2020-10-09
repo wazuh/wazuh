@@ -169,9 +169,9 @@ def test_get_user(db_setup):
         users = am.get_users()
         assert users
         for user in users:
-            assert isinstance(user['user_id'], str)
+            assert isinstance(user['user_id'], int)
 
-        assert users[0]['user_id'] == '1'
+        assert users[0]['user_id'] == 1
 
 
 def test_get_roles(db_setup):
@@ -215,7 +215,7 @@ def test_delete_users(db_setup):
     with db_setup.AuthenticationManager() as am:
         am.add_user(username='toDelete', password='testingA3!')
         len_users = len(am.get_users())
-        am.delete_user(user_id='106')
+        am.delete_user(user_id=106)
         assert len_users == len(am.get_users()) + 1
 
 
@@ -396,10 +396,20 @@ def test_add_policy_role(db_setup):
 
 def test_add_user_roles(db_setup):
     """Check user-roles relation is added to database"""
+    with db_setup.RolesManager() as rm:
+        pass
     with db_setup.UserRolesManager() as urm:
         with db_setup.AuthenticationManager() as am:
             for user in am.get_users():
-                assert am.delete_user(user_id=user['user_id'])
+                import pydevd_pycharm
+                pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+                result = am.delete_user(user_id=user['user_id'])
+                if result is True:
+                    assert not am.get_user_id(user_id=user['user_id'])
+                    assert len(urm.get_all_roles_from_user(user_id=user['user_id'])) == 0
+                else:
+                    assert am.get_user_id(user_id=user['user_id'])
+                    assert len(urm.get_all_roles_from_user(user_id=user['user_id'])) > 0
         with db_setup.RolesManager() as rm:
             assert rm.delete_all_roles()
 
@@ -811,7 +821,7 @@ def test_update_policy_from_role(db_setup):
     with db_setup.RolesPoliciesManager() as rpm:
         policies_ids, roles_ids = test_add_role_policy(db_setup)
         for policy in policies_ids:
-            rpm.replace_role_policy(role_id=roles_ids[0], actual_policy_id=policy, new_policy_id=policies_ids[-1])
+            rpm.replace_role_policy(role_id=roles_ids[0], current_policy_id=policy, new_policy_id=policies_ids[-1])
 
         assert not rpm.exist_role_policy(role_id=roles_ids[0], policy_id=policies_ids[0])
         assert rpm.exist_role_policy(role_id=roles_ids[0], policy_id=policies_ids[-1])
