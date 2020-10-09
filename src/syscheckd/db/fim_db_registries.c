@@ -523,7 +523,7 @@ int fim_db_get_values_from_registry_key(fdb_t * fim_sql, fim_tmp_file **file, in
 
     int ret = fim_db_multiple_row_query(fim_sql, FIMDB_STMT_GET_REG_DATA_ROWID,
                                         FIM_DB_DECODE_TYPE(fim_db_decode_registry_value), free,
-                                        FIM_DB_CALLBACK_TYPE(fim_db_callback_save_string), storage, (void*) *file);
+                                        FIM_DB_CALLBACK_TYPE(fim_db_callback_save_reg_data_name), storage, (void*) *file);
 
     if (*file && (*file)->elements == 0) {
         fim_db_clean_file(file, storage);
