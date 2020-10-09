@@ -15,8 +15,6 @@
 #include "../../analysisd/expression.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
-bool w_expression_add_osip(w_expression_t ** var, char * ip);
-
 
 /* setup/teardown */
 

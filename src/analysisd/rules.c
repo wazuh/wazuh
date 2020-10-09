@@ -36,6 +36,12 @@ static void Rule_AddAR(RuleInfo *config_rule);
 static char *loadmemory(char *at, const char *str);
 static void printRuleinfo(const RuleInfo *rule, int node);
 
+/**
+ * @brief Check if a option has attribute negate
+ */
+bool w_check_attr_negate(xml_node *node, int rule_id);
+
+
 /* Will initialize the rules list */
 void Rules_OP_CreateRules()
 {
@@ -58,8 +64,6 @@ int Rules_OP_ReadRules(const char *rulefile)
 
     const char *xml_group = "group";
     const char *xml_rule = "rule";
-
-    const char *xml_negate = "negate";
 
     const char *xml_regex = "regex";
     const char *xml_match = "match";
@@ -396,6 +400,9 @@ int Rules_OP_ReadRules(const char *rulefile)
                 bool negate_status = false;
                 bool negate_srcport = false;
                 bool negate_dstport = false;
+                bool negate_system_name = false;
+                bool negate_srcgeoip = false;
+                bool negate_dstgeoip = false;
 
                 regex = NULL;
                 match = NULL;
@@ -434,20 +441,14 @@ int Rules_OP_ReadRules(const char *rulefile)
                         break;
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_regex) == 0) {
+
                         regex =loadmemory(regex, rule_opt[k]->content);
-                        if (rule_opt[k]->attributes
-                            && strcasecmp(rule_opt[k]->attributes[0], xml_negate) == 0
-                            && strcasecmp(rule_opt[k]->values[0], "yes") == 0) {
-                            negate_regex = true;
-                        }
+                        negate_regex = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_match) == 0) {
+
                         match = loadmemory(match, rule_opt[k]->content);
-                        if (rule_opt[k]->attributes
-                            && strcasecmp(rule_opt[k]->attributes[0], xml_negate) == 0
-                            && strcasecmp(rule_opt[k]->values[0], "yes") == 0) {
-                            negate_match = true;
-                        }
+                        negate_match = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_decoded) == 0) {
                         config_ruleinfo->decoded_as =
@@ -563,15 +564,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                             goto cleanup;
                         }
 
-                        if (rule_opt[k]->attributes
-                            && strcasecmp(rule_opt[k]->attributes[0], xml_negate) == 0
-                            && strcasecmp(rule_opt[k]->values[0], "yes") == 0) {
-
-                            config_ruleinfo->srcip->negate = true;
-
-                        } else {
-                            config_ruleinfo->srcip->negate = false;
-                        }
+                        config_ruleinfo->srcip->negate = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
                         if (!(config_ruleinfo->alert_opts & DO_PACKETINFO)) {
                             config_ruleinfo->alert_opts |= DO_PACKETINFO;
@@ -588,186 +581,121 @@ int Rules_OP_ReadRules(const char *rulefile)
                             goto cleanup;
                         }
 
-                        if (rule_opt[k]->attributes
-                            && strcasecmp(rule_opt[k]->attributes[0], xml_negate) == 0
-                            && strcasecmp(rule_opt[k]->values[0], "yes") == 0) {
-
-                            config_ruleinfo->dstip->negate = true;
-
-                        } else {
-                            config_ruleinfo->dstip->negate = false;
-                        }
-
-                        if (!(config_ruleinfo->alert_opts & DO_PACKETINFO)) {
-                            config_ruleinfo->alert_opts |= DO_PACKETINFO;
-                        }
+                        config_ruleinfo->dstip->negate = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_user) == 0) {
-                        user = loadmemory(user, rule_opt[k]->content);
 
-                        if (rule_opt[k]->attributes
-                            && strcasecmp(rule_opt[k]->attributes[0], xml_negate) == 0
-                            && strcasecmp(rule_opt[k]->values[0], "yes") == 0) {
-                            negate_user = true;
-                        }
+                        user = loadmemory(user, rule_opt[k]->content);
+                        negate_user = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
 
-                    } else if(strcasecmp(rule_opt[k]->element,xml_srcgeoip)==0) {
-                        srcgeoip =
-                            loadmemory(srcgeoip,
-                                    rule_opt[k]->content);
+                    } else if (strcasecmp(rule_opt[k]->element,xml_srcgeoip) == 0) {
 
-                        if(!(config_ruleinfo->alert_opts & DO_EXTRAINFO))
+                        srcgeoip = loadmemory(srcgeoip, rule_opt[k]->content);
+                        negate_srcgeoip = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
+
+                        if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
+                        }
 
-                    } else if(strcasecmp(rule_opt[k]->element,xml_dstgeoip)==0) {
-                        dstgeoip =
-                            loadmemory(dstgeoip,
-                                    rule_opt[k]->content);
+                    } else if (strcasecmp(rule_opt[k]->element,xml_dstgeoip) == 0) {
 
-                        if(!(config_ruleinfo->alert_opts & DO_EXTRAINFO))
+                        dstgeoip = loadmemory(dstgeoip, rule_opt[k]->content);
+                        negate_dstgeoip = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
+
+                        if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
+                        }
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_id) == 0) {
-                        id = loadmemory(id, rule_opt[k]->content);
 
-                        if (rule_opt[k]->attributes
-                            && strcasecmp(rule_opt[k]->attributes[0], xml_negate) == 0
-                            && strcasecmp(rule_opt[k]->values[0], "yes") == 0) {
-                            negate_id = true;
-                        }
+                        id = loadmemory(id, rule_opt[k]->content);
+                        negate_id = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_srcport) == 0) {
-                        srcport =
-                            loadmemory(srcport,
-                                       rule_opt[k]->content);
 
-                        if (rule_opt[k]->attributes
-                            && strcasecmp(rule_opt[k]->attributes[0], xml_negate) == 0
-                            && strcasecmp(rule_opt[k]->values[0], "yes") == 0) {
-                            negate_srcport = true;
-                        }
+                        srcport = loadmemory(srcport, rule_opt[k]->content);
+                        negate_srcport = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
                         if (!(config_ruleinfo->alert_opts & DO_PACKETINFO)) {
                             config_ruleinfo->alert_opts |= DO_PACKETINFO;
                         }
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_dstport) == 0) {
-                        dstport =
-                            loadmemory(dstport,
-                                       rule_opt[k]->content);
 
-                        if (rule_opt[k]->attributes
-                            && strcasecmp(rule_opt[k]->attributes[0], xml_negate) == 0
-                            && strcasecmp(rule_opt[k]->values[0], "yes") == 0) {
-                            negate_dstport = true;
-                        }
+                        dstport = loadmemory(dstport, rule_opt[k]->content);
+                        negate_dstport = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
                         if (!(config_ruleinfo->alert_opts & DO_PACKETINFO)) {
                             config_ruleinfo->alert_opts |= DO_PACKETINFO;
                         }
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_status) == 0) {
-                        status =
-                            loadmemory(status,
-                                       rule_opt[k]->content);
 
-                        if (rule_opt[k]->attributes
-                            && strcasecmp(rule_opt[k]->attributes[0], xml_negate) == 0
-                            && strcasecmp(rule_opt[k]->values[0], "yes") == 0) {
-                            negate_status = true;
-                        }
+                        status = loadmemory(status, rule_opt[k]->content);
+                        negate_status = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_hostname) == 0) {
-                        hostname = loadmemory(hostname, rule_opt[k]->content);
 
-                        if (rule_opt[k]->attributes
-                            && strcasecmp(rule_opt[k]->attributes[0], xml_negate) == 0
-                            && strcasecmp(rule_opt[k]->values[0], "yes") == 0) {
-                            negate_hostname = true;
-                        }
+                        hostname = loadmemory(hostname, rule_opt[k]->content);
+                        negate_hostname = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_data) == 0) {
-                        data = loadmemory(data, rule_opt[k]->content);
 
-                        if (rule_opt[k]->attributes
-                            && strcasecmp(rule_opt[k]->attributes[0], xml_negate) == 0
-                            && strcasecmp(rule_opt[k]->values[0], "yes") == 0) {
-                            negate_data = true;
-                        }
+                        data = loadmemory(data, rule_opt[k]->content);
+                        negate_data = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_extra_data) == 0) {
-                        extra_data = loadmemory(extra_data, rule_opt[k]->content);
 
-                        if (rule_opt[k]->attributes
-                            && strcasecmp(rule_opt[k]->attributes[0], xml_negate) == 0
-                            && strcasecmp(rule_opt[k]->values[0], "yes") == 0) {
-                            negate_extra_data = true;
-                        }
+                        extra_data = loadmemory(extra_data, rule_opt[k]->content);
+                        negate_extra_data = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_program_name) == 0) {
-                        program_name = loadmemory(program_name, rule_opt[k]->content);
 
-                        if (rule_opt[k]->attributes
-                            && strcasecmp(rule_opt[k]->attributes[0], xml_negate) == 0
-                            && strcasecmp(rule_opt[k]->values[0], "yes") == 0) {
-                            negate_program_name = true;
-                        }
+                        program_name = loadmemory(program_name, rule_opt[k]->content);
+                        negate_program_name = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_action) == 0) {
+
                         os_calloc(1, sizeof(w_expression_t), config_ruleinfo->action);
                         config_ruleinfo->action->string = loadmemory(config_ruleinfo->action->string,
                                                                      rule_opt[k]->content);
 
-                        if (rule_opt[k]->attributes
-                            && strcasecmp(rule_opt[k]->attributes[0], xml_negate) == 0
-                            && strcasecmp(rule_opt[k]->values[0], "yes") == 0) {
-                            config_ruleinfo->action->negate = true;
-                        } else {
-                            config_ruleinfo->action->negate = false;
-                        }
+                        config_ruleinfo->action->negate = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
                     } else if(strcasecmp(rule_opt[k]->element, xml_system_name) == 0){
-                        system_name =
-                            loadmemory(system_name,
-                                       rule_opt[k]->content);
+
+                        system_name = loadmemory(system_name, rule_opt[k]->content);
+                        negate_system_name = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
                     } else if(strcasecmp(rule_opt[k]->element, xml_protocol) == 0){
-                        protocol = loadmemory(protocol, rule_opt[k]->content);
 
-                        if (rule_opt[k]->attributes
-                            && strcasecmp(rule_opt[k]->attributes[0], xml_negate) == 0
-                            && strcasecmp(rule_opt[k]->values[0], "yes") == 0) {
-                            negate_protocol = true;
-                        }
+                        protocol = loadmemory(protocol, rule_opt[k]->content);
+                        negate_protocol = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_location) == 0) {
-                        location = loadmemory(location, rule_opt[k]->content);
 
-                        if (rule_opt[k]->attributes
-                            && strcasecmp(rule_opt[k]->attributes[0], xml_negate) == 0
-                            && strcasecmp(rule_opt[k]->values[0], "yes") == 0) {
-                            negate_location = true;
-                        }
+                        location = loadmemory(location, rule_opt[k]->content);
+                        negate_location = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_field) == 0) {
                         if (rule_opt[k]->attributes && rule_opt[k]->attributes[0]) {
@@ -812,13 +740,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                             goto cleanup;
                         }
 
-                        if (rule_opt[k]->attributes
-                            && strcasecmp(rule_opt[k]->attributes[0], xml_negate) == 0
-                            && strcasecmp(rule_opt[k]->values[0], "yes") == 0) {
-                            config_ruleinfo->fields[ifield]->negate = true;
-                        } else {
-                            config_ruleinfo->fields[ifield]->negate = false;
-                        }
+                        config_ruleinfo->fields[ifield]->negate = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
                         ifield++;
 
@@ -939,13 +861,9 @@ int Rules_OP_ReadRules(const char *rulefile)
                         /* xml_list eval is done */
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_url) == 0) {
-                        url = loadmemory(url, rule_opt[k]->content);
 
-                        if (rule_opt[k]->attributes
-                            && strcasecmp(rule_opt[k]->attributes[0], xml_negate) == 0
-                            && strcasecmp(rule_opt[k]->values[0], "yes") == 0) {
-                            negate_url = true;
-                        }
+                        url = loadmemory(url, rule_opt[k]->content);
+                        negate_url = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_compiled) == 0) {
                         int it_id = 0;
@@ -1758,6 +1676,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                 /* Adding in srcgeoip */
                 if(srcgeoip) {
                     w_calloc_expression_t(&config_ruleinfo->srcgeoip, EXP_TYPE_OSMATCH);
+                    config_ruleinfo->srcgeoip->negate = negate_srcgeoip;
 
                     if(!OSMatch_Compile(srcgeoip, config_ruleinfo->srcgeoip->match, 0)) {
                         merror(REGEX_COMPILE, srcgeoip, config_ruleinfo->srcgeoip->match->error);
@@ -1770,6 +1689,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                 /* Adding in dstgeoip */
                 if(dstgeoip) {
                     w_calloc_expression_t(&config_ruleinfo->dstgeoip, EXP_TYPE_OSMATCH);
+                    config_ruleinfo->dstgeoip->negate = negate_dstgeoip;
 
                     if(!OSMatch_Compile(dstgeoip, config_ruleinfo->dstgeoip->match, 0)) {
                         merror(REGEX_COMPILE, dstgeoip, config_ruleinfo->dstgeoip->match->error);
@@ -1852,6 +1772,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                 /* Add system_name */
                 if(system_name){
                     w_calloc_expression_t(&config_ruleinfo->system_name, EXP_TYPE_OSMATCH);
+                    config_ruleinfo->system_name->negate = negate_system_name;
 
                     if(!OSMatch_Compile(system_name, config_ruleinfo->system_name->match, 0)){
                         merror(REGEX_COMPILE, system_name, config_ruleinfo->system_name->match->error);
@@ -2555,4 +2476,33 @@ static int doesRuleExist(int sid, RuleNode *r_node)
     }
 
     return (0);
+}
+
+
+bool w_check_attr_negate(xml_node *node, int rule_id) {
+
+    const char *xml_negate = "negate";
+
+    if (!node->attributes) {
+        return false;
+    }
+
+    for(int i = 0; node->attributes[i]; i++) {
+        if (strcasecmp(node->attributes[i], xml_negate) == 0) {
+
+            if (strcasecmp(node->values[i], "yes") == 0) {
+                return true;
+            }
+            else if (strcasecmp(node->values[i], "no") == 0) {
+                return false;
+            }
+            else {
+                mwarn(ANALYSISD_INV_VALUE_RULE, node->values[0],
+                    node->attributes[0], rule_id);
+                return false;
+            }
+        }
+    }
+
+    return false;
 }
