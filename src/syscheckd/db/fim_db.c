@@ -17,8 +17,6 @@
 #define static
 #endif
 
-char **fim_db_decode_string_array(sqlite3_stmt *stmt);
-
 const char *SQL_STMT[] = {
     // Files
 #ifdef WIN32
@@ -76,7 +74,7 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_SET_REG_DATA_SCANNED] = "UPDATE registry_data SET scanned = 1 WHERE name = ? AND key_id = ?;",
     [FIMDB_STMT_SET_REG_KEY_SCANNED] = "UPDATE registry_key SET scanned = 1 WHERE path = ? and arch = ?;",
     [FIMDB_STMT_GET_REG_KEY_ROWID] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, scanned, last_event, checksum FROM registry_key WHERE id = ?;",
-    [FIMDB_STMT_GET_REG_DATA_ROWID] = "SELECT key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, scanned, last_event, checksum FROM registry_data WHERE key_id = ?;",
+    [FIMDB_STMT_GET_REG_DATA_ROWID] = "SELECT key_id || ' ' || name FROM registry_data WHERE key_id = ?;",
 #endif
     [FIMDB_STMT_GET_REG_PATH_RANGE] = "SELECT path, checksum FROM registry_view WHERE path BETWEEN ? and ? ORDER BY path;",
     [FIMDB_STMT_GET_REG_LAST_PATH] = "SELECT path FROM registry_view ORDER BY path DESC LIMIT 1;",
@@ -110,7 +108,7 @@ fdb_t *fim_db_init(int storage) {
     }
 
     char *error;
-    sqlite3_exec(fim->db, "PRAGMA synchronous = OFF", NULL, NULL, &error);
+    sqlite3_exec(fim->db, "PRAGMA synchronous = OFF; PRAGMA foreign_keys = ON;", NULL, NULL, &error);
 
     if (error) {
         merror("SQL error turning off synchronous mode: %s", error);
@@ -482,7 +480,7 @@ void fim_db_callback_save_string(__attribute__((unused))fdb_t * fim_sql, const c
 
     if (storage == FIM_DB_DISK) { // disk storage enabled
         if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", base) != (strlen(base) + sizeof(char))) {
-            merror("%s - %s", str, strerror(errno));
+            merror("Can't save entry: %s %s", str, strerror(errno));
             free(base);
             return;
         }
@@ -513,13 +511,14 @@ void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry
         os_strdup(base, write_buffer);
         line_length = strlen(write_buffer);
     } else {
-        os_calloc(MAX_DIR_SIZE, sizeof(char), write_buffer);
-        line_length = snprintf(write_buffer, MAX_DIR_SIZE, "%d %s", entry->registry_entry.key->arch, base);
+        line_length = snprintf(NULL, 0, "%d %s", entry->registry_entry.key->arch, base);
+        os_calloc(line_length + 1, sizeof(char), write_buffer);
+        snprintf(write_buffer, line_length + 1, "%d %s", entry->registry_entry.key->arch, base);
     }
 
     if (storage == FIM_DB_DISK) { // disk storage enabled
         if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", write_buffer) != (line_length + sizeof(char))) {
-            merror("%s - %s", path, strerror(errno));
+            merror("Can't save entry: %s %s", path, strerror(errno));
             goto end;
         }
 
@@ -570,72 +569,50 @@ int fim_db_process_read_file(fdb_t *fim_sql,
                              void *alert,
                              void *mode,
                              void *w_evt) {
-    char line[PATH_MAX + 1];
-    char *path = NULL;
+    char *read_line = NULL;
 #ifdef WIN32
     char *split = NULL;
 #endif
     int i = 0;
 
-    if (storage == FIM_DB_DISK) {
-        fseek(file->fd, SEEK_SET, 0);
-    }
-
     do {
-        if (storage == FIM_DB_DISK) {
-            // fgets() adds \n(newline) to the end of the string,
-            // so it must be removed.
-            if (fgets(line, sizeof(line), file->fd)) {
-                size_t len = strlen(line);
-
-                if (len > 2 && line[len - 1] == '\n') {
-                    line[len - 1] = '\0';
-                }
-                else {
-                    merror("Temporary path file '%s' is corrupt: missing line end.", file->path);
-                    continue;
-                }
-
-                path = wstr_unescape_json(line);
-            }
-        }
-        else {
-            path = wstr_unescape_json((char *) W_Vector_get(file->list, i));
+        if (fim_db_read_line_from_file(file, storage, i, &read_line) == -1) {
+            return FIMDB_ERR;
         }
 
-        if (path) {
-            w_mutex_lock(mutex);
-            fim_entry *entry;
+        w_mutex_lock(mutex);
+        fim_entry *entry = NULL;
 
 #ifndef WIN32
-            entry = fim_db_get_path(fim_sql, path);
+        entry = fim_db_get_path(fim_sql, read_line);
 #else
-            if (type == FIM_TYPE_FILE) {
-                entry = fim_db_get_path(fim_sql, path);
+        if (type == FIM_TYPE_FILE) {
+            entry = fim_db_get_path(fim_sql, read_line);
+        } else {
+            unsigned int arch =  strtoul(read_line, &split, 10);
+            if (split == NULL || *split != ' ') {
+                merror("Temporary path file '%s' is corrupt: Wrong format", file->path);
             } else {
                 os_calloc(1, sizeof(fim_entry), entry);
-                unsigned int arch =  strtoul(line, &split, 10);
-                if (*split != ' ') {
-                    os_free(path);
-                    free_entry(entry);
-                    merror("Temporary path file '%s' is corrupt: Wrong format", file->path);
-                    continue;
-                }
-                split++;
                 entry->type = FIM_TYPE_REGISTRY;
-                entry->registry_entry.key = fim_db_get_registry_key(fim_sql, split, arch);
+
+                entry->registry_entry.key = fim_db_get_registry_key(fim_sql, (split + 1), arch);
+                if (entry->registry_entry.key == NULL) {
+                    free_entry(entry);
+                    entry = NULL;
+                }
             }
+        }
 #endif
 
-            w_mutex_unlock(mutex);
+        w_mutex_unlock(mutex);
 
-            if (entry != NULL) {
-                callback(fim_sql, entry, mutex, alert, mode, w_evt);
-                free_entry(entry);
-            }
-
-            os_free(path);
+        if (entry != NULL) {
+            callback(fim_sql, entry, mutex, alert, mode, w_evt);
+            free_entry(entry);
         }
+
+        os_free(read_line);
 
         i++;
     } while (i < file->elements);
@@ -870,18 +847,17 @@ int fim_db_get_path_range(fdb_t *fim_sql,
     return ret;
 }
 
-char *fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it) {
-    char *retval = NULL;
+int fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **buffer) {
     char line[OS_MAXSTR];
 
     if (it == file->elements) {
-        return NULL;
+        return 1;
     }
 
     if (storage == FIM_DB_DISK) {
         if (it == 0 && fseek(file->fd, SEEK_SET, 0) != 0) {
             merror("Failed fseek in %s", file->path);
-            return NULL;
+            return -1;
         }
 
         // fgets() adds \n(newline) to the end of the string,
@@ -894,18 +870,17 @@ char *fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it) {
             }
             else {
                 merror("Temporary path file '%s' is corrupt: missing line end.", file->path);
-                return NULL;
+                return 0;
             }
 
-            retval = wstr_unescape_json(line);
+            *buffer = wstr_unescape_json(line);
         }
     } else {
         if (it > file->list->size) {
             merror("Attempted to retrieve an out of bounds line.");
-            return NULL;
+            return 1;
         }
-        retval = wstr_unescape_json((char *) W_Vector_get(file->list, it));
+        *buffer = wstr_unescape_json((char *) W_Vector_get(file->list, it));
     }
-
-    return retval;
+    return 0;
 }

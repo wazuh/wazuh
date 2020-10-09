@@ -452,18 +452,8 @@ void fim_registry_free_key(fim_registry_key *key) {
     if (key) {
         os_free(key->path);
         os_free(key->perm);
-
-        // UID and GID need to be freed with the LocalFree function according to ConvertSidToStringSid documentation
-        if (key->uid) {
-            LocalFree(key->uid);
-            key->uid = NULL;
-        }
-
-        if (key->gid) {
-            LocalFree(key->gid);
-            key->gid = NULL;
-        }
-
+        os_free(key->uid);
+        os_free(key->gid);
         os_free(key->user_name);
         os_free(key->group_name);
         free(key);
@@ -578,12 +568,12 @@ void fim_registry_process_key_delete_event(fdb_t *fim_sql,
     }
 
     w_mutex_lock(mutex);
-    result = fim_db_get_values_from_registry_key(fim_sql, &file, FIM_DB_DISK, data->registry_entry.key->id);
+    result = fim_db_get_values_from_registry_key(fim_sql, &file, syscheck.database_store, data->registry_entry.key->id);
     w_mutex_unlock(mutex);
 
     if (result == FIMDB_OK && file && file->elements) {
         fim_db_process_read_registry_data_file(fim_sql, file, mutex, fim_registry_process_value_delete_event,
-                                               FIM_DB_DISK, _alert, _ev_mode, _w_evt);
+                                               syscheck.database_store, _alert, _ev_mode, _w_evt);
     }
 
     w_mutex_lock(mutex);
@@ -604,26 +594,27 @@ void fim_registry_process_unscanned_entries() {
     int result;
 
     w_mutex_lock(&syscheck.fim_registry_mutex);
-    result = fim_db_get_registry_keys_not_scanned(syscheck.database, &file, FIM_DB_DISK);
+    result = fim_db_get_registry_keys_not_scanned(syscheck.database, &file, syscheck.database_store);
     w_mutex_unlock(&syscheck.fim_registry_mutex);
 
     if (result != FIMDB_OK) {
         mwarn(FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
     } else if (file && file->elements) {
         fim_db_process_read_file(syscheck.database, file, FIM_TYPE_REGISTRY, &syscheck.fim_registry_mutex,
-                                 fim_registry_process_key_delete_event, FIM_DB_DISK, &_base_line, &event_mode, NULL);
+                                 fim_registry_process_key_delete_event, syscheck.database_store, &_base_line,
+                                 &event_mode, NULL);
     }
 
     w_mutex_lock(&syscheck.fim_registry_mutex);
-    result = fim_db_get_registry_data_not_scanned(syscheck.database, &file, FIM_DB_DISK);
+    result = fim_db_get_registry_data_not_scanned(syscheck.database, &file, syscheck.database_store);
     w_mutex_unlock(&syscheck.fim_registry_mutex);
 
     if (result != FIMDB_OK) {
         mwarn(FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
     } else if (file && file->elements) {
         fim_db_process_read_registry_data_file(syscheck.database, file, &syscheck.fim_registry_mutex,
-                                               fim_registry_process_value_delete_event, FIM_DB_DISK, &_base_line,
-                                               &event_mode, NULL);
+                                               fim_registry_process_value_delete_event, syscheck.database_store,
+                                               &_base_line, &event_mode, NULL);
     }
 }
 
@@ -674,7 +665,7 @@ void fim_registry_process_value_event(fim_entry *new,
     }
 
     json_event = fim_registry_event(new, saved, configuration, mode,
-                                    saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFIED, NULL, diff);
+                                    saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFICATION, NULL, diff);
 
     if (json_event) {
         if (fim_db_insert_registry_data(syscheck.database, new->registry_entry.value, new->registry_entry.key->id) !=
@@ -765,8 +756,14 @@ void fim_read_values(HKEY key_handle,
  * @param sub_key A string holding the path to the key to scan, excluding the root key part of the path.
  * @param arch An integer specifying the bit count of the register to scan, must be ARCH_32BIT or ARCH_64BIT.
  * @param mode A value specifying if the event has been triggered in scheduled, realtime or whodata mode.
+ * @param parent_configuration A pointer to the configuration of this key's "parent".
  */
-void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_key, int arch, fim_event_mode mode) {
+void fim_open_key(HKEY root_key_handle,
+                  const char *full_key,
+                  const char *sub_key,
+                  int arch,
+                  fim_event_mode mode,
+                  registry *parent_configuration) {
     HKEY current_key_handle = NULL;
     REGSAM access_rights;
     DWORD sub_key_count = 0;
@@ -782,6 +779,11 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
 
     configuration = fim_registry_configuration(full_key, arch);
     if (configuration == NULL) {
+        return;
+    }
+
+    if (mode == FIM_SCHEDULED && parent_configuration != NULL && parent_configuration != configuration) {
+        // If a more specific configuration is available in scheduled mode, we will scan this registry later.
         return;
     }
 
@@ -823,7 +825,7 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
         }
 
         /* Open sub_key */
-        fim_open_key(root_key_handle, new_full_key, new_sub_key, arch, mode);
+        fim_open_key(root_key_handle, new_full_key, new_sub_key, arch, mode, configuration);
     }
     // Done scanning sub_keys, trigger an alert on the current key if required.
     new.type = FIM_TYPE_REGISTRY;
@@ -906,7 +908,8 @@ void fim_registry_scan() {
             *syscheck.registry[i].entry = '\0';
             continue;
         }
-        fim_open_key(root_key_handle, syscheck.registry[i].entry, sub_key, syscheck.registry[i].arch, FIM_SCHEDULED);
+        fim_open_key(root_key_handle, syscheck.registry[i].entry, sub_key, syscheck.registry[i].arch, FIM_SCHEDULED,
+                     NULL);
     }
 
     fim_registry_process_unscanned_entries();

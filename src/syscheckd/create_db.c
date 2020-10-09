@@ -1148,11 +1148,7 @@ void free_file_data(fim_file_data * data) {
         os_free(data->attributes);
     }
     if (data->uid) {
-#ifndef WIN32
         os_free(data->uid);
-#else
-        LocalFree(data->uid);
-#endif
     }
     if (data->gid) {
         os_free(data->gid);

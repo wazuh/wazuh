@@ -349,6 +349,14 @@ void fim_db_callback_calculate_checksum(fdb_t *fim_sql, char *checksum, int stor
 void fim_db_bind_range(fdb_t *fim_sql, int index, const char *start, const char *top);
 
 /**
+ * @brief Decode a single string from the executed sqlite3 statement.
+ *
+ * @param stmt A sqlite3_stmt that has just been stepped.
+ * @return A string with the query result, the caller is responsible of deallocating it using free. NULL on error.
+ */
+char *fim_db_decode_string(sqlite3_stmt *stmt);
+
+/**
  * @brief Get the last/first row from file_entry.
  *
  * @param fim_sql FIM database struct.
@@ -387,9 +395,15 @@ int fim_db_get_data_checksum(fdb_t *fim_sql, fim_type type, void *arg);
  * @param file A fim_tmp_file pointer from which to read the line.
  * @param storage Type of storage (memory or disk).
  * @param it The current line number to be read.
+ * @param buffer Buffer where the line will be saved.
  *
- * @return A string holding the read line, NULL on error.
+ * @retval 0
+ * Line readed successfuly
+ * @retval 1
+ * End of file
+ * @retval -1
+ * Fail at fseek
  */
-char *fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it);
+int fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **buffer);
 
 #endif /* FIM_DB_COMMON_H */
