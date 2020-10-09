@@ -682,12 +682,12 @@ class AuthenticationManager:
         """
         try:
             if user_id > max_id_reserved:
-                if self.session.query(User).filter_by(id=user_id).first():
-                    self.session.delete(self.session.query(User).filter_by(id=user_id).first())
-                    self.session.commit()
-                    return True
-                else:
+                user = self.session.query(User).filter_by(id=user_id).first()
+                if user is None:
                     return False
+                self.session.delete(user)
+                self.session.commit()
+                return True
             return SecurityError.ADMIN_RESOURCES
         except UnmappedInstanceError:
             # User already deleted
@@ -878,7 +878,10 @@ class RolesManager:
         """
         try:
             if int(role_id) > max_id_reserved:
-                self.session.delete(self.session.query(Roles).filter_by(id=role_id).first())
+                role = self.session.query(Roles).filter_by(id=role_id).first()
+                if role is None:
+                    return False
+                self.session.delete(role)
                 self.session.commit()
                 return True
             return SecurityError.ADMIN_RESOURCES
@@ -1071,7 +1074,10 @@ class RulesManager:
         """
         try:
             if rule_id not in required_rules:
-                self.session.delete(self.session.query(Rules).filter_by(id=rule_id).first())
+                rule = self.session.query(Rules).filter_by(id=rule_id).first()
+                if rule is None:
+                    return False
+                self.session.delete(rule)
                 self.session.commit()
                 return True
             return SecurityError.ADMIN_RESOURCES
@@ -1295,7 +1301,10 @@ class PoliciesManager:
         """
         try:
             if int(policy_id) > max_id_reserved:
-                self.session.delete(self.session.query(Policies).filter_by(id=policy_id).first())
+                policy = self.session.query(Rules).filter_by(id=policy_id).first()
+                if policy is None:
+                    return False
+                self.session.delete(policy)
                 self.session.commit()
                 return True
             return SecurityError.ADMIN_RESOURCES
