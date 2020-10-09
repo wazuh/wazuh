@@ -367,7 +367,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
     # GET /syscheck/000?limit=1&select=wrongparam
   - name: Try to get syscheck scan results for agent 000 using an invalid select parameter
@@ -380,7 +380,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1724
+        error: 1724
 
     # GET /syscheck/000?pretty=false&wait_for_complete=true&offset=0&select=uname%2Cperm&distinct=true
   - name: Try to get syscheck scan results for agent 000 using distinct parameter
@@ -892,7 +892,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
     # GET /syscheck/002?limit=1&select=wrongparam
   - name: Try to get syscheck scan results for agent 002 using an invalid select parameter
@@ -905,7 +905,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1724
+        error: 1724
 
 ---
 # Another GET /syscheck/{agent_id} test to parametrize values for sort and select parameters
