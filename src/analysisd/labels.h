@@ -22,6 +22,9 @@ typedef struct wlabel_data_t {
 /* Initialize label cache */
 int labels_init();
 
+/* Finalize label cache */
+void labels_finalize();
+
 /**
  * @brief Finds the label array of an agent that generated an event.
  * 
