@@ -657,7 +657,7 @@ class AuthenticationManager:
         -------
         True if the user has been delete successfully. False otherwise
         """
-        if int(user_id) in admin_user_ids:
+        if int(user_id) <= max_id_reserved:
             return SecurityError.ADMIN_RESOURCES
 
         try:
@@ -838,7 +838,7 @@ class RolesManager:
         :return: True -> Success | False -> Failure
         """
         try:
-            if int(role_id) not in admin_role_ids:
+            if int(role_id) > admin_role_ids:
                 # If the role does not exist we rollback the changes
                 if self.session.query(Roles).filter_by(id=role_id).first() is None:
                     return False
@@ -1594,8 +1594,7 @@ class UserRolesManager:
             if int(role_id) not in admin_role_ids:
                 users = self.session.query(Roles).filter_by(id=role_id).first().users
                 for user in users:
-                    if user.id not in admin_user_ids:
-                        self.remove_user_in_role(user_id=user.id, role_id=role_id)
+                    self.remove_user_in_role(user_id=user.id, role_id=role_id)
                 return True
         except (IntegrityError, TypeError):
             self.session.rollback()
@@ -1855,8 +1854,7 @@ class RolesPoliciesManager:
             if int(role_id) not in admin_role_ids:
                 policies = self.session.query(Roles).filter_by(id=role_id).first().policies
                 for policy in policies:
-                    if policy.id not in admin_policy_ids:
-                        self.remove_policy_in_role(role_id=role_id, policy_id=policy.id)
+                    self.remove_policy_in_role(role_id=role_id, policy_id=policy.id)
                 return True
         except (IntegrityError, TypeError):
             self.session.rollback()
@@ -1872,8 +1870,7 @@ class RolesPoliciesManager:
             if int(policy_id) not in admin_policy_ids:
                 roles = self.session.query(Policies).filter_by(id=policy_id).first().roles
                 for rol in roles:
-                    if rol.id not in admin_role_ids:
-                        self.remove_policy_in_role(role_id=rol.id, policy_id=policy_id)
+                    self.remove_policy_in_role(role_id=rol.id, policy_id=policy_id)
                 return True
         except (IntegrityError, TypeError):
             self.session.rollback()
