@@ -66,10 +66,21 @@ w_linked_queue_node_t *linked_queue_push_ex(w_linked_queue_t * queue, void * dat
 
 void linked_queue_unlink_and_push_node(w_linked_queue_t * queue, w_linked_queue_node_t *node) {
     w_mutex_lock(&queue->mutex);
-    node->prev->next = node->next;
-    node->next->prev = node->prev;
+    if (node->next) {
+        node->next->prev = node->prev;
+    } else {
+        // Already at the correct spot
+        w_mutex_unlock(&queue->mutex); 
+        return;
+    }
+    if (node->prev) {
+        node->prev->next = node->next;
+    } else {
+        queue->first = node->next;
+    }
     node->prev = NULL;
     node->next = NULL;
+    queue->elements--;
     linked_queue_append_node(queue, node);
     w_mutex_unlock(&queue->mutex); 
 }

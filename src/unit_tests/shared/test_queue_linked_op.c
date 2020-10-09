@@ -146,7 +146,7 @@ void test_linked_pop_ex(void **state) {
     os_free(data);
 }
 
-void test_linked_queue_unlink_and_push(void **state) {
+void test_linked_queue_unlink_and_push_mid(void **state) {
     w_linked_queue_t *queue = *state;
     int *ptr, *ptr2, *ptr3;
     ptr = malloc(sizeof(int));
@@ -161,12 +161,67 @@ void test_linked_queue_unlink_and_push(void **state) {
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
     linked_queue_unlink_and_push_node(queue, node2);
+    assert_int_equal(3, queue->elements);
     int *ret = linked_queue_pop(queue);
     assert_ptr_equal(ptr, ret);
     ret = linked_queue_pop(queue);
     assert_ptr_equal(ptr3, ret);
     ret = linked_queue_pop(queue);
     assert_ptr_equal(ptr2, ret);
+    os_free(ptr);
+    os_free(ptr2);
+    os_free(ptr3);
+}
+
+void test_linked_queue_unlink_and_push_start(void **state) {
+    w_linked_queue_t *queue = *state;
+    int *ptr, *ptr2, *ptr3;
+    ptr = malloc(sizeof(int));
+    *ptr = 1;
+    w_linked_queue_node_t *node1 = linked_queue_push(queue, ptr);
+    ptr2 = malloc(sizeof(int));
+    *ptr2 = 2;
+    w_linked_queue_node_t *node2 = linked_queue_push(queue, ptr2);
+    ptr3 = malloc(sizeof(int));
+    *ptr3 = 3;
+    w_linked_queue_node_t *node3 = linked_queue_push(queue, ptr3);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    linked_queue_unlink_and_push_node(queue, node1);
+    assert_int_equal(3, queue->elements);
+    int *ret = linked_queue_pop(queue);
+    assert_ptr_equal(ptr2, ret);
+    ret = linked_queue_pop(queue);
+    assert_ptr_equal(ptr3, ret);
+    ret = linked_queue_pop(queue);
+    assert_ptr_equal(ptr, ret);
+    os_free(ptr);
+    os_free(ptr2);
+    os_free(ptr3);
+}
+
+void test_linked_queue_unlink_and_push_end(void **state) {
+    w_linked_queue_t *queue = *state;
+    int *ptr, *ptr2, *ptr3;
+    ptr = malloc(sizeof(int));
+    *ptr = 1;
+    w_linked_queue_node_t *node1 = linked_queue_push(queue, ptr);
+    ptr2 = malloc(sizeof(int));
+    *ptr2 = 2;
+    w_linked_queue_node_t *node2 = linked_queue_push(queue, ptr2);
+    ptr3 = malloc(sizeof(int));
+    *ptr3 = 3;
+    w_linked_queue_node_t *node3 = linked_queue_push(queue, ptr3);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    linked_queue_unlink_and_push_node(queue, node3);
+    assert_int_equal(3, queue->elements);
+    int *ret = linked_queue_pop(queue);
+    assert_ptr_equal(ptr, ret);
+    ret = linked_queue_pop(queue);
+    assert_ptr_equal(ptr2, ret);
+    ret = linked_queue_pop(queue);
+    assert_ptr_equal(ptr3, ret);
     os_free(ptr);
     os_free(ptr2);
     os_free(ptr3);
@@ -179,7 +234,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_linked_pop_empty, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_linked_pop, setup_queue_with_values, teardown_queue),
         cmocka_unit_test_setup_teardown(test_linked_pop_ex, setup_queue_with_values, teardown_queue),
-        cmocka_unit_test_setup_teardown(test_linked_queue_unlink_and_push, setup_queue, teardown_queue),
+        cmocka_unit_test_setup_teardown(test_linked_queue_unlink_and_push_mid, setup_queue, teardown_queue),
+        cmocka_unit_test_setup_teardown(test_linked_queue_unlink_and_push_start, setup_queue, teardown_queue),
+        cmocka_unit_test_setup_teardown(test_linked_queue_unlink_and_push_end, setup_queue, teardown_queue),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
