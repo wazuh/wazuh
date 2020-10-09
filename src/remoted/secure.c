@@ -341,7 +341,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
             return;
         }
-    } else if (strcmp(buffer, "#ping") == 0) {
+    } else if (strncmp(buffer, "#ping", 5) == 0) {
             int retval = 0;
             char *msg = "#pong";
             ssize_t msg_size = strlen(msg);
