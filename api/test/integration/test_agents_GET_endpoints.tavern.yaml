@@ -1627,7 +1627,7 @@ stages:
     response: &resource_not_found
       status_code: 404
       json:
-        code: 1701
+        error: 1701
 
   - name: Try to show config of an invalid agent
     request:
@@ -1923,7 +1923,7 @@ stages:
       status_code: 400 # /groups now uses WazuhDBQuery and SQLite cannot handle too large integers
       json:
         detail: !anystr
-        code: 2003
+        error: 2003
 
   - name: Try show groups with limit 0
     request:
@@ -1988,7 +1988,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
   - name: Search
     request:
@@ -2155,7 +2155,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 2003
+        error: 2003
 
   - name: Try show agents with limit 0
     request:
@@ -2198,7 +2198,7 @@ stages:
     response: &resource_not_found_group
       status_code: 404
       json:
-        code: 1710
+        error: 1710
 
   - name: Params, invalid group name (not alphanumeric)
     request:
@@ -2240,7 +2240,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
   - name: Search
     request:
@@ -2326,7 +2326,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1724
+        error: 1724
 
   - name: Try show agents with not allowed selector (invalid character)
     request:
@@ -2411,7 +2411,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1408
+        error: 1408
 
   - name: Try show agents with bad query (invalid character)
     request:
@@ -2799,7 +2799,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
   - name: Search
     request:
@@ -3044,7 +3044,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1724
+        error: 1724
 
 ---
 test_name: GET /agents/no_group
@@ -3117,7 +3117,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 2003
+        error: 2003
 
   - name: Try show agents with limit 0
     request:
@@ -3176,7 +3176,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
   - name: Search
     request:
@@ -3226,7 +3226,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1408
+        error: 1408
 
   - name: Try show agents with bad query (invalid character)
     request:
@@ -3297,7 +3297,6 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 2
         sort: -id
     response:
       status_code: 200
@@ -3306,6 +3305,10 @@ stages:
           affected_items:
             - id: '010'
             - id: '009'
+            - id: '008'
+            - id: '007'
+            - id: '006'
+            - id: '005'
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -3359,7 +3362,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 2003
+        error: 2003
 
   - name: Try show agents with limit 0
     request:
@@ -3401,7 +3404,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
   - name: Filter agents by query
     request:
@@ -3414,7 +3417,12 @@ stages:
       status_code: 200
       json:
         data:
-          <<: *outdated_agents_response
+          affected_items:
+            - id: '010'
+            - id: '009'
+          failed_items: [ ]
+          total_affected_items: 2
+          total_failed_items: 0
 
   - name: Filter agents by query
     request:
@@ -3428,11 +3436,12 @@ stages:
       json:
         data:
           affected_items:
+            - id: '006'
+            - id: '007'
+            - id: '008'
             - id: '010'
-              name: !anystr
-              version: !anystr
           failed_items: []
-          total_affected_items: 1
+          total_affected_items: 4
           total_failed_items: 0
 
   - name: Try show agents with bad query
@@ -3444,7 +3453,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1408
+        error: 1408
 
   - name: Try show agents with bad query (invalid character)
     request:
@@ -3536,7 +3545,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1724
+        error: 1724
 
   - name: Get the different combinations for os.platform, search
     request:
@@ -3574,7 +3583,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1724
+        error: 1724
 
   - name: Pagination
     request:
@@ -3624,7 +3633,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 2003
+        error: 2003
 
   - name: Try show agents with limit 0
     request:
@@ -3677,7 +3686,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
   - name: Search
     request:
@@ -3718,7 +3727,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1408
+        error: 1408
 
   - name: Try show agents with bad query (invalid character)
     request:
@@ -3855,7 +3864,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1703
+        error: 1703
 
   - name: Try get upgrade result not existing agent
     request:
@@ -3889,7 +3898,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: !anyint
+        error: !anyint
         dapi_errors: !anything
         detail: !anystr
         title: !anystr

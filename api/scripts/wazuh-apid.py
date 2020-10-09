@@ -125,7 +125,7 @@ def start(foreground, root, config_file):
                            'port': api_conf['port']
                            },
                 strict_validation=True,
-                validate_responses=True,
+                validate_responses=False,
                 pass_context_arg_name='request',
                 options={"middlewares": [response_postprocessing, set_user_name, security_middleware]})
 

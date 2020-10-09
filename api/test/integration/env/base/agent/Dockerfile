@@ -14,6 +14,7 @@ RUN /wazuh/install.sh
 
 COPY scripts/xml_parser.py /scripts/
 COPY configurations/base/agent/config/ossec.conf /scripts/xml_templates/
+COPY configurations/base/agent/config/ossec_4.x.conf /scripts/xml_templates/
 COPY configurations/base/agent/config/test.keys /var/ossec/etc/test.keys
 COPY configurations/tmp/agent/ /configuration_files/
 

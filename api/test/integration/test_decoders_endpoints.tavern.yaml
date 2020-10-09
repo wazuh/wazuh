@@ -193,7 +193,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
   - name: Show decoders using valid select
     request:
@@ -224,7 +224,7 @@ stages:
     response:
       status_code: 400
       json: &invalid_select
-        code: 1724
+        error: 1724
 
   - name: Show decoders using select (one select is invalid)
     request:
@@ -477,7 +477,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
 ---
 test_name: GET /decoders/{decoder_name}
@@ -716,7 +716,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
 ---
 test_name: GET /decoders/files
@@ -890,7 +890,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
 ---
 test_name: GET /decoders/parents
@@ -965,4 +965,4 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1503
+        error: 1503

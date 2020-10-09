@@ -340,6 +340,23 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
             return;
         }
+    } else if (strcmp(buffer, "#ping") == 0) {
+            int retval = 0;
+            char *msg = "#pong";
+            ssize_t msg_size = strlen(msg);
+
+            if (protocol == IPPROTO_UDP) {
+                retval = sendto(logr.sock, msg, msg_size, 0, (struct sockaddr *)peer_info, logr.peer_size) == msg_size ? 0 : -1;
+            } else {
+                retval = OS_SendSecureTCP(sock_client, msg_size, msg);
+            }
+
+            if (retval < 0) {
+                mwarn("Ping operation could not be delivered completely (%d)", retval);
+            }
+
+            return;
+
     } else {
         key_lock_read();
         agentid = OS_IsAllowedIP(&keys, srcip);
