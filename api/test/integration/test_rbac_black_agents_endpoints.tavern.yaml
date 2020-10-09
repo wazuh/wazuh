@@ -524,14 +524,13 @@ stages:
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
-     params:
-       limit: 1
-       sort: -id
    response:
      status_code: 200
      json:
        data:
          affected_items:
+           - id: '005'
+           - id: '007'
            - id: '009'
          failed_items: []
          total_affected_items: !anyint
