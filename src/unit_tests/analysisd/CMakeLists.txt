@@ -38,6 +38,9 @@ list(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,_merror -Wl,--w
 list(APPEND analysisd_names "test_expression")
 list(APPEND analysisd_flags "-Wl,--wrap,OS_IsValidIP")
 
+list(APPEND analysisd_names "test_rules")
+LIST(APPEND analysisd_flags "-Wl,--wrap,_mwarn")
+
 LIST(APPEND analysisd_names "test_same_different_loop")
 LIST(APPEND analysisd_flags "-W")
 
