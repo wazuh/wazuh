@@ -5,7 +5,7 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-if(${TARGET} STREQUAL "agent")
+if(${uname} STREQUAL "Darwin")
   # Tests list and flags
   list(APPEND tests_names "test_syscollector_bsd")
   list(APPEND tests_flags " ")
