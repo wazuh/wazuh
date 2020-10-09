@@ -208,6 +208,8 @@ def remove_users(user_ids):
             elif query == SecurityError.RELATIONSHIP_ERROR:
                 result.add_failed_item(id_=user_id, error=WazuhError(4025))
             elif user:
+                with TokenManager() as tm:
+                    tm.add_user_roles_rules(users={user_id})
                 result.affected_items.append(user)
                 result.total_affected_items += 1
 

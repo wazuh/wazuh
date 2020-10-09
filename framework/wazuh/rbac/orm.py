@@ -95,6 +95,9 @@ class RolesRules(_Base):
     __table_args__ = (UniqueConstraint('role_id', 'rule_id', name='role_rule'),
                       )
 
+    roles = relationship("Roles", backref="rules_associations", cascade="all,delete", passive_deletes=True)
+    rules = relationship("Rules", backref="roles_associations", cascade="all,delete", passive_deletes=True)
+
 
 # Declare relational tables
 class RolesPolicies(_Base):
@@ -118,6 +121,9 @@ class RolesPolicies(_Base):
     __table_args__ = (UniqueConstraint('role_id', 'policy_id', name='role_policy'),
                       )
 
+    roles = relationship("Roles", backref="policies_associations", cascade="all,delete", passive_deletes=True)
+    policies = relationship("Policies", backref="roles_associations", cascade="all,delete", passive_deletes=True)
+
 
 class UserRoles(_Base):
     """
@@ -139,6 +145,9 @@ class UserRoles(_Base):
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
     __table_args__ = (UniqueConstraint('user_id', 'role_id', name='user_role'),
                       )
+
+    users = relationship("User", backref="roles_associations", cascade="all,delete", passive_deletes=True)
+    roles = relationship("Roles", backref="users_associations", cascade="all,delete", passive_deletes=True)
 
 
 # Declare basic tables
@@ -219,8 +228,7 @@ class User(_Base):
     __table_args__ = (UniqueConstraint('username', name='username_restriction'),)
 
     # Relations
-    roles = relationship("Roles", secondary='user_roles',
-                         backref=backref("rolesu", cascade="all, delete", order_by=UserRoles.role_id), lazy='dynamic')
+    roles = relationship("Roles", secondary='user_roles', passive_deletes=True, cascade="all,delete", lazy="dynamic")
 
     def __init__(self, username, password, allow_run_as=False, user_id=None):
         self.id = user_id
@@ -262,7 +270,7 @@ class User(_Base):
         with UserRolesManager() as urm:
             return {'id': self.id, 'username': self.username,
                     'allow_run_as': self.allow_run_as,
-                    'roles': [role.id for role in urm.get_all_roles_from_user(user_id=str(self.id))]}
+                    'roles': [role.id for role in urm.get_all_roles_from_user(user_id=self.id)]}
 
 
 class Roles(_Base):
@@ -283,12 +291,10 @@ class Roles(_Base):
     __table_args__ = (UniqueConstraint('name', name='name_role'),)
 
     # Relations
-    policies = relationship("Policies", secondary='roles_policies',
-                            backref=backref("policiess", cascade="all, delete", order_by=id), lazy='dynamic')
-    users = relationship("User", secondary='user_roles',
-                         backref=backref("userss", cascade="all, delete", order_by=UserRoles.user_id), lazy='dynamic')
-    rules = relationship("Rules", secondary='roles_rules',
-                         backref=backref("ruless", cascade="all, delete", order_by=RolesRules.id), lazy='dynamic')
+    policies = relationship("Policies", secondary='roles_policies', passive_deletes=True, cascade="all,delete",
+                            lazy="dynamic")
+    users = relationship("User", secondary='user_roles', passive_deletes=True, cascade="all,delete", lazy="dynamic")
+    rules = relationship("Rules", secondary='roles_rules', passive_deletes=True, cascade="all,delete", lazy="dynamic")
 
     def __init__(self, name, role_id=None):
         self.id = role_id
@@ -340,8 +346,7 @@ class Rules(_Base):
     __table_args__ = (UniqueConstraint('name', name='rule_name'),)
 
     # Relations
-    roles = relationship("Roles", secondary='roles_rules',
-                         backref=backref("ruless", cascade="all, delete", order_by=id), lazy='dynamic')
+    roles = relationship("Roles", secondary='roles_rules', passive_deletes=True, cascade="all,delete", lazy="dynamic")
 
     def __init__(self, name, rule, rule_id=None):
         self.id = rule_id
@@ -389,8 +394,8 @@ class Policies(_Base):
                       UniqueConstraint('policy', name='policy_definition'))
 
     # Relations
-    roles = relationship("Roles", secondary='roles_policies',
-                         backref=backref("roless", cascade="all, delete", order_by=id), lazy='dynamic')
+    roles = relationship("Roles", secondary='roles_policies', passive_deletes=True, cascade="all,delete",
+                         lazy="dynamic")
 
     def __init__(self, name, policy, policy_id=None):
         self.id = policy_id
@@ -678,12 +683,7 @@ class AuthenticationManager:
         try:
             if user_id > max_id_reserved:
                 if self.session.query(User).filter_by(id=user_id).first():
-                    # If the user has one or more roles associated with it, the associations will be eliminated.
-                    # with UserRolesManager() as urm:
-                    #     if not urm.remove_all_roles_in_user(user_id=user_id, atomic=False):
-                    #         return SecurityError.RELATIONSHIP_ERROR
                     self.session.delete(self.session.query(User).filter_by(id=user_id).first())
-                    # self.session.query(User).filter_by(id=user_id).delete()
                     self.session.commit()
                     return True
                 else:
@@ -878,22 +878,7 @@ class RolesManager:
         """
         try:
             if int(role_id) > max_id_reserved:
-                # If the role does not exist we rollback the changes
-                if self.session.query(Roles).filter_by(id=role_id).first() is None:
-                    return False
-                # If the role has one or more policies associated with it, the associations will be eliminated.
-                with UserRolesManager() as urm:
-                    if not urm.remove_all_users_in_role(role_id=role_id, atomic=False):
-                        return SecurityError.RELATIONSHIP_ERROR
-                with RolesPoliciesManager() as rpm:
-                    if rpm.remove_all_policies_in_role(role_id=role_id, atomic=False) is not True:
-                        return SecurityError.RELATIONSHIP_ERROR
-                # Remove all associated rules
-                with RolesRulesManager() as rrum:
-                    if not rrum.remove_all_rules_in_role(role_id=role_id, atomic=False):
-                        return SecurityError.RELATIONSHIP_ERROR
-                # Finally we delete the role
-                self.session.query(Roles).filter_by(id=role_id).delete()
+                self.session.delete(self.session.query(Roles).filter_by(id=role_id).first())
                 self.session.commit()
                 return True
             return SecurityError.ADMIN_RESOURCES
@@ -936,11 +921,9 @@ class RolesManager:
             roles = self.session.query(Roles).all()
             for role in roles:
                 if int(role.id) > max_id_reserved:
-                    with RolesPoliciesManager() as rpm:
-                        rpm.remove_all_policies_in_role(role_id=role.id)
-                    list_roles.append(int(role.id))
-                    self.session.query(Roles).filter_by(id=role.id).delete()
+                    self.session.delete(self.session.query(Roles).filter_by(id=role.id).first())
                     self.session.commit()
+                    list_roles.append(int(role.id))
             return list_roles
         except IntegrityError:
             self.session.rollback()
@@ -1063,7 +1046,7 @@ class RulesManager:
             rule_id = None
             try:
                 if check_default and \
-                        self.session.query(Policies).order_by(desc(Policies.id)
+                        self.session.query(Rules).order_by(desc(Rules.id)
                                                               ).limit(1).scalar().id < max_id_reserved:
                     rule_id = max_id_reserved + 1
             except (TypeError, AttributeError):
@@ -1088,15 +1071,7 @@ class RulesManager:
         """
         try:
             if rule_id not in required_rules:
-                # If the role does not exist we rollback the changes
-                if self.session.query(Rules).filter_by(id=rule_id).first() is None:
-                    return False
-                # If the role has one or more rules associated with it, the associations will be eliminated.
-                with RolesRulesManager() as rrum:
-                    if not rrum.remove_all_roles_in_rule(rule_id=rule_id, atomic=False):
-                        return SecurityError.RELATIONSHIP_ERROR
-                # Finally we delete the role
-                self.session.query(Rules).filter_by(id=rule_id).delete()
+                self.session.delete(self.session.query(Rules).filter_by(id=rule_id).first())
                 self.session.commit()
                 return True
             return SecurityError.ADMIN_RESOURCES
@@ -1139,11 +1114,9 @@ class RulesManager:
             rules = self.session.query(Rules).all()
             for rule in rules:
                 if int(rule.id) not in required_rules:
-                    with RolesRulesManager() as rrum:
-                        rrum.remove_all_roles_in_rule(rule_id=rule.id)
-                    list_rules.append(int(rule.id))
-                    self.session.query(Rules).filter_by(id=rule.id).delete()
+                    self.session.delete(self.session.query(Rules).filter_by(id=rule.id).first())
                     self.session.commit()
+                    list_rules.append(int(rule.id))
             return list_rules
         except IntegrityError:
             self.session.rollback()
@@ -1322,14 +1295,7 @@ class PoliciesManager:
         """
         try:
             if int(policy_id) > max_id_reserved:
-                # If there is no policy continues
-                if self.session.query(Policies).filter_by(id=policy_id).first() is None:
-                    return False
-                # If the policy has relationships with roles, it first eliminates those relationships.
-                with RolesPoliciesManager() as rpm:
-                    if not rpm.remove_all_roles_in_policy(policy_id=policy_id, atomic=False):
-                        return SecurityError.RELATIONSHIP_ERROR
-                self.session.query(Policies).filter_by(id=policy_id).delete()
+                self.session.delete(self.session.query(Policies).filter_by(id=policy_id).first())
                 self.session.commit()
                 return True
             return SecurityError.ADMIN_RESOURCES
@@ -1373,12 +1339,9 @@ class PoliciesManager:
             policies = self.session.query(Policies).all()
             for policy in policies:
                 if int(policy.id) > max_id_reserved:
-                    with RolesPoliciesManager() as rpm:
-                        if not rpm.remove_all_roles_in_policy(policy_id=policy.id, atomic=False):
-                            return SecurityError.RELATIONSHIP_ERROR
-                    list_policies.append(int(policy.id))
-                    self.session.query(Policies).filter_by(id=policy.id).delete()
+                    self.session.delete(self.session.query(Policies).filter_by(id=policy.id).first())
                     self.session.commit()
+                    list_policies.append(int(policy.id))
             return list_policies
         except IntegrityError:
             self.session.rollback()
@@ -1669,17 +1632,13 @@ class UserRolesManager:
         """
         return self.remove_role_in_user(user_id=user_id, role_id=role_id, atomic=atomic)
 
-    def remove_all_roles_in_user(self, user_id: int, atomic: bool = True):
+    def remove_all_roles_in_user(self, user_id: int):
         """Removes all relations with roles. Does not eliminate users and roles.
 
         Parameters
         ----------
         user_id : int
             ID of the user
-        atomic : bool
-            This parameter indicates if the operation is atomic. If this function is called within
-            a loop or a function composed of several operations, atomicity cannot be guaranteed.
-            And it must be the most external function that ensures it
 
         Returns
         -------
@@ -1690,23 +1649,19 @@ class UserRolesManager:
                 roles = self.session.query(User).filter_by(id=user_id).first().roles
                 for role in roles:
                     self.remove_role_in_user(user_id=user_id, role_id=role.id, atomic=False)
-                atomic and self.session.commit()
+                self.session.commit()
                 return True
         except (IntegrityError, TypeError):
             self.session.rollback()
             return False
 
-    def remove_all_users_in_role(self, role_id: int, atomic: bool = True):
+    def remove_all_users_in_role(self, role_id: int):
         """Clone of the previous function.
 
         Parameters
         ----------
         role_id : str
             ID of the role
-        atomic : bool
-            This parameter indicates if the operation is atomic. If this function is called within
-            a loop or a function composed of several operations, atomicity cannot be guaranteed.
-            And it must be the most external function that ensures it
 
         Returns
         -------
@@ -1717,14 +1672,13 @@ class UserRolesManager:
                 users = self.session.query(Roles).filter_by(id=role_id).first().users
                 for user in users:
                     self.remove_user_in_role(user_id=user.id, role_id=role_id, atomic=False)
-                atomic and self.session.commit()
+                self.session.commit()
                 return True
         except (IntegrityError, TypeError):
             self.session.rollback()
             return False
 
-    def replace_user_role(self, user_id: int, actual_role_id: int, new_role_id: int, position: int = -1,
-                          atomic: bool = True):
+    def replace_user_role(self, user_id: int, actual_role_id: int, new_role_id: int, position: int = -1):
         """Replace one existing relationship with another one.
 
         Parameters
@@ -1737,10 +1691,6 @@ class UserRolesManager:
             ID of the new role
         position : int
             Order to be applied in case of multiples roles in the same user
-        atomic : bool
-            This parameter indicates if the operation is atomic. If this function is called within
-            a loop or a function composed of several operations, atomicity cannot be guaranteed.
-            And it must be the most external function that ensures it
 
         Returns
         -------
@@ -1748,11 +1698,11 @@ class UserRolesManager:
         """
         if user_id > max_id_reserved and self.exist_user_role(user_id=user_id, role_id=actual_role_id) and \
                 self.session.query(Roles).filter_by(id=new_role_id).first() is not None:
-            if not self.remove_role_in_user(user_id=user_id, role_id=actual_role_id, atomic=False):
+            if self.remove_role_in_user(user_id=user_id, role_id=actual_role_id, atomic=False) is not True or \
+                    self.add_user_to_role(user_id=user_id, role_id=new_role_id, position=position,
+                                          atomic=False) is not True:
                 return SecurityError.RELATIONSHIP_ERROR
-            if not self.add_user_to_role(user_id=user_id, role_id=new_role_id, position=position, atomic=False):
-                return SecurityError.RELATIONSHIP_ERROR
-            atomic and self.session.commit()
+            self.session.commit()
             return True
 
         return False
@@ -2018,17 +1968,13 @@ class RolesPoliciesManager:
         """
         return self.remove_policy_in_role(role_id=role_id, policy_id=policy_id, atomic=atomic)
 
-    def remove_all_policies_in_role(self, role_id: int, atomic: bool = True):
+    def remove_all_policies_in_role(self, role_id: int):
         """Removes all relations with policies. Does not eliminate roles and policies
 
         Parameters
         ----------
         role_id : int
             ID of the role
-        atomic : bool
-            This parameter indicates if the operation is atomic. If this function is called within
-            a loop or a function composed of several operations, atomicity cannot be guaranteed.
-            And it must be the most external function that ensures it
 
         Returns
         -------
@@ -2040,23 +1986,19 @@ class RolesPoliciesManager:
                 for policy in policies:
                     if self.remove_policy_in_role(role_id=role_id, policy_id=policy.id, atomic=False) is not True:
                         return SecurityError.RELATIONSHIP_ERROR
-                atomic and self.session.commit()
+                self.session.commit()
                 return True
         except (IntegrityError, TypeError):
             self.session.rollback()
             return False
 
-    def remove_all_roles_in_policy(self, policy_id: int, atomic: bool = True):
+    def remove_all_roles_in_policy(self, policy_id: int):
         """Removes all relations with roles. Does not eliminate roles and policies
 
         Parameters
         ----------
         policy_id : int
             ID of the policy
-        atomic : bool
-            This parameter indicates if the operation is atomic. If this function is called within
-            a loop or a function composed of several operations, atomicity cannot be guaranteed.
-            And it must be the most external function that ensures it
 
         Returns
         -------
@@ -2067,13 +2009,13 @@ class RolesPoliciesManager:
                 roles = self.session.query(Policies).filter_by(id=policy_id).first().roles
                 for rol in roles:
                     self.remove_policy_in_role(role_id=rol.id, policy_id=policy_id, atomic=False)
-                atomic and self.session.commit()
+                self.session.commit()
                 return True
         except (IntegrityError, TypeError):
             self.session.rollback()
             return False
 
-    def replace_role_policy(self, role_id: int, current_policy_id: int, new_policy_id: int, atomic: bool = True):
+    def replace_role_policy(self, role_id: int, current_policy_id: int, new_policy_id: int):
         """Replace one existing relationship with another one
 
         Parameters
@@ -2084,10 +2026,6 @@ class RolesPoliciesManager:
             Current ID of the policy
         new_policy_id : int
             New ID for the specified policy id
-        atomic : bool
-            This parameter indicates if the operation is atomic. If this function is called within
-            a loop or a function composed of several operations, atomicity cannot be guaranteed.
-            And it must be the most external function that ensures it
 
         Returns
         -------
@@ -2096,11 +2034,10 @@ class RolesPoliciesManager:
         if int(role_id) > max_id_reserved and \
                 self.exist_role_policy(role_id=role_id, policy_id=current_policy_id) and \
                 self.session.query(Policies).filter_by(id=new_policy_id).first() is not None:
-            if not self.remove_policy_in_role(role_id=role_id, policy_id=current_policy_id, atomic=False):
+            if self.remove_policy_in_role(role_id=role_id, policy_id=current_policy_id, atomic=False) is not True or \
+                    self.add_policy_to_role(role_id=role_id, policy_id=new_policy_id, atomic=False) is not True:
                 return SecurityError.RELATIONSHIP_ERROR
-            if not self.add_policy_to_role(role_id=role_id, policy_id=new_policy_id, atomic=False):
-                return SecurityError.RELATIONSHIP_ERROR
-            atomic and self.session.commit()
+            self.session.commit()
             return True
 
         return False
@@ -2119,7 +2056,7 @@ class RolesRulesManager:
     all the methods needed for the roles-rules administration.
     """
 
-    def add_rule_to_role(self, rule_id: int, role_id: int):
+    def add_rule_to_role(self, rule_id: int, role_id: int, atomic: bool = True):
         """Add a relation between one specified role and one specified rule.
 
         Parameters
@@ -2128,6 +2065,10 @@ class RolesRulesManager:
             ID of the rule
         role_id : int
             ID of the role
+        atomic : bool
+            This parameter indicates if the operation is atomic. If this function is called within
+            a loop or a function composed of several operations, atomicity cannot be guaranteed.
+            And it must be the most external function that ensures it
 
         Returns
         -------
@@ -2143,7 +2084,7 @@ class RolesRulesManager:
                 return SecurityError.ROLE_NOT_EXIST
             if self.session.query(RolesRules).filter_by(rule_id=rule_id, role_id=role_id).first() is None:
                 role.rules.append(rule)
-                self.session.commit()
+                atomic and self.session.commit()
                 return True
             else:
                 return SecurityError.ALREADY_EXIST
@@ -2283,17 +2224,13 @@ class RolesRulesManager:
         """
         return self.remove_rule_in_role(rule_id=rule_id, role_id=role_id, atomic=atomic)
 
-    def remove_all_roles_in_rule(self, rule_id: int, atomic: bool = True):
+    def remove_all_roles_in_rule(self, rule_id: int):
         """Remove all relations between a rule and its roles. This does not delete the objects.
 
         Parameters
         ----------
         rule_id : int
             ID of the rule
-        atomic : bool
-            This parameter indicates if the operation is atomic. If this function is called within
-            a loop or a function composed of several operations, atomicity cannot be guaranteed.
-            And it must be the most external function that ensures it
 
         Returns
         -------
@@ -2301,26 +2238,21 @@ class RolesRulesManager:
         """
         try:
             if int(rule_id) > max_id_reserved:
-                roles = self.session.query(Rules).filter_by(id=rule_id).first().roles
-                for role in roles:
-                    self.remove_role_in_rule(rule_id=rule_id, role_id=role.id, atomic=False)
-                atomic and self.session.commit()
+                self.session.query(Rules).filter_by(id=rule_id).first().roles = list()
+                self.session.commit()
                 return True
+            return SecurityError.ADMIN_RESOURCES
         except (IntegrityError, TypeError):
             self.session.rollback()
             return False
 
-    def remove_all_rules_in_role(self, role_id: int, atomic: bool = True):
+    def remove_all_rules_in_role(self, role_id: int):
         """Remove all relations between a role and its rules. This does not delete the objects.
 
         Parameters
         ----------
         role_id : int
             ID of the role
-        atomic : bool
-            This parameter indicates if the operation is atomic. If this function is called within
-            a loop or a function composed of several operations, atomicity cannot be guaranteed.
-            And it must be the most external function that ensures it
 
         Returns
         -------
@@ -2328,10 +2260,8 @@ class RolesRulesManager:
         """
         try:
             if int(role_id) > max_id_reserved:
-                rules = self.session.query(Roles).filter_by(id=role_id).first().rules
-                for rule in rules:
-                    self.remove_rule_in_role(rule_id=rule.id, role_id=role_id, atomic=False)
-                atomic and self.session.commit()
+                self.session.query(Roles).filter_by(id=role_id).first().rules = list()
+                self.session.commit()
                 return True
         except (IntegrityError, TypeError):
             self.session.rollback()
@@ -2357,8 +2287,10 @@ class RolesRulesManager:
                 rule_id=rule_id,
                 role_id=current_role_id) \
                 and self.session.query(Roles).filter_by(id=new_role_id).first() is not None:
-            self.remove_role_in_rule(rule_id=rule_id, role_id=current_role_id)
-            self.add_rule_to_role(rule_id=rule_id, role_id=new_role_id)
+            if self.remove_role_in_rule(rule_id=rule_id, role_id=current_role_id, atomic=False) is not True or \
+                    self.add_rule_to_role(rule_id=rule_id, role_id=new_role_id, atomic=False) is not True:
+                return SecurityError.RELATIONSHIP_ERROR
+
             return True
 
         return False
