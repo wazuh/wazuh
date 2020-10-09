@@ -232,5 +232,10 @@ cJSON * wdbc_query_parse_json(int *sock, const char *query, char *response, cons
 }
 
 int wdbc_close(int sock) {
-    return (sock >= 0) ? close(sock) : 0;
+    int ret = 0;
+    if (sock >= 0) {
+        ret = close(sock);
+        sock = -1;
+    }
+    return ret;
 }
