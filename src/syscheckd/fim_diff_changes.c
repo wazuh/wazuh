@@ -509,7 +509,7 @@ diff_data *initialize_file_diff_data(const char *filename){
     strcpy(abs_diff_dir_path, DIFF_DIR_PATH);
 #endif
 
-    snprintf(buffer, PATH_MAX, "%s/local/%s", abs_diff_dir_path, diff->file_origin);
+    snprintf(buffer, PATH_MAX, "%s/local/%s", abs_diff_dir_path, path_filtered);
     os_strdup(buffer, diff->compress_folder);
 
     snprintf(buffer, PATH_MAX, "%s/last-entry.gz", diff->compress_folder);
