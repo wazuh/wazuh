@@ -97,7 +97,7 @@ int wdb_insert_agent(int id,
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
     
     switch (result) {
@@ -134,7 +134,7 @@ int wdb_insert_group(const char *name, int *sock) {
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
 
     switch (result) {
@@ -182,7 +182,7 @@ int wdb_update_agent_belongs(int id_group, int id_agent, int *sock) {
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
 
     switch (result) {
@@ -231,7 +231,7 @@ int wdb_update_agent_name(int id, const char *name, int *sock) {
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
 
     switch (result) {
@@ -305,7 +305,7 @@ int wdb_update_agent_data(agent_info_data *agent_data, int *sock) {
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
    
     switch (result) {
@@ -355,7 +355,7 @@ int wdb_update_agent_keepalive(int id, const char *sync_status, int *sock) {
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
     
     switch (result) {
@@ -420,7 +420,7 @@ int wdb_set_agent_status(int id_agent, int status, int *sock) {
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
     
     switch (result) {
@@ -481,20 +481,20 @@ int wdb_update_agent_group(int id, char *group, int *sock) {
             mdebug1("Global DB Error in the response from socket");
             mdebug2("Global DB SQL query: %s", wdbquery);
             if (!sock) {
-                wdbc_close(aux_sock);
+                wdbc_close(&aux_sock);
             }
             return OS_INVALID;
         default:
             mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
             if (!sock) {
-                wdbc_close(aux_sock);
+                wdbc_close(&aux_sock);
             }
             return OS_INVALID;
     }
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
 
     return result;
@@ -537,7 +537,7 @@ int wdb_set_agent_offset(int id, int type, long offset, int *sock) {
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
     
     switch (result) {
@@ -575,7 +575,7 @@ int wdb_set_agent_labels(int id, const char *labels, int *sock) {
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
     
     switch (result){
@@ -642,7 +642,7 @@ int* wdb_get_all_agents(bool include_manager, int *sock) {
     }
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
 
     return array;
@@ -693,7 +693,7 @@ int* wdb_get_agents_by_keepalive(const char* condition, int keepalive, bool incl
     }
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
 
     return array;
@@ -732,7 +732,7 @@ int wdb_find_agent(const char *name, const char *ip, int *sock) {
     root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
     
     if (!root) {
@@ -762,7 +762,7 @@ cJSON* wdb_get_agent_info(int id, int *sock) {
     root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
 
     if (!root) {
@@ -783,7 +783,7 @@ cJSON* wdb_get_agent_labels(int id, int *sock) {
     root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
     
     if (!root) {
@@ -806,7 +806,7 @@ char* wdb_get_agent_name(int id, int *sock) {
     root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
     
     if (!root) {
@@ -835,7 +835,7 @@ char* wdb_get_agent_group(int id, int *sock) {
     root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
     
     if (!root) {
@@ -864,7 +864,7 @@ int wdb_get_agent_status(int id_agent, int *sock) {
     root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
     
     if (!root) {
@@ -900,7 +900,7 @@ time_t wdb_get_agent_keepalive(const char *name, const char *ip, int *sock){
     root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
     
     if (!root) {
@@ -940,7 +940,7 @@ long wdb_get_agent_offset(int id, int type, int *sock) {
     root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
     
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
     
     if (!root) {
@@ -967,7 +967,7 @@ int wdb_find_group(const char *name, int *sock) {
     root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
     
     if (!root) {
@@ -999,7 +999,7 @@ int wdb_update_groups(const char *dirname, int *sock) {
     if (!root) {
         merror("Error querying Wazuh DB to update groups.");
         if (!sock) {
-            wdbc_close(aux_sock);
+            wdbc_close(&aux_sock);
         }
         return OS_INVALID;
     }
@@ -1039,7 +1039,7 @@ int wdb_update_groups(const char *dirname, int *sock) {
             if (wdb_remove_group_db((char *)array[i], query_sock) < 0) {
                 free_strarray(array);
                 if (!sock) {
-                    wdbc_close(aux_sock);
+                    wdbc_close(&aux_sock);
                 }
                 return OS_INVALID;
             }
@@ -1057,7 +1057,7 @@ int wdb_update_groups(const char *dirname, int *sock) {
     if (!(dir = opendir(dirname))) {
         merror("Couldn't open directory '%s': %s.", dirname, strerror(errno));
         if (!sock) {
-            wdbc_close(aux_sock);
+            wdbc_close(&aux_sock);
         }
         return OS_INVALID;
     }
@@ -1077,7 +1077,7 @@ int wdb_update_groups(const char *dirname, int *sock) {
     closedir(dir);
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
 
     return result;
@@ -1126,7 +1126,7 @@ int wdb_remove_agent(int id, int *sock) {
     os_free(name);
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
 
     return result;
@@ -1142,7 +1142,7 @@ int wdb_remove_group_db(const char *name, int *sock) {
     if (OS_INVALID == wdb_remove_group_from_belongs_db(name, sock?sock:&aux_sock)) {
         merror("At wdb_remove_group_from_belongs_db(): couldn't delete '%s' from 'belongs' table.", name);        
         if (!sock) {
-            wdbc_close(aux_sock);
+            wdbc_close(&aux_sock);
         }
         return OS_INVALID;
     }
@@ -1151,7 +1151,7 @@ int wdb_remove_group_db(const char *name, int *sock) {
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
     
     switch (result) {
@@ -1185,7 +1185,7 @@ int wdb_delete_agent_belongs(int id, int *sock) {
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
     
     switch (result) {
@@ -1219,7 +1219,7 @@ int wdb_remove_group_from_belongs_db(const char *name, int *sock) {
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
    
     switch (result) {
@@ -1366,7 +1366,7 @@ int wdb_update_agent_multi_group(int id, char *group, int *sock) {
 
                 if (OS_SUCCESS != wdb_update_agent_belongs(id_group, id, query_sock)) {                    
                     if (!sock) {
-                        wdbc_close(aux_sock);
+                        wdbc_close(&aux_sock);
                     }
                     return OS_INVALID;
                 }
@@ -1383,7 +1383,7 @@ int wdb_update_agent_multi_group(int id, char *group, int *sock) {
 
             if (OS_SUCCESS != wdb_update_agent_belongs(id_group, id, query_sock)) {
                 if (!sock) {
-                    wdbc_close(aux_sock);
+                    wdbc_close(&aux_sock);
                 }
                 return OS_INVALID;
             }
@@ -1391,7 +1391,7 @@ int wdb_update_agent_multi_group(int id, char *group, int *sock) {
     }
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
 
     return OS_SUCCESS;
@@ -1418,7 +1418,7 @@ int wdb_agent_belongs_first_time(int *sock){
     }
 
     if (!sock) {
-        wdbc_close(aux_sock);
+        wdbc_close(&aux_sock);
     }
 
     return OS_SUCCESS;

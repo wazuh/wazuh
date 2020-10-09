@@ -1199,7 +1199,7 @@ char **get_agents(int flag){
 
     if(!id_array){
         mdebug1("Failed getting agent's ID array.");
-        wdbc_close(sock);
+        wdbc_close(&sock);
         return (NULL);
     }
 
@@ -1247,7 +1247,7 @@ char **get_agents(int flag){
                 break;
             default:
                 mwarn("Invalid flag '%d' trying to get all agents.", flag);
-                wdbc_close(sock);
+                wdbc_close(&sock);
                 os_free(id_array);
                 return NULL;
         }
@@ -1271,7 +1271,7 @@ char **get_agents(int flag){
         array_size++;
     }
 
-    wdbc_close(sock);
+    wdbc_close(&sock);
     os_free(id_array);
     return (agents_array);
 }
@@ -1300,7 +1300,7 @@ char **get_agents_by_last_keepalive(int flag, int delta){
 
     if (!id_array) {
         mdebug1("Failed getting agent's ID array.");
-        wdbc_close(sock);
+        wdbc_close(&sock);
         return (NULL);
     }
 
@@ -1329,7 +1329,7 @@ char **get_agents_by_last_keepalive(int flag, int delta){
         cJSON_Delete(json_agt_info);
     }
 
-    wdbc_close(sock);
+    wdbc_close(&sock);
     os_free(id_array);
     return agents_array;
 }

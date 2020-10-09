@@ -185,7 +185,7 @@ int OS_RemoveAgent(const char *u_id) {
         mdebug1("Could not remove the information stored in Wazuh DB of the agent %s.", u_id);
     }
 
-    wdbc_close(sock);
+    wdbc_close(&sock);
 
     /* Remove counter for ID */
     OS_RemoveCounter(u_id);
