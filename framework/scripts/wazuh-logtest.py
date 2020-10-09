@@ -205,8 +205,8 @@ class WazuhSocket:
             recv_msg = wlogtest_conn.recv(size, socket.MSG_WAITALL)
             wlogtest_conn.close()
             return recv_msg
-        except ConnectionError:
-            raise
+        except Exception:
+            raise ConnectionError
 
 
 class WazuhLogtest:
