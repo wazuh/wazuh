@@ -6,6 +6,7 @@
  * @copyright Copyright (c) 2020 Wazuh, Inc.
  */
 
+#ifdef WIN32
 #include "fim_db_registries.h"
 
 extern const char *SQL_STMT[];
@@ -35,17 +36,6 @@ static void fim_db_bind_registry_data_name_key_id(fdb_t *fim_sql, int index, con
  * @param arch architecture of the registry
 */
 static void fim_db_bind_registry_path(fdb_t *fim_sql, unsigned int index, const char *path, unsigned int arch);
-
-
-/**
- * @brief Binds start and top paths into select range statements
- *
- * @param fim_sql FIM database structure.
- * @param index Index of the particular statement.
- * @param start First entry of the range.
- * @param top Last entry of the range.
-*/
-static void fim_db_bind_registry_path_range(fdb_t *fim_sql, int index, const char *start, const char *top);
 
 /**
  * @brief Bind registry data into an insert registry data statement
@@ -106,15 +96,6 @@ static void fim_db_bind_registry_path(fdb_t *fim_sql, unsigned int index, const 
     }
 }
 
-static void fim_db_bind_registry_path_range(fdb_t *fim_sql, int index, const char *start, const char *top) {
-    if (index == FIMDB_STMT_GET_REG_COUNT_RANGE ||
-        index == FIMDB_STMT_GET_REG_PATH_RANGE) {
-
-        sqlite3_bind_text(fim_sql->stmt[index], 1, start, -1, NULL);
-        sqlite3_bind_text(fim_sql->stmt[index], 2, top, -1, NULL);
-    }
-}
-
 static void fim_db_bind_insert_registry_data(fdb_t *fim_sql, fim_registry_value_data *data, unsigned int key_id) {
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_DATA], 1, key_id);
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_DATA], 2, data->name, -1, NULL);
@@ -143,7 +124,8 @@ static void fim_db_bind_insert_registry_key(fdb_t *fim_sql, fim_registry_key *re
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 8, registry_key->mtime);
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 9, registry_arch[registry_key->arch], -1, NULL);
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 10, registry_key->scanned);
-    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 11, registry_key->checksum, -1, NULL);
+    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 11, registry_key->last_event);
+    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY], 12, registry_key->checksum, -1, NULL);
 }
 
 static void fim_db_bind_get_registry_key_id(fdb_t *fim_sql, unsigned int id) {
@@ -209,10 +191,10 @@ fim_registry_key *fim_db_decode_registry_key(sqlite3_stmt *stmt) {
     sqlite_strdup((char *)sqlite3_column_text(stmt, 5), entry->user_name);
     sqlite_strdup((char *)sqlite3_column_text(stmt, 6), entry->group_name);
     entry->mtime = (unsigned int)sqlite3_column_int(stmt, 7);
-    entry->arch = (unsigned int)sqlite3_column_int(stmt, 8);
+    entry->arch = strcmp((char *)sqlite3_column_text(stmt, 8), "[x64]") == 0 ? ARCH_64BIT : ARCH_32BIT;
     entry->scanned = (unsigned int)sqlite3_column_int(stmt, 9);
-    strncpy(entry->checksum, (char *)sqlite3_column_text(stmt, 10), sizeof(os_sha1) - 1);
-    entry->scanned = (unsigned int)sqlite3_column_int(stmt, 11);
+    entry->last_event = sqlite3_column_int(stmt, 10);
+    strncpy(entry->checksum, (char *)sqlite3_column_text(stmt, 11), sizeof(os_sha1) - 1);
 
     return entry;
 }
@@ -268,7 +250,7 @@ fim_entry *fim_db_decode_registry(int index, sqlite3_stmt *stmt) {
 void fim_db_callback_save_reg_data_name(__attribute__((unused))fdb_t * fim_sql, fim_entry *entry, int storage,
                                         void *arg) {
     int length;
-    if (entry->type != FIM_TYPE_REGISTRY) {
+    if (entry->type != FIM_TYPE_REGISTRY || entry->registry_entry.value == NULL) {
         return ;
     }
 
@@ -288,7 +270,7 @@ void fim_db_callback_save_reg_data_name(__attribute__((unused))fdb_t * fim_sql, 
 
     if (storage == FIM_DB_DISK) { // disk storage enabled
         if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", buffer) != (strlen(buffer) + sizeof(char))) {
-            merror("%s - %s", entry->registry_entry.value->name, strerror(errno));
+            merror("Can't save entry: %s %s", entry->registry_entry.value->name, strerror(errno));
             goto end;
         }
 
@@ -441,23 +423,13 @@ fim_registry_key *fim_db_get_registry_key_using_id(fdb_t *fim_sql, unsigned int 
     return reg_key;
 }
 
-int fim_db_delete_registry_keys_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
-    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, NULL, storage,
-                                    (void *) true, (void *) FIM_SCHEDULED, NULL);
-}
-
-int fim_db_delete_registry_data_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
-    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, NULL, storage,
-                                    (void *) true, (void *) FIM_SCHEDULED, NULL);
-}
-
 int fim_db_get_registry_keys_range(fdb_t *fim_sql, const char *start, const char *top, fim_tmp_file **file, int storage) {
     if ((*file = fim_db_create_temp_file(storage)) == NULL) {
         return FIMDB_ERR;
     }
 
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_REG_PATH_RANGE);
-    fim_db_bind_registry_path_range(fim_sql, FIMDB_STMT_GET_REG_PATH_RANGE, start, top);
+    fim_db_bind_range(fim_sql, FIMDB_STMT_GET_REG_PATH_RANGE, start, top);
 
     int ret = fim_db_process_get_query(fim_sql, FIM_TYPE_REGISTRY, FIMDB_STMT_GET_REG_PATH_RANGE,
                                        fim_db_callback_save_reg_data_name, storage, (void*) *file);
@@ -540,7 +512,7 @@ int fim_db_get_values_from_registry_key(fdb_t * fim_sql, fim_tmp_file **file, in
     fim_db_bind_get_registry_data_key_id(fim_sql, key_id);
 
     int ret = fim_db_multiple_row_query(fim_sql, FIMDB_STMT_GET_REG_DATA_ROWID,
-                                        FIM_DB_DECODE_TYPE(fim_db_decode_registry_value), free,
+                                        FIM_DB_DECODE_TYPE(fim_db_decode_string), free,
                                         FIM_DB_CALLBACK_TYPE(fim_db_callback_save_string), storage, (void*) *file);
 
     if (*file && (*file)->elements == 0) {
@@ -554,78 +526,44 @@ int fim_db_process_read_registry_data_file(fdb_t *fim_sql, fim_tmp_file *file, p
                                            void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
                                            int storage, void * alert, void * mode, void * w_evt) {
 
-    char line[PATH_MAX + 1];
-    char *name = NULL;
+    char *read_line = NULL;
     int id;
     int i;
     char *split;
 
-    if (storage == FIM_DB_DISK) {
-        if (fseek(file->fd, SEEK_SET, 0) != 0) {
-            merror("Failed fseek in %s", file->path);
+    for (i = 0; i < file->elements; i++) {
+        // Read line has to be: 234(row id of the key) some_reg(name of the registry). Get the rowid and the name
+        if(fim_db_read_line_from_file(file, storage, i, &read_line) == -1) {
             return FIMDB_ERR;
         }
-    }
 
-    for (i = 0; i < file->elements; i++) {
-        if (storage == FIM_DB_DISK) {
-            // fgets() adds \n(newline) to the end of the string,
-            // So it must be removed.
-            if (fgets(line, sizeof(line), file->fd)) {
-                size_t len = strlen(line);
-
-                if (len > 2 && line[len - 1] == '\n') {
-                    line[len - 1] = '\0';
-                }
-                else {
-                    merror("Temporary path file '%s' is corrupt: missing line end.", file->path);
-                    continue;
-                }
-
-                name = wstr_unescape_json(line);
-            }
-        }
-        else {
-            name = wstr_unescape_json((char *) W_Vector_get(file->list, i));
-        }
-
-        if (name == NULL) {
-            continue;
-        }
-
-        // Readed line has to be: 234(row id of the key) some_reg(name of the registry). Get the rowid and the name
-        id = strtoul(name, &split, 10);
-
+        id = strtoul(read_line, &split, 10);
         // Skip if the fields couldn't be extracted.
-        if (*split != ' ' || id == 0) {
+        if (split == NULL || *split != ' ') {
             mwarn("Temporary path file '%s' is corrupt: wrong line format", file->path);
             continue;
         }
 
         fim_entry *entry;
-
-        split++; // ignore the whitespace
-
         os_calloc(1, sizeof(fim_entry), entry);
-
         entry->type = FIM_TYPE_REGISTRY;
 
         w_mutex_lock(mutex);
-
         entry->registry_entry.key = fim_db_get_registry_key_using_id(fim_sql, id);
-        entry->registry_entry.value = fim_db_get_registry_data(fim_sql, id, split);
-
+        entry->registry_entry.value = fim_db_get_registry_data(fim_sql, id, (split + 1));
         w_mutex_unlock(mutex);
 
-        if (entry != NULL) {
+        if (entry->registry_entry.key != NULL && entry->registry_entry.value != NULL) {
             callback(fim_sql, entry, mutex, alert, mode, w_evt);
-            free_entry(entry);
         }
 
-        os_free(name);
+        free_entry(entry);
+        os_free(read_line);
     }
 
     fim_db_clean_file(&file, storage);
 
     return FIMDB_OK;
 }
+
+#endif

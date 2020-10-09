@@ -14,11 +14,46 @@
 
 #include "../syscheck.h"
 
+/**
+ * @brief Retrieves the configuration associated with a given registry element.
+ *
+ * @param key A string holding the full path to the registry element.
+ * @param arch An integer specifying the bit count of the register element, must be ARCH_32BIT or ARCH_64BIT.
+ * @return A pointer to the associated registry configuration, NULL on error or if no valid configuration was found.
+ */
+registry *fim_registry_configuration(const char *key, int arch);
+
+/**
+ * @brief Free all memory associated with a registry.
+ *
+ * @param data A fim_entry object to be free'd.
+ */
+void fim_registry_free_entry(fim_entry *entry);
 
 /**
  * @brief Main scheduled algorithm for registry scan
  */
 void fim_registry_scan();
+
+/**
+ * @brief Create a cJSON object holding the attributes associated with a fim_registry_value_data according to its
+ * configuration.
+ *
+ * @param data A fim_registry_value_data object holding the value attributes to be tranlated.
+ * @param configuration The configuration associated with the registry value.
+ * @return A pointer to a cJSON object the translated value attributes.
+ */
+cJSON *fim_registry_value_attributes_json(const fim_registry_value_data *data, const registry *configuration);
+
+/**
+ * @brief Create a cJSON object holding the attributes associated with a fim_registry_key according to its
+ * configuration.
+ *
+ * @param data A fim_registry_key object holding the key attributes to be tranlated.
+ * @param configuration The configuration associated with the registry key.
+ * @return A pointer to a cJSON object the translated key attributes.
+ */
+cJSON *fim_registry_key_attributes_json(const fim_registry_key *data, const registry *configuration);
 
 /**
  * @brief Check and trigger a FIM event on a registry.

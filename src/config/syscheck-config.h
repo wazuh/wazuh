@@ -26,7 +26,7 @@ typedef enum fdb_stmt {
     FIMDB_STMT_UPDATE_PATH,
     FIMDB_STMT_GET_LAST_PATH,
     FIMDB_STMT_GET_FIRST_PATH,
-    FIMDB_STMT_GET_ALL_ENTRIES,
+    FIMDB_STMT_GET_ALL_CHECKSUMS,
     FIMDB_STMT_GET_NOT_SCANNED,
     FIMDB_STMT_SET_ALL_UNSCANNED,
     FIMDB_STMT_GET_PATH_COUNT,
@@ -43,11 +43,11 @@ typedef enum fdb_stmt {
     FIMDB_STMT_GET_COUNT_DATA,
     FIMDB_STMT_GET_INODE,
     // Registries
+#ifdef WIN32
     FIMDB_STMT_REPLACE_REG_DATA,
     FIMDB_STMT_REPLACE_REG_KEY,
     FIMDB_STMT_GET_REG_KEY,
     FIMDB_STMT_GET_REG_DATA,
-    FIMDB_STMT_GET_ALL_REG_ENTRIES,
     FIMDB_STMT_GET_REG_KEY_NOT_SCANNED,
     FIMDB_STMT_GET_REG_DATA_NOT_SCANNED,
     FIMDB_STMT_SET_ALL_REG_KEY_UNSCANNED,
@@ -63,12 +63,16 @@ typedef enum fdb_stmt {
     FIMDB_STMT_GET_COUNT_REG_KEY_AND_DATA,
     FIMDB_STMT_GET_LAST_REG_KEY,
     FIMDB_STMT_GET_FIRST_REG_KEY,
-    FIMDB_STMT_GET_REG_COUNT_RANGE,
-    FIMDB_STMT_GET_REG_PATH_RANGE,
     FIMDB_STMT_SET_REG_DATA_SCANNED,
     FIMDB_STMT_SET_REG_KEY_SCANNED,
     FIMDB_STMT_GET_REG_KEY_ROWID,
     FIMDB_STMT_GET_REG_DATA_ROWID,
+#endif
+    FIMDB_STMT_GET_REG_PATH_RANGE,
+    FIMDB_STMT_GET_REG_LAST_PATH,
+    FIMDB_STMT_GET_REG_FIRST_PATH,
+    FIMDB_STMT_GET_REG_ALL_CHECKSUMS,
+    FIMDB_STMT_GET_REG_COUNT_RANGE,
     FIMDB_STMT_SIZE
 } fdb_stmt;
 
@@ -264,7 +268,8 @@ typedef struct fim_registry_key {
     int arch;
 
     unsigned int scanned;
-    // path:perm:uid:user_name:gid:group_name
+    time_t last_event;
+    // perm:uid:user_name:gid:group_name:mtime
     os_sha1 checksum;
 } fim_registry_key;
 
@@ -279,7 +284,7 @@ typedef struct fim_registry_value_data {
 
     unsigned int scanned;
     time_t last_event;
-    //type:size:hash_sh1:mtime
+    // type:size:hash_md5:hash_sha1:hash_sha256
     os_sha1 checksum;
     fim_event_mode mode;
 } fim_registry_value_data;
@@ -333,6 +338,7 @@ typedef struct _config {
     unsigned int restart_audit:1;   /* Allow Syscheck restart Auditd */
     unsigned int enable_whodata:1;  /* At least one directory configured with whodata */
     unsigned int enable_synchronization:1;    /* Enable database synchronization */
+    unsigned int enable_registry_synchronization:1; /* Enable registry database synchronization */
 
     int *opts;                      /* attributes set in the <directories> tag element */
 

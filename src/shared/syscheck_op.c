@@ -675,6 +675,7 @@ char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_
     DWORD dwDomainName = BUFFER_LEN;
     SID_NAME_USE eUse = SidTypeUnknown;
     PSECURITY_DESCRIPTOR pSD = NULL;
+    LPSTR local_sid;
     char *result;
 
     if (hndl == INVALID_HANDLE_VALUE) {
@@ -696,9 +697,12 @@ char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_
         dwSecurityInfoErrorCode = GetLastError();
     }
 
-    if (!ConvertSidToStringSid(pSidOwner, sid)) {
+    if (!ConvertSidToStringSid(pSidOwner, &local_sid)) {
         *sid = NULL;
         mdebug1("The user's SID could not be extracted.");
+    } else {
+        os_strdup(local_sid, *sid);
+        LocalFree(local_sid);
     }
 
     // Check GetLastError for GetSecurityInfo error condition.
@@ -929,6 +933,7 @@ char *get_registry_group(char **sid, HANDLE hndl) {
     SID_NAME_USE eUse = SidTypeUnknown;
     PSECURITY_DESCRIPTOR pSD = NULL;
     char *result;
+    LPSTR local_sid;
 
     // Get the owner SID of the file or registry
     dwRtnCode = GetSecurityInfo(hndl,                       // Object handle
@@ -947,9 +952,12 @@ char *get_registry_group(char **sid, HANDLE hndl) {
         goto end;
     }
 
-    if (!ConvertSidToStringSid(pSidGroup, sid)) {
+    if (!ConvertSidToStringSid(pSidGroup, &local_sid)) {
         *sid = NULL;
         mdebug1("The user's SID could not be extracted.");
+    } else {
+        os_strdup(local_sid, *sid);
+        LocalFree(local_sid);
     }
 
     // Second call to LookupAccountSid to get the account name.
@@ -992,20 +1000,27 @@ end:
 }
 
 DWORD get_registry_permissions(HKEY hndl, char *perm_key) {
-    PSECURITY_DESCRIPTOR pSecurityDescriptor = LocalAlloc(LMEM_FIXED, 1024);
+    PSECURITY_DESCRIPTOR pSecurityDescriptor;
     ACL_SIZE_INFORMATION aclsizeinfo;
     ACCESS_ALLOWED_ACE *pAce = NULL;
     PACL pDacl = NULL;
     DWORD cAce;
     DWORD dwRtnCode = 0;
     DWORD dwErrorCode = 0;
-    DWORD lpcbSecurityDescriptor = 1024;
+    DWORD lpcbSecurityDescriptor = 0;
     BOOL bRtnBool = TRUE;
     BOOL fDaclPresent = FALSE;
     BOOL fDaclDefaulted = TRUE;
     int written;
     int perm_size = OS_SIZE_6144;
     char *permissions = perm_key;
+
+    if (RegGetKeySecurity(hndl, DACL_SECURITY_INFORMATION, NULL, &lpcbSecurityDescriptor) != ERROR_INSUFFICIENT_BUFFER) {
+        dwErrorCode = GetLastError();
+        return dwErrorCode;
+    }
+
+    os_calloc(lpcbSecurityDescriptor, 1, pSecurityDescriptor);
 
     // Get the security information.
     dwRtnCode = RegGetKeySecurity(
@@ -1071,6 +1086,8 @@ DWORD get_registry_permissions(HKEY hndl, char *perm_key) {
             }
         }
     }
+
+    os_free(pSecurityDescriptor);
 
     return ERROR_SUCCESS;
 }

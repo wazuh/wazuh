@@ -18,7 +18,8 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/md5_sha1/md5_sha1_op.h"
-#include <openssl/evp.h>
+#include <openssl/md5.h>
+#include <openssl/sha.h>
 
 #ifdef WAZUH_UNIT_TESTING
 #include "unit_tests/wrappers/windows/winreg_wrappers.h"
@@ -78,13 +79,6 @@ int fim_set_root_key(HKEY *root_key_handle, const char *full_key, const char **s
     return 0;
 }
 
-/**
- * @brief Retrieves the configuration associated with a given registry element.
- *
- * @param key A string holding the full path to the registry element.
- * @param arch An integer specifying the bit count of the register element, must be ARCH_32BIT or ARCH_64BIT.
- * @return A pointer to the associated registry configuration, NULL on error or if no valid configuration was found.
- */
 registry *fim_registry_configuration(const char *key, int arch) {
     int it = 0;
     int top = 0;
@@ -177,6 +171,229 @@ int fim_registry_validate_path(const char *entry_path, const registry *configura
 }
 
 /**
+ * @brief Compute checksum of a registry key
+ *
+ * @param data FIM registry key whose checksum will be computed
+ */
+void fim_registry_get_checksum_key(fim_registry_key *data) {
+    char *checksum = NULL;
+    int size;
+
+    size = snprintf(0,
+            0,
+            "%s:%s:%s:%s:%s:%u",
+            data->perm ? data->perm : "",
+            data->uid ? data->uid : "",
+            data->user_name ? data->user_name : "",
+            data->gid ? data->gid : "",
+            data->group_name ? data->group_name : "",
+            data->mtime);
+
+    os_calloc(size + 1, sizeof(char), checksum);
+    snprintf(checksum,
+            size + 1,
+            "%s:%s:%s:%s:%s:%u:%d",
+            data->perm ? data->perm : "",
+            data->uid ? data->uid : "",
+            data->gid ? data->gid : "",
+            data->user_name ? data->user_name : "",
+            data->group_name ? data->group_name : "",
+            data->mtime,
+            data->arch);
+
+    OS_SHA1_Str(checksum, -1, data->checksum);
+    free(checksum);
+}
+
+/**
+ * @brief Compute checksum of a registry value
+ *
+ * @param data FIM registry value whose checksum will be computed
+ */
+void fim_registry_get_checksum_value(fim_registry_value_data *data) {
+    char *checksum = NULL;
+    int size;
+
+    size = snprintf(0,
+            0,
+            "%u:%u:%s:%s:%s",
+            data->type,
+            data->size,
+            data->hash_md5 ,
+            data->hash_sha1,
+            data->hash_sha256);
+
+    os_calloc(size + 1, sizeof(char), checksum);
+    snprintf(checksum,
+            size + 1,
+            "%u:%u:%s:%s:%s",
+            data->type,
+            data->size,
+            data->hash_md5 ,
+            data->hash_sha1,
+            data->hash_sha256);
+
+    OS_SHA1_Str(checksum, -1, data->checksum);
+    free(checksum);
+}
+
+/**
+ * @brief Initialize digest context according to a provided configuration
+ *
+ * @param opts An integer holding the registry configuration.
+ * @param md5_ctx An uninitialized md5 context.
+ * @param sha1_ctx An uninitialized sha1 context.
+ * @param sha256_ctx An uninitialized sha256 context.
+ */
+void fim_registry_init_digests(int opts, MD5_CTX *md5_ctx, SHA_CTX *sha1_ctx, SHA256_CTX *sha256_ctx) {
+    if (opts | CHECK_MD5SUM) {
+        MD5_Init(md5_ctx);
+    }
+
+    if (opts | CHECK_SHA1SUM) {
+        SHA1_Init(sha1_ctx);
+    }
+
+    if (opts | CHECK_SHA256SUM) {
+        SHA256_Init(sha256_ctx);
+    }
+}
+
+/**
+ * @brief Update digests from a provided buffer.
+ *
+ * @param buffer A raw data buffer used to update digests.
+ * @param length An integer holding the length of buffer.
+ * @param opts An integer holding the registry configuration.
+ * @param md5_ctx An MD5 CTX to be updated with the contents of buffer.
+ * @param sha1_ctx An SHA1 CTX to be updated with the contents of buffer.
+ * @param sha256_ctx An SHA256 CTX to be updated with the contents of buffer.
+ */
+void fim_registry_update_digests(const BYTE *buffer,
+                                 int length,
+                                 int opts,
+                                 MD5_CTX *md5_ctx,
+                                 SHA_CTX *sha1_ctx,
+                                 SHA256_CTX *sha256_ctx) {
+    if (opts | CHECK_MD5SUM) {
+        MD5_Update(md5_ctx, buffer, (unsigned)length);
+    }
+
+    if (opts | CHECK_SHA1SUM) {
+        SHA1_Update(sha1_ctx, buffer, length);
+    }
+
+    if (opts | CHECK_SHA256SUM) {
+        SHA256_Update(sha256_ctx, buffer, length);
+    }
+}
+
+/**
+ * @brief Prints out hashes from the provided contexts, destryoing them in the process.
+ *
+ * @param opts An integer holding the registry configuration.
+ * @param md5_ctx An MD5 CTX used to print the corresponding hash.
+ * @param sha1_ctx An SHA1 CTX used to print the corresponding hash.
+ * @param sha256_ctx An SHA256 CTX used to print the corresponding hash.
+ * @param md5_output A buffer holding the MD5 hash on exit.
+ * @param sha1_output A buffer holding the SHA1 hash on exit.
+ * @param sha256_output A buffer holding the SHA256 hash on exit.
+ */
+void fim_registry_final_digests(int opts,
+                                MD5_CTX *md5_ctx,
+                                SHA_CTX *sha1_ctx,
+                                SHA256_CTX *sha256_ctx,
+                                os_md5 md5_output,
+                                os_sha1 sha1_output,
+                                os_sha256 sha256_output) {
+    unsigned char md5_digest[16];
+    unsigned char sha1_digest[SHA_DIGEST_LENGTH];
+    unsigned char sha256_digest[SHA256_DIGEST_LENGTH];
+    int n;
+
+    if (opts | CHECK_MD5SUM) {
+        MD5_Final(md5_digest, md5_ctx);
+        for (n = 0; n < 16; n++) {
+            snprintf(md5_output, 3, "%02x", md5_digest[n]);
+            md5_output += 2;
+        }
+    }
+
+    if (opts | CHECK_SHA1SUM) {
+        SHA1_Final(sha1_digest, sha1_ctx);
+        for (n = 0; n < SHA_DIGEST_LENGTH; n++) {
+            snprintf(sha1_output, 3, "%02x", sha1_digest[n]);
+            sha1_output += 2;
+        }
+    }
+
+    if (opts | CHECK_SHA256SUM) {
+        SHA256_Final(sha256_digest, sha256_ctx);
+        for (n = 0; n < SHA256_DIGEST_LENGTH; n++) {
+            snprintf(sha256_output, 3, "%02x", sha256_digest[n]);
+            sha256_output += 2;
+        }
+    }
+}
+
+/**
+ * @brief Calculate and store value hashes.
+ *
+ * @param entry FIM entry holding information from a value.
+ * @param configuration The confguration associated with the value.
+ * @param data_buffer Raw buffer holding the value's contents.
+ */
+void fim_registry_calculate_hashes(fim_entry *entry, registry *configuration, BYTE *data_buffer) {
+    MD5_CTX md5_ctx;
+    SHA_CTX sha1_ctx;
+    SHA256_CTX sha256_ctx;
+
+    char *string_it;
+    BYTE buffer[OS_SIZE_2048];
+    int length;
+
+    entry->registry_entry.value->hash_md5[0] = '\0';
+    entry->registry_entry.value->hash_sha1[0] = '\0';
+    entry->registry_entry.value->hash_sha256[0] = '\0';
+
+    if ((configuration->opts & (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM)) == 0) {
+        return;
+    }
+
+    /* Initialize configured hashes */
+    fim_registry_init_digests(configuration->opts, &md5_ctx, &sha1_ctx, &sha256_ctx);
+
+    switch (entry->registry_entry.value->type) {
+    case REG_SZ:
+    case REG_EXPAND_SZ:
+        fim_registry_update_digests(data_buffer, strlen((char *)data_buffer), configuration->opts, &md5_ctx, &sha1_ctx,
+                                    &sha256_ctx);
+        break;
+    case REG_MULTI_SZ:
+        /* Print multiple strings */
+        for (string_it = (char *)data_buffer; *string_it; string_it += strlen(string_it) + 1) {
+            fim_registry_update_digests((BYTE *)string_it, strlen(string_it), configuration->opts, &md5_ctx, &sha1_ctx,
+                                        &sha256_ctx);
+        }
+        break;
+    case REG_DWORD:
+        length = snprintf((char *)buffer, OS_SIZE_2048, "%08x", *((unsigned int *)data_buffer));
+        fim_registry_update_digests(buffer, length, configuration->opts, &md5_ctx, &sha1_ctx, &sha256_ctx);
+        break;
+    default:
+        for (unsigned int i = 0; i < entry->registry_entry.value->size; i++) {
+            length = snprintf((char *)buffer, 3, "%02x", (unsigned int)data_buffer[i] & 0xFF);
+            fim_registry_update_digests(buffer, length, configuration->opts, &md5_ctx, &sha1_ctx, &sha256_ctx);
+        }
+        break;
+    }
+
+    fim_registry_final_digests(configuration->opts, &md5_ctx, &sha1_ctx, &sha256_ctx,
+                               entry->registry_entry.value->hash_md5, entry->registry_entry.value->hash_sha1,
+                               entry->registry_entry.value->hash_sha256);
+}
+
+/**
  * @brief Gets all information from a given registry key.
  *
  * @param key_handle A handle to the key whose information we want.
@@ -219,6 +436,10 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
         key->mtime = get_registry_mtime(key_handle);
     }
 
+    key->last_event = time(NULL);
+
+    fim_registry_get_checksum_key(key);
+
     return key;
 }
 
@@ -231,18 +452,8 @@ void fim_registry_free_key(fim_registry_key *key) {
     if (key) {
         os_free(key->path);
         os_free(key->perm);
-
-        // UID and GID need to be freed with the LocalFree function according to ConvertSidToStringSid documentation
-        if (key->uid) {
-            LocalFree(key->uid);
-            key->uid = NULL;
-        }
-
-        if (key->gid) {
-            LocalFree(key->gid);
-            key->gid = NULL;
-        }
-
+        os_free(key->uid);
+        os_free(key->gid);
         os_free(key->user_name);
         os_free(key->group_name);
         free(key);
@@ -258,6 +469,14 @@ void fim_registry_free_value_data(fim_registry_value_data *data) {
     if (data) {
         os_free(data->name);
         free(data);
+    }
+}
+
+void fim_registry_free_entry(fim_entry *entry) {
+    if (entry) {
+        fim_registry_free_key(entry->registry_entry.key);
+        fim_registry_free_value_data(entry->registry_entry.value);
+        free(entry);
     }
 }
 
@@ -303,7 +522,7 @@ void fim_registry_process_value_delete_event(fdb_t *fim_sql,
 
     fim_db_remove_registry_value_data(fim_sql, data->registry_entry.value);
 
-    if (configuration->opts | CHECK_SEECHANGES) {
+    if (configuration->opts & CHECK_SEECHANGES) {
         fim_diff_process_delete_value(data->registry_entry.key->path, data->registry_entry.value->name,
                                       data->registry_entry.key->arch);
     }
@@ -329,6 +548,7 @@ void fim_registry_process_key_delete_event(fdb_t *fim_sql,
     fim_event_mode event_mode = *(fim_event_mode *)_ev_mode;
     fim_tmp_file *file;
     registry *configuration;
+    int result;
 
     configuration = fim_registry_configuration(data->registry_entry.key->path, data->registry_entry.key->arch);
     if (configuration == NULL) {
@@ -347,16 +567,20 @@ void fim_registry_process_key_delete_event(fdb_t *fim_sql,
         }
     }
 
-    if (fim_db_get_values_from_registry_key(fim_sql, &file, FIM_DB_DISK, data->registry_entry.key->id) == FIMDB_OK) {
-        if (file && file->elements) {
-            fim_db_process_read_registry_data_file(fim_sql, file, mutex, fim_registry_process_value_delete_event,
-                                                   FIM_DB_DISK, _alert, _ev_mode, _w_evt);
-        }
+    w_mutex_lock(mutex);
+    result = fim_db_get_values_from_registry_key(fim_sql, &file, syscheck.database_store, data->registry_entry.key->id);
+    w_mutex_unlock(mutex);
+
+    if (result == FIMDB_OK && file && file->elements) {
+        fim_db_process_read_registry_data_file(fim_sql, file, mutex, fim_registry_process_value_delete_event,
+                                               syscheck.database_store, _alert, _ev_mode, _w_evt);
     }
 
+    w_mutex_lock(mutex);
     fim_db_remove_registry_key(fim_sql, data);
+    w_mutex_unlock(mutex);
 
-    if (configuration->opts | CHECK_SEECHANGES) {
+    if (configuration->opts & CHECK_SEECHANGES) {
         fim_diff_process_delete_registry(data->registry_entry.key->path, data->registry_entry.key->arch);
     }
 }
@@ -367,25 +591,30 @@ void fim_registry_process_key_delete_event(fdb_t *fim_sql,
 void fim_registry_process_unscanned_entries() {
     fim_tmp_file *file;
     fim_event_mode event_mode = FIM_SCHEDULED;
+    int result;
 
-    if (fim_db_get_registry_keys_not_scanned(syscheck.database, &file, FIM_DB_DISK) == FIMDB_OK) {
-        if (file && file->elements) {
-            fim_db_process_read_file(syscheck.database, file, FIM_TYPE_REGISTRY, &syscheck.fim_registry_mutex,
-                                     fim_registry_process_key_delete_event, FIM_DB_DISK, &_base_line, &event_mode,
-                                     NULL);
-        }
-    } else {
+    w_mutex_lock(&syscheck.fim_registry_mutex);
+    result = fim_db_get_registry_keys_not_scanned(syscheck.database, &file, syscheck.database_store);
+    w_mutex_unlock(&syscheck.fim_registry_mutex);
+
+    if (result != FIMDB_OK) {
         mwarn(FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
+    } else if (file && file->elements) {
+        fim_db_process_read_file(syscheck.database, file, FIM_TYPE_REGISTRY, &syscheck.fim_registry_mutex,
+                                 fim_registry_process_key_delete_event, syscheck.database_store, &_base_line,
+                                 &event_mode, NULL);
     }
 
-    if (fim_db_get_registry_data_not_scanned(syscheck.database, &file, FIM_DB_DISK) == FIMDB_OK) {
-        if (file && file->elements) {
-            fim_db_process_read_registry_data_file(syscheck.database, file, &syscheck.fim_registry_mutex,
-                                                   fim_registry_process_value_delete_event, FIM_DB_DISK, &_base_line,
-                                                   &event_mode, NULL);
-        }
-    } else {
+    w_mutex_lock(&syscheck.fim_registry_mutex);
+    result = fim_db_get_registry_data_not_scanned(syscheck.database, &file, syscheck.database_store);
+    w_mutex_unlock(&syscheck.fim_registry_mutex);
+
+    if (result != FIMDB_OK) {
         mwarn(FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
+    } else if (file && file->elements) {
+        fim_db_process_read_registry_data_file(syscheck.database, file, &syscheck.fim_registry_mutex,
+                                               fim_registry_process_value_delete_event, syscheck.database_store,
+                                               &_base_line, &event_mode, NULL);
     }
 }
 
@@ -423,16 +652,20 @@ void fim_registry_process_value_event(fim_entry *new,
         return;
     }
 
+    fim_registry_calculate_hashes(new, configuration, data_buffer);
+
+    fim_registry_get_checksum_value(new->registry_entry.value);
+
     saved->registry_entry.value = fim_db_get_registry_data(syscheck.database, new->registry_entry.key->id,
                                                            new->registry_entry.value->name);
 
-    if (configuration->opts | CHECK_SEECHANGES) {
+    if (configuration->opts & CHECK_SEECHANGES) {
         diff = fim_registry_value_diff(new->registry_entry.key->path, new->registry_entry.value->name,
                                        (char *)data_buffer, new->registry_entry.value->type, configuration);
     }
 
     json_event = fim_registry_event(new, saved, configuration, mode,
-                                    saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFIED, NULL, diff);
+                                    saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFICATION, NULL, diff);
 
     if (json_event) {
         if (fim_db_insert_registry_data(syscheck.database, new->registry_entry.value, new->registry_entry.key->id) !=
@@ -509,6 +742,7 @@ void fim_read_values(HKEY key_handle,
         new->registry_entry.value->name = value_buffer;
         new->registry_entry.value->type = data_type;
         new->registry_entry.value->size = data_size;
+        new->registry_entry.value->last_event = time(NULL);
 
         fim_registry_process_value_event(new, saved, arch, mode, data_buffer);
     }
@@ -522,8 +756,14 @@ void fim_read_values(HKEY key_handle,
  * @param sub_key A string holding the path to the key to scan, excluding the root key part of the path.
  * @param arch An integer specifying the bit count of the register to scan, must be ARCH_32BIT or ARCH_64BIT.
  * @param mode A value specifying if the event has been triggered in scheduled, realtime or whodata mode.
+ * @param parent_configuration A pointer to the configuration of this key's "parent".
  */
-void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_key, int arch, fim_event_mode mode) {
+void fim_open_key(HKEY root_key_handle,
+                  const char *full_key,
+                  const char *sub_key,
+                  int arch,
+                  fim_event_mode mode,
+                  registry *parent_configuration) {
     HKEY current_key_handle = NULL;
     REGSAM access_rights;
     DWORD sub_key_count = 0;
@@ -539,6 +779,11 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
 
     configuration = fim_registry_configuration(full_key, arch);
     if (configuration == NULL) {
+        return;
+    }
+
+    if (mode == FIM_SCHEDULED && parent_configuration != NULL && parent_configuration != configuration) {
+        // If a more specific configuration is available in scheduled mode, we will scan this registry later.
         return;
     }
 
@@ -580,12 +825,18 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
         }
 
         /* Open sub_key */
-        fim_open_key(root_key_handle, new_full_key, new_sub_key, arch, mode);
+        fim_open_key(root_key_handle, new_full_key, new_sub_key, arch, mode, configuration);
     }
     // Done scanning sub_keys, trigger an alert on the current key if required.
     new.type = FIM_TYPE_REGISTRY;
     new.registry_entry.key = fim_registry_get_key_data(current_key_handle, full_key, configuration);
     new.registry_entry.value = NULL;
+
+    if (new.registry_entry.key == NULL) {
+        return;
+    }
+
+    w_mutex_lock(&syscheck.fim_registry_mutex);
 
     saved.type = FIM_TYPE_REGISTRY;
     saved.registry_entry.key = fim_db_get_registry_key(syscheck.database, full_key, arch);
@@ -622,6 +873,8 @@ void fim_open_key(HKEY root_key_handle, const char *full_key, const char *sub_ke
         fim_read_values(current_key_handle, &new, &saved, arch, value_count, mode);
     }
 
+    w_mutex_unlock(&syscheck.fim_registry_mutex);
+
     fim_registry_free_key(new.registry_entry.key);
     fim_registry_free_key(saved.registry_entry.key);
     RegCloseKey(current_key_handle);
@@ -655,7 +908,8 @@ void fim_registry_scan() {
             *syscheck.registry[i].entry = '\0';
             continue;
         }
-        fim_open_key(root_key_handle, syscheck.registry[i].entry, sub_key, syscheck.registry[i].arch, FIM_SCHEDULED);
+        fim_open_key(root_key_handle, syscheck.registry[i].entry, sub_key, syscheck.registry[i].arch, FIM_SCHEDULED,
+                     NULL);
     }
 
     fim_registry_process_unscanned_entries();

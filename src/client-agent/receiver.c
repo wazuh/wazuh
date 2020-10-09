@@ -130,6 +130,14 @@ int receive_msg()
                 ag_send_syscheck(tmp_msg + strlen(HC_SK));
                 continue;
             }
+            else if (strncmp(tmp_msg, HC_FIM_FILE, strlen(HC_FIM_FILE)) == 0) {
+                ag_send_syscheck(tmp_msg + strlen(HC_FIM_FILE));
+                continue;
+            }
+            else if (strncmp(tmp_msg, HC_FIM_REGISTRY, strlen(HC_FIM_REGISTRY)) == 0) {
+                ag_send_syscheck(tmp_msg + strlen(HC_FIM_REGISTRY));
+                continue;
+            }
 
             /* Ack from server */
             else if (strcmp(tmp_msg, HC_ACK) == 0) {

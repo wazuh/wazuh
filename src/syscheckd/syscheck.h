@@ -366,9 +366,10 @@ void send_syscheck_msg(const char *msg) __attribute__((nonnull));
 /**
  * @brief Send a data synchronization control message
  *
+ * @param location Specifies if the synchronization message is for files or registries.
  * @param msg The message to be sent
  */
-void fim_send_sync_msg(const char *msg);
+void fim_send_sync_msg(const char *location, const char * msg);
 
 // TODO
 /**
@@ -706,8 +707,10 @@ void *fim_run_integrity(void *args);
 /**
  * @brief Calculates the checksum of the FIM entry files and sends it to the database for integrity checking
  *
+ * @param type Must be FIM_TYPE_FILE or FIM_TYPE_REGISTRY.
+ * @param mutex A mutex associated with the DB tables to be synchronized.
  */
-void fim_sync_checksum();
+void fim_sync_checksum(fim_type type, pthread_mutex_t *mutex);
 
 /**
  * @brief Calculates the checksum of the FIM entry files starting from `start` letter and finishing at `top` letter
@@ -794,12 +797,12 @@ cJSON * fim_attributes_json(const fim_file_data * data);
  *   }
  * }
  *
- * @param path Pointer to file path string.
- * @param data Pointer to a FIM entry structure.
- * @pre data is mutex-blocked.
+ * @param key Pointer to the key used in the manager fim_entry DB.
+ * @param entry Pointer to a FIM entry structure.
+ * @pre entry is mutex-blocked.
  * @return Pointer to cJSON structure.
  */
-cJSON * fim_entry_json(const char * path, fim_file_data * data);
+cJSON *fim_entry_json(const char *key, fim_entry *entry);
 
 /**
  * @brief Create file attribute comparison JSON object

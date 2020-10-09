@@ -15,21 +15,28 @@ static const char *FIM_EVENT_TYPE[] = { "added", "deleted", "modified" };
 
 static const char *FIM_EVENT_MODE[] = { "scheduled", "realtime", "whodata" };
 
-/**
- * @brief Create a cJSON object holding the attributes associated with a fim_registry_value_data according to its
- * configuration.
- *
- * @param data A fim_registry_value_data object holding the value attributes to be tranlated.
- * @param configuration The configuration associated with the registry value.
- * @return A pointer to a cJSON object the translated value attributes.
- */
 cJSON *fim_registry_value_attributes_json(const fim_registry_value_data *data, const registry *configuration) {
+    static const char *VALUE_TYPE[] = {
+        [REG_NONE] = "REG_NONE",
+        [REG_SZ] = "REG_SZ",
+        [REG_EXPAND_SZ] = "REG_EXPAND_SZ",
+        [REG_BINARY] = "REG_BINARY",
+        [REG_DWORD] = "REG_DWORD",
+        [REG_DWORD_BIG_ENDIAN] = "REG_DWORD_BIG_ENDIAN",
+        [REG_LINK] = "REG_LINK",
+        [REG_MULTI_SZ] = "REG_MULTI_SZ",
+        [REG_RESOURCE_LIST] = "REG_RESOURCE_LIST",
+        [REG_FULL_RESOURCE_DESCRIPTOR] = "REG_FULL_RESOURCE_DESCRIPTOR",
+        [REG_RESOURCE_REQUIREMENTS_LIST] = "REG_RESOURCE_REQUIREMENTS_LIST",
+        [REG_QWORD] = "REG_QWORD",
+    };
+
     cJSON *attributes = cJSON_CreateObject();
 
-    cJSON_AddStringToObject(attributes, "type", "registry_value");
+    cJSON_AddStringToObject(attributes, "type", "registry");
 
-    if (configuration->opts & CHECK_TYPE) {
-        cJSON_AddNumberToObject(attributes, "registry_type", data->type);
+    if (configuration->opts & CHECK_TYPE && data->type <= REG_QWORD) {
+        cJSON_AddStringToObject(attributes, "value_type", VALUE_TYPE[data->type]);
     }
 
     if (configuration->opts & CHECK_SIZE) {
@@ -112,8 +119,7 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
                                      unsigned int type,
                                      __attribute__((unused)) whodata_evt *w_evt,
                                      const char *diff) {
-    cJSON *changed_attributes;
-    char path[OS_SIZE_512];
+    cJSON *changed_attributes = NULL;
 
     if (old_data != NULL && old_data->registry_entry.value != NULL) {
         changed_attributes = fim_registry_compare_value_attrs(new_data->registry_entry.value,
@@ -131,10 +137,11 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
     cJSON *data = cJSON_CreateObject();
     cJSON_AddItemToObject(json_event, "data", data);
 
-    snprintf(path, OS_SIZE_512, "%s\\%s", new_data->registry_entry.key->path, new_data->registry_entry.value->name);
-    cJSON_AddStringToObject(data, "path", path);
+    cJSON_AddStringToObject(data, "path", new_data->registry_entry.key->path);
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE[type]);
+    cJSON_AddStringToObject(data, "arch", new_data->registry_entry.key->arch == ARCH_32BIT ? "[x32]" : "[x64]");
+    cJSON_AddStringToObject(data, "value_name", new_data->registry_entry.value->name);
     cJSON_AddNumberToObject(data, "timestamp", new_data->registry_entry.value->last_event);
 
     cJSON_AddItemToObject(data, "attributes",
@@ -168,7 +175,7 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
 cJSON *fim_registry_key_attributes_json(const fim_registry_key *data, const registry *configuration) {
     cJSON *attributes = cJSON_CreateObject();
 
-    cJSON_AddStringToObject(attributes, "type", "registry_key");
+    cJSON_AddStringToObject(attributes, "type", "registry");
 
     if (configuration->opts & CHECK_PERM) {
         cJSON_AddStringToObject(attributes, "perm", data->perm);
@@ -284,6 +291,8 @@ cJSON *fim_registry_key_json_event(const fim_registry_key *new_data,
     cJSON_AddStringToObject(data, "path", new_data->path);
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE[type]);
+    cJSON_AddStringToObject(data, "arch", new_data->arch == ARCH_32BIT ? "[x32]" : "[x64]");
+    cJSON_AddNumberToObject(data, "timestamp", new_data->last_event);
 
     cJSON_AddItemToObject(data, "attributes", fim_registry_key_attributes_json(new_data, configuration));
 

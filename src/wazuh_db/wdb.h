@@ -122,6 +122,14 @@ typedef enum wdb_stmt {
     WDB_STMT_SYNC_UPDATE_ATTEMPT,
     WDB_STMT_SYNC_UPDATE_COMPLETION,
     WDB_STMT_MITRE_NAME_GET,
+    WDB_STMT_FIM_FILE_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_FIM_FILE_CLEAR,
+    WDB_STMT_FIM_FILE_DELETE_AROUND,
+    WDB_STMT_FIM_FILE_DELETE_RANGE,
+    WDB_STMT_FIM_REGISTRY_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_FIM_REGISTRY_CLEAR,
+    WDB_STMT_FIM_REGISTRY_DELETE_AROUND,
+    WDB_STMT_FIM_REGISTRY_DELETE_RANGE,
     WDB_STMT_SIZE,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
 } wdb_stmt;
@@ -148,7 +156,9 @@ typedef struct wdb_config {
 
 /// Enumeration of components supported by the integrity library.
 typedef enum {
-    WDB_FIM         ///< File integrity monitoring.
+    WDB_FIM,            ///< Legacy file integrity monitoring.
+    WDB_FIM_FILE,       ///< File integrity monitoring.
+    WDB_FIM_REGISTRY    ///< Registry integrity monitoring.
 } wdb_component_t;
 
 /* Global SQLite database */
@@ -161,6 +171,7 @@ extern char *schema_upgrade_v2_sql;
 extern char *schema_upgrade_v3_sql;
 extern char *schema_upgrade_v4_sql;
 extern char *schema_upgrade_v5_sql;
+extern char *schema_upgrade_v6_sql;
 
 extern wdb_config wconfig;
 extern pthread_mutex_t pool_mutex;
@@ -547,7 +558,7 @@ int wdb_stmt_cache(wdb_t * wdb, int index);
 
 int wdb_parse(char * input, char * output);
 
-int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output);
+int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, char * output);
 
 int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output);
 
@@ -573,7 +584,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
 
 /**
  * @brief Function to get values from MITRE database.
- * 
+ *
  * @param wdb the MITRE struct database.
  * @param input query to get a value.
  * @param output response of the query.
@@ -648,7 +659,7 @@ int wdb_journal_wal(sqlite3 *db);
 
 /**
  * @brief Function to get a MITRE technique's name.
- * 
+ *
  * @param wdb the MITRE struct database.
  * @param id MITRE technique's ID.
  * @param output MITRE technique's name.

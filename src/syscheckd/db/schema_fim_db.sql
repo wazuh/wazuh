@@ -41,16 +41,18 @@ CREATE INDEX IF NOT EXISTS dev_inode_index ON file_data (dev, inode);
 
 CREATE TABLE IF NOT EXISTS registry_key (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-    path TEXT NOT NULL UNIQUE,
+    path TEXT NOT NULL,
     perm TEXT,
     uid INTEGER,
     gid INTEGER,
     user_name TEXT,
     group_name TEXT,
     mtime INTEGER,
-    arch INTEGER,
+    arch TEXT CHECK (arch IN ('[x32]', '[x64]')),
     scanned INTEGER,
-    checksum TEXT NOT NULL
+    last_event INTEGER,
+    checksum TEXT NOT NULL,
+    UNIQUE (arch, path)
 );
 
 CREATE INDEX IF NOT EXISTS path_index ON registry_key (path);
@@ -72,3 +74,8 @@ CREATE TABLE IF NOT EXISTS registry_data (
 );
 
 CREATE INDEX IF NOT EXISTS key_name_index ON registry_data (key_id, name);
+
+CREATE VIEW IF NOT EXISTS registry_view (path, checksum) AS
+    SELECT arch || ' ' || replace(path, ':', '::') || ':', checksum FROM registry_key
+    UNION ALL
+    SELECT arch || ' ' || replace(path, ':', '::') || ':' || replace(name, ':', '::'), registry_data.checksum FROM registry_key INNER JOIN registry_data ON registry_key.id=registry_data.key_id;

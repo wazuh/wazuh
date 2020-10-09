@@ -482,7 +482,7 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
 #endif
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
-    fim_db_get_path_range(syscheck.database, first_entry, last_entry, &files, syscheck.database_store);
+    fim_db_get_path_range(syscheck.database, FIM_TYPE_FILE, first_entry, last_entry, &files, syscheck.database_store);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (files && files->elements) {
@@ -987,23 +987,6 @@ cJSON * fim_attributes_json(const fim_file_data * data) {
     return attributes;
 }
 
-// Create file entry JSON from a FIM entry structure
-
-cJSON * fim_entry_json(const char * path, fim_file_data * data) {
-    assert(data != NULL);
-    assert(path != NULL);
-
-    cJSON * root = cJSON_CreateObject();
-
-    cJSON_AddStringToObject(root, "path", path);
-    cJSON_AddNumberToObject(root, "timestamp", data->last_event);
-
-    cJSON * attributes = fim_attributes_json(data);
-    cJSON_AddItemToObject(root, "attributes", attributes);
-
-    return root;
-}
-
 // Create file attribute comparison JSON object
 
 cJSON * fim_json_compare_attrs(const fim_file_data * old_data, const fim_file_data * new_data) {
@@ -1183,11 +1166,19 @@ void free_file_data(fim_file_data * data) {
 
 void free_entry(fim_entry * entry) {
     if (entry) {
+#ifndef WIN32
+        os_free(entry->file_entry.path);
+        free_file_data(entry->file_entry.data);
+        free(entry);
+#else
         if (entry->type == FIM_TYPE_FILE) {
             os_free(entry->file_entry.path);
             free_file_data(entry->file_entry.data);
             free(entry);
+        } else {
+            fim_registry_free_entry(entry);
         }
+#endif
     }
 }
 
@@ -1228,6 +1219,7 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
 
 #ifdef WIN32
     mdebug1(FIM_ENTRIES_INFO, fim_db_get_count_file_entry(syscheck.database));
+    mdebug1(FIM_REGISTRY_ENTRIES_INFO, fim_db_get_count_registry_key(syscheck.database) + fim_db_get_count_registry_data(syscheck.database));
 #else
     unsigned inode_items = 0;
     unsigned inode_paths = 0;

@@ -7,10 +7,14 @@
  */
 
 CREATE TABLE IF NOT EXISTS fim_entry (
-    file TEXT PRIMARY KEY,
+    full_path TEXT NOT NULL PRIMARY KEY,
+    file TEXT,
     type TEXT NOT NULL CHECK (type IN ('file', 'registry')),
     date INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
     changes INTEGER NOT NULL DEFAULT 1,
+    arch TEXT CHECK (arch IN (NULL, '[x64]', '[x32]')),
+    value_name TEXT,
+    value_type TEXT,
     size INTEGER,
     perm TEXT,
     uid TEXT,
@@ -27,6 +31,7 @@ CREATE TABLE IF NOT EXISTS fim_entry (
     checksum TEXT
 );
 
+CREATE INDEX IF NOT EXISTS fim_full_path_index ON fim_entry (full_path);
 CREATE INDEX IF NOT EXISTS fim_file_index ON fim_entry (file);
 CREATE INDEX IF NOT EXISTS fim_date_index ON fim_entry (date);
 
@@ -321,7 +326,7 @@ CREATE TABLE IF NOT EXISTS sync_info (
 
 BEGIN;
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '5');
+INSERT INTO metadata (key, value) VALUES ('db_version', '6');
 INSERT INTO scan_info (module) VALUES ('fim');
 INSERT INTO scan_info (module) VALUES ('syscollector');
 INSERT INTO sync_info (component) VALUES ('fim');
