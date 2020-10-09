@@ -866,7 +866,7 @@ class RolesManager:
         :return: True -> Success | False -> Failure
         """
         try:
-            if self.get_role(role_name) is not None and self.get_role(role_name)['id'] not in admin_role_ids:
+            if self.get_role(role_name) is not None and self.get_role(role_name)['id'] > max_id_reserved:
                 role_id = self.session.query(Roles).filter_by(name=role_name).first().id
                 if role_id:
                     self.delete_role(role_id=role_id)
@@ -885,7 +885,7 @@ class RolesManager:
             list_roles = list()
             roles = self.session.query(Roles).all()
             for role in roles:
-                if int(role.id) not in admin_role_ids:
+                if int(role.id) > max_id_reserved:
                     with RolesPoliciesManager() as rpm:
                         rpm.remove_all_policies_in_role(role_id=role.id)
                     list_roles.append(int(role.id))
@@ -906,7 +906,7 @@ class RolesManager:
         try:
             role_to_update = self.session.query(Roles).filter_by(id=role_id).first()
             if role_to_update and role_to_update is not None:
-                if role_to_update.id not in admin_role_ids:
+                if role_to_update.id > max_id_reserved:
                     # Change the name of the role
                     if name is not None:
                         role_to_update.name = name
@@ -1030,7 +1030,7 @@ class RulesManager:
         True -> Success | False -> Failure
         """
         try:
-            if rule_id not in required_rules:
+            if rule_id > max_id_reserved:
                 # If the role does not exist we rollback the changes
                 if self.session.query(Rules).filter_by(id=rule_id).first() is None:
                     return False
@@ -1059,7 +1059,7 @@ class RulesManager:
         """
         try:
             if self.get_rule_by_name(rule_name) is not None and \
-                    self.get_rule_by_name(rule_name)['id'] not in required_rules:
+                    self.get_rule_by_name(rule_name)['id'] > max_id_reserved:
                 rule_id = self.session.query(Rules).filter_by(name=rule_name).first().id
                 if rule_id:
                     self.delete_rule(rule_id=rule_id)
@@ -1080,7 +1080,7 @@ class RulesManager:
             list_rules = list()
             rules = self.session.query(Rules).all()
             for rule in rules:
-                if int(rule.id) not in required_rules:
+                if int(rule.id) > max_id_reserved:
                     with RolesRulesManager() as rrum:
                         rrum.remove_all_roles_in_rule(rule_id=rule.id)
                     list_rules.append(int(rule.id))
@@ -1110,7 +1110,7 @@ class RulesManager:
         try:
             rule_to_update = self.session.query(Rules).filter_by(id=rule_id).first()
             if rule_to_update and rule_to_update is not None:
-                if rule_to_update.id not in required_rules:
+                if rule_to_update.id > max_id_reserved:
                     # Rule is not a valid json
                     if rule is not None and not json_validator(rule):
                         return SecurityError.INVALID
@@ -1243,7 +1243,7 @@ class PoliciesManager:
         :return: True -> Success | False -> Failure
         """
         try:
-            if int(policy_id) not in admin_policy_ids:
+            if int(policy_id) > max_id_reserved:
                 # If there is no policy continues
                 if self.session.query(Policies).filter_by(id=policy_id).first() is None:
                     return False
@@ -1266,7 +1266,7 @@ class PoliciesManager:
         """
         try:
             if self.get_policy(policy_name) is not None and \
-                    self.get_policy(name=policy_name)['id'] not in admin_policy_ids:
+                    self.get_policy(name=policy_name)['id'] > max_id_reserved:
                 policy_id = self.session.query(Policies).filter_by(name=policy_name).first().id
                 if policy_id:
                     self.delete_policy(policy_id=policy_id)
@@ -1285,7 +1285,7 @@ class PoliciesManager:
             list_policies = list()
             policies = self.session.query(Policies).all()
             for policy in policies:
-                if int(policy.id) not in admin_policy_ids:
+                if int(policy.id) > max_id_reserved:
                     with RolesPoliciesManager() as rpm:
                         rpm.remove_all_roles_in_policy(policy_id=policy.id)
                     list_policies.append(int(policy.id))
@@ -1307,7 +1307,7 @@ class PoliciesManager:
         try:
             policy_to_update = self.session.query(Policies).filter_by(id=policy_id).first()
             if policy_to_update and policy_to_update is not None:
-                if policy_to_update.id not in admin_policy_ids:
+                if policy_to_update.id > max_id_reserved:
                     # Policy is not a valid json
                     if policy is not None and not json_validator(policy):
                         return SecurityError.INVALID
@@ -1358,7 +1358,7 @@ class UserRolesManager:
         """
         try:
             # Create a role-policy relationship if both exist
-            if user_id not in admin_user_ids or force_admin:
+            if int(user_id) > max_id_reserved or force_admin:
                 user = self.session.query(User).filter_by(id=user_id).first()
                 if user is None:
                     return SecurityError.USER_NOT_EXIST
@@ -1520,7 +1520,7 @@ class UserRolesManager:
         True -> Success | False -> Failure | User not exist | Role not exist | Non-existent relationship
         """
         try:
-            if user_id not in admin_user_ids:  # Administrator
+            if int(user_id) > max_id_reserved:  # Administrator
                 user = self.session.query(User).filter_by(id=user_id).first()
                 if user is None:
                     return SecurityError.USER_NOT_EXIST
@@ -1569,7 +1569,7 @@ class UserRolesManager:
         True -> Success | False -> Failure
         """
         try:
-            if user_id not in admin_user_ids:
+            if int(user_id) > max_id_reserved:
                 roles = self.session.query(User).filter_by(id=user_id).first().roles
                 for role in roles:
                     self.remove_role_in_user(user_id=user_id, role_id=role.id)
@@ -1591,7 +1591,7 @@ class UserRolesManager:
         True -> Success | False -> Failure
         """
         try:
-            if int(role_id) not in admin_role_ids:
+            if int(role_id) > max_id_reserved:
                 users = self.session.query(Roles).filter_by(id=role_id).first().users
                 for user in users:
                     self.remove_user_in_role(user_id=user.id, role_id=role_id)
@@ -1618,7 +1618,7 @@ class UserRolesManager:
         -------
         True -> Success | False -> Failure
         """
-        if user_id not in admin_user_ids and self.exist_user_role(user_id=user_id, role_id=actual_role_id) and \
+        if int(user_id) > max_id_reserved and self.exist_user_role(user_id=user_id, role_id=actual_role_id) and \
                 self.session.query(Roles).filter_by(id=new_role_id).first() is not None:
             self.remove_role_in_user(user_id=user_id, role_id=actual_role_id)
             self.add_user_to_role(user_id=user_id, role_id=new_role_id, position=position)
@@ -1665,7 +1665,7 @@ class RolesPoliciesManager:
 
         try:
             # Create a role-policy relationship if both exist
-            if int(role_id) not in admin_role_ids or force_admin:
+            if int(role_id) > max_id_reserved or force_admin:
                 role = self.session.query(Roles).filter_by(id=role_id).first()
                 if role is None:
                     return SecurityError.ROLE_NOT_EXIST
@@ -1802,7 +1802,7 @@ class RolesPoliciesManager:
         :return: True -> Success | False -> Failure | Role not exist | Policy not exist | Non-existent relationship
         """
         try:
-            if int(role_id) not in admin_role_ids:  # Administrator
+            if int(role_id) > max_id_reserved:  # Administrator
                 role = self.session.query(Roles).filter_by(id=role_id).first()
                 if role is None:
                     return SecurityError.ROLE_NOT_EXIST
@@ -1851,7 +1851,7 @@ class RolesPoliciesManager:
         :return: True -> Success | False -> Failure
         """
         try:
-            if int(role_id) not in admin_role_ids:
+            if int(role_id) > max_id_reserved:
                 policies = self.session.query(Roles).filter_by(id=role_id).first().policies
                 for policy in policies:
                     self.remove_policy_in_role(role_id=role_id, policy_id=policy.id)
@@ -1867,7 +1867,7 @@ class RolesPoliciesManager:
         :return: True -> Success | False -> Failure
         """
         try:
-            if int(policy_id) not in admin_policy_ids:
+            if int(policy_id) > max_id_reserved:
                 roles = self.session.query(Policies).filter_by(id=policy_id).first().roles
                 for rol in roles:
                     self.remove_policy_in_role(role_id=rol.id, policy_id=policy_id)
@@ -1884,7 +1884,7 @@ class RolesPoliciesManager:
         :param new_policy_id: New policy ID
         :return: True -> Success | False -> Failure
         """
-        if int(role_id) not in admin_role_ids and \
+        if int(role_id) > max_id_reserved and \
                 self.exist_role_policy(role_id=role_id, policy_id=actual_policy_id) and \
                 self.session.query(Policies).filter_by(id=new_policy_id).first() is not None:
             self.remove_policy_in_role(role_id=role_id, policy_id=actual_policy_id)
