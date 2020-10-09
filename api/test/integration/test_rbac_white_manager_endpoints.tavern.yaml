@@ -118,6 +118,7 @@ stages:
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      error: !anyint
       data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
       params:
         path: 'etc/decoders/test_decoders.xml'

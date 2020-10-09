@@ -16,6 +16,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -52,6 +53,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - end: !anything
@@ -85,6 +87,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -103,6 +106,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items:
@@ -141,6 +145,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []

@@ -16,6 +16,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: !anystr
@@ -48,6 +49,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - info:
@@ -78,6 +80,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - info:
@@ -119,6 +122,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - cluster: wazuh
@@ -145,6 +149,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: &cluster_nodes_response
             - name: !anystr
@@ -164,6 +169,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -182,6 +188,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -200,6 +207,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items: []
@@ -228,6 +236,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -252,6 +261,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -276,6 +286,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -294,6 +305,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -311,6 +323,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -329,6 +342,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -356,6 +370,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: !anystr
@@ -377,6 +392,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - type: !anystr
@@ -420,6 +436,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - ip: !anystr
@@ -477,6 +494,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           enabled: "yes"
           running: "yes"
@@ -496,6 +514,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - alerts: !anything
@@ -527,6 +546,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - alerts: !anything
@@ -560,6 +580,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - alerts:
@@ -582,6 +603,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - syscheck:
@@ -610,6 +632,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - syscollector:
@@ -638,6 +661,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - alerts:
@@ -659,6 +683,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - syscheck:
@@ -687,6 +712,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - syscollector:
@@ -718,6 +744,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: master-node
@@ -736,6 +763,7 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: PUT
+      error: !anyint
       data: "{corrupted_rules_file}"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -755,6 +783,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: worker1
@@ -795,6 +824,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: worker1
@@ -817,6 +847,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: master-node
@@ -841,6 +872,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - node_name: "master-node"
@@ -896,6 +928,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - node_name: 'worker1'
@@ -928,6 +961,7 @@ stages:
     response:
       status_code: 200
       json: &update_api_config_ok
+        error: !anyint
         data:
           affected_items: !anything
           total_affected_items: 3
@@ -957,6 +991,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - worker1
@@ -1002,6 +1037,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - node_name: 'master-node'
@@ -1041,6 +1077,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           total_affected_items: 1
@@ -1070,6 +1107,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - node_name: 'master-node'
@@ -1102,6 +1140,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           total_affected_items: 3
@@ -1131,6 +1170,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - node_name: 'master-node'
@@ -1161,6 +1201,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - global:
@@ -1193,6 +1234,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - active-response: !anything
@@ -1210,6 +1252,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - alerts: !anything
@@ -1228,6 +1271,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - command: !anything
@@ -1245,6 +1289,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - auth:
@@ -1274,6 +1319,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - internal:
@@ -1294,6 +1340,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - internal:
@@ -1325,6 +1372,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - localfile: !anything
@@ -1342,6 +1390,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items: []
@@ -1358,6 +1407,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - internal:
@@ -1391,6 +1441,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - monitord:
@@ -1417,6 +1468,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - remote:
@@ -1439,6 +1491,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - internal:
@@ -1479,6 +1532,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - syscheck:
@@ -1497,6 +1551,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - rootcheck:
@@ -1529,6 +1584,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - internal:
@@ -1555,6 +1611,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - wmodules: !anything
@@ -1687,6 +1744,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/rules/local_rules.xml'
@@ -1703,6 +1761,7 @@ stages:
     response: &non_existing_file
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1721,6 +1780,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/decoders/local_decoder.xml'
@@ -1746,6 +1806,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/lists/audit-keys'
@@ -1798,6 +1859,7 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/files"
       method: PUT
+      error: !anyint
       data: "{ossec_conf}"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1808,6 +1870,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/ossec.conf'
@@ -1819,12 +1882,14 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
+      error: !anyint
       data: "{new_rules:s}"
       params:
         path: etc/rules/new-rules.xml
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/rules/new-rules.xml'
@@ -1836,6 +1901,7 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
+      error: !anyint
       data: "{new_rules:s}"
       params:
         path: etc/rules/new-rules.xml
@@ -1843,6 +1909,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1857,6 +1924,7 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
+      error: !anyint
       data: "{new_rules:s}"
       params:
         path: etc/rules/new-rules.xml
@@ -1864,6 +1932,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/rules/new-rules.xml'
@@ -1875,6 +1944,7 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
+      error: !anyint
       data: "{new_rules_with_syntax_error:s}"
       params:
         path: etc/rules/new-rules.xml
@@ -1882,6 +1952,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1896,12 +1967,14 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
+      error: !anyint
       data: "{new_decoder:s}"
       params:
         path: etc/decoders/new-decoder.xml
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/decoders/new-decoder.xml'
@@ -1913,6 +1986,7 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
+      error: !anyint
       data: "{new_decoder:s}"
       params:
         path: etc/decoders/new-decoder.xml
@@ -1920,6 +1994,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1934,6 +2009,7 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
+      error: !anyint
       data: "{new_decoder:s}"
       params:
         path: etc/decoders/new-decoder.xml
@@ -1941,6 +2017,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/decoders/new-decoder.xml'
@@ -1952,6 +2029,7 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
+      error: !anyint
       data: "{new_decoder_with_syntax_error:s}"
       params:
         path: etc/decoders/new-decoder.xml
@@ -1959,6 +2037,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1973,12 +2052,14 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
+      error: !anyint
       data: "{new_cdb_list:s}"
       params:
         path: etc/lists/new-list
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/lists/new-list'
@@ -1990,6 +2071,7 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
+      error: !anyint
       data: "{new_cdb_list:s}"
       params:
         path: etc/lists/new-list
@@ -1997,6 +2079,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -2011,6 +2094,7 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
+      error: !anyint
       data: "{new_cdb_list:s}"
       params:
         path: etc/lists/new-list
@@ -2018,6 +2102,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/lists/new-list'
@@ -2029,6 +2114,7 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
+      error: !anyint
       data: "{new_cdb_list_with_syntax_error:s}"
       params:
         path: etc/lists/new-list
@@ -2036,6 +2122,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -2056,6 +2143,7 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/unexisting-node/files"
       method: PUT
+      error: !anyint
       data: "{new_rules:s}"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2066,6 +2154,7 @@ stages:
     response: &unexisting_node
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: 0
@@ -2081,6 +2170,7 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/unexisting-node/files"
       method: PUT
+      error: !anyint
       data: "{new_decoder:s}"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2096,6 +2186,7 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/unexisting-node/files"
       method: PUT
+      error: !anyint
       data: "{new_cdb_list:s}"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2129,6 +2220,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - path: !anystr
@@ -2167,6 +2259,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -2182,6 +2275,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - &cluster_log
@@ -2204,6 +2298,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_log
@@ -2224,6 +2319,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_log
@@ -2242,6 +2338,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_log
@@ -2259,6 +2356,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_log
@@ -2278,6 +2376,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_log
@@ -2296,6 +2395,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_log
@@ -2313,6 +2413,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_log
@@ -2333,6 +2434,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_log
@@ -2381,6 +2483,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -2422,6 +2525,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data: !anything
 
   - name: Cluster stats {node_id} day without stats
@@ -2473,6 +2577,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - total_events_decoded: !anyfloat
@@ -2548,6 +2653,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - averages: !anything
@@ -2579,6 +2685,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - queue_size: !anyfloat
@@ -2616,6 +2723,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - Sun:
@@ -2666,6 +2774,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -2689,6 +2798,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'worker1'
@@ -2708,6 +2818,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'master-node'
