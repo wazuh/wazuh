@@ -95,8 +95,8 @@ class RolesRules(_Base):
     __table_args__ = (UniqueConstraint('role_id', 'rule_id', name='role_rule'),
                       )
 
-    roles = relationship("Roles", backref="rules_associations", cascade="all,delete", passive_deletes=True)
-    rules = relationship("Rules", backref="roles_associations", cascade="all,delete", passive_deletes=True)
+    roles = relationship("Roles", backref="rules_associations", cascade="all,delete")
+    rules = relationship("Rules", backref="roles_associations", cascade="all,delete")
 
 
 # Declare relational tables
@@ -121,8 +121,8 @@ class RolesPolicies(_Base):
     __table_args__ = (UniqueConstraint('role_id', 'policy_id', name='role_policy'),
                       )
 
-    roles = relationship("Roles", backref="policies_associations", cascade="all,delete", passive_deletes=True)
-    policies = relationship("Policies", backref="roles_associations", cascade="all,delete", passive_deletes=True)
+    roles = relationship("Roles", backref="policies_associations", cascade="all,delete")
+    policies = relationship("Policies", backref="roles_associations", cascade="all,delete")
 
 
 class UserRoles(_Base):
@@ -146,8 +146,8 @@ class UserRoles(_Base):
     __table_args__ = (UniqueConstraint('user_id', 'role_id', name='user_role'),
                       )
 
-    users = relationship("User", backref="roles_associations", cascade="all,delete", passive_deletes=True)
-    roles = relationship("Roles", backref="users_associations", cascade="all,delete", passive_deletes=True)
+    users = relationship("User", backref="roles_associations", cascade="all,delete")
+    roles = relationship("Roles", backref="users_associations", cascade="all,delete")
 
 
 # Declare basic tables
@@ -496,12 +496,12 @@ class TokenManager:
         try:
             self.delete_all_expired_rules()
             for user_id in users:
-                self.delete_rule(user_id=user_id)
-                self.session.add(UsersTokenBlacklist(user_id=user_id))
+                self.delete_rule(user_id=int(user_id))
+                self.session.add(UsersTokenBlacklist(user_id=int(user_id)))
                 self.session.commit()
             for role_id in roles:
-                self.delete_rule(role_id=role_id)
-                self.session.add(RolesTokenBlacklist(role_id=role_id))
+                self.delete_rule(role_id=int(role_id))
+                self.session.add(RolesTokenBlacklist(role_id=int(role_id)))
                 self.session.commit()
 
             return True
@@ -1276,13 +1276,14 @@ class PoliciesManager:
                             pass
                         self.session.add(Policies(name=name, policy=json.dumps(policy), policy_id=policy_id))
                         self.session.commit()
+                        return True
                     else:
                         return SecurityError.INVALID
                 else:
                     return SecurityError.INVALID
             else:
                 return SecurityError.INVALID
-            return True
+            return False
         except IntegrityError:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
@@ -1301,7 +1302,7 @@ class PoliciesManager:
         """
         try:
             if int(policy_id) > max_id_reserved:
-                policy = self.session.query(Rules).filter_by(id=policy_id).first()
+                policy = self.session.query(Policies).filter_by(id=policy_id).first()
                 if policy is None:
                     return False
                 self.session.delete(policy)
