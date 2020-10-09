@@ -2418,7 +2418,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         }
 
         // Insert labels
-        lf->labels = labels_find(lf, &sock);
+        lf->labels = labels_find(lf->agent_id, &sock);
 
         /* Check the rules */
         DEBUG_MSG("%s: DEBUG: Checking the rules - %d ",
