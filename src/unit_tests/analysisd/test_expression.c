@@ -24,6 +24,60 @@ bool w_expression_add_osip(w_expression_t ** var, char * ip);
 
 /* tests */
 
+// w_calloc_expression_t
+
+void w_calloc_expression_t_match(void ** state)
+{
+    w_expression_t * var = NULL;
+
+    w_calloc_expression_t(&var, EXP_TYPE_OSMATCH);
+
+    assert_non_null(var);
+    assert_non_null(var->match);
+    assert_int_equal(var->exp_type, EXP_TYPE_OSMATCH);
+
+    os_free(var->match);
+    os_free(var);
+}
+
+void w_calloc_expression_t_regex(void ** state)
+{
+    w_expression_t * var = NULL;
+
+    w_calloc_expression_t(&var, EXP_TYPE_OSREGEX);
+
+    assert_non_null(var);
+    assert_non_null(var->regex);
+    assert_int_equal(var->exp_type, EXP_TYPE_OSREGEX);
+
+    os_free(var->regex);
+    os_free(var);
+}
+
+void w_calloc_expression_t_string(void ** state)
+{
+    w_expression_t * var = NULL;
+
+    w_calloc_expression_t(&var, EXP_TYPE_STRING);
+
+    assert_non_null(var);
+    assert_int_equal(var->exp_type, EXP_TYPE_STRING);
+
+    os_free(var);
+}
+
+void w_calloc_expression_t_osip(void ** state)
+{
+    w_expression_t * var = NULL;
+
+    w_calloc_expression_t(&var, EXP_TYPE_OSIP_ARRAY);
+
+    assert_non_null(var);
+    assert_int_equal(var->exp_type, EXP_TYPE_OSIP_ARRAY);
+
+    os_free(var);
+}
+
 // w_expression_add_osip
 
 void w_expression_add_osip_empty_ok(void ** state)
@@ -114,6 +168,13 @@ void w_expression_add_osip_non_empty_fail(void ** state)
 int main(void)
 {
     const struct CMUnitTest tests[] = {
+
+        // Test w_calloc_expression_t
+        cmocka_unit_test(w_calloc_expression_t_match),
+        cmocka_unit_test(w_calloc_expression_t_regex),
+        cmocka_unit_test(w_calloc_expression_t_string),
+        cmocka_unit_test(w_calloc_expression_t_osip),
+
         // Tests w_add_ip_to_array
         cmocka_unit_test(w_expression_add_osip_empty_ok),
         cmocka_unit_test(w_expression_add_osip_empty_fail),
