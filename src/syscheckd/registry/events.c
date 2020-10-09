@@ -35,7 +35,7 @@ cJSON *fim_registry_value_attributes_json(const fim_registry_value_data *data, c
 
     cJSON_AddStringToObject(attributes, "type", "registry");
 
-    if (configuration->opts & CHECK_TYPE) {
+    if (configuration->opts & CHECK_TYPE && data->type <= REG_QWORD) {
         cJSON_AddStringToObject(attributes, "value_type", VALUE_TYPE[data->type]);
     }
 
