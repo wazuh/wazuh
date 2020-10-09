@@ -231,11 +231,11 @@ cJSON * wdbc_query_parse_json(int *sock, const char *query, char *response, cons
     return root;
 }
 
-int wdbc_close(int sock) {
+int wdbc_close(int* sock) {
     int ret = 0;
-    if (sock >= 0) {
-        ret = close(sock);
-        sock = -1;
+    if (*sock >= 0) {
+        ret = close(*sock);
+        *sock = -1;
     }
     return ret;
 }
