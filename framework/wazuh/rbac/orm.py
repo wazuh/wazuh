@@ -1810,11 +1810,23 @@ class RolesPoliciesManager:
                 policy = self.session.query(Policies).filter_by(id=policy_id).first()
                 if policy is None:
                     return SecurityError.POLICY_NOT_EXIST
-                if self.session.query(RolesPolicies).filter_by(role_id=role_id,
-                                                               policy_id=policy_id).first() is not None:
+
+                role_policy = self.session.query(RolesPolicies).filter_by(role_id=role_id,
+                                                                          policy_id=policy_id).first()
+
+                if role_policy is not None:
                     role = self.session.query(Roles).get(role_id)
                     policy = self.session.query(Policies).get(policy_id)
                     role.policies.remove(policy)
+
+                    # Update position value
+                    relationships_to_update = [row for row in self.session.query(
+                        RolesPolicies).filter(RolesPolicies.role_id == role_id, RolesPolicies.level >= role_policy.level
+                                              )]
+
+                    for relation in relationships_to_update:
+                        relation.level -= 1
+
                     self.session.commit()
                     return True
                 else:
