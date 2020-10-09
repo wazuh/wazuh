@@ -515,7 +515,7 @@ diff_data *initialize_file_diff_data(const char *filename){
     snprintf(buffer, PATH_MAX, "%s/last-entry.gz", diff->compress_folder);
     os_strdup(buffer, diff->compress_file);
 
-    snprintf(buffer, PATH_MAX, "%s/tmp", abs_diff_dir_path);
+    snprintf(buffer, PATH_MAX + 5, "%s/tmp", abs_diff_dir_path);
     os_strdup(buffer, diff->tmp_folder);
 
     snprintf(buffer, PATH_MAX, "%s/tmp-entry", diff->tmp_folder);
