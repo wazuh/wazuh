@@ -387,9 +387,15 @@ int fim_db_get_data_checksum(fdb_t *fim_sql, fim_type type, void *arg);
  * @param file A fim_tmp_file pointer from which to read the line.
  * @param storage Type of storage (memory or disk).
  * @param it The current line number to be read.
+ * @param buffer Buffer where the line will be saved.
  *
- * @return A string holding the read line, NULL on error.
+ * @retval 0
+ * Line readed successfuly
+ * @retval 1
+ * End of file
+ * @retval -1
+ * Fail at fseek
  */
-char *fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it);
+int fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **buffer);
 
 #endif /* FIM_DB_COMMON_H */

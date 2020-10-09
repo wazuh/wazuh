@@ -258,30 +258,6 @@ int fim_db_get_registry_keys_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, i
 int fim_db_get_registry_data_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage);
 
 /**
- * @brief Delete not scanned registry keys from database.
- *
- * @param fim_sql FIM database struct.
- * @param file Structure of the file which contains all the paths.
- * @param mutex FIM database's mutex for thread synchronization.
- * @param storage 1 Store database in memory, disk otherwise.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_delete_registry_keys_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage);
-
-/**
- * @brief Delete not scanned registry data from database.
- *
- * @param fim_sql FIM database struct.
- * @param file Structure of the file which contains all the paths.
- * @param mutex FIM database's mutex for thread synchronization.
- * @param storage 1 Store database in memory, disk otherwise.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_delete_registry_data_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage);
-
-/**
  * @brief Get count of all entries in registry data table.
  *
  * @param fim_sql FIM database struct.

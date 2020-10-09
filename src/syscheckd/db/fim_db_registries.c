@@ -423,16 +423,6 @@ fim_registry_key *fim_db_get_registry_key_using_id(fdb_t *fim_sql, unsigned int 
     return reg_key;
 }
 
-int fim_db_delete_registry_keys_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
-    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, NULL, storage,
-                                    (void *) true, (void *) FIM_SCHEDULED, NULL);
-}
-
-int fim_db_delete_registry_data_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
-    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, NULL, storage,
-                                    (void *) true, (void *) FIM_SCHEDULED, NULL);
-}
-
 int fim_db_get_registry_keys_range(fdb_t *fim_sql, const char *start, const char *top, fim_tmp_file **file, int storage) {
     if ((*file = fim_db_create_temp_file(storage)) == NULL) {
         return FIMDB_ERR;
@@ -536,75 +526,39 @@ int fim_db_process_read_registry_data_file(fdb_t *fim_sql, fim_tmp_file *file, p
                                            void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
                                            int storage, void * alert, void * mode, void * w_evt) {
 
-    char line[PATH_MAX + 1];
-    char *name = NULL;
+    char *read_line = NULL;
     int id;
     int i;
     char *split;
 
-    if (storage == FIM_DB_DISK) {
-        if (fseek(file->fd, SEEK_SET, 0) != 0) {
-            merror("Failed fseek in %s", file->path);
+    for (i = 0; i < file->elements; i++) {
+        // Read line has to be: 234(row id of the key) some_reg(name of the registry). Get the rowid and the name
+        if(fim_db_read_line_from_file(file, storage, i, &read_line) == -1) {
             return FIMDB_ERR;
         }
-    }
 
-    for (i = 0; i < file->elements; i++) {
-        if (storage == FIM_DB_DISK) {
-            // fgets() adds \n(newline) to the end of the string,
-            // So it must be removed.
-            if (fgets(line, sizeof(line), file->fd)) {
-                size_t len = strlen(line);
-
-                if (len > 2 && line[len - 1] == '\n') {
-                    line[len - 1] = '\0';
-                }
-                else {
-                    merror("Temporary path file '%s' is corrupt: missing line end.", file->path);
-                    continue;
-                }
-
-                name = wstr_unescape_json(line);
-            }
-        }
-        else {
-            name = wstr_unescape_json((char *) W_Vector_get(file->list, i));
-        }
-
-        if (name == NULL) {
-            continue;
-        }
-
-        // Readed line has to be: 234(row id of the key) some_reg(name of the registry). Get the rowid and the name
-        id = strtoul(name, &split, 10);
-
+        id = strtoul(read_line, &split, 10);
         // Skip if the fields couldn't be extracted.
-        if (*split != ' ' || id == 0) {
+        if (split == NULL || *split != ' ') {
             mwarn("Temporary path file '%s' is corrupt: wrong line format", file->path);
             continue;
         }
 
         fim_entry *entry;
-
-        split++; // ignore the whitespace
-
         os_calloc(1, sizeof(fim_entry), entry);
-
         entry->type = FIM_TYPE_REGISTRY;
 
         w_mutex_lock(mutex);
-
         entry->registry_entry.key = fim_db_get_registry_key_using_id(fim_sql, id);
-        entry->registry_entry.value = fim_db_get_registry_data(fim_sql, id, split);
-
+        entry->registry_entry.value = fim_db_get_registry_data(fim_sql, id, (split + 1));
         w_mutex_unlock(mutex);
 
-        if (entry != NULL) {
+        if (entry->registry_entry.key != NULL && entry->registry_entry.value != NULL) {
             callback(fim_sql, entry, mutex, alert, mode, w_evt);
-            free_entry(entry);
         }
 
-        os_free(name);
+        free_entry(entry);
+        os_free(read_line);
     }
 
     fim_db_clean_file(&file, storage);
