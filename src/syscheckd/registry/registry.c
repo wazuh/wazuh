@@ -566,12 +566,12 @@ void fim_registry_process_key_delete_event(fdb_t *fim_sql,
     }
 
     w_mutex_lock(mutex);
-    result = fim_db_get_values_from_registry_key(fim_sql, &file, FIM_DB_DISK, data->registry_entry.key->id);
+    result = fim_db_get_values_from_registry_key(fim_sql, &file, syscheck.database_store, data->registry_entry.key->id);
     w_mutex_unlock(mutex);
 
     if (result == FIMDB_OK && file && file->elements) {
         fim_db_process_read_registry_data_file(fim_sql, file, mutex, fim_registry_process_value_delete_event,
-                                               FIM_DB_DISK, _alert, _ev_mode, _w_evt);
+                                               syscheck.database_store, _alert, _ev_mode, _w_evt);
     }
 
     w_mutex_lock(mutex);
@@ -592,26 +592,27 @@ void fim_registry_process_unscanned_entries() {
     int result;
 
     w_mutex_lock(&syscheck.fim_registry_mutex);
-    result = fim_db_get_registry_keys_not_scanned(syscheck.database, &file, FIM_DB_DISK);
+    result = fim_db_get_registry_keys_not_scanned(syscheck.database, &file, syscheck.database_store);
     w_mutex_unlock(&syscheck.fim_registry_mutex);
 
     if (result != FIMDB_OK) {
         mwarn(FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
     } else if (file && file->elements) {
         fim_db_process_read_file(syscheck.database, file, FIM_TYPE_REGISTRY, &syscheck.fim_registry_mutex,
-                                 fim_registry_process_key_delete_event, FIM_DB_DISK, &_base_line, &event_mode, NULL);
+                                 fim_registry_process_key_delete_event, syscheck.database_store, &_base_line,
+                                 &event_mode, NULL);
     }
 
     w_mutex_lock(&syscheck.fim_registry_mutex);
-    result = fim_db_get_registry_data_not_scanned(syscheck.database, &file, FIM_DB_DISK);
+    result = fim_db_get_registry_data_not_scanned(syscheck.database, &file, syscheck.database_store);
     w_mutex_unlock(&syscheck.fim_registry_mutex);
 
     if (result != FIMDB_OK) {
         mwarn(FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
     } else if (file && file->elements) {
         fim_db_process_read_registry_data_file(syscheck.database, file, &syscheck.fim_registry_mutex,
-                                               fim_registry_process_value_delete_event, FIM_DB_DISK, &_base_line,
-                                               &event_mode, NULL);
+                                               fim_registry_process_value_delete_event, syscheck.database_store,
+                                               &_base_line, &event_mode, NULL);
     }
 }
 

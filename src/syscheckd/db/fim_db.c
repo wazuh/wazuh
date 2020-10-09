@@ -74,7 +74,7 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_SET_REG_DATA_SCANNED] = "UPDATE registry_data SET scanned = 1 WHERE name = ? AND key_id = ?;",
     [FIMDB_STMT_SET_REG_KEY_SCANNED] = "UPDATE registry_key SET scanned = 1 WHERE path = ? and arch = ?;",
     [FIMDB_STMT_GET_REG_KEY_ROWID] = "SELECT id, path, perm, uid, gid, user_name, group_name, mtime, arch, scanned, last_event, checksum FROM registry_key WHERE id = ?;",
-    [FIMDB_STMT_GET_REG_DATA_ROWID] = "SELECT key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, scanned, last_event, checksum FROM registry_data WHERE key_id = ?;",
+    [FIMDB_STMT_GET_REG_DATA_ROWID] = "SELECT key_id || ' ' || name FROM registry_data WHERE key_id = ?;",
 #endif
     [FIMDB_STMT_GET_REG_PATH_RANGE] = "SELECT path, checksum FROM registry_view WHERE path BETWEEN ? and ? ORDER BY path;",
     [FIMDB_STMT_GET_REG_LAST_PATH] = "SELECT path FROM registry_view ORDER BY path DESC LIMIT 1;",
@@ -108,7 +108,7 @@ fdb_t *fim_db_init(int storage) {
     }
 
     char *error;
-    sqlite3_exec(fim->db, "PRAGMA synchronous = OFF", NULL, NULL, &error);
+    sqlite3_exec(fim->db, "PRAGMA synchronous = OFF; PRAGMA foreign_keys = ON;", NULL, NULL, &error);
 
     if (error) {
         merror("SQL error turning off synchronous mode: %s", error);
@@ -511,8 +511,9 @@ void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry
         os_strdup(base, write_buffer);
         line_length = strlen(write_buffer);
     } else {
-        os_calloc(OS_MAXSTR, sizeof(char), write_buffer);
-        line_length = snprintf(write_buffer, OS_MAXSTR, "%d %s", entry->registry_entry.key->arch, base);
+        line_length = snprintf(NULL, 0, "%d %s", entry->registry_entry.key->arch, base);
+        os_calloc(line_length + 1, sizeof(char), write_buffer);
+        snprintf(write_buffer, line_length + 1, "%d %s", entry->registry_entry.key->arch, base);
     }
 
     if (storage == FIM_DB_DISK) { // disk storage enabled

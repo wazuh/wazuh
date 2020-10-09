@@ -250,7 +250,7 @@ fim_entry *fim_db_decode_registry(int index, sqlite3_stmt *stmt) {
 void fim_db_callback_save_reg_data_name(__attribute__((unused))fdb_t * fim_sql, fim_entry *entry, int storage,
                                         void *arg) {
     int length;
-    if (entry->type != FIM_TYPE_REGISTRY) {
+    if (entry->type != FIM_TYPE_REGISTRY || entry->registry_entry.value == NULL) {
         return ;
     }
 
@@ -512,8 +512,8 @@ int fim_db_get_values_from_registry_key(fdb_t * fim_sql, fim_tmp_file **file, in
     fim_db_bind_get_registry_data_key_id(fim_sql, key_id);
 
     int ret = fim_db_multiple_row_query(fim_sql, FIMDB_STMT_GET_REG_DATA_ROWID,
-                                        FIM_DB_DECODE_TYPE(fim_db_decode_registry_value), free,
-                                        FIM_DB_CALLBACK_TYPE(fim_db_callback_save_reg_data_name), storage, (void*) *file);
+                                        FIM_DB_DECODE_TYPE(fim_db_decode_string), free,
+                                        FIM_DB_CALLBACK_TYPE(fim_db_callback_save_string), storage, (void*) *file);
 
     if (*file && (*file)->elements == 0) {
         fim_db_clean_file(file, storage);
