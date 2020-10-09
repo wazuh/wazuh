@@ -3297,7 +3297,6 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 2
         sort: -id
     response:
       status_code: 200
@@ -3306,6 +3305,10 @@ stages:
           affected_items:
             - id: '010'
             - id: '009'
+            - id: '008'
+            - id: '007'
+            - id: '006'
+            - id: '005'
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -3414,7 +3417,12 @@ stages:
       status_code: 200
       json:
         data:
-          <<: *outdated_agents_response
+          affected_items:
+            - id: '010'
+            - id: '009'
+          failed_items: [ ]
+          total_affected_items: 2
+          total_failed_items: 0
 
   - name: Filter agents by query
     request:
@@ -3428,11 +3436,12 @@ stages:
       json:
         data:
           affected_items:
+            - id: '006'
+            - id: '007'
+            - id: '008'
             - id: '010'
-              name: !anystr
-              version: !anystr
           failed_items: []
-          total_affected_items: 1
+          total_affected_items: 4
           total_failed_items: 0
 
   - name: Try show agents with bad query

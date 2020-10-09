@@ -815,7 +815,7 @@ async def get_group_file_json(request, group_id, file_name, pretty=False, wait_f
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data['data']['affected_items'], status=200, dumps=prettify if pretty else dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_group_file_xml(request, group_id, file_name, pretty=False, wait_for_complete=False):
