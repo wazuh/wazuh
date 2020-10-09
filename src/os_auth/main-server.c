@@ -818,8 +818,6 @@ void* run_writer(__attribute__((unused)) void *arg) {
             snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
             wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
-            wdbc_close(wdb_sock);
-
             free(cur->id);
             free(cur->name);
             free(cur->ip);

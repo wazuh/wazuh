@@ -1096,7 +1096,7 @@ int wdb_remove_agent(int id, int *sock) {
     name = wdb_get_agent_name(id, query_sock);
 
     snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DELETE_AGENT], id);
-    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    result = wdbc_query_ex(query_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
         case OS_SUCCESS:
