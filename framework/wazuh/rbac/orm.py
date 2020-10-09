@@ -838,7 +838,7 @@ class RolesManager:
         :return: True -> Success | False -> Failure
         """
         try:
-            if int(role_id) > admin_role_ids:
+            if int(role_id) > max_id_reserved:
                 # If the role does not exist we rollback the changes
                 if self.session.query(Roles).filter_by(id=role_id).first() is None:
                     return False
