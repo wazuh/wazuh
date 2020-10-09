@@ -38,6 +38,11 @@ int labels_init() {
     return (1);
 }
 
+/* Finalize label cache */
+void labels_finalize() {
+    OSHash_Free(label_cache);
+}
+
 wlabel_data_t * labels_cache_update(char *agent_id, int *sock) {
     wlabel_t *labels = NULL;
     wlabel_data_t *data = NULL;
@@ -50,7 +55,7 @@ wlabel_data_t * labels_cache_update(char *agent_id, int *sock) {
     }
 
     labels = labels_parse(labels_json);
-    free(labels_json);
+    cJSON_Delete(labels_json);
 
     // Cleaning labels from cache
     if (data = OSHash_Delete(label_cache, agent_id), data) {
