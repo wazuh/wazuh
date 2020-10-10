@@ -22,7 +22,7 @@ stages:
     response: &permission_denied
       status_code: 403
       json:
-        code: 4000
+        error: 4000
 
   - name: Send a message to an agent (Status=Active) (Allow)
     request:

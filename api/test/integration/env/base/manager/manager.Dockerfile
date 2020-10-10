@@ -12,7 +12,8 @@ COPY base/manager/preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
 RUN /wazuh/install.sh
 #####
 
-COPY configurations/base/manager/config/ossec.conf /aux_testing/etc/ossec.conf
+COPY scripts/xml_parser.py /scripts/
+COPY configurations/base/manager/config/ossec.conf /scripts/xml_templates/
 COPY configurations/base/manager/config/test.keys /aux_testing/etc/client.keys
 COPY configurations/base/manager/config/agent-groups /aux_testing/queue/agent-groups
 COPY configurations/base/manager/config/shared /aux_testing/etc/shared

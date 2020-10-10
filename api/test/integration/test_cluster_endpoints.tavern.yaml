@@ -2411,7 +2411,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1308
+        error: 1308
 
   - name: Cluster stats {node_id} 2019-08-27
     request:
@@ -2433,7 +2433,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1308
+        error: 1308
 
 ---
 test_name: GET /cluster/wrong_node/stats

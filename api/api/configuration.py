@@ -136,6 +136,8 @@ def generate_private_key(private_key_path, public_exponent=65537, key_size=2048)
             format=serialization.PrivateFormat.PKCS8,
             encryption_algorithm=serialization.NoEncryption()
         ))
+    os.chmod(private_key_path, 0o400)
+
     return key
 
 
@@ -181,6 +183,7 @@ def generate_self_signed_certificate(private_key, certificate_path):
     # Write our certificate out to disk.
     with open(certificate_path, 'wb') as f:
         f.write(cert.public_bytes(serialization.Encoding.PEM))
+    os.chmod(certificate_path, 0o400)
 
 
 def read_yaml_config(config_file=common.api_config_path, default_conf=None) -> Dict:

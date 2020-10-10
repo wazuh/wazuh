@@ -244,5 +244,6 @@
 #define FIM_DISK_QUOTA_LIMIT_REACHED        "(6350): The maximum configured size for the '%s' folder has been reached, the diff operation cannot be performed."
 #define FIM_DIFF_FILE_SIZE_LIMIT            "(6351): Maximum file size limit to generate diff information configured to '%d KB' for '%s'."
 #define FIM_DISK_QUOTA_LIMIT                "(6352): Maximum disk quota size limit configured to '%d KB'."
+#define FIM_DIFF_FOLDER_DELETED             "(6351): Folder '%s' has been deleted."
 
 #endif /* DEBUG_MESSAGES_H */
