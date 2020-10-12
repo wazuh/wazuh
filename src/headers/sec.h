@@ -13,6 +13,7 @@
 
 #include <time.h>
 #include <pthread.h>
+#include "shared.h"
 
 typedef enum _crypt_method{
     W_METH_BLOWFISH,W_METH_AES
@@ -29,6 +30,7 @@ typedef struct _keyentry {
     unsigned int local;
     unsigned int keyid;
     unsigned int global;
+    time_t updating_time;
 
     char *id;
     char *key;
@@ -42,6 +44,8 @@ typedef struct _keyentry {
     struct sockaddr_in peer_info;
     FILE *fp;
     crypt_method crypto_method;
+
+    w_linked_queue_node_t *rids_node;
 } keyentry;
 
 /* Key storage */
@@ -69,6 +73,8 @@ typedef struct _keystore {
     /* Removed keys storage */
     char **removed_keys;
     size_t removed_keys_size;
+
+    w_linked_queue_t *opened_fp_queue;
 } keystore;
 
 typedef enum key_states {
@@ -78,7 +84,7 @@ typedef enum key_states {
     KS_ENCKEY
 } key_states;
 
-#define KEYSTORE_INITIALIZER { NULL, NULL, NULL, NULL, 0, 0, 0, 0, { 0, 0 }, NULL, 0 }
+#define KEYSTORE_INITIALIZER { NULL, NULL, NULL, NULL, 0, 0, 0, 0, { 0, 0 }, NULL, 0, NULL }
 
 /** Function prototypes -- key management **/
 

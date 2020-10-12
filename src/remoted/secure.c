@@ -31,6 +31,8 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
 
+static void * close_fp_main(void * args);
+
 /* Status of keypolling wodle */
 static char key_request_available = 0;
 
@@ -131,6 +133,9 @@ void HandleSecure()
 
     // Key reloader thread
     w_create_thread(rem_keyupdate_main, NULL);
+
+    // fp closer thread
+    w_create_thread(close_fp_main, &keys);
 
     /* Set up peer size */
     logr.peer_size = sizeof(peer_info);
@@ -268,6 +273,47 @@ void * rem_keyupdate_main(__attribute__((unused)) void * args) {
         mdebug2("Checking for keys file changes.");
         check_keyupdate();
         sleep(seconds);
+    }
+}
+
+// Closer rids thread
+static void * close_fp_main(void * args) {
+    keystore * keys = (keystore *)args;
+    w_linked_queue_node_t * first_node = NULL;
+    keyentry * first_node_key = NULL;
+    int seconds;
+    int now;
+    int node_updating_time;
+    int flag = 1;
+
+    seconds = logr.rids_closing_time;
+
+    while (1) {
+        sleep(seconds);
+        key_lock_write();
+        flag = 1;
+        while (flag) {
+            first_node = keys->opened_fp_queue->first;
+            if (first_node) {            
+                first_node_key = (keyentry *)first_node->data;
+                now = time(0);
+                node_updating_time = first_node_key->updating_time;
+                if ((now - seconds) > node_updating_time) {
+                    if (first_node_key->fp != NULL) {
+                        first_node_key = (keyentry *)linked_queue_pop(keys->opened_fp_queue);
+                        fclose(first_node_key->fp);
+                        first_node_key->updating_time = 0;
+                        first_node_key->fp = NULL;
+                        first_node_key->rids_node = NULL;
+                    }
+                } else {
+                    flag = 0;
+                }
+            } else {
+                flag = 0;
+            }
+        }
+        key_unlock();
     }
 }
 

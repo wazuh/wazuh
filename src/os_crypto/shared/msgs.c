@@ -142,11 +142,18 @@ void OS_StartCounter(keystore *keys)
                 keys->keyentries[i]->local = l_c;
             }
         }
-
+        if (keys->keyentries[i]->id != NULL) {
+            fclose(keys->keyentries[i]->fp);
+            keys->keyentries[i]->updating_time = 0;
+            keys->keyentries[i]->fp = NULL;
+            keys->keyentries[i]->rids_node = NULL;
+        }
+        
         keys->keyentries[i]->inode = File_Inode(rids_file);
     }
 
     mdebug2("Stored counter.");
+    keys->opened_fp_queue = linked_queue_init();
 
     /* Get counter values */
     if (_s_recv_flush == 0) {
@@ -186,16 +193,30 @@ static void StoreSenderCounter(const keystore *keys, unsigned int global, unsign
 /* Store the global and local count of events */
 static void StoreCounter(const keystore *keys, int id, unsigned int global, unsigned int local)
 {
+    char rids_file[OS_FLSIZE + 1];
+    if (!keys->keyentries[id]->fp) {
+        snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, keys->keyentries[id]->id);
+        keys->keyentries[id]->fp = fopen(rids_file, "w");
+    }
     /* Write to the beginning of the file */
     fseek(keys->keyentries[id]->fp, 0, SEEK_SET);
     fprintf(keys->keyentries[id]->fp, "%u:%u:", global, local);
     fflush(keys->keyentries[id]->fp);
+    
+    time_t new_time = time(0);
+    keys->keyentries[id]->updating_time = new_time;
+    if (!keys->keyentries[id]->rids_node) {
+        keys->keyentries[id]->rids_node = linked_queue_push(keys->opened_fp_queue, keys->keyentries[id]);
+    } else {
+        linked_queue_unlink_and_push_node (keys->opened_fp_queue, keys->keyentries[id]->rids_node);
+    }
 }
 
 /* Reload the global and local count of events */
 static void ReloadCounter(const keystore *keys, unsigned int id, const char * cid)
 {
     ino_t new_inode;
+    time_t new_time;
     char rids_file[OS_FLSIZE + 1];
 
     snprintf(rids_file, OS_FLSIZE, "%s/%s", isChroot() ? RIDS_DIR : RIDS_DIR_PATH, cid);
@@ -204,7 +225,7 @@ static void ReloadCounter(const keystore *keys, unsigned int id, const char * ci
     w_mutex_lock(&keys->keyentries[id]->mutex);
 
     if (keys->keyentries[id]->inode != new_inode) {
-        keys->keyentries[id]->fp = fopen(rids_file, "r+");
+        //keys->keyentries[id]->fp = fopen(rids_file, "r+");
 
         if (!keys->keyentries[id]->fp) {
             keys->keyentries[id]->fp = fopen(rids_file, "w");
@@ -239,6 +260,16 @@ static void ReloadCounter(const keystore *keys, unsigned int id, const char * ci
             }
         }
 
+        if (id != keys->keysize) {
+            new_time = time(0);
+            keys->keyentries[id]->updating_time = new_time;
+            if (!keys->keyentries[id]->rids_node) {
+                keys->keyentries[id]->rids_node = linked_queue_push(keys->opened_fp_queue, keys->keyentries[id]);
+            } else {
+                linked_queue_unlink_and_push_node (keys->opened_fp_queue, keys->keyentries[id]->rids_node);
+            }
+        }
+        
         keys->keyentries[id]->inode = new_inode;
     }
 

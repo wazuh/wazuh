@@ -23,6 +23,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     unsigned int deny_size = 1;
     remoted *logr;
     int defined_queue_size = 0;
+    int default_rids_closing_time = 300;
 
     /*** XML Definitions ***/
 
@@ -36,7 +37,8 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_remote_ipv6 = "ipv6";
     const char *xml_remote_connection = "connection";
     const char *xml_remote_lip = "local_ip";
-    const char * xml_queue_size = "queue_size";
+    const char *xml_queue_size = "queue_size";
+    const char *xml_rids_closing_time = "rids_closing_time";
 
     logr = (remoted *)d1;
 
@@ -108,6 +110,8 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logr->proto[pl + 1] = 0;
     logr->ipv6[pl + 1] = 0;
     logr->lip[pl + 1] = NULL;
+
+    logr->rids_closing_time = default_rids_closing_time;
 
     while (node[i]) {
         if (!node[i]->element) {
@@ -209,7 +213,19 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 return OS_INVALID;
             }
             defined_queue_size = 1;
-        } else {
+        } else if (strcmp(node[i]->element, xml_rids_closing_time) == 0) {
+            if (!OS_StrIsNum(node[i]->content)) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return OS_INVALID;
+            }
+            int close_time = atoi(node[i]->content);
+            if (close_time < 1 || close_time > 86400) {
+                merror("Invalid value for option '<%s>'", xml_rids_closing_time);
+                return OS_INVALID;
+            }
+            logr->rids_closing_time = close_time;
+        }
+        else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
         }
