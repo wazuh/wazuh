@@ -1103,6 +1103,7 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
     lf_cpy->log_after_parent = lf->log_after_parent;
     lf_cpy->log_after_prematch = lf->log_after_prematch;
     lf_cpy->generate_time = lf->generate_time;
+    lf_cpy->crt_ftell = lf->crt_ftell;
 
     if(lf->agent_id){
         os_strdup(lf->agent_id,lf_cpy->agent_id);

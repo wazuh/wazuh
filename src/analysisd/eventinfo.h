@@ -82,6 +82,7 @@ typedef struct _Eventinfo {
     int year;
     char hour[10];
     char mon[4];
+    long int crt_ftell;
 
     /* SYSCHECK Results variables */
     syscheck_event_t event_type;

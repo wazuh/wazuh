@@ -1931,12 +1931,15 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
 
                 if (Config.custom_alert_output) {
                     __crt_ftell = ftell(_aflog);
+                    lf->crt_ftell = __crt_ftell;
                     OS_CustomLog(lf, Config.custom_alert_output_format);
                 } else if (Config.alerts_log) {
                     __crt_ftell = ftell(_aflog);
+                    lf->crt_ftell = __crt_ftell;
                     OS_Log(lf);
                 } else if(Config.jsonout_output){
                     __crt_ftell = ftell(_jflog);
+                    lf->crt_ftell = __crt_ftell;
                 }
                 /* Log to json file */
                 if (Config.jsonout_output) {
