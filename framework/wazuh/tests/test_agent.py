@@ -307,7 +307,6 @@ def test_agent_delete_agents_different_status(socket_mock, send_mock):
                in failed_item.message
 
 
-@pytest.mark.xfail()
 @pytest.mark.parametrize('name, agent_id, key', [
     ('agent-1', '001', 'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f'),
     ('a' * 129, '002', 'f304f582f2417a3fddad69d9ae2b4f3b6e6fda788229668af9a6934d454ef44d')
@@ -338,8 +337,8 @@ def test_agent_add_agent(socket_mock, send_mock, open_mock, safe_move_mock, comm
     """
     try:
         add_result = add_agent(name=name, agent_id=agent_id, key=key, use_only_authd=False)
-        assert add_result.dikt['id'] == agent_id
-        assert add_result.dikt['key']
+        assert add_result.dikt['data']['id'] == agent_id
+        assert add_result.dikt['data']['key']
     except WazuhError as e:
         assert e.code == 1738, 'The exception was raised as expected but "error_code" does not match.'
 
