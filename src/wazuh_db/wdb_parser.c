@@ -231,7 +231,16 @@ int wdb_parse(char * input, char * output) {
                     merror("Unable to update 'ciscat_results' table for agent '%s'", sagent_id);
                 }
             }
-        } else if (strcmp(query, "sql") == 0) {
+        } else if (strcmp(query, "rootcheck") == 0) {
+            if (!next) {
+                mdebug1("DB(%s) Invalid rootcheck query syntax.", sagent_id);
+                mdebug2("DB(%s) rootcheck query error near: %s", sagent_id, query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid Rootcheck query syntax, near '%.32s'", query);
+                result = -1;
+            } else {
+                result = wdb_parse_rootcheck(wdb, next, output);
+            }
+        }else if (strcmp(query, "sql") == 0) {
             if (!next) {
                 mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
                 mdebug2("DB(%s) query error near: %s", sagent_id, query);
@@ -4055,6 +4064,55 @@ int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output) {
         return -1;
     }
 }
+
+int wdb_parse_rootcheck(wdb_t * wdb, char * input, char * output) {
+    char * curr;
+    char * next;
+    int result = 0;
+
+    if (next = wstr_chr(input, ' '), !next) {
+        mdebug2("DB(%s) Invalid rootcheck query syntax: %s", wdb->id, input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid rootcheck query syntax, near '%.32s'", input);
+        return -1;
+    }
+
+    curr = input;
+    *next++ = '\0';
+
+    rk_event_t event;
+    event.date_last = strtol(curr, NULL, 10);
+    event.date_first = event.date_last;
+    event.log = next;
+
+    if (event.date_last == LONG_MAX || event.date_last < 0) {
+        mdebug2("DB(%s) Invalid rootcheck date timestamp: %li", wdb->id, event.date_last);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid rootcheck query syntax, near '%.32s'", input);
+        return -1;
+    }
+
+    switch (wdb_update_pm(wdb, &event)) {
+        case -1:
+            merror("DB(%s) Error updating rootcheck PM tuple on SQLite database", wdb->id);
+            snprintf(output, OS_MAXSTR + 1, "err Error updating rootcheck PM tuple");
+            result = -1;
+            break;
+        case 0:
+            if (wdb_insert_pm(wdb, &event) < 0) {
+                merror("DB(%s) Error inserting rootcheck PM tuple on SQLite database for agent", wdb->id);
+                snprintf(output, OS_MAXSTR + 1, "err Error updating rootcheck PM tuple");
+                result = -1;
+            }
+            break;
+        default: 
+            break;
+    }
+
+    if (!result) {
+        snprintf(output, OS_MAXSTR + 1, "ok");
+    }
+    return result;
+}
+
 
 // Function to get values from MITRE database
 

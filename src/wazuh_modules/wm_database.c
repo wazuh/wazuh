@@ -91,8 +91,6 @@ static void wm_scan_directory(const char *dirname);
 static int wm_sync_file(const char *dirname, const char *path);
 // Fill syscheck database from an offset. Returns offset at last successful read event, or -1 on error.
 static long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registry);
-// Fill complete rootcheck database.
-static int wm_fill_rootcheck(sqlite3 *db, const char *path);
 /*
  * Extract agent name, IP and whether it's a Windows registry database from the file name.
  * Returns 0 on success, 1 to ignore and -1 on error.
@@ -524,13 +522,6 @@ int wm_sync_file(const char *dirname, const char *fname) {
             id_agent = 0;
             strcpy(name, "localhost");
         }
-    } else if (!strcmp(dirname, DEFAULTDIR ROOTCHECK_DIR)) {
-        type = WDB_ROOTCHECK;
-
-        if (!strcmp(fname, "rootcheck")) {
-            id_agent = 0;
-            strcpy(name, "localhost");
-        }
     } else if (!strcmp(dirname, DEFAULTDIR GROUPS_DIR)) {
         type = WDB_GROUPS;
     } else if (!strcmp(dirname, DEFAULTDIR SHAREDCFG_DIR)) {
@@ -664,33 +655,6 @@ int wm_sync_file(const char *dirname, const char *fname) {
 
         break;
 
-    case WDB_ROOTCHECK:
-        if (!(db = wdb_open_agent(id_agent, name))) {
-            mterror(WM_DATABASE_LOGTAG, "Couldn't open database for file '%s/%s'.", dirname, fname);
-            return -1;
-        }
-
-        if (OS_SUCCESS != wdb_set_agent_status(id_agent, WDB_AGENT_PENDING)) {
-            mterror(WM_DATABASE_LOGTAG, "Couldn't write agent status on database for agent %d (%s).", id_agent, name);
-            sqlite3_close_v2(db);
-            return -1;
-        }
-
-        result = wm_fill_rootcheck(db, path);
-        sqlite3_close_v2(db);
-
-        if (OS_SUCCESS != wdb_set_agent_status(id_agent, WDB_AGENT_UPDATED)) {
-            mterror(WM_DATABASE_LOGTAG, "Couldn't write agent status on database for agent %d (%s).", id_agent, name);
-            return -1;
-        }
-
-        if (result < 0) {
-            mterror(WM_DATABASE_LOGTAG, "Couldn't fill rootcheck database for file '%s/%s'.", dirname, fname);
-            return -1;
-        }
-
-        break;
-
     case WDB_GROUPS:
         result = wm_sync_agent_group(id_agent, fname);
         break;
@@ -800,64 +764,6 @@ long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registr
 
     fclose(fp);
     return last_offset;
-}
-
-// Fill complete rootcheck database. Returns 0 on success or -1 on error.
-int wm_fill_rootcheck(sqlite3 *db, const char *path) {
-    char buffer[OS_MAXSTR];
-    char *end;
-    int count = 0;
-    rk_event_t event;
-    clock_t clock_ini;
-    FILE *fp;
-
-    if (!(fp = fopen(path, "r"))) {
-        mterror(WM_DATABASE_LOGTAG, FOPEN_ERROR, path, errno, strerror(errno));
-        return -1;
-    }
-
-    clock_ini = clock();
-    wdb_begin(db);
-
-    while (fgets(buffer, OS_MAXSTR, fp)) {
-        end = strchr(buffer, '\n');
-
-        if (!end) {
-            mtwarn(WM_DATABASE_LOGTAG, "Corrupt line found parsing '%s' (incomplete). Breaking.", path);
-            break;
-        } else if (end == buffer)
-            continue;
-
-        *end = '\0';
-
-        if (rk_decode_event(buffer, &event) < 0) {
-            mtwarn(WM_DATABASE_LOGTAG, "Corrupt line found parsing '%s'.", path);
-            continue;
-        }
-
-        switch (wdb_update_pm(db, &event)) {
-            case -1:
-                mterror(WM_DATABASE_LOGTAG, "Updating PM tuple on SQLite database for file '%s'.", path);
-                continue;
-            case 0:
-                if (wdb_insert_pm(db, &event) < 0) {
-                    mterror(WM_DATABASE_LOGTAG, "Inserting PM tuple on SQLite database for file '%s'.", path);
-                    continue;
-                }
-
-                count++;
-                break;
-
-            default:
-                count++;
-        }
-    }
-
-    wdb_commit(db);
-    mtdebug2(WM_DATABASE_LOGTAG, "Rootcheck file sync finished. Count: %d. Time: %.3lf ms.", count, (double)(clock() - clock_ini) / CLOCKS_PER_SEC * 1000);
-
-    fclose(fp);
-    return 0;
 }
 
 /*
