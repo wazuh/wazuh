@@ -45,7 +45,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'worker1,worker2'
+        nodes_list: 'worker1,worker2'
     response:
       status_code: 200
       json:
@@ -432,7 +432,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: "{node_id:s}"
+        nodes_list: "{node_id:s}"
     response:
       status_code: 200
       json:
@@ -469,7 +469,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: "master-node"
+        nodes_list: "master-node"
         select: "{field}"
     response:
       status_code: 200
@@ -820,7 +820,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'worker1,worker2'
+        nodes_list: 'worker1,worker2'
     response:
       status_code: 200
       json:
@@ -843,7 +843,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'master-node'
+        nodes_list: 'master-node'
     response:
       status_code: 200
       json:
@@ -924,7 +924,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'worker1,worker2'
+        nodes_list: 'worker1,worker2'
     response:
       status_code: 200
       json:
@@ -976,7 +976,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'worker1,worker2'
+        nodes_list: 'worker1,worker2'
       method: PUT
       json:
         logs:
@@ -1073,7 +1073,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'worker1'
+        nodes_list: 'worker1'
     response:
       status_code: 200
       json:
@@ -2794,7 +2794,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'worker1,worker2'
+        nodes_list: 'worker1,worker2'
     response:
       status_code: 200
       json:

@@ -844,7 +844,7 @@ stages:
       verify: False
       <<: *get_agents
       params:
-        list_agents: "001,002,003"
+        agents_list: "001,002,003"
     response:
       status_code: 200
       json:
@@ -866,7 +866,7 @@ test_name: GET /agents with single agent id
 
 stages:
 
-  # GET /agents?list_agents=000
+  # GET /agents?agents_list=000
   - name: Basic response agent
     request: &get_agent
       verify: False
@@ -875,7 +875,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '000'
+        agents_list: '000'
     response:
       status_code: 200
       json:
@@ -905,7 +905,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  # GET /agents?list_agents=999
+  # GET /agents?agents_list=999
   - name: Try to show not existing agent
     request:
       verify: False
@@ -914,7 +914,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '999'
+        agents_list: '999'
     response:
       status_code: 200
       json:
@@ -929,7 +929,7 @@ stages:
           total_affected_items: 0
           total_failed_items: 1
 
-  # GET /agents?list_agents=wrong_name
+  # GET /agents?agents_list=wrong_name
   - name: Try show not existing agent by name
     request:
       verify: False
@@ -938,20 +938,20 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: wrong_name
+        agents_list: wrong_name
     response:
       status_code: 400
       json:
         <<: *error_spec
 
-  # GET /agents?list_agents=000&select=os.platform
+  # GET /agents?agents_list=000&select=os.platform
   - name: Filter select one field
     request:
       verify: False
       <<: *get_agent
       params:
         select: 'os.platform'
-        list_agents: '000'
+        agents_list: '000'
     response:
       status_code: 200
       json:
@@ -965,14 +965,14 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  # GET /agents?list_agents=000&select=dateAdd,status
+  # GET /agents?agents_list=000&select=dateAdd,status
   - name: Filter select multiple fields
     request:
       verify: False
       <<: *get_agent
       params:
         select: 'dateAdd,status'
-        list_agents: '000'
+        agents_list: '000'
     response:
       status_code: 200
       json:
@@ -986,27 +986,27 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  # GET /agents?list_agents=000&select=param_test
+  # GET /agents?agents_list=000&select=param_test
   - name: Try show agents with not allowed selector
     request:
       verify: False
       <<: *get_agent
       params:
         select: param_test
-        list_agents: '000'
+        agents_list: '000'
     response:
       status_code: 400
       json:
         error: 1724
 
-  # GET /agents?list_agents=000&select=param_%_test
+  # GET /agents?agents_list=000&select=param_%_test
   - name: Try show agents with not allowed selector (invalid character)
     request:
       verify: False
       <<: *get_agent
       params:
         select: param_%_test
-        list_agents: '000'
+        agents_list: '000'
     response:
       status_code: 400
       json:
@@ -2114,7 +2114,7 @@ stages:
       verify: False
       <<: *get_agents_groups
       params:
-        list_groups: 'group1,group3'
+        groups_list: 'group1,group3'
     response:
       status_code: 200
       json:

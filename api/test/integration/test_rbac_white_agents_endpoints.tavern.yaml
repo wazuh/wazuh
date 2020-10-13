@@ -38,7 +38,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003'
+        agents_list: '001,003'
     response: &permission_denied
       status_code: 403
       json:
@@ -55,7 +55,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,004,005,006'
+        agents_list: '001,003,004,005,006'
     response:
       status_code: 200
       json:
@@ -82,7 +82,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '002,006,010,012'
+        agents_list: '002,006,010,012'
     response:
       status_code: 200
       json:
@@ -97,7 +97,7 @@ stages:
           total_failed_items: 0
 
 ---
-test_name: GET /agents?list_agents=agent_id
+test_name: GET /agents?agents_list=agent_id
 
 stages:
 
@@ -109,7 +109,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '009'
+        agents_list: '009'
     response:
       <<: *permission_denied
 
@@ -121,7 +121,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '010'
+        agents_list: '010'
     response:
       status_code: 200
       json:
@@ -269,7 +269,7 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
      params:
-       list_groups: 'group3'
+       groups_list: 'group3'
    response:
       <<: *permission_denied
 
@@ -281,7 +281,7 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
      params:
-       list_groups: 'default,group2,group3'
+       groups_list: 'default,group2,group3'
    response:
      status_code: 200
      json:
@@ -306,7 +306,7 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
      params:
-       list_groups: 'group1,group2'
+       groups_list: 'group1,group2'
    response:
      status_code: 200
      json:
@@ -745,7 +745,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_groups: 'group1'
+        groups_list: 'group1'
     response:
       <<: *permission_denied
 
@@ -796,7 +796,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_groups: 'group1,group3,group2'
+        groups_list: 'group1,group3,group2'
     response:
       status_code: 200
       json:
@@ -831,7 +831,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         group_id: 'wrong_group'
-        list_agents: 'all'
+        agents_list: 'all'
     response: &resource_not_found_group
       status_code: 404
       json:
@@ -846,7 +846,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         group_id: 'group1'
-        list_agents: 'all'
+        agents_list: 'all'
     response:
       <<: *permission_denied
 
@@ -859,7 +859,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         group_id: 'group2'
-        list_agents: 'all'
+        agents_list: 'all'
     response:
       status_code: 200
       json:
@@ -880,7 +880,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '004,007,008,998,999'
+        agents_list: '004,007,008,998,999'
         group_id: 'group3'
     response:
       status_code: 200
@@ -915,7 +915,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,008'
+        agents_list: '001,008'
         group_id: 'default'
     response:
       status_code: 200
@@ -931,7 +931,7 @@ stages:
     delay_after: !float "{global_db_delay}"
 
 ---
-test_name: DELETE /groups?list_groups={group_id}
+test_name: DELETE /groups?groups_list={group_id}
 
 stages:
 
@@ -943,7 +943,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_groups: 'group2'
+        groups_list: 'group2'
     response:
       <<: *permission_denied
 
@@ -955,7 +955,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_groups: 'group1'
+        groups_list: 'group1'
     response:
       status_code: 200
       json:
@@ -979,7 +979,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_groups: 'group3'
+        groups_list: 'group3'
     response:
       status_code: 200
       json:
@@ -1007,7 +1007,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_groups: 'all'
+        groups_list: 'all'
     response:
       status_code: 200
       json:
@@ -1032,7 +1032,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_groups: 'default,group1,group2,pepito,antonio'
+        groups_list: 'default,group1,group2,pepito,antonio'
     response:
       status_code: 200
       json:
@@ -1062,7 +1062,7 @@ stages:
           total_failed_items: 5
 
 ---
-test_name: DELETE /agents?list_agents=agent_id
+test_name: DELETE /agents?agents_list=agent_id
 
 stages:
 
@@ -1074,7 +1074,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '002'
+        agents_list: '002'
     response:
       <<: *permission_denied
 
@@ -1086,7 +1086,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001'
+        agents_list: '001'
         older_than: '0s'
     response:
       status_code: 200
@@ -1113,7 +1113,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '004,010'
+        agents_list: '004,010'
     response:
       <<: *permission_denied
 
@@ -1125,7 +1125,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '003,005'
+        agents_list: '003,005'
         older_than: '0s'
     response:
       status_code: 200
@@ -1149,7 +1149,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '000,007,999'
+        agents_list: '000,007,999'
         older_than: '0s'
     response:
       status_code: 200
@@ -1178,7 +1178,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         older_than: '0s'
-        list_agents: 'all'
+        agents_list: 'all'
     response:
       status_code: 200
       json:
@@ -1301,7 +1301,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '004,009,010'
+        agents_list: '004,009,010'
         group_id: 'group2'
     response:
       <<: *permission_denied
@@ -1314,7 +1314,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,002,005'
+        agents_list: '001,002,005'
         group_id: 'group2'
     response:
       status_code: 200
@@ -1436,7 +1436,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: "997"
+        agents_list: "997"
     response:
       status_code: 200
       json:
@@ -1459,7 +1459,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: "010"
+        agents_list: "010"
     response:
       <<: *permission_denied
 
@@ -1471,7 +1471,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: "000,001,002,004"
+        agents_list: "000,001,002,004"
         wait_for_complete: true  # Prevent error code 500
     response:
       status_code: 200
@@ -1693,7 +1693,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001'
+        agents_list: '001'
     response:
       <<: *permission_denied
 

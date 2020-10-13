@@ -14,7 +14,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: all
+        agents_list: all
     response:
       status_code: 200
       json:
@@ -46,7 +46,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
@@ -111,7 +111,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003'
+        agents_list: '001,003'
     response:
       status_code: 200
       json:
@@ -178,7 +178,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
@@ -243,7 +243,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
@@ -319,7 +319,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
@@ -383,7 +383,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
@@ -456,7 +456,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
@@ -505,7 +505,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
@@ -581,7 +581,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
@@ -630,7 +630,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
@@ -673,7 +673,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '000,003,005,007' # Only the agent 000 will have results
+        agents_list: '000,003,005,007' # Only the agent 000 will have results
     response:
       status_code: 200
       verify_response_with:

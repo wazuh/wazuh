@@ -524,7 +524,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '000'
+        agents_list: '000'
     response:
       status_code: 200
       json:
@@ -544,7 +544,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '000,002,004,006,008,010,012'
+        agents_list: '000,002,004,006,008,010,012'
     response:
       status_code: 200
       json:
