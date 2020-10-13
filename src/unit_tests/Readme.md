@@ -36,7 +36,7 @@ make TARGET=server|agent|winagent DEBUG=1 TEST=1
 ```
 
 ## Compile and run unit tests for Linux targets
-In order to run unit tests for either the Wazuh server or Linux agents, these need to be built using [CMake](#installing\ cmake) version 3.10 or higher and [cmocka](#installing\ cmocka).
+In order to run unit tests for either the Wazuh server or Linux agents, these need to be built using [CMake](#installing-cmake) version 3.10 or higher and [cmocka](#installing-cmocka).
 
 Navigate into `wazuh/src/unit_tests` and run the following commands:
 ```
@@ -64,7 +64,7 @@ cd syscheckd
 The output of the test will be written directly into the console.
 
 ## Compile and run unit tests for Windows agent
-Similarly to compiling unit tests for server or Linux agent configurations, [CMake](#installing\ cmake) 3.10 or higher and [cmocka](#installing\ cmocka) are required, as well as a 32 bit [wine installation](#installing\ wine) in order to run the tests.
+Similarly to compiling unit tests for server or Linux agent configurations, [CMake](#installing-cmake) 3.10 or higher and [cmocka](#installing-cmocka) are required, as well as a 32 bit [wine installation](#installing-wine) in order to run the tests.
 
 Navigate into `wazuh/src/unit_tests` and run the following commands:
 ```
@@ -94,7 +94,7 @@ wine test_create_db.exe
 The output of the test will be written directly into the console.
 
 ## Compile and run unit tests for macOS agent
-Similarly to compiling unit tests for server or Linux agent configurations, [CMake](#installing\ cmake) 3.10 or higher and [cmocka](#installing\ cmocka) are required.
+Similarly to compiling unit tests for server or Linux agent configurations, [CMake](#installing-cmake) 3.10 or higher and [cmocka](#installing-cmocka) are required.
 
 Navigate into `wazuh/src/unit_tests` and run the following commands:
 ```
