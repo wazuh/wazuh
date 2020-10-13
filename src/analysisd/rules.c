@@ -583,6 +583,10 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         config_ruleinfo->dstip->negate = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
+                        if (!(config_ruleinfo->alert_opts & DO_PACKETINFO)) {
+                            config_ruleinfo->alert_opts |= DO_PACKETINFO;
+                        }
+
                     } else if (strcasecmp(rule_opt[k]->element, xml_user) == 0) {
 
                         user = loadmemory(user, rule_opt[k]->content);

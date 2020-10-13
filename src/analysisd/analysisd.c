@@ -1083,7 +1083,8 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
             return (NULL);
         }
 
-        if (strcmp(rule->action->string, lf->action) != 0) {
+        bool diff_act = strcmp(rule->action->string, lf->action) ? true : false;
+        if (diff_act != rule->action->negate) {
             return (NULL);
         }
     }
