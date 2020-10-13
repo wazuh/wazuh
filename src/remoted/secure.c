@@ -286,6 +286,7 @@ static void * close_fp_main(void * args) {
     int node_updating_time;
     int flag = 1;
 
+    mdebug1("Rids closer thread started.");
     seconds = logr.rids_closing_time;
 
     while (1) {
@@ -301,6 +302,7 @@ static void * close_fp_main(void * args) {
                 if ((now - seconds) > node_updating_time) {
                     if (first_node_key->fp != NULL) {
                         first_node_key = (keyentry *)linked_queue_pop(keys->opened_fp_queue);
+                        mdebug1("Closing rids for agent %s.", first_node_key->id);
                         fclose(first_node_key->fp);
                         first_node_key->updating_time = 0;
                         first_node_key->fp = NULL;

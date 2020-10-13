@@ -197,6 +197,7 @@ static void StoreCounter(const keystore *keys, int id, unsigned int global, unsi
     if (!keys->keyentries[id]->fp) {
         snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, keys->keyentries[id]->id);
         keys->keyentries[id]->fp = fopen(rids_file, "w");
+        mdebug1("Opening rids for agent %s.", keys->keyentries[id]->id);
     }
     /* Write to the beginning of the file */
     fseek(keys->keyentries[id]->fp, 0, SEEK_SET);
@@ -225,7 +226,6 @@ static void ReloadCounter(const keystore *keys, unsigned int id, const char * ci
     w_mutex_lock(&keys->keyentries[id]->mutex);
 
     if (keys->keyentries[id]->inode != new_inode) {
-        //keys->keyentries[id]->fp = fopen(rids_file, "r+");
 
         if (!keys->keyentries[id]->fp) {
             keys->keyentries[id]->fp = fopen(rids_file, "w");
