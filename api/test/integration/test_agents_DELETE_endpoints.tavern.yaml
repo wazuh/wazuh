@@ -180,6 +180,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "group1"
@@ -200,6 +201,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "group1"
@@ -242,6 +244,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -271,6 +274,7 @@ stages:
       strict: False
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -296,6 +300,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '006'
@@ -317,6 +322,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '008'
@@ -368,6 +374,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_agents: []
           affected_items: []
@@ -393,6 +400,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_agents: []
           affected_items: []
@@ -417,6 +425,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_agents:
             - '003'
@@ -456,6 +465,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_agents: []
           affected_items: []
@@ -481,6 +491,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_agents:
             - '007'
@@ -509,6 +520,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_agents: []
           affected_items:
@@ -534,6 +546,7 @@ stages:
     response: &error_delete_agent
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -555,6 +568,7 @@ stages:
     response:
       <<: *error_delete_agent
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -594,6 +608,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '006'
@@ -615,6 +630,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '010'
@@ -665,6 +681,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -686,6 +703,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -720,6 +738,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -742,6 +761,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '004'
@@ -773,6 +793,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -796,6 +817,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '009'
@@ -814,6 +836,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "001"
@@ -834,6 +857,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '012'
@@ -855,6 +879,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "002"

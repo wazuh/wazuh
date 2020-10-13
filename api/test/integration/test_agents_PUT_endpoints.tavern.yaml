@@ -64,6 +64,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -89,6 +90,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -117,6 +119,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -142,6 +145,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "003"
@@ -167,6 +171,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "001"
@@ -190,6 +195,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "001"
@@ -219,6 +225,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: "application/xml"
+      error: !anyint
       data:
         "{file_xml:s}"
     response:
@@ -233,6 +240,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: "application/xml"
+      error: !anyint
       data:
         "{file_xml:s}"
     response:
@@ -261,6 +269,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: "application/xml"
+      error: !anyint
       data:
         "{invalid_file_xml:s}"
     response:
@@ -277,6 +286,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: "application/xml"
+      error: !anyint
       data:
         "{wrong_file_xml:s}"
     response:
@@ -315,6 +325,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "001"
@@ -377,6 +388,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -397,6 +409,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -421,6 +434,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "001"
@@ -445,6 +459,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "001"
@@ -476,6 +491,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "001"
@@ -505,6 +521,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -528,6 +545,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "001"
@@ -549,6 +567,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -570,6 +589,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -604,6 +624,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "002"
@@ -643,6 +664,7 @@ stages:
       verify_response_with:
         - function: tavern_utils:test_validate_restart_by_node
           extra_kwargs:
+            error: !anyint
             data: "{response_data}"
 
   - name: Restart all agents belonging to a node (it does not exist)
@@ -655,6 +677,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:

@@ -16,6 +16,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: !anystr
@@ -48,6 +49,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - info:
@@ -75,6 +77,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - info:
@@ -109,6 +112,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - cluster: wazuh
@@ -135,6 +139,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: &cluster_nodes_response
             - name: !anystr
@@ -154,6 +159,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -171,6 +177,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -189,6 +196,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -228,6 +236,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -248,6 +257,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -277,6 +287,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           enabled: "yes"
           running: "yes"
@@ -296,6 +307,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - alerts: !anything
@@ -339,6 +351,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - alerts:
@@ -363,6 +376,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: master-node
@@ -385,6 +399,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: worker2
@@ -566,6 +581,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - node_name: 'worker2'
@@ -597,6 +613,7 @@ stages:
     response:
       status_code: 200
       json: &update_api_config_ok
+        error: !anyint
         data:
           affected_items:
             - master-node
@@ -622,6 +639,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - worker2
@@ -644,6 +662,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'worker2'
@@ -734,6 +753,7 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/files"
       method: PUT
+      error: !anyint
       data: "{ossec_conf}"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -749,6 +769,7 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/files"
       method: PUT
+      error: !anyint
       data: "{ossec_conf}"
       headers:
         Authorization: "Bearer {test_login_token}"
