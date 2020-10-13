@@ -745,9 +745,19 @@ char *gen_diff_str(const diff_data *diff){
         return NULL;
     }
     n = strlen(diff_str);
+    char *p = strchr(buf, '\n');
+
+    if (p && p[1] != '*') {
+        if (n + strlen(STR_MORE_CHANGES) >= OS_MAXSTR - OS_SK_HEADER - 1) {
+            n -= strlen(STR_MORE_CHANGES);
+
+            while (n > 0 && diff_str[n - 1] != '\n')
+                n--;
+        }
+        strcpy(diff_str + n, STR_MORE_CHANGES);
+    }
 #else
     os_strdup(buf, diff_str);
-#endif
 
     if(n >= OS_MAXSTR - OS_SK_HEADER - 1) {
         n -= strlen(STR_MORE_CHANGES);
@@ -757,6 +767,7 @@ char *gen_diff_str(const diff_data *diff){
 
         strcpy(diff_str + n, STR_MORE_CHANGES);
     }
+#endif
 
     return diff_str;
 }
