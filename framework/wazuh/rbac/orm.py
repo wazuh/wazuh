@@ -32,17 +32,17 @@ _engine = create_engine('sqlite:///' + _auth_db_file, echo=False)
 _Base = declarative_base()
 _Session = sessionmaker(bind=_engine)
 
-# User IDs reserved for administrator users, these can not be modified or deleted
-admin_user_ids = [1, 2]
-
-# IDs reserved for administrator roles and policies, these can not be modified or deleted
-admin_role_ids = [1, 2, 3, 4, 5, 6, 7]
-admin_policy_ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
-
-# Required rules for role
-# Key: Role - Value: Rules
-required_rules_for_role = {1: [1, 2]}
-required_rules = {required_rule for r in required_rules_for_role.values() for required_rule in r}
+# # User IDs reserved for administrator users, these can not be modified or deleted
+# admin_user_ids = [1, 2]
+#
+# # IDs reserved for administrator roles and policies, these can not be modified or deleted
+# admin_role_ids = [1, 2, 3, 4, 5, 6, 7]
+# admin_policy_ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
+#
+# # Required rules for role
+# # Key: Role - Value: Rules
+# required_rules_for_role = {1: [1, 2]}
+# required_rules = {required_rule for r in required_rules_for_role.values() for required_rule in r}
 
 
 def json_validator(data):
@@ -2027,7 +2027,7 @@ class RolesRulesManager:
         True -> Success | False -> Failure | Role not exists | Rule not exist s| Non-existent relationship
         """
         try:
-            if rule_id not in required_rules_for_role.get(role_id, []):  # Required rule
+            if role_id > max_id_reserved:  # Required rule
                 rule = self.session.query(Rules).filter_by(id=rule_id).first()
                 if rule is None:
                     return SecurityError.RULE_NOT_EXIST
@@ -2121,7 +2121,7 @@ class RolesRulesManager:
         -------
         True -> Success | False -> Failure
         """
-        if rule_id not in required_rules_for_role.get(int(current_role_id), []) and self.exist_role_rule(
+        if current_role_id > max_id_reserved and self.exist_role_rule(
                 rule_id=rule_id,
                 role_id=current_role_id) \
                 and self.session.query(Roles).filter_by(id=new_role_id).first() is not None:
