@@ -763,7 +763,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: PUT
-      error: !anyint
       data: "{corrupted_rules_file}"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1852,6 +1851,7 @@ stages:
           ossec_conf: contents
       status_code: 200
       json:
+        error: 0
         contents: !anystr
 
   - name: Upload ossec.conf {node_id}
@@ -1859,7 +1859,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/files"
       method: PUT
-      error: !anyint
       data: "{ossec_conf}"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1882,7 +1881,6 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
-      error: !anyint
       data: "{new_rules:s}"
       params:
         path: etc/rules/new-rules.xml
@@ -1901,7 +1899,6 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
-      error: !anyint
       data: "{new_rules:s}"
       params:
         path: etc/rules/new-rules.xml
@@ -1924,7 +1921,6 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
-      error: !anyint
       data: "{new_rules:s}"
       params:
         path: etc/rules/new-rules.xml
@@ -1944,7 +1940,6 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
-      error: !anyint
       data: "{new_rules_with_syntax_error:s}"
       params:
         path: etc/rules/new-rules.xml
@@ -1967,7 +1962,6 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
-      error: !anyint
       data: "{new_decoder:s}"
       params:
         path: etc/decoders/new-decoder.xml
@@ -1986,7 +1980,6 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
-      error: !anyint
       data: "{new_decoder:s}"
       params:
         path: etc/decoders/new-decoder.xml
@@ -2009,7 +2002,6 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
-      error: !anyint
       data: "{new_decoder:s}"
       params:
         path: etc/decoders/new-decoder.xml
@@ -2029,7 +2021,6 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
-      error: !anyint
       data: "{new_decoder_with_syntax_error:s}"
       params:
         path: etc/decoders/new-decoder.xml
@@ -2052,7 +2043,6 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
-      error: !anyint
       data: "{new_cdb_list:s}"
       params:
         path: etc/lists/new-list
@@ -2071,7 +2061,6 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
-      error: !anyint
       data: "{new_cdb_list:s}"
       params:
         path: etc/lists/new-list
@@ -2094,7 +2083,6 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
-      error: !anyint
       data: "{new_cdb_list:s}"
       params:
         path: etc/lists/new-list
@@ -2114,7 +2102,6 @@ stages:
     request:
       verify: False
       <<: *upload_cluster_files
-      error: !anyint
       data: "{new_cdb_list_with_syntax_error:s}"
       params:
         path: etc/lists/new-list
@@ -2143,7 +2130,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/unexisting-node/files"
       method: PUT
-      error: !anyint
       data: "{new_rules:s}"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2170,7 +2156,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/unexisting-node/files"
       method: PUT
-      error: !anyint
       data: "{new_decoder:s}"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2186,7 +2171,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/unexisting-node/files"
       method: PUT
-      error: !anyint
       data: "{new_cdb_list:s}"
       headers:
         Authorization: "Bearer {test_login_token}"

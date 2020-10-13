@@ -1144,7 +1144,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: PUT
-      error: !anyint
       data: "{ossec_conf}"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1169,7 +1168,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: PUT
-      error: !anyint
       data: "<!-- Local rules -->\n <group name=\"local,\">\n    <!--   NEW RULE    -->\n    <rule id=\"111111\" level=\"5\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1193,7 +1191,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: PUT
-      error: !anyint
       data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716</if_sid>\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1221,7 +1218,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: PUT
-      error: !anyint
       data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716</if_sid>\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1246,7 +1242,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: PUT
-      error: !anyint
       data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1274,7 +1269,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: PUT
-      error: !anyint
       data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1298,7 +1292,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: PUT
-      error: !anyint
       data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1326,7 +1319,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: PUT
-      error: !anyint
       data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1351,7 +1343,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: PUT
-      error: !anyint
       data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\" NEW DECODER</program_name>\n </decoder>\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1379,7 +1370,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: PUT
-      error: !anyint
       data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1403,7 +1393,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: PUT
-      error: !anyint
       data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1431,7 +1420,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: PUT
-      error: !anyint
       data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1456,7 +1444,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: PUT
-      error: !anyint
       data: ":write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
       headers:
         Authorization: "Bearer {test_login_token}"

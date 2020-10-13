@@ -225,7 +225,6 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: "application/xml"
-      error: !anyint
       data:
         "{file_xml:s}"
     response:
@@ -240,7 +239,6 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: "application/xml"
-      error: !anyint
       data:
         "{file_xml:s}"
     response:
@@ -269,7 +267,6 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: "application/xml"
-      error: !anyint
       data:
         "{invalid_file_xml:s}"
     response:
@@ -286,7 +283,6 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: "application/xml"
-      error: !anyint
       data:
         "{wrong_file_xml:s}"
     response:
@@ -661,10 +657,11 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
+      json:
+        error: !anyint
       verify_response_with:
         - function: tavern_utils:test_validate_restart_by_node
           extra_kwargs:
-            error: !anyint
             data: "{response_data}"
 
   - name: Restart all agents belonging to a node (it does not exist)
