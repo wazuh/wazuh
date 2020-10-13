@@ -469,9 +469,8 @@ cleanup:
 
 
 diff_data *initialize_file_diff_data(const char *filename){
-
     diff_data *diff;
-    char buffer[PATH_MAX + 1];
+    char buffer[PATH_MAX + 8];
     char abs_diff_dir_path[PATH_MAX + 1];
     char *path_filtered = NULL;
 
@@ -479,6 +478,7 @@ diff_data *initialize_file_diff_data(const char *filename){
 
     // Get diff_size_limit of filename
     diff->file_size = 0;
+
     if (syscheck.file_size_enabled) {
         int it = fim_configuration_directory(filename, "file");
         diff->size_limit = syscheck.diff_size_limit[it];
@@ -489,6 +489,7 @@ diff_data *initialize_file_diff_data(const char *filename){
         merror(FIM_ERROR_GET_ABSOLUTE_PATH, filename, strerror(errno), errno);
         return NULL;
     }
+
     os_strdup(buffer, diff->file_origin);
 
 #ifdef WIN32
@@ -505,11 +506,15 @@ diff_data *initialize_file_diff_data(const char *filename){
         merror(FIM_ERROR_GET_ABSOLUTE_PATH, DIFF_DIR_PATH, strerror(errno), errno);
         return NULL;
     }
+
+    snprintf(buffer, PATH_MAX + 7, "%s/local/%s", abs_diff_dir_path, path_filtered);
 #else
     strcpy(abs_diff_dir_path, DIFF_DIR_PATH);
+
+    // This snprintf is duplicated to avoid a double slash ('/') in UNIX systems
+    snprintf(buffer, PATH_MAX + 7, "%s/local%s", abs_diff_dir_path, diff->file_origin);
 #endif
 
-    snprintf(buffer, PATH_MAX, "%s/local/%s", abs_diff_dir_path, path_filtered);
     os_strdup(buffer, diff->compress_folder);
 
     snprintf(buffer, PATH_MAX, "%s/last-entry.gz", diff->compress_folder);
@@ -528,6 +533,7 @@ diff_data *initialize_file_diff_data(const char *filename){
     os_strdup(buffer, diff->diff_file);
 
     os_free(path_filtered);
+
     return diff;
 }
 
