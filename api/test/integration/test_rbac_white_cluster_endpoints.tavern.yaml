@@ -44,7 +44,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'worker1,worker2'
+        nodes_list: 'worker1,worker2'
     response:
       status_code: 200
       json:
@@ -210,7 +210,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'worker1'
+        nodes_list: 'worker1'
     response: &permission_denied
       status_code: 403
       json:
@@ -224,7 +224,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'worker2'
+        nodes_list: 'worker2'
     response:
       status_code: 200
       json:
@@ -244,7 +244,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'master-node,worker1,worker2'
+        nodes_list: 'master-node,worker1,worker2'
     response:
       status_code: 200
       json:
@@ -381,7 +381,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'worker1,worker2'
+        nodes_list: 'worker1,worker2'
     response:
       status_code: 200
       json:
@@ -562,7 +562,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'worker1,worker2'
+        nodes_list: 'worker1,worker2'
     response:
       status_code: 200
       json:
@@ -618,7 +618,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'worker1,worker2'
+        nodes_list: 'worker1,worker2'
     response:
       status_code: 200
       json:

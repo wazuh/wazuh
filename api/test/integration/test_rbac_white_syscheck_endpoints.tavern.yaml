@@ -99,7 +99,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '000,003,001,004,008'
+        agents_list: '000,003,001,004,008'
     response:
       status_code: 200
       json:
@@ -122,7 +122,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '004'
+        agents_list: '004'
     response:
       <<: *permission_denied
 

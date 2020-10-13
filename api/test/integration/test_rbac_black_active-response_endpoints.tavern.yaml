@@ -18,7 +18,7 @@ stages:
         command: "restart-ossec0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
-        list_agents: '001'
+        agents_list: '001'
     response: &permission_denied
       status_code: 403
       json:
@@ -36,7 +36,7 @@ stages:
         command: "restart-ossec0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
-        list_agents: '002'
+        agents_list: '002'
     response:
       status_code: 200
       json:
@@ -60,7 +60,7 @@ stages:
         command: "restart-ossec0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
-        list_agents: 002,004,005,007,010,011
+        agents_list: 002,004,005,007,010,011
     response:
       status_code: 200
       json:
@@ -95,7 +95,7 @@ stages:
         command: "restart-ossec0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
-        list_agents: '009'
+        agents_list: '009'
     response:
       <<: *permission_denied
 
@@ -111,7 +111,7 @@ stages:
         command: "restart-ossec0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
-        list_agents: 251,252
+        agents_list: 251,252
     response:
       status_code: 200
       json:
