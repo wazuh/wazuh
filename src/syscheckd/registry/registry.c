@@ -499,11 +499,8 @@ void fim_registry_process_value_delete_event(fdb_t *fim_sql,
     int alert = *(int *)_alert;
     fim_event_mode event_mode = *(fim_event_mode *)_ev_mode;
     registry *configuration;
-    char full_path[MAX_KEY];
 
-    snprintf(full_path, MAX_KEY, "%s\\%s", data->registry_entry.key->path, data->registry_entry.value->name);
-
-    configuration = fim_registry_configuration(full_path, data->registry_entry.key->arch);
+    configuration = fim_registry_configuration(data->registry_entry.key->path, data->registry_entry.key->arch);
     if (configuration == NULL) {
         return;
     }
@@ -639,7 +636,7 @@ void fim_registry_process_value_event(fim_entry *new,
 
     snprintf(value_path, MAX_KEY, "%s\\%s", new->registry_entry.key->path, new->registry_entry.value->name);
 
-    configuration = fim_registry_configuration(value_path, arch);
+    configuration = fim_registry_configuration(new->registry_entry.key->path, new->registry_entry.key->arch);
     if (configuration == NULL) {
         return;
     }
