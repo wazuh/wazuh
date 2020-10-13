@@ -214,18 +214,32 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
             defined_queue_size = 1;
         } else if (strcmp(node[i]->element, xml_rids_closing_time) == 0) {
-            if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return OS_INVALID;
-            }
-            int close_time = atoi(node[i]->content);
-            if (close_time < 1 || close_time > 86400) {
+            char *endptr;
+            logr->rids_closing_time = strtol(node[i]->content, &endptr, 0);
+
+            if (logr->rids_closing_time == 0 || logr->rids_closing_time == INT_MAX) {
                 merror("Invalid value for option '<%s>'", xml_rids_closing_time);
                 return OS_INVALID;
             }
-            logr->rids_closing_time = close_time;
-        }
-        else {
+
+            switch (*endptr) {
+            case 'd':
+                logr->rids_closing_time *= 86400;
+                break;
+            case 'h':
+                logr->rids_closing_time *= 3600;
+                break;
+            case 'm':
+                logr->rids_closing_time *= 60;
+                break;
+            case 's':
+            case '\0':
+                break;
+            default:
+                merror("Invalid value for option '<%s>'", xml_rids_closing_time);
+                return OS_INVALID;
+            }
+        } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
         }
