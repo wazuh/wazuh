@@ -214,7 +214,7 @@ stages:
     response: &permission_denied
       status_code: 403
       json:
-        code: 4000
+        error: 4000
 
   - name: Get cluster {worker2} (Allow)
     request:
