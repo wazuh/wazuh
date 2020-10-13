@@ -620,13 +620,11 @@ void fim_registry_process_unscanned_entries() {
  *
  * @param new A fim_entry object holding the information gathered from the key and value.
  * @param saved A fim_entry object holding the information from the key and value retrieved from the database.
- * @param arch An integer specifying the bit count of the register to scan, must be ARCH_32BIT or ARCH_64BIT.
  * @param mode A value specifying if the event has been triggered in scheduled, realtime or whodata mode.
  * @param data_buffer A pointer to the raw data buffer contained in the value.
  */
 void fim_registry_process_value_event(fim_entry *new,
                                       fim_entry *saved,
-                                      int arch,
                                       fim_event_mode mode,
                                       BYTE *data_buffer) {
     char value_path[MAX_KEY + 2];
@@ -691,14 +689,12 @@ void fim_registry_process_value_event(fim_entry *new,
  * @param key_handle A handle to the key holding the values to query.
  * @param new A fim_entry object holding the information gathered from the key.
  * @param saved A fim_entry object holding the information from the key retrieved from the database.
- * @param arch An integer specifying the bit count of the register to scan, must be ARCH_32BIT or ARCH_64BIT.
  * @param value_count An integer holding the amount of values stored in the queried key.
  * @param mode A value specifying if the event has been triggered in scheduled, realtime or whodata mode.
  */
 void fim_read_values(HKEY key_handle,
                      fim_entry *new,
                      fim_entry *saved,
-                     int arch,
                      DWORD value_count,
                      fim_event_mode mode) {
     fim_registry_value_data value_data;
@@ -741,7 +737,7 @@ void fim_read_values(HKEY key_handle,
         new->registry_entry.value->size = data_size;
         new->registry_entry.value->last_event = time(NULL);
 
-        fim_registry_process_value_event(new, saved, arch, mode, data_buffer);
+        fim_registry_process_value_event(new, saved, mode, data_buffer);
     }
 }
 
@@ -867,7 +863,7 @@ void fim_open_key(HKEY root_key_handle,
     }
 
     if (value_count) {
-        fim_read_values(current_key_handle, &new, &saved, arch, value_count, mode);
+        fim_read_values(current_key_handle, &new, &saved, value_count, mode);
     }
 
     w_mutex_unlock(&syscheck.fim_registry_mutex);
