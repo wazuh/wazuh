@@ -1091,13 +1091,12 @@ stages:
         error: !anyint
         data:
           affected_items: # Admin rules cannot be deleted. 105 is denied
-            - id: 99
             - id: 100
             - id: 101
             - id: 102
             - id: 104
           failed_items: []
-          total_affected_items: 5
+          total_affected_items: 4
           total_failed_items: 0
 
 ---
@@ -1213,7 +1212,7 @@ stages:
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: 6
+          total_affected_items: 5
           total_failed_items: 0
     delay_after: 20
 

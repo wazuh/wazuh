@@ -1368,7 +1368,6 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: "application/xml"
-      error: !anyint
       data:
         "{file_xml:s}"
     response:
@@ -1384,7 +1383,6 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: "application/xml"
-      error: !anyint
       data:
         "{file_xml:s}"
     response:
