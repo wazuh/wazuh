@@ -114,7 +114,7 @@ void test_wdb_upgrade_global_update_success(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database '000' to version 1");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v1_sql);
     will_return(__wrap_wdb_sql_exec, 0);
-
+    will_return(__wrap_wdb_global_check_manager_keepalive, 1);
     ret = wdb_upgrade_global(data->wdb);
 
     assert_int_equal(ret, data->wdb);
@@ -131,6 +131,7 @@ void test_wdb_upgrade_global_update_fail(void **state)
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v1_sql);
     will_return(__wrap_wdb_sql_exec, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Failed to update global.db to version 1");
+    will_return(__wrap_wdb_global_check_manager_keepalive, 1);
 
     //Global backup success
     will_return(__wrap_wdb_close, 0);
