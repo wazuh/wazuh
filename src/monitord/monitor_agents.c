@@ -20,7 +20,7 @@ void monitor_agents()
     char **cr_agents;
     char **av_agents;
 
-    av_agents = get_agents(GA_ACTIVE,mond.delete_old_agents);
+    av_agents = get_agents_by_last_keepalive(GA_ACTIVE, mond.delete_old_agents > 0 ? mond.delete_old_agents * 60 : DISCON_TIME);
 
     /* No agent saved */
     if (!mond.agents) {
@@ -82,7 +82,7 @@ void monitor_agents()
     /* Delete old agents when using key-polling module */
     if(mond.delete_old_agents > 0) {
         char **na_agents;
-        na_agents = get_agents(GA_NOTACTIVE,mond.delete_old_agents);
+        na_agents = get_agents_by_last_keepalive(GA_NOTACTIVE, mond.delete_old_agents * 60);
 
         char **na_agents_p = na_agents;
 
@@ -159,7 +159,8 @@ int mon_send_agent_msg(char *agent, char *msg) {
 
     snprintf(ag_name, name_size, "%s", agent);
 
-    if (ag_id = wdb_find_agent(ag_name, ag_ip), ag_id > 0) {
+    if (ag_id = wdb_find_agent(ag_name, ag_ip, NULL), ag_id > 0) {
+
         snprintf(header, OS_SIZE_256, "[%03d] (%s) %s", ag_id, ag_name, ag_ip);
         if (SendMSG(mond.a_queue, msg, header, SECURE_MQ) < 0) {
             mond.a_queue = -1;  // set an invalid fd so we can attempt to reconnect later on.

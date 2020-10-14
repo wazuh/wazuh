@@ -179,11 +179,13 @@ int OS_RemoveAgent(const char *u_id) {
         merror("Could not remove the DB of the agent %s. Error: %d.", u_id, error);
     }
 
-    if (sock >= 0) {
-        close(sock);
+    os_free(wdboutput);
+
+    if (wdb_remove_agent(atoi(u_id), &sock) != OS_SUCCESS) {
+        mdebug1("Could not remove the information stored in Wazuh DB of the agent %s.", u_id);
     }
 
-    os_free(wdboutput);
+    wdbc_close(&sock);
 
     /* Remove counter for ID */
     OS_RemoveCounter(u_id);
@@ -495,6 +497,8 @@ char *IPExist(const char *u_ip)
     return NULL;
 }
 
+#ifndef CLIENT
+
 double OS_AgentAntiquity_ID(const char *id) {
     char *name = getFullnameById(id);
     char *ip;
@@ -513,19 +517,24 @@ double OS_AgentAntiquity_ID(const char *id) {
     return ret;
 }
 
-/* Returns the number of seconds since last agent connection, or -1 if error. */
-double OS_AgentAntiquity(const char *name, const char *ip)
-{
-    struct stat file_stat;
-    char file_name[OS_FLSIZE];
+/**
+ * @brief Returns the number of seconds since last agent connection
+ * 
+ * @param name The name of the agent
+ * @param ip The IP address of the agent (unused). Kept only for compatibility
+ * @retval On success, it returns the difference between the current time and the last keepalive
+ * @retval -1 On error: invalid DB query syntax or result
+ */
+double OS_AgentAntiquity(const char *name, const char *ip){
+    time_t output = 0;
 
-    snprintf(file_name, OS_FLSIZE - 1, "%s/%s-%s", AGENTINFO_DIR, name, ip);
+    output = wdb_get_agent_keepalive(name, ip, NULL);
 
-    if (stat(file_name, &file_stat) < 0)
-        return -1;
-
-    return difftime(time(NULL), file_stat.st_mtime);
+    return output == OS_INVALID ? OS_INVALID : difftime(time(NULL), output);
 }
+
+ /* !CLIENT */
+ #endif
 
 /* Print available agents */
 int print_agents(int print_status, int active_only, int inactive_only, int csv_output, cJSON *json_output)
@@ -576,7 +585,9 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
                     total++;
 
                     if (print_status) {
-                        agent_status_t agt_status = get_agent_status(name, ip);
+                        #ifndef CLIENT //print_status is only available on servers
+                        // Within this context, line_read corresponds to the agent ID
+                        agent_status_t agt_status = get_agent_status(atoi(line_read));
                         if (active_only && (agt_status != GA_STATUS_ACTIVE)) {
                             continue;
                         }
@@ -603,6 +614,10 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
                         } else {
                             printf(PRINT_AGENT_STATUS, line_read, name, ip, print_agent_status(agt_status));
                         }
+                        #else
+                        (void) inactive_only;
+                        printf(PRINT_AGENT, line_read, name, ip);
+                        #endif
                     } else {
                         printf(PRINT_AGENT, line_read, name, ip);
                     }

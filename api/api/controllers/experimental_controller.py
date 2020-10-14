@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
+from functools import wraps
 
 from aiohttp import web
 
@@ -19,10 +20,12 @@ logger = logging.getLogger('wazuh')
 
 
 def check_experimental_feature_value(func):
-    def wrapper():
+    @wraps(func)
+    def wrapper(*args, **kwargs):
         if not configuration.api_conf['experimental_features']:
             raise_if_exc(WazuhResourceNotFound(code=1122))
-
+        else:
+            return func(*args, **kwargs)
     return wrapper
 
 
@@ -54,6 +57,7 @@ async def clear_syscheck_database(request, pretty=False, wait_for_complete=False
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
+@check_experimental_feature_value
 async def get_cis_cat_results(request, pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None,
                               select=None, sort=None, search=None, benchmark=None, profile=None, fail=None, error=None,
                               notchecked=None, unknown=None, score=None):
@@ -77,8 +81,6 @@ async def get_cis_cat_results(request, pretty=False, wait_for_complete=False, li
     :param score: Filters by final score
     :return: AllItemsResponseCiscatResult
     """
-    check_experimental_feature_value()
-
     f_kwargs = {'agent_list': list_agents,
                 'offset': offset,
                 'limit': limit,

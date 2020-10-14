@@ -10,17 +10,17 @@ from shutil import copyfile
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, \
-    WazuhDBQueryMultigroups, Agent, WazuhDBQueryGroup, get_agents_info, get_groups
+    WazuhDBQueryMultigroups, Agent, WazuhDBQueryGroup, get_agents_info, get_groups, get_rbac_filters
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
-from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhPermissionError, \
-    WazuhResourceNotFound
+from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array
 from wazuh.rbac.decorators import expose_resources
 
 cluster_enabled = not read_cluster_config()['disabled']
 node_id = get_node().get('node') if cluster_enabled else None
+
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def get_distinct_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
@@ -45,9 +45,11 @@ def get_distinct_agents(agent_list=None, offset=0, limit=common.database_limit, 
                                       )
 
     if len(agent_list) != 0:
+        rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
+
         db_query = WazuhDBQueryGroupByAgents(filter_fields=fields, offset=offset, limit=limit, sort=sort,
-                                             search=search, select=select, query=q, filters={'id': agent_list},
-                                             min_select_fields=set(), count=True, get_data=True)
+                                             search=search, select=select, query=q, min_select_fields=set(), count=True,
+                                             get_data=True, **rbac_filters)
 
         data = db_query.run()
         result.affected_items.extend(data['items'])
@@ -63,16 +65,18 @@ def get_agents_summary_status(agent_list=None):
     :param agent_list: List of agents ID's.
     :return: WazuhResult.
     """
-    result = WazuhResult({'active': 0, 'disconnected': 0, 'never_connected': 0, 'pending': 0, 'total': 0})
+    summary = {'active': 0, 'disconnected': 0, 'never_connected': 0, 'pending': 0, 'total': 0}
     if len(agent_list) != 0:
-        db_query = WazuhDBQueryAgents(limit=None, select=['status'], filters={'id': agent_list})
+        rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
+
+        db_query = WazuhDBQueryAgents(limit=None, select=['status'], **rbac_filters)
         data = db_query.run()
 
         for agent in data['items']:
-            result[agent['status']] += 1
-            result['total'] += 1
+            summary[agent['status']] += 1
+            summary['total'] += 1
 
-    return result
+    return WazuhResult({'data': summary})
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
@@ -86,9 +90,10 @@ def get_agents_summary_os(agent_list=None):
                                       all_msg='Showing the operative system of all specified agents',
                                       some_msg='Could not get the operative system of some agents')
     if len(agent_list) != 0:
-        db_query = WazuhDBQueryAgents(select=['os.platform'], filters={'id': agent_list},
-                                      default_sort_field='os_platform', min_select_fields=set(),
-                                      distinct=True)
+        rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
+
+        db_query = WazuhDBQueryAgents(select=['os.platform'], default_sort_field='os_platform', min_select_fields=set(),
+                                      distinct=True, **rbac_filters)
         query_data = db_query.run()
         query_data['items'] = [row['os']['platform'] for row in query_data['items']]
         result.affected_items = query_data['items']
@@ -171,40 +176,22 @@ def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None
     if len(agent_list) != 0:
         if filters is None:
             filters = dict()
-        filters['id'] = agent_list
 
         system_agents = get_agents_info()
+
         for agent_id in agent_list:
             if agent_id not in system_agents:
                 result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
 
+        rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list, filters=filters)
+
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                      filters=filters, query=q)
+                                      query=q, **rbac_filters)
         data = db_query.run()
         result.affected_items.extend(data['items'])
         result.total_affected_items = data['totalItems']
 
     return result
-
-
-def get_agent_by_name(name=None, select=None):
-    """Gets an agent by its name.
-
-    :param name: Agent_name.
-    :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-    :return: AffectedItemsWazuhResult.
-    """
-    db_query = WazuhDBQueryAgents(filters={'name': name})
-    data = db_query.run()
-    try:
-        agent = data['items'][0]['id']
-        return get_agents(agent_list=[agent], select=select)
-    except IndexError:
-        raise WazuhResourceNotFound(1754)
-    except Exception as e:
-        if e.code == 4000:
-            raise WazuhPermissionError(4000)
-        raise e
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
@@ -275,11 +262,14 @@ def delete_agents(agent_list=None, backup=False, purge=False, status="all", olde
                                       none_msg='No agents were deleted'
                                       )
     if len(agent_list) != 0:
-        db_query = WazuhDBQueryAgents(limit=None, select=["id"], filters={'older_than': older_than, 'status': status,
-                                                                          'id': agent_list})
+        system_agents = get_agents_info()
+        filters = {'older_than': older_than, 'status': status}
+        rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list,
+                                        filters=filters)
+
+        db_query = WazuhDBQueryAgents(limit=None, select=["id"], **rbac_filters)
         data = db_query.run()
         can_purge_agents = list(map(operator.itemgetter('id'), data['items']))
-        system_agents = get_agents_info()
         for agent_id in agent_list:
             try:
                 if agent_id == "000":
@@ -324,7 +314,7 @@ def add_agent(name=None, agent_id=None, key=None, ip='any', force_time=-1, use_o
 
     new_agent = Agent(name=name, ip=ip, id=agent_id, key=key, force=force_time, use_only_authd=use_only_authd)
 
-    return WazuhResult({'id': new_agent.id, 'key': new_agent.key})
+    return WazuhResult({'data': {'id': new_agent.id, 'key': new_agent.key}})
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"],
@@ -340,7 +330,6 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort=None, search=No
     :param hash_algorithm: hash algorithm used to get mergedsum and configsum.
     :return: AffectedItemsWazuhResult.
     """
-
     affected_groups = list()
     result = AffectedItemsWazuhResult(all_msg='All selected groups information was returned',
                                       some_msg='Some groups information was not returned',
@@ -351,7 +340,9 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort=None, search=No
     for invalid_group in set(group_list) - get_groups():
         result.add_failed_item(id_=invalid_group, error=WazuhResourceNotFound(1710))
 
-    group_query = WazuhDBQueryGroup(filters={'name': group_list}, offset=offset, limit=limit, sort=sort, search=search)
+    rbac_filters = get_rbac_filters(system_resources=get_groups(), permitted_resources=group_list)
+
+    group_query = WazuhDBQueryGroup(offset=offset, limit=limit, sort=sort, search=search, **rbac_filters)
     query_data = group_query.run()
 
     for group in query_data['items']:
@@ -674,9 +665,10 @@ def get_outdated_agents(agent_list=None, offset=0, limit=common.database_limit, 
         manager.load_info_from_db()
 
         select = ['version', 'id', 'name'] if select is None else select
+        rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
+
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                      query=f"version!={manager.version}" + (';' + q if q else ''),
-                                      filters={'id': agent_list})
+                                      query=f"version!={manager.version}" + (';' + q if q else ''), **rbac_filters)
         data = db_query.run()
         result.affected_items = data['items']
         result.total_affected_items = data['totalItems']
@@ -753,7 +745,7 @@ def get_agent_config(agent_list=None, component=None, config=None):
     if my_agent.status != "active":
         raise WazuhError(1740)
 
-    return WazuhResult(my_agent.getconfig(component=component, config=config))
+    return WazuhResult({'data': my_agent.getconfig(component=component, config=config)})
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
@@ -831,7 +823,8 @@ def get_agent_conf(group_list=None, filename='agent.conf', offset=0, limit=commo
     # a list of groups
     group_id = group_list[0]
 
-    return WazuhResult(configuration.get_agent_conf(group_id=group_id, filename=filename, offset=offset, limit=limit))
+    return WazuhResult(
+        {'data': configuration.get_agent_conf(group_id=group_id, filename=filename, offset=offset, limit=limit)})
 
 
 @expose_resources(actions=["group:update_config"], resources=["group:id:{group_list}"], post_proc_func=None)
@@ -872,4 +865,4 @@ def get_full_overview() -> WazuhResult:
     result = {'nodes': stats_distinct_node, 'groups': groups, 'agent_os': stats_distinct_os, 'agent_status': summary,
               'agent_version': stats_version, 'last_registered_agent': last_registered_agent}
 
-    return WazuhResult(result)
+    return WazuhResult({'data': result})

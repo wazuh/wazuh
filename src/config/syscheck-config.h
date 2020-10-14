@@ -321,6 +321,7 @@ typedef struct fdb_t
     sqlite3 *db;
     sqlite3_stmt *stmt[FIMDB_STMT_SIZE];
     fdb_transaction_t transaction;
+    volatile bool full;
 } fdb_t;
 
 typedef struct _config {
