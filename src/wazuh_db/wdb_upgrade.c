@@ -79,7 +79,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
         return wdb;
     case 0:
         // The table doesn't exist. Checking if version is 3.9
-        if( wdb_metadata_table_check(wdb,"agent") == 0){
+        if( wdb_metadata_table_check(wdb,"agent") == 1){
             j_agent_columns = wdb_exec(wdb->db, "PRAGMA table_info(agent)");
             cJSON_ArrayForEach(j_column, j_agent_columns) {
                 j_column_name = cJSON_GetObjectItem(j_column, "name");
@@ -88,7 +88,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
                 }
             }
             cJSON_Delete(j_agent_columns);
-            if(column_found == TRUE) {
+            if(column_found == FALSE) {
                 wdb = wdb_backup_global(wdb, -1);
                 return wdb;
             }
