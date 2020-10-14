@@ -160,8 +160,8 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GET_AGENTS_BY_GREATER_KEEPALIVE,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_LESS_KEEPALIVE,
     WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE,
-    WDB_STMT_SIZE,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
+    WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
 
 typedef enum global_db_access {
