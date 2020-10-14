@@ -60,15 +60,12 @@ int INTERVAL;
 int should_clean;
 
 /* For the last message tracking */
-static char pending_queue[MAX_AGENTS][9];
-static volatile int queue_i = 0;
-static volatile int queue_j = 0;
+static w_linked_queue_t *pending_queue;
 OSHash *pending_data;
 
 /* pthread mutex variables */
 static pthread_mutex_t lastmsg_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t files_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t awake_mutex = PTHREAD_COND_INITIALIZER;
 
 /* Hash table for multigroups */
 OSHash *m_hash;
@@ -189,17 +186,11 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
 
             /* Mark data as changed and insert into queue */
             if (!data->changed) {
-                if (full(queue_i, queue_j)) {
-                    merror("Pending message queue full.");
-                } else {
-                    strncpy(pending_queue[queue_i], key->id, 8);
-                    forward(queue_i);
+                char *id;
+                os_strdup(key->id, id);
+                linked_queue_push_ex(pending_queue, id);
 
-                    /* Signal that new data is available */
-                    w_cond_signal(&awake_mutex);
-
-                    data->changed = 1;
-                }
+                data->changed = 1;
             }
 
             /* Unlock mutex */
@@ -1161,38 +1152,35 @@ static void read_controlmsg(const char *agent_id, char *msg)
  */
 void *wait_for_msgs(__attribute__((unused)) void *none)
 {
-    char agent_id[9];
     pending_data_t *data;
 
     /* Should never leave this loop */
     while (1) {
         char * msg = NULL;
 
+        /* Pop data from queue */
+        char *agent_id = linked_queue_pop_ex(pending_queue);
+
         /* Lock mutex */
         w_mutex_lock(&lastmsg_mutex);
 
-        /* If no agent changed, wait for signal */
-        while (empty(queue_i, queue_j)) {
-            w_cond_wait(&awake_mutex, &lastmsg_mutex);
-        }
-
-        /* Pop data from queue */
-        if ((data = OSHash_Get(pending_data, pending_queue[queue_j]))) {
-            strncpy(agent_id, pending_queue[queue_j], 8);
+        if (data = OSHash_Get(pending_data, agent_id), data) {
             os_strdup(data->message, msg);
         } else {
-            merror("Couldn't get pending data from hash table for agent ID '%s'.", pending_queue[queue_j]);
-            *agent_id = '\0';
+            merror("Couldn't get pending data from hash table for agent ID '%s'.", agent_id);
+            os_free(agent_id);
+            agent_id = NULL;
         }
 
-        forward(queue_j);
 
         /* Unlock mutex */
         w_mutex_unlock(&lastmsg_mutex);
 
-        if (msg && *agent_id) {
+        if (msg && agent_id) {
             read_controlmsg(agent_id, msg);
         }
+        os_free(agent_id);
+        os_free(msg);
 
         // Mark message as dispatched
         w_mutex_lock(&lastmsg_mutex);
@@ -1200,8 +1188,6 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
             data->changed = 0;
         }
         w_mutex_unlock(&lastmsg_mutex);
-
-        free(msg);
     }
 
     return (NULL);
@@ -1347,10 +1333,14 @@ void manager_init()
     mdebug1("Running manager_init");
     c_files();
     w_yaml_create_groups();
-    memset(pending_queue, 0, MAX_AGENTS * 9);
+    pending_queue = linked_queue_init();
     pending_data = OSHash_Create();
 
     if (!m_hash || !pending_data) merror_exit("At manager_init(): OSHash_Create() failed");
 
     OSHash_SetFreeDataPointer(pending_data, (void (*)(void *))free_pending_data);
+}
+
+void manager_free() {
+    linked_queue_free(pending_queue);
 }

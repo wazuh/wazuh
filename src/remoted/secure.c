@@ -233,6 +233,8 @@ void HandleSecure()
             }
         }
     }
+
+    manager_free();
 }
 
 // Message handler thread
