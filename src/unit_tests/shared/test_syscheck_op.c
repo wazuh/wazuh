@@ -2340,7 +2340,7 @@ static void test_decode_win_permissions_fail_wrong_format(void **state) {
     free(raw_perm);
     *state = output;
 
-    assert_null(output);
+    assert_string_equal("", output);
 }
 
 /* attrs_to_json tests */
