@@ -288,7 +288,7 @@ class RBAChecker:
         list_roles = list()
         for role in self.roles_list:
             for rule in role['rules']:
-                if (rule['id'] not in orm.required_rules_for_role[1] or self.user_id in orm.admin_user_ids) and \
+                if (rule['id'] > orm.max_id_reserved or self.user_id < orm.max_id_reserved) and \
                         self.check_rule(rule['rule']):
                     list_roles.append(role['id'])
                     break

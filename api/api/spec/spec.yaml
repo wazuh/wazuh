@@ -3781,43 +3781,43 @@ components:
         default: 500
         minimum: 1
         maximum: 500
-    list_agents:
+    agents_list:
       in: query
-      name: list_agents
+      name: agents_list
       description: "List of agent IDs (separated by comma)"
       schema:
         type: array
         items:
           $ref: '#/components/schemas/AgentID'
-    list_agents_delete:
+    agents_list_delete:
       in: query
-      name: list_agents
+      name: agents_list
       description: "List of agent IDs (separated by comma), use the keyword 'all' to select all agents"
       required: true
       schema:
         type: array
         items:
           $ref: '#/components/schemas/AgentID_DELETE'
-    list_groups:
+    groups_list:
       in: query
-      name: list_groups
+      name: groups_list
       description: "Array of group IDs"
       schema:
         type: array
         items:
           $ref: '#/components/schemas/GroupID'
-    list_groups_delete:
+    groups_list_delete:
       in: query
-      name: list_groups
+      name: groups_list
       description: "List of group IDs (separated by comma), use the keyword 'all' to select all groups"
       required: true
       schema:
         type: array
         items:
           $ref: '#/components/schemas/GroupID_DELETE'
-    list_nodes:
+    nodes_list:
       in: query
-      name: list_nodes
+      name: nodes_list
       description: "List of node IDs (separated by comma)"
       schema:
         type: array
@@ -5082,7 +5082,7 @@ paths:
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/active-response:command'
       parameters:
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/agents_list'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       requestBody:
@@ -5134,7 +5134,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents_delete'
+        - $ref: '#/components/parameters/agents_list_delete'
         - $ref: '#/components/parameters/purge'
         - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/older_than'
@@ -5188,7 +5188,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/agents_list'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/select'
@@ -5440,7 +5440,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/list_groups'
+        - $ref: '#/components/parameters/groups_list'
       responses:
         '200':
           description: "Remove the agent from all groups"
@@ -5820,7 +5820,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents_delete'
+        - $ref: '#/components/parameters/agents_list_delete'
         - $ref: '#/components/parameters/group_id_query'
       responses:
         '200':
@@ -5872,7 +5872,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/agents_list'
         - $ref: '#/components/parameters/group_id_query'
         - $ref: '#/components/parameters/force_single_group'
       responses:
@@ -5978,7 +5978,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_groups_delete'
+        - $ref: '#/components/parameters/groups_list_delete'
       responses:
         '200':
           description: "Remove multiple group of multiple agents"
@@ -6028,7 +6028,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_groups'
+        - $ref: '#/components/parameters/groups_list'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -6880,7 +6880,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/agents_list'
       responses:
         '200':
           description: "Agents restarted"
@@ -7237,7 +7237,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/node_type'
-        - $ref: '#/components/parameters/list_nodes'
+        - $ref: '#/components/parameters/nodes_list'
         - $ref: '#/components/parameters/query'
       responses:
         '200':
@@ -7294,7 +7294,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_nodes'
+        - $ref: '#/components/parameters/nodes_list'
       responses:
         '200':
           description: "Health information for cluster nodes"
@@ -7502,7 +7502,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_nodes'
+        - $ref: '#/components/parameters/nodes_list'
       responses:
         '200':
           description: Current API configuration
@@ -7595,7 +7595,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_nodes'
+        - $ref: '#/components/parameters/nodes_list'
       requestBody:
         content:
           application/json:
@@ -7644,7 +7644,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_nodes'
+        - $ref: '#/components/parameters/nodes_list'
       responses:
         '200':
           description: 'Confirmation message'
@@ -8651,7 +8651,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_nodes'
+        - $ref: '#/components/parameters/nodes_list'
       responses:
         '200':
           description: "List of affected nodes"
@@ -8697,7 +8697,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_nodes'
+        - $ref: '#/components/parameters/nodes_list'
       responses:
         '200':
           description: "Configuration status"
@@ -10777,7 +10777,7 @@ paths:
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/syscheck:run'
       parameters:
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/agents_list'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -11244,7 +11244,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents_delete'
+        - $ref: '#/components/parameters/agents_list_delete'
       responses:
         '200':
           description: "Delete syscheck database"
@@ -11301,7 +11301,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/agents_list'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -11394,7 +11394,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/agents_list'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -11488,7 +11488,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/agents_list'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -11565,7 +11565,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/agents_list'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -11684,7 +11684,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/agents_list'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -11758,7 +11758,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/agents_list'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -11860,7 +11860,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/agents_list'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -11959,7 +11959,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/agents_list'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -12061,7 +12061,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/agents_list'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -12188,7 +12188,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/agents_list'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
