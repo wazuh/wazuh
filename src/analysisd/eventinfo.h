@@ -86,6 +86,9 @@ typedef struct _Eventinfo {
     /* SYSCHECK Results variables */
     syscheck_event_t event_type;
     char *filename;
+    char *arch;
+    char *value_name;
+    char *value_type;
     char *mode;
     char *hard_links;
     char *sk_tag;
@@ -213,8 +216,8 @@ const char* FindField(const Eventinfo *lf, const char *name);
 char* ParseRuleComment(Eventinfo *lf);
 
 /**
- * @brief Function to check for repetitions from same fields 
- * 
+ * @brief Function to check for repetitions from same fields
+ *
  * @param rule has rule information
  * @param lf has event information
  * @param my_lf has last event information
@@ -224,8 +227,8 @@ char* ParseRuleComment(Eventinfo *lf);
 bool same_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf);
 
 /**
- * @brief Function to check for repetitions from different fields 
- * 
+ * @brief Function to check for repetitions from different fields
+ *
  * @param rule has rule information
  * @param lf has event information
  * @param my_lf has last event information

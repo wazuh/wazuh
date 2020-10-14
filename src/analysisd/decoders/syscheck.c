@@ -170,6 +170,10 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     fim_decoder->fields[FIM_EFFECTIVE_NAME] = "effective_name";
     fim_decoder->fields[FIM_PPID] = "ppid";
     fim_decoder->fields[FIM_PROC_ID] = "process_id";
+
+    fim_decoder->fields[FIM_REGISTRY_ARCH] = "arch";
+    fim_decoder->fields[FIM_REGISTRY_VALUE_NAME] = "value_name";
+    fim_decoder->fields[FIM_REGISTRY_VALUE_TYPE] = "value_type";
 }
 
 // Initialize the necessary information to process the syscheck information
@@ -1228,6 +1232,15 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
                 os_strdup(object->valuestring, lf->sk_tag);
             } else if (strcmp(object->string, "content_changes") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_DIFF].value);
+            } else if (strcmp(object->string, "arch") == 0) {
+                os_strdup(object->valuestring, lf->arch);
+                os_strdup(object->valuestring, lf->fields[FIM_REGISTRY_ARCH].value);
+            } else if (strcmp(object->string, "value_name") == 0) {
+                os_strdup(object->valuestring, lf->value_name);
+                os_strdup(object->valuestring, lf->fields[FIM_REGISTRY_VALUE_NAME].value);
+            } else if (strcmp(object->string, "value_type") == 0) {
+                os_strdup(object->valuestring, lf->value_type);
+                os_strdup(object->valuestring, lf->fields[FIM_REGISTRY_VALUE_TYPE].value);
             }
 
             break;
