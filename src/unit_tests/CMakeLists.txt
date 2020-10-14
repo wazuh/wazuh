@@ -45,8 +45,10 @@ if(NOT WAZUHEXT)
   message(FATAL_ERROR "libwazuhext not found! Aborting...")
 endif()
 
-add_subdirectory(syscheckd)
-add_subdirectory(shared)
+if((${uname} STREQUAL "Linux") OR (${uname} STREQUAL "Win32"))
+  add_subdirectory(syscheckd)
+  add_subdirectory(shared)
+endif()
 
 # Config files
 if(${TARGET} STREQUAL "winagent")
