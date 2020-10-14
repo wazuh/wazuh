@@ -67,6 +67,7 @@ OSHash *gateways;
 
 STATIC char *get_port_state();
 STATIC char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_id);
+STATIC bool sys_convert_bin_plist(FILE **fp, char *magic_bytes, char *filepath);
 
 // Get installed programs inventory
 
@@ -446,7 +447,7 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
  * @return True on success, false otherwise.
  **/
 bool sys_convert_bin_plist(FILE **fp, char *magic_bytes, char *filepath) {
-    char * bin = NULL;
+    char * bin = MAP_FAILED;
     char * xml = NULL;
     uint32_t size = 0;
     plist_t root_node = NULL;
@@ -489,7 +490,7 @@ bool sys_convert_bin_plist(FILE **fp, char *magic_bytes, char *filepath) {
 
 clean:
     if (root_node) plist_free(root_node);
-    if (bin) munmap(bin, filestats.st_size);
+    if (bin != MAP_FAILED) munmap(bin, filestats.st_size);
     return status;
 }
 
