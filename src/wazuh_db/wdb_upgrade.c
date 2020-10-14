@@ -67,10 +67,8 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
 
     char db_version[OS_SIZE_256 + 2];
     int version = 0;
-    cJSON *j_agent_columns = NULL;
-    cJSON *j_column = NULL;
-    cJSON *j_column_name = NULL;
-    bool column_found = FALSE;
+    cJSON *j_keep_alive = NULL;
+    char *str_keep_alive = NULL;
 
     switch (wdb_metadata_table_check(wdb,"metadata")) {
     case OS_INVALID:
@@ -78,20 +76,18 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
         wdb = wdb_backup_global(wdb, -1);
         return wdb;
     case 0:
-        // The table doesn't exist. Checking if version is 3.9
+        // The table doesn't exist. Checking if version is 3.10 to upgrade or recreate
         if( wdb_metadata_table_check(wdb,"agent") == 1){
-            j_agent_columns = wdb_exec(wdb->db, "PRAGMA table_info(agent)");
-            cJSON_ArrayForEach(j_column, j_agent_columns) {
-                j_column_name = cJSON_GetObjectItem(j_column, "name");
-                if(cJSON_IsString(j_column_name) && strcmp(j_column_name->valuestring,"register_ip") == 0){
-                    column_found = TRUE;
-                }
-            }
-            cJSON_Delete(j_agent_columns);
-            if(column_found == FALSE) {
+            j_keep_alive = wdb_exec(wdb->db, "SELECT last_keepalive FROM agent where id = 0");
+            str_keep_alive = cJSON_PrintUnformatted(j_keep_alive);
+            if(strcmp(str_keep_alive, "253402300799") != 0) {
                 wdb = wdb_backup_global(wdb, -1);
+                cJSON_Delete(j_keep_alive);
+                os_free(str_keep_alive);
                 return wdb;
             }
+            cJSON_Delete(j_keep_alive);
+            os_free(str_keep_alive);
         }
         else {
             wdb = wdb_backup_global(wdb, -1);
