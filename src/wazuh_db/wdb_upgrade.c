@@ -67,8 +67,6 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
 
     char db_version[OS_SIZE_256 + 2];
     int version = 0;
-    cJSON *j_keep_alive = NULL;
-    char *str_keep_alive = NULL;
 
     switch (wdb_metadata_table_check(wdb,"metadata")) {
     case OS_INVALID:
@@ -77,19 +75,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
         return wdb;
     case 0:
         // The table doesn't exist. Checking if version is 3.10 to upgrade or recreate
-        if( wdb_metadata_table_check(wdb,"agent") == 1){
-            j_keep_alive = wdb_exec(wdb->db, "SELECT last_keepalive FROM agent where id = 0");
-            str_keep_alive = cJSON_PrintUnformatted(j_keep_alive);
-            if(strcmp(str_keep_alive, "[{\"last_keepalive\":253402300799}]") != 0) {
-                wdb = wdb_backup_global(wdb, -1);
-                cJSON_Delete(j_keep_alive);
-                os_free(str_keep_alive);
-                return wdb;
-            }
-            cJSON_Delete(j_keep_alive);
-            os_free(str_keep_alive);
-        }
-        else {
+        if (wdb_global_check_manager_keepalive(wdb) != 1) {
             wdb = wdb_backup_global(wdb, -1);
             return wdb;
         }

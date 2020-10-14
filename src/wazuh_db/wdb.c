@@ -144,6 +144,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_GET_AGENTS_BY_GREATER_KEEPALIVE] = "SELECT id FROM agent WHERE id > ? AND last_keepalive > ? LIMIT 1;", 
     [WDB_STMT_GLOBAL_GET_AGENTS_BY_LESS_KEEPALIVE] = "SELECT id FROM agent WHERE id > ? AND last_keepalive < ? LIMIT 1;", 
     [WDB_STMT_GLOBAL_GET_AGENT_INFO] = "SELECT * FROM agent WHERE id = ?;",
+    [WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE] = "SELECT COUNT(*) FROM agent WHERE id=0 AND last_keepalive=253402300799;",
     [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
 };
 
