@@ -67,6 +67,10 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
 
     char db_version[OS_SIZE_256 + 2];
     int version = 0;
+    cJSON *j_agent_columns = NULL;
+    cJSON *j_column = NULL;
+    cJSON *j_column_name = NULL;
+    bool column_found = FALSE;
 
     switch (wdb_metadata_table_check(wdb,"metadata")) {
     case OS_INVALID:
@@ -74,7 +78,25 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
         wdb = wdb_backup_global(wdb, -1);
         return wdb;
     case 0:
-        // The table doesn't exist, this is the global.db version 0
+        // The table doesn't exist. Checking if version is 3.9
+        if( wdb_metadata_table_check(wdb,"agent") == 0){
+            j_agent_columns = wdb_exec(wdb->db, "PRAGMA table_info(agent)");
+            cJSON_ArrayForEach(j_column, j_agent_columns) {
+                j_column_name = cJSON_GetObjectItem(j_column, "name");
+                if(cJSON_IsString(j_column_name) && strcmp(j_column_name->valuestring,"register_ip") == 0){
+                    column_found = TRUE;
+                }
+            }
+            cJSON_Delete(j_agent_columns);
+            if(column_found == TRUE) {
+                wdb = wdb_backup_global(wdb, -1);
+                return wdb;
+            }
+        }
+        else {
+            wdb = wdb_backup_global(wdb, -1);
+            return wdb;
+        }
         break;
     default:
         if( wdb_metadata_get_entry(wdb, "db_version", db_version) == 1) {
