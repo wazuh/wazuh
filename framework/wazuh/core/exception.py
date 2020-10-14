@@ -549,9 +549,10 @@ class WazuhException(Exception):
                'remediation': 'More information here: https://documentation.wazuh.com/current/user-manual/api/security/configuration.html'},
 
         # Logtest
-        7000: {'message': 'Invalid logtest body',
+        7000: {'message': 'Error trying to get logtest response'},
+        7001: {'message': 'Invalid logtest body',
                'remediation': 'Please use only valid fields: {token, event, log_format, location}'},
-        7001: {'message': 'Error trying to read logtest session token',
+        7002: {'message': 'Error trying to read logtest session token',
                'remediation': 'Make sure you introduce the token within the field "token"'}
 
         # > 9000: Authd

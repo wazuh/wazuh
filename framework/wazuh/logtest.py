@@ -13,7 +13,14 @@ def run_logtest(token=None, event=None, log_format=None, location=None):
 
     Parameters
     ----------
-    TODO
+    token : str, optional
+        Logtest session token. Default `None`
+    event : str
+        Log event.
+    log_format : str
+        Log format.
+    location : str
+        Log location.
 
     Raises
     ------
@@ -25,11 +32,11 @@ def run_logtest(token=None, event=None, log_format=None, location=None):
     dict
         Logtest response after analyzing the event.
     """
-    # Token could not be present
+    # Token is not required
     if locals()['token'] is None:
         del locals()['token']
 
-    response = send_logtest_msg(command='log_processing', params=locals())
+    response = send_logtest_msg(command='log_processing', parameters=locals())
     if response['error'] != 0:
         raise WazuhError(code=7000, extra_message=response.get('message', 'Could not parse error message'))
 
@@ -51,8 +58,10 @@ def end_logtest_session(token: str = None):
         Logtest response to the message.
     """
     if token is None:
-        raise WazuhError(7001)
+        raise WazuhError(7002)
 
-    response = send_logtest_msg(command='remove_session', params={'token': token})
+    response = send_logtest_msg(command='remove_session', parameters={'token': token})
+    if response['error'] != 0:
+        raise WazuhError(code=7000, extra_message=response.get('message', 'Could not parse error message'))
 
     return response
