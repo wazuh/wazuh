@@ -279,12 +279,8 @@ void * rem_keyupdate_main(__attribute__((unused)) void * args) {
 // Closer rids thread
 static void * close_fp_main(void * args) {
     keystore * keys = (keystore *)args;
-    w_linked_queue_node_t * first_node = NULL;
-    keyentry * first_node_key = NULL;
     int seconds;
-    int now;
-    int node_updating_time;
-    int flag = 1;
+    int flag;
 
     mdebug1("Rids closer thread started.");
     seconds = logr.rids_closing_time;
@@ -294,20 +290,22 @@ static void * close_fp_main(void * args) {
         key_lock_write();
         flag = 1;
         while (flag) {
-            first_node = keys->opened_fp_queue->first;
-            if (first_node) {            
-                first_node_key = (keyentry *)first_node->data;
-                now = time(0);
-                node_updating_time = first_node_key->updating_time;
-                if ((now - seconds) > node_updating_time) {
+            w_linked_queue_node_t * first_node = keys->opened_fp_queue->first;
+            mdebug1("Opened rids queue size: %d", keys->opened_fp_queue->elements);
+            if (first_node) {
+                int now = time(0);
+                keyentry * first_node_key = (keyentry *)first_node->data;
+                mdebug1("Checking rids_node of agent %s.", first_node_key->id);
+                if ((now - seconds) > first_node_key->updating_time) {
+                    first_node_key = (keyentry *)linked_queue_pop(keys->opened_fp_queue);
+                    mdebug1("Pop rids_node of agent %s.", first_node_key->id);
                     if (first_node_key->fp != NULL) {
-                        first_node_key = (keyentry *)linked_queue_pop(keys->opened_fp_queue);
                         mdebug1("Closing rids for agent %s.", first_node_key->id);
                         fclose(first_node_key->fp);
-                        first_node_key->updating_time = 0;
-                        first_node_key->fp = NULL;
-                        first_node_key->rids_node = NULL;
                     }
+                    first_node_key->updating_time = 0;
+                    first_node_key->fp = NULL;
+                    first_node_key->rids_node = NULL;
                 } else {
                     flag = 0;
                 }

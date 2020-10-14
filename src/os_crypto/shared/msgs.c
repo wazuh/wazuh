@@ -142,11 +142,11 @@ void OS_StartCounter(keystore *keys)
                 keys->keyentries[i]->local = l_c;
             }
         }
-        if (keys->keyentries[i]->id != NULL) {
+        if (i != keys->keysize) {
             fclose(keys->keyentries[i]->fp);
-            keys->keyentries[i]->updating_time = 0;
+            //keys->keyentries[i]->updating_time = 0;
             keys->keyentries[i]->fp = NULL;
-            keys->keyentries[i]->rids_node = NULL;
+            //keys->keyentries[i]->rids_node = NULL;
         }
         
         keys->keyentries[i]->inode = File_Inode(rids_file);
@@ -204,11 +204,12 @@ static void StoreCounter(const keystore *keys, int id, unsigned int global, unsi
     fprintf(keys->keyentries[id]->fp, "%u:%u:", global, local);
     fflush(keys->keyentries[id]->fp);
     
-    time_t new_time = time(0);
-    keys->keyentries[id]->updating_time = new_time;
+    keys->keyentries[id]->updating_time = time(0);
     if (!keys->keyentries[id]->rids_node) {
+        mdebug1("Pushing rids_node for agent %s.", keys->keyentries[id]->id);
         keys->keyentries[id]->rids_node = linked_queue_push(keys->opened_fp_queue, keys->keyentries[id]);
     } else {
+        mdebug1("Updating rids_node for agent %s.", keys->keyentries[id]->id);
         linked_queue_unlink_and_push_node (keys->opened_fp_queue, keys->keyentries[id]->rids_node);
     }
 }
@@ -217,7 +218,6 @@ static void StoreCounter(const keystore *keys, int id, unsigned int global, unsi
 static void ReloadCounter(const keystore *keys, unsigned int id, const char * cid)
 {
     ino_t new_inode;
-    time_t new_time;
     char rids_file[OS_FLSIZE + 1];
 
     snprintf(rids_file, OS_FLSIZE, "%s/%s", isChroot() ? RIDS_DIR : RIDS_DIR_PATH, cid);
@@ -260,9 +260,8 @@ static void ReloadCounter(const keystore *keys, unsigned int id, const char * ci
             }
         }
 
-        if (id != keys->keysize) {
-            new_time = time(0);
-            keys->keyentries[id]->updating_time = new_time;
+        if (id != keys->keysize) { 
+            keys->keyentries[id]->updating_time = time(0);
             if (!keys->keyentries[id]->rids_node) {
                 keys->keyentries[id]->rids_node = linked_queue_push(keys->opened_fp_queue, keys->keyentries[id]);
             } else {

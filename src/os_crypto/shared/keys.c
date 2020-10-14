@@ -102,6 +102,8 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
     keys->keyentries[keys->keysize]->fp = NULL;
     keys->keyentries[keys->keysize]->inode = 0;
     keys->keyentries[keys->keysize]->sock = -1;
+    keys->keyentries[keys->keysize]->updating_time = 0;
+    keys->keyentries[keys->keysize]->rids_node = NULL;
     w_mutex_init(&keys->keyentries[keys->keysize]->mutex, NULL);
 
     if (keys->flags.rehash_keys) {
@@ -356,6 +358,10 @@ void OS_FreeKey(keyentry *key) {
         fclose(key->fp);
     }
 
+    if (key->rids_node) {
+        free(key->rids_node);
+    }
+
     w_mutex_destroy(&key->mutex);
     free(key);
 }
@@ -397,6 +403,8 @@ void OS_FreeKeys(keystore *keys)
         keys->removed_keys = NULL;
         keys->removed_keys_size = 0;
     }
+
+    linked_queue_free(keys->opened_fp_queue);
 
     /* Free structure */
     free(keys->keyentries);
