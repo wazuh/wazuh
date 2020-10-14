@@ -575,7 +575,7 @@ int fim_diff_delete_compress_folder(const char *folder) {
     float dir_size = 0.0;
 
     if (IsDir(folder) == -1) {
-        return -1;     // The folder does not exist
+        return -2;     // The folder does not exist
     }
 
     dir_size = (float)DirSize(folder) / 1024;
@@ -944,10 +944,11 @@ next_it:
 
 int fim_diff_process_delete_file(const char *filename){
     char *full_path;
+    int ret;
     os_malloc(sizeof(char) * (strlen(DIFF_DIR_PATH) + strlen(filename) + 8), full_path);
-    snprintf(full_path, PATH_MAX, "%s/local/", DIFF_DIR_PATH);
 
 #ifdef WIN32
+    snprintf(full_path, PATH_MAX, "%s/local/", DIFF_DIR_PATH);
     // Remove ":" from filename
     char *buffer = NULL;
     buffer = os_strip_char(filename, ':');
@@ -959,12 +960,17 @@ int fim_diff_process_delete_file(const char *filename){
     strcat(full_path, buffer);
     os_free(buffer);
 #else
+    snprintf(full_path, PATH_MAX, "%s/local", DIFF_DIR_PATH);
     strcat(full_path, filename);
 #endif
 
-
-    if(fim_diff_delete_compress_folder(full_path) == -1){
+    ret = fim_diff_delete_compress_folder(full_path);
+    if(ret == -1){
         merror(FIM_DIFF_DELETE_DIFF_FOLDER_ERROR, full_path);
+        os_free(full_path);
+        return -1;
+    } else if (ret == -2){
+        mdebug2(FIM_DIFF_FOLDER_NOT_EXIST, full_path);
         os_free(full_path);
         return -1;
     }
