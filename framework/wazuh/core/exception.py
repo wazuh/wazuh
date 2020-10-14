@@ -4,7 +4,8 @@
 
 
 from copy import deepcopy
-from wazuh.core.common import wazuh_version as wazuh_full_version
+from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE, wazuh_version as wazuh_full_version
+
 
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
 WAZUH_VERSION = 'current' if wazuh_full_version == '' else '.'.join(wazuh_full_version.split('.')[:2]).lstrip('v')
@@ -91,6 +92,7 @@ class WazuhException(Exception):
                'remediation': 'Experimental features can be enabled in WAZUH_PATH/configuration/api.yaml or '
                               'using API endpoint https://documentation.wazuh.com/current/user-manual/api/reference.html#operation/api.controllers.manager_controller.put_api_config or '
                               'https://documentation.wazuh.com/current/user-manual/api/reference.html#operation/api.controllers.cluster_controller.put_api_config'},
+        1123: {'message': f"Error communicating with socket. Query too long, maximum allowed size for queries is {MAX_SOCKET_BUFFER_SIZE // 1024} KB"},
 
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
@@ -544,7 +546,15 @@ class WazuhException(Exception):
         6003: {'message': 'Error trying to load the JWT secret',
                'remediation': 'Make sure you have the right permissions: WAZUH_PATH/api/configuration/security/jwt_secret'},
         6004: {'message': 'The current user does not have authentication enabled through authorization context',
-               'remediation': f'You can enable it using the following endpoint: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#configuration-file'}
+               'remediation': 'More information here: https://documentation.wazuh.com/current/user-manual/api/security/configuration.html'},
+
+        # Logtest
+        7000: {'message': 'Error trying to get logtest response'},
+        7001: {'message': 'Invalid logtest body',
+               'remediation': 'Please use only valid fields: {token, event, log_format, location}'},
+        7002: {'message': 'Error trying to read logtest session token',
+               'remediation': 'Make sure you introduce the token within the field "token"'}
+
         # > 9000: Authd
     }
 

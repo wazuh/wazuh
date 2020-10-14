@@ -65,7 +65,7 @@ int GlobalConf(const char *cfgfile)
     Config.includes = NULL;
     Config.lists = NULL;
     Config.decoders = NULL;
-    Config.label_cache_maxage = 0;
+    Config.label_cache_maxage = 10;
     Config.show_hidden_labels = 0;
 
     Config.cluster_name = NULL;
@@ -276,9 +276,9 @@ cJSON *getDecodersConfig(void) {
     cJSON *root = cJSON_CreateObject();
     cJSON *list = cJSON_CreateArray();
 
-    if (osdecodernode_forpname) {
-        _getDecodersListJSON(osdecodernode_forpname, list);
-        _getDecodersListJSON(osdecodernode_nopname, list);
+    if (os_analysisd_decoderlist_pn) {
+        _getDecodersListJSON(os_analysisd_decoderlist_pn, list);
+        _getDecodersListJSON(os_analysisd_decoderlist_nopn, list);
     }
 
     cJSON_AddItemToObject(root,"decoders",list);
@@ -292,8 +292,8 @@ cJSON *getRulesConfig(void) {
     cJSON *root = cJSON_CreateObject();
     cJSON *list = cJSON_CreateArray();
 
-    if (rulenode) {
-        _getRulesListJSON(rulenode, list);
+    if (os_analysisd_rulelist) {
+        _getRulesListJSON(os_analysisd_rulelist, list);
     }
 
     cJSON_AddItemToObject(root,"rules",list);

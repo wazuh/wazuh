@@ -1129,6 +1129,7 @@ int read_data_unit(const char *content) {
                 }
             }
             else {
+                os_free(value_str);
                 return -1;
             }
 
@@ -1538,6 +1539,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         else if (strcmp(node[i]->element, xml_scanday) == 0) {
             syscheck->scan_day = OS_IsValidDay(node[i]->content);
             if (!syscheck->scan_day) {
+                merror(INVALID_DAY, node[i]->content);
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }

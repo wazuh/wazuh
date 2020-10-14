@@ -21,7 +21,6 @@ int alert_only;
 
 #define OS_COMMENT_MAX 1024
 
-EventList *last_events_list;
 time_t current_time = 0;
 
 size_t field_offset[] = {
@@ -87,7 +86,7 @@ bool different_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf) {
 /* Search last times a signature fired
  * Will look for only that specific signature.
  */
-Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unused)) regex_matching *rule_match)
+Eventinfo *Search_LastSids(Eventinfo *my_lf, __attribute__((unused)) EventList *last_events, RuleInfo *rule, __attribute__((unused)) regex_matching *rule_match)
 {
     Eventinfo *lf = NULL;
     Eventinfo *first_matched = NULL;
@@ -260,7 +259,7 @@ end:
 /* Search last times a group fired
  * Will look for only that specific group on that rule.
  */
-Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unused)) regex_matching *rule_match)
+Eventinfo *Search_LastGroups(Eventinfo *my_lf, __attribute__((unused)) EventList *last_events, RuleInfo *rule, __attribute__((unused)) regex_matching *rule_match)
 {
     Eventinfo *lf = NULL;
     OSListNode *lf_node;
@@ -444,7 +443,7 @@ end:
 /* Look if any of the last events (inside the timeframe)
  * match the specified rule
  */
-Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *rule_match)
+Eventinfo *Search_LastEvents(Eventinfo *my_lf, EventList *last_events, RuleInfo *rule, regex_matching *rule_match)
 {
     EventNode *eventnode_pt = NULL;
     EventNode *first_pt;
@@ -459,7 +458,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
     w_mutex_lock(&rule->mutex);
 
     /* Get the first event */
-    if (first_pt = OS_GetFirstEvent(last_events_list), !first_pt) {
+    if (first_pt = OS_GetFirstEvent(last_events), !first_pt) {
         /* Nothing found */
         goto end;
     }
@@ -773,8 +772,10 @@ void Free_Eventinfo(Eventinfo *lf)
             // Remove the node from all lists
             while (i < lf->generated_rule->group_prev_matched_sz) {
                 while (lf->generated_rule->group_prev_matched[i]->count > 0);
-                OSList_DeleteThisNode(lf->generated_rule->group_prev_matched[i],
-                                        lf->group_node_to_delete[i]);
+                if (lf->group_node_to_delete) {
+                    OSList_DeleteThisNode(lf->generated_rule->group_prev_matched[i],
+                                          lf->group_node_to_delete[i]);
+                }
                 // Unblock the list
                 w_mutex_lock(&lf->generated_rule->group_prev_matched[i]->mutex);
                 lf->generated_rule->group_prev_matched[i]->pending_remove = 0;
@@ -1366,4 +1367,34 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
     lf_cpy->decoder_syscheck_id = lf->decoder_syscheck_id;
     lf_cpy->rootcheck_fts = lf->rootcheck_fts;
     lf_cpy->is_a_copy = 1;
+}
+
+void w_free_event_info(Eventinfo *lf) {
+    /** Cleaning the memory **/
+    int force_remove = 1;
+    /* Only clear the memory if the eventinfo was not
+        * added to the stateful memory
+        * -- message is free inside clean event --
+    */
+    if (lf->generated_rule == NULL) {
+        Free_Eventinfo(lf);
+        force_remove = 0;
+    } else if (lf->last_events) {
+        int i;
+        if (lf->queue_added) {
+            force_remove = 0;
+        }
+        if (lf->last_events) {
+            for (i = 0; lf->last_events[i]; i++) {
+                os_free(lf->last_events[i]);
+            }
+            os_free(lf->last_events);
+        }
+    } else if (lf->queue_added) {
+        force_remove = 0;
+    }
+
+    if (force_remove) {
+        Free_Eventinfo(lf);
+    }
 }

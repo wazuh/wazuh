@@ -1128,7 +1128,7 @@ const char *getuname()
                      uts_buf.machine,
                      __ossec_name, __ossec_version);
         } else {
-            snprintf(muname, 512, "No system info available -  %s %s",
+            snprintf(muname, 512, "No system info available - %s %s",
                      __ossec_name, __ossec_version);
         }
     }
@@ -2750,25 +2750,34 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
     /* Open compressed file */
     gz_fd = gzopen(gzfilesrc, "rb");
     if (!gz_fd) {
-        merror("in w_uncompress_gzfile(): gzopen error '%s'",
-                gzerror(gz_fd, &err));
+        merror("in w_uncompress_gzfile(): gzopen error %s (%d):'%s'",
+                gzfilesrc,
+                errno,
+                strerror(errno));
         fclose(fd);
         return -1;
     }
 
     os_calloc(OS_SIZE_8192, sizeof(char), buf);
     do {
-        if (len = gzread(gz_fd, buf, OS_SIZE_8192), len == Z_BUF_ERROR) {
-            merror("in w_uncompress_gzfile(): gzfread error: '%s'",
-                    gzerror(gz_fd, &err));
+        len = gzread(gz_fd, buf, OS_SIZE_8192);
+
+        if (len > 0) {
+            fwrite(buf, 1, len, fd);
+            buf[0] = '\0';
+        }
+    } while (len == OS_SIZE_8192);
+
+    if (!gzeof(gz_fd)) {
+        const char * gzerr = gzerror(gz_fd, &err);
+        if (err) {
+            merror("in w_uncompress_gzfile(): gzread error: '%s'", gzerr);
             fclose(fd);
             gzclose(gz_fd);
             os_free(buf);
             return -1;
         }
-        fwrite(buf, 1, len, fd);
-        buf[0] = '\0';
-    } while (len != Z_OK);
+    }
 
     os_free(buf);
     fclose(fd);

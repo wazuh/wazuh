@@ -269,3 +269,14 @@ default_policies:
         resources:
           - node:id:*&file:path:*
         effect: allow
+
+  logtest_all:
+    description: Provide access to all logtest related functionalities.
+    policies:
+      logtest:
+        actions:
+          - logtest:run
+          - logtest:end_session
+        resources:
+          - '*:*:*'
+        effect: allow
