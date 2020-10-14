@@ -12,15 +12,15 @@ with patch('wazuh.common.ossec_uid'):
         from wazuh.core.common import LOGTEST_SOCKET
 
 
-@pytest.mark.parametrize('message', [
-    {'random': 'msg'},
-    {'token': 'arandomtoken123', 'event': 'arandomevent', 'log': 'arandomlog'},
-    {}
+@pytest.mark.parametrize('params', [
+    {'command': 'random_command', 'parameters': {'param1': 'value1'}},
+    {'command': None, 'parameters': None}
 ])
 @patch('wazuh.core.logtest.OssecSocketJSON.__init__', return_value=None)
 @patch('wazuh.core.logtest.OssecSocketJSON.send')
 @patch('wazuh.core.logtest.OssecSocketJSON.close')
-def test_send_logtest_msg(close_mock, send_mock, init_mock, message):
+@patch('wazuh.core.logtest.create_wazuh_socket_message')
+def test_send_logtest_msg(create_message_mock, close_mock, send_mock, init_mock, params):
     """Test `send_logtest_msg` function from module core.logtest.
 
     Parameters
@@ -30,6 +30,8 @@ def test_send_logtest_msg(close_mock, send_mock, init_mock, message):
     """
     expected_response = {'response': True}
     with patch('wazuh.core.logtest.OssecSocketJSON.receive', return_value=expected_response):
-        response = send_logtest_msg(message)
+        response = send_logtest_msg(**params)
         init_mock.assert_called_with(LOGTEST_SOCKET)
+        create_message_mock.assert_called_with(origin={'name': 'Logtest', 'module': 'api/framework'}, **params)
         assert response == expected_response
+
