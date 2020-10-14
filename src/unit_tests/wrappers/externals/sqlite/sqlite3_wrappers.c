@@ -138,3 +138,7 @@ int __wrap_sqlite3_reset(__attribute__((unused)) sqlite3_stmt *pStmt) {
 int __wrap_sqlite3_step(__attribute__((unused)) sqlite3_stmt * stmt){
     return mock();
 }
+
+int __wrap_sqlite3_changes(__attribute__((unused)) sqlite3 * db){
+    return mock();
+}

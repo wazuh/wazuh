@@ -68,6 +68,10 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,
                              -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_finalize -Wl,--wrap,sqlite3_column_int")
 
 
+list(APPEND wdb_tests_names "test_wdb_rootcheck")
+list(APPEND wdb_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_bind_int \
+                             -Wl,--wrap,sqlite3_last_insert_rowid -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_changes")
+
 # Compilig tests
 list(LENGTH wdb_tests_names count)
 math(EXPR count "${count} - 1")
