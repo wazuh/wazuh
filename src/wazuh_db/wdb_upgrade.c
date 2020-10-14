@@ -80,7 +80,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
         if( wdb_metadata_table_check(wdb,"agent") == 1){
             j_keep_alive = wdb_exec(wdb->db, "SELECT last_keepalive FROM agent where id = 0");
             str_keep_alive = cJSON_PrintUnformatted(j_keep_alive);
-            if(strcmp(str_keep_alive, "253402300799") != 0) {
+            if(strcmp(str_keep_alive, "[{\"last_keepalive\":253402300799}]") != 0) {
                 wdb = wdb_backup_global(wdb, -1);
                 cJSON_Delete(j_keep_alive);
                 os_free(str_keep_alive);
