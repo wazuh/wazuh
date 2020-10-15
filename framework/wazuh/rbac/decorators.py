@@ -342,6 +342,7 @@ def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowe
     if add_denied:
         for res_id, target_param in target.items():
             denied = _get_denied(original, allowed, target_param, res_id)
+            denied = {int(i) if i.isdigit() else i for i in denied}
             for denied_item in denied:
                 result.add_failed_item(id_=denied_item, error=WazuhPermissionError(4000,
                                                                          extra_message=f'Resource type: {res_id}',
@@ -399,6 +400,7 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
                 except Exception:
                     if add_denied:
                         denied = _get_denied(original_kwargs, allow, target_param, res_id, resources=resources)
+                        denied = {int(i) if i.isdigit() else i for i in denied}
                         raise WazuhPermissionError(4000,
                                                    extra_message=f'Resource type: '
                                                                  f'{int(res_id) if res_id.isdigit() else res_id}',
