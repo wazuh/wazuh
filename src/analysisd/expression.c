@@ -35,7 +35,7 @@ bool w_expression_add_osip(w_expression_t ** var, char * ip) {
 
     unsigned int ip_s = 0;
 
-    if((*var) == NULL) {
+    if ((*var) == NULL) {
         w_calloc_expression_t(var, EXP_TYPE_OSIP_ARRAY);
     }
 
@@ -49,7 +49,7 @@ bool w_expression_add_osip(w_expression_t ** var, char * ip) {
 
     if (!OS_IsValidIP(ip, (*var)->ips[ip_s])) {
 
-        for(int i = 0; (*var)->ips[i]; i++) {
+        for (int i = 0; (*var)->ips[i]; i++) {
             os_free((*var)->ips[i]->ip);
             os_free((*var)->ips[i]);
         }

@@ -1071,8 +1071,8 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
 
     /* Check if exist any regex for this rule */
     if (rule->regex) {
-        const char *result = OSRegex_Execute_ex(lf->log, rule->regex->regex, rule_match);
-        if ((result && rule->regex->negate) || (!result && !rule->regex->negate)) {
+        bool matches = OSRegex_Execute_ex(lf->log, rule->regex->regex, rule_match) ? true : false;
+        if (matches == rule->regex->negate) {
             return NULL;
         }
     }
@@ -1118,8 +1118,8 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
             return NULL;
         }
 
-        const char * result = OSRegex_Execute_ex(field, rule->fields[i]->regex, rule_match);
-        if ((result && rule->fields[i]->negate) || (!result && !rule->fields[i]->negate)) {
+        bool matches = OSRegex_Execute_ex(field, rule->fields[i]->regex, rule_match) ? true : false;
+        if (matches == rule->fields[i]->negate) {
             return NULL;
         }
     }

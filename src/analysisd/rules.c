@@ -38,8 +38,20 @@ static void printRuleinfo(const RuleInfo *rule, int node);
 
 /**
  * @brief Check if a option has attribute negate
+ * @param node xml node which contains the rule
+ * @param rule_id rule identifier
+ * @return true if it must be negated, otherwise false
  */
 bool w_check_attr_negate(xml_node *node, int rule_id);
+
+/**
+ * @brief Check if field name is valid
+ * @param node xml node which contains the rule
+ * @param field field to validate
+ * @param rule_id rule identifier
+ * @return true on success, otherwise false
+ */
+bool w_check_attr_field_name(xml_node * node, FieldInfo ** field, int rule_id);
 
 
 /* Will initialize the rules list */
@@ -84,8 +96,6 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_dstgeoip = "dstgeoip";
     const char *xml_dstport = "dstport";
     const char *xml_user = "user";
-    const char *xml_srcuser = "srcuser";
-    const char *xml_dstuser = "dstuser";
     const char *xml_url = "url";
     const char *xml_id = "id";
     const char *xml_data = "data";
@@ -98,7 +108,6 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_action = "action";
     const char *xml_compiled = "compiled_rule";
     const char *xml_field = "field";
-    const char *xml_name = "name";
     const char *xml_location = "location";
 
     const char *xml_list = "list";
@@ -702,38 +711,10 @@ int Rules_OP_ReadRules(const char *rulefile)
                         negate_location = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_field) == 0) {
-                        if (rule_opt[k]->attributes && rule_opt[k]->attributes[0]) {
-                            os_calloc(1, sizeof(FieldInfo), config_ruleinfo->fields[ifield]);
 
-                            if (strcasecmp(rule_opt[k]->attributes[0], xml_name) == 0) {
-                                // Avoid static fields
-                                if (strcasecmp(rule_opt[k]->values[0], xml_srcuser) &&
-                                    strcasecmp(rule_opt[k]->values[0], xml_dstuser) &&
-                                    strcasecmp(rule_opt[k]->values[0], xml_user) &&
-                                    strcasecmp(rule_opt[k]->values[0], xml_srcip) &&
-                                    strcasecmp(rule_opt[k]->values[0], xml_dstip) &&
-                                    strcasecmp(rule_opt[k]->values[0], xml_srcport) &&
-                                    strcasecmp(rule_opt[k]->values[0], xml_dstport) &&
-                                    strcasecmp(rule_opt[k]->values[0], xml_protocol) &&
-                                    strcasecmp(rule_opt[k]->values[0], xml_action) &&
-                                    strcasecmp(rule_opt[k]->values[0], xml_id) &&
-                                    strcasecmp(rule_opt[k]->values[0], xml_url) &&
-                                    strcasecmp(rule_opt[k]->values[0], xml_data) &&
-                                    strcasecmp(rule_opt[k]->values[0], xml_extra_data) &&
-                                    strcasecmp(rule_opt[k]->values[0], xml_status) &&
-                                    strcasecmp(rule_opt[k]->values[0], xml_system_name))
-                                    config_ruleinfo->fields[ifield]->name = loadmemory(config_ruleinfo->fields[ifield]->name, rule_opt[k]->values[0]);
-                                else {
-                                    merror("Field '%s' is static.", rule_opt[k]->values[0]);
-                                    goto cleanup;
-                                }
-
-                            } else {
-                                merror("Bad attribute '%s' for field.", rule_opt[k]->attributes[0]);
-                                goto cleanup;
-                            }
-                        } else {
-                            merror("No such attribute '%s' for field.", xml_name);
+                        if (!w_check_attr_field_name(rule_opt[k],
+                                                     &config_ruleinfo->fields[ifield],
+                                                     config_ruleinfo->sigid)) {
                             goto cleanup;
                         }
 
@@ -2507,6 +2488,43 @@ bool w_check_attr_negate(xml_node *node, int rule_id) {
             }
         }
     }
+
+    return false;
+}
+
+
+bool w_check_attr_field_name(xml_node * node, FieldInfo ** field, int rule_id) {
+
+    if (!node->attributes) {
+        return false;
+    }
+
+    const char * xml_name = "name";
+
+    char *static_fields[18] = {"srcip", "dstip", "srcgeoip", "dstgeoip", "srcport", "dstport",
+                               "user", "srcuser", "dstuser", "url", "id", "data", "extra_data",
+                               "status", "protocol", "system_name", "action", NULL};
+
+    for(int i = 0; node->attributes[i]; i++) {
+        if (strcasecmp(node->attributes[i], xml_name) == 0) {
+
+            // Avoid static fields
+            for (int j = 0; static_fields[j]; j++) {
+                if (strcasecmp(node->values[i], static_fields[j]) == 0) {
+                    merror("Failure to read rule %d. Field '%s' is static.", rule_id, node->values[i]);
+                    return false;
+                }
+            }
+
+            // Save in struct and return true if it's valid value
+            os_calloc(1, sizeof(FieldInfo), *field);
+            (*field)->name = loadmemory((*field)->name, node->values[i]);
+
+            return true;
+        }
+    }
+
+    merror("Failure to read rule %d. No such attribute '%s' for field.", rule_id, xml_name);
 
     return false;
 }
