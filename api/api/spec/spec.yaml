@@ -5981,7 +5981,7 @@ paths:
   /groups:
     delete:
       tags:
-        - groups
+        - Groups
       summary: "Delete groups"
       description: "Delete all groups or a list of them"
       operationId: api.controllers.agents_controller.delete_groups
@@ -6033,7 +6033,7 @@ paths:
 
     get:
       tags:
-        - groups
+        - Groups
       summary: "Get groups"
       description: "Get information about all groups or a list of them. Returns a list containing basic information
       about each group such as number of agents belonging to the group and the checksums of the configuration and
@@ -6095,7 +6095,7 @@ paths:
 
     post:
       tags:
-        - groups
+        - Groups
       summary: "Create a group"
       description: "Create a new group"
       operationId: api.controllers.agents_controller.post_group
@@ -6129,7 +6129,7 @@ paths:
   /groups/{group_id}/agents:
     get:
       tags:
-        - groups
+        - Groups
       summary: "Get agents in a group"
       description: "Return the list of agents that belong to the specified group"
       operationId: api.controllers.agents_controller.get_agents_in_group
@@ -6258,7 +6258,7 @@ paths:
   /groups/{group_id}/configuration:
     get:
       tags:
-        - groups
+        - Groups
       summary: "Get group configuration"
       description: "Return the group configuration defined in the `agent.conf` file"
       operationId: api.controllers.agents_controller.get_group_config
@@ -6326,7 +6326,7 @@ paths:
           $ref: '#/components/responses/TooManyRequestsResponse'
     put:
       tags:
-        - groups
+        - Groups
       summary: "Update group configuration"
       description: "Update an specified group's configuration. This API call expects a full valid XML file with the
       shared configuration tags/syntax"
@@ -6376,7 +6376,7 @@ paths:
   /groups/{group_id}/files:
     get:
       tags:
-        - groups
+        - Groups
       summary: "Get group files"
       description: "Return the files placed under the group directory"
       operationId: api.controllers.agents_controller.get_group_files
@@ -6447,7 +6447,7 @@ paths:
   /groups/{group_id}/files/{file_name}/json:
     get:
       tags:
-        - groups
+        - Groups
       summary: "Get a file in group"
       description: "Return the contents of the specified group file parsed to JSON"
       operationId: api.controllers.agents_controller.get_group_file_json
@@ -6502,7 +6502,7 @@ paths:
   /groups/{group_id}/files/{file_name}/xml:
     get:
       tags:
-        - groups
+        - Groups
       summary: "Get a file in group"
       description: "Return the contents of the specified group file parsed to XML"
       operationId: api.controllers.agents_controller.get_group_file_xml
@@ -7123,7 +7123,7 @@ paths:
   /ciscat/{agent_id}/results:
     get:
       tags:
-      - ciscat
+      - Ciscat
       summary: "Get CIS-CAT results"
       description: "Return the agent's ciscat results info"
       operationId: api.controllers.ciscat_controller.get_agents_ciscat_results
@@ -7192,7 +7192,7 @@ paths:
   /cluster/local/info:
     get:
       tags:
-      - cluster
+      - Cluster
       summary: "Get local node info"
       description: "Return basic information about the cluster node receiving the request"
       operationId: api.controllers.cluster_controller.get_cluster_node
@@ -7247,7 +7247,7 @@ paths:
   /cluster/nodes:
     get:
       tags:
-      - cluster
+      - Cluster
       summary: "Get nodes info"
       description: "Get information about all nodes in the cluster or a list of them"
       operationId: api.controllers.cluster_controller.get_cluster_nodes
@@ -7310,7 +7310,7 @@ paths:
   /cluster/healthcheck:
     get:
       tags:
-      - cluster
+      - Cluster
       summary: "Get nodes healthcheck"
       description: "Return cluster healthcheck information for all nodes or a list of them. Such information includes
       last keep alive, last synchronization time and number of agents reporting on each node"
@@ -7383,7 +7383,7 @@ paths:
   /cluster/status:
     get:
       tags:
-      - cluster
+      - Cluster
       summary: "Get cluster status"
       description: "Return information about the cluster status"
       operationId: api.controllers.cluster_controller.get_status
@@ -7434,7 +7434,7 @@ paths:
   /cluster/local/config:
     get:
       tags:
-      - cluster
+      - Cluster
       summary: "Get local node config"
       description: "Return the current node cluster configuration"
       operationId: api.controllers.cluster_controller.get_config
@@ -7520,7 +7520,7 @@ paths:
   /cluster/api/config:
     get:
       tags:
-        - cluster
+        - Cluster
       summary: "Get nodes API config"
       description: "Return the API configuration of all nodes (or a list of them) in JSON format"
       operationId: api.controllers.cluster_controller.get_api_config
@@ -7613,7 +7613,7 @@ paths:
 
     put:
       tags:
-        - cluster
+        - Cluster
       summary: "Update nodes API config"
       description: "Update the API configuration of all nodes (or a list of them) with the data contained in the API
       request"
@@ -7664,7 +7664,7 @@ paths:
 
     delete:
       tags:
-        - cluster
+        - Cluster
       summary: "Restore nodes default API config"
       description: "Restore the default API configuration of all nodes (or a list of them)"
       operationId: api.controllers.cluster_controller.delete_api_config
@@ -7707,7 +7707,7 @@ paths:
   /cluster/{node_id}/status:
     get:
       tags:
-      - cluster
+      - Cluster
       summary: "Get node status"
       description: "Return the status of all Wazuh daemons in node node_id"
       operationId: api.controllers.cluster_controller.get_status_node
@@ -7768,7 +7768,7 @@ paths:
   /cluster/{node_id}/info:
     get:
       tags:
-      - cluster
+      - Cluster
       summary: "Get node info"
       description: "Return basic information about a specified node such as version, compilation date, installation
       path"
@@ -7822,7 +7822,7 @@ paths:
   /cluster/{node_id}/configuration:
     get:
       tags:
-      - cluster
+      - Cluster
       summary: "Get node config"
       description: "Return wazuh configuration used in node {node_id}"
       operationId: api.controllers.cluster_controller.get_configuration_node
@@ -7901,7 +7901,7 @@ paths:
   /cluster/{node_id}/stats:
     get:
       tags:
-      - cluster
+      - Cluster
       summary: "Get node stats"
       description: "Return Wazuh statistical information in node {node_id} for the current or specified date"
       operationId: api.controllers.cluster_controller.get_stats_node
@@ -7970,7 +7970,7 @@ paths:
   /cluster/{node_id}/stats/hourly:
     get:
       tags:
-      - cluster
+      - Cluster
       summary: "Get node stats hour"
       description: "Return Wazuh statistical information in node {node_id} per hour. Each number in the averages field
       represents the average of alerts per hour"
@@ -8039,7 +8039,7 @@ paths:
   /cluster/{node_id}/stats/weekly:
     get:
       tags:
-      - cluster
+      - Cluster
       summary: "Get node stats week"
       description: "Return Wazuh statistical information in node {node_id} per week. Each number in the averages field
       represents the average of alerts per hour for that specific day"
@@ -8271,7 +8271,7 @@ paths:
   /cluster/{node_id}/stats/analysisd:
     get:
       tags:
-      - cluster
+      - Cluster
       summary: "Get node stats analysisd"
       description: "Return Wazuh analysisd statistical information in node {node_id}"
       operationId: api.controllers.cluster_controller.get_stats_analysisd_node
@@ -8359,7 +8359,7 @@ paths:
   /cluster/{node_id}/stats/remoted:
     get:
       tags:
-      - cluster
+      - Cluster
       summary: "Get node stats remoted"
       description: "Return Wazuh remoted statistical information in node {node_id}"
       operationId: api.controllers.cluster_controller.get_stats_remoted_node
@@ -8409,7 +8409,7 @@ paths:
   /cluster/{node_id}/logs:
     get:
       tags:
-      - cluster
+      - Cluster
       summary: "Get node logs"
       description: "Return the last 2000 wazuh log entries in the specified node"
       operationId: api.controllers.cluster_controller.get_log_node
@@ -8472,7 +8472,7 @@ paths:
   /cluster/{node_id}/logs/summary:
     get:
       tags:
-      - cluster
+      - Cluster
       summary: "Get node logs summary"
       description: "Return a summary of the last 2000 wazuh log entries in the specified node"
       operationId: api.controllers.cluster_controller.get_log_summary_node
@@ -8535,7 +8535,7 @@ paths:
   /cluster/{node_id}/files:
     get:
       tags:
-      - cluster
+      - Cluster
       summary: "Get node file content"
       description: "Return file contents from any file in the specified node"
       operationId: api.controllers.cluster_controller.get_files_node
@@ -8584,7 +8584,7 @@ paths:
 
     put:
       tags:
-      - cluster
+      - Cluster
       summary: "Update node file content"
       description: "Replace file contents with the data contained in the API request for the specified node"
       operationId: api.controllers.cluster_controller.put_files_node
@@ -8637,7 +8637,7 @@ paths:
 
     delete:
       tags:
-      - cluster
+      - Cluster
       summary: "Delete node file"
       description: "Delete a file in the specified node"
       operationId: api.controllers.cluster_controller.delete_files_node
@@ -8679,7 +8679,7 @@ paths:
   /cluster/restart:
     put:
       tags:
-      - cluster
+      - Cluster
       summary: "Restart nodes"
       description: "Restart all nodes in the cluster or a list of them"
       operationId: api.controllers.cluster_controller.put_restart
@@ -8726,7 +8726,7 @@ paths:
   /cluster/configuration/validation:
     get:
       tags:
-      - cluster
+      - Cluster
       summary: "Check nodes config"
       description: "Return whether the Wazuh configuration is correct or not in all cluster nodes or a list of them"
       operationId: api.controllers.cluster_controller.get_conf_validation
@@ -8776,7 +8776,7 @@ paths:
   /cluster/{node_id}/configuration/{component}/{configuration}:
     get:
       tags:
-        - cluster
+        - Cluster
       summary: "Get node active configuration"
       description: "Return the requested configuration in JSON format for the specified node"
       operationId: api.controllers.cluster_controller.get_node_config
@@ -8829,7 +8829,7 @@ paths:
   /lists:
     get:
       tags:
-      - lists
+      - Lists
       summary: "Get CDB lists"
       description: "Return the contents of all CDB lists. Optionally, the result can be filtered by several criteria.
       See available parameters for more details"
@@ -8918,7 +8918,7 @@ paths:
   /lists/files:
     get:
       tags:
-      - lists
+      - Lists
       summary: "Get CDB lists files"
       description: "Return the path from all CDB lists. Use this method to know all the CDB lists and their location in
       the filesystem relative to Wazuh installation folder"
@@ -8976,7 +8976,7 @@ paths:
   /manager/status:
     get:
       tags:
-      - manager
+      - Manager
       summary: "Get manager status"
       description: "Return the status of all Wazuh daemons"
       operationId: api.controllers.manager_controller.get_status
@@ -9036,7 +9036,7 @@ paths:
   /manager/info:
     get:
       tags:
-      - manager
+      - Manager
       summary: "Get manager information"
       description: "Return basic information such as version, compilation date, installation path"
       operationId: api.controllers.manager_controller.get_info
@@ -9088,7 +9088,7 @@ paths:
   /manager/configuration:
     get:
       tags:
-      - manager
+      - Manager
       summary: "Get manager configuration"
       description: "Return wazuh configuration used"
       operationId: api.controllers.manager_controller.get_configuration
@@ -9166,7 +9166,7 @@ paths:
   /manager/stats:
     get:
       tags:
-      - manager
+      - Manager
       summary: "Get manager stats"
       description: "Return Wazuh statistical information for the current or specified date"
       operationId: api.controllers.manager_controller.get_stats
@@ -9234,7 +9234,7 @@ paths:
   /manager/stats/hourly:
     get:
       tags:
-      - manager
+      - Manager
       summary: "Get manager stats hour"
       description: "Return Wazuh statistical information per hour. Each number in the averages field represents the
       average of alerts per hour"
@@ -9302,7 +9302,7 @@ paths:
   /manager/stats/weekly:
     get:
       tags:
-      - manager
+      - Manager
       summary: "Get manager stats week"
       description: "Return Wazuh statistical information per week. Each number in the averages field represents the
       average of alerts per hour for that specific day"
@@ -9533,7 +9533,7 @@ paths:
   /manager/stats/analysisd:
     get:
       tags:
-      - manager
+      - Manager
       summary: "Get manager stats analysisd"
       description: "Return Wazuh analysisd statistical information"
       operationId: api.controllers.manager_controller.get_stats_analysisd
@@ -9620,7 +9620,7 @@ paths:
   /manager/stats/remoted:
     get:
       tags:
-      - manager
+      - Manager
       summary: "Get remoted stats remoted "
       description: "Return Wazuh remoted statistical information"
       operationId: api.controllers.manager_controller.get_stats_remoted
@@ -9669,7 +9669,7 @@ paths:
   /manager/logs:
     get:
       tags:
-      - manager
+      - Manager
       summary: "Get manager logs"
       description: "Return the last 2000 wazuh log entries"
       operationId: api.controllers.manager_controller.get_log
@@ -9731,7 +9731,7 @@ paths:
   /manager/logs/summary:
     get:
       tags:
-      - manager
+      - Manager
       summary: "Get manager logs summary"
       description: "Return a summary of the last 2000 wazuh log entries"
       operationId: api.controllers.manager_controller.get_log_summary
@@ -9795,7 +9795,7 @@ paths:
   /manager/files:
     get:
       tags:
-      - manager
+      - Manager
       summary: "Get manager file content"
       description: "Return file contents from any file"
       operationId: api.controllers.manager_controller.get_files
@@ -9843,7 +9843,7 @@ paths:
 
     put:
       tags:
-      - manager
+      - Manager
       summary: "Update manager file content"
       description: "Replace file contents with the data contained in the API request"
       operationId: api.controllers.manager_controller.put_files
@@ -9891,7 +9891,7 @@ paths:
 
     delete:
       tags:
-      - manager
+      - Manager
       summary: "Delete manager file"
       description: "Delete a specified file"
       operationId: api.controllers.manager_controller.delete_files
@@ -9934,7 +9934,7 @@ paths:
   /manager/api/config:
     get:
       tags:
-        - manager
+        - Manager
       summary: "Get manager API config"
       description: "Return the local API configuration in JSON format"
       operationId: api.controllers.manager_controller.get_api_config
@@ -10000,7 +10000,7 @@ paths:
 
     put:
       tags:
-        - manager
+        - Manager
       summary: "Update manager API config"
       description: "Update local API configuration with the data contained in the API request"
       operationId: api.controllers.manager_controller.put_api_config
@@ -10024,7 +10024,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - manager
+                    - Manager
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
@@ -10048,7 +10048,7 @@ paths:
 
     delete:
       tags:
-        - manager
+        - Manager
       summary: "Restore manager default API config"
       description: "Restore default local API configuration"
       operationId: api.controllers.manager_controller.delete_api_config
@@ -10068,7 +10068,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - manager
+                    - Manager
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
@@ -10089,7 +10089,7 @@ paths:
   /manager/restart:
     put:
       tags:
-      - manager
+      - Manager
       summary: "Restart manager"
       description: "Restart the wazuh manager"
       operationId: api.controllers.manager_controller.put_restart
@@ -10129,7 +10129,7 @@ paths:
   /manager/configuration/validation:
     get:
       tags:
-      - manager
+      - Manager
       summary: "Check manager config"
       description: "Return whether the Wazuh configuration is correct"
       operationId: api.controllers.manager_controller.get_conf_validation
@@ -10169,7 +10169,7 @@ paths:
   /manager/configuration/{component}/{configuration}:
     get:
       tags:
-        - manager
+        - Manager
       summary: "Get manager active configuration"
       description: "Return the requested active configuration in JSON format"
       operationId: api.controllers.manager_controller.get_manager_config_ondemand
@@ -10216,7 +10216,7 @@ paths:
   /mitre:
     get:
       tags:
-        - mitre
+        - Mitre
       summary: "Get MITRE attacks"
       description: "Return the requested attacks from MITRE database"
       operationId: api.controllers.mitre_controller.get_attack
@@ -10301,7 +10301,7 @@ paths:
   /rules:
     get:
       tags:
-      - rules
+      - Rules
       summary: "List rules"
       description: "Return a list containing information about each rule such as file where it's defined, description,
       rule group, status, etc"
@@ -10398,7 +10398,7 @@ paths:
   /rules/groups:
     get:
       tags:
-      - rules
+      - Rules
       summary: "Get rules groups"
       description: "Return a list containing all rule groups names"
       operationId: api.controllers.rules_controller.get_rules_groups
@@ -10451,7 +10451,7 @@ paths:
   /rules/requirement/{requirement}:
     get:
       tags:
-      - rules
+      - Rules
       summary: "Get rules requirements"
       description: "Return all specified requirement names defined in the Wazuh ruleset"
       operationId: api.controllers.rules_controller.get_rules_requirement
@@ -10506,7 +10506,7 @@ paths:
   /rules/files:
     get:
       tags:
-      - rules
+      - Rules
       summary: "Get rules files"
       description: "Return a list containing all files used to define rules and their status"
       operationId: api.controllers.rules_controller.get_rules_files
@@ -10568,7 +10568,7 @@ paths:
   /rules/files/{filename}/download:
     get:
       tags:
-        - rules
+        - Rules
       summary: "Download rule"
       description: "Download an specified rule file"
       operationId: api.controllers.rules_controller.get_download_file
@@ -10650,7 +10650,7 @@ paths:
   /sca/{agent_id}:
     get:
       tags:
-      - sca
+      - SCA
       summary: "Get SCA results"
       description: "Return the security SCA database of an agent"
       operationId: api.controllers.sca_controller.get_sca_agent
@@ -10728,7 +10728,7 @@ paths:
   /sca/{agent_id}/checks/{policy_id}:
     get:
       tags:
-      - sca
+      - SCA
       summary: "Get SCA policy checks"
       description: "Return the policy monitoring alerts for a given policy"
       operationId: api.controllers.sca_controller.get_sca_checks
@@ -10829,7 +10829,7 @@ paths:
   /syscheck:
     put:
       tags:
-      - syscheck
+      - Syscheck
       summary: "Run FIM scan"
       description: "Run FIM scan in all agents"
       operationId: api.controllers.syscheck_controller.put_syscheck
@@ -10877,7 +10877,7 @@ paths:
   /syscheck/{agent_id}:
     get:
       tags:
-      - syscheck
+      - Syscheck
       summary: "Get FIM results"
       description: "Return FIM findings in the specified agent"
       operationId: api.controllers.syscheck_controller.get_syscheck_agent
@@ -10964,7 +10964,7 @@ paths:
 
     delete:
       tags:
-        - syscheck
+        - Syscheck
       summary: "Clear FIM results"
       description: "Clear file integrity monitoring scan results for a specified agent"
       operationId: api.controllers.syscheck_controller.delete_syscheck_agent
@@ -11009,7 +11009,7 @@ paths:
   /syscheck/{agent_id}/last_scan:
     get:
       tags:
-      - syscheck
+      - Syscheck
       summary: "Get last FIM scan"
       description: "Return when the last syscheck scan started and ended. If the scan is still in progress the end date
       will be unknown"
@@ -11056,7 +11056,7 @@ paths:
   /decoders:
     get:
       tags:
-        - decoders
+        - Decoders
       summary: "Get decoders"
       description: "Return information about all decoders included in ossec.conf. This information include decoder's
       route, decoder's name, decoder's file among others"
@@ -11128,7 +11128,7 @@ paths:
   /decoders/files:
     get:
       tags:
-        - decoders
+        - Decoders
       summary: "Get decoders files"
       description: "Return information about all decoders files used in Wazuh. This information include decoder's file,
       decoder's route and decoder's status among others"
@@ -11188,7 +11188,7 @@ paths:
   /decoders/files/{filename}/download:
     get:
       tags:
-      - decoders
+      - Decoders
       summary: "Download decoder file"
       description: "Download an specified decoder file"
       operationId: api.controllers.decoders_controller.get_download_file
@@ -11234,7 +11234,7 @@ paths:
   /decoders/parents:
     get:
       tags:
-        - decoders
+        - Decoders
       summary: "Get parent decoders"
       description: "Return information about all parent decoders. A parent decoder is a decoder used as base of other
       decoders"
@@ -11298,7 +11298,7 @@ paths:
   /experimental/syscheck:
     delete:
       tags:
-        - experimental
+        - Experimental
       summary: "Clear agents FIM results"
       description: "Clear the syscheck database for all agents or a list of them"
       operationId: api.controllers.experimental_controller.clear_syscheck_database
@@ -11355,7 +11355,7 @@ paths:
   /experimental/ciscat/results:
     get:
       tags:
-        - experimental
+        - Experimental
       summary: "Get agents CIS-CAT results"
       description: "Return CIS-CAT results for all agents or a list of them"
       operationId: api.controllers.experimental_controller.get_cis_cat_results
@@ -11448,7 +11448,7 @@ paths:
   /experimental/syscollector/hardware:
     get:
       tags:
-        - experimental
+        - Experimental
       summary: "Get agents hardware"
       description: "Return all agents (or a list of them) hardware info. This information include cpu, ram, scan info
       among others of all agents"
@@ -11543,7 +11543,7 @@ paths:
   /experimental/syscollector/netaddr:
     get:
       tags:
-        - experimental
+        - Experimental
       summary: "Get agents netaddr"
       description: "Return all agents (or a list of them) IPv4 and IPv6 addresses associated to their network
       interfaces. This information include used IP protocol, interface, and IP address among others"
@@ -11621,7 +11621,7 @@ paths:
   /experimental/syscollector/netiface:
     get:
       tags:
-        - experimental
+        - Experimental
       summary: "Get agents netiface"
       description: "Return all agents (or a list of them) network interfaces. This information includes rx, scan, tx
       info and some network information among other"
@@ -11741,7 +11741,7 @@ paths:
   /experimental/syscollector/netproto:
     get:
       tags:
-        - experimental
+        - Experimental
       summary: "Get agents netproto"
       description: "Return all agents (or a list of them) routing configuration for each network interface. This
       information includes interface, type protocol information among other"
@@ -11816,7 +11816,7 @@ paths:
   /experimental/syscollector/os:
     get:
       tags:
-        - experimental
+        - Experimental
       summary: "Get agents OS"
       description: "Return all agents (or a list of them) OS info. This information includes os information,
       architecture information among other"
@@ -11919,7 +11919,7 @@ paths:
   /experimental/syscollector/packages:
     get:
       tags:
-        - experimental
+        - Experimental
       summary: "Get agents packages"
       description: "Return all agents (or a list of them) packages info. This information includes name, section, size,
       and priority information of all packages among other"
@@ -12019,7 +12019,7 @@ paths:
   /experimental/syscollector/ports:
     get:
       tags:
-        - experimental
+        - Experimental
       summary: "Get agents ports"
       description: "Return all agents (or a list of them) ports info. This information includes local IP, Remote IP,
       protocol information among other"
@@ -12122,7 +12122,7 @@ paths:
   /experimental/syscollector/processes:
     get:
       tags:
-        - experimental
+        - Experimental
       summary: "Get agents processes"
       description: "Return all agents (or a list of them) processes info"
       operationId: api.controllers.experimental_controller.get_processes_info
@@ -12249,7 +12249,7 @@ paths:
   /experimental/syscollector/hotfixes:
     get:
       tags:
-        - experimental
+        - Experimental
       summary: "Get agents hotfixes"
       description: "Return all agents (or a list of them) hotfixes info"
       operationId: api.controllers.experimental_controller.get_hotfixes_info
@@ -12307,7 +12307,7 @@ paths:
   /syscollector/{agent_id}/hardware:
     get:
       tags:
-        - syscollector
+        - Syscollector
       summary: "Get agent hardware"
       description: "Return the agent's hardware info. This information include cpu, ram, scan info among others"
       operationId: api.controllers.syscollector_controller.get_hardware_info
@@ -12366,7 +12366,7 @@ paths:
   /syscollector/{agent_id}/hotfixes:
     get:
       tags:
-        - syscollector
+        - Syscollector
       summary: "Get agent hotfixes"
       description: "Return all hotfixes installed by Microsoft(R) in Windows(R) systems (KB... fixes)"
       operationId: api.controllers.syscollector_controller.get_hotfix_info
@@ -12421,7 +12421,7 @@ paths:
   /syscollector/{agent_id}/netaddr:
     get:
       tags:
-        - syscollector
+        - Syscollector
       summary: "Get agent netaddr"
       description: "Return the agent's network address info. This information include used IP protocol, interface, IP
       address  among others"
@@ -12484,7 +12484,7 @@ paths:
   /syscollector/{agent_id}/netiface:
     get:
       tags:
-        - syscollector
+        - Syscollector
       summary: "Get agent netiface"
       description: "Return the agent's network interface info. This information include rx, scan, tx info and some
       network information among others"
@@ -12567,7 +12567,7 @@ paths:
   /syscollector/{agent_id}/netproto:
     get:
       tags:
-        - syscollector
+        - Syscollector
       summary: "Get agent netproto"
       description: "Return the agent's routing configuration for each network interface"
       operationId: api.controllers.syscollector_controller.get_network_protocol_info
@@ -12628,7 +12628,7 @@ paths:
   /syscollector/{agent_id}/os:
     get:
       tags:
-        - syscollector
+        - Syscollector
       summary: "Get agent OS"
       description: "Return the agent's OS info. This information include os information, architecture information among
       others of all agents"
@@ -12690,7 +12690,7 @@ paths:
   /syscollector/{agent_id}/packages:
     get:
       tags:
-        - syscollector
+        - Syscollector
       summary: "Get agent packages"
       description: "Return the agent's packages info. This information include name, section, size, priority
       information of all packages among others"
@@ -12791,7 +12791,7 @@ paths:
   /syscollector/{agent_id}/ports:
     get:
       tags:
-        - syscollector
+        - Syscollector
       summary: "Get agent ports"
       description: "Return the agent's ports info. This information include local IP, Remote IP, protocol information
       among others"
@@ -12895,7 +12895,7 @@ paths:
   /syscollector/{agent_id}/processes:
     get:
       tags:
-        - syscollector
+        - Syscollector
       summary: "Get agent processes"
       description: "Return the agent's processes info"
       operationId: api.controllers.syscollector_controller.get_processes_info
@@ -13023,7 +13023,7 @@ paths:
   /security/user/authenticate:
     get:
       tags:
-        - security
+        - Security
       summary: "Login"
       description: "This method should be called to get an API token. This token will expire after
       auth_token_exp_timeout seconds (default: 3600). This value can be changed using PUT /security/config"
@@ -13063,7 +13063,7 @@ paths:
 
     delete:
       tags:
-        - security
+        - Security
       summary: "Logout current user"
       description: "This method should be called to invalidate all the current user's tokens"
       operationId: api.controllers.security_controller.logout_user
@@ -13091,7 +13091,7 @@ paths:
   /security/user/authenticate/run_as:
     post:
       tags:
-      - security
+      - Security
       summary: "Login auth_context"
       description: "This method should be called to get an API token using an authorization context body. This token
       will expire after auth_token_exp_timeout seconds (default: 3600). This value can be changed using PUT
@@ -13132,7 +13132,7 @@ paths:
   /security/actions:
     get:
       tags:
-        - security
+        - Security
       summary: 'List RBAC actions'
       description: 'Get all RBAC actions, including the potential related resources and endpoints.'
       operationId: api.controllers.security_controller.get_rbac_actions
@@ -13189,7 +13189,7 @@ paths:
   /security/resources:
     get:
       tags:
-        - security
+        - Security
       summary: 'List RBAC resources'
       description: 'This method should be called to get all current defined RBAC resources.'
       operationId: api.controllers.security_controller.get_rbac_resources
@@ -13245,7 +13245,7 @@ paths:
   /security/user/revoke:
     put:
       tags:
-      - security
+      - Security
       summary: "Revoke JWT tokens"
       description: "This method should be called to revoke all active JWT tokens"
       operationId: api.controllers.security_controller.revoke_all_tokens
@@ -13273,7 +13273,7 @@ paths:
   /security/roles:
     get:
       tags:
-        - security
+        - Security
       summary: "List roles"
       description: "For a specific list, indicate the ids separated by commas. Example: ?role_ids=1,2,3"
       operationId: api.controllers.security_controller.get_roles
@@ -13335,7 +13335,7 @@ paths:
 
     post:
       tags:
-        - security
+        - Security
       summary: "Add role"
       description: "Add a new role, all fields need to be specified"
       operationId: api.controllers.security_controller.add_role
@@ -13392,7 +13392,7 @@ paths:
 
     delete:
       tags:
-        - security
+        - Security
       summary: "Delete roles"
       description: "Policies linked to roles are not going to be removed"
       operationId: api.controllers.security_controller.remove_roles
@@ -13462,7 +13462,7 @@ paths:
   /security/roles/{role_id}:
     put:
       tags:
-        - security
+        - Security
       summary: "Update role"
       description: "Modify a role, cannot modify associated policies in this endpoint, at least one property must be
       indicated"
@@ -13522,7 +13522,7 @@ paths:
   /security/rules:
     get:
       tags:
-        - security
+        - Security
       summary: "List security rules"
       description: "Get a list of security rules from the system or all of them. These rules must be mapped with roles
       to obtain certain access privileges. For a specific list, indicate the ids separated by commas.
@@ -13580,7 +13580,7 @@ paths:
 
     post:
       tags:
-        - security
+        - Security
       summary: "Add security rule"
       description: "Add a new security rule"
       operationId: api.controllers.security_controller.add_rule
@@ -13643,7 +13643,7 @@ paths:
 
     delete:
       tags:
-        - security
+        - Security
       summary: "Delete security rules"
       description: "Delete a list of security rules or all security rules in the system, roles linked to rules are not
       going to be deleted"
@@ -13694,7 +13694,7 @@ paths:
   /security/rules/{rule_id}:
     put:
       tags:
-        - security
+        - Security
       summary: "Update security rule"
       description: "Modify a security rule by specifying its ID"
       operationId: api.controllers.security_controller.update_rule
@@ -13754,7 +13754,7 @@ paths:
   /security/policies:
     get:
       tags:
-        - security
+        - Security
       summary: "List policies"
       description: "Get all policies in the system, including the administrator policy"
       operationId: api.controllers.security_controller.get_policies
@@ -13817,7 +13817,7 @@ paths:
 
     post:
       tags:
-        - security
+        - Security
       summary: "Add policy"
       description: "Add a new policy, all fields need to be specified"
       operationId: api.controllers.security_controller.add_policy
@@ -13887,7 +13887,7 @@ paths:
 
     delete:
       tags:
-        - security
+        - Security
       summary: "Delete policies"
       description: "Delete a list of policies or all policies in the system, roles linked to policies are not going to
       be removed"
@@ -13951,7 +13951,7 @@ paths:
   /security/policies/{policy_id}:
     put:
       tags:
-        - security
+        - Security
       summary: "Update policy"
       description: "Modify a policy, at least one property must be indicated"
       operationId: api.controllers.security_controller.update_policy
@@ -14024,7 +14024,7 @@ paths:
   /security/roles/{role_id}/policies:
     post:
       tags:
-        - security
+        - Security
       summary: "Add policies to role"
       description: "Create a specified relation role-policy, one role may have multiples policies"
       operationId: api.controllers.security_controller.set_role_policy
@@ -14093,7 +14093,7 @@ paths:
 
     delete:
       tags:
-        - security
+        - Security
       summary: "Remove policies from role"
       description: "Delete a specified relation role-policy"
       operationId: api.controllers.security_controller.remove_role_policy
@@ -14141,7 +14141,7 @@ paths:
   /security/roles/{role_id}/rules:
     post:
       tags:
-        - security
+        - Security
       summary: "Add security rules to role"
       description: "Create a specific role-rule relation. One role may have multiple security rules"
       operationId: api.controllers.security_controller.set_role_rule
@@ -14190,7 +14190,7 @@ paths:
 
     delete:
       tags:
-        - security
+        - Security
       summary: "Remove security rules from role"
       description: "Delete a specific role-rule relation"
       operationId: api.controllers.security_controller.remove_role_rule
@@ -14236,7 +14236,7 @@ paths:
   /security/users/{user_id}/roles:
     post:
       tags:
-        - security
+        - Security
       summary: "Add roles to user"
       description: "Create a specified relation role-policy, one user may have multiples roles"
       operationId: api.controllers.security_controller.set_user_role
@@ -14286,7 +14286,7 @@ paths:
 
     delete:
       tags:
-        - security
+        - Security
       summary: "Remove roles from user"
       description: "Delete a specified relation user-roles"
       operationId: api.controllers.security_controller.remove_user_role
@@ -14334,7 +14334,7 @@ paths:
   /security/users/me:
     get:
       tags:
-        - security
+        - Security
       summary: "Get current user info"
       description: "Get the information of the current user"
       operationId: api.controllers.security_controller.get_user_me
@@ -14409,7 +14409,7 @@ paths:
   /security/users/me/policies:
     get:
       tags:
-        - security
+        - Security
       summary: "Get current user processed policies"
       description: "Get the processed policies information for the current user"
       operationId: api.controllers.security_controller.get_user_me_policies
@@ -14443,7 +14443,7 @@ paths:
   /security/users:
     get:
       tags:
-        - security
+        - Security
       summary: "List users"
       description: "Get the information of a specified user"
       operationId: api.controllers.security_controller.get_users
@@ -14531,7 +14531,7 @@ paths:
 
     post:
       tags:
-        - security
+        - Security
       summary: "Add user"
       description: "Add a new API user to the system"
       operationId: api.controllers.security_controller.create_user
@@ -14597,7 +14597,7 @@ paths:
 
     delete:
       tags:
-        - security
+        - Security
       summary: "Delete users"
       description: "Delete a list of users by specifying their IDs"
       operationId: api.controllers.security_controller.delete_users
@@ -14650,7 +14650,7 @@ paths:
   /security/users/{user_id}:
     put:
       tags:
-        - security
+        - Security
       summary: "Update users"
       description: "Modify a user's password by specifying their ID"
       operationId: api.controllers.security_controller.update_user
@@ -14713,7 +14713,7 @@ paths:
   /overview/agents:
     get:
       tags:
-        - overview
+        - Overview
       summary: "Get agents overview"
       description: "Return a dictionary with a full agents overview"
       operationId: api.controllers.overview_controller.get_overview_agents
@@ -14811,7 +14811,7 @@ paths:
   /security/config:
     get:
       tags:
-        - security
+        - Security
       summary: "Get security config"
       description: "Return the security configuration in JSON format"
       operationId: api.controllers.security_controller.get_security_config
@@ -14843,7 +14843,7 @@ paths:
 
     put:
       tags:
-        - security
+        - Security
       summary: "Update security config"
       description: "Update the security configuration with the data contained in the API request"
       operationId: api.controllers.security_controller.put_security_config
@@ -14880,7 +14880,7 @@ paths:
 
     delete:
       tags:
-        - security
+        - Security
       summary: "Restore default security config"
       description: "Replaces the security configuration with the original one"
       operationId: api.controllers.security_controller.delete_security_config
