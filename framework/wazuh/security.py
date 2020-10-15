@@ -809,6 +809,7 @@ def set_role_policy(role_id, policy_ids, position=None):
     success = False
     with RolesPoliciesManager() as rpm:
         for policy_id in policy_ids:
+            policy_id = int(policy_id)
             role_policy = rpm.add_policy_to_role(role_id=role_id[0], policy_id=policy_id, position=position)
             if role_policy == SecurityError.ALREADY_EXIST:
                 result.add_failed_item(id_=policy_id, error=WazuhError(4011))
@@ -848,6 +849,7 @@ def remove_role_policy(role_id, policy_ids):
     success = False
     with RolesPoliciesManager() as rpm:
         for policy_id in policy_ids:
+            policy_id = int(policy_id)
             role_policy = rpm.remove_policy_in_role(role_id=role_id[0], policy_id=policy_id)
             if role_policy == SecurityError.INVALID:
                 result.add_failed_item(id_=policy_id, error=WazuhError(4010))

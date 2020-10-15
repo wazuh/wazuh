@@ -205,10 +205,32 @@ stages:
           total_failed_items: 1
 
   # DELETE /security/roles/{role_id}/rules/{rule_id}
-  - name: Try to delete a non-existent role-rule (rule non-existent)
+  - name: Try to delete a non-existent role-rule (reserved rule)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/roles/3/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        rule_ids: 999
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: [ ]
+          failed_items:
+            - error:
+                code: 4008
+              id: !anything
+          total_failed_items: 1
+
+  # DELETE /security/roles/{role_id}/rules/{rule_id}
+  - name: Try to delete a non-existent role-rule (rule non-existent)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/100/rules"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -366,7 +388,7 @@ stages:
             - error:
                 code: 4002
               id:
-                - '999'
+                - 999
           total_affected_items: 1
           total_failed_items: 1
 
@@ -499,7 +521,7 @@ stages:
             - error:
                 code: 5001
               id:
-                - '200'
+                - 200
           total_affected_items: 0
           total_failed_items: 1
 
@@ -522,7 +544,7 @@ stages:
             - error:
                 code: 5008
               id:
-                - '99'
+                - 99
           total_affected_items: 0
           total_failed_items: 1
 
@@ -545,7 +567,7 @@ stages:
             - error:
                 code: 5004
               id:
-                - '2'
+                - 2
           total_affected_items: 0
           total_failed_items: 1
 
@@ -657,7 +679,7 @@ stages:
             - error:
                 code: 4022
               id:
-                - '200'
+                - 200
           total_affected_items: 0
           total_failed_items: 1
 
@@ -680,7 +702,7 @@ stages:
             - error:
                 code: 4008
               id:
-                - '1'
+                - 1
           total_affected_items: 0
           total_failed_items: 1
 

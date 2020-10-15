@@ -495,7 +495,7 @@ stages:
             - error:
                 code: !anyint
               id:
-                - '999'
+                - 999
           total_affected_items: 0
           total_failed_items: 1
 
@@ -519,8 +519,8 @@ stages:
             - error:
                 code: !anyint
               id:
-                - '999'
-                - '10000'
+                - 999
+                - 10000
           total_affected_items: 0
           total_failed_items: 2
 
@@ -600,7 +600,7 @@ stages:
             - error:
                 code: 4002
               id:
-                - '999'
+                - 999
           total_affected_items: 0
           total_failed_items: 1
 
@@ -624,8 +624,8 @@ stages:
             - error:
                 code: 4022
               id:
-                - '999'
-                - '10000'
+                - 999
+                - 10000
           total_affected_items: 0
           total_failed_items: 2
 
@@ -649,7 +649,7 @@ stages:
             - error:
                 code: !anyint
               id:
-                - '999'
+                - 999
           total_affected_items: 0
           total_failed_items: 1
 
@@ -860,8 +860,8 @@ stages:
             - error:
                 code: 4002
               id:
-                - '498'
-                - '500'
+                - 498
+                - 500
           total_affected_items: 0
           total_failed_items: 2
 
@@ -890,11 +890,11 @@ stages:
             - error:
                 code: 4002
               id:
-                - '498'
-                - '500'
+                - 498
+                - 500
             - error:
                 code: 4017
               id:
-                - '3'
+                - 3
           total_affected_items: 2
           total_failed_items: 3

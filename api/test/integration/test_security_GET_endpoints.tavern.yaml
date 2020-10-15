@@ -699,7 +699,7 @@ stages:
             - error:
                 code: !anyint
               id:
-                - '999'
+                - 999
           total_affected_items: 0
           total_failed_items: 1
 ---
@@ -980,7 +980,7 @@ stages:
             - error:
                 code: 5001
               id:
-                - '10000'
+                - 10000
           total_affected_items: 0
           total_failed_items: 1
 
@@ -999,8 +999,8 @@ stages:
             - error:
                 code: 5001
               id:
-                - '10000'
-                - '10001'
+                - 10000
+                - 10001
           total_affected_items: 0
           total_failed_items: 2
 
@@ -1022,8 +1022,8 @@ stages:
             - error:
                 code: 5001
               id:
-                - '10000'
-                - '10001'
+                - 10000
+                - 10001
           total_affected_items: 1
           total_failed_items: 2
 
@@ -1046,8 +1046,8 @@ stages:
             - error:
                 code: 5001
               id:
-                - '10000'
-                - '10001'
+                - 10000
+                - 10001
           total_affected_items: 2
           total_failed_items: 2
 ---
