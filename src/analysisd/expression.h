@@ -28,7 +28,7 @@ typedef enum {
     EXP_TYPE_OSMATCH,
     EXP_TYPE_STRING,
     EXP_TYPE_OSIP_ARRAY,
-    EXP_TYPE_PCRE2
+    EXP_TYPE_PCRE2,
 } w_exp_type_t;
 
 /**

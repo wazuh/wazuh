@@ -269,6 +269,7 @@
 #define RL_INV_ATTR     "(5105): Invalid rule attributes inside file: '%s'."
 #define RL_NO_OPT       "(5106): Rule '%d' without any options. "\
                         "It may lead to false positives. Exiting. "
+#define RL_REGEX_SYNTAX "(5107): Syntax error on tag '%s' in rule %d"
 
 /* Syslog output */
 #define XML_INV_CSYSLOG "(5301): Invalid client-syslog configuration."

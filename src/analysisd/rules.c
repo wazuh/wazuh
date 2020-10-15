@@ -53,6 +53,11 @@ bool w_check_attr_negate(xml_node *node, int rule_id);
  */
 bool w_check_attr_field_name(xml_node * node, FieldInfo ** field, int rule_id);
 
+/**
+ * @brief Check if a option (regex or field) has attribute type
+ */
+w_exp_type_t w_check_attr_type(xml_node *node, int rule_id);
+
 
 /* Will initialize the rules list */
 void Rules_OP_CreateRules()
@@ -413,6 +418,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                 bool negate_srcgeoip = false;
                 bool negate_dstgeoip = false;
 
+                w_exp_type_t regex_type;
+
                 regex = NULL;
                 match = NULL;
                 url = NULL;
@@ -453,6 +460,7 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         regex =loadmemory(regex, rule_opt[k]->content);
                         negate_regex = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
+                        regex_type = w_check_attr_type(rule_opt[k], config_ruleinfo->sigid);
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_match) == 0) {
 
@@ -689,7 +697,9 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_action) == 0) {
 
-                        os_calloc(1, sizeof(w_expression_t), config_ruleinfo->action);
+                        if (config_ruleinfo->action == NULL) {
+                            w_calloc_expression_t(&config_ruleinfo->action, EXP_TYPE_STRING);
+                        }
                         config_ruleinfo->action->string = loadmemory(config_ruleinfo->action->string,
                                                                      rule_opt[k]->content);
 
@@ -718,14 +728,16 @@ int Rules_OP_ReadRules(const char *rulefile)
                             goto cleanup;
                         }
 
-                        os_calloc(1, sizeof(OSRegex), config_ruleinfo->fields[ifield]->regex);
+                        w_exp_type_t type = w_check_attr_type(rule_opt[k], config_ruleinfo->sigid);
+                        bool negate = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
-                        if (!OSRegex_Compile(rule_opt[k]->content, config_ruleinfo->fields[ifield]->regex, 0)) {
-                            merror(REGEX_COMPILE, rule_opt[k]->content, config_ruleinfo->fields[ifield]->regex->error);
+                        w_calloc_expression_t(&config_ruleinfo->fields[ifield]->regex, type);
+                        config_ruleinfo->fields[ifield]->regex->negate = negate;
+
+                        if (!w_expression_compile(config_ruleinfo->fields[ifield]->regex, rule_opt[k]->content, 0)) {
+                            merror(RL_REGEX_SYNTAX, config_ruleinfo->fields[ifield]->name, config_ruleinfo->sigid);
                             goto cleanup;
                         }
-
-                        config_ruleinfo->fields[ifield]->negate = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
                         ifield++;
 
@@ -1516,11 +1528,11 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                 /* Check the regexes */
                 if (regex) {
-                    w_calloc_expression_t(&config_ruleinfo->regex, EXP_TYPE_OSREGEX);
+                    w_calloc_expression_t(&config_ruleinfo->regex, regex_type);
                     config_ruleinfo->regex->negate = negate_regex;
 
-                    if (!OSRegex_Compile(regex, config_ruleinfo->regex->regex, 0)) {
-                        merror(REGEX_COMPILE, regex, config_ruleinfo->regex->regex->error);
+                    if (!w_expression_compile(config_ruleinfo->regex, regex, 0)) {
+                        merror(RL_REGEX_SYNTAX, xml_regex, config_ruleinfo->sigid);
                         goto cleanup;
                     }
 
@@ -1532,8 +1544,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                     w_calloc_expression_t(&config_ruleinfo->match, EXP_TYPE_OSMATCH);
                     config_ruleinfo->match->negate = negate_match;
 
-                    if (!OSMatch_Compile(match, config_ruleinfo->match->match, 0)) {
-                        merror(REGEX_COMPILE, match, config_ruleinfo->match->match->error);
+                    if (!w_expression_compile(config_ruleinfo->match, match, 0)) {
+                        merror(RL_REGEX_SYNTAX, xml_match, config_ruleinfo->sigid);
                         goto cleanup;
                     }
 
@@ -1545,8 +1557,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                     w_calloc_expression_t(&config_ruleinfo->id, EXP_TYPE_OSMATCH);
                     config_ruleinfo->id->negate = negate_id;
 
-                    if (!OSMatch_Compile(id, config_ruleinfo->id->match, 0)) {
-                        merror(REGEX_COMPILE, id, config_ruleinfo->id->match->error);
+                    if (!w_expression_compile(config_ruleinfo->id, id, 0)) {
+                        merror(RL_REGEX_SYNTAX, xml_id, config_ruleinfo->sigid);
                         goto cleanup;
                     }
 
@@ -1558,8 +1570,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                     w_calloc_expression_t(&config_ruleinfo->srcport, EXP_TYPE_OSMATCH);
                     config_ruleinfo->srcport->negate = negate_srcport;
 
-                    if (!OSMatch_Compile(srcport, config_ruleinfo->srcport->match, 0)) {
-                        merror(REGEX_COMPILE, srcport, config_ruleinfo->srcport->match->error);
+                    if (!w_expression_compile(config_ruleinfo->srcport, srcport, 0)) {
+                        merror(RL_REGEX_SYNTAX, xml_srcport, config_ruleinfo->sigid);
                         goto cleanup;
                     }
 
@@ -1571,8 +1583,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                     w_calloc_expression_t(&config_ruleinfo->dstport, EXP_TYPE_OSMATCH);
                     config_ruleinfo->dstport->negate = negate_dstport;
 
-                    if (!OSMatch_Compile(dstport, config_ruleinfo->dstport->match, 0)) {
-                        merror(REGEX_COMPILE, dstport, config_ruleinfo->dstport->match->error);
+                    if (!w_expression_compile(config_ruleinfo->dstport, dstport, 0)) {
+                        merror(RL_REGEX_SYNTAX, xml_dstport, config_ruleinfo->sigid);
                         goto cleanup;
                     }
 
@@ -1585,8 +1597,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                     w_calloc_expression_t(&config_ruleinfo->status, EXP_TYPE_OSMATCH);
                     config_ruleinfo->status->negate = negate_status;
 
-                    if (!OSMatch_Compile(status, config_ruleinfo->status->match, 0)) {
-                        merror(REGEX_COMPILE, status, config_ruleinfo->status->match->error);
+                    if (!w_expression_compile(config_ruleinfo->status, status, 0)) {
+                        merror(RL_REGEX_SYNTAX, xml_status, config_ruleinfo->sigid);
                         goto cleanup;
                     }
 
@@ -1598,8 +1610,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                     w_calloc_expression_t(&config_ruleinfo->hostname, EXP_TYPE_OSMATCH);
                     config_ruleinfo->hostname->negate = negate_hostname;
 
-                    if (!OSMatch_Compile(hostname, config_ruleinfo->hostname->match, 0)) {
-                        merror(REGEX_COMPILE, hostname, config_ruleinfo->hostname->match->error);
+                    if (!w_expression_compile(config_ruleinfo->hostname, hostname, 0)) {
+                        merror(RL_REGEX_SYNTAX, xml_hostname, config_ruleinfo->sigid);
                         goto cleanup;
                     }
 
@@ -1611,8 +1623,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                     w_calloc_expression_t(&config_ruleinfo->data, EXP_TYPE_OSMATCH);
                     config_ruleinfo->data->negate = negate_data;
 
-                    if (!OSMatch_Compile(data, config_ruleinfo->data->match, 0)) {
-                        merror(REGEX_COMPILE, data, config_ruleinfo->data->match->error);
+                    if (!w_expression_compile(config_ruleinfo->data, data, 0)) {
+                        merror(RL_REGEX_SYNTAX, xml_data, config_ruleinfo->sigid);
                         goto cleanup;
                     }
 
@@ -1624,8 +1636,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                     w_calloc_expression_t(&config_ruleinfo->extra_data, EXP_TYPE_OSMATCH);
                     config_ruleinfo->extra_data->negate = negate_extra_data;
 
-                    if (!OSMatch_Compile(extra_data, config_ruleinfo->extra_data->match, 0)) {
-                        merror(REGEX_COMPILE, extra_data, config_ruleinfo->extra_data->match->error);
+                    if (!w_expression_compile(config_ruleinfo->extra_data, extra_data, 0)) {
+                        merror(RL_REGEX_SYNTAX, xml_extra_data, config_ruleinfo->sigid);
                         goto cleanup;
                     }
 
@@ -1637,8 +1649,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                     w_calloc_expression_t(&config_ruleinfo->program_name, EXP_TYPE_OSMATCH);
                     config_ruleinfo->program_name->negate = negate_program_name;
 
-                    if (!OSMatch_Compile(program_name, config_ruleinfo->program_name->match, 0)) {
-                        merror(REGEX_COMPILE, program_name, config_ruleinfo->program_name->match->error);
+                    if (!w_expression_compile(config_ruleinfo->program_name, program_name, 0)) {
+                        merror(RL_REGEX_SYNTAX, xml_program_name, config_ruleinfo->sigid);
                         goto cleanup;
                     }
 
@@ -1650,8 +1662,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                     w_calloc_expression_t(&config_ruleinfo->user, EXP_TYPE_OSMATCH);
                     config_ruleinfo->user->negate = negate_user;
 
-                    if (!OSMatch_Compile(user, config_ruleinfo->user->match, 0)) {
-                        merror(REGEX_COMPILE, user, config_ruleinfo->user->match->error);
+                    if (!w_expression_compile(config_ruleinfo->user, user, 0)) {
+                        merror(RL_REGEX_SYNTAX, xml_user, config_ruleinfo->sigid);
                         goto cleanup;
                     }
 
@@ -1663,8 +1675,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                     w_calloc_expression_t(&config_ruleinfo->srcgeoip, EXP_TYPE_OSMATCH);
                     config_ruleinfo->srcgeoip->negate = negate_srcgeoip;
 
-                    if(!OSMatch_Compile(srcgeoip, config_ruleinfo->srcgeoip->match, 0)) {
-                        merror(REGEX_COMPILE, srcgeoip, config_ruleinfo->srcgeoip->match->error);
+                    if(!w_expression_compile(config_ruleinfo->srcgeoip, srcgeoip, 0)) {
+                        merror(RL_REGEX_SYNTAX, xml_srcgeoip, config_ruleinfo->sigid);
                         return(-1);
                     }
 
@@ -1676,8 +1688,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                     w_calloc_expression_t(&config_ruleinfo->dstgeoip, EXP_TYPE_OSMATCH);
                     config_ruleinfo->dstgeoip->negate = negate_dstgeoip;
 
-                    if(!OSMatch_Compile(dstgeoip, config_ruleinfo->dstgeoip->match, 0)) {
-                        merror(REGEX_COMPILE, dstgeoip, config_ruleinfo->dstgeoip->match->error);
+                    if(!w_expression_compile(config_ruleinfo->dstgeoip, dstgeoip, 0)) {
+                        merror(RL_REGEX_SYNTAX, xml_dstgeoip, config_ruleinfo->sigid);
                         return(-1);
                     }
 
@@ -1690,8 +1702,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                     w_calloc_expression_t(&config_ruleinfo->url, EXP_TYPE_OSMATCH);
                     config_ruleinfo->url->negate = negate_url;
 
-                    if (!OSMatch_Compile(url, config_ruleinfo->url->match, 0)) {
-                        merror(REGEX_COMPILE, url, config_ruleinfo->url->match->error);
+                    if (!w_expression_compile(config_ruleinfo->url, url, 0)) {
+                        merror(RL_REGEX_SYNTAX, xml_url, config_ruleinfo->sigid);
                         goto cleanup;
                     }
 
@@ -1703,8 +1715,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                     w_calloc_expression_t(&config_ruleinfo->location, EXP_TYPE_OSMATCH);
                     config_ruleinfo->location->negate = negate_location;
 
-                    if (!OSMatch_Compile(location, config_ruleinfo->location->match, 0)) {
-                        merror(REGEX_COMPILE, location, config_ruleinfo->location->match->error);
+                    if (!w_expression_compile(config_ruleinfo->location, location, 0)) {
+                        merror(RL_REGEX_SYNTAX, xml_location, config_ruleinfo->sigid);
                         goto cleanup;
                     }
 
@@ -1746,8 +1758,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                     w_calloc_expression_t(&config_ruleinfo->protocol, EXP_TYPE_OSMATCH);
                     config_ruleinfo->protocol->negate = negate_protocol;
 
-                    if(!OSMatch_Compile(protocol, config_ruleinfo->protocol->match, 0)){
-                        merror(REGEX_COMPILE, protocol, config_ruleinfo->protocol->match->error);
+                    if(!w_expression_compile(config_ruleinfo->protocol, protocol, 0)){
+                        merror(RL_REGEX_SYNTAX, protocol, config_ruleinfo->sigid);
                         goto cleanup;
                     }
 
@@ -1759,8 +1771,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                     w_calloc_expression_t(&config_ruleinfo->system_name, EXP_TYPE_OSMATCH);
                     config_ruleinfo->system_name->negate = negate_system_name;
 
-                    if(!OSMatch_Compile(system_name, config_ruleinfo->system_name->match, 0)){
-                        merror(REGEX_COMPILE, system_name, config_ruleinfo->system_name->match->error);
+                    if(!w_expression_compile(config_ruleinfo->system_name, system_name, 0)){
+                        merror(RL_REGEX_SYNTAX, xml_system_name, config_ruleinfo->sigid);
                         goto cleanup;
                     }
 
@@ -2466,7 +2478,7 @@ static int doesRuleExist(int sid, RuleNode *r_node)
 
 bool w_check_attr_negate(xml_node *node, int rule_id) {
 
-    const char *xml_negate = "negate";
+    const char * xml_negate = "negate";
 
     if (!node->attributes) {
         return false;
@@ -2484,7 +2496,6 @@ bool w_check_attr_negate(xml_node *node, int rule_id) {
             else {
                 mwarn(ANALYSISD_INV_VALUE_RULE, node->values[i],
                       node->attributes[i], rule_id);
-                return false;
             }
         }
     }
@@ -2527,4 +2538,32 @@ bool w_check_attr_field_name(xml_node * node, FieldInfo ** field, int rule_id) {
     merror("Failure to read rule %d. No such attribute '%s' for field.", rule_id, xml_name);
 
     return false;
+}
+
+
+w_exp_type_t w_check_attr_type(xml_node *node, int rule_id) {
+
+    if (!node->attributes) {
+        return EXP_TYPE_OSREGEX;
+    }
+
+    const char * xml_type = "type";
+
+    for (int i = 0; node->attributes[i]; i++) {
+        if(strcasecmp(node->attributes[i], xml_type) == 0) {
+
+            if(strcasecmp(node->values[i], "osregex") == 0) {
+                return EXP_TYPE_OSREGEX;
+            }
+            else if(strcasecmp(node->values[i], "pcre2") == 0) {
+                return EXP_TYPE_PCRE2;
+            }
+            else {
+                mwarn(ANALYSISD_INV_VALUE_RULE, node->values[i],
+                      node->attributes[i], rule_id);
+            }
+        }
+    }
+
+    return EXP_TYPE_OSREGEX;
 }
