@@ -20,7 +20,7 @@ static char* get_pci_dss(const char *string);
 char* get_cis(const char *string);
 
 /* Insert configuration assessment entry. Returns ID on success or -1 on error. */
-int wdb_insert_pm(wdb_t * wdb, const rk_event_t *event) {
+int wdb_rootcheck_insert(wdb_t * wdb, const rk_event_t *event) {
     sqlite3_stmt *stmt = NULL;
     int result;
     char *pci_dss;
@@ -48,7 +48,7 @@ int wdb_insert_pm(wdb_t * wdb, const rk_event_t *event) {
 }
 
 /* Update configuration assessment last date. Returns number of affected rows on success or -1 on error. */
-int wdb_update_pm(wdb_t * wdb, const rk_event_t *event) {
+int wdb_rootcheck_update(wdb_t * wdb, const rk_event_t *event) {
     sqlite3_stmt *stmt = NULL;
     int result;
 

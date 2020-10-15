@@ -44,16 +44,5 @@ int rk_decode_event(char *buffer, rk_event_t *event);
  * */
 int send_rootcheck_log(const char* agent_id, long int date, char* log, char* response);
 
-/**
- * Sends a rootcheck delete action through wazuh database
- * @param agent_id [In] string containing the agent id
- * @param response [Out] buffer to store the query response
- * @return error_code from query execution
- * @retval -2 Bad query
- * @retval -1 Error executing query
- * @retval >0 Successfull reponse
- * */
-int send_rootcheck_delete(const char* agent_id, char* response) {
- 
 
 #endif /* ROOTCHECK_OP_H */

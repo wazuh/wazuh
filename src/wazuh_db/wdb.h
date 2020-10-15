@@ -317,10 +317,10 @@ int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum);
 int wdb_fim_delete(wdb_t * wdb, const char * file);
 
 /* Insert configuration assessment entry. Returns ID on success or -1 on error. */
-int wdb_insert_pm(wdb_t * wdb, const rk_event_t *event);
+int wdb_rootcheck_insert(wdb_t * wdb, const rk_event_t *event);
 
 /* Update configuration assessment last date. Returns number of affected rows on success or -1 on error. */
-int wdb_update_pm(wdb_t * wdb, const rk_event_t *event);
+int wdb_rootcheck_update(wdb_t * wdb, const rk_event_t *event);
 
 /* Look for a configuration assessment entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
 int wdb_sca_find(wdb_t * wdb, int pm_id, char * output);

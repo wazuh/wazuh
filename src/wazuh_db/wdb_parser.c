@@ -4105,14 +4105,14 @@ int wdb_parse_rootcheck(wdb_t * wdb, char * input, char * output) {
             return -1;
         }
 
-        switch (wdb_update_pm(wdb, &event)) {
+        switch (wdb_rootcheck_update(wdb, &event)) {
             case -1:
                 merror("DB(%s) Error updating rootcheck PM tuple on SQLite database", wdb->id);
                 snprintf(output, OS_MAXSTR + 1, "err Error updating rootcheck PM tuple");
                 result = -1;
                 break;
             case 0:
-                if (wdb_insert_pm(wdb, &event) < 0) {
+                if (wdb_rootcheck_insert(wdb, &event) < 0) {
                     merror("DB(%s) Error inserting rootcheck PM tuple on SQLite database for agent", wdb->id);
                     snprintf(output, OS_MAXSTR + 1, "err Error updating rootcheck PM tuple");
                     result = -1;

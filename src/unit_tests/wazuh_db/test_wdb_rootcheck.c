@@ -32,7 +32,7 @@ int teardown_wdb(void **state) {
     return 0;
 }
 /***********  tests  *********************/
-void test_wdb_insert_pm_cache_error(void **state) {
+void test_wdb_rootcheck_insert_cache_error(void **state) {
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__merror, formatted_msg, "DB(000) Cannot cache statement");
 
@@ -41,11 +41,11 @@ void test_wdb_insert_pm_cache_error(void **state) {
     event.date_last = time(0);
     event.date_first = event.date_last;
     event.log = "Test log";
-    int ret = wdb_insert_pm(wdb, &event);
+    int ret = wdb_rootcheck_insert(wdb, &event);
     assert_int_equal(ret, -1);
 }
 
-void test_wdb_insert_pm_success(void **state) {
+void test_wdb_rootcheck_insert_success(void **state) {
     wdb_t *wdb  = (wdb_t *)*state;
     rk_event_t event;
     event.date_last = time(0);
@@ -67,13 +67,13 @@ void test_wdb_insert_pm_success(void **state) {
     will_return(__wrap_sqlite3_bind_text, 1);
     will_return(__wrap_wdb_step, SQLITE_DONE);
     will_return(__wrap_sqlite3_last_insert_rowid, 10);
-    int ret = wdb_insert_pm(wdb, &event);
+    int ret = wdb_rootcheck_insert(wdb, &event);
 
     assert_int_equal(ret, 10);
 }
 
 
-void test_wdb_update_pm_cache_error(void **state) {
+void test_wdb_rootcheck_update_cache_error(void **state) {
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__merror, formatted_msg, "DB(000) Cannot cache statement");
 
@@ -82,11 +82,11 @@ void test_wdb_update_pm_cache_error(void **state) {
     event.date_last = time(0);
     event.date_first = event.date_last;
     event.log = "Test log";
-    int ret = wdb_update_pm(wdb, &event);
+    int ret = wdb_rootcheck_update(wdb, &event);
     assert_int_equal(ret, -1);
 }
 
-void test_wdb_update_pm_cache_succcess(void **state) {
+void test_wdb_rootcheck_update_succcess(void **state) {
     wdb_t *wdb  = (wdb_t *)*state;
     rk_event_t event;
     event.date_first = time(0);
@@ -102,19 +102,39 @@ void test_wdb_update_pm_cache_succcess(void **state) {
     will_return(__wrap_sqlite3_bind_text, 1);
     will_return(__wrap_wdb_step, SQLITE_DONE);
     will_return(__wrap_sqlite3_changes, 10);
-    int ret = wdb_update_pm(wdb, &event);
+    int ret = wdb_rootcheck_update(wdb, &event);
     assert_int_equal(ret, 10);
 }
 
+void test_wdb_rootcheck_delete_cache_error(void **state) {
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__merror, formatted_msg, "DB(000) Cannot cache statement");
+
+    wdb_t *wdb  = (wdb_t *)*state;
+    int ret = wdb_rootcheck_delete(wdb);
+    assert_int_equal(ret, -1);
+}
+
+void test_wdb_rootcheck_delete_success(void **state) {
+    wdb_t *wdb  = (wdb_t *)*state;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 10);
+    int ret = wdb_rootcheck_delete(wdb);
+    assert_int_equal(ret, 10);
+}
 /***********************************************/
 
 int main()
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_wdb_insert_pm_cache_error, setup_wdb, teardown_wdb),
-        cmocka_unit_test_setup_teardown(test_wdb_insert_pm_success, setup_wdb, teardown_wdb),
-        cmocka_unit_test_setup_teardown(test_wdb_update_pm_cache_error, setup_wdb, teardown_wdb),
-        cmocka_unit_test_setup_teardown(test_wdb_update_pm_cache_succcess, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_rootcheck_insert_cache_error, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_rootcheck_insert_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_rootcheck_update_cache_error, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_rootcheck_update_succcess, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_rootcheck_delete_cache_error, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_rootcheck_delete_success, setup_wdb, teardown_wdb)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
