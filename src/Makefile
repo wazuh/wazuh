@@ -1002,6 +1002,9 @@ wrappers_libc_o := $(wrappers_libc_c:.c=.o)
 wrappers_linux_c := $(wildcard unit_tests/wrappers/linux/*.c)
 wrappers_linux_o := $(wrappers_linux_c:.c=.o)
 
+wrappers_macos_c := $(wildcard unit_tests/wrappers/macos/libc/*.c)
+wrappers_macos_o := $(wrappers_macos_c:.c=.o)
+
 wrappers_posix_c := $(wildcard unit_tests/wrappers/posix/*.c)
 wrappers_posix_o := $(wrappers_posix_c:.c=.o)
 
@@ -1079,6 +1082,8 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 		UNIT_TEST_WRAPPERS+=${wrappers_windows_o}
 		UNIT_TEST_WRAPPERS+=${wrappers_windows_lib_o}
 		UNIT_TEST_WRAPPERS+=${wrappers_windows_posix_o}
+	else ifeq (${uname_S},Darwin)
+	    UNIT_TEST_WRAPPERS+=${wrappers_macos_o}
 	else
 		UNIT_TEST_WRAPPERS+=${wrappers_externals_audit_o}
 		UNIT_TEST_WRAPPERS+=${wrappers_externals_procpc_o}
@@ -1693,8 +1698,6 @@ LIBS_TEST=-lcmocka
 
 # LIBS_TEST = -lcheck -lm -lrt -lsubunit
 
-
-
 unit_tests/wrappers/%.o: unit_tests/wrappers/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
@@ -1723,6 +1726,12 @@ unit_tests/wrappers/libc/%.o: unit_tests/wrappers/libc/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
 unit_tests/wrappers/linux/%.o: unit_tests/wrappers/linux/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/macos/%.o: unit_tests/wrappers/macos/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/macos/libc/%.o: unit_tests/wrappers/macos/libc/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
 unit_tests/wrappers/posix/%.o: unit_tests/wrappers/posix/%.c
@@ -1980,6 +1989,7 @@ clean-unit-tests:
 	rm -f ${wrappers_externals_sqlite_o}
 	rm -f ${wrappers_libc_o}
 	rm -f ${wrappers_linux_o}
+	rm -f ${wrappers_macos_o}
 	rm -f ${wrappers_posix_o}
 	rm -f ${wrappers_wazuh_o}
 	rm -f ${wrappers_wazuh_os_crypto_o}
