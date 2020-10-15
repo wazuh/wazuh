@@ -5,7 +5,7 @@ info:
     command line tool like cURL or any script or program that can make web requests. The Wazuh WUI relies on this
     heavily and Wazuh’s goal is to accommodate complete remote management of the Wazuh infrastructure via the Wazuh WUI.
     Use the Wazuh API to easily perform everyday actions like adding an agent, restarting the manager(s) or agent(s)
-    or looking up syscheck details.\n
+    or looking up syscheck details.
 
     # Authentication
 
@@ -17,7 +17,7 @@ info:
     Login with USER and PASSWORD:
 
     `curl -u <USER>:<PASSWORD> -k -X GET "https://<HOST_IP>:55000/security/user/authenticate`
-    ```
+    ```json
     {
         "data": {
             "token": "<YOUR_JWT_TOKEN>"
