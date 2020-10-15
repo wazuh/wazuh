@@ -5079,7 +5079,7 @@ paths:
     put:
       tags:
         - Active-response
-      summary: "Run AR command"
+      summary: "Run command"
       description: "Run an Active Response command on all agents or a list of them"
       operationId: api.controllers.active_response_controller.run_command
       x-rbac-actions:
@@ -7123,7 +7123,7 @@ paths:
     get:
       tags:
       - Ciscat
-      summary: "Get CIS-CAT results"
+      summary: "Get results"
       description: "Return the agent's ciscat results info"
       operationId: api.controllers.ciscat_controller.get_agents_ciscat_results
       x-rbac-actions:
@@ -9620,7 +9620,7 @@ paths:
     get:
       tags:
       - Manager
-      summary: "Get remoted stats remoted "
+      summary: "Get stats remoted"
       description: "Return Wazuh remoted statistical information"
       operationId: api.controllers.manager_controller.get_stats_remoted
       x-rbac-actions:
@@ -11056,7 +11056,7 @@ paths:
     get:
       tags:
         - Decoders
-      summary: "Get decoders"
+      summary: "List decoders"
       description: "Return information about all decoders included in ossec.conf. This information include decoder's
       route, decoder's name, decoder's file among others"
       operationId: api.controllers.decoders_controller.get_decoders
@@ -11128,7 +11128,7 @@ paths:
     get:
       tags:
         - Decoders
-      summary: "Get decoders files"
+      summary: "Get files"
       description: "Return information about all decoders files used in Wazuh. This information include decoder's file,
       decoder's route and decoder's status among others"
       operationId: api.controllers.decoders_controller.get_decoders_files
@@ -11188,7 +11188,7 @@ paths:
     get:
       tags:
       - Decoders
-      summary: "Download decoder file"
+      summary: "Download decoder"
       description: "Download an specified decoder file"
       operationId: api.controllers.decoders_controller.get_download_file
       x-rbac-actions:
