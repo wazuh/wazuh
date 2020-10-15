@@ -16,7 +16,7 @@ stages:
     response: &permission_denied
       status_code: 403
       json:
-        code: 4000
+        error: 4000
 
   - name: Try to get syscheck scan results for agent 002 (Allow)
     request:
@@ -28,6 +28,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -59,6 +60,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - end: !anything
@@ -82,19 +84,20 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items:
             - error:
                 code: 1601
               id:
-                - '011'
-                - '012'
+                - '009'
+                - '010'
             - error:
                 code: 1601
               id:
-                - '009'
-                - '010'
+                - '011'
+                - '012'
           total_affected_items: 5
           total_failed_items: 4
         
@@ -106,10 +109,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '000,003,001,004,008'
+        agents_list: '000,003,001,004,008'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items:
@@ -130,7 +134,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001'
+        agents_list: '001'
     response:
       <<: *permission_denied
 
@@ -149,6 +153,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []

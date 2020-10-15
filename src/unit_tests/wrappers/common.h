@@ -15,6 +15,7 @@
 #include <stdio.h>
 
 extern int test_mode;
+extern int activate_full_db;
 
 int FOREVER();
 

@@ -16,6 +16,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - items: !anything
@@ -40,6 +41,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - items: !anything
@@ -62,7 +64,7 @@ stages:
     response:
       status_code: 403
       json:
-        code: 4000
+        error: 4000
 
 ---
 test_name: GET LISTS FILES RBAC
@@ -78,6 +80,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - filename: security-eventchannel

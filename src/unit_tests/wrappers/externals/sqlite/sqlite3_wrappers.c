@@ -43,6 +43,14 @@ int __wrap_sqlite3_bind_text(__attribute__((unused)) sqlite3_stmt* pStmt,
     return mock();
 }
 
+int __wrap_sqlite3_bind_parameter_index(__attribute__((unused)) sqlite3_stmt * stmt,
+                                        const char *zName) {
+    check_expected(zName);
+    
+    return mock();
+}
+
+
 int __wrap_sqlite3_clear_bindings(__attribute__((unused)) sqlite3_stmt* pStmt) {
     return mock();
 }
