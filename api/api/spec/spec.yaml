@@ -8923,7 +8923,7 @@ paths:
       tags:
         - logtest
       summary: "Run logtest in a specified log"
-      description: "Check if a specified log raises any alert among other information."
+      description: "Check if a specified log raises any alert among other information"
       operationId: api.controllers.logtest_controller.run_logtest_tool
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/logtest:run'
@@ -8939,7 +8939,7 @@ paths:
               $ref: '#/components/schemas/LogtestRequest'
       responses:
         '200':
-          description: "Successfully run the logtest tool."
+          description: "Successfully run the logtest tool"
           content:
             application/json:
               schema:
