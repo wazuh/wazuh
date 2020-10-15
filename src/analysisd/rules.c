@@ -2501,8 +2501,8 @@ bool w_check_attr_negate(xml_node *node, int rule_id) {
                 return false;
             }
             else {
-                mwarn(ANALYSISD_INV_VALUE_RULE, node->values[0],
-                    node->attributes[0], rule_id);
+                mwarn(ANALYSISD_INV_VALUE_RULE, node->values[i],
+                      node->attributes[i], rule_id);
                 return false;
             }
         }
