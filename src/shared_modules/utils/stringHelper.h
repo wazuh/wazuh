@@ -72,6 +72,31 @@ namespace Utils
         }
         return ss.str();
     }
+
+    static std::string leftTrim(const std::string& str, const std::string& args = " ")
+    {
+        const auto pos = str.find_first_not_of(args);
+        if (pos != std::string::npos)
+        {
+            return str.substr(pos);
+        }
+        return str;
+    }
+
+    static std::string rightTrim(const std::string& str, const std::string& args = " ")
+    {
+        const auto pos = str.find_last_not_of(args);
+        if (pos != std::string::npos)
+        {
+            return str.substr(0, pos + 1);
+        }
+        return str;
+    }
+
+    static std::string trim(const std::string& str, const std::string& args = " ")
+    {
+        return leftTrim(rightTrim(str, args), args);
+    }
 }
 
 #pragma GCC diagnostic pop

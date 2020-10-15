@@ -13,5 +13,5 @@
 
 nlohmann::json SysInfo::hardware()
 {
-	return {};
+    return {};
 }

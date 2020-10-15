@@ -26,6 +26,7 @@ include_directories(${SRC_FOLDER}/external/sqlite/)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/external/cJSON/)
 include_directories(${SRC_FOLDER}/headers/)
+include_directories(${SRC_FOLDER}/shared_modules/utils)
 include_directories(${CMAKE_SOURCE_DIR}/)
 
 link_directories(${SRC_FOLDER}/external/sqlite/)
@@ -34,6 +35,7 @@ link_directories(${SRC_FOLDER}/external/cJSON/)
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   file(GLOB SYSCOLLECTOR_SRC
       "${CMAKE_SOURCE_DIR}/*Win.cpp")
+  add_definitions(-DWIN32=1)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   file(GLOB SYSCOLLECTOR_SRC
       "${CMAKE_SOURCE_DIR}/*Linux.cpp")

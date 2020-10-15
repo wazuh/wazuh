@@ -16,7 +16,7 @@ class SysInfo
 {
 public:
 	SysInfo() = default;
-	~SysInfo() = default;
+	virtual ~SysInfo() = default;
 	virtual nlohmann::json hardware();
 private:
 };
