@@ -241,6 +241,7 @@ char *fim_registry_value_diff(const char *key_name,
         goto cleanup;
     } else if (limits_reached == 2){
         mdebug2(FIM_DISK_QUOTA_ESTIMATION, full_value_name);
+        mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
         goto cleanup;
     }
 
@@ -418,6 +419,7 @@ char *fim_file_diff(const char *filename) {
         goto cleanup;
     } else if (limits_reached == 2){
         mdebug2(FIM_DISK_QUOTA_ESTIMATION, filename);
+        mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
         goto cleanup;
     }
 
