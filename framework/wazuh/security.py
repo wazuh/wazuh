@@ -865,7 +865,7 @@ def revoke_current_user_tokens():
         with AuthenticationManager() as am:
             tm.add_user_roles_rules(users={am.get_user(common.current_user.get())['id']})
 
-    return WazuhResult({'msg': f'User {common.current_user.get()} was successfully logged out'})
+    return WazuhResult({'message': f'User {common.current_user.get()} was successfully logged out'})
 
 
 @expose_resources(actions=['security:revoke'], resources=['*:*:*'],
@@ -875,7 +875,7 @@ def wrapper_revoke_tokens():
     """ Revoke all tokens """
     revoke_tokens()
 
-    return WazuhResult({'msg': 'Tokens were successfully revoked'})
+    return WazuhResult({'message': 'Tokens were successfully revoked'})
 
 
 @lru_cache(maxsize=None)
@@ -911,11 +911,11 @@ def get_rbac_resources(resource: str = None):
         RBAC resources
     """
     if not resource:
-        return WazuhResult(load_spec()['x-rbac-catalog']['resources'])
+        return WazuhResult({'data': load_spec()['x-rbac-catalog']['resources']})
     else:
         if resource not in load_spec()['x-rbac-catalog']['resources'].keys():
             raise WazuhError(4019)
-        return WazuhResult({resource: load_spec()['x-rbac-catalog']['resources'][resource]})
+        return WazuhResult({'data': {resource: load_spec()['x-rbac-catalog']['resources'][resource]}})
 
 
 @lru_cache(maxsize=None)
@@ -955,13 +955,13 @@ def get_rbac_actions(endpoint: str = None):
             except KeyError:
                 pass
 
-    return WazuhResult(data)
+    return WazuhResult({'data': data})
 
 
 @expose_resources(actions=['security:read_config'], resources=['*:*:*'])
 def get_security_config():
     """Returns current security configuration."""
-    return configuration.security_conf
+    return WazuhResult({'data': configuration.security_conf})
 
 
 @expose_resources(actions=['security:update_config'], resources=['*:*:*'])

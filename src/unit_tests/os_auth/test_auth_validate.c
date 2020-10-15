@@ -40,7 +40,6 @@
 #undef MAX_AGENTS
 #define MAX_AGENTS 100000
 
-/* redefinitons/wrapping */
 
 void keys_init(keystore *keys, int rehash_keys, int save_removed) {
     /* Initialize hashes */

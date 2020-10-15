@@ -25,7 +25,7 @@ class InitWDBSocketMock:
         return sys_db
 
     def execute(self, query, count=False):
-        query = re.search(r'^(?:mitre|agent \d{3}) sql (.+)$', query).group(1)
+        query = re.search(r'^(?:mitre|global|agent \d{3}) sql (.+)$', query).group(1)
         self.__conn.execute(query)
         rows = self.__conn.execute(query).fetchall()
         if len(rows) > 0 and 'COUNT(*)' in rows[0]:
