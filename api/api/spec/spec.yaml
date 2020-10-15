@@ -11,7 +11,7 @@ info:
 
     Wazuh API endpoints require authentication in order to be used. Therefore, all calls must include a JSON Web Token.
     JWT is an open standard (RFC 7519) that defines a compact and self-contained way for securely transmitting
-    information between parties as a JSON object. Perform a call with `basicAuth to `GET /security/user/authenticate
+    information between parties as a JSON object. Perform a call with `basicAuth` to `GET /security/user/authenticate`
     and obtain a JWT token in order to run any endpoint.
 
     Login with USER and PASSWORD:
@@ -3390,7 +3390,6 @@ components:
       description: "Intended method to get a token"
       x-basicInfoFunc: api.authentication.check_user
     jwt:
-      description: "Uses this token to bla bla"
       type: http
       scheme: bearer
       bearerFormat: JWT
