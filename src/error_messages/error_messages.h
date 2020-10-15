@@ -500,6 +500,7 @@
 #else
 #define FIM_DIFF_COMMAND_OUTPUT_ERROR               "(6714): Command diff output an error"
 #endif
+#define FIM_DIFF_FILE_PATH_TOO_LONG                 "(6713): The path of the file monitored '%s' is too long to compute differences."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."

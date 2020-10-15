@@ -294,7 +294,7 @@ cleanup:
 
 diff_data *initialize_registry_diff_data(const char *key_name, const char *value_name, const registry *configuration) {
     diff_data *diff;
-    char buffer[PATH_MAX + 1];
+    char buffer[PATH_MAX];
 
     os_calloc(1, sizeof(diff_data), diff);
 
@@ -405,8 +405,9 @@ char *fim_file_diff(const char *filename) {
 
     // Generate diff structure
     diff_data *diff = initialize_file_diff_data(filename);
-    if (!diff){
-        goto cleanup;
+    if (!strcmp("error", diff->compress_file)){
+        free_diff_data(diff);
+        return NULL;
     }
 
     mkdir_ex(diff->tmp_folder);
@@ -470,9 +471,8 @@ cleanup:
 
 diff_data *initialize_file_diff_data(const char *filename){
     diff_data *diff;
-    char buffer[PATH_MAX + 8];
-    char abs_diff_dir_path[PATH_MAX + 1];
-    char *path_filtered = NULL;
+    char buffer[PATH_MAX];
+    char abs_diff_dir_path[PATH_MAX];
 
     os_calloc(1, sizeof(diff_data), diff);
 
@@ -487,40 +487,50 @@ diff_data *initialize_file_diff_data(const char *filename){
     // Get absolute path of filename:
     if (abspath(filename, buffer, sizeof(buffer)) == NULL) {
         merror(FIM_ERROR_GET_ABSOLUTE_PATH, filename, strerror(errno), errno);
-        return NULL;
+        goto error;
     }
 
     os_strdup(buffer, diff->file_origin);
 
 #ifdef WIN32
+    char *path_filtered = NULL;
+
     // Remove ":" from file_origin
     path_filtered = os_strip_char(diff->file_origin, ':');
 
     if (path_filtered == NULL) {
         merror(FIM_ERROR_REMOVE_COLON, diff->file_origin);
-        return NULL;
+        goto error;
     }
 
     // Get cwd for Windows
     if (abspath(DIFF_DIR_PATH, abs_diff_dir_path, sizeof(abs_diff_dir_path)) == NULL) {
         merror(FIM_ERROR_GET_ABSOLUTE_PATH, DIFF_DIR_PATH, strerror(errno), errno);
-        return NULL;
+        os_free(path_filtered);
+        goto error;
     }
 
-    snprintf(buffer, PATH_MAX + 7, "%s/local/%s", abs_diff_dir_path, path_filtered);
+    snprintf(buffer, PATH_MAX, "%s/local/%s", abs_diff_dir_path, path_filtered);
+    os_free(path_filtered);
 #else
     strcpy(abs_diff_dir_path, DIFF_DIR_PATH);
 
     // This snprintf is duplicated to avoid a double slash ('/') in UNIX systems
-    snprintf(buffer, PATH_MAX + 7, "%s/local%s", abs_diff_dir_path, diff->file_origin);
+    snprintf(buffer, PATH_MAX, "%s/local%s", abs_diff_dir_path, diff->file_origin);
 #endif
+
+    // Check if the full_diff_path for filename, is too long
+    if (strlen(abs_diff_dir_path) + strlen(diff->file_origin) + 14 > PATH_MAX) {
+        merror(FIM_DIFF_FILE_PATH_TOO_LONG, diff->file_origin);
+        goto error;
+    }
 
     os_strdup(buffer, diff->compress_folder);
 
     snprintf(buffer, PATH_MAX, "%s/last-entry.gz", diff->compress_folder);
     os_strdup(buffer, diff->compress_file);
 
-    snprintf(buffer, PATH_MAX + 5, "%s/tmp", abs_diff_dir_path);
+    snprintf(buffer, PATH_MAX, "%s/tmp", abs_diff_dir_path);
     os_strdup(buffer, diff->tmp_folder);
 
     snprintf(buffer, PATH_MAX, "%s/tmp-entry", diff->tmp_folder);
@@ -532,8 +542,10 @@ diff_data *initialize_file_diff_data(const char *filename){
     snprintf(buffer, PATH_MAX, "%s/diff-file", diff->tmp_folder);
     os_strdup(buffer, diff->diff_file);
 
-    os_free(path_filtered);
+    return diff;
 
+error:
+    os_strdup("error", diff->compress_file);
     return diff;
 }
 
