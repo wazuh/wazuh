@@ -82,7 +82,7 @@ static void test_normalize_mac_package_name(void **state) {
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_normalize_mac_package_name)
+        cmocka_unit_test(test_normalize_mac_package_name),
         cmocka_unit_test_setup_teardown(test_get_port_state, setup_wrappers, teardown_wrappers)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
