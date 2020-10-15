@@ -1073,7 +1073,7 @@ class RulesManager:
         True -> Success | False -> Failure
         """
         try:
-            if rule_id not in required_rules:
+            if rule_id > max_id_reserved:
                 rule = self.session.query(Rules).filter_by(id=rule_id).first()
                 if rule is None:
                     return False
@@ -1098,7 +1098,7 @@ class RulesManager:
         """
         try:
             if self.get_rule_by_name(rule_name) is not None and \
-                    self.get_rule_by_name(rule_name)['id'] not in required_rules:
+                    self.get_rule_by_name(rule_name)['id'] > max_id_reserved:
                 rule_id = self.session.query(Rules).filter_by(name=rule_name).first().id
                 if rule_id:
                     self.delete_rule(rule_id=rule_id)
@@ -1119,7 +1119,7 @@ class RulesManager:
             list_rules = list()
             rules = self.session.query(Rules).all()
             for rule in rules:
-                if int(rule.id) not in required_rules:
+                if int(rule.id) > max_id_reserved:
                     self.session.delete(self.session.query(Rules).filter_by(id=rule.id).first())
                     self.session.commit()
                     list_rules.append(int(rule.id))
@@ -1147,7 +1147,7 @@ class RulesManager:
         try:
             rule_to_update = self.session.query(Rules).filter_by(id=rule_id).first()
             if rule_to_update and rule_to_update is not None:
-                if rule_to_update.id not in required_rules:
+                if rule_to_update.id > max_id_reserved:
                     # Rule is not a valid json
                     if rule is not None and not json_validator(rule):
                         return SecurityError.INVALID
@@ -2206,7 +2206,7 @@ class RolesRulesManager:
         True -> Success | False -> Failure | Role not exists | Rule not exist s| Non-existent relationship
         """
         try:
-            if rule_id not in required_rules_for_role.get(role_id, []):  # Required rule
+            if role_id > max_id_reserved:  # Required rule
                 rule = self.session.query(Rules).filter_by(id=rule_id).first()
                 if rule is None:
                     return SecurityError.RULE_NOT_EXIST
@@ -2305,7 +2305,7 @@ class RolesRulesManager:
         -------
         True -> Success | False -> Failure
         """
-        if rule_id not in required_rules_for_role.get(int(current_role_id), []) and self.exist_role_rule(
+        if current_role_id > max_id_reserved and self.exist_role_rule(
                 rule_id=rule_id,
                 role_id=current_role_id) \
                 and self.session.query(Roles).filter_by(id=new_role_id).first() is not None:

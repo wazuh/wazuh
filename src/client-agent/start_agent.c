@@ -323,7 +323,7 @@ static bool agent_ping_to_server(int server_id) {
         recv_b = receive_message(buffer, OS_MAXSTR);
 
         if (recv_b > 0) {
-            if (strcmp(buffer, "#pong") == 0) {
+            if (strncmp(buffer, "#pong", 5) == 0) {
                 return true;
             }
         }

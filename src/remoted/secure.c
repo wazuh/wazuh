@@ -26,7 +26,7 @@ static void * rem_handler_main(__attribute__((unused)) void * args);
 void * rem_keyupdate_main(__attribute__((unused)) void * args);
 
 /* Handle each message received */
-static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client);
+static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock);
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
@@ -239,13 +239,14 @@ void HandleSecure()
 void * rem_handler_main(__attribute__((unused)) void * args) {
     message_t * message;
     char buffer[OS_MAXSTR + 1] = "";
+    int wdb_sock = -1;
     mdebug1("Message handler thread started.");
 
     while (1) {
         message = rem_msgpop();
         if (message->sock == -1 || message->counter > rem_getCounter(message->sock)) {
             memcpy(buffer, message->buffer, message->size);
-            HandleSecureMessage(buffer, message->size, &message->addr, message->sock);
+            HandleSecureMessage(buffer, message->size, &message->addr, message->sock, &wdb_sock);
         } else {
             rem_inc_dequeued();
         }
@@ -269,7 +270,7 @@ void * rem_keyupdate_main(__attribute__((unused)) void * args) {
     }
 }
 
-static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client) {
+static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock) {
     int agentid;
     int protocol = logr.proto[logr.position];
     char cleartext_msg[OS_MAXSTR + 1];
@@ -340,7 +341,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
             return;
         }
-    } else if (strcmp(buffer, "#ping") == 0) {
+    } else if (strncmp(buffer, "#ping", 5) == 0) {
             int retval = 0;
             char *msg = "#pong";
             ssize_t msg_size = strlen(msg);
@@ -421,7 +422,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         key_unlock();
 
         // The critical section for readers closes within this function
-        save_controlmsg(key, tmp_msg, msg_length - 3);
+        save_controlmsg(key, tmp_msg, msg_length - 3, wdb_sock);
         rem_inc_ctrl_msg();
 
         OS_FreeKey(key);

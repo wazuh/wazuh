@@ -30,6 +30,7 @@ stages:
     response:
       status_code: 200
       json: &agent_create_response
+        error: !anyint
         data:
           id: !anystr
           key: !anystr
@@ -430,6 +431,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           id: !anystr
           key: !anystr

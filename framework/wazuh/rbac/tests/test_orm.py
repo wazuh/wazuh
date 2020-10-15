@@ -243,13 +243,18 @@ def test_delete_rules(db_setup):
     """Check delete rules in the database"""
     with db_setup.RulesManager() as rum:
         rum.add_rule(name='toDelete', rule={'Unittest': 'Rule'})
+        rum.add_rule(name='toDelete2', rule={'Unittest': 'Rule2'})
         len_rules = len(rum.get_rules())
         assert rum.delete_rule_by_name(rule_name='toDelete')
         assert len_rules == len(rum.get_rules()) + 1
 
-        # Admin rules
-        for admin_rule in {admin_rule for r in db_setup.required_rules_for_role.values() for admin_rule in r}:
-            assert rum.delete_rule(admin_rule) == db_setup.SecurityError.ADMIN_RESOURCES
+        for rule in rum.get_rules():
+            # Admin rules
+            if rule.id < db_setup.max_id_reserved:
+                assert rum.delete_rule(rule.id) == db_setup.SecurityError.ADMIN_RESOURCES
+            # Other rules
+            else:
+                assert rum.delete_rule(rule.id)
 
 
 def test_delete_all_security_rules(db_setup):
@@ -257,7 +262,7 @@ def test_delete_all_security_rules(db_setup):
     with db_setup.RulesManager() as rum:
         assert rum.delete_all_rules()
         # Only admin rules are left
-        assert {rule.id for rule in rum.get_rules()} == db_setup.required_rules
+        assert all(rule.id < db_setup.max_id_reserved for rule in rum.get_rules())
         rum.add_rule(name='toDelete', rule={'Unittest': 'Rule'})
         rum.add_rule(name='toDelete1', rule={'Unittest1': 'Rule'})
         len_rules = len(rum.get_rules())

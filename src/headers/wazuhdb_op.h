@@ -30,4 +30,12 @@ int wdbc_query_ex(int *sock, const char *query, char *response, const int len);
 int wdbc_parse_result(char *result, char **payload);
 cJSON * wdbc_query_parse_json(int *sock, const char *query, char *response, const int len);
 
+/**
+ * @brief Closes a socket connection if exists
+ *
+ * @param[in] sock A Wazuh DB socket connection.
+ * @return real close output if sock is connected, 0 otherwise
+ */
+int wdbc_close(int* sock);
+
 #endif

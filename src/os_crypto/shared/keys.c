@@ -320,7 +320,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
         /* Clear one last time before leaving */
         __memclear(id, name, ip, key, KEYSIZE + 1);
     }
-    
+
     /* Check if there are any agents available */
     if (keys->keysize == 0) {
         if (pass_empty_keyfile) {
@@ -659,7 +659,9 @@ int OS_DeleteSocket(keystore * keys, int sock) {
     snprintf(strsock, sizeof(strsock), "%d", sock);
 
     if (entry = OSHash_Delete_ex(keys->keyhash_sock, strsock), entry) {
-        entry->sock = -1;
+        if (sock == entry->sock) {
+            entry->sock = -1;
+        }
         return 0;
     } else {
         return -1;
