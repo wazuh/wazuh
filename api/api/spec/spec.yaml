@@ -5011,7 +5011,7 @@ components:
 tags:
   - name: active-response
     description: "Agents Active Response"
-  - name: agents
+  - name: Agents
     description: "Agents management related operations"
   - name: ciscat
     description: "Retrieve information from CIS-CAT scans"
@@ -5125,7 +5125,7 @@ paths:
   /agents:
     delete:
       tags:
-      - agents
+      - Agents
       summary: "Delete agents"
       description: "Delete all agents or a list of them with optional criteria based on the status or time of the last
       connection"
@@ -5182,7 +5182,7 @@ paths:
     get:
       tags:
       - agents
-      summary: "Get agents"
+      summary: "List agents"
       description: "Return information about all available agents or a list of them"
       operationId: api.controllers.agents_controller.get_agents
       x-rbac-actions:
@@ -5485,7 +5485,7 @@ paths:
     get:
       tags:
         - agents
-      summary: "Get agent configuration sync status"
+      summary: "Get configuration sync status"
       description: "Return whether the agent configuration has been synchronized with the agent or not. This can be
       useful to check after updating a group configuration"
       operationId: api.controllers.agents_controller.get_sync_agent
@@ -5532,7 +5532,7 @@ paths:
     delete:
       tags:
         - agents
-      summary: "Remove an agent from a specific group"
+      summary: "Remove agent from group"
       description: "Remove an agent from an specified group. If the agent has multigroups, it will preserve all
       previous groups except the last one"
       operationId: api.controllers.agents_controller.delete_single_agent_single_group
@@ -5570,7 +5570,7 @@ paths:
     put:
       tags:
         - agents
-      summary: "Assign an agent to a group"
+      summary: "Assign agent to group"
       description: "Assign an agent to a specified group"
       operationId: api.controllers.agents_controller.put_agent_single_group
       x-rbac-actions:
@@ -5615,7 +5615,7 @@ paths:
     get:
       tags:
         - agents
-      summary: "Get agent key"
+      summary: "Get key"
       description: "Return the key of an agent"
       operationId: api.controllers.agents_controller.get_agent_key
       x-rbac-actions:
@@ -5662,7 +5662,7 @@ paths:
     put:
       tags:
         - agents
-      summary: "Restart an agent"
+      summary: "Restart agent"
       description: "Restart the specified agent"
       operationId: api.controllers.agents_controller.restart_agent
       x-rbac-actions:
@@ -5707,7 +5707,7 @@ paths:
     put:
       tags:
         - agents
-      summary: "Upgrade agent using online repository"
+      summary: "Upgrade agent"
       description: "Upgrade the agent using a WPK file from online repository"
       operationId: api.controllers.agents_controller.put_upgrade_agent
       x-rbac-actions:
@@ -5745,7 +5745,7 @@ paths:
     put:
       tags:
         - agents
-      summary: "Upgrade agent using a custom file"
+      summary: "Upgrade agent custom"
       description: "Upgrade the agent using a local WPK file"
       operationId: api.controllers.agents_controller.put_upgrade_custom_agent
       x-rbac-actions:
@@ -5781,7 +5781,7 @@ paths:
     get:
       tags:
         - agents
-      summary: "Get upgrade result from agent"
+      summary: "Get upgrade result"
       description: "Return the upgrade result after updating an agent"
       operationId: api.controllers.agents_controller.get_agent_upgrade
       x-rbac-actions:
@@ -5821,7 +5821,7 @@ paths:
     delete:
       tags:
         - agents
-      summary: "Remove agents assignment from a single group"
+      summary: "Remove agents from group"
       description: "Remove all agents assignment or a list of them from the specified group"
       operationId: api.controllers.agents_controller.delete_multiple_agent_single_group
       x-rbac-actions:
@@ -5873,7 +5873,7 @@ paths:
     put:
       tags:
         - agents
-      summary: "Assign agents to a single group"
+      summary: "Assign agents to group"
       description: "Assign all agents or a list of them to the specified group"
       operationId: api.controllers.agents_controller.put_multiple_agent_single_group
       x-rbac-actions:
@@ -5937,7 +5937,7 @@ paths:
     put:
       tags:
         - agents
-      summary: 'Restart all agents in a group'
+      summary: 'Restart agents in group'
       description: 'Restart all agents which belong to a given group'
       operationId: api.controllers.agents_controller.restart_agents_by_group
       x-rbac-actions:
