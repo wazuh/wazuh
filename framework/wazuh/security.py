@@ -92,8 +92,9 @@ def get_users(user_ids: list = None, offset: int = 0, limit: int = common.databa
     affected_items = list()
     with AuthenticationManager() as auth:
         for user_id in user_ids:
-            user = auth.get_user_id(int(user_id))
-            affected_items.append(user) if user else result.add_failed_item(id_=int(user_id), error=WazuhError(5001))
+            user_id = int(user_id)
+            user = auth.get_user_id(user_id)
+            affected_items.append(user) if user else result.add_failed_item(id_=user_id, error=WazuhError(5001))
 
     data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,

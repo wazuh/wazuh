@@ -399,8 +399,10 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
                 except Exception:
                     if add_denied:
                         denied = _get_denied(original_kwargs, allow, target_param, res_id, resources=resources)
-                        raise WazuhPermissionError(4000, extra_message=f'Resource type: {res_id}', ids=denied,
-                                                   title="Permission Denied")
+                        raise WazuhPermissionError(4000,
+                                                   extra_message=f'Resource type: '
+                                                                 f'{int(res_id) if res_id.isdigit() else res_id}',
+                                                   ids=denied, title="Permission Denied")
                     else:
                         if target_param != '*':
                             kwargs[target_param] = list()
