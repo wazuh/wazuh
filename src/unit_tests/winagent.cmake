@@ -10,6 +10,8 @@ endif()
 # Setup the compiling toolchain
 # Find the wazuh shared library
 find_library(WAZUHEXT NAMES wazuhext HINTS "${SRC_FOLDER}")
+set(uname "Win32")
+
 if(NOT WAZUHEXT)
   message(FATAL_ERROR "WAZUHEXT is set to '${WAZUHEXT}', but did not find any file matching ${SRC_FOLDER}/${CMAKE_FIND_LIBRARY_PREFIXES}wazuhext${CMAKE_FIND_LIBRARY_SUFFIXES}")
   message(FATAL_ERROR "libwazuhext not found in ${SRC_FOLDER} Aborting...")

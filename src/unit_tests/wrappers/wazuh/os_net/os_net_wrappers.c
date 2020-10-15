@@ -21,6 +21,14 @@ int __wrap_OS_ConnectUnixDomain(const char *path, int type, int max_msg_size) {
     return mock();
 }
 
+int __wrap_OS_SendUDPbySize(int sock, int size, const char *msg) {
+    check_expected(sock);
+    check_expected(size);
+    check_expected(msg);
+
+    return mock();
+}
+
 int __wrap_OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
     check_expected(sock);
     check_expected(size);

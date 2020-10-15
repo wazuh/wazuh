@@ -11,27 +11,27 @@
 #  root privileges
 # http://wazuh-documentation.readthedocs.io/en/latest/wazuh_ruleset.html
 
+import contextlib
 import os
 import sys
-import requests
-import contextlib
-from glob import glob
-from zipfile import ZipFile
-from getopt import GetoptError, getopt
-from signal import signal, SIGINT
-from datetime import datetime, date
-from pwd import getpwnam
-from grp import getgrnam
-from shutil import copyfile, copytree, rmtree
-from re import sub, search
+from datetime import datetime
 from filecmp import cmp
-from time import time
+from getopt import GetoptError, getopt
+from glob import glob
+from grp import getgrnam
 from json import dumps
+from pwd import getpwnam
+from re import sub, search
+from shutil import copyfile, copytree, rmtree
+from signal import signal, SIGINT
+from time import time
+from zipfile import ZipFile
+
+import requests
 
 # Set framework path
-from wazuh import Wazuh
-from wazuh import common
-from wazuh.cluster.cluster import read_config
+from wazuh.core import common
+from wazuh.core.cluster.utils import read_config
 
 
 class RulesetLogger:
@@ -199,13 +199,13 @@ def get_branch():
 
         current_branch = lines[0].split('/')[-1].strip()
     except:
-        current_branch = 'stable'  # standalone script
+        current_branch = get_version_major_minor()  # standalone script
 
     return current_branch
 
 
 def get_ossec_version():
-    init_file = "{0}/etc/ossec-init.conf".format(ossec_path)
+    init_file = "{0}/etc/ossec-init.conf".format(common.ossec_path)
 
     try:
         ossec_v = "old"
@@ -229,6 +229,12 @@ def get_ossec_version():
         return is_wazuh, ossec_v
     except:
         exit(2, "Reading '{0}'.".format(init_file))
+
+
+def get_version_major_minor():
+    _, version = get_ossec_version()
+    parts = version[2:-1].split('.')
+    return '.'.join(parts[:-1])
 
 
 def get_ruleset_version():
@@ -259,7 +265,7 @@ def get_new_ruleset(source, url, branch_name=None):
 
         ruleset_zip = "{0}/ruleset.zip".format(update_downloads)
 
-        logger.debug("Downloading ruleset from {0}.".format(url_ruleset,))
+        logger.debug("Downloading ruleset from {0}.".format(url_ruleset, ))
 
         # Download
         try:
@@ -307,8 +313,7 @@ def get_new_ruleset(source, url, branch_name=None):
         else:
             copy("{0}/update_ruleset.py".format(update_ruleset), ossec_update_script, 0o750)
     except Exception as e:
-        exit(2,"Upgrade aborted: Update ruleset not found.")
-
+        exit(2, "Upgrade aborted: Update ruleset not found.")
 
     return get_ruleset_version()
 
@@ -360,7 +365,6 @@ def get_ruleset_to_update(no_checks=False):
 
 
 def upgrade_ruleset(ruleset):
-
     rm(update_backups)
     mkdir(update_backups)
     mkdir(update_backups_rules)
@@ -396,7 +400,6 @@ def upgrade_ruleset(ruleset):
             if os.path.exists(dst_file):
                 copy(dst_file, dst_backup, perm)
             copy(src_file, dst_file, perm)
-
 
     msg = ""
     for type_r in deprecated.keys():
@@ -476,28 +479,27 @@ def main():
     else:
         # version temporary backup
 
-        copy(ossec_ruleset_version_path, ossec_ruleset_version_path+'-old')
+        copy(ossec_ruleset_version_path, ossec_ruleset_version_path + '-old')
         try:
-            copy(ossec_update_script, ossec_update_script+'-old', 0o750)
+            copy(ossec_update_script, ossec_update_script + '-old', 0o750)
         except:
-            copy(ossec_update_script + ".py", ossec_update_script+'-old', 0o750)
+            copy(ossec_update_script + ".py", ossec_update_script + '-old', 0o750)
         # Get ruleset
         status['old_version'] = get_ruleset_version()
         status['new_version'] = get_new_ruleset(arguments['source'], arguments['url'], arguments['branch-name'])
-        #Compare major
-        old_version = ossec_version.replace('"','')
+        # Compare major
+        old_version = ossec_version.replace('"', '')
         if not same_major_minor(old_version, status['new_version']):
-            copy(ossec_ruleset_version_path+'-old', ossec_ruleset_version_path)
-            copy(ossec_update_script+'-old', ossec_update_script, 0o750)
-            os.remove(ossec_update_script+'-old')
-            os.remove(ossec_ruleset_version_path+'-old')
-            exit(2,"Upgrade aborted: Unexpected version in the new ruleset. " + \
-                "Expected version {0}. Found version {1}".format(old_version[:-1]+'x',
-                status['new_version']))
+            copy(ossec_ruleset_version_path + '-old', ossec_ruleset_version_path)
+            copy(ossec_update_script + '-old', ossec_update_script, 0o750)
+            os.remove(ossec_update_script + '-old')
+            os.remove(ossec_ruleset_version_path + '-old')
+            exit(2, "Upgrade aborted: Unexpected version in the new ruleset. " + \
+                 "Expected version {0}. Found version {1}".format(old_version[:-1] + 'x',
+                                                                  status['new_version']))
         # remove temporary files
-        os.remove(ossec_update_script+'-old')
-        os.remove(ossec_ruleset_version_path+'-old')
-
+        os.remove(ossec_update_script + '-old')
+        os.remove(ossec_ruleset_version_path + '-old')
 
         ruleset_to_update, status['restart_required'] = get_ruleset_to_update(arguments['force'])
 
@@ -506,7 +508,8 @@ def main():
             status['msg'] = "\nYou already have the latest version of ruleset."
         else:
             upgrade_ruleset(ruleset_to_update)
-            status['msg'] = "\nRuleset {0} updated to {1} successfully".format(status['old_version'], status['new_version'])
+            status['msg'] = "\nRuleset {0} updated to {1} successfully".format(status['old_version'],
+                                                                               status['new_version'])
 
         rm(update_downloads)
 
@@ -540,6 +543,7 @@ def main():
     if arguments['json']:
         print(dumps({'error': 0, 'data': status}))
 
+
 def same_major_minor(old_version, new_version):
     old_major, old_minor, old_patch = old_version.split(".")
     new_major, new_minor, new_patch = new_version.split(".")
@@ -550,6 +554,7 @@ def same_major_minor(old_version, new_version):
         return True
     else:
         return False
+
 
 def usage():
     branch = get_branch()  # 'stable' 'master' 'development'
@@ -575,7 +580,7 @@ def usage():
     \t-d, --debug         Debug mode.
     \t-u, --url           URL of ruleset zip (default: https://github.com/wazuh/wazuh-ruleset/archive/$BRANCH-NAME.zip)
     \t                    It requires -n parameter.
-    \t-n, --branch-name   Branch name (default: stable)
+    \t-n, --branch-name   Branch name (default: {0})
     """.format(branch)
     print(msg)
 
@@ -587,7 +592,8 @@ if __name__ == "__main__":
         executable_name = "update_ruleset"
         master_ip = cluster_config['nodes'][0]
         print("Wazuh is running in cluster mode: {EXECUTABLE_NAME} is not available in worker nodes. "
-            "Please, try again in the master node: {MASTER_IP}".format(EXECUTABLE_NAME=executable_name, MASTER_IP=master_ip))
+              "Please, try again in the master node: {MASTER_IP}".format(EXECUTABLE_NAME=executable_name,
+                                                                         MASTER_IP=master_ip))
         sys.exit(1)
 
     if os.geteuid() != 0:
@@ -601,11 +607,14 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # Arguments
-    arguments = {'source': 'download', 'restart': 'ask', 'backups': False, 'force': False, 'debug': False, 'json': False, 'branch-name': False, 'url': False}
+    arguments = {'source': 'download', 'restart': 'ask', 'backups': False, 'force': False, 'debug': False,
+                 'json': False, 'branch-name': False, 'url': False}
     restart_args = 0
 
     try:
-        opts, args = getopt(sys.argv[1:], "s:o:n:u:brRfdjh", ["backups", "source=", "ossec_path=", "restart", "no-restart", "force-update", "debug", "json", "help", "branch-name=", "url="])
+        opts, args = getopt(sys.argv[1:], "s:o:n:u:brRfdjh",
+                            ["backups", "source=", "ossec_path=", "restart", "no-restart", "force-update", "debug",
+                             "json", "help", "branch-name=", "url="])
         if len(opts) > 6:
             print("Incorrect number of arguments.\nTry './update_ruleset --help' for more information.")
             sys.exit(1)
@@ -684,12 +693,17 @@ if __name__ == "__main__":
     update_backups_rules = "{0}/rules".format(update_backups)
     update_backups_rootchecks = "{0}/rootchecks".format(update_backups)
 
-    deprecated = {'rules': ['0355-amazon-ec2_rules.xml', '0370-amazon-iam_rules.xml', '0465-amazon-s3_rules.xml', '0470-suricata_rules.xml', '0520-vulnerability-detector.xml', '0565-ms_ipsec_rules_json.xml'], 'decoders': ['0020-amazon_decoders.xml', '0005-json_decoders.xml'] }
+    deprecated = {'rules': ['0355-amazon-ec2_rules.xml', '0370-amazon-iam_rules.xml', '0465-amazon-s3_rules.xml',
+                            '0470-suricata_rules.xml', '0520-vulnerability-detector.xml',
+                            '0565-ms_ipsec_rules_json.xml'],
+                  'decoders': ['0020-amazon_decoders.xml', '0005-json_decoders.xml']}
 
     if arguments['json']:
-        logger = RulesetLogger(tag="Wazuh-Ruleset", filename=ossec_ruleset_log, flag=RulesetLogger.O_FILE, debug=arguments['debug'])
+        logger = RulesetLogger(tag="Wazuh-Ruleset", filename=ossec_ruleset_log, flag=RulesetLogger.O_FILE,
+                               debug=arguments['debug'])
     else:
-        logger = RulesetLogger(tag="Wazuh-Ruleset", filename=ossec_ruleset_log, flag=RulesetLogger.O_ALL, debug=arguments['debug'])
+        logger = RulesetLogger(tag="Wazuh-Ruleset", filename=ossec_ruleset_log, flag=RulesetLogger.O_ALL,
+                               debug=arguments['debug'])
 
     logger.debug("Arguments: {0}".format(arguments))
 

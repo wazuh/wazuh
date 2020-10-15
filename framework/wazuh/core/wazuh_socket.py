@@ -228,7 +228,9 @@ class WazuhSocketJSON(WazuhAsyncSocket):
 
 
 daemons = {
-    "authd": {"protocol": "TCP", "path": common.AUTHD_SOCKET, "header_format": "<I", "size": 4}}
+    "authd": {"protocol": "TCP", "path": common.AUTHD_SOCKET, "header_format": "<I", "size": 4},
+    "wazuh-db": {"protocol": "TCP", "path": common.wdb_socket_path, "header_format": "<I", "size": 4}
+}
 
 
 async def wazuh_sendasync(daemon_name, message=None):
@@ -261,10 +263,12 @@ async def wazuh_sendsync(daemon_name=None, message=None):
         Message in JSON format to be sent to the daemon's socket.
     """
     try:
-        sock = OssecSocketJSON(daemons[daemon_name]['path'])
-        sock.send(msg=message, header_format=daemons[daemon_name]['header_format'])
+        sock = OssecSocket(daemons[daemon_name]['path'])
+        if isinstance(message, dict):
+            message = dumps(message)
+        sock.send(msg_bytes=message.encode(), header_format=daemons[daemon_name]['header_format'])
         data = sock.receive(header_format=daemons[daemon_name]['header_format'],
-                            header_size=daemons[daemon_name]['size'], raw=True)
+                            header_size=daemons[daemon_name]['size']).decode()
         sock.close()
     except WazuhException as e:
         raise e

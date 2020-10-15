@@ -26,6 +26,12 @@
 #include <ifaddrs.h>
 #include <string.h>
 
+#ifdef WAZUH_UNIT_TESTING
+#define STATIC
+#include "unit_tests/wrappers/macos/libc/stdio_wrappers.h"
+#else
+#define STATIC static
+#endif
 
 #ifdef __MACH__
 
@@ -56,7 +62,8 @@ hw_info *get_system_bsd();    // Get system information
 #if defined(__MACH__)
 OSHash *gateways;
 
-char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_id);
+STATIC char *get_port_state();
+STATIC char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_id);
 
 // Get installed programs inventory
 
