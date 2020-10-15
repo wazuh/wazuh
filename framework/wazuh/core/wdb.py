@@ -12,6 +12,7 @@ import struct
 from typing import List
 
 from wazuh.core import common
+from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE
 from wazuh.core.exception import WazuhInternalError, WazuhError
 
 DATE_FORMAT = re.compile(r'\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}')
@@ -22,7 +23,7 @@ class WazuhDBConnection:
     Represents a connection to the wdb socket
     """
 
-    def __init__(self, request_slice=20, max_size=6144):
+    def __init__(self, request_slice=500, max_size=6144):
         """
         Constructor
         """
@@ -67,9 +68,9 @@ class WazuhDBConnection:
             if not check:
                 raise WazuhError(2004, error_text)
 
-    def _send(self, msg):
+    def _send(self, msg, raw=False):
         """
-        Sends a message to the wdb socket
+        Send a message to the wdb socket
         """
         msg = struct.pack('<I', len(msg)) + msg.encode()
         self.__conn.send(msg)
@@ -78,12 +79,27 @@ class WazuhDBConnection:
         data = self.__conn.recv(4)
         data_size = struct.unpack('<I', data[0:4])[0]
 
-        data = self.__conn.recv(data_size).decode(encoding='utf-8', errors='ignore').split(" ", 1)
+        data = self._recvall(data_size).decode(encoding='utf-8', errors='ignore').split(" ", 1)
+
+        # Max size socket buffer is 64KB
+        if data_size >= MAX_SOCKET_BUFFER_SIZE:
+            raise ValueError
 
         if data[0] == "err":
             raise WazuhError(2003, data[1])
+        elif raw:
+            return data
         else:
             return json.loads(data[1], object_hook=WazuhDBConnection.json_decoder)
+
+    def _recvall(self, data_size, buffer_size=4096):
+        data = bytearray()
+        while len(data) < data_size:
+            packet = self.__conn.recv(buffer_size)
+            if not packet:
+                return data
+            data.extend(packet)
+        return data
 
     @staticmethod
     def json_decoder(dct):
@@ -134,6 +150,39 @@ class WazuhDBConnection:
         """
         return self._send(f"wazuhdb remove {' '.join(agents_id)}")
 
+    def run_wdb_command(self, command):
+        """Run command in wdb and return list of retrieved information.
+
+        The response of wdb socket contains 2 elements, a STATUS and a PAYLOAD.
+        State value can be:
+            ok {payload}    -> Successful query with no pending data
+            due {payload}   -> Successful query with pending data
+            err {message}   -> Unsuccessful query
+
+        Parameters
+        ----------
+        command : str
+            Command to be executed inside wazuh-db
+
+        Returns
+        -------
+        response : list
+            List with JSON results
+        """
+        response = []
+
+        while True:
+            status, payload = self._send(command, raw=True)
+            if status == 'err':
+                raise WazuhInternalError(2007, extra_message=payload)
+            if payload != '[]':
+                response.append(payload)
+            # Exit if there are no items left to return
+            if status == 'ok':
+                break
+
+        return response
+
     def execute(self, query, count=False, delete=False, update=False):
         """
         Sends a sql query to wdb socket
@@ -178,7 +227,7 @@ class WazuhDBConnection:
             offset = int(re.compile(r".* offset (\d+)").match(query_lower).group(1))
             query_lower = query_lower.replace(" offset {}".format(offset), "")
 
-        if not re.search(r'.?count\(.*\).?', query_without_where):
+        if not re.search(r'.?select count\([\w \*]+\)( as [^,]+)? from', query_without_where):
             lim = 0
             if 'limit' in query_lower:
                 lim = int(re.compile(r".* limit (\d+)").match(query_lower).group(1))
@@ -187,6 +236,13 @@ class WazuhDBConnection:
             regex = re.compile(r"\w+(?: \d*|)? sql select ([A-Z a-z0-9,*_` \.\-%\(\):\']+) from")
             select = regex.match(query_lower).group(1)
             countq = query_lower.replace(select, "count(*)", 1)
+            gb_regex = re.compile(r"(group by [^\s]+)")
+            try:
+                group_by = gb_regex.search(query_lower)
+                if group_by:
+                    countq = countq.replace(group_by.group(1), '')
+            except IndexError:
+                pass
             try:
                 total = list(self._send(countq)[0].values())[0]
             except IndexError:
@@ -201,6 +257,8 @@ class WazuhDBConnection:
                     send_request_to_wdb(query_lower, step, off, response)
             except ValueError as e:
                 raise WazuhError(2006, str(e))
+            except WazuhError as e:
+                raise e
             except Exception as e:
                 raise WazuhInternalError(2007, str(e))
 
