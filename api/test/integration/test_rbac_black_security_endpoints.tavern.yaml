@@ -172,10 +172,10 @@ stages:
                 code: 4000
                 remediation: !anystr
               id:
-                - '100'
-                - '101'
-                - '103'
-                - '105'
+                - 100
+                - 101
+                - 103
+                - 105
 
 ---
 test_name: GET ROLES RBAC
@@ -315,7 +315,7 @@ stages:
                 code: 4007
                 remediation: !anystr
               id:
-                - '999'
+                - 999
           total_affected_items: 0
           total_failed_items: 1
 
@@ -339,7 +339,7 @@ stages:
                 code: 4007
                 remediation: !anystr
               id:
-                - '999'
+                - 999
           total_affected_items: 2
           total_failed_items: 1
 
@@ -482,7 +482,7 @@ stages:
                 code: 4008
                 remediation: !anything
               id:
-                - '1'
+                - 1
           total_affected_items: 0
           total_failed_items: 1
 
@@ -556,7 +556,7 @@ stages:
                 code: 4008
                 remediation: !anything
               id:
-                - '1'
+                - 1
           total_affected_items: 0
           total_failed_items: 1
 
@@ -655,16 +655,16 @@ stages:
             - error:
                 code: 4000
               id:
-                - '102'
-                - '103'
+                - 102
+                - 103
             - error:
                 code: 4002
               id:
-                - '106'
+                - 106
             - error:
                 code: 4017
               id:
-                - '101'
+                - 101
 
   - name: Create one specified link between one user and a list of roles (Allow)
     request:
@@ -691,7 +691,7 @@ stages:
             - error:
                 code: 4017
               id:
-                - '104'
+                - 104
           total_affected_items: 1
           total_failed_items: 1
 
@@ -787,9 +787,9 @@ stages:
             - error:
                 code: 4016
               id:
-                - '5'
-                - '100'
-                - '101'
+                - 5
+                - 100
+                - 101
           total_affected_items: 3
           total_failed_items: 3
 
@@ -825,7 +825,7 @@ stages:
             - error:
                 code: 4000
               id:
-                - '104'
+                - 104
 
 ---
 test_name: DELETE LINK ROLE-POLICIES RBAC
@@ -858,7 +858,7 @@ stages:
             - error:
                 code: 4010
               id:
-                - '104'
+                - 104
 
 ---
 test_name: CREATE LINK ROLE-RULES RBAC
@@ -889,7 +889,7 @@ stages:
           total_failed_items: 1
           failed_items:
             - id:
-                - '104'
+                - 104
               error:
                 code: 4000
 
@@ -1038,15 +1038,15 @@ stages:
             - error:
                 code: 4000
               id:
-                - "105"
+                - 105
             - error:
                 code: 5001
               id:
-                - "100"
+                - 100
             - error:
                 code: 5004
               id:
-                - "1"
+                - 1
           total_affected_items: 0
           total_failed_items: 3
 
