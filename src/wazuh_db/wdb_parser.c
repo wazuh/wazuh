@@ -4079,36 +4079,52 @@ int wdb_parse_rootcheck(wdb_t * wdb, char * input, char * output) {
     curr = input;
     *next++ = '\0';
 
-    rk_event_t event;
-    event.date_last = strtol(curr, NULL, 10);
-    event.date_first = event.date_last;
-    event.log = next;
+    if (strcmp(curr, "delete") == 0) {
+        result = wdb_rootcheck_delete(wdb);
+        if (result >= 0) {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+            return 0;
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "err Error deleting rootcheck PM tuple");
+            return -1;
+        }
+    } else if (strcmp(curr, "save") == 0) {
+        rk_event_t event;
+        char *ptr = wstr_chr(next, ' ');
+        *ptr++ = '\0';
 
-    if (event.date_last == LONG_MAX || event.date_last < 0) {
-        mdebug2("DB(%s) Invalid rootcheck date timestamp: %li", wdb->id, event.date_last);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid rootcheck query syntax, near '%.32s'", input);
-        return -1;
-    }
+        event.date_last = strtol(next, NULL, 10);
+        event.date_first = event.date_last;
+        event.log = ptr;
 
-    switch (wdb_update_pm(wdb, &event)) {
-        case -1:
-            merror("DB(%s) Error updating rootcheck PM tuple on SQLite database", wdb->id);
-            snprintf(output, OS_MAXSTR + 1, "err Error updating rootcheck PM tuple");
-            result = -1;
-            break;
-        case 0:
-            if (wdb_insert_pm(wdb, &event) < 0) {
-                merror("DB(%s) Error inserting rootcheck PM tuple on SQLite database for agent", wdb->id);
+        
+
+        if (event.date_last == LONG_MAX || event.date_last < 0) {
+            mdebug2("DB(%s) Invalid rootcheck date timestamp: %li", wdb->id, event.date_last);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid rootcheck query syntax, near '%.32s'", input);
+            return -1;
+        }
+
+        switch (wdb_update_pm(wdb, &event)) {
+            case -1:
+                merror("DB(%s) Error updating rootcheck PM tuple on SQLite database", wdb->id);
                 snprintf(output, OS_MAXSTR + 1, "err Error updating rootcheck PM tuple");
                 result = -1;
-            }
-            break;
-        default: 
-            break;
-    }
+                break;
+            case 0:
+                if (wdb_insert_pm(wdb, &event) < 0) {
+                    merror("DB(%s) Error inserting rootcheck PM tuple on SQLite database for agent", wdb->id);
+                    snprintf(output, OS_MAXSTR + 1, "err Error updating rootcheck PM tuple");
+                    result = -1;
+                }
+                break;
+            default: 
+                break;
+        }
 
-    if (!result) {
-        snprintf(output, OS_MAXSTR + 1, "ok");
+        if (!result) {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
     }
     return result;
 }

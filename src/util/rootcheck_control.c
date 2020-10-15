@@ -22,8 +22,9 @@ static void helpmsg(void) __attribute__((noreturn));
 
 static void helpmsg()
 {
-    printf("\n%s %s: Manages the policy and auditing database.\n",
+    printf("\n%s %s: This binary it's deprecated, use API calls related below instead\n",
            __ossec_name, ARGV0);
+    printf("\nManages the policy and auditing database.\n");
     printf("Available options:\n\n");
     printf("\t-h          This help message.\n");
     printf("\t-V          Print version.\n");

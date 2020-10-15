@@ -94,6 +94,21 @@ int wdb_delete_pm(int id) {
     return result;
 }
 
+int wdb_rootcheck_delete(wdb_t * wdb) {
+    sqlite3_stmt *stmt;
+    int result;
+
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_ROOTCHECK_DELETE_PM)) {
+        merror("DB(%s) Cannot cache statement", wdb->id);
+        return -1;
+    }
+    stmt = wdb->stmt[WDB_STMT_ROOTCHECK_DELETE_PM];
+    
+    result = wdb_step(stmt) == SQLITE_DONE ? sqlite3_changes(wdb->db) : -1;
+    return result;
+}
+
 /* Delete PM events of all agents */
 void wdb_delete_pm_all() {
     int *agents = wdb_get_all_agents(FALSE);

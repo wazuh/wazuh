@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "rootcheck_op.h"
+#include "wazuh_db/wdb.h"
 
 /* Get rootcheck title from log */
 char* rk_get_title(const char *log) {
@@ -105,4 +106,37 @@ int rk_decode_event(char *buffer, rk_event_t *event) {
         event->log = buffer;
 
     return 0;
+}
+
+int send_rootcheck_log(const char* agent_id, long int date, char* log, char* response) {
+    char wazuhdb_query[OS_SIZE_6144];
+    int db_result;
+    int socket = -1;
+
+    snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s rootcheck save %li %s", agent_id, date, log);
+    db_result = wdbc_query_ex(&socket, wazuhdb_query, response, OS_SIZE_6144);
+    close(socket);
+
+    if (db_result == -2) {
+        merror("Bad load query: '%s'.", wazuhdb_query);
+    }
+
+    return db_result;
+}
+
+
+int send_rootcheck_delete(const char* agent_id, char* response) {
+    char wazuhdb_query[OS_SIZE_6144];
+    int db_result;
+    int socket = -1;
+
+    snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s rootcheck delete", agent_id);
+    db_result = wdbc_query_ex(&socket, wazuhdb_query, response, OS_SIZE_6144);
+    close(socket);
+
+    if (db_result == -2) {
+        merror("Bad load query: '%s'.", wazuhdb_query);
+    }
+
+    return db_result;
 }

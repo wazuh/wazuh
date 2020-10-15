@@ -52,21 +52,15 @@ void RootcheckInit()
  */
 int DecodeRootcheck(Eventinfo *lf)
 {
-    char *wazuhdb_query = NULL;
-    char *response = NULL;
+    char response[OS_SIZE_6144] = {'\0'};
     int db_result = 0;
-    int socket = -1;
     int return_value = 0;
 
-    
-    os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
-    snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s rootcheck %li %s", lf->agent_id, (long int)lf->time.tv_sec, lf->log);
-    os_calloc(OS_SIZE_6144, sizeof(char), response);
-    db_result = wdbc_query_ex(&socket, wazuhdb_query, response, OS_SIZE_6144);
+    db_result = send_rootcheck_log(lf->agent_id, (long int)lf->time.tv_sec, lf->log, response);
+
 
     switch (db_result) {
     case -2:
-        merror("Rootcheck decoder: Bad load query: '%s'.", wazuhdb_query);
         // Fallthrough
     case -1:
         os_free(lf->data);
@@ -76,9 +70,6 @@ int DecodeRootcheck(Eventinfo *lf)
         mdebug1("Rootcheck decoder response: %s", response);
         break;
     }
-    
-    os_free(response);
-    os_free(wazuhdb_query);
 
     if (!return_value) {
         lf->decoder_info = rootcheck_dec;

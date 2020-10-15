@@ -126,6 +126,7 @@ typedef enum wdb_stmt {
     WDB_STMT_MITRE_NAME_GET,
     WDB_STMT_ROOTCHECK_INSERT_PM,
     WDB_STMT_ROOTCHECK_UPDATE_PM,
+    WDB_STMT_ROOTCHECK_DELETE_PM,
     WDB_STMT_GLOBAL_INSERT_AGENT,
     WDB_STMT_GLOBAL_UPDATE_AGENT_NAME,
     WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION,
@@ -742,7 +743,10 @@ void wdb_delete_fim_all();
 /* Delete PM events of an agent. Returns number of affected rows on success or -1 on error. */
 int wdb_delete_pm(int id);
 
-/* Delete PM events of all agents */
+/* Delete PM events of an agent. Returns number of affected rows on success or -1 on error. */
+int wdb_rootcheck_delete(wdb_t * wdb);
+
+/* Deletes PM events of all agents */
 void wdb_delete_pm_all();
 
 /* Rebuild database. Returns 0 on success or -1 on error. */
