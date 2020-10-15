@@ -11,12 +11,13 @@ from shutil import chown
 from time import time
 
 import yaml
-from sqlalchemy import create_engine, UniqueConstraint, Column, DateTime, String, Integer, ForeignKey, Boolean
+from sqlalchemy import create_engine, UniqueConstraint, Column, DateTime, String, Integer, ForeignKey, Boolean, or_
 from sqlalchemy import desc
 from sqlalchemy.dialects.sqlite import TEXT
+from sqlalchemy.event import listens_for
 from sqlalchemy.exc import IntegrityError, InvalidRequestError
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship, backref
+from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.orm.exc import UnmappedInstanceError
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -30,7 +31,7 @@ max_id_reserved = 99
 _auth_db_file = os.path.join(SECURITY_PATH, 'rbac.db')
 _engine = create_engine('sqlite:///' + _auth_db_file, echo=False)
 _Base = declarative_base()
-_Session = sessionmaker(bind=_engine)
+_Session = sessionmaker(bind=_engine)()
 
 # Required rules for role
 # Key: Role - Value: Rules
@@ -75,6 +76,18 @@ class SecurityError(IntEnum):
     RELATIONSHIP_ERROR = -8
 
 
+@listens_for(_Session, 'after_flush')
+def delete_orphans(session, instances):
+    if session.deleted:
+        query = session.query(UserRoles).filter(or_(UserRoles.user_id.is_(None), UserRoles.role_id.is_(None))).all()
+        query.extend(session.query(RolesRules).filter(or_(RolesRules.role_id.is_(None),
+                                                          RolesRules.rule_id.is_(None))).all())
+        query.extend(session.query(RolesPolicies).filter(or_(RolesPolicies.role_id.is_(None),
+                                                             RolesPolicies.policy_id.is_(None))).all())
+        for orphan in query:
+            session.delete(orphan)
+
+
 class RolesRules(_Base):
     """
     Relational table between Roles and Policies, in this table are stored the relationship between the both entities
@@ -95,8 +108,8 @@ class RolesRules(_Base):
     __table_args__ = (UniqueConstraint('role_id', 'rule_id', name='role_rule'),
                       )
 
-    roles = relationship("Roles", backref="rules_associations", cascade="all,delete")
-    rules = relationship("Rules", backref="roles_associations", cascade="all,delete")
+    roles = relationship("Roles", backref="rules_associations")
+    rules = relationship("Rules", backref="roles_associations")
 
 
 # Declare relational tables
@@ -121,8 +134,8 @@ class RolesPolicies(_Base):
     __table_args__ = (UniqueConstraint('role_id', 'policy_id', name='role_policy'),
                       )
 
-    roles = relationship("Roles", backref="policies_associations", cascade="all,delete")
-    policies = relationship("Policies", backref="roles_associations", cascade="all,delete")
+    roles = relationship("Roles", backref="policies_associations")
+    policies = relationship("Policies", backref="roles_associations")
 
 
 class UserRoles(_Base):
@@ -139,15 +152,15 @@ class UserRoles(_Base):
 
     # Schema, Many-To-Many relationship
     id = Column('id', Integer, primary_key=True)
-    user_id = Column('user_id', String(32), ForeignKey("users.id", ondelete='CASCADE'))
+    user_id = Column('user_id', Integer, ForeignKey("users.id", ondelete='CASCADE'))
     role_id = Column('role_id', Integer, ForeignKey("roles.id", ondelete='CASCADE'))
     level = Column('level', Integer, default=0)
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
     __table_args__ = (UniqueConstraint('user_id', 'role_id', name='user_role'),
                       )
 
-    users = relationship("User", backref="roles_associations", cascade="all,delete")
-    roles = relationship("Roles", backref="users_associations", cascade="all,delete")
+    users = relationship("User", backref="roles_associations")
+    roles = relationship("Roles", backref="users_associations")
 
 
 # Declare basic tables
@@ -164,8 +177,8 @@ class UsersTokenBlacklist(_Base):
     __tablename__ = "users_token_blacklist"
 
     user_id = Column('user_id', Integer, primary_key=True)
-    nbf_invalid_until = Column('nbf_invalid_until', Integer)
-    is_valid_until = Column('is_valid_until', Integer)
+    nbf_invalid_until = Column('nbf_invalid_until', Integer, nullable=False)
+    is_valid_until = Column('is_valid_until', Integer, nullable=False)
     __table_args__ = (UniqueConstraint('user_id', name='user_invalidation_rule'),)
 
     def __init__(self, user_id):
@@ -197,8 +210,8 @@ class RolesTokenBlacklist(_Base):
     __tablename__ = "roles_token_blacklist"
 
     role_id = Column('role_id', Integer, primary_key=True)
-    nbf_invalid_until = Column('nbf_invalid_until', Integer)
-    is_valid_until = Column('is_valid_until', Integer)
+    nbf_invalid_until = Column('nbf_invalid_until', Integer, nullable=False)
+    is_valid_until = Column('is_valid_until', Integer, nullable=False)
     __table_args__ = (UniqueConstraint('role_id', name='role_invalidation_rule'),)
 
     def __init__(self, role_id):
@@ -221,8 +234,8 @@ class User(_Base):
     __tablename__ = 'users'
 
     id = Column('id', Integer, primary_key=True)
-    username = Column(String(32))
-    password = Column(String(256))
+    username = Column(String(32), nullable=False)
+    password = Column(String(256), nullable=False)
     allow_run_as = Column(Boolean, default=False, nullable=False)
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
     __table_args__ = (UniqueConstraint('username', name='username_restriction'),)
@@ -286,7 +299,7 @@ class Roles(_Base):
 
     # Schema
     id = Column('id', Integer, primary_key=True)
-    name = Column('name', String(20))
+    name = Column('name', String(20), nullable=False)
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
     __table_args__ = (UniqueConstraint('name', name='name_role'),)
 
@@ -340,8 +353,8 @@ class Rules(_Base):
 
     # Schema
     id = Column('id', Integer, primary_key=True)
-    name = Column('name', String(20))
-    rule = Column('rule', TEXT)
+    name = Column('name', String(20), nullable=False)
+    rule = Column('rule', TEXT, nullable=False)
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
     __table_args__ = (UniqueConstraint('name', name='rule_name'),)
 
@@ -387,8 +400,8 @@ class Policies(_Base):
 
     # Schema
     id = Column('id', Integer, primary_key=True)
-    name = Column('name', String(20))
-    policy = Column('policy', TEXT)
+    name = Column('name', String(20), nullable=False)
+    policy = Column('policy', TEXT, nullable=False)
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
     __table_args__ = (UniqueConstraint('name', name='name_policy'),
                       UniqueConstraint('policy', name='policy_definition'))
@@ -591,7 +604,7 @@ class TokenManager:
             return False
 
     def __enter__(self):
-        self.session = _Session()
+        self.session = _Session
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -769,7 +782,7 @@ class AuthenticationManager:
         return user_ids
 
     def __enter__(self):
-        self.session = _Session()
+        self.session = _Session
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -962,7 +975,7 @@ class RolesManager:
             return SecurityError.ALREADY_EXIST
 
     def __enter__(self):
-        self.session = _Session()
+        self.session = _Session
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -1050,7 +1063,7 @@ class RulesManager:
             try:
                 if check_default and \
                         self.session.query(Rules).order_by(desc(Rules.id)
-                                                              ).limit(1).scalar().id < max_id_reserved:
+                                                           ).limit(1).scalar().id < max_id_reserved:
                     rule_id = max_id_reserved + 1
             except (TypeError, AttributeError):
                 pass
@@ -1165,7 +1178,7 @@ class RulesManager:
             return SecurityError.ALREADY_EXIST
 
     def __enter__(self):
-        self.session = _Session()
+        self.session = _Session
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -1394,7 +1407,7 @@ class PoliciesManager:
             return SecurityError.ALREADY_EXIST
 
     def __enter__(self):
-        self.session = _Session()
+        self.session = _Session
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -1681,7 +1694,8 @@ class UserRolesManager:
             if int(role_id) > max_id_reserved:
                 users = self.session.query(Roles).filter_by(id=role_id).first().users
                 for user in users:
-                    self.remove_user_in_role(user_id=user.id, role_id=role_id, atomic=False)
+                    if self.remove_user_in_role(user_id=user.id, role_id=role_id, atomic=False) is not True:
+                        return SecurityError.RELATIONSHIP_ERROR
                 self.session.commit()
                 return True
         except (IntegrityError, TypeError):
@@ -1718,7 +1732,7 @@ class UserRolesManager:
         return False
 
     def __enter__(self):
-        self.session = _Session()
+        self.session = _Session
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -2065,7 +2079,7 @@ class RolesPoliciesManager:
         return False
 
     def __enter__(self):
-        self.session = _Session()
+        self.session = _Session
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -2318,7 +2332,7 @@ class RolesRulesManager:
         return False
 
     def __enter__(self):
-        self.session = _Session()
+        self.session = _Session
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
