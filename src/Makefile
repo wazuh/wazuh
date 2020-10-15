@@ -32,6 +32,7 @@ EXTERNAL_BZIP2=external/bzip2/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
+EXTERNAL_LIBPCRE2=external/libpcre2/
 endif
 MAXAGENTS?=100000
 # XXX Becareful NO EXTRA Spaces here
@@ -235,7 +236,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2}
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${EXTERNAL_LIBPCRE2}include
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
@@ -666,13 +667,14 @@ AUDIT_LIB = $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
 LIBFFI_LIB = $(EXTERNAL_LIBFFI)$(TARGET)/.libs/libffi.a
 MSGPACK_LIB = $(EXTERNAL_MSGPACK)libmsgpack.a
 BZIP2_LIB   = $(EXTERNAL_BZIP2)libbz2.a
+LIBPCRE2_LIB = $(EXTERNAL_LIBPCRE2).libs/libpcre2-8.a
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB)
 
 ifneq (${TARGET},winagent)
 EXTERNAL_LIBS += $(MSGPACK_LIB)
 ifneq (${TARGET},agent)
-EXTERNAL_LIBS += $(LIBCURL_LIB) $(LIBFFI_LIB) $(BZIP2_LIB)
+EXTERNAL_LIBS += $(LIBCURL_LIB) $(LIBFFI_LIB) $(BZIP2_LIB) $(LIBPCRE2_LIB)
 endif
 ifeq (${uname_S},Linux)
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
@@ -863,6 +865,11 @@ $(MSGPACK_LIB): ${msgpack_o}
 	${OSSEC_RANLIB} $@
 endif
 
+#### PCRE2 lib #########
+
+$(LIBPCRE2_LIB):
+	cd $(EXTERNAL_LIBPCRE2) && CCFLAGS='-fPIC' ./configure --disable-dependency-tracking --enable-jit=auto --disable-shared && ${MAKE} && cp src/pcre2.h include/pcre2.h
+
 ################################
 #### External dependencies  ####
 ################################
@@ -899,7 +906,7 @@ endif
 endif
 
 
-EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2
+EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 libpcre2
 EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 

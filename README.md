@@ -139,6 +139,7 @@ Here you can find all the automation tools manteined by the Wazuh team.
 * A embedded part of the Berkeley DB library (https://github.com/berkeleydb/libdb).
 * CPython interpreter by Guido van Rossum and the Python Software Foundation (https://www.python.org).
 * PyPi packages: [azure-storage-blob](https://github.com/Azure/azure-storage-python), [boto3](https://github.com/boto/boto3), [cryptography](https://github.com/pyca/cryptography), [docker](https://github.com/docker/docker-py), [pytz](https://pythonhosted.org/pytz/), [requests](http://python-requests.org/) and [uvloop](http://github.com/MagicStack/uvloop).
+* PCRE2 library by Philip Hazel (https://www.pcre.org/).
 
 ## Documentation
 
