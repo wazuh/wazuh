@@ -40,7 +40,6 @@ static void parseLineAndFillMap(const std::string& line, const std::string& sepa
         const auto key{Utils::trim(line.substr(0, pos), " \t\"")};
         const auto value{Utils::trim(line.substr(pos + 1), " \t\"")};
         systemInfo[key] = value;
-        std::cout << key << ":" << value << std::endl;
     }
 }
 static bool getSystemInfo(const std::string& fileName, const std::string& separator, std::map<std::string, std::string>& systemInfo)

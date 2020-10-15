@@ -9,9 +9,18 @@
  * Foundation.
  */
 #include "sysInfo.hpp"
+#include "cmdHelper.h"
+#include "stringHelper.h"
 
+static std::string getSerialNumber()
+{
+    const auto rawData{Utils::exec("system_profiler SPHardwareDataType | grep Serial")}
+    return Utils::trim(rawData.substr(rawData.find(":")), " \t\r\n");
+}
 
 nlohmann::json SysInfo::hardware()
 {
-    return {};
+    nlohmann::json ret;
+    ret["board_serial"] = getSerialNumber();
+    return ret;
 }
