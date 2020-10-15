@@ -5181,7 +5181,7 @@ paths:
           $ref: '#/components/responses/TooManyRequestsResponse'
     get:
       tags:
-      - agents
+      - Agents
       summary: "List agents"
       description: "Return information about all available agents or a list of them"
       operationId: api.controllers.agents_controller.get_agents
@@ -5314,7 +5314,7 @@ paths:
           $ref: '#/components/responses/TooManyRequestsResponse'
     post:
       tags:
-      - agents
+      - Agents
       summary: "Add agent"
       description: "Add a new agent"
       operationId: api.controllers.agents_controller.add_agent
@@ -5383,7 +5383,7 @@ paths:
   /agents/{agent_id}/config/{component}/{configuration}:
     get:
       tags:
-        - agents
+        - Agents
       summary: "Get active configuration"
       description: "Return the active configuration the agent is currently using. This can be different from the
       configuration present in the configuration file, if it has been modified and the agent has not been restarted yet"
@@ -5435,7 +5435,7 @@ paths:
   /agents/{agent_id}/group:
     delete:
       tags:
-        - agents
+        - Agents
       summary: "Remove agent from groups"
       description: 'Remove the agent from all groups or a list of them. The agent will automatically revert to the
       "default" group if it is removed from all its assigned groups'
@@ -5484,7 +5484,7 @@ paths:
   /agents/{agent_id}/group/is_sync:
     get:
       tags:
-        - agents
+        - Agents
       summary: "Get configuration sync status"
       description: "Return whether the agent configuration has been synchronized with the agent or not. This can be
       useful to check after updating a group configuration"
@@ -5531,7 +5531,7 @@ paths:
   /agents/{agent_id}/group/{group_id}:
     delete:
       tags:
-        - agents
+        - Agents
       summary: "Remove agent from group"
       description: "Remove an agent from an specified group. If the agent has multigroups, it will preserve all
       previous groups except the last one"
@@ -5569,7 +5569,7 @@ paths:
 
     put:
       tags:
-        - agents
+        - Agents
       summary: "Assign agent to group"
       description: "Assign an agent to a specified group"
       operationId: api.controllers.agents_controller.put_agent_single_group
@@ -5614,7 +5614,7 @@ paths:
   /agents/{agent_id}/key:
     get:
       tags:
-        - agents
+        - Agents
       summary: "Get key"
       description: "Return the key of an agent"
       operationId: api.controllers.agents_controller.get_agent_key
@@ -5661,7 +5661,7 @@ paths:
   /agents/{agent_id}/restart:
     put:
       tags:
-        - agents
+        - Agents
       summary: "Restart agent"
       description: "Restart the specified agent"
       operationId: api.controllers.agents_controller.restart_agent
@@ -5706,7 +5706,7 @@ paths:
   /agents/{agent_id}/upgrade:
     put:
       tags:
-        - agents
+        - Agents
       summary: "Upgrade agent"
       description: "Upgrade the agent using a WPK file from online repository"
       operationId: api.controllers.agents_controller.put_upgrade_agent
@@ -5744,7 +5744,7 @@ paths:
   /agents/{agent_id}/upgrade_custom:
     put:
       tags:
-        - agents
+        - Agents
       summary: "Upgrade agent custom"
       description: "Upgrade the agent using a local WPK file"
       operationId: api.controllers.agents_controller.put_upgrade_custom_agent
@@ -5780,7 +5780,7 @@ paths:
   /agents/{agent_id}/upgrade_result:
     get:
       tags:
-        - agents
+        - Agents
       summary: "Get upgrade result"
       description: "Return the upgrade result after updating an agent"
       operationId: api.controllers.agents_controller.get_agent_upgrade
@@ -5820,7 +5820,7 @@ paths:
   /agents/group:
     delete:
       tags:
-        - agents
+        - Agents
       summary: "Remove agents from group"
       description: "Remove all agents assignment or a list of them from the specified group"
       operationId: api.controllers.agents_controller.delete_multiple_agent_single_group
@@ -5872,7 +5872,7 @@ paths:
 
     put:
       tags:
-        - agents
+        - Agents
       summary: "Assign agents to group"
       description: "Assign all agents or a list of them to the specified group"
       operationId: api.controllers.agents_controller.put_multiple_agent_single_group
@@ -5936,7 +5936,7 @@ paths:
   /agents/group/{group_id}/restart:
     put:
       tags:
-        - agents
+        - Agents
       summary: 'Restart agents in group'
       description: 'Restart all agents which belong to a given group'
       operationId: api.controllers.agents_controller.restart_agents_by_group
@@ -6543,7 +6543,7 @@ paths:
   /agents/insert:
     post:
       tags:
-        - agents
+        - Agents
       summary: "Add an agent specifying all its basic properties"
       description: "Add an agent specifying its name, ID and IP. If an agent with the same ID already exists, replace
       it using `force` parameter"
@@ -6624,7 +6624,7 @@ paths:
   /agents/insert/quick:
     post:
       tags:
-        - agents
+        - Agents
       summary: "Add agent (quick method)"
       description: "Add a new agent with name `agent_name`. This agent will use `any` as IP"
       operationId: api.controllers.agents_controller.post_new_agent
@@ -6665,7 +6665,7 @@ paths:
   /agents/no_group:
     get:
       tags:
-        - agents
+        - Agents
       summary: "Get all agents without group"
       description: "Return a list with all the available agents without group"
       operationId: api.controllers.agents_controller.get_agent_no_group
@@ -6789,7 +6789,7 @@ paths:
   /agents/node/{node_id}/restart:
       put:
         tags:
-          - agents
+          - Agents
         summary: "Restart all agents which belong to a node"
         description: "Restart all agents which belong to a specific given node"
         operationId: api.controllers.agents_controller.restart_agents_by_node
@@ -6837,7 +6837,7 @@ paths:
   /agents/outdated:
     get:
       tags:
-        - agents
+        - Agents
       summary: "Get outdated agents"
       description: "Return the list of outdated agents"
       operationId: api.controllers.agents_controller.get_agent_outdated
@@ -6891,7 +6891,7 @@ paths:
   /agents/restart:
     put:
       tags:
-      - agents
+      - Agents
       summary: "Restart agents"
       description: "Restart all agents or a list of them"
       operationId: api.controllers.agents_controller.restart_agents
@@ -6937,7 +6937,7 @@ paths:
   /agents/stats/distinct:
     get:
       tags:
-        - agents
+        - Agents
       summary: "Get distinct fields in agents"
       description: "Return all the different combinations that agents have for the selected fields. It also indicates
       the total number of agents that have each combination"
@@ -7036,7 +7036,7 @@ paths:
   /agents/summary/os:
     get:
       tags:
-        - agents
+        - Agents
       summary: "Get agents OS summary"
       description: "Return a summary of the OS of available agents"
       operationId: api.controllers.agents_controller.get_agent_summary_os
@@ -7077,7 +7077,7 @@ paths:
   /agents/summary/status:
     get:
       tags:
-        - agents
+        - Agents
       summary: "Get agents status summary"
       description: "Return a summary of the status of available agents"
       operationId: api.controllers.agents_controller.get_agent_summary_status
