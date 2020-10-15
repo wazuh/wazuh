@@ -1023,7 +1023,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
             return (NULL);
         }
 
-        if (OSMatch_Execute(lf->program_name, lf->p_name_size, rule->program_name->match)
+        if (w_expression_match(rule->program_name, lf->program_name, NULL, NULL)
             == rule->program_name->negate) {
             return (NULL);
         }
@@ -1035,7 +1035,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
             return (NULL);
         }
 
-        if (OSMatch_Execute(lf->id, strlen(lf->id), rule->id->match) == rule->id->negate) {
+        if (w_expression_match(rule->id, lf->id, NULL, NULL) == rule->id->negate) {
             return (NULL);
         }
     }
@@ -1046,7 +1046,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
             return (NULL);
         }
 
-        if (OSMatch_Execute(lf->systemname, strlen(lf->systemname), rule->system_name->match)
+        if (w_expression_match(rule->system_name, lf->systemname, NULL, NULL)
             == rule->system_name->negate) {
             return (NULL);
         }
@@ -1057,21 +1057,21 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
         if (!lf->protocol) {
             return (NULL);
         }
-        if (OSMatch_Execute(lf->protocol, strlen(lf->protocol), rule->protocol->match) == rule->protocol->negate) {
+        if (w_expression_match(rule->protocol, lf->protocol, NULL, NULL) == rule->protocol->negate) {
             return (NULL);
         }
     }
 
     /* Check if any word to match exists */
     if (rule->match) {
-        if (OSMatch_Execute(lf->log, lf->size, rule->match->match) == rule->match->negate) {
+        if (w_expression_match(rule->match, lf->log, NULL, NULL) == rule->match->negate) {
             return (NULL);
         }
     }
 
     /* Check if exist any regex for this rule */
     if (rule->regex) {
-        bool matches = OSRegex_Execute_ex(lf->log, rule->regex->regex, rule_match) ? true : false;
+        bool matches = w_expression_match(rule->regex, lf->log, NULL, NULL);
         if (matches == rule->regex->negate) {
             return NULL;
         }
@@ -1083,8 +1083,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
             return (NULL);
         }
 
-        bool diff_act = strcmp(rule->action->string, lf->action) ? true : false;
-        if (diff_act != rule->action->negate) {
+        if (w_expression_match(rule->action, lf->action, NULL, NULL) == rule->action->negate) {
             return (NULL);
         }
     }
@@ -1095,7 +1094,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
             return (NULL);
         }
 
-        if (OSMatch_Execute(lf->url, strlen(lf->url), rule->url->match) == rule->url->negate) {
+        if (w_expression_match(rule->url, lf->url, NULL, NULL) == rule->url->negate) {
             return (NULL);
         }
     }
@@ -1106,7 +1105,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
             return (NULL);
         }
 
-        if (OSMatch_Execute(lf->location, strlen(lf->location), rule->location->match) == rule->location->negate) {
+        if (w_expression_match(rule->location, lf->location, NULL, NULL) == rule->location->negate) {
             return (NULL);
         }
     }
@@ -1118,8 +1117,8 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
             return NULL;
         }
 
-        bool matches = OSRegex_Execute_ex(field, rule->fields[i]->regex, rule_match) ? true : false;
-        if (matches == rule->fields[i]->negate) {
+        bool matches = w_expression_match(rule->fields[i]->regex, field, NULL, NULL);
+        if (matches == rule->fields[i]->regex->negate) {
             return NULL;
         }
     }
@@ -1132,7 +1131,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                 return (NULL);
             }
 
-            if (OS_IPFoundList(lf->srcip, rule->srcip->ips) == rule->srcip->negate) {
+            if (w_expression_match(rule->srcip, lf->srcip, NULL, NULL) == rule->srcip->negate) {
                 return (NULL);
             }
         }
@@ -1143,7 +1142,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                 return (NULL);
             }
 
-            if (OS_IPFoundList(lf->dstip, rule->dstip->ips) == rule->dstip->negate) {
+            if (w_expression_match(rule->dstip, lf->dstip, NULL, NULL) == rule->dstip->negate) {
                 return (NULL);
             }
         }
@@ -1153,7 +1152,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                 return (NULL);
             }
 
-            if (OSMatch_Execute(lf->srcport, strlen(lf->srcport), rule->srcport->match) == rule->srcport->negate) {
+            if (w_expression_match(rule->srcport, lf->srcport, NULL, NULL) == rule->srcport->negate) {
                 return (NULL);
             }
         }
@@ -1162,7 +1161,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                 return (NULL);
             }
 
-            if (OSMatch_Execute(lf->dstport, strlen(lf->dstport), rule->dstport->match) == rule->dstport->negate) {
+            if (w_expression_match(rule->dstport, lf->dstport, NULL, NULL) == rule->dstport->negate) {
                 return (NULL);
             }
         }
@@ -1180,11 +1179,11 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
         /* Checking if exist any user to match */
         if (rule->user) {
             if (lf->dstuser) {
-                if (OSMatch_Execute(lf->dstuser, strlen(lf->dstuser), rule->user->match) == rule->user->negate) {
+                if (w_expression_match(rule->user, lf->dstuser, NULL, NULL) == rule->user->negate) {
                     return (NULL);
                 }
             } else if (lf->srcuser) {
-                if (OSMatch_Execute(lf->srcuser, strlen(lf->srcuser), rule->user->match) == rule->user->negate) {
+                if (w_expression_match(rule->user, lf->srcuser, NULL, NULL) == rule->user->negate) {
                     return (NULL);
                 }
             } else {
@@ -1199,22 +1198,20 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                 return NULL;
             }
 
-            if (OSMatch_Execute(lf->srcgeoip, strlen(lf->srcgeoip), rule->srcgeoip->match) == rule->srcgeoip->negate) {
+            if (w_expression_match(rule->srcgeoip, lf->srcgeoip, NULL, NULL) == rule->srcgeoip->negate) {
                 return NULL;
             }
         }
-
 
         if(rule->dstgeoip) {
             if (!lf->dstgeoip) {
                 return NULL;
             }
 
-            if (OSMatch_Execute(lf->dstgeoip, strlen(lf->dstgeoip), rule->dstgeoip->match) == rule->dstgeoip->negate) {
+            if (w_expression_match(rule->dstgeoip, lf->dstgeoip, NULL, NULL) == rule->dstgeoip->negate) {
                 return NULL;
             }
         }
-
 
         /* Check if any rule related to the size exist */
         if (rule->maxsize) {
@@ -1242,7 +1239,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
             if (!lf->data) {
                 return (NULL);
             }
-            if (OSMatch_Execute(lf->data, strlen(lf->data), rule->data->match) == rule->data->negate) {
+            if (w_expression_match(rule->data, lf->data, NULL, NULL) == rule->data->negate) {
                 return (NULL);
             }
         }
@@ -1253,7 +1250,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                 return(NULL);
             }
 
-            if (OSMatch_Execute(lf->extra_data, strlen(lf->extra_data), rule->extra_data->match)
+            if (w_expression_match(rule->extra_data, lf->extra_data, NULL, NULL)
                 == rule->extra_data->negate) {
                 return (NULL);
             }
@@ -1265,7 +1262,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                 return (NULL);
             }
 
-            if (OSMatch_Execute(lf->hostname, strlen(lf->hostname), rule->hostname->match) == rule->hostname->negate) {
+            if (w_expression_match(rule->hostname, lf->hostname, NULL, NULL) == rule->hostname->negate) {
                 return (NULL);
             }
         }
@@ -1276,11 +1273,10 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
                 return (NULL);
             }
 
-            if (OSMatch_Execute(lf->status, strlen(lf->status), rule->status->match) == rule->status->negate) {
+            if (w_expression_match(rule->status, lf->status, NULL, NULL) == rule->status->negate) {
                 return (NULL);
             }
         }
-
 
         /* Do diff check */
         if (rule->context_opts & FIELD_DODIFF) {

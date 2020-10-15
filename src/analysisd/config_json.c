@@ -256,7 +256,8 @@ void _getRulesListJSON(RuleNode *list, cJSON *array) {
 
         if (node->ruleinfo->regex) {
             cJSON * regex = cJSON_CreateObject();
-            cJSON_AddStringToObject(regex, "pattern", node->ruleinfo->regex->regex->raw);
+            cJSON_AddStringToObject(regex, "pattern", w_expression_get_regex_pattern(node->ruleinfo->regex));
+            cJSON_AddStringToObject(regex, "type", w_expression_get_regex_type(node->ruleinfo->regex));
             cJSON_AddBoolToObject(regex, "negate", node->ruleinfo->regex->negate);
             cJSON_AddItemToObject(rule, "regex", regex);
         }
@@ -412,8 +413,9 @@ void _getRulesListJSON(RuleNode *list, cJSON *array) {
                 cJSON * field = cJSON_CreateObject();
 
                 cJSON_AddStringToObject(field, "name", node->ruleinfo->fields[i]->name);
-                cJSON_AddStringToObject(field, "pattern", node->ruleinfo->fields[i]->regex->raw);
-                cJSON_AddBoolToObject(field, "negate", node->ruleinfo->fields[i]->negate);
+                cJSON_AddStringToObject(field, "pattern", w_expression_get_regex_pattern(node->ruleinfo->fields[i]->regex));
+                cJSON_AddStringToObject(field, "type", w_expression_get_regex_type(node->ruleinfo->fields[i]->regex));
+                cJSON_AddBoolToObject(field, "negate", node->ruleinfo->fields[i]->regex->negate);
 
                 cJSON_AddItemToArray(_list, field);
             }

@@ -202,7 +202,7 @@ void w_free_expression_t_osmatch(void ** state)
     var->exp_type = EXP_TYPE_OSMATCH;
 
     os_calloc(1, sizeof(OSMatch), var->match);
-    os_strdup("test",var->match->raw);
+    os_strdup("test", var->match->raw);
 
     w_free_expression_t(&var);
 }
@@ -215,7 +215,7 @@ void w_free_expression_t_osregex(void ** state)
     var->exp_type = EXP_TYPE_OSREGEX;
 
     os_calloc(1, sizeof(OSRegex), var->regex);
-    os_strdup("test",var->regex->raw);
+    os_strdup("test", var->regex->raw);
 
     w_free_expression_t(&var);
 }
@@ -227,7 +227,7 @@ void w_free_expression_t_string(void ** state)
     os_calloc(1, sizeof(w_expression_t), var);
     var->exp_type = EXP_TYPE_STRING;
 
-    os_strdup("test",var->string);
+    os_strdup("test", var->string);
 
     w_free_expression_t(&var);
 }
@@ -300,7 +300,7 @@ void w_expression_compile_osregex_fail(void ** state)
     char * pattern = NULL;
     os_strdup("test", pattern);
 
-    int flags =0;
+    int flags = 0;
 
     expect_string(__wrap_OSRegex_Compile, pattern,"test");
     will_return(__wrap_OSRegex_Compile, 0);
@@ -323,7 +323,7 @@ void w_expression_compile_osregex(void ** state)
     char * pattern = NULL;
     os_strdup("test", pattern);
 
-    int flags =0;
+    int flags = 0;
 
     expect_string(__wrap_OSRegex_Compile, pattern,"test");
     will_return(__wrap_OSRegex_Compile, 1);
@@ -346,7 +346,7 @@ void w_expression_compile_osmatch_fail(void ** state)
     char * pattern = NULL;
     os_strdup("test", pattern);
 
-    int flags =0;
+    int flags = 0;
 
     expect_string(__wrap_OSMatch_Compile, pattern,"test");
     will_return(__wrap_OSMatch_Compile, 0);
@@ -369,7 +369,7 @@ void w_expression_compile_osmatch(void ** state)
     char * pattern = NULL;
     os_strdup("test", pattern);
 
-    int flags =0;
+    int flags = 0;
 
     expect_string(__wrap_OSMatch_Compile, pattern,"test");
     will_return(__wrap_OSMatch_Compile, 1);
@@ -394,7 +394,7 @@ void w_expression_compile_pcre2(void ** state)
     char * pattern = NULL;
     os_strdup("test", pattern);
 
-    int flags =0;
+    int flags = 0;
 
     bool ret = w_expression_compile(expression, pattern, flags);
     assert_true(ret);
@@ -417,7 +417,7 @@ void w_expression_compile_string(void ** state)
     char * pattern = NULL;
     os_strdup("test", pattern);
 
-    int flags =0;
+    int flags = 0;
 
     bool ret = w_expression_compile(expression, pattern, flags);
     assert_true(ret);
@@ -437,7 +437,7 @@ void w_expression_compile_osip_array(void ** state)
     char * pattern = NULL;
     os_strdup("test", pattern);
 
-    int flags =0;
+    int flags = 0;
 
     bool ret = w_expression_compile(expression, pattern, flags);
     assert_true(ret);
@@ -457,7 +457,7 @@ void w_expression_compile_default(void ** state)
     char * pattern = NULL;
     os_strdup("test", pattern);
 
-    int flags =0;
+    int flags = 0;
 
     bool ret = w_expression_compile(expression, pattern, flags);
     assert_true(ret);

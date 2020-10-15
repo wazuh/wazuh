@@ -91,8 +91,7 @@ typedef struct _RuleInfoDetail {
 
 typedef struct _FieldInfo {
     char *name;
-    OSRegex *regex;
-    bool negate;
+    w_expression_t *regex;
 } FieldInfo;
 
 
