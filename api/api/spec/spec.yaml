@@ -1396,7 +1396,6 @@ components:
 
     GroupID:
       type: string
-      minLength: 1
       description: "Group name"
       format: group_names
 
@@ -3399,7 +3398,7 @@ components:
     agent_name:
       in: query
       name: agent_name
-      description: "Agent name used when the agent was registered"
+      description: "Agent name"
       required: true
       schema:
         type: string
@@ -3473,7 +3472,7 @@ components:
         <tr>
         <td>agent</td>
         <td>internal</td>
-        <td>agent, monitord, remoted</td>
+        <td><code>&lt;agent&gt;</code>, <code>&lt;monitord&gt;</code>, <code>&lt;remoted&gt;</code></td>
         </tr>
         <tr>
         <td>agentless</td>
@@ -3513,7 +3512,7 @@ components:
         <tr>
         <td>analysis</td>
         <td>internal</td>
-        <td>analysisd</td>
+        <td><code>&lt;analysisd&gt;</code></td>
         </tr>
         <tr>
         <td>auth</td>
@@ -3533,12 +3532,12 @@ components:
         <tr>
         <td>com</td>
         <td>internal</td>
-        <td>execd</td>
+        <td><code>&lt;execd&gt;</code></td>
         </tr>
         <tr>
         <td>com</td>
         <td>cluster</td>
-        <td>cluster</td>
+        <td><code>&lt;cluster&gt;</code></td>
         </tr>
         <tr>
         <td>csyslog</td>
@@ -3563,7 +3562,7 @@ components:
         <tr>
         <td>logcollector</td>
         <td>internal</td>
-        <td>logcollector</td>
+        <td><code>&lt;logcollector&gt;</code></td>
         </tr>
         <tr>
         <td>mail</td>
@@ -3578,17 +3577,17 @@ components:
         <tr>
         <td>mail</td>
         <td>internal</td>
-        <td>maild</td>
+        <td><code>&lt;maild&gt;</code></td>
         </tr>
         <tr>
         <td>monitor</td>
         <td>internal</td>
-        <td>monitord</td>
+        <td><code>&lt;monitord&gt;</code></td>
         </tr>
         <tr>
         <td>monitor</td>
         <td>internal</td>
-        <td>reports</td>
+        <td><code>&lt;reports&gt;</code></td>
         </tr>
         <tr>
         <td>request</td>
@@ -3598,7 +3597,7 @@ components:
         <tr>
         <td>request</td>
         <td>internal</td>
-        <td>remoted</td>
+        <td><code>&lt;remoted&gt;</code></td>
         </tr>
         <tr>
         <td>syscheck</td>
@@ -3613,7 +3612,7 @@ components:
         <tr>
         <td>syscheck</td>
         <td>internal</td>
-        <td>syscheck, rootcheck</td>
+        <td><code>&lt;syscheck&gt;</code>, <code>&lt;rootcheck&gt;</code></td>
         </tr>
         <tr>
         <td>wmodules</td>
@@ -3794,7 +3793,7 @@ components:
     agents_list:
       in: query
       name: agents_list
-      description: "List of agent IDs (separated by comma)"
+      description: "List of agent IDs (separated by comma), all agents selected by default if not specified"
       schema:
         type: array
         items:
@@ -3802,7 +3801,7 @@ components:
     agents_list_delete:
       in: query
       name: agents_list
-      description: "List of agent IDs (separated by comma), use the keyword 'all' to select all agents"
+      description: "List of agent IDs (separated by comma), use the keyword `all` to select all agents"
       required: true
       schema:
         type: array
@@ -3811,7 +3810,7 @@ components:
     groups_list:
       in: query
       name: groups_list
-      description: "Array of group IDs"
+      description: "List of group IDs (separated by comma), all groups selected by default if not specified"
       schema:
         type: array
         items:
@@ -3828,7 +3827,7 @@ components:
     nodes_list:
       in: query
       name: nodes_list
-      description: "List of node IDs (separated by comma)"
+      description: "List of node IDs (separated by comma), all nodes selected by default if not specified"
       schema:
         type: array
         items:
@@ -3875,7 +3874,8 @@ components:
       name: older_than
       description: "Filter out agents whose time lapse from last keep alive signal is longer than specified. Time in
       seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, uses the
-      register date. For example, `7d`, `10s` and `10` are valid values. If no time unit is specified, seconds are used"
+      register date. For example, `7d`, `10s` and `10` are valid values. If no time unit is specified, seconds are used.
+      Use 0s to select all agents"
       schema:
         type: string
         format: timeframe
@@ -4173,7 +4173,7 @@ components:
     statusAgentParam:
       in: query
       name: status
-      description: "Filter by agent status. Use commas to enter multiple statuses"
+      description: "Filter by agent status (use commas to enter multiple statuses)"
       schema:
         type: array
         items:
@@ -5009,37 +5009,39 @@ components:
           - 'user:id'
 
 tags:
-  - name: active-response
+  - name: API Info
+    description: "Wazuh API information"
+  - name: Active-response
     description: "Agents Active Response"
   - name: Agents
     description: "Agents management related operations"
-  - name: ciscat
+  - name: Ciscat
     description: "Retrieve information from CIS-CAT scans"
-  - name: cluster
+  - name: Cluster
     description: "Wazuh cluster and nodes management"
-  - name: decoders
+  - name: Decoders
     description: "Decoders management"
-  - name: experimental
+  - name: Experimental
     description: "Not ready for production endpoints. Use with caution"
-  - name: groups
+  - name: Groups
     description: "Group of agents and centralized configurations"
-  - name: lists
+  - name: Lists
     description: "CDB lists management"
-  - name: manager
+  - name: Manager
     description: "Wazuh manager management"
-  - name: mitre
+  - name: Mitre
     description: "Attacks information from MITRE database"
-  - name: overview
+  - name: Overview
     description: "Overview of Wazuh"
-  - name: rules
+  - name: Rules
     description: "Rules management"
-  - name: sca
+  - name: SCA
     description: "Policy monitoring"
-  - name: security
+  - name: Security
     description: "Roles administration and user authentication management"
-  - name: syscheck
+  - name: Syscheck
     description: "File integrity monitoring"
-  - name: syscollector
+  - name: Syscollector
     description: "Syscollector information"
 
 security:
@@ -5048,7 +5050,9 @@ security:
 paths:
   /:
     get:
-      summary: 'Root-endpoint info'
+      tags:
+        - API Info
+      summary: 'Get API info'
       description: "Return basic information about the API"
       operationId: api.controllers.default_controller.default_info
       parameters:
@@ -5075,9 +5079,9 @@ paths:
   /active-response:
     put:
       tags:
-        - active-response
-      summary: "Run AR command in all agents"
-      description: "Run an Active Response command on all agents"
+        - Active-response
+      summary: "Run AR command"
+      description: "Run an Active Response command on all agents or a list of them"
       operationId: api.controllers.active_response_controller.run_command
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/active-response:command'
@@ -5127,7 +5131,7 @@ paths:
       tags:
       - Agents
       summary: "Delete agents"
-      description: "Delete all agents or a list of them with optional criteria based on the status or time of the last
+      description: "Delete agents with optional criteria based on the status or time of the last
       connection"
       operationId: api.controllers.agents_controller.delete_agents
       x-rbac-actions:
@@ -5438,7 +5442,7 @@ paths:
         - Agents
       summary: "Remove agent from groups"
       description: 'Remove the agent from all groups or a list of them. The agent will automatically revert to the
-      "default" group if it is removed from all its assigned groups'
+      default group if it is removed from all its assigned groups'
       operationId: api.controllers.agents_controller.delete_single_agent_multiple_groups
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:modify_group'
@@ -6544,7 +6548,7 @@ paths:
     post:
       tags:
         - Agents
-      summary: "Add an agent specifying all its basic properties"
+      summary: "Add agent full"
       description: "Add an agent specifying its name, ID and IP. If an agent with the same ID already exists, replace
       it using `force` parameter"
       operationId: api.controllers.agents_controller.insert_agent
@@ -6625,7 +6629,7 @@ paths:
     post:
       tags:
         - Agents
-      summary: "Add agent (quick method)"
+      summary: "Add agent quick"
       description: "Add a new agent with name `agent_name`. This agent will use `any` as IP"
       operationId: api.controllers.agents_controller.post_new_agent
       x-rbac-actions:
@@ -6666,8 +6670,8 @@ paths:
     get:
       tags:
         - Agents
-      summary: "Get all agents without group"
-      description: "Return a list with all the available agents without group"
+      summary: "List agents without group"
+      description: "Return a list with all the available agents without an assigned group"
       operationId: api.controllers.agents_controller.get_agent_no_group
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
@@ -6790,7 +6794,7 @@ paths:
       put:
         tags:
           - Agents
-        summary: "Restart all agents which belong to a node"
+        summary: "Restart agents in node"
         description: "Restart all agents which belong to a specific given node"
         operationId: api.controllers.agents_controller.restart_agents_by_node
         x-rbac-actions:
@@ -6838,7 +6842,7 @@ paths:
     get:
       tags:
         - Agents
-      summary: "Get outdated agents"
+      summary: "List outdated agents"
       description: "Return the list of outdated agents"
       operationId: api.controllers.agents_controller.get_agent_outdated
       x-rbac-actions:
@@ -6938,7 +6942,7 @@ paths:
     get:
       tags:
         - Agents
-      summary: "Get distinct fields in agents"
+      summary: "List agents distinct"
       description: "Return all the different combinations that agents have for the selected fields. It also indicates
       the total number of agents that have each combination"
       operationId: api.controllers.agents_controller.get_agent_fields
@@ -7037,7 +7041,7 @@ paths:
     get:
       tags:
         - Agents
-      summary: "Get agents OS summary"
+      summary: "Summarize agents OS"
       description: "Return a summary of the OS of available agents"
       operationId: api.controllers.agents_controller.get_agent_summary_os
       x-rbac-actions:
@@ -7078,7 +7082,7 @@ paths:
     get:
       tags:
         - Agents
-      summary: "Get agents status summary"
+      summary: "Summarize agents status"
       description: "Return a summary of the status of available agents"
       operationId: api.controllers.agents_controller.get_agent_summary_status
       x-rbac-actions:
@@ -7120,7 +7124,7 @@ paths:
     get:
       tags:
       - ciscat
-      summary: "Get CIS-CAT results from an agent"
+      summary: "Get CIS-CAT results"
       description: "Return the agent's ciscat results info"
       operationId: api.controllers.ciscat_controller.get_agents_ciscat_results
       x-rbac-actions:
@@ -7189,7 +7193,7 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Get information about the local node"
+      summary: "Get local node info"
       description: "Return basic information about the cluster node receiving the request"
       operationId: api.controllers.cluster_controller.get_cluster_node
       x-rbac-actions:
@@ -7244,7 +7248,7 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Get cluster nodes information"
+      summary: "Get nodes info"
       description: "Get information about all nodes in the cluster or a list of them"
       operationId: api.controllers.cluster_controller.get_cluster_nodes
       x-rbac-actions:
@@ -7307,7 +7311,7 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Get cluster nodes healthcheck"
+      summary: "Get nodes healthcheck"
       description: "Return cluster healthcheck information for all nodes or a list of them. Such information includes
       last keep alive, last synchronization time and number of agents reporting on each node"
       operationId: api.controllers.cluster_controller.get_healthcheck
@@ -7431,7 +7435,7 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Get local node cluster configuration"
+      summary: "Get local node config"
       description: "Return the current node cluster configuration"
       operationId: api.controllers.cluster_controller.get_config
       x-rbac-actions:
@@ -7517,8 +7521,8 @@ paths:
     get:
       tags:
         - cluster
-      summary: "Get the API configuration of all nodes (or a list of them)"
-      description: "Return the API configuration of all the selected nodes in JSON format"
+      summary: "Get nodes API config"
+      description: "Return the API configuration of all nodes (or a list of them) in JSON format"
       operationId: api.controllers.cluster_controller.get_api_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read_api_config'
@@ -7610,8 +7614,9 @@ paths:
     put:
       tags:
         - cluster
-      summary: "Update the API configuration of all nodes (or a list of them)"
-      description: "Update the API configuration of all the selected nodes with the data contained in the API request"
+      summary: "Update nodes API config"
+      description: "Update the API configuration of all nodes (or a list of them) with the data contained in the API
+      request"
       operationId: api.controllers.cluster_controller.put_api_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:update_api_config'
@@ -7660,8 +7665,8 @@ paths:
     delete:
       tags:
         - cluster
-      summary: "Restore the default API configuration of all nodes (or a list of them)"
-      description: "Replace the API configuration of all the selected nodes with the default one"
+      summary: "Restore nodes default API config"
+      description: "Restore the default API configuration of all nodes (or a list of them)"
       operationId: api.controllers.cluster_controller.delete_api_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:update_api_config'
@@ -7703,7 +7708,7 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Get a specified node's status"
+      summary: "Get node status"
       description: "Return the status of all Wazuh daemons in node node_id"
       operationId: api.controllers.cluster_controller.get_status_node
       x-rbac-actions:
@@ -7764,7 +7769,7 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Get a specified node's information"
+      summary: "Get node info"
       description: "Return basic information about a specified node such as version, compilation date, installation
       path"
       operationId: api.controllers.cluster_controller.get_info_node
@@ -7818,7 +7823,7 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Get a specified node's configuration"
+      summary: "Get node config"
       description: "Return wazuh configuration used in node {node_id}"
       operationId: api.controllers.cluster_controller.get_configuration_node
       x-rbac-actions:
@@ -7897,7 +7902,7 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Get a specified node's stats"
+      summary: "Get node stats"
       description: "Return Wazuh statistical information in node {node_id} for the current or specified date"
       operationId: api.controllers.cluster_controller.get_stats_node
       x-rbac-actions:
@@ -7966,7 +7971,7 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Get a specified node's stats per hour"
+      summary: "Get node stats hour"
       description: "Return Wazuh statistical information in node {node_id} per hour. Each number in the averages field
       represents the average of alerts per hour"
       operationId: api.controllers.cluster_controller.get_stats_hourly_node
@@ -8035,7 +8040,7 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Get a specified node's stats per week"
+      summary: "Get node stats week"
       description: "Return Wazuh statistical information in node {node_id} per week. Each number in the averages field
       represents the average of alerts per hour for that specific day"
       operationId: api.controllers.cluster_controller.get_stats_weekly_node
@@ -8267,7 +8272,7 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Get a specified node's analysisd stats"
+      summary: "Get node stats analysisd"
       description: "Return Wazuh analysisd statistical information in node {node_id}"
       operationId: api.controllers.cluster_controller.get_stats_analysisd_node
       x-rbac-actions:
@@ -8355,7 +8360,7 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Get a specified node's remoted stats"
+      summary: "Get node stats remoted"
       description: "Return Wazuh remoted statistical information in node {node_id}"
       operationId: api.controllers.cluster_controller.get_stats_remoted_node
       x-rbac-actions:
@@ -8405,8 +8410,8 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Get a specified node's wazuh logs"
-      description: "Return the last 2000 wazuh log entries in node {node_id}"
+      summary: "Get node logs"
+      description: "Return the last 2000 wazuh log entries in the specified node"
       operationId: api.controllers.cluster_controller.get_log_node
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -8468,8 +8473,8 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Get a summary of a specified node's wazuh logs"
-      description: "Return a summary of the last 2000 wazuh log entries in node {node_id}"
+      summary: "Get node logs summary"
+      description: "Return a summary of the last 2000 wazuh log entries in the specified node"
       operationId: api.controllers.cluster_controller.get_log_summary_node
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -8531,8 +8536,8 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Get file contents from a specified node in the cluster"
-      description: "Return file contents from any file in cluster node {node_id}"
+      summary: "Get node file content"
+      description: "Return file contents from any file in the specified node"
       operationId: api.controllers.cluster_controller.get_files_node
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -8580,8 +8585,8 @@ paths:
     put:
       tags:
       - cluster
-      summary: "Updates file contents in a specified cluster node"
-      description: "Replace file contents with the data contained in the API request in a specified cluster node"
+      summary: "Update node file content"
+      description: "Replace file contents with the data contained in the API request for the specified node"
       operationId: api.controllers.cluster_controller.put_files_node
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -8633,8 +8638,8 @@ paths:
     delete:
       tags:
       - cluster
-      summary: "Removes a file in a specified cluster node"
-      description: "Remove a specified file in the node {node-id}"
+      summary: "Delete node file"
+      description: "Delete a file in the specified node"
       operationId: api.controllers.cluster_controller.delete_files_node
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -8675,7 +8680,7 @@ paths:
     put:
       tags:
       - cluster
-      summary: "Restart cluster nodes"
+      summary: "Restart nodes"
       description: "Restart all nodes in the cluster or a list of them"
       operationId: api.controllers.cluster_controller.put_restart
       x-rbac-actions:
@@ -8722,7 +8727,7 @@ paths:
     get:
       tags:
       - cluster
-      summary: "Check cluster nodes Wazuh configuration"
+      summary: "Check nodes config"
       description: "Return whether the Wazuh configuration is correct or not in all cluster nodes or a list of them"
       operationId: api.controllers.cluster_controller.get_conf_validation
       x-rbac-actions:
@@ -8772,8 +8777,8 @@ paths:
     get:
       tags:
         - cluster
-      summary: "Get active configuration in node node_id"
-      description: "Return the requested configuration in JSON format"
+      summary: "Get node active configuration"
+      description: "Return the requested configuration in JSON format for the specified node"
       operationId: api.controllers.cluster_controller.get_node_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -8825,7 +8830,7 @@ paths:
     get:
       tags:
       - lists
-      summary: "Get all CDB lists"
+      summary: "Get CDB lists"
       description: "Return the contents of all CDB lists. Optionally, the result can be filtered by several criteria.
       See available parameters for more details"
       operationId: api.controllers.lists_controller.get_lists
@@ -8914,7 +8919,7 @@ paths:
     get:
       tags:
       - lists
-      summary: "Get paths from all CDB lists"
+      summary: "Get CDB lists files"
       description: "Return the path from all CDB lists. Use this method to know all the CDB lists and their location in
       the filesystem relative to Wazuh installation folder"
       operationId: api.controllers.lists_controller.get_lists_files
@@ -8972,7 +8977,7 @@ paths:
     get:
       tags:
       - manager
-      summary: "Get the Wazuh manager status"
+      summary: "Get manager status"
       description: "Return the status of all Wazuh daemons"
       operationId: api.controllers.manager_controller.get_status
       x-rbac-actions:
@@ -9032,7 +9037,7 @@ paths:
     get:
       tags:
       - manager
-      summary: "Get Wazuh manager information"
+      summary: "Get manager information"
       description: "Return basic information such as version, compilation date, installation path"
       operationId: api.controllers.manager_controller.get_info
       x-rbac-actions:
@@ -9084,7 +9089,7 @@ paths:
     get:
       tags:
       - manager
-      summary: "Get configuration"
+      summary: "Get manager configuration"
       description: "Return wazuh configuration used"
       operationId: api.controllers.manager_controller.get_configuration
       x-rbac-actions:
@@ -9162,7 +9167,7 @@ paths:
     get:
       tags:
       - manager
-      summary: "Get stats"
+      summary: "Get manager stats"
       description: "Return Wazuh statistical information for the current or specified date"
       operationId: api.controllers.manager_controller.get_stats
       x-rbac-actions:
@@ -9230,7 +9235,7 @@ paths:
     get:
       tags:
       - manager
-      summary: "Get stats by hour"
+      summary: "Get manager stats hour"
       description: "Return Wazuh statistical information per hour. Each number in the averages field represents the
       average of alerts per hour"
       operationId: api.controllers.manager_controller.get_stats_hourly
@@ -9298,7 +9303,7 @@ paths:
     get:
       tags:
       - manager
-      summary: "Get stats by week"
+      summary: "Get manager stats week"
       description: "Return Wazuh statistical information per week. Each number in the averages field represents the
       average of alerts per hour for that specific day"
       operationId: api.controllers.manager_controller.get_stats_weekly
@@ -9529,7 +9534,7 @@ paths:
     get:
       tags:
       - manager
-      summary: "Get analysisd stats"
+      summary: "Get manager stats analysisd"
       description: "Return Wazuh analysisd statistical information"
       operationId: api.controllers.manager_controller.get_stats_analysisd
       x-rbac-actions:
@@ -9616,7 +9621,7 @@ paths:
     get:
       tags:
       - manager
-      summary: "Get remoted stats"
+      summary: "Get remoted stats remoted "
       description: "Return Wazuh remoted statistical information"
       operationId: api.controllers.manager_controller.get_stats_remoted
       x-rbac-actions:
@@ -9665,7 +9670,7 @@ paths:
     get:
       tags:
       - manager
-      summary: "Get the wazuh manager logs"
+      summary: "Get manager logs"
       description: "Return the last 2000 wazuh log entries"
       operationId: api.controllers.manager_controller.get_log
       x-rbac-actions:
@@ -9727,7 +9732,7 @@ paths:
     get:
       tags:
       - manager
-      summary: "Get a summary of the wazuh manager logs"
+      summary: "Get manager logs summary"
       description: "Return a summary of the last 2000 wazuh log entries"
       operationId: api.controllers.manager_controller.get_log_summary
       x-rbac-actions:
@@ -9791,7 +9796,7 @@ paths:
     get:
       tags:
       - manager
-      summary: "Get file contents"
+      summary: "Get manager file content"
       description: "Return file contents from any file"
       operationId: api.controllers.manager_controller.get_files
       x-rbac-actions:
@@ -9839,7 +9844,7 @@ paths:
     put:
       tags:
       - manager
-      summary: "Update file contents"
+      summary: "Update manager file content"
       description: "Replace file contents with the data contained in the API request"
       operationId: api.controllers.manager_controller.put_files
       x-rbac-actions:
@@ -9887,8 +9892,8 @@ paths:
     delete:
       tags:
       - manager
-      summary: "Removes a file"
-      description: "Remove a specified file"
+      summary: "Delete manager file"
+      description: "Delete a specified file"
       operationId: api.controllers.manager_controller.delete_files
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/manager:read'
@@ -9930,7 +9935,7 @@ paths:
     get:
       tags:
         - manager
-      summary: "Get local API configuration"
+      summary: "Get manager API config"
       description: "Return the local API configuration in JSON format"
       operationId: api.controllers.manager_controller.get_api_config
       x-rbac-actions:
@@ -9996,7 +10001,7 @@ paths:
     put:
       tags:
         - manager
-      summary: "Update local API configuration"
+      summary: "Update manager API config"
       description: "Update local API configuration with the data contained in the API request"
       operationId: api.controllers.manager_controller.put_api_config
       x-rbac-actions:
@@ -10044,8 +10049,8 @@ paths:
     delete:
       tags:
         - manager
-      summary: "Restore default API configuration"
-      description: "Replace local API configuration with the original one"
+      summary: "Restore manager default API config"
+      description: "Restore default local API configuration"
       operationId: api.controllers.manager_controller.delete_api_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/manager:update_api_config'
@@ -10085,7 +10090,7 @@ paths:
     put:
       tags:
       - manager
-      summary: "Restart the wazuh manager"
+      summary: "Restart manager"
       description: "Restart the wazuh manager"
       operationId: api.controllers.manager_controller.put_restart
       x-rbac-actions:
@@ -10125,7 +10130,7 @@ paths:
     get:
       tags:
       - manager
-      summary: "Check Wazuh configuration"
+      summary: "Check manager config"
       description: "Return whether the Wazuh configuration is correct"
       operationId: api.controllers.manager_controller.get_conf_validation
       x-rbac-actions:
@@ -10165,8 +10170,8 @@ paths:
     get:
       tags:
         - manager
-      summary: "Get active configuration in manager for one component [on demand]"
-      description: "Return the requested configuration in JSON format"
+      summary: "Get manager active configuration"
+      description: "Return the requested active configuration in JSON format"
       operationId: api.controllers.manager_controller.get_manager_config_ondemand
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/manager:read'
@@ -10212,7 +10217,7 @@ paths:
     get:
       tags:
         - mitre
-      summary: "Get attacks information from MITRE database"
+      summary: "Get MITRE attacks"
       description: "Return the requested attacks from MITRE database"
       operationId: api.controllers.mitre_controller.get_attack
       x-rbac-actions:
@@ -10297,7 +10302,7 @@ paths:
     get:
       tags:
       - rules
-      summary: "Get information about a list of Wazuh rules"
+      summary: "List rules"
       description: "Return a list containing information about each rule such as file where it's defined, description,
       rule group, status, etc"
       operationId: api.controllers.rules_controller.get_rules
@@ -10394,7 +10399,7 @@ paths:
     get:
       tags:
       - rules
-      summary: "Get all rule groups names"
+      summary: "Get rules groups"
       description: "Return a list containing all rule groups names"
       operationId: api.controllers.rules_controller.get_rules_groups
       x-rbac-actions:
@@ -10447,7 +10452,7 @@ paths:
     get:
       tags:
       - rules
-      summary: "Get all specified requirements"
+      summary: "Get rules requirements"
       description: "Return all specified requirement names defined in the Wazuh ruleset"
       operationId: api.controllers.rules_controller.get_rules_requirement
       x-rbac-actions:
@@ -10502,7 +10507,7 @@ paths:
     get:
       tags:
       - rules
-      summary: "Get all files which defines rules"
+      summary: "Get rules files"
       description: "Return a list containing all files used to define rules and their status"
       operationId: api.controllers.rules_controller.get_rules_files
       x-rbac-actions:
@@ -10564,7 +10569,7 @@ paths:
     get:
       tags:
         - rules
-      summary: "Download an specified rule file"
+      summary: "Download rule"
       description: "Download an specified rule file"
       operationId: api.controllers.rules_controller.get_download_file
       x-rbac-actions:
@@ -10646,7 +10651,7 @@ paths:
     get:
       tags:
       - sca
-      summary: "Get security configuration assessment (SCA) database"
+      summary: "Get SCA results"
       description: "Return the security SCA database of an agent"
       operationId: api.controllers.sca_controller.get_sca_agent
       x-rbac-actions:
@@ -10724,7 +10729,7 @@ paths:
     get:
       tags:
       - sca
-      summary: "Get policy monitoring alerts for a given policy"
+      summary: "Get SCA policy checks"
       description: "Return the policy monitoring alerts for a given policy"
       operationId: api.controllers.sca_controller.get_sca_checks
       x-rbac-actions:
@@ -10825,8 +10830,8 @@ paths:
     put:
       tags:
       - syscheck
-      summary: "Run a syscheck scan in all agents"
-      description: "Run syscheck in all agents"
+      summary: "Run FIM scan"
+      description: "Run FIM scan in all agents"
       operationId: api.controllers.syscheck_controller.put_syscheck
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/syscheck:run'
@@ -10873,7 +10878,7 @@ paths:
     get:
       tags:
       - syscheck
-      summary: "Get File integrity monitoring scan results"
+      summary: "Get FIM results"
       description: "Return FIM findings in the specified agent"
       operationId: api.controllers.syscheck_controller.get_syscheck_agent
       x-rbac-actions:
@@ -10960,7 +10965,7 @@ paths:
     delete:
       tags:
         - syscheck
-      summary: "Clear FIM scan results for a specified agent"
+      summary: "Clear FIM results"
       description: "Clear file integrity monitoring scan results for a specified agent"
       operationId: api.controllers.syscheck_controller.delete_syscheck_agent
       x-rbac-actions:
@@ -11005,7 +11010,7 @@ paths:
     get:
       tags:
       - syscheck
-      summary: "Get last syscheck scan dates"
+      summary: "Get last FIM scan"
       description: "Return when the last syscheck scan started and ended. If the scan is still in progress the end date
       will be unknown"
       operationId: api.controllers.syscheck_controller.get_last_scan_agent
@@ -11052,7 +11057,7 @@ paths:
     get:
       tags:
         - decoders
-      summary: "Get all decoders"
+      summary: "Get decoders"
       description: "Return information about all decoders included in ossec.conf. This information include decoder's
       route, decoder's name, decoder's file among others"
       operationId: api.controllers.decoders_controller.get_decoders
@@ -11124,7 +11129,7 @@ paths:
     get:
       tags:
         - decoders
-      summary: "Get all decoders files"
+      summary: "Get decoders files"
       description: "Return information about all decoders files used in Wazuh. This information include decoder's file,
       decoder's route and decoder's status among others"
       operationId: api.controllers.decoders_controller.get_decoders_files
@@ -11184,7 +11189,7 @@ paths:
     get:
       tags:
       - decoders
-      summary: "Download an specified decoder file"
+      summary: "Download decoder file"
       description: "Download an specified decoder file"
       operationId: api.controllers.decoders_controller.get_download_file
       x-rbac-actions:
@@ -11230,7 +11235,7 @@ paths:
     get:
       tags:
         - decoders
-      summary: "Get all parent decoders"
+      summary: "Get parent decoders"
       description: "Return information about all parent decoders. A parent decoder is a decoder used as base of other
       decoders"
       operationId: api.controllers.decoders_controller.get_decoders_parents
@@ -11294,7 +11299,7 @@ paths:
     delete:
       tags:
         - experimental
-      summary: "Clear agents syscheck database"
+      summary: "Clear agents FIM results"
       description: "Clear the syscheck database for all agents or a list of them"
       operationId: api.controllers.experimental_controller.clear_syscheck_database
       x-rbac-actions:
@@ -11351,7 +11356,7 @@ paths:
     get:
       tags:
         - experimental
-      summary: "Get CIS-CAT results"
+      summary: "Get agents CIS-CAT results"
       description: "Return CIS-CAT results for all agents or a list of them"
       operationId: api.controllers.experimental_controller.get_cis_cat_results
       x-rbac-actions:
@@ -11444,7 +11449,7 @@ paths:
     get:
       tags:
         - experimental
-      summary: "Get hardware info from agents"
+      summary: "Get agents hardware"
       description: "Return all agents (or a list of them) hardware info. This information include cpu, ram, scan info
       among others of all agents"
       operationId: api.controllers.experimental_controller.get_hardware_info
@@ -11539,7 +11544,7 @@ paths:
     get:
       tags:
         - experimental
-      summary: "Get the IPv4 and IPv6 addresses associated to network interfaces"
+      summary: "Get agents netaddr"
       description: "Return all agents (or a list of them) IPv4 and IPv6 addresses associated to their network
       interfaces. This information include used IP protocol, interface, and IP address among others"
       operationId: api.controllers.experimental_controller.get_network_address_info
@@ -11617,7 +11622,7 @@ paths:
     get:
       tags:
         - experimental
-      summary: "Get all network interfaces from agents"
+      summary: "Get agents netiface"
       description: "Return all agents (or a list of them) network interfaces. This information includes rx, scan, tx
       info and some network information among other"
       operationId: api.controllers.experimental_controller.get_network_interface_info
@@ -11737,7 +11742,7 @@ paths:
     get:
       tags:
         - experimental
-      summary: "Get network protocol info from agents"
+      summary: "Get agents netproto"
       description: "Return all agents (or a list of them) routing configuration for each network interface. This
       information includes interface, type protocol information among other"
       operationId: api.controllers.experimental_controller.get_network_protocol_info
@@ -11812,7 +11817,7 @@ paths:
     get:
       tags:
         - experimental
-      summary: "Get OS info from agents"
+      summary: "Get agents OS"
       description: "Return all agents (or a list of them) OS info. This information includes os information,
       architecture information among other"
       operationId: api.controllers.experimental_controller.get_os_info
@@ -11915,7 +11920,7 @@ paths:
     get:
       tags:
         - experimental
-      summary: "Get packages info from agents"
+      summary: "Get agents packages"
       description: "Return all agents (or a list of them) packages info. This information includes name, section, size,
       and priority information of all packages among other"
       operationId: api.controllers.experimental_controller.get_packages_info
@@ -12015,7 +12020,7 @@ paths:
     get:
       tags:
         - experimental
-      summary: "Get ports info from agents"
+      summary: "Get agents ports"
       description: "Return all agents (or a list of them) ports info. This information includes local IP, Remote IP,
       protocol information among other"
       operationId: api.controllers.experimental_controller.get_ports_info
@@ -12118,7 +12123,7 @@ paths:
     get:
       tags:
         - experimental
-      summary: "Get processes info from agents"
+      summary: "Get agents processes"
       description: "Return all agents (or a list of them) processes info"
       operationId: api.controllers.experimental_controller.get_processes_info
       x-rbac-actions:
@@ -12245,7 +12250,7 @@ paths:
     get:
       tags:
         - experimental
-      summary: "Get hotfixes info from agents"
+      summary: "Get agents hotfixes"
       description: "Return all agents (or a list of them) hotfixes info"
       operationId: api.controllers.experimental_controller.get_hotfixes_info
       x-rbac-actions:
@@ -12303,7 +12308,7 @@ paths:
     get:
       tags:
         - syscollector
-      summary: "Get hardware info"
+      summary: "Get agent hardware"
       description: "Return the agent's hardware info. This information include cpu, ram, scan info among others"
       operationId: api.controllers.syscollector_controller.get_hardware_info
       x-rbac-actions:
@@ -12362,7 +12367,7 @@ paths:
     get:
       tags:
         - syscollector
-      summary: "Get hotfixes"
+      summary: "Get agent hotfixes"
       description: "Return all hotfixes installed by Microsoft(R) in Windows(R) systems (KB... fixes)"
       operationId: api.controllers.syscollector_controller.get_hotfix_info
       x-rbac-actions:
@@ -12417,7 +12422,7 @@ paths:
     get:
       tags:
         - syscollector
-      summary: "Get network address info of an agent"
+      summary: "Get agent netaddr"
       description: "Return the agent's network address info. This information include used IP protocol, interface, IP
       address  among others"
       operationId: api.controllers.syscollector_controller.get_network_address_info
@@ -12480,7 +12485,7 @@ paths:
     get:
       tags:
         - syscollector
-      summary: "Get network interface info of an agent"
+      summary: "Get agent netiface"
       description: "Return the agent's network interface info. This information include rx, scan, tx info and some
       network information among others"
       operationId: api.controllers.syscollector_controller.get_network_interface_info
@@ -12563,7 +12568,7 @@ paths:
     get:
       tags:
         - syscollector
-      summary: "Get network protocol info of an agent"
+      summary: "Get agent netproto"
       description: "Return the agent's routing configuration for each network interface"
       operationId: api.controllers.syscollector_controller.get_network_protocol_info
       x-rbac-actions:
@@ -12624,7 +12629,7 @@ paths:
     get:
       tags:
         - syscollector
-      summary: "Get OS info of an agent"
+      summary: "Get agent OS"
       description: "Return the agent's OS info. This information include os information, architecture information among
       others of all agents"
       operationId: api.controllers.syscollector_controller.get_os_info
@@ -12686,7 +12691,7 @@ paths:
     get:
       tags:
         - syscollector
-      summary: "Get packages info of an agent"
+      summary: "Get agent packages"
       description: "Return the agent's packages info. This information include name, section, size, priority
       information of all packages among others"
       operationId: api.controllers.syscollector_controller.get_packages_info
@@ -12787,7 +12792,7 @@ paths:
     get:
       tags:
         - syscollector
-      summary: "Get ports info of an agent"
+      summary: "Get agent ports"
       description: "Return the agent's ports info. This information include local IP, Remote IP, protocol information
       among others"
       operationId: api.controllers.syscollector_controller.get_ports_info
@@ -12891,7 +12896,7 @@ paths:
     get:
       tags:
         - syscollector
-      summary: "Get processes info an agent"
+      summary: "Get agent processes"
       description: "Return the agent's processes info"
       operationId: api.controllers.syscollector_controller.get_processes_info
       x-rbac-actions:
@@ -13019,7 +13024,7 @@ paths:
     get:
       tags:
         - security
-      summary: "User/password authentication to get an access token"
+      summary: "Login"
       description: "This method should be called to get an API token. This token will expire after
       auth_token_exp_timeout seconds (default: 3600). This value can be changed using PUT /security/config"
       operationId: api.controllers.security_controller.login_user
@@ -13087,7 +13092,7 @@ paths:
     post:
       tags:
       - security
-      summary: "Auth_context based authentication to get an access token"
+      summary: "Login auth_context"
       description: "This method should be called to get an API token using an authorization context body. This token
       will expire after auth_token_exp_timeout seconds (default: 3600). This value can be changed using PUT
       /security/config"
@@ -13128,7 +13133,7 @@ paths:
     get:
       tags:
         - security
-      summary: 'Get all RBAC actions'
+      summary: 'List RBAC actions'
       description: 'Get all RBAC actions, including the potential related resources and endpoints.'
       operationId: api.controllers.security_controller.get_rbac_actions
       parameters:
@@ -13185,7 +13190,7 @@ paths:
     get:
       tags:
         - security
-      summary: 'Get RBAC resources'
+      summary: 'List RBAC resources'
       description: 'This method should be called to get all current defined RBAC resources.'
       operationId: api.controllers.security_controller.get_rbac_resources
       parameters:
@@ -13241,8 +13246,8 @@ paths:
     put:
       tags:
       - security
-      summary: "Revoke all active JWT tokens"
-      description: "This method should be called to revoke all JWT tokens"
+      summary: "Revoke JWT tokens"
+      description: "This method should be called to revoke all active JWT tokens"
       operationId: api.controllers.security_controller.revoke_all_tokens
       responses:
         '200':
@@ -13269,7 +13274,7 @@ paths:
     get:
       tags:
         - security
-      summary: "Gets a list of roles or all roles in the system without specifying anything"
+      summary: "List roles"
       description: "For a specific list, indicate the ids separated by commas. Example: ?role_ids=1,2,3"
       operationId: api.controllers.security_controller.get_roles
       x-rbac-actions:
@@ -13331,7 +13336,7 @@ paths:
     post:
       tags:
         - security
-      summary: "Add a new role to the system"
+      summary: "Add role"
       description: "Add a new role, all fields need to be specified"
       operationId: api.controllers.security_controller.add_role
       x-rbac-actions:
@@ -13388,7 +13393,7 @@ paths:
     delete:
       tags:
         - security
-      summary: "Delete a list of roles or all roles in the system"
+      summary: "Delete roles"
       description: "Policies linked to roles are not going to be removed"
       operationId: api.controllers.security_controller.remove_roles
       x-rbac-actions:
@@ -13458,7 +13463,7 @@ paths:
     put:
       tags:
         - security
-      summary: "Modify a specified role"
+      summary: "Update role"
       description: "Modify a role, cannot modify associated policies in this endpoint, at least one property must be
       indicated"
       operationId: api.controllers.security_controller.update_role
@@ -13518,7 +13523,7 @@ paths:
     get:
       tags:
         - security
-      summary: "Get all security rules"
+      summary: "List security rules"
       description: "Get a list of security rules from the system or all of them. These rules must be mapped with roles
       to obtain certain access privileges. For a specific list, indicate the ids separated by commas.
       Example: ?rule_ids=1,2,3"
@@ -13576,7 +13581,7 @@ paths:
     post:
       tags:
         - security
-      summary: "Add a new security rule to the system"
+      summary: "Add security rule"
       description: "Add a new security rule"
       operationId: api.controllers.security_controller.add_rule
       x-rbac-actions:
@@ -13639,8 +13644,9 @@ paths:
     delete:
       tags:
         - security
-      summary: "Delete a list of security rules or all security rules in the system"
-      description: "Roles linked to rules are not going to be removed"
+      summary: "Delete security rules"
+      description: "Delete a list of security rules or all security rules in the system, roles linked to rules are not
+      going to be deleted"
       operationId: api.controllers.security_controller.remove_rules
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
@@ -13689,7 +13695,7 @@ paths:
     put:
       tags:
         - security
-      summary: "Modify a security rule"
+      summary: "Update security rule"
       description: "Modify a security rule by specifying its ID"
       operationId: api.controllers.security_controller.update_rule
       x-rbac-actions:
@@ -13749,7 +13755,7 @@ paths:
     get:
       tags:
         - security
-      summary: "Get all policies in the system"
+      summary: "List policies"
       description: "Get all policies in the system, including the administrator policy"
       operationId: api.controllers.security_controller.get_policies
       x-rbac-actions:
@@ -13812,7 +13818,7 @@ paths:
     post:
       tags:
         - security
-      summary: "Add a new policy"
+      summary: "Add policy"
       description: "Add a new policy, all fields need to be specified"
       operationId: api.controllers.security_controller.add_policy
       x-rbac-actions:
@@ -13882,8 +13888,9 @@ paths:
     delete:
       tags:
         - security
-      summary: "Delete a list of policies or all policies in the system"
-      description: "Roles linked to policies are not going to be removed"
+      summary: "Delete policies"
+      description: "Delete a list of policies or all policies in the system, roles linked to policies are not going to
+      be removed"
       operationId: api.controllers.security_controller.remove_policies
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
@@ -13945,7 +13952,7 @@ paths:
     put:
       tags:
         - security
-      summary: "Modify a specified policy"
+      summary: "Update policy"
       description: "Modify a policy, at least one property must be indicated"
       operationId: api.controllers.security_controller.update_policy
       x-rbac-actions:
@@ -14018,7 +14025,7 @@ paths:
     post:
       tags:
         - security
-      summary: "Create a relation between one role and one or more policies"
+      summary: "Add policies to role"
       description: "Create a specified relation role-policy, one role may have multiples policies"
       operationId: api.controllers.security_controller.set_role_policy
       x-rbac-actions:
@@ -14087,7 +14094,7 @@ paths:
     delete:
       tags:
         - security
-      summary: "Delete a specified relation role-policy"
+      summary: "Remove policies from role"
       description: "Delete a specified relation role-policy"
       operationId: api.controllers.security_controller.remove_role_policy
       x-rbac-actions:
@@ -14135,7 +14142,7 @@ paths:
     post:
       tags:
         - security
-      summary: "Create a relation between one role and one or more security rules"
+      summary: "Add security rules to role"
       description: "Create a specific role-rule relation. One role may have multiple security rules"
       operationId: api.controllers.security_controller.set_role_rule
       x-rbac-actions:
@@ -14184,7 +14191,7 @@ paths:
     delete:
       tags:
         - security
-      summary: "Delete a specific role-rule relation"
+      summary: "Remove security rules from role"
       description: "Delete a specific role-rule relation"
       operationId: api.controllers.security_controller.remove_role_rule
       x-rbac-actions:
@@ -14230,7 +14237,7 @@ paths:
     post:
       tags:
         - security
-      summary: "Create a specified relation between one user and one role"
+      summary: "Add roles to user"
       description: "Create a specified relation role-policy, one user may have multiples roles"
       operationId: api.controllers.security_controller.set_user_role
       x-rbac-actions:
@@ -14280,7 +14287,7 @@ paths:
     delete:
       tags:
         - security
-      summary: "Delete a specified relation user-roles"
+      summary: "Remove roles from user"
       description: "Delete a specified relation user-roles"
       operationId: api.controllers.security_controller.remove_user_role
       x-rbac-actions:
@@ -14328,7 +14335,7 @@ paths:
     get:
       tags:
         - security
-      summary: "Get current user information"
+      summary: "Get current user info"
       description: "Get the information of the current user"
       operationId: api.controllers.security_controller.get_user_me
       parameters:
@@ -14437,7 +14444,7 @@ paths:
     get:
       tags:
         - security
-      summary: "Get user information"
+      summary: "List users"
       description: "Get the information of a specified user"
       operationId: api.controllers.security_controller.get_users
       x-rbac-actions:
@@ -14525,8 +14532,8 @@ paths:
     post:
       tags:
         - security
-      summary: "Create new user"
-      description: "Add a new user to the system through the API"
+      summary: "Add user"
+      description: "Add a new API user to the system"
       operationId: api.controllers.security_controller.create_user
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:create_user'
@@ -14591,7 +14598,7 @@ paths:
     delete:
       tags:
         - security
-      summary: "Delete a list of users"
+      summary: "Delete users"
       description: "Delete a list of users by specifying their IDs"
       operationId: api.controllers.security_controller.delete_users
       x-rbac-actions:
@@ -14644,7 +14651,7 @@ paths:
     put:
       tags:
         - security
-      summary: "Modify a user"
+      summary: "Update users"
       description: "Modify a user's password by specifying their ID"
       operationId: api.controllers.security_controller.update_user
       x-rbac-actions:
@@ -14707,7 +14714,7 @@ paths:
     get:
       tags:
         - overview
-      summary: "Get a full agents overview"
+      summary: "Get agents overview"
       description: "Return a dictionary with a full agents overview"
       operationId: api.controllers.overview_controller.get_overview_agents
       x-rbac-actions:
@@ -14805,7 +14812,7 @@ paths:
     get:
       tags:
         - security
-      summary: "Get current security configuration"
+      summary: "Get security config"
       description: "Return the security configuration in JSON format"
       operationId: api.controllers.security_controller.get_security_config
       x-rbac-actions:
@@ -14837,7 +14844,7 @@ paths:
     put:
       tags:
         - security
-      summary: "Update security configuration"
+      summary: "Update security config"
       description: "Update the security configuration with the data contained in the API request"
       operationId: api.controllers.security_controller.put_security_config
       x-rbac-actions:
@@ -14874,7 +14881,7 @@ paths:
     delete:
       tags:
         - security
-      summary: "Restore default security configuration"
+      summary: "Restore default security config"
       description: "Replaces the security configuration with the original one"
       operationId: api.controllers.security_controller.delete_security_config
       x-rbac-actions:
