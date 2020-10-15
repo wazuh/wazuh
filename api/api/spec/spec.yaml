@@ -1,10 +1,22 @@
 openapi: '3.0.0'
 info:
-  description: "The Wazuh API is an open source RESTful API that allows for interaction with the Wazuh manager from a
-  web browser, command line tool like cURL or any script or program that can make web requests. The Wazuh WUI relies on
-  this heavily and Wazuh’s goal is to accommodate complete remote management of the Wazuh infrastructure via the Wazuh
-  WUI. Use the Wazuh API to easily perform everyday actions like adding an agent, restarting the manager(s) or agent(s)
-  or looking up syscheck details.\n"
+  description: |
+    The Wazuh API is an open source RESTful API that allows for interaction with the Wazuh manager from a
+    web browser, command line tool like cURL or any script or program that can make web requests. The Wazuh WUI relies on
+    this heavily and Wazuh’s goal is to accommodate complete remote management of the Wazuh infrastructure via the Wazuh
+    WUI. Use the Wazuh API to easily perform everyday actions like adding an agent, restarting the manager(s) or agent(s)
+    or looking up syscheck details.\n
+
+    # Authentication
+
+    Petstore offers two forms of authentication:
+      - API Key
+      - OAuth2
+    OAuth2 - an open protocol to allow secure authorization in a simple
+    and standard method from web, mobile and desktop applications.
+
+    <SecurityDefinitions />
+
   version: '4.0.0'
   x-revision: 4000
   title: 'Wazuh API REST'
@@ -1614,10 +1626,6 @@ components:
       type: string
       format: numbers_delete
       description: "User ID|all"
-    Username:
-      type: string
-      description: "Username of the user"
-      format: alphanumeric
     PoliciesRequest:
       type: object
       required:
@@ -3368,19 +3376,13 @@ components:
       description: "Intended method to get a token"
       x-basicInfoFunc: api.authentication.check_user
     jwt:
+      description: "Uses this token to bla bla"
       type: http
       scheme: bearer
       bearerFormat: JWT
       x-bearerInfoFunc: api.authentication.decode_token
 
   parameters:
-    auth_context:
-      in: query
-      name: Authorization context
-      description: "Authorization context"
-      required: False
-      schema:
-        type: object
     attack_id:
       in: query
       name: id
