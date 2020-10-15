@@ -12,7 +12,6 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <sys/mman.h>
-#include <plist/plist.h>
 #include <sys/stat.h>
 #include <stdio.h>
 #include <string.h>
@@ -128,55 +127,4 @@ FILE * wrap_tmpfile () {
         return mock_type(FILE*);
     }
     return tmpfile();
-}
-
-/* TODO: MOVE TO ANOTHER FILE */
-
-void wrap_plist_from_bin (char * bin, size_t size, plist_t *node) {
-    if (test_mode) {
-        check_expected(bin);
-        *node = mock_type(plist_t);
-        return;
-    }
-    
-    plist_from_bin(bin, size, node);
-}
-
-/* TODO: MOVE TO ANOTHER FILE */
-
-void wrap_plist_to_xml (plist_t *node, char ** xml, uint32_t *size) {
-    if (test_mode) {
-        check_expected(node);
-        *xml = mock_type(char*);
-        *size = mock_type(uint32_t);
-        return;
-    }
-    
-    plist_to_xml(node, xml, size);
-}
-
-/* TODO: MOVE TO ANOTHER FILE */
-
-void wrap_plist_free(plist_t node) {
-    if (test_mode) {
-        check_expected(node);
-        return;
-    }
-    
-    plist_free(node);
-}
-
-/* TODO : MOVE TO ANOTHER FILE */
-
-void wrap_mterror(const char *tag, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
 }

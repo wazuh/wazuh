@@ -29,6 +29,8 @@
 #ifdef WAZUH_UNIT_TESTING
 #define STATIC
 #include "unit_tests/wrappers/macos/libc/stdio_wrappers.h"
+#include "unit_tests/wrappers/macos/libplist_wrappers.h"
+#include "unit_tests/wrappers/macos/libwazuh_wrappers.h"
 #else
 #define STATIC static
 #endif

@@ -33,19 +33,6 @@
 #undef tmpfile
 #define tmpfile wrap_tmpfile
 
-/* TODO: MOVE TO ANOTHER FILE */
-
-#include <plist/plist.h>
-
-#undef plist_from_bin
-#define plist_from_bin wrap_plist_from_bin
-#undef plist_to_xml
-#define plist_to_xml wrap_plist_to_xml
-#undef plist_free
-#define plist_free wrap_plist_free
-#undef mterror
-#define mterror wrap_mterror
-
 
 char * wrap_fgets(char * __s, int __n, FILE * __stream);
 int wrap_fprintf(FILE *__stream, const char *__format, ...);
@@ -58,10 +45,4 @@ int wrap_fseek(FILE *fp, int seek,  int flag);
 void * wrap_mmap(void *start, size_t length, int prot, int flags, int fd, off_t offset);
 int wrap_munmap (void *mem, size_t size);
 FILE * wrap_tmpfile();
-
-
-void wrap_plist_from_bin (char * bin, size_t size, plist_t *node);
-void wrap_plist_to_xml (plist_t *node, char ** xml, uint32_t *size);
-void wrap_plist_free(plist_t node);
-void wrap_mterror(const char *tag, const char *msg, ...);
 #endif

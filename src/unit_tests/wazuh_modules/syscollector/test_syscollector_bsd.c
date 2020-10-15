@@ -23,6 +23,8 @@
 #include "headers/defs.h"
 #include "../../wrappers/common.h"
 #include "../../wrappers/macos/libc/stdio_wrappers.h"
+#include "../../wrappers/macos/libplist_wrappers.h"
+#include "../../wrappers/macos/libwazuh_wrappers.h"
 #include "../../../wazuh_modules/syscollector/syscollector.h"
 #include "../../wazuh_modules/wmodules.h"
 
