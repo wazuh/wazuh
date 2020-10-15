@@ -8,4 +8,11 @@
  * and/or modify it under the terms of GPLv2.
 */
 
-ALTER TABLE sys_osinfo ADD COLUMN os_patch TEXT DEFAULT NULL;
+$sql=SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'sys_osinfo' AND COLUMN_NAME = 'os_patch'
+$RESULT = mysqli_query($conn,$sql);
+
+if($RESULT){
+        ALTER TABLE sys_osinfo ADD COLUMN os_patch TEXT DEFAULT NULL;
+}
+
+INSERT OR REPLACE INTO metadata (key, value) VALUES ('db_version', 6);
