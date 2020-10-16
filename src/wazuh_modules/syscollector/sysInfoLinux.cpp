@@ -17,21 +17,6 @@ constexpr auto WM_SYS_HW_DIR{"/sys/class/dmi/id/board_serial"};
 constexpr auto WM_SYS_CPU_DIR{"/proc/cpuinfo"};
 constexpr auto WM_SYS_MEM_DIR{"/proc/meminfo"};
 
-static std::string getSerialNumber()
-{
-    std::string serial;
-    std::fstream file{WM_SYS_HW_DIR, std::ios_base::in};
-    if (file.is_open())
-    {
-        file >> serial;
-    }
-    else
-    {
-        serial = "unknown";
-    }
-    return serial;
-}
-
 static void parseLineAndFillMap(const std::string& line, const std::string& separator, std::map<std::string, std::string>& systemInfo)
 {
     const auto pos{line.find(separator)};
@@ -59,20 +44,49 @@ static bool getSystemInfo(const std::string& fileName, const std::string& separa
     return ret;
 }
 
-nlohmann::json SysInfo::hardware()
+std::string SysInfo::getSerialNumber()
+{
+    std::string serial;
+    std::fstream file{WM_SYS_HW_DIR, std::ios_base::in};
+    if (file.is_open())
+    {
+        file >> serial;
+    }
+    else
+    {
+        serial = "unknown";
+    }
+    return serial;
+}
+
+std::string SysInfo::getCpuName()
 {
     std::map<std::string, std::string> systemInfo;
-    nlohmann::json ret;
-    ret["board_serial"] = getSerialNumber();
     getSystemInfo(WM_SYS_CPU_DIR, ":", systemInfo);
+    return systemInfo.at("model name");
+}
+
+int SysInfo::getCpuCores()
+{
+    std::map<std::string, std::string> systemInfo;
+    getSystemInfo(WM_SYS_CPU_DIR, ":", systemInfo);
+    return (std::stoi(systemInfo.at("processor")) + 1);
+}
+
+int SysInfo::getCpuMHz()
+{
+    std::map<std::string, std::string> systemInfo;
+    getSystemInfo(WM_SYS_CPU_DIR, ":", systemInfo);
+    return (std::stoi(systemInfo.at("cpu MHz")));
+}
+
+void SysInfo::getMemory(nlohmann::json& info)
+{
+    std::map<std::string, std::string> systemInfo;
     getSystemInfo(WM_SYS_MEM_DIR, ":", systemInfo);
-    ret["cpu_name"] = systemInfo.at("model name");
-    ret["cpu_cores"] = (std::stoi(systemInfo.at("processor")) + 1);
-    ret["cpu_MHz"] = (std::stod(systemInfo.at("cpu MHz")));
-    const auto memTotal{std::stod(systemInfo.at("MemTotal"))};
-    const auto memFree{std::stod(systemInfo.at("MemFree"))};
-    ret["ram_total"] = memTotal;
-    ret["ram_free"] = memFree;
-    ret["ram_usage"] = 100.0*(1.0 - memFree/memTotal);
-    return ret;
+    const auto memTotal{std::stoi(systemInfo.at("MemTotal"))};
+    const auto memFree{std::stoi(systemInfo.at("MemFree"))};
+    info["ram_total"] = memTotal;
+    info["ram_free"] = memFree;
+    info["ram_usage"] = 100 - (100*memFree/memTotal);
 }

@@ -15,11 +15,9 @@
 
 void SysInfo::getMemory(nlohmann::json& info)
 {
-    constexpr auto vmPageSize{"vm.pagesize"};
-    constexpr auto vmPageFreeCount{"vm.page_free_count"};
     constexpr auto KByte{1024};
     uint64_t ram{0};
-    const std::vector<int> mib{CTL_HW, HW_MEMSIZE};
+    const std::vector<int> mib{CTL_HW, HW_PHYSMEM};
     size_t len{sizeof(ram)};
     auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), &ram, &len, nullptr, 0)};
     if(ret)
@@ -33,42 +31,17 @@ void SysInfo::getMemory(nlohmann::json& info)
     }
     const auto ramTotal{ram/KByte};
     info["ram_total"] = ramTotal;
-    u_int pageSize{0};
-    len = sizeof(pageSize);
-    ret = sysctlbyname(vmPageSize, &pageSize, &len, nullptr, 0);
-    if(ret)
-    {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error reading page size."
-        };
-    }
-    uint64_t freePages{0};
-    len = sizeof(freePages);
-    ret = sysctlbyname(vmPageFreeCount, &freePages, &len, nullptr, 0);
-    if(ret)
-    {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error reading free pages."
-        };
-    }
-    const auto ramFree{(freePages * pageSize)/KByte};
-    info["ram_free"] = ramFree;
-    info["ram_usage"] = 100 - (100 * ramFree / ramTotal);
+    info["ram_free"] = 0;
+    info["ram_usage"] = 0;
 }
 
 int SysInfo::getCpuMHz()
 {
     constexpr auto MHz{1000000};
     unsigned long cpuMHz{0};
-    constexpr auto clockRate{"hw.cpufrequency"};
+    const std::vector<int> mib{CTL_HW, HW_CPUSPEED};
     size_t len{sizeof(cpuMHz)};
-    const auto ret{sysctlbyname(clockRate, &cpuMHz, &len, nullptr, 0)};
+    const auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), &cpuMHz, &len, nullptr, 0)};
     if(ret)
     {
         throw std::system_error
@@ -83,6 +56,37 @@ int SysInfo::getCpuMHz()
 
 std::string SysInfo::getSerialNumber()
 {
-    const auto rawData{Utils::exec("system_profiler SPHardwareDataType | grep Serial")};
-    return Utils::trim(rawData.substr(rawData.find(":")), " :\t\r\n");
+    std::unique_ptr<char> spBuff;
+    const std::vector<int> mib{CTL_HW, HW_SERIALNO};
+    size_t len{0};
+    auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), nullptr, &len, nullptr, 0)};
+    if(ret)
+    {
+        throw std::system_error
+        {
+            ret,
+            std::system_category(),
+            "Error getting board serial size."
+        };
+    }
+    spBuff.reset(new char[len+1]);
+    if(!spBuff)
+    {
+        throw std::runtime_error
+        {
+            "Error allocating memory to read the board serial."
+        };
+    }
+    ret = sysctl(const_cast<int*>(mib.data()), mib.size(), spBuff.get(), &len, nullptr, 0);
+    if(ret)
+    {
+        throw std::system_error
+        {
+            ret,
+            std::system_category(),
+            "Error getting board serial"
+       };
+    }
+    spBuff.get()[len] = 0;
+    return std::string{reinterpret_cast<const char*>(spBuff.get())};
 }

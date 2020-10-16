@@ -39,16 +39,26 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   file(GLOB SYSCOLLECTOR_SRC
       "${CMAKE_SOURCE_DIR}/*Linux.cpp")
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  file(GLOB SYSCOLLECTOR_SRC
-      "${CMAKE_SOURCE_DIR}/*Mac.cpp")
 else()
+  file(GLOB SYSCOLLECTOR_SRC
+        "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp")
+  if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    file(GLOB SYSCOLLECTOR_SRC
+        "${CMAKE_SOURCE_DIR}/*Mac.cpp")
+  elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+    file(GLOB SYSCOLLECTOR_SRC
+        "${CMAKE_SOURCE_DIR}/*FreeBSD.cpp")
+  elseif(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+    file(GLOB SYSCOLLECTOR_SRC
+        "${CMAKE_SOURCE_DIR}/*OpenBSD.cpp")
+  endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 
 add_library(syscollector OBJECT 
-    ${SYSCOLLECTOR_SRC}
-    "${CMAKE_SOURCE_DIR}/syscollectorImp.cpp" )
+    "${SYSCOLLECTOR_SRC}"
+    "${CMAKE_SOURCE_DIR}/syscollectorImp.cpp"
+    "${CMAKE_SOURCE_DIR}/sysInfo.cpp" )
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   target_link_libraries(syscollector sqlite3 cjson gcov)

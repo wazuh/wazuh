@@ -95,43 +95,53 @@ static std::string parseRawSmbios(const BYTE* rawData, const DWORD rawDataSize)
     return serialNumber;
 }
 
-static std::string getSerialNumberVista()
+std::string SysInfo::getSerialNumber()
 {
     std::string ret;
-    const auto size {GetSystemFirmwareTable('RSMB', 0, nullptr, 0)};
-    if (size)
+    if (isVistaOrLater())
     {
-        std::unique_ptr<unsigned char> buff{new unsigned char[size]};
-        if (buff)
+        const auto rawData{Utils::exec("wmic baseboard get SerialNumber")};
+        ret = Utils::trim(rawData.substr(rawData.find("\r\n")), " \t\r\n");
+    }
+    else
+    {
+        const auto size {GetSystemFirmwareTable('RSMB', 0, nullptr, 0)};
+        if (size)
         {
-            /* Get raw SMBIOS firmware table */
-            if (GetSystemFirmwareTable('RSMB', 0, buff.get(), size) == size)
+            std::unique_ptr<unsigned char> buff{new unsigned char[size]};
+            if (buff)
             {
-                PRawSMBIOSData smbios{reinterpret_cast<PRawSMBIOSData>(buff.get())};
-                /* Parse SMBIOS structures */
-                ret = parseRawSmbios(smbios->SMBIOSTableData, size);
+                /* Get raw SMBIOS firmware table */
+                if (GetSystemFirmwareTable('RSMB', 0, buff.get(), size) == size)
+                {
+                    PRawSMBIOSData smbios{reinterpret_cast<PRawSMBIOSData>(buff.get())};
+                    /* Parse SMBIOS structures */
+                    ret = parseRawSmbios(smbios->SMBIOSTableData, size);
+                }
             }
         }
     }
     return ret;
 }
 
-static std::string getSerialNumber()
-{
-    const auto rawData{Utils::exec("wmic baseboard get SerialNumber")};
-    return Utils::trim(rawData.substr(rawData.find("\r\n")), " \t\r\n");
-}
-
-void setSystemInfo(nlohmann::json& info)
+std::string SysInfo::getCpuName()
 {
     Utils::Registry reg(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0");
-    info["cpu_name"] = reg.string("ProcessorNameString");
-    info["cpu_MHz"] = reg.dword("~MHz");
-
-    SYSTEM_INFO siSysInfo;
+    return reg.string("ProcessorNameString");    
+}
+int SysInfo::getCpuMHz()
+{
+    Utils::Registry reg(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0");
+    return reg.dword("~MHz");
+}
+int SysInfo::getCpuCores()
+{
+    SYSTEM_INFO siSysInfo{};
     GetSystemInfo(&siSysInfo);
-    info["cpu_cores"] = siSysInfo.dwNumberOfProcessors;
-
+    return siSysInfo.dwNumberOfProcessors;
+}
+void SysInfo::getMemory(nlohmann::json& info)
+{
     MEMORYSTATUSEX statex;
     statex.dwLength = sizeof(statex);
     if (GlobalMemoryStatusEx(&statex))
@@ -149,12 +159,4 @@ void setSystemInfo(nlohmann::json& info)
             "Error calling GlobalMemoryStatusEx"
         };
     }
-}
-
-nlohmann::json SysInfo::hardware()
-{
-    nlohmann::json ret;
-    ret["board_serial"] = isVistaOrLater() ? getSerialNumberVista() : getSerialNumber();
-    setSystemInfo(ret);
-    return ret;
 }
