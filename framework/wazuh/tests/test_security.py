@@ -191,7 +191,7 @@ def test_invalid_users_tokens(db_setup, user_list, expected_users):
     ([102, 103], {102, 103}),
     ([], set())
 ])
-def test_invalid_users_tokens(db_setup, role_list, expected_roles):
+def test_invalid_roles_tokens(db_setup, role_list, expected_roles):
     """Check that the argument passed to `TokenManager.add_user_roles_rules` formed by `roles` is correct.
 
     Parameters
@@ -204,5 +204,4 @@ def test_invalid_users_tokens(db_setup, role_list, expected_roles):
     with patch('wazuh.security.TokenManager.add_user_roles_rules') as TM_mock:
         _, _, core_security = db_setup
         core_security.invalid_roles_tokens(roles=[role_id for role_id in role_list])
-        related_roles = TM_mock.call_args.kwargs['roles']
-        assert set(related_roles) == expected_roles
+        assert set(TM_mock.call_args.kwargs['roles']) == expected_roles
