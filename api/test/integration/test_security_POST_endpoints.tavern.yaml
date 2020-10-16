@@ -136,7 +136,7 @@ stages:
         name: "test_i"
         rule:
           FIND$:
-            definition: "normal_rule"
+            definition: "normal_rulE"
     response:
       status_code: 200
       json:
@@ -415,6 +415,45 @@ stages:
                 - test_i1
           total_affected_items: 0
           total_failed_items: 1
+
+  # POST /security/policies
+  - name: Add an invalid policy to the system
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test_i2"
+        policy:
+          actions:
+            - "groud:read"
+          resources:
+            - "group:id:groupA"
+          effect: "allow"
+    response:
+      status_code: 200
+
+
+  # POST /security/policies
+  - name: Add an invalid policy to the system
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test_i3"
+        policy:
+          actions:
+            - "groud:read"
+          resources:
+            - "group:id:groupA&file:example:/testing/TESTING"
+          effect: "allow"
+    response:
+      status_code: 200
 
   # POST /security/policies
   - name: Add an invalid policy to the system

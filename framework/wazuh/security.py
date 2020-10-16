@@ -10,7 +10,7 @@ import api.configuration as configuration
 from wazuh.core import common
 from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
-from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, revoke_tokens
+from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, invalid_run_as_tokens, revoke_tokens
 from wazuh.core.security import load_spec, update_security_conf
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
@@ -703,12 +703,21 @@ def remove_user_role(user_id, role_ids):
 
 @expose_resources(actions=['security:update'], resources=['role:id:{role_id}', 'rule:id:{rule_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002, 4008, 4022, 4023]})
-def set_role_rule(role_id, rule_ids):
+def set_role_rule(role_id, rule_ids, run_as=False):
     """Create a relationship between a role and one or more rules.
 
-    :param role_id: The new role_id
-    :param rule_ids: List of rule ids
-    :return Result of operation
+    Parameters
+    ----------
+    role_id : int
+        The new role_id
+    rule_ids : list of int
+        List of rule ids
+    run_as : dict
+        Login with an authorization context or not
+
+    Returns
+    -------
+
     """
     result = AffectedItemsWazuhResult(none_msg=f'No link was created to role {role_id[0]}',
                                       some_msg=f'Some security rules were not linked to role {role_id[0]}',
@@ -732,12 +741,7 @@ def set_role_rule(role_id, rule_ids):
             with RolesManager() as rm:
                 result.affected_items.append(rm.get_role_id(role_id=role_id[0]))
                 # Invalidate users with auth_context
-                with AuthenticationManager() as am:
-                    user_list = list()
-                    for user in am.get_users():
-                        if am.user_allow_run_as(username=user['username']):
-                            user_list.append(user['user_id'])
-                invalid_users_tokens(users=user_list)
+                invalid_run_as_tokens()
             result.affected_items.sort(key=str)
 
     return result
@@ -774,12 +778,7 @@ def remove_role_rule(role_id, rule_ids):
             with RolesManager() as rm:
                 result.affected_items.append(rm.get_role_id(role_id=role_id[0]))
                 # Invalidate users with auth_context
-                with AuthenticationManager() as am:
-                    user_list = list()
-                    for user in am.get_users():
-                        if am.user_allow_run_as(username=user['username']):
-                            user_list.append(user['user_id'])
-                invalid_users_tokens(users=user_list)
+                invalid_run_as_tokens()
             result.affected_items.sort(key=str)
 
     return result

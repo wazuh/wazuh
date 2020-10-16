@@ -164,6 +164,31 @@ class UserRoles(_Base):
 
 
 # Declare basic tables
+class RunAsTokenBlacklist(_Base):
+    """
+    PYTODO
+    """
+    __tablename__ = "runas_token_blacklist"
+
+    nbf_invalid_until = Column('nbf_invalid_until', Integer, primary_key=True)
+    is_valid_until = Column('is_valid_until', Integer, nullable=False)
+    __table_args__ = (UniqueConstraint('nbf_invalid_until', name='nbf_invalid_until_invalidation_rule'),)
+
+    def __init__(self):
+        self.nbf_invalid_until = int(time())
+        self.is_valid_until = self.nbf_invalid_until + security_conf['auth_token_exp_timeout']
+
+    def to_dict(self):
+        """Return the information of the token rule
+
+        Returns
+        -------
+        Dict with the information
+        """
+        return {'nbf_invalid_until': self.nbf_invalid_until, 'is_valid_until': self.is_valid_until}
+
+
+# Declare basic tables
 class UsersTokenBlacklist(_Base):
     """
     This table contains the users with an invalid token and for how long
@@ -443,7 +468,7 @@ class TokenManager:
     all the methods needed for the token blacklist administration.
     """
 
-    def is_token_valid(self, token_nbf_time: int, user_id: int = None, role_id: int = None):
+    def is_token_valid(self, token_nbf_time: int, user_id: int = None, role_id: int = None, run_as: bool = False):
         """Check if specified token is valid
 
         Parameters
@@ -454,6 +479,7 @@ class TokenManager:
             Current token's role id
         token_nbf_time : int
             Token's issue timestamp
+        run_as : PYTODO
 
         Returns
         -------
@@ -462,8 +488,10 @@ class TokenManager:
         try:
             user_rule = self.session.query(UsersTokenBlacklist).filter_by(user_id=user_id).first()
             role_rule = self.session.query(RolesTokenBlacklist).filter_by(role_id=role_id).first()
+            runas_rule = self.session.query(RunAsTokenBlacklist).first()
             return (not user_rule or (token_nbf_time > user_rule.nbf_invalid_until)) and \
-                   (not role_rule or (token_nbf_time > role_rule.nbf_invalid_until))
+                   (not role_rule or (token_nbf_time > role_rule.nbf_invalid_until)) and \
+                   (not run_as or (not runas_rule or (token_nbf_time > runas_rule.nbf_invalid_until)))
         except IntegrityError:
             return True
 
@@ -477,16 +505,18 @@ class TokenManager:
         try:
             users_rules = map(UsersTokenBlacklist.to_dict, self.session.query(UsersTokenBlacklist).all())
             roles_rules = map(RolesTokenBlacklist.to_dict, self.session.query(RolesTokenBlacklist).all())
-            users_format_rules, roles_format_rules = dict(), dict()
+            runas_rule = self.session.query(RunAsTokenBlacklist).first().to_dict()
+            users_format_rules, roles_format_rules, runas_format_rule = dict(), dict(), dict()
             for rule in list(users_rules):
                 users_format_rules[rule['user_id']] = rule['nbf_invalid_until']
             for rule in list(roles_rules):
                 roles_format_rules[rule['role_id']] = rule['nbf_invalid_until']
+            runas_format_rule['run_as'] = runas_rule['nbf_invalid_until']
             return users_format_rules, roles_format_rules
         except IntegrityError:
             return SecurityError.TOKEN_RULE_NOT_EXIST
 
-    def add_user_roles_rules(self, users: set = None, roles: set = None):
+    def add_user_roles_rules(self, users: set = None, roles: set = None, run_as: bool = False):
         """Add new rules for users-token or roles-token.
         Both, nbf_invalid_until and is_valid_until are generated automatically
 
@@ -496,6 +526,7 @@ class TokenManager:
             Set with the affected users
         roles : set
             Set with the affected roles
+        run_as : PYTODO
 
         Returns
         -------
@@ -516,13 +547,17 @@ class TokenManager:
                 self.delete_rule(role_id=int(role_id))
                 self.session.add(RolesTokenBlacklist(role_id=int(role_id)))
                 self.session.commit()
+            if run_as:
+                self.delete_rule(run_as=run_as)
+                self.session.add(RunAsTokenBlacklist())
+                self.session.commit()
 
             return True
         except IntegrityError:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
 
-    def delete_rule(self, user_id: int = None, role_id: int = None):
+    def delete_rule(self, user_id: int = None, role_id: int = None, run_as: bool = False):
         """Remove the rule for the specified role
 
         Parameters
@@ -531,6 +566,7 @@ class TokenManager:
             Desired user_id
         role_id : int
             Desired role_id
+        run_as : PYTODO
 
         Returns
         -------
@@ -539,6 +575,9 @@ class TokenManager:
         try:
             self.session.query(UsersTokenBlacklist).filter_by(user_id=user_id).delete()
             self.session.query(RolesTokenBlacklist).filter_by(role_id=role_id).delete()
+            if run_as:
+                run_as_rule = self.session.query(RunAsTokenBlacklist).first()
+                run_as_rule and self.session.delete(run_as_rule)
             self.session.commit()
 
             return True
@@ -570,6 +609,10 @@ class TokenManager:
                     token_rule.delete()
                     self.session.commit()
                     list_roles.append(role_token.role_id)
+            runas_token_in_blacklist = self.session.query(RunAsTokenBlacklist).first()
+            if runas_token_in_blacklist and runas_token_in_blacklist.to_dict()['is_valid_until'] < current_time:
+                self.session.delete(runas_token_in_blacklist)
+                self.session.commit()
 
             return list_users, list_roles
         except IntegrityError:
@@ -595,6 +638,10 @@ class TokenManager:
             for role_token in roles_tokens_in_blacklist:
                 list_roles.append(role_token.role_id)
                 self.session.query(RolesTokenBlacklist).filter_by(role_id=role_token.role_id).delete()
+                clean = True
+            runas_rule = self.session.query(RunAsTokenBlacklist).first()
+            if runas_rule:
+                self.session.delete(runas_rule)
                 clean = True
 
             clean and self.session.commit()

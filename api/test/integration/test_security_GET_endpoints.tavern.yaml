@@ -813,7 +813,7 @@ stages:
           affected_items:
             - id: 1
               username: wazuh
-              allow_run_as: false
+              allow_run_as: true
               roles:
                 - 1
             - id: 2

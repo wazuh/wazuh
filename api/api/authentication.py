@@ -117,7 +117,7 @@ def get_security_conf():
     return copy.deepcopy(conf.security_conf)
 
 
-def generate_token(user_id=None, data=None):
+def generate_token(user_id=None, data=None, run_as=False):
     """Generate an encoded jwt token. This method should be called once a user is properly logged on.
 
     Parameters
@@ -126,6 +126,8 @@ def generate_token(user_id=None, data=None):
         Unique username
     data : dict
         Roles permissions for the user
+    run_as : bool
+        Indicate if the user has logged in with run_as or not
 
     Returns
     -------
@@ -146,6 +148,7 @@ def generate_token(user_id=None, data=None):
         "nbf": int(timestamp),
         "exp": int(timestamp + result['auth_token_exp_timeout']),
         "sub": str(user_id),
+        "run_as": run_as,
         "rbac_roles": data['roles'],
         "rbac_mode": result['rbac_mode']
     }
@@ -153,7 +156,7 @@ def generate_token(user_id=None, data=None):
     return jwt.encode(payload, generate_secret(), algorithm=JWT_ALGORITHM)
 
 
-def check_token(username, roles, token_nbf_time):
+def check_token(username, roles, token_nbf_time, run_as):
     """Check the validity of a token with the current time and the generation time of the token.
 
     Parameters
@@ -164,6 +167,8 @@ def check_token(username, roles, token_nbf_time):
         List of roles related with the current token
     token_nbf_time : int
         Issued at time of the current token
+    run_as : PYTODO
+
     Returns
     -------
     Dict with the result
@@ -181,7 +186,8 @@ def check_token(username, roles, token_nbf_time):
                 return {'valid': False}
             with TokenManager() as tm:
                 for role in user_roles:
-                    if not tm.is_token_valid(role_id=role, user_id=user_id, token_nbf_time=int(token_nbf_time)):
+                    if not tm.is_token_valid(role_id=role, user_id=user_id, token_nbf_time=int(token_nbf_time),
+                                             run_as=run_as):
                         return {'valid': False}
 
     policies = optimize_resources(roles)
@@ -208,7 +214,8 @@ def decode_token(token):
         # Check token and add processed policies in the Master node
         dapi = DistributedAPI(f=check_token,
                               f_kwargs={'username': payload['sub'],
-                                        'roles': payload['rbac_roles'], 'token_nbf_time': payload['nbf']},
+                                        'roles': payload['rbac_roles'], 'token_nbf_time': payload['nbf'],
+                                        'run_as': payload['run_as']},
                               request_type='local_master',
                               is_async=False,
                               wait_for_complete=True,
