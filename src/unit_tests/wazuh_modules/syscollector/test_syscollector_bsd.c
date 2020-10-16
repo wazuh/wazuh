@@ -243,13 +243,13 @@ static void test_normalize_mac_package_name(void **state) {
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_sys_convert_bin_plist_failed_stat, setup_wrappers, teardown_wrappers),
-        cmocka_unit_test_setup_teardown(test_sys_convert_bin_plist_failed_mmap, setup_wrappers, teardown_wrappers),
-        cmocka_unit_test_setup_teardown(test_sys_convert_bin_plist_empty_node, setup_wrappers, teardown_wrappers),
-        cmocka_unit_test_setup_teardown(test_sys_convert_bin_plist_failed_xml, setup_wrappers, teardown_wrappers),
-        cmocka_unit_test_setup_teardown(test_sys_convert_bin_plist_failed_tmpfile, setup_wrappers, teardown_wrappers),
-        cmocka_unit_test_setup_teardown(test_sys_convert_bin_plist_ok, setup_wrappers, teardown_wrappers),
+        cmocka_unit_test(test_sys_convert_bin_plist_failed_stat),
+        cmocka_unit_test(test_sys_convert_bin_plist_failed_mmap),
+        cmocka_unit_test(test_sys_convert_bin_plist_empty_node),
+        cmocka_unit_test(test_sys_convert_bin_plist_failed_xml),
+        cmocka_unit_test(test_sys_convert_bin_plist_failed_tmpfile),
+        cmocka_unit_test(test_sys_convert_bin_plist_ok),
         cmocka_unit_test(test_normalize_mac_package_name)
     };
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup_wrappers, teardown_wrappers);
 }

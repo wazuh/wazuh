@@ -927,12 +927,6 @@ endif
 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	rm $(patsubst %.gz,%,$@)
 
-external/libplist.tar.gz:
-	cp libplist.tar.gz external/libplist.tar.gz
-	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
-	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
-	rm $(patsubst %.gz,%,$@)
-
 external/%.tar.gz:
 	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
