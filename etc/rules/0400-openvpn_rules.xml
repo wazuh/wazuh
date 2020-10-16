@@ -57,4 +57,28 @@
         <group>openvpn-error,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
+<!--
+ Author: Stuart Williams <stwilliams@workforcesoftware.com>
+    Date: 2019-01-29
+    Note: Enhanced decoder rules to handle LDAP integrated authentication
+Comments: Not sure how useful the first entry is but will 'log' it - could be useful in auditing numbers etc
+
+Jan 28 14:25:49 VPN-SERVER-05892 openvpn: LDAP bind failed: Invalid credentials (80090308: LdapErr: DSID-55555555, comment: AcceptSecurityContext error, data 775, v3839)
+Jan 28 14:25:49 VPN-SERVER-05892 openvpn: Incorrect password supplied for LDAP DN "CN=Harry T. Hacker,OU=business unit,OU=department,DC=domain,DC=com".
+-->
+
+  <rule id="81805" level="5">
+    <if_sid>81800</if_sid>
+    <match>^LDAP bind failed:</match>
+    <description>OpenVPN LDAP Bind Failure: $(ldap_data.error_message)</description>
+    <group>pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7</group>
+  </rule>
+
+  <rule id="81806" level="5">
+    <if_sid>81800</if_sid>
+    <match>^Incorrect password supplied for LDAP DN</match>
+    <description>OpenVPN LDAP Logon Failure: $(ldap_data.Username) [$(ldap_data.Department)]</description>
+    <group>pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+  </rule>
+  
 </group>
