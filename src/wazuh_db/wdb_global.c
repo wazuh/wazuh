@@ -1384,7 +1384,7 @@ wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **out
     return status;
 }
 
-int wdb_global_reset_connection_status(wdb_t *wdb) {
+int wdb_global_reset_agents_connection(wdb_t *wdb) {
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {

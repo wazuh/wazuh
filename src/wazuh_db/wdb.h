@@ -1734,7 +1734,7 @@ wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **out
  * @param [in] wdb The Global struct database.
  * @return 0 On success. -1 On error.
  */
-int wdb_global_reset_connection_status(wdb_t *wdb);
+int wdb_global_reset_agents_connection(wdb_t *wdb);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
