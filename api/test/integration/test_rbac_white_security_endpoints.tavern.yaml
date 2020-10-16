@@ -170,8 +170,8 @@ stages:
             - error:
                 code: 4000
               id:
-                - '1'
-                - '102'
+                - 1
+                - 102
         
 ---
 test_name: GET ROLES RBAC
@@ -263,7 +263,7 @@ stages:
             - error:
                 code: 4002
               id:
-                - '999'
+                - 999
           total_affected_items: 0
           total_failed_items: 1
 
@@ -292,7 +292,7 @@ stages:
             - error:
                 code: 4002
               id:
-                - '999'
+                - 999
 
 ---
 test_name: GET RULES RBAC
@@ -595,12 +595,12 @@ stages:
             - error:
                 code: 4000
               id:
-                - '105'
-                - '106'
+                - 105
+                - 106
             - error:
                 code: 4011
               id:
-                - '104'
+                - 104
 
 ---
 test_name: CREATE LINK USER-ROLES RBAC
@@ -669,7 +669,7 @@ stages:
                 - 105
           failed_items:
             - id:
-                - '103'
+                - 103
               error:
                 code: 4000
           total_affected_items: 1
@@ -825,12 +825,12 @@ stages:
             - error:
                 code: 4000
               id:
-                - "1"
+                - 1
             - error:
                 code: 5001
               id:
-                - "101"
-                - "105"
+                - 101
+                - 105
           total_affected_items: 0
           total_failed_items: 3
 

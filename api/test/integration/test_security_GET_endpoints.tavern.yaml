@@ -699,7 +699,7 @@ stages:
             - error:
                 code: !anyint
               id:
-                - '999'
+                - 999
           total_affected_items: 0
           total_failed_items: 1
 ---
@@ -813,7 +813,7 @@ stages:
           affected_items:
             - id: 1
               username: wazuh
-              allow_run_as: false
+              allow_run_as: true
               roles:
                 - 1
             - id: 2
@@ -980,7 +980,7 @@ stages:
             - error:
                 code: 5001
               id:
-                - '10000'
+                - 10000
           total_affected_items: 0
           total_failed_items: 1
 
@@ -999,8 +999,8 @@ stages:
             - error:
                 code: 5001
               id:
-                - '10000'
-                - '10001'
+                - 10000
+                - 10001
           total_affected_items: 0
           total_failed_items: 2
 
@@ -1017,13 +1017,13 @@ stages:
           affected_items:
             - id: 1
               username: wazuh
-              allow_run_as: false
+              allow_run_as: true
           failed_items:
             - error:
                 code: 5001
               id:
-                - '10000'
-                - '10001'
+                - 10000
+                - 10001
           total_affected_items: 1
           total_failed_items: 2
 
@@ -1046,8 +1046,8 @@ stages:
             - error:
                 code: 5001
               id:
-                - '10000'
-                - '10001'
+                - 10000
+                - 10001
           total_affected_items: 2
           total_failed_items: 2
 ---
@@ -1153,7 +1153,7 @@ stages:
                 - 1
             - id: 1
               username: wazuh
-              allow_run_as: false
+              allow_run_as: true
               roles:
                 - 1
             - id: 99
@@ -1253,7 +1253,7 @@ stages:
                 - 99
             - id: 1
               username: wazuh
-              allow_run_as: false
+              allow_run_as: true
               roles:
                 - 1
             - id: 2
@@ -1331,7 +1331,7 @@ stages:
           affected_items:
             - id: 1
               username: wazuh
-              allow_run_as: false
+              allow_run_as: true
               roles:
                 - 1
           total_affected_items: 9
@@ -1409,8 +1409,10 @@ stages:
         error: !anyint
         data:
           "*:*":
-            description: 'Resource applied in functions which take part in the creation of a specific resource.
-            We call these functions, resourceless functions. Example: agent:create'
+            description: 'Resource applied in functions acting on resources that do not yet exist in the system.
+            We call these functions, resourceless functions'
+          agent:group:
+            description: Reference agents via group name (i.e. agent:group:web)
           agent:id:
             description: Reference agents via agent ID (i.e. agent:id:001)
           group:id:
