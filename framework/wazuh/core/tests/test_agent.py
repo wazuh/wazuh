@@ -984,39 +984,33 @@ def test_agent_delete_single_group(mock_remove_manual, mock_time, mock_safe_move
                                            permissions=0o660), 'Safe_move not called with expected params'
 
 
-@pytest.mark.parametrize("id, attr, expected_result", [
-    (0, 'os_name', 'Ubuntu'),
-    (7, 'os_name', 'Windows'),
-    (5, 'status', 'updated'),
-    (2, 'register_ip', '172.17.0.201'),
-    (1, 'os_arch', 'x86_64')
+@pytest.mark.parametrize("agent_id, expected_result", [
+    (0, 'Ubuntu'),
+    (7, 'Windows'),
 ])
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_get_agent_attr(socket_mock, send_mock, id, attr, expected_result):
-    """Tests if method get_agent_attr() returns expected value for the given attribute
+def test_agent_get_agent_os_name(socket_mock, send_mock, agent_id, expected_result):
+    """Tests if method get_agent_os_name() returns expected value
 
     Parameters
     ----------
-    id : int
+    agent_id : int
         ID of the agent to return the attribute from.
-    attr : str
-        Attribute to get value from.
     expected_result : str
         Expected value to be obtained.
     """
-    agent = Agent(id)
-    result = agent.get_agent_attr(attr)
+    agent = Agent(agent_id)
+    result = agent.get_agent_os_name()
     assert result == expected_result
 
 
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_get_agent_attr_ko(socket_mock, send_mock):
-    """Tests if method get_agent_attr() raises expected exception when there is no attribute in the DB"""
-    with pytest.raises(WazuhInternalError, match='.* 2007 .*'):
-        agent = Agent(0)
-        agent.get_agent_attr('wrong_column')
+def test_agent_get_agent_os_name_ko(socket_mock, send_mock):
+    """Tests if method get_agent_os_name() returns expected value when there is no attribute in the DB"""
+    agent = Agent(4)
+    assert 'null' == agent.get_agent_os_name()
 
 
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)

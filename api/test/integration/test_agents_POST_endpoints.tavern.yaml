@@ -17,7 +17,7 @@ stages:
     response:
       status_code: 406
       json:
-        code: 6002
+        error: 6002
 
     # POST /agents
   - name: Create a new agent
@@ -46,7 +46,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1705
+        error: 1705
 
     # POST /agents
   - name: Try to create an agent with a name longer than 128 chars
@@ -61,7 +61,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1738
+        error: 1738
 
     # POST /agents
   - name: Try to create agent with missing field name
@@ -116,7 +116,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1706
+        error: 1706
 
     # POST /agents
   - name: Try to create an agent with an invalid IP (letters)
@@ -129,7 +129,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1706
+        error: 1706
 
     # POST /agents
   - name: Try to create an agent with an invalid IP (wrong numbers)
@@ -142,7 +142,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1706
+        error: 1706
 
     # POST /agents
   - name: Create an agent with force time
@@ -194,7 +194,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1711
+        error: 1711
 
     # POST /groups?group_id=;wrong_name
   - name: Try to create a group with an invalid name
@@ -227,7 +227,7 @@ stages:
     response:
       status_code: 406
       json:
-        code: 6002
+        error: 6002
 
     # POST /agents/insert
   - name: Create a new agent specifying id, ip, key and name
@@ -258,7 +258,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1705
+        error: 1705
 
     # POST /agents/insert
   - name: Try to create a new agent with an already present id
@@ -273,7 +273,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1708
+        error: 1708
 
     # POST /agents/insert
   - name: Try to create a new agent with an invalid key
@@ -334,7 +334,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1706
+        error: 1706
 
     # POST /agents/insert
   - name: Create a new agent using a manual IP
@@ -365,7 +365,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1706
+        error: 1706
 
     # POST /agents/insert
   - name: Try to create an agent with an invalid IP (letters)
@@ -380,7 +380,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1706
+        error: 1706
 
     # POST /agents/insert
   - name: Try to create an agent with an invalid IP (wrong numbers)
@@ -395,7 +395,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1706
+        error: 1706
 
     # POST /agents/insert
   - name: Create an agent using force time
@@ -463,4 +463,4 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1705
+        error: 1705

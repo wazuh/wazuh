@@ -45,7 +45,7 @@ def test_select_key_affected_items(response, select_key):
 
     for item in response.json()['data']['affected_items']:
         set1 = main_keys.symmetric_difference(set(item.keys()))
-        assert set1 == set() or set1.intersection({'id', 'agent_id'}), \
+        assert set1 == {'error'} or set1.intersection({'id', 'agent_id'}), \
             f'Select keys are {main_keys}, but this one is different {set1}'
 
         for nested_key in nested_keys.items():
@@ -153,7 +153,7 @@ def test_validate_restart_by_node_rbac(response, permitted_agents):
             assert data['total_affected_items'] == 0
     else:
         assert response.status_code == 403
-        assert response.json()['code'] == 4000
+        assert response.json()['error'] == 4000
         assert 'agent:id' in response.json()['detail']
 
 
@@ -166,7 +166,7 @@ def test_validate_auth_context(response, expected_roles=None):
     expected_roles : list
         List of expected roles after checking the authorization context
     """
-    token = response.json()['token'].split('.')[1]
+    token = response.json()['data']['token'].split('.')[1]
     payload = loads(b64decode(token + '===').decode())
     assert payload['rbac_roles'] == expected_roles
 

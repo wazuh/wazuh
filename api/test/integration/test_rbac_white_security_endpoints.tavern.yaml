@@ -81,7 +81,7 @@ stages:
     response: &permission_denied
       status_code: 403
       json:
-        code: 4000
+        error: 4000
         dapi_errors:
           unknown-node: # No permission to see node
             error: !anystr
@@ -364,8 +364,9 @@ stages:
     response:
       status_code: 200
       json:
-        auth_token_exp_timeout: !anyint
-        rbac_mode: !anystr
+        data:
+          auth_token_exp_timeout: !anyint
+          rbac_mode: !anystr
 
 ---
 test_name: UPDATE SECURITY CONFIG
@@ -1012,4 +1013,4 @@ stages:
     response:
       status_code: 403
       json:
-        code: 4000
+        error: 4000

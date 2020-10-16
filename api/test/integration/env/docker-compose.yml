@@ -64,6 +64,7 @@ services:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent1
+      - 4.x
     depends_on:
       - wazuh-worker1
       - wazuh-worker2
@@ -81,6 +82,7 @@ services:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent2
+      - 4.x
     depends_on:
       - wazuh-worker1
       - wazuh-worker2
@@ -99,6 +101,7 @@ services:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent3
+      - 4.x
     depends_on:
       - wazuh-worker1
       - wazuh-worker2
@@ -117,6 +120,7 @@ services:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent4
+      - 4.x
     depends_on:
       - wazuh-worker1
       - wazuh-worker2
@@ -128,8 +132,8 @@ services:
       context: .
       dockerfile: base/agent/Dockerfile
       args:
-        agent_branch: ${AGENT_BRANCH}
-    image: wazuh-agent
+        agent_branch: ${AGENT_BRANCH_OLD}
+    image: wazuh-agent_old
     hostname: wazuh-agent5
     entrypoint:
       - /scripts/entrypoint.sh
@@ -146,8 +150,8 @@ services:
       context: .
       dockerfile: base/agent/Dockerfile
       args:
-        agent_branch: ${AGENT_BRANCH}
-    image: wazuh-agent
+        agent_branch: ${AGENT_BRANCH_OLD}
+    image: wazuh-agent_old
     hostname: wazuh-agent6
     entrypoint:
       - /scripts/entrypoint.sh
@@ -164,8 +168,8 @@ services:
       context: .
       dockerfile: base/agent/Dockerfile
       args:
-        agent_branch: ${AGENT_BRANCH}
-    image: wazuh-agent
+        agent_branch: ${AGENT_BRANCH_OLD}
+    image: wazuh-agent_old
     hostname: wazuh-agent7
     entrypoint:
       - /scripts/entrypoint.sh
@@ -182,8 +186,8 @@ services:
       context: .
       dockerfile: base/agent/Dockerfile
       args:
-        agent_branch: ${AGENT_BRANCH}
-    image: wazuh-agent
+        agent_branch: ${AGENT_BRANCH_OLD}
+    image: wazuh-agent_old
     hostname: wazuh-agent8
     entrypoint:
       - /scripts/entrypoint.sh
