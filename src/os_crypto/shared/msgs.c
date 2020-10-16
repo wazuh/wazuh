@@ -144,9 +144,7 @@ void OS_StartCounter(keystore *keys)
         }
         if (i != keys->keysize) {
             fclose(keys->keyentries[i]->fp);
-            //keys->keyentries[i]->updating_time = 0;
             keys->keyentries[i]->fp = NULL;
-            //keys->keyentries[i]->rids_node = NULL;
         }
         
         keys->keyentries[i]->inode = File_Inode(rids_file);
@@ -193,23 +191,24 @@ static void StoreSenderCounter(const keystore *keys, unsigned int global, unsign
 /* Store the global and local count of events */
 static void StoreCounter(const keystore *keys, int id, unsigned int global, unsigned int local)
 {
-    char rids_file[OS_FLSIZE + 1];
     if (!keys->keyentries[id]->fp) {
+        char rids_file[OS_FLSIZE + 1];
         snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, keys->keyentries[id]->id);
-        keys->keyentries[id]->fp = fopen(rids_file, "w");
-        mdebug1("Opening rids for agent %s.", keys->keyentries[id]->id);
+        keys->keyentries[id]->fp = fopen(rids_file, "r+");
+        mdebug2("Opening rids for agent %s.", keys->keyentries[id]->id);
     }
+
     /* Write to the beginning of the file */
     fseek(keys->keyentries[id]->fp, 0, SEEK_SET);
     fprintf(keys->keyentries[id]->fp, "%u:%u:", global, local);
     fflush(keys->keyentries[id]->fp);
-    
+
     keys->keyentries[id]->updating_time = time(0);
     if (!keys->keyentries[id]->rids_node) {
-        mdebug1("Pushing rids_node for agent %s.", keys->keyentries[id]->id);
-        keys->keyentries[id]->rids_node = linked_queue_push(keys->opened_fp_queue, keys->keyentries[id]);
+        mdebug2("Pushing rids_node for agent %s.", keys->keyentries[id]->id);
+        keys->keyentries[id]->rids_node = linked_queue_push_ex(keys->opened_fp_queue, keys->keyentries[id]);
     } else {
-        mdebug1("Updating rids_node for agent %s.", keys->keyentries[id]->id);
+        mdebug2("Updating rids_node for agent %s.", keys->keyentries[id]->id);
         linked_queue_unlink_and_push_node (keys->opened_fp_queue, keys->keyentries[id]->rids_node);
     }
 }
@@ -222,61 +221,66 @@ static void ReloadCounter(const keystore *keys, unsigned int id, const char * ci
 
     snprintf(rids_file, OS_FLSIZE, "%s/%s", isChroot() ? RIDS_DIR : RIDS_DIR_PATH, cid);
     new_inode = File_Inode(rids_file);
-
-    w_mutex_lock(&keys->keyentries[id]->mutex);
+    if (id == keys->keysize) {
+        w_mutex_lock(&keys->keyentries[id]->mutex);
+    }
 
     if (keys->keyentries[id]->inode != new_inode) {
-
         if (!keys->keyentries[id]->fp) {
-            keys->keyentries[id]->fp = fopen(rids_file, "w");
+            keys->keyentries[id]->fp = fopen(rids_file, "r+");
             if (!keys->keyentries[id]->fp) {
                 goto fail_open;
             }
         }
-        else {
-            unsigned int g_c = 0;
-            unsigned int l_c = 0;
+        
+        fseek(keys->keyentries[id]->fp, 0, SEEK_SET);
 
-            if (fscanf(keys->keyentries[id]->fp, "%u:%u", &g_c, &l_c) != 2) {
-                if (id == keys->keysize) {
-                    mdebug1("No previous sender counter.");
-                } else {
-                    mdebug1("No previous counter available for '%s'.", keys->keyentries[id]->id);
-                }
+        
+        unsigned int g_c = 0;
+        unsigned int l_c = 0;
 
-                g_c = 0;
-                l_c = 0;
-            }
-
+        if (fscanf(keys->keyentries[id]->fp, "%u:%u", &g_c, &l_c) != 2) {
             if (id == keys->keysize) {
-                mdebug1("Reloading sender counter: %u:%u", g_c, l_c);
-                global_count = g_c;
-                local_count = l_c;
+                mdebug1("No previous sender counter.");
             } else {
-                mdebug1("Reloading counter for agent %s: '%u:%u'.", keys->keyentries[id]->id, g_c, l_c);
-
-                keys->keyentries[id]->global = g_c;
-                keys->keyentries[id]->local = l_c;
+                mdebug1("No previous counter available for '%s'.", keys->keyentries[id]->id);
             }
+
+            g_c = 0;
+            l_c = 0;
         }
+
+        if (id == keys->keysize) {
+            mdebug1("Reloading sender counter: %u:%u", g_c, l_c);
+            global_count = g_c;
+            local_count = l_c;
+        } else {
+            mdebug1("Reloading counter for agent %s: '%u:%u'.", keys->keyentries[id]->id, g_c, l_c);
+            keys->keyentries[id]->global = g_c;
+            keys->keyentries[id]->local = l_c;
+        }
+        
 
         if (id != keys->keysize) { 
             keys->keyentries[id]->updating_time = time(0);
             if (!keys->keyentries[id]->rids_node) {
-                keys->keyentries[id]->rids_node = linked_queue_push(keys->opened_fp_queue, keys->keyentries[id]);
+                keys->keyentries[id]->rids_node = linked_queue_push_ex(keys->opened_fp_queue, keys->keyentries[id]);
             } else {
                 linked_queue_unlink_and_push_node (keys->opened_fp_queue, keys->keyentries[id]->rids_node);
             }
         }
-        
         keys->keyentries[id]->inode = new_inode;
     }
-
-    w_mutex_unlock(&keys->keyentries[id]->mutex);
+    if (id == keys->keysize) {
+        w_mutex_unlock(&keys->keyentries[id]->mutex);
+    }
+    
     return;
 
 fail_open:
-    w_mutex_unlock(&keys->keyentries[id]->mutex);
+    if (id == keys->keysize) {
+        w_mutex_unlock(&keys->keyentries[id]->mutex);
+    }
     merror("Unable to reload counter '%s': %s (%d)", cid, strerror(errno), errno);
 }
 
@@ -370,7 +374,6 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         }
 
         /* Check checksum */
-
         if (f_msg = CheckSum(buffer, *final_size), !f_msg) {
             merror(ENCSUM_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
             return KS_CORRUPT;
@@ -407,11 +410,10 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
             *output = f_msg;
             return KS_VALID;
         }
-
+        w_mutex_lock(&keys->keyentries[id]->mutex);
         if (rcv_count >= _s_recv_flush) {
             ReloadCounter(keys, id, keys->keyentries[id]->id);
         }
-
         if ((msg_global > keys->keyentries[id]->global) ||
                 ((msg_global == keys->keyentries[id]->global) &&
                  (msg_local > keys->keyentries[id]->local))) {
@@ -423,6 +425,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
                 StoreCounter(keys, id, msg_global, msg_local);
                 rcv_count = 0;
             }
+            w_mutex_unlock(&keys->keyentries[id]->mutex);
             rcv_count++;
             *output = f_msg;
             return KS_VALID;
@@ -437,10 +440,11 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
                 msg_local,
                 keys->keyentries[id]->global,
                 keys->keyentries[id]->local);
-
+            w_mutex_unlock(&keys->keyentries[id]->mutex);
             merror(ENCTIME_ERROR, keys->keyentries[id]->name);
             return KS_RIDS;
         }
+        w_mutex_unlock(&keys->keyentries[id]->mutex);
     }
 
     /* Old format */
@@ -485,7 +489,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
             }
         }
 
-
+        w_mutex_lock(&keys->keyentries[id]->mutex);
         if ((msg_time > keys->keyentries[id]->global) ||
                 ((msg_time == keys->keyentries[id]->global) &&
                  (msg_count > keys->keyentries[id]->local))) {
@@ -498,8 +502,10 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
                 f_msg++;
                 *final_size = buffer_size - (f_msg - cleartext);
                 *output = f_msg;
+                w_mutex_unlock(&keys->keyentries[id]->mutex);
                 return KS_VALID;
             } else {
+                w_mutex_unlock(&keys->keyentries[id]->mutex);
                 merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
                 return KS_CORRUPT;
             }
@@ -508,6 +514,8 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         /* Check if it is a duplicated message */
         if ((msg_count == keys->keyentries[id]->local) &&
                 (msg_time == keys->keyentries[id]->global)) {
+
+            w_mutex_unlock(&keys->keyentries[id]->mutex);
             return KS_RIDS;
         }
 
@@ -520,9 +528,11 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
                keys->keyentries[id]->global);
 
         merror(ENCTIME_ERROR, keys->keyentries[id]->name);
+        
+        w_mutex_unlock(&keys->keyentries[id]->mutex);
         return KS_RIDS;
     }
-
+    w_mutex_unlock(&keys->keyentries[id]->mutex);
     mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, srcip);
     return KS_ENCKEY;
 }

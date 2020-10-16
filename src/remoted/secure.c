@@ -291,16 +291,16 @@ static void * close_fp_main(void * args) {
         flag = 1;
         while (flag) {
             w_linked_queue_node_t * first_node = keys->opened_fp_queue->first;
-            mdebug1("Opened rids queue size: %d", keys->opened_fp_queue->elements);
+            mdebug2("Opened rids queue size: %d", keys->opened_fp_queue->elements);
             if (first_node) {
                 int now = time(0);
                 keyentry * first_node_key = (keyentry *)first_node->data;
-                mdebug1("Checking rids_node of agent %s.", first_node_key->id);
+                mdebug2("Checking rids_node of agent %s.", first_node_key->id);
                 if ((now - seconds) > first_node_key->updating_time) {
-                    first_node_key = (keyentry *)linked_queue_pop(keys->opened_fp_queue);
-                    mdebug1("Pop rids_node of agent %s.", first_node_key->id);
+                    first_node_key = (keyentry *)linked_queue_pop_ex(keys->opened_fp_queue);
+                    mdebug2("Pop rids_node of agent %s.", first_node_key->id);
                     if (first_node_key->fp != NULL) {
-                        mdebug1("Closing rids for agent %s.", first_node_key->id);
+                        mdebug2("Closing rids for agent %s.", first_node_key->id);
                         fclose(first_node_key->fp);
                     }
                     first_node_key->updating_time = 0;
