@@ -4069,15 +4069,14 @@ int wdb_parse_rootcheck(wdb_t * wdb, char * input, char * output) {
     char * curr;
     char * next;
     int result = 0;
-
-    if (next = wstr_chr(input, ' '), !next) {
-        mdebug2("DB(%s) Invalid rootcheck query syntax: %s", wdb->id, input);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid rootcheck query syntax, near '%.32s'", input);
-        return -1;
+    next = wstr_chr(input, ' ');
+    
+    if (next) {
+        *next++ = '\0';
     }
 
     curr = input;
-    *next++ = '\0';
+    
 
     if (strcmp(curr, "delete") == 0) {
         result = wdb_rootcheck_delete(wdb);
@@ -4090,6 +4089,12 @@ int wdb_parse_rootcheck(wdb_t * wdb, char * input, char * output) {
         }
     } else if (strcmp(curr, "save") == 0) {
         rk_event_t event;
+        
+        if (!next) {
+            mdebug2("DB(%s) Invalid rootcheck query syntax: %s", wdb->id, input);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid rootcheck query syntax, near '%.32s'", input);
+        }
+
         char *ptr = wstr_chr(next, ' ');
         *ptr++ = '\0';
 
@@ -4125,6 +4130,10 @@ int wdb_parse_rootcheck(wdb_t * wdb, char * input, char * output) {
         if (!result) {
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
+    } else {
+        mdebug2("DB(%s) Invalid rootcheck query syntax: %s", wdb->id, input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid rootcheck query syntax, near '%.32s'", input);
+        result = -1;
     }
     return result;
 }

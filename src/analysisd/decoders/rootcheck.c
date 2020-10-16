@@ -64,14 +64,14 @@ int DecodeRootcheck(Eventinfo *lf)
         // Fallthrough
     case -1:
         os_free(lf->data);
-        return_value = -1;
         break;
     default:
+        return_value = 1;
         mdebug1("Rootcheck decoder response: %s", response);
         break;
     }
 
-    if (!return_value) {
+    if (return_value) {
         lf->decoder_info = rootcheck_dec;
         lf->nfields = RK_NFIELDS;
         os_strdup(rootcheck_dec->fields[RK_TITLE], lf->fields[RK_TITLE].key);
