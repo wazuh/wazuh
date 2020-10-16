@@ -16,6 +16,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '001'
@@ -36,7 +37,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '002,004'
+        agents_list: '002,004'
     response: &permission_denied
       status_code: 403
       json:
@@ -50,10 +51,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,004,005,006'
+        agents_list: '001,003,004,005,006'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '001'
@@ -76,10 +78,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,007,011'
+        agents_list: '001,003,007,011'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '001'
@@ -90,7 +93,7 @@ stages:
           total_failed_items: 0
 
 ---
-test_name: GET /agents?list_agents=agent_id
+test_name: GET /agents?agents_list=agent_id
 
 stages:
 
@@ -102,7 +105,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '008'
+        agents_list: '008'
     response:
       <<: *permission_denied
 
@@ -114,10 +117,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '009'
+        agents_list: '009'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '009'
@@ -150,6 +154,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           client:
             auto_restart: !anystr
@@ -185,6 +190,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '007'
@@ -218,6 +224,7 @@ stages:
    response:
      status_code: 200
      json:
+       error: !anyint
        data:
          affected_items:
            - id: '005'
@@ -240,6 +247,7 @@ stages:
    response:
      status_code: 200
      json:
+       error: !anyint
        data:
          affected_items:
            - name: 'group2'
@@ -256,7 +264,7 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
      params:
-       list_groups: 'group1'
+       groups_list: 'group1'
    response:
       <<: *permission_denied
 
@@ -268,10 +276,11 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
      params:
-       list_groups: 'default,group2,group3'
+       groups_list: 'default,group2,group3'
    response:
      status_code: 200
      json:
+       error: !anyint
        data:
          affected_items:
            - name: 'group2'
@@ -292,10 +301,11 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
      params:
-       list_groups: 'group2,group3'
+       groups_list: 'group2,group3'
    response:
      status_code: 200
      json:
+       error: !anyint
        data:
          affected_items:
            - name: 'group2'
@@ -319,6 +329,7 @@ stages:
    response:
      status_code: 200
      json:
+       error: !anyint
        data:
          affected_items:
            - id: '003'
@@ -352,6 +363,7 @@ stages:
    response:
      status_code: 200
      json:
+       error: !anyint
        data:
          affected_items:
            - config: !anything
@@ -386,6 +398,7 @@ stages:
    response:
      status_code: 200
      json:
+       error: !anyint
        data:
          affected_items:
            - filename: agent.conf
@@ -421,6 +434,7 @@ stages:
    response:
      status_code: 200
      json:
+       error: !anyint
        data: !anything
 
 ---
@@ -467,6 +481,7 @@ stages:
    response:
      status_code: 200
      json:
+       error: !anyint
        data:
          total_affected_items: 0
 
@@ -482,6 +497,7 @@ stages:
    response:
      status_code: 200
      json:
+       error: !anyint
        data:
          affected_items:
            - id: '001'
@@ -505,6 +521,7 @@ stages:
    response:
      status_code: 200
      json:
+       error: !anyint
        data:
          affected_items:
            - id: '011'
@@ -527,6 +544,7 @@ stages:
    response:
      status_code: 200
      json:
+       error: !anyint
        data:
          affected_items:
            - id: '005'
@@ -554,6 +572,7 @@ stages:
    response:
      status_code: 200
      json:
+       error: !anyint
        data:
          affected_items:
            - count: 5
@@ -578,6 +597,7 @@ stages:
    response:
      status_code: 200
      json:
+       error: !anyint
        data:
          active: 4
          disconnected: 1
@@ -600,6 +620,7 @@ stages:
    response:
      status_code: 200
      json:
+       error: !anyint
        data:
          affected_items:
            - ubuntu
@@ -695,7 +716,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_groups: 'group2'
+        groups_list: 'group2'
     response:
       <<: *permission_denied
 
@@ -709,6 +730,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'group1'
@@ -725,10 +747,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_groups: 'default,group1,group3'
+        groups_list: 'default,group1,group3'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -759,7 +782,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         group_id: group2
-        list_agents: all
+        agents_list: all
     response:
       <<: *permission_denied
 
@@ -772,10 +795,11 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         group_id: group1
-        list_agents: all
+        agents_list: all
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items: []
@@ -791,11 +815,12 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '004,007,008,998,999'
+        agents_list: '004,007,008,998,999'
         group_id: group1
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -815,7 +840,7 @@ stages:
     delay_after: !float "{global_db_delay}"
 
 ---
-test_name: DELETE groups?list_groups=group_id
+test_name: DELETE groups?groups_list=group_id
 
 stages:
 
@@ -827,7 +852,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_groups: group1
+        groups_list: group1
     response:
       <<: *permission_denied
 
@@ -839,10 +864,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_groups: group2
+        groups_list: group2
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_agents: []
           affected_items: []
@@ -862,10 +888,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_groups: antonio
+        groups_list: antonio
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_agents: []
           affected_items: []
@@ -890,10 +917,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_groups: all
+        groups_list: all
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_agents: []
           affected_items: []
@@ -914,10 +942,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_groups: 'default,group1,group2,group3,pepito,antonio'
+        groups_list: 'default,group1,group2,group3,pepito,antonio'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_agents: []
           affected_items: []
@@ -941,7 +970,7 @@ stages:
           total_failed_items: 6
 
 ---
-test_name: DELETE /agents?list_agents=agent_id
+test_name: DELETE /agents?agents_list=agent_id
 
 stages:
 
@@ -953,7 +982,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '003'
+        agents_list: '003'
     response:
       <<: *permission_denied
 
@@ -965,11 +994,12 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '002'
+        agents_list: '002'
         older_than: '0s'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '002'
@@ -991,7 +1021,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '003,009'
+        agents_list: '003,009'
     response:
       <<: *permission_denied
 
@@ -1003,11 +1033,12 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '004,006'
+        agents_list: '004,006'
         older_than: '0s'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '004'
@@ -1026,11 +1057,12 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '000,007,008,999'
+        agents_list: '000,007,008,999'
         older_than: '0s'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '008'
@@ -1058,10 +1090,11 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         older_than: '0s'
-        list_agents: all
+        agents_list: all
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '010'
@@ -1168,7 +1201,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '003,008,011'
+        agents_list: '003,008,011'
         group_id: group1
     response:
       <<: *permission_denied
@@ -1181,11 +1214,12 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,002,005'
+        agents_list: '001,002,005'
         group_id: group1
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '005'
@@ -1210,6 +1244,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '009'
@@ -1279,6 +1314,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "005"
@@ -1300,7 +1336,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: "001"
+        agents_list: "001"
     response:
       <<: *permission_denied
 
@@ -1312,10 +1348,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: "000,001,002,005"
+        agents_list: "000,001,002,005"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '005'
@@ -1340,6 +1377,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '005'
@@ -1383,6 +1421,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1418,6 +1457,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '005'
@@ -1469,7 +1509,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '002'
+        agents_list: '002'
     response:
       status_code: 403
       json:
