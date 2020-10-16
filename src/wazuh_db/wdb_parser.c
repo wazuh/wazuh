@@ -5147,7 +5147,7 @@ int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output) {
 }
 
 int wdb_parse_reset_agents_connection(wdb_t * wdb, char * output) {
-    if (OS_SUCCESS != wdb_global_reset_connection_status(wdb)) {
+    if (OS_SUCCESS != wdb_global_reset_agents_connection(wdb)) {
         mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
         snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
         return OS_INVALID;
