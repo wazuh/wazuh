@@ -867,7 +867,7 @@ os_info *get_unix_version()
         // Get os_patch
         if (w_regexec("^[0-9]+\\.[0-9]+\\.([0-9]+)*", info->os_version, 2, match)) {
             match_size = match[1].rm_eo - match[1].rm_so;
-            os_malloc(match_size +1, info->os_patch);
+            os_malloc(match_size, info->os_patch);
             snprintf(info->os_patch, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
         }
         // Get OSX codename
