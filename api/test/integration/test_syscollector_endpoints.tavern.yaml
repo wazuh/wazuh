@@ -52,7 +52,7 @@ stages:
     response: &error_response_1724
       status_code: 400
       json:
-        code: 1724
+        error: 1724
 
 ---
 test_name: GET /syscollector/{agent_id}/os?{select}
@@ -379,7 +379,7 @@ stages:
     response: &error_response_1403
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
   - name: Search an expected name
     request:

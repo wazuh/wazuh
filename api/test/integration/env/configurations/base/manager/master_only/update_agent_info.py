@@ -1,8 +1,8 @@
 import socket
 import struct
-import yaml
-import json
 import time
+
+import yaml
 
 ADDR = '/var/ossec/queue/db/wdb'
 sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -32,23 +32,36 @@ def create_and_send_query(agent_info_file):
     with open(agent_info_file) as f:
         agent_info = yaml.safe_load(f)
 
-    for agent in agent_info:
-        # Add last_keepalive with epoch time
-        try:
-            agent['new_agent_info']['last_keepalive'] = int(time.time()) - \
-                                                        3600*24*int(agent['extra_params']['days_from_last_connection'])
-        except KeyError:
-            pass
+    with open('/configuration_files/agent_info_output', 'a+') as f:
+        for agent in agent_info:
+            # Add last_keepalive with epoch time
+            try:
+                agent['agent']['last_keepalive'] = int(time.time()) - \
+                                                            3600*24*int(agent['extra_params']['days_from_last_connection'])
+            except KeyError:
+                pass
 
-        # Prepare query with all the requested fields
-        query = "UPDATE agent SET " + \
-                ", ".join(['{0} = {1}'.format(key, value) if isinstance(value, int)
-                           else '{0} = "{1}"'.format(key, value)
-                           for key, value in agent['new_agent_info'].items()]) + \
-                f" WHERE id = {agent['extra_params']['agent_id']}"
+            # Update fields of agent table
+            try:
+                query = "UPDATE agent SET " + \
+                        ", ".join(['{0} = {1}'.format(key, value) if isinstance(value, int)
+                                   else '{0} = "{1}"'.format(key, value)
+                                   for key, value in agent['agent'].items()]) + \
+                        f" WHERE id = {agent['extra_params']['agent_id']}"
+                # Send query to wdb
+                f.write(str(send_msg("global sql " + query)))
+            except KeyError:
+                pass
 
-        # Send query to wdb
-        send_msg("global sql " + query)
+            # Insert fields of labels table
+            try:
+                for key, value in agent['labels'].items():
+                    query = f"INSERT INTO labels ('id', 'key', 'value') VALUES " \
+                            f"({agent['extra_params']['agent_id']}, '{key}', '{value}')"
+                    # Send query to wdb
+                    f.write(str(send_msg("global sql " + query)))
+            except KeyError:
+                pass
 
 
 if __name__ == "__main__":

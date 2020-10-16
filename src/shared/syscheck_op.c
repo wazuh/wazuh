@@ -981,15 +981,16 @@ char *decode_win_permissions(char *raw_perm) {
     char *base_it = NULL;
     char *account_name = NULL;
     char a_type;
+    char *decoded_perm;
     long mask;
 
     if (*raw_perm != '|') {
         // It is trying to convert to the new format
         // a permissions that have already been transformed
-        return 0;
+        os_strdup("", decoded_perm);
+        return decoded_perm;
     }
 
-    char *decoded_perm;
     os_calloc(MAX_WIN_PERM_SIZE, sizeof(char), decoded_perm);
 
     int perm_size = MAX_WIN_PERM_SIZE;
