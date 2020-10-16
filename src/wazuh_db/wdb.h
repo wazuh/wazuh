@@ -159,6 +159,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GET_AGENTS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_GREATER_KEEPALIVE,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_LESS_KEEPALIVE,
+    WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
     WDB_STMT_SIZE // This must be the last constant
@@ -1251,6 +1252,15 @@ int wdb_parse_global_get_agents_by_keepalive(wdb_t* wdb, char* input, char* outp
  */
 int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output);
 
+/**
+ * @brief Function to parse the reset agent connection status request.
+ * 
+ * @param [in] wdb The global struct database.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_reset_agents_connection(wdb_t * wdb, char * output);
+
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);
 
 int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail);
@@ -1704,6 +1714,16 @@ wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, c
  * @return wdbc_result to represent if all agents has being obtained or any error occurred.
  */
 wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **output);
+
+/**
+ * @brief Function to reset connection_status column of every agent.
+ *        If connection_status is pending or connected it will be changed to disconnected.
+ *        If connection_status is disconnected or never_connected it will not be changed.
+ * 
+ * @param [in] wdb The Global struct database.
+ * @return 0 On success. -1 On error.
+ */
+int wdb_global_reset_connection_status(wdb_t *wdb);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }

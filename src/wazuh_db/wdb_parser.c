@@ -684,7 +684,10 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_global_get_agent_info(wdb, next, output);
             }
-        } 
+        }
+        else if (strcmp(query, "reset-agents-connection") == 0) {
+            result = wdb_parse_reset_agents_connection(wdb, output);
+        }
         else {
             mdebug1("Invalid DB query syntax.");
             mdebug2("Global DB query error near: %s", query);
@@ -5140,5 +5143,16 @@ int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output) {
     
     os_free(out)
 
+    return OS_SUCCESS;
+}
+
+int wdb_parse_reset_agents_connection(wdb_t * wdb, char * output) {
+    if (OS_SUCCESS != wdb_global_reset_connection_status(wdb)) {
+        mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+        snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    snprintf(output, OS_MAXSTR + 1, "ok");
     return OS_SUCCESS;
 }
