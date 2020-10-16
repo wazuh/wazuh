@@ -193,7 +193,8 @@ typedef enum global_db_access {
     WDB_DELETE_AGENT,
     WDB_DELETE_GROUP,
     WDB_DELETE_AGENT_BELONG,
-    WDB_DELETE_GROUP_BELONG
+    WDB_DELETE_GROUP_BELONG,
+    WDB_RESET_AGENTS_CONNECTION
 } global_db_access;
 
 typedef struct wdb_t {
@@ -657,6 +658,16 @@ int wdb_delete_agent_belongs(int id, int *sock);
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
 int wdb_remove_group_from_belongs_db(const char *name, int *sock);
+
+/**
+ * @brief Resets the connection_status column of every agent.
+ *        If connection_status is pending or connected it will be changed to disconnected.
+ *        If connection_status is disconnected or never_connected it will not be changed.
+ *
+ * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_reset_agents_connection(int *sock);
 
 /**
  * @brief Create database for agent from profile.
