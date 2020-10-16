@@ -234,6 +234,8 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
     FILE *fp;
     int i = 0;
     int invalid = 0;
+    char * vendor_name = NULL;
+    char * package_name = NULL;
 
     snprintf(filepath, PATH_LENGTH - 1, "%s/%s", app_folder, INFO_FILE);
     memset(read_buff, 0, OS_MAXSTR);
@@ -263,7 +265,16 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
                             char ** parts = OS_StrBreak('>', read_buff, 4);
                             char ** _parts = OS_StrBreak('<', parts[3], 2);
 
-                            cJSON_AddStringToObject(package, "name", _parts[0]);
+                            if (normalize_mac_package_name(_parts[0], &vendor_name, &package_name)) {
+                                cJSON_AddStringToObject(package, "name", package_name);
+                                os_free(package_name);
+                                if (vendor_name) {
+                                    cJSON_AddStringToObject(package, "vendor", vendor_name);
+                                    os_free(vendor_name);
+                                }
+                            } else {
+                                cJSON_AddStringToObject(package, "name", _parts[0]);
+                            }
 
                             for (i = 0; _parts[i]; i++) {
                                 os_free(_parts[i]);
@@ -279,7 +290,16 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
                             char ** parts = OS_StrBreak('>', read_buff, 2);
                             char ** _parts = OS_StrBreak('<', parts[1], 2);
 
-                            cJSON_AddStringToObject(package, "name", _parts[0]);
+                            if (normalize_mac_package_name(_parts[0], &vendor_name, &package_name)) {
+                                cJSON_AddStringToObject(package, "name", package_name);
+                                os_free(package_name);
+                                if (vendor_name) {
+                                    cJSON_AddStringToObject(package, "vendor", vendor_name);
+                                    os_free(vendor_name);
+                                }
+                            } else {
+                                cJSON_AddStringToObject(package, "name", _parts[0]);
+                            }
 
                             for (i = 0; _parts[i]; i++) {
                                 os_free(_parts[i]);
@@ -415,7 +435,16 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
             end = strchr(program_name, '.');
             *end = '\0';
 
-            cJSON_AddStringToObject(package, "name", program_name);
+            if (normalize_mac_package_name(program_name, &vendor_name, &package_name)) {
+                cJSON_AddStringToObject(package, "name", package_name);
+                os_free(package_name);
+                if (vendor_name) {
+                    cJSON_AddStringToObject(package, "vendor", vendor_name);
+                    os_free(vendor_name);
+                }
+            } else {
+                cJSON_AddStringToObject(package, "name", program_name);
+            }
         }
 
         char *string;
@@ -1661,6 +1690,57 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
     wm_sendmsg(usec, queue_fd, end_msg, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     os_free(end_msg);
+}
+
+/* This function normalize the macOS package's name */
+int normalize_mac_package_name(const char * source_package, char ** vendor_name, char ** package_name) {
+    int result = 1;
+    int i;
+    char * next = NULL;
+    char * package_cpy = NULL;
+    char * vendor_in_package[] = {
+        "Microsoft",
+        "VMware"
+    };
+    char * version_in_package[] = {
+        "1Password"
+    };
+    int array_size_vendor = sizeof(vendor_in_package) / sizeof(vendor_in_package[0]);
+    int array_size_version = sizeof(version_in_package) / sizeof(version_in_package[0]);
+
+    if (!source_package) {
+        return 0;
+    }
+    os_strdup(source_package, package_cpy);
+
+    if (next = wstr_chr(package_cpy, ' '), !next) {
+        if (!strcmp(package_cpy, "zoom.us")) {
+            os_strdup("zoom", *package_name);
+        } else {
+            result = 0;
+        }
+    } else {
+        *next++ = '\0';
+        for (i = 0; i < array_size_vendor; i++) {
+            if (!strcmp(package_cpy, vendor_in_package[i])) {
+                os_strdup(package_cpy, *vendor_name);
+                os_strdup(next, *package_name);
+                os_free(package_cpy);
+                return 1;
+            }
+        }
+        for (i = 0; i < array_size_version; i++) {
+            if (!strcmp(package_cpy, version_in_package[i])) {
+                os_strdup(package_cpy, *package_name);
+                os_free(package_cpy);
+                return 1;
+            }
+        }
+        result = 0;
+    }
+
+    os_free(package_cpy);
+    return result;
 }
 
 #endif
