@@ -131,7 +131,7 @@ def test_rbac_catalog(db_setup, security_function, params, expected_result):
         if value.lower() != 'none':
             final_params[param] = value
     result = getattr(security, security_function)(**final_params).to_dict()
-    assert result['result'] == expected_result
+    assert result['result']['data'] == expected_result
 
 
 def test_revoke_tokens(db_setup):

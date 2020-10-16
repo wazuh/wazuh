@@ -19,6 +19,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: &rules_response
             - description: !anystr
@@ -50,6 +51,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -75,6 +77,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - description: "{second_rule_description}"
@@ -92,6 +95,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -105,6 +109,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -131,6 +136,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -152,6 +158,7 @@ stages:
           select_key: 'id,filename,details.noalert' # required_fields={'id'}
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
           failed_items: []
@@ -166,7 +173,7 @@ stages:
     response:
       status_code: 400
       json: &invalid_select
-        code: 1724
+        error: 1724
 
   - name: Show rules of the system using select (one select is invalid)
     request:
@@ -189,6 +196,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items: []
@@ -208,6 +216,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -230,6 +239,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: !int "{rule_id}"
@@ -275,6 +285,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -292,6 +303,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -316,6 +328,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -333,6 +346,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -359,6 +373,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: *rules_response
           failed_items: []
@@ -374,6 +389,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -387,6 +403,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -404,6 +421,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -416,6 +434,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -438,6 +457,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -455,6 +475,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -468,6 +489,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -499,6 +521,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - pci_dss:
@@ -517,6 +540,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - pci_dss:
@@ -534,6 +558,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -547,6 +572,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - gdpr:
@@ -564,6 +590,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -577,6 +604,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - gpg13:
@@ -594,6 +622,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -607,6 +636,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - hipaa:
@@ -624,6 +654,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -637,6 +668,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - nist_800_53:
@@ -654,6 +686,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -667,6 +700,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - tsc:
@@ -684,6 +718,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -696,6 +731,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - mitre:
@@ -712,6 +748,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -732,6 +769,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - !anystr
@@ -750,6 +788,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - !anystr
@@ -775,6 +814,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -805,6 +845,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -837,6 +878,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - !anystr
@@ -855,6 +897,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - !anystr
@@ -880,6 +923,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -911,6 +955,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -941,6 +986,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -954,6 +1000,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - !anystr
@@ -978,6 +1025,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -996,6 +1044,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1026,6 +1075,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1056,6 +1106,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1072,6 +1123,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1096,6 +1148,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1111,6 +1164,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1141,6 +1195,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1157,6 +1212,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1181,6 +1237,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1196,6 +1253,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1226,6 +1284,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1242,6 +1301,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1266,6 +1326,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1281,6 +1342,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1311,6 +1373,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1327,6 +1390,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1351,6 +1415,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1366,6 +1431,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1396,6 +1462,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1412,6 +1479,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1436,6 +1504,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1451,6 +1520,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1481,6 +1551,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1500,6 +1571,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1555,6 +1627,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1594,6 +1667,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -1610,6 +1684,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -1627,6 +1702,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -1648,6 +1724,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items: []
@@ -1674,6 +1751,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -1691,6 +1769,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items: []
@@ -1719,6 +1798,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:

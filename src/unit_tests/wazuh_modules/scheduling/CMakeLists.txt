@@ -18,8 +18,8 @@ file(GLOB modulesd_files ../../../wazuh_modules/*.o)
 list(REMOVE_ITEM modulesd_files ../../../wazuh_modules/main.o)
 file(GLOB syscollector_files ../../../wazuh_modules/syscollector/*.o)
 
-add_library(MODULESD_O STATIC ${modulesd_files})
-add_library(SYSCOLLECTOR_O STATIC ${syscollector_files})
+add_library(SCHEDULING_MODULESD_O STATIC ${modulesd_files})
+add_library(SCHEDULING_SYSCOLLECTOR_O STATIC ${syscollector_files})
 
 set_source_files_properties(
   ${modulesd_files}
@@ -30,13 +30,13 @@ set_source_files_properties(
   )
 
 set_target_properties(
-  MODULESD_O
-  SYSCOLLECTOR_O
+  SCHEDULING_MODULESD_O
+  SCHEDULING_SYSCOLLECTOR_O
   PROPERTIES
   LINKER_LANGUAGE C
 )
 
-target_link_libraries(MODULESD_O SYSCOLLECTOR_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+target_link_libraries(SCHEDULING_MODULESD_O SCHEDULING_SYSCOLLECTOR_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 
 # Compiling tests
@@ -58,8 +58,8 @@ foreach(counter RANGE ${count})
         ${test_name}
         ${WAZUHLIB}
         ${WAZUHEXT}
-        MODULESD_O
-        SYSCOLLECTOR_O
+        SCHEDULING_MODULESD_O
+        SCHEDULING_SYSCOLLECTOR_O
         -lcmocka
         -fprofile-arcs
         -ftest-coverage

@@ -308,7 +308,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
         if (OS_SUCCESS != w_auth_validate_groups(groups, NULL)){
             ierror = EINVGROUP;
             goto fail;
-        }        
+        }
     }
 
     // Check for duplicated ID
