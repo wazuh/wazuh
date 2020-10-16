@@ -1272,7 +1272,7 @@ class PoliciesManager:
                     if isinstance(policy['actions'], list) and isinstance(policy['resources'], list) \
                             and isinstance(policy['effect'], str):
                         # Regular expression that prevents the creation of invalid policies
-                        regex = r'^[a-z_\-*]+:[a-z0-9_\-*]+([:|&]{0,1}[a-z0-9_\-*]+)*$'
+                        regex = r'^[a-zA-Z_\-*]+:[a-zA-Z0-9_\-*]+([:|&]{0,1}[a-zA-Z0-9_\-\/.*]+)*$'
                         for action in policy['actions']:
                             if not re.match(regex, action):
                                 return SecurityError.INVALID
@@ -1395,9 +1395,17 @@ class PoliciesManager:
                         return SecurityError.INVALID
                     if name is not None:
                         policy_to_update.name = name
-                    if policy is not None:
-                        if 'actions' in policy.keys() and 'resources' in policy.keys() and 'effect' in policy.keys():
-                            policy_to_update.policy = json.dumps(policy)
+                    if policy is not None and 'actions' in policy.keys() and \
+                            'resources' in policy.keys() and 'effect' in policy.keys():
+                        # Regular expression that prevents the creation of invalid policies
+                        regex = r'^[a-zA-Z_\-*]+:[a-zA-Z0-9_\-*]+([:|&]{0,1}[a-zA-Z0-9_\-\/.*]+)*$'
+                        for action in policy['actions']:
+                            if not re.match(regex, action):
+                                return SecurityError.INVALID
+                        for resource in policy['resources']:
+                            if not re.match(regex, resource):
+                                return SecurityError.INVALID
+                        policy_to_update.policy = json.dumps(policy)
                     self.session.commit()
                     return True
                 return SecurityError.ADMIN_RESOURCES
