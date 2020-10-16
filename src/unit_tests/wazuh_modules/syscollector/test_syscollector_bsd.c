@@ -42,7 +42,9 @@ static int teardown_wrappers(void **state) {
     return 0;
 }
 
-void test_sys_convert_bin_plist_failed_stat(void **state) 
+// sys_convert_bin_plist
+
+void test_sys_convert_bin_plist_failed_stat(void **state)
 {
     int stat_size = 20;
     FILE *fp = (void *)1;
@@ -53,13 +55,13 @@ void test_sys_convert_bin_plist_failed_stat(void **state)
     will_return(wrap_fstat, -1);
 
     expect_string(wrap_mterror, tag, "wazuh-modulesd:syscollector");
-    expect_string(wrap_mterror, formatted_msg, "Failed to stat file 'prueba': Undefined error: 0");    
+    expect_string(wrap_mterror, formatted_msg, "Failed to stat file 'prueba': Undefined error: 0");
 
     bool ret = sys_convert_bin_plist(&fp, NULL, "prueba");
     assert_int_equal(ret, false);
 }
 
-void test_sys_convert_bin_plist_failed_mmap(void **state) 
+void test_sys_convert_bin_plist_failed_mmap(void **state)
 {
     int stat_size = 20;
     FILE *fp = (void *)1;
@@ -73,13 +75,13 @@ void test_sys_convert_bin_plist_failed_mmap(void **state)
     will_return(wrap_mmap, MAP_FAILED);
 
     expect_string(wrap_mterror, tag, "wazuh-modulesd:syscollector");
-    expect_string(wrap_mterror, formatted_msg, "Failed to mmap file 'prueba': Undefined error: 0");    
+    expect_string(wrap_mterror, formatted_msg, "Failed to mmap file 'prueba': Undefined error: 0");
 
     bool ret = sys_convert_bin_plist(&fp, NULL, "prueba");
     assert_int_equal(ret, false);
 }
 
-void test_sys_convert_bin_plist_empty_node(void **state) 
+void test_sys_convert_bin_plist_empty_node(void **state)
 {
     int stat_size = 20;
     FILE *fp = (void *)1;
@@ -91,7 +93,7 @@ void test_sys_convert_bin_plist_empty_node(void **state)
 
     expect_value(wrap_mmap, fd, 3);
     will_return(wrap_mmap, (void *)1);
-    
+
     expect_value(wrap_plist_from_bin, bin, (void *)1);
     will_return(wrap_plist_from_bin, (void *)0);
 
@@ -101,7 +103,7 @@ void test_sys_convert_bin_plist_empty_node(void **state)
     assert_int_equal(ret, false);
 }
 
-void test_sys_convert_bin_plist_failed_xml(void **state) 
+void test_sys_convert_bin_plist_failed_xml(void **state)
 {
     int stat_size = 20;
     FILE *fp = (void *)1;
@@ -113,10 +115,10 @@ void test_sys_convert_bin_plist_failed_xml(void **state)
 
     expect_value(wrap_mmap, fd, 3);
     will_return(wrap_mmap, (void *)1);
-    
+
     expect_value(wrap_plist_from_bin, bin, (void *)1);
     will_return(wrap_plist_from_bin, (void *)1);
-    
+
     expect_value(wrap_plist_to_xml, node, (void *)1);
     will_return(wrap_plist_to_xml, (void *)0);
     will_return(wrap_plist_to_xml, stat_size);
@@ -128,7 +130,7 @@ void test_sys_convert_bin_plist_failed_xml(void **state)
     assert_int_equal(ret, false);
 }
 
-void test_sys_convert_bin_plist_failed_tmpfile(void **state) 
+void test_sys_convert_bin_plist_failed_tmpfile(void **state)
 {
     int stat_size = 20;
     FILE *fp = (void *)1;
@@ -140,14 +142,14 @@ void test_sys_convert_bin_plist_failed_tmpfile(void **state)
 
     expect_value(wrap_mmap, fd, 3);
     will_return(wrap_mmap, (void *)1);
-    
+
     expect_value(wrap_plist_from_bin, bin, (void *)1);
     will_return(wrap_plist_from_bin, (void *)1);
-    
+
     expect_value(wrap_plist_to_xml, node, (void *)1);
     will_return(wrap_plist_to_xml, (void *)1);
     will_return(wrap_plist_to_xml, stat_size);
-    
+
     expect_value(wrap_fclose, fp, (void *)1);
     will_return(wrap_fclose, 1);
 
@@ -163,7 +165,7 @@ void test_sys_convert_bin_plist_failed_tmpfile(void **state)
     assert_int_equal(ret, false);
 }
 
-void test_sys_convert_bin_plist_ok(void **state) 
+void test_sys_convert_bin_plist_ok(void **state)
 {
     int stat_size = 20;
     FILE *fp = (void *)1;
@@ -175,14 +177,14 @@ void test_sys_convert_bin_plist_ok(void **state)
 
     expect_value(wrap_mmap, fd, 3);
     will_return(wrap_mmap, (void *)1);
-    
+
     expect_value(wrap_plist_from_bin, bin, (void *)1);
     will_return(wrap_plist_from_bin, (void *)1);
-    
+
     expect_value(wrap_plist_to_xml, node, (void *)1);
     will_return(wrap_plist_to_xml, (void *)1);
     will_return(wrap_plist_to_xml, stat_size);
-    
+
     expect_value(wrap_fclose, fp, (void *)1);
     will_return(wrap_fclose, 1);
 
@@ -203,6 +205,42 @@ void test_sys_convert_bin_plist_ok(void **state)
     assert_int_equal(ret, true);
 }
 
+// normalize_mac_package
+
+static void test_normalize_mac_package_name(void **state) {
+    int ret;
+    int i;
+    char * vendor = NULL;
+    char * package = NULL;
+    char * source_package[8][3] = {
+        {"Microsoft Word", "Microsoft", "Word"},
+        {"Microsoft Excel", "Microsoft", "Excel"},
+        {"VMware Fusion", "VMware", "Fusion"},
+        {"VMware Horizon Client", "VMware", "Horizon Client"},
+        {"1Password 7", NULL, "1Password"},
+        {"zoom.us", NULL, "zoom"},
+        {"Foxit Reader", NULL, NULL},
+        {NULL, NULL, NULL},
+    };
+
+    for (i = 0; i < 8; i++) {
+        ret = normalize_mac_package_name(source_package[i][0], &vendor, &package);
+        if (i < 6) {
+            assert_int_equal(ret, 1);
+            if (source_package[i][1]) {
+                assert_string_equal(vendor, source_package[i][1]);
+                os_free(vendor);
+            }
+            assert_string_equal(package, source_package[i][2]);
+            os_free(package);
+        } else {
+            assert_int_equal(ret, 0);
+            assert_null(package);
+            assert_null(vendor);
+        }
+    }
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_sys_convert_bin_plist_failed_stat, setup_wrappers, teardown_wrappers),
@@ -210,7 +248,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_sys_convert_bin_plist_empty_node, setup_wrappers, teardown_wrappers),
         cmocka_unit_test_setup_teardown(test_sys_convert_bin_plist_failed_xml, setup_wrappers, teardown_wrappers),
         cmocka_unit_test_setup_teardown(test_sys_convert_bin_plist_failed_tmpfile, setup_wrappers, teardown_wrappers),
-        cmocka_unit_test_setup_teardown(test_sys_convert_bin_plist_ok, setup_wrappers, teardown_wrappers)
+        cmocka_unit_test_setup_teardown(test_sys_convert_bin_plist_ok, setup_wrappers, teardown_wrappers),
+        cmocka_unit_test(test_normalize_mac_package_name)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
