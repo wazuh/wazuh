@@ -83,32 +83,7 @@ char* rk_get_file(const char *log) {
     return NULL;
 }
 
-/* Extract time and event from Rootcheck log. It doesn't reserve memory. */
-int rk_decode_event(char *buffer, rk_event_t *event) {
-    char *string;
-    char *end;
-
-    if (buffer[0] == '!') {
-        string = buffer + 1;
-        event->date_last = strtol(string, &end, 10);
-
-        if (event->date_last == LONG_MAX || event->date_last < 0 || *end != '!')
-            return -1;
-
-        string = end + 1;
-        event->date_first = strtol(string, &end, 10);
-
-        if (event->date_first == LONG_MAX || event->date_first < 0 || *end != ' ')
-            return -1;
-
-        event->log = end + 1;
-    } else
-        event->log = buffer;
-
-    return 0;
-}
-
-int send_rootcheck_log(const char* agent_id, long int date, char* log, char* response) {
+int send_rootcheck_log(const char* agent_id, long int date, const char* log, char* response) {
     char wazuhdb_query[OS_SIZE_6144];
     int db_result;
     int socket = -1;

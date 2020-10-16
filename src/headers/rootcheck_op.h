@@ -28,9 +28,6 @@ char* rk_get_title(const char *log);
 /* Get rootcheck file from log */
 char* rk_get_file(const char *log);
 
-/* Extract time and event from Rootcheck log. It doesn't reserve memory. */
-int rk_decode_event(char *buffer, rk_event_t *event);
-
 /**
  * Sends a rootcheck log through wazuh database
  * @param agent_id [In] string containing the agent id
@@ -42,7 +39,7 @@ int rk_decode_event(char *buffer, rk_event_t *event);
  * @retval -1 Error executing query
  * @retval >0 Successfull reponse
  * */
-int send_rootcheck_log(const char* agent_id, long int date, char* log, char* response);
+int send_rootcheck_log(const char* agent_id, long int date, const char* log, char* response);
 
 
 #endif /* ROOTCHECK_OP_H */
