@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS agent (
     reg_offset INTEGER NOT NULL DEFAULT 0,
     `group` TEXT DEFAULT 'default',
     sync_status TEXT NOT NULL CHECK (sync_status IN ('synced', 'syncreq')) DEFAULT 'synced'
+    connection_status TEXT NOT NULL CHECK (connection_status IN ('pending', 'never_connected', 'active', 'disconnected')) DEFAULT 'never_connected'
 );
 
 CREATE INDEX IF NOT EXISTS agent_name ON agent (name);
@@ -68,4 +69,4 @@ CREATE TABLE IF NOT EXISTS metadata (
     value TEXT
 );
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '1');
+INSERT INTO metadata (key, value) VALUES ('db_version', '2');
