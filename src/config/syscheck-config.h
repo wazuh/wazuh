@@ -225,10 +225,15 @@ typedef struct registry {
     char *tag;
 } registry;
 
-typedef struct registry_regex {
+typedef struct registry_ignore {
+    char *entry;
+    int arch;
+} registry_ignore;
+
+typedef struct registry_ignore_regex {
     OSMatch *regex;
     int arch;
-} registry_regex;
+} registry_ignore_regex;
 
 #endif
 
@@ -379,14 +384,16 @@ typedef struct _config {
 
     /* Windows only registry checking */
 #ifdef WIN32
-    char realtime_change;                       // Variable to activate the change to realtime from a whodata monitoring
-    registry *registry_ignore;                  /* list of registry entries to ignore */
-    registry_regex *registry_ignore_regex;      /* regex of registry entries to ignore */
-    registry *registry;                         /* array of registry entries to be scanned */
-    int max_fd_win_rt;
+    char realtime_change;                              /* Variable to activate the change to realtime from a whodata monitoring*/
+    registry_ignore *key_ignore;                       /* List of registry keys to ignore */
+    registry_ignore_regex *key_ignore_regex;           /* Regex of registry keys to ignore */
+    registry_ignore *value_ignore;                     /* List of registry values to ignore*/
+    registry_ignore_regex *value_ignore_regex;         /* Regex of registry values to ignore */
+    registry *registry;                                /* array of registry entries to be scanned */
+    int max_fd_win_rt;                                 /* Maximum number of descriptors in realtime */
     whodata wdata;
-    registry *registry_nodiff;                     /* list of values/registries to never output diff */
-    registry_regex *registry_nodiff_regex;            /* regex of values/registries to never output diff */
+    registry *registry_nodiff;                         /* list of values/registries to never output diff */
+    registry_ignore_regex *registry_nodiff_regex;      /* regex of values/registries to never output diff */
 #endif
     int max_audit_entries;          /* Maximum entries for Audit (whodata) */
     char **audit_key;               // Listen audit keys

@@ -342,59 +342,56 @@ void dump_syscheck_registry(syscheck_config *syscheck,
 
 #ifdef WIN32
 
-void dump_registry_ignore(syscheck_config *syscheck, char *entry, int arch) {
+void dump_registry_ignore(syscheck_config *syscheck, char *entry, int arch, int value) {
     int ign_size = 0;
+    registry_ignore **ignore_list = value ? &syscheck->value_ignore : &syscheck->key_ignore;
 
-    if (syscheck->registry_ignore) {
+    if (*ignore_list) {
         /* We do not add duplicated entries */
-        for (ign_size = 0; syscheck->registry_ignore[ign_size].entry; ign_size++)
-            if (syscheck->registry_ignore[ign_size].arch == arch &&
-                    strcmp(syscheck->registry_ignore[ign_size].entry, entry) == 0)
+        for (ign_size = 0; (*ignore_list)[ign_size].entry; ign_size++)
+            if ((*ignore_list)[ign_size].arch == arch &&
+                    strcmp((*ignore_list)[ign_size].entry, entry) == 0)
                 return;
 
-        os_realloc(syscheck->registry_ignore, sizeof(registry) * (ign_size + 2),
-                   syscheck->registry_ignore);
-
-        syscheck->registry_ignore[ign_size + 1].entry = NULL;
+        os_realloc((*ignore_list), sizeof(registry_ignore) * (ign_size + 2), *ignore_list);
+        (*ignore_list)[ign_size + 1].entry = NULL;
     } else {
         ign_size = 0;
-        os_calloc(2, sizeof(registry), syscheck->registry_ignore);
-        syscheck->registry_ignore[0].entry = NULL;
-        syscheck->registry_ignore[1].entry = NULL;
+        os_calloc(2, sizeof(registry_ignore), *ignore_list);
+        (*ignore_list)[0].entry = NULL;
+        (*ignore_list)[1].entry = NULL;
     }
 
-    os_strdup(entry, syscheck->registry_ignore[ign_size].entry);
-    syscheck->registry_ignore[ign_size].arch = arch;
+    os_strdup(entry, (*ignore_list)[ign_size].entry);
+    (*ignore_list)[ign_size].arch = arch;
 }
 
-int dump_registry_ignore_regex(syscheck_config *syscheck, char *regex, int arch) {
+int dump_registry_ignore_regex(syscheck_config *syscheck, char *regex, int arch, int value) {
     OSMatch *mt_pt;
     int ign_size = 0;
+    registry_ignore_regex **ignore_list_regex = value ? &syscheck->value_ignore_regex : &syscheck->key_ignore_regex;
 
-    if (!syscheck->registry_ignore_regex) {
-        os_calloc(2, sizeof(registry_regex), syscheck->registry_ignore_regex);
-        syscheck->registry_ignore_regex[0].regex = NULL;
-        syscheck->registry_ignore_regex[1].regex = NULL;
+    if (!(*ignore_list_regex)) {
+        os_calloc(2, sizeof(registry_ignore_regex), (*ignore_list_regex));
+        (*ignore_list_regex)[0].regex = NULL;
+        (*ignore_list_regex)[1].regex = NULL;
     } else {
-        while (syscheck->registry_ignore_regex[ign_size].regex != NULL) {
+        while ((*ignore_list_regex)[ign_size].regex != NULL) {
             ign_size++;
         }
-
-        os_realloc(syscheck->registry_ignore_regex, sizeof(registry_regex) * (ign_size + 2),
-                syscheck->registry_ignore_regex);
-        syscheck->registry_ignore_regex[ign_size + 1].regex = NULL;
+        os_realloc((*ignore_list_regex), sizeof(registry_ignore_regex) * (ign_size + 2), (*ignore_list_regex));
+        (*ignore_list_regex)[ign_size + 1].regex = NULL;
     }
 
-    os_calloc(1, sizeof(OSMatch),
-            syscheck->registry_ignore_regex[ign_size].regex);
+    os_calloc(1, sizeof(OSMatch), (*ignore_list_regex)[ign_size].regex);
 
-    if (!OSMatch_Compile(regex, syscheck->registry_ignore_regex[ign_size].regex, 0)) {
-        mt_pt = syscheck->registry_ignore_regex[ign_size].regex;
+    if (!OSMatch_Compile(regex, (*ignore_list_regex)[ign_size].regex, 0)) {
+        mt_pt = (*ignore_list_regex)[ign_size].regex;
         merror(REGEX_COMPILE, regex, mt_pt->error);
+        os_free((*ignore_list_regex)[ign_size].regex);
         return (0);
     }
-
-    syscheck->registry_ignore_regex[ign_size].arch = arch;
+    (*ignore_list_regex)[ign_size].arch = arch;
     return 1;
 }
 
@@ -427,7 +424,7 @@ int dump_registry_nodiff_regex(syscheck_config *syscheck, const char *regex, int
     int ign_size = 0;
 
     if (!syscheck->registry_nodiff_regex) {
-        os_calloc(2, sizeof(registry_regex), syscheck->registry_nodiff_regex);
+        os_calloc(2, sizeof(registry_ignore_regex), syscheck->registry_nodiff_regex);
         syscheck->registry_nodiff_regex[0].regex = NULL;
         syscheck->registry_nodiff_regex[1].regex = NULL;
     } else {
@@ -435,7 +432,7 @@ int dump_registry_nodiff_regex(syscheck_config *syscheck, const char *regex, int
             ign_size++;
         }
 
-        os_realloc(syscheck->registry_nodiff_regex, sizeof(registry_regex) * (ign_size + 2),
+        os_realloc(syscheck->registry_nodiff_regex, sizeof(registry_ignore_regex) * (ign_size + 2),
                    syscheck->registry_nodiff_regex);
         syscheck->registry_nodiff_regex[ign_size + 1].regex = NULL;
     }
@@ -1701,6 +1698,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_file_limit_entries = "entries";
     const char *xml_ignore = "ignore";
     const char *xml_registry_ignore = "registry_ignore";
+    const char *xml_registry_ignore_value = "registry_ignore_value";
     const char *xml_auto_ignore = "auto_ignore"; // TODO: Deprecated since 3.11.0
     const char *xml_alert_new_files = "alert_new_files"; // TODO: Deprecated since 3.11.0
     const char *xml_remove_old_diff = "remove_old_diff"; // Deprecated since 3.8.0
@@ -1979,11 +1977,12 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             }
         }
 
-        /* Get registry ignore list */
-        else if (strcmp(node[i]->element, xml_registry_ignore) == 0) {
+        /* Get registry ignore list for values and keys*/
+        else if (strncmp(node[i]->element, xml_registry_ignore, strlen(xml_registry_ignore)) == 0) {
 #ifdef WIN32
             int sregex = 0;
             int arch = ARCH_32BIT;
+            int value = strcmp(xml_registry_ignore_value, node[i]->element) == 0;
 
             /* Add if regex */
             if (node[i]->attributes && node[i]->values) {
@@ -2011,20 +2010,19 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 }
             }
 
-
             if (sregex) {
                 if (arch != ARCH_BOTH)
-                    dump_registry_ignore_regex(syscheck, node[i]->content, arch);
+                    dump_registry_ignore_regex(syscheck, node[i]->content, arch, value);
                 else {
-                    dump_registry_ignore_regex(syscheck, node[i]->content, ARCH_32BIT);
-                    dump_registry_ignore_regex(syscheck, node[i]->content, ARCH_64BIT);
+                    dump_registry_ignore_regex(syscheck, node[i]->content, ARCH_32BIT, value);
+                    dump_registry_ignore_regex(syscheck, node[i]->content, ARCH_64BIT, value);
                 }
             } else {
                 if (arch != ARCH_BOTH)
-                    dump_registry_ignore(syscheck, node[i]->content, arch);
+                    dump_registry_ignore(syscheck, node[i]->content, arch, value);
                 else {
-                    dump_registry_ignore(syscheck, node[i]->content, ARCH_32BIT);
-                    dump_registry_ignore(syscheck, node[i]->content, ARCH_64BIT);
+                    dump_registry_ignore(syscheck, node[i]->content, ARCH_32BIT, value);
+                    dump_registry_ignore(syscheck, node[i]->content, ARCH_64BIT, value);
                 }
             }
 
@@ -2368,20 +2366,37 @@ void Free_Syscheck(syscheck_config * config) {
         }
 
     #ifdef WIN32
-        if (config->registry_ignore) {
-            for (i=0; config->registry_ignore[i].entry != NULL; i++) {
-                free(config->registry_ignore[i].entry);
+        if (config->key_ignore) {
+            for (i=0; config->key_ignore[i].entry != NULL; i++) {
+                free(config->key_ignore[i].entry);
             }
-            free(config->registry_ignore);
+            free(config->key_ignore);
         }
-        if (config->registry_ignore_regex) {
-            for (i=0; config->registry_ignore_regex[i].regex != NULL; i++) {
-                OSMatch_FreePattern(config->registry_ignore_regex[i].regex);
-                free(config->registry_ignore_regex[i].regex);
-                config->registry_ignore_regex[i].regex = NULL;
+        if (config->key_ignore_regex) {
+            for (i=0; config->key_ignore_regex[i].regex != NULL; i++) {
+                OSMatch_FreePattern(config->key_ignore_regex[i].regex);
+                free(config->key_ignore_regex[i].regex);
+                config->key_ignore_regex[i].regex = NULL;
             }
-            free(config->registry_ignore_regex);
+            free(config->key_ignore_regex);
         }
+
+        if (config->value_ignore) {
+            for (i=0; config->value_ignore[i].entry != NULL; i++) {
+                free(config->value_ignore[i].entry);
+            }
+            free(config->value_ignore);
+        }
+
+        if (config->value_ignore_regex) {
+            for (i=0; config->value_ignore_regex[i].regex != NULL; i++) {
+                OSMatch_FreePattern(config->value_ignore_regex[i].regex);
+                free(config->value_ignore_regex[i].regex);
+                config->value_ignore_regex[i].regex = NULL;
+            }
+            free(config->value_ignore_regex);
+        }
+
         if (config->registry_nodiff) {
             for (i=0; config->registry_nodiff[i].entry != NULL; i++) {
                 free(config->registry_nodiff[i].entry);

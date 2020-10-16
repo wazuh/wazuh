@@ -57,8 +57,10 @@ int Read_Syscheck_Config(const char *cfgfile)
 #ifdef WIN32
     syscheck.realtime_change = 0;
     syscheck.registry       = NULL;
-    syscheck.registry_ignore = NULL;
-    syscheck.registry_ignore_regex = NULL;
+    syscheck.key_ignore = NULL;
+    syscheck.key_ignore_regex = NULL;
+    syscheck.value_ignore = NULL;
+    syscheck.value_ignore_regex = NULL;
     syscheck.max_fd_win_rt  = 0;
     syscheck.registry_nodiff = NULL;
     syscheck.registry_nodiff_regex = NULL;
@@ -355,15 +357,15 @@ cJSON *getSyscheckConfig(void) {
         cJSON_AddItemToObject(syscfg, "registry", rg);
     }
 
-    if (syscheck.registry_ignore) {
+    if (syscheck.key_ignore) {
         cJSON *rgi = cJSON_CreateArray();
 
-        for (i=0; syscheck.registry_ignore[i].entry; i++) {
+        for (i=0; syscheck.key_ignore[i].entry; i++) {
             cJSON *pair = cJSON_CreateObject();
 
-            cJSON_AddStringToObject(pair, "entry", syscheck.registry_ignore[i].entry);
+            cJSON_AddStringToObject(pair, "entry", syscheck.key_ignore[i].entry);
 
-            if (syscheck.registry_ignore[i].arch == 0) {
+            if (syscheck.key_ignore[i].arch == 0) {
                 cJSON_AddStringToObject(pair,"arch","32bit");
             } else {
                 cJSON_AddStringToObject(pair,"arch","64bit");
@@ -371,18 +373,18 @@ cJSON *getSyscheckConfig(void) {
 
             cJSON_AddItemToArray(rgi, pair);
         }
-        cJSON_AddItemToObject(syscfg, "registry_ignore", rgi);
+        cJSON_AddItemToObject(syscfg, "key_ignore", rgi);
     }
 
-    if (syscheck.registry_ignore_regex) {
+    if (syscheck.key_ignore_regex) {
         cJSON *rgi = cJSON_CreateArray();
 
-        for (i=0;syscheck.registry_ignore_regex[i].regex;i++) {
+        for (i=0;syscheck.key_ignore_regex[i].regex;i++) {
             cJSON *pair = cJSON_CreateObject();
 
-            cJSON_AddStringToObject(pair,"entry",syscheck.registry_ignore_regex[i].regex->raw);
+            cJSON_AddStringToObject(pair,"entry",syscheck.key_ignore_regex[i].regex->raw);
 
-            if (syscheck.registry_ignore_regex[i].arch == 0) {
+            if (syscheck.key_ignore_regex[i].arch == 0) {
                 cJSON_AddStringToObject(pair,"arch","32bit");
             } else {
                 cJSON_AddStringToObject(pair,"arch","64bit");

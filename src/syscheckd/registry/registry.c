@@ -106,70 +106,92 @@ registry *fim_registry_configuration(const char *key, int arch) {
 }
 
 /**
- * @brief Validates a registry path against recursion level and ignore restrictions.
+ * @brief Validates the recursion level of a registry key.
  *
- * @param entry_path A string holding the full path to be validated.
+ * @param key_path Path of the key
  * @param configuration The configuration associated with the registry entry.
  * @return 0 if the path is valid, -1 if the path is to be excluded.
  */
-int fim_registry_validate_path(const char *entry_path, const registry *configuration) {
-    int ign_it;
+int fim_registry_validate_recursion_level(const char *key_path, const registry *configuration) {
     const char *pos;
     int depth = -1;
     unsigned int parent_path_size;
 
-    if (entry_path == NULL || configuration == NULL) {
+    if (key_path == NULL || configuration == NULL) {
         return -1;
     }
 
     /* Verify recursion level */
     parent_path_size = strlen(configuration->entry);
-
-    if (parent_path_size > strlen(entry_path)) {
+    // Recursion level only for registry keys
+    if (parent_path_size > strlen(key_path)) {
         return -1;
     }
 
-    pos = entry_path + parent_path_size;
+    pos = key_path + parent_path_size;
     while (pos = strchr(pos, PATH_SEP), pos) {
         depth++;
         pos++;
     }
 
     if (depth > configuration->recursion_level) {
-        mdebug2(FIM_MAX_RECURSION_LEVEL, depth, configuration->recursion_level, entry_path);
+        mdebug2(FIM_MAX_RECURSION_LEVEL, depth, configuration->recursion_level, key_path);
         return -1;
-    }
-
-    /* Registry ignore list */
-    if (syscheck.registry_ignore) {
-        for (ign_it = 0; syscheck.registry_ignore[ign_it].entry; ign_it++) {
-            if (syscheck.registry_ignore[ign_it].arch != configuration->arch) {
-                continue;
-            }
-
-            if (strncasecmp(syscheck.registry_ignore[ign_it].entry, entry_path, strlen(syscheck.registry_ignore[ign_it].entry)) == 0) {
-                mdebug2(FIM_IGNORE_ENTRY, "registry", entry_path, syscheck.registry_ignore[ign_it].entry);
-                return -1;
-            }
-        }
-    }
-
-    if (syscheck.registry_ignore_regex) {
-        for (ign_it = 0; syscheck.registry_ignore_regex[ign_it].regex; ign_it++) {
-            if (syscheck.registry_ignore_regex[ign_it].arch != configuration->arch) {
-                continue;
-            }
-
-            if (OSMatch_Execute(entry_path, strlen(entry_path), syscheck.registry_ignore_regex[ign_it].regex)) {
-                mdebug2(FIM_IGNORE_SREGEX, "registry", entry_path, syscheck.registry_ignore_regex[ign_it].regex->raw);
-                return -1;
-            }
-        }
     }
 
     return 0;
 }
 
+/**
+ * @brief Validates ignore restrictions of registry entry.
+ *
+ * @param entry A string holding the full path of the key or the name of the value to be validated.
+ * @param configuration The configuration associated with the registry entry.
+ * @param key 1 if the entry is a key, 0 if the entry is a value.
+ * @return 0 if the path is valid, -1 if the path is to be excluded.
+ */
+int fim_registry_validate_ignore(const char *entry, const registry *configuration, int key) {
+    int ign_it;
+    registry_ignore **ignore_list;
+    registry_ignore_regex **ignore_list_regex;
+
+    if (entry == NULL || configuration == NULL) {
+        return -1;
+    }
+
+    if (key) {
+        ignore_list = &syscheck.key_ignore;
+        ignore_list_regex = &syscheck.key_ignore_regex;
+    } else {
+        ignore_list = &syscheck.value_ignore;
+        ignore_list_regex = &syscheck.value_ignore_regex;
+    }
+
+    if (*ignore_list) {
+        for (ign_it = 0; (*ignore_list)[ign_it].entry; ign_it++) {
+            if ((*ignore_list)[ign_it].arch != configuration->arch) {
+                continue;
+            }
+            if (strncasecmp((*ignore_list)[ign_it].entry, entry, strlen((*ignore_list)[ign_it].entry)) == 0) {
+                mdebug2(FIM_IGNORE_ENTRY, key ? "registry" : "value", entry, (*ignore_list)[ign_it].entry);
+                return -1;
+            }
+        }
+    }
+    if (*ignore_list_regex) {
+        for (ign_it = 0; (*ignore_list_regex)[ign_it].regex; ign_it++) {
+            if ((*ignore_list_regex)[ign_it].arch != configuration->arch) {
+                continue;
+
+            }
+            if (OSMatch_Execute(entry, strlen(entry), (*ignore_list_regex)[ign_it].regex)) {
+                mdebug2(FIM_IGNORE_SREGEX, key ? "registry" : "value", entry, (*ignore_list_regex)[ign_it].regex->raw);
+                return -1;
+            }
+        }
+    }
+    return 0;
+}
 /**
  * @brief Compute checksum of a registry key
  *
@@ -636,15 +658,13 @@ void fim_registry_process_value_event(fim_entry *new,
     registry *configuration;
     cJSON *json_event;
     char *diff = NULL;
-
     snprintf(value_path, MAX_KEY, "%s\\%s", new->registry_entry.key->path, new->registry_entry.value->name);
 
     configuration = fim_registry_configuration(value_path, arch);
     if (configuration == NULL) {
         return;
     }
-
-    if (fim_registry_validate_path(value_path, configuration)) {
+    if (fim_registry_validate_ignore(new->registry_entry.value->name, configuration, 0)) {
         return;
     }
 
@@ -787,8 +807,12 @@ void fim_open_key(HKEY root_key_handle,
         return;
     }
 
-    // Check ignore and recursion level restrictions.
-    if (fim_registry_validate_path(full_key, configuration)) {
+    // Recursion level restrictions.
+    if (fim_registry_validate_recursion_level(full_key, configuration)) {
+        return;
+    }
+    // Ignore restriction
+    if (fim_registry_validate_ignore(full_key, configuration, 1)) {
         return;
     }
 
