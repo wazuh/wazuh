@@ -230,7 +230,7 @@ STATIC int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_tas
     agent_task->agent_info = wm_agent_upgrade_init_agent_info();
     agent_task->agent_info->agent_id = agent_id;
 
-    agent_info = wdb_get_agent_info(agent_id);
+    agent_info = wdb_get_agent_info(agent_id, NULL);
 
     if (agent_info && agent_info->child) {
 
