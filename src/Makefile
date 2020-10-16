@@ -868,7 +868,7 @@ endif
 #### PCRE2 lib #########
 
 $(LIBPCRE2_LIB):
-	cd $(EXTERNAL_LIBPCRE2) && CCFLAGS='-fPIC' ./configure --disable-dependency-tracking --enable-jit=auto --disable-shared && ${MAKE} && cp src/pcre2.h include/pcre2.h
+	cd $(EXTERNAL_LIBPCRE2) && CFLAGS='-fPIC' ./configure --enable-jit=auto --disable-shared && ${MAKE} && cp src/pcre2.h include/pcre2.h
 
 ################################
 #### External dependencies  ####
