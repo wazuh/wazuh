@@ -166,7 +166,12 @@ class UserRoles(_Base):
 # Declare basic tables
 class RunAsTokenBlacklist(_Base):
     """
-    PYTODO
+    This table contains the tokens given through the run_as endpoint that are invalid
+    The information stored is:
+        nbf_invalid_until: The tokens that has an nbf prior to this timestamp will be invalidated
+        is_valid_until: Deadline for the rule's validity. To ensure that we can delete this rule,
+        the deadline will be the time of token creation plus the time of token validity.
+        This way, when we delete this rule, we ensure the invalid tokens have already expired.
     """
     __tablename__ = "runas_token_blacklist"
 
@@ -479,7 +484,8 @@ class TokenManager:
             Current token's role id
         token_nbf_time : int
             Token's issue timestamp
-        run_as : PYTODO
+        run_as : bool
+            Indicate if the token has been granted through run_as endpoint
 
         Returns
         -------
@@ -503,16 +509,19 @@ class TokenManager:
         dict
         """
         try:
+            users_format_rules, roles_format_rules, runas_format_rule = dict(), dict(), dict()
             users_rules = map(UsersTokenBlacklist.to_dict, self.session.query(UsersTokenBlacklist).all())
             roles_rules = map(RolesTokenBlacklist.to_dict, self.session.query(RolesTokenBlacklist).all())
-            runas_rule = self.session.query(RunAsTokenBlacklist).first().to_dict()
-            users_format_rules, roles_format_rules, runas_format_rule = dict(), dict(), dict()
+            runas_rule = self.session.query(RunAsTokenBlacklist).first()
+            if runas_rule:
+                runas_rule = runas_rule.to_dict()
+                runas_format_rule['run_as'] = runas_rule['nbf_invalid_until']
             for rule in list(users_rules):
                 users_format_rules[rule['user_id']] = rule['nbf_invalid_until']
             for rule in list(roles_rules):
                 roles_format_rules[rule['role_id']] = rule['nbf_invalid_until']
-            runas_format_rule['run_as'] = runas_rule['nbf_invalid_until']
-            return users_format_rules, roles_format_rules
+
+            return users_format_rules, roles_format_rules, runas_format_rule
         except IntegrityError:
             return SecurityError.TOKEN_RULE_NOT_EXIST
 
@@ -526,7 +535,8 @@ class TokenManager:
             Set with the affected users
         roles : set
             Set with the affected roles
-        run_as : PYTODO
+        run_as : bool
+            Indicate if the token has been granted through run_as endpoint
 
         Returns
         -------
@@ -566,7 +576,8 @@ class TokenManager:
             Desired user_id
         role_id : int
             Desired role_id
-        run_as : PYTODO
+        run_as : bool
+            Indicate if the token has been granted through run_as endpoint
 
         Returns
         -------

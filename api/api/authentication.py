@@ -167,7 +167,8 @@ def check_token(username, roles, token_nbf_time, run_as):
         List of roles related with the current token
     token_nbf_time : int
         Issued at time of the current token
-    run_as : PYTODO
+    run_as : bool
+        Indicate if the token has been granted through run_as endpoint
 
     Returns
     -------

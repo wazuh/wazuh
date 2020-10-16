@@ -65,11 +65,12 @@ def test_get_all_token_rules(db_setup):
     """Check that rules are correctly created"""
     users, roles = test_add_token(db_setup)
     with db_setup.TokenManager() as tm:
-        user_rules, role_rules = tm.get_all_rules()
+        user_rules, role_rules, run_as_rules = tm.get_all_rules()
         for user in user_rules.keys():
             assert user in users
         for role in role_rules.keys():
             assert role in roles
+        assert isinstance(run_as_rules, dict)
 
 
 def test_nbf_invalid(db_setup):

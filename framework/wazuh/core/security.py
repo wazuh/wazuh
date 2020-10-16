@@ -67,7 +67,7 @@ def check_relationships(roles: list = None):
 
 
 def invalid_run_as_tokens():
-    """PYTODO
+    """Add the necessary rules to invalidate all affected run_as's tokens
     """
     with TokenManager() as tm:
         tm.add_user_roles_rules(run_as=True)
