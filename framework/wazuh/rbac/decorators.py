@@ -19,6 +19,9 @@ from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager,
 from wazuh.core.results import AffectedItemsWazuhResult
 
 
+integer_resources = ['user:id', 'role:id', 'rule:id', 'policy:id']
+
+
 def _expand_resource(resource):
     """This function expand a specified resource depending of it type.
 
@@ -342,11 +345,7 @@ def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowe
     if add_denied:
         for res_id, target_param in target.items():
             denied = _get_denied(original, allowed, target_param, res_id)
-            change_denied = True
-            for kwarg_ in original.keys():
-                if 'agent' in kwarg_ or 'group' in kwarg_:
-                    change_denied = False
-            if change_denied:
+            if res_id in integer_resources:
                 denied = {int(i) if i.isdigit() else i for i in denied}
             for denied_item in denied:
                 result.add_failed_item(id_=denied_item,
@@ -405,11 +404,7 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
                 except Exception:
                     if add_denied:
                         denied = _get_denied(original_kwargs, allow, target_param, res_id, resources=resources)
-                        change_denied = True
-                        for action in actions:
-                            if 'agent' in action or 'group' in action:
-                                change_denied = False
-                        if change_denied:
+                        if res_id in integer_resources:
                             denied = {int(i) if i.isdigit() else i for i in denied}
                         raise WazuhPermissionError(4000,
                                                    extra_message=f'Resource type: {res_id}',
