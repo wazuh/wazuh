@@ -147,7 +147,7 @@ stages:
               name: test_i
               rule:
                 FIND$:
-                  definition: "normal_rule"
+                  definition: "normal_rulE"
           total_affected_items: 1
 
   # POST /security/rules
