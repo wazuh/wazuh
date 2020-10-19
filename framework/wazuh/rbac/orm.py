@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -31,7 +31,7 @@ max_id_reserved = 99
 _auth_db_file = os.path.join(SECURITY_PATH, 'rbac.db')
 _engine = create_engine('sqlite:///' + _auth_db_file, echo=False)
 _Base = declarative_base()
-_Session = sessionmaker(bind=_engine)()
+_Session = sessionmaker(bind=_engine)
 
 # Required rules for role
 # Key: Role - Value: Rules
@@ -662,7 +662,7 @@ class TokenManager:
             return False
 
     def __enter__(self):
-        self.session = _Session
+        self.session = _Session()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -840,7 +840,7 @@ class AuthenticationManager:
         return user_ids
 
     def __enter__(self):
-        self.session = _Session
+        self.session = _Session()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -1033,7 +1033,7 @@ class RolesManager:
             return SecurityError.ALREADY_EXIST
 
     def __enter__(self):
-        self.session = _Session
+        self.session = _Session()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -1236,7 +1236,7 @@ class RulesManager:
             return SecurityError.ALREADY_EXIST
 
     def __enter__(self):
-        self.session = _Session
+        self.session = _Session()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -1473,7 +1473,7 @@ class PoliciesManager:
             return SecurityError.ALREADY_EXIST
 
     def __enter__(self):
-        self.session = _Session
+        self.session = _Session()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -1798,7 +1798,7 @@ class UserRolesManager:
         return False
 
     def __enter__(self):
-        self.session = _Session
+        self.session = _Session()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -2145,7 +2145,7 @@ class RolesPoliciesManager:
         return False
 
     def __enter__(self):
-        self.session = _Session
+        self.session = _Session()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -2398,7 +2398,7 @@ class RolesRulesManager:
         return False
 
     def __enter__(self):
-        self.session = _Session
+        self.session = _Session()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
