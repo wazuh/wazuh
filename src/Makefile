@@ -1203,12 +1203,20 @@ endif
 build_syscollector: build_shared_modules
 	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SYSCOLLECTOR_OS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && cmake --build .
 
+syscollector_cpp := $(wildcard wazuh_modules/syscollector/*Common.cpp)
 ifeq (${TARGET},winagent)
-syscollector_cpp := $(wildcard wazuh_modules/syscollector/*Common.cpp) $(wildcard wazuh_modules/syscollector/*Win.cpp)
-else ifeq (${uname_S},Darwin)
-syscollector_cpp := $(wildcard wazuh_modules/syscollector/*Common.cpp) $(wildcard wazuh_modules/syscollector/*Mac.cpp)
+syscollector_cpp := $(wildcard wazuh_modules/syscollector/*Win.cpp)
+else ifeq (${uname_S},Linux)
+syscollector_cpp := $(wildcard wazuh_modules/syscollector/*Linux.cpp)
 else
-syscollector_cpp := $(wildcard wazuh_modules/syscollector/*Common.cpp) $(wildcard wazuh_modules/syscollector/*Linux.cpp)
+syscollector_cpp := $(wildcard wazuh_modules/syscollector/*CommonBSD.cpp)
+ifeq (${uname_S},Darwin)
+	syscollector_cpp := $(wildcard wazuh_modules/syscollector/*Mac.cpp)
+else ifeq (${uname_S},FreeBSD)
+	syscollector_cpp := $(wildcard wazuh_modules/syscollector/*FreeBSD.cpp)
+else ifeq (${uname_S},OpenBSD)
+	syscollector_cpp := $(wildcard wazuh_modules/syscollector/*OpenBSD.cpp)
+endif
 endif
 
 ifeq (${TARGET},winagent)
