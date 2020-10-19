@@ -490,7 +490,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     }
 
     /* Default values */
-    opts &= ~ CHECK_FOLLOW;
+    opts |= CHECK_FOLLOW;
     opts |= SCHEDULED_ACTIVE;
     fim_set_check_all(&opts);
 
@@ -965,18 +965,23 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 char *resolved_path = NULL;
 
                 if (resolved_path = realpath(g.gl_pathv[gindex], NULL), resolved_path) {
-                    if (!strcmp(resolved_path, g.gl_pathv[gindex])) {
-                        dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0, restrictfile, recursion_limit,
-                                            clean_tag, NULL, tmp_diff_size);
+                    if (strcmp(resolved_path, g.gl_pathv[gindex]) == 0) {
+                        dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0, restrictfile,
+                                            recursion_limit, clean_tag, NULL, tmp_diff_size);
                     } else {
-                        dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile, recursion_limit, clean_tag,
-                                            g.gl_pathv[gindex], tmp_diff_size);
+                        if (opts & CHECK_FOLLOW) {
+                            dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile,
+                                            recursion_limit, clean_tag, g.gl_pathv[gindex], tmp_diff_size);
+                        } else {
+                            dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0, restrictfile,
+                                            recursion_limit, clean_tag, NULL, tmp_diff_size);
+                        }
                     }
-                    os_free(resolved_path);
                 } else {
                     mdebug1("Could not check the real path of '%s' due to [(%d)-(%s)].",
                             g.gl_pathv[gindex], errno, strerror(errno));
                 }
+
 
                 gindex++;
             }
@@ -984,15 +989,24 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             globfree(&g);
         }
         else {
-            char *resolved_path = realpath(real_path, NULL);
+            char *resolved_path = NULL;
 
-            if (resolved_path && strcmp(resolved_path, real_path)) {
-                dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile, recursion_limit, clean_tag,
-                                    real_path, tmp_diff_size);
-            }
-            else {
-                dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL,
-                                    tmp_diff_size);
+            if (resolved_path = realpath(real_path, NULL), resolved_path) {
+                if (strcmp(resolved_path, real_path) == 0) {
+                    dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile,
+                                        recursion_limit, clean_tag, NULL, tmp_diff_size);
+                } else {
+                    if (opts & CHECK_FOLLOW) {
+                        dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile,
+                                        recursion_limit, clean_tag, real_path, tmp_diff_size);
+                    } else {
+                        dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile,
+                                        recursion_limit, clean_tag, NULL, tmp_diff_size);
+                    }
+                }
+            } else {
+                mdebug1("Could not check the real path of '%s' due to [(%d)-(%s)].",
+                        real_path, errno, strerror(errno));
             }
 
             os_free(resolved_path);
