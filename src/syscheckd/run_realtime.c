@@ -102,6 +102,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata, __attr
                 snprintf(wdchar, 33, "%d", wd);
                 os_strdup(dir, data);
 
+                w_mutex_lock(&syscheck.fim_realtime_mutex);
                 if (!OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
                     if (retval = OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
                         os_free(data);
@@ -121,6 +122,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata, __attr
                         return (-1);
                     }
                 }
+                w_mutex_unlock(&syscheck.fim_realtime_mutex);
             }
         }
     }
@@ -160,8 +162,9 @@ void realtime_process() {
 
                 snprintf(wdchar, 33, "%d", event->wd);
 
+                w_mutex_lock(&syscheck.fim_realtime_mutex);
                 // The configured paths can end at / or not, we must check it.
-                entry = (char *)OSHash_Get(syscheck.realtime->dirtb, wdchar);
+                entry = (char *)OSHash_Get_ex(syscheck.realtime->dirtb, wdchar);
 
                 if (entry) {
                     // Check file entries with realtime
@@ -201,6 +204,7 @@ void realtime_process() {
                         break;
                     }
                 }
+                w_mutex_unlock(&syscheck.fim_realtime_mutex);
             }
         }
 
@@ -231,7 +235,6 @@ void delete_subdirectories_watches(char *dir) {
     if (dir[dir_len - 1] != '/') {
         os_calloc(dir_len + 2, sizeof(char), dir_slash);  // Length of dir plus an extra slash
 
-    
         // Copy the content of dir into dir_slash and add an extra slash
         snprintf(dir_slash, dir_len + 2, "%s/", dir);
     }
@@ -241,7 +244,6 @@ void delete_subdirectories_watches(char *dir) {
     }
 
     if(syscheck.realtime->fd) {
-        w_mutex_lock(&syscheck.fim_realtime_mutex);
         hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
 
         while(hash_node) {
@@ -262,8 +264,6 @@ void delete_subdirectories_watches(char *dir) {
 
             hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node);
         }
-
-        w_mutex_unlock(&syscheck.fim_realtime_mutex);
     }
 
     os_free(dir_slash);
@@ -597,7 +597,7 @@ unsigned int count_watches() {
     unsigned int num_watches = 0;
 
     if(syscheck.realtime != NULL) {
-        w_mutex_lock(&syscheck.fim_entry_mutex);
+        w_mutex_lock(&syscheck.fim_realtime_mutex);
         hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
 
         while(hash_node) {
@@ -605,7 +605,7 @@ unsigned int count_watches() {
             hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node);
         }
 
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
     }
 
     return num_watches;
