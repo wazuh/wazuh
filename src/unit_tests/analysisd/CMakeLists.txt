@@ -1,10 +1,14 @@
 # Generate analysisd library
 file(GLOB analysisd_files
     ${SRC_FOLDER}/analysisd/*.o
+    ${SRC_FOLDER}/analysisd/alerts/*.o
     ${SRC_FOLDER}/analysisd/cdb/*.o
+    ${SRC_FOLDER}/analysisd/compiled_rules/*.o
     ${SRC_FOLDER}/analysisd/decoders/*.o
     ${SRC_FOLDER}/analysisd/decoders/plugins/*.o
-    ${SRC_FOLDER}/analysisd/compiled_rules/*.o)
+    ${SRC_FOLDER}/analysisd/format/*.o
+    ${SRC_FOLDER}/analysisd/output/*.o
+   )
 
 add_library(ANALYSISD_O STATIC ${analysisd_files})
 
@@ -37,6 +41,9 @@ list(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,_merror -Wl,--w
 
 LIST(APPEND analysisd_names "test_same_different_loop")
 LIST(APPEND analysisd_flags "-W")
+
+LIST(APPEND analysisd_names "test_decoder_rootcheck")
+LIST(APPEND analysisd_flags "-Wl,--wrap,send_rootcheck_log")
 
 list(LENGTH analysisd_names count)
 math(EXPR count "${count} - 1")
