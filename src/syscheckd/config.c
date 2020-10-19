@@ -395,7 +395,45 @@ cJSON *getSyscheckConfig(void) {
 
             cJSON_AddItemToArray(rgi, pair);
         }
-        cJSON_AddItemToObject(syscfg,"registry_ignore_sregex",rgi);
+        cJSON_AddItemToObject(syscfg,"key_ignore_sregex",rgi);
+    }
+
+     if (syscheck.value_ignore) {
+        cJSON *rgi = cJSON_CreateArray();
+
+        for (i=0; syscheck.value_ignore[i].entry; i++) {
+            cJSON *pair = cJSON_CreateObject();
+
+            cJSON_AddStringToObject(pair, "entry", syscheck.value_ignore[i].entry);
+
+            if (syscheck.value_ignore[i].arch == 0) {
+                cJSON_AddStringToObject(pair,"arch","32bit");
+            } else {
+                cJSON_AddStringToObject(pair,"arch","64bit");
+            }
+
+            cJSON_AddItemToArray(rgi, pair);
+        }
+        cJSON_AddItemToObject(syscfg, "value_ignore", rgi);
+    }
+
+    if (syscheck.value_ignore_regex) {
+        cJSON *rgi = cJSON_CreateArray();
+
+        for (i=0;syscheck.value_ignore_regex[i].regex;i++) {
+            cJSON *pair = cJSON_CreateObject();
+
+            cJSON_AddStringToObject(pair,"entry",syscheck.value_ignore_regex[i].regex->raw);
+
+            if (syscheck.value_ignore_regex[i].arch == 0) {
+                cJSON_AddStringToObject(pair,"arch","32bit");
+            } else {
+                cJSON_AddStringToObject(pair,"arch","64bit");
+            }
+
+            cJSON_AddItemToArray(rgi, pair);
+        }
+        cJSON_AddItemToObject(syscfg,"value_ignore_regex",rgi);
     }
 
     if (syscheck.registry_nodiff) {
