@@ -11,6 +11,8 @@
 #ifndef VALIDATE_H
 #define VALIDATE_H
 
+#define w_free_os_ip(x) if (x) {os_free(x->ip);os_free(x)}
+
 /* IP structure */
 typedef struct _os_ip {
     char *ip;
