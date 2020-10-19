@@ -713,25 +713,26 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
                                       sort_fields=['task_id'], sort_ascending='True')
 
     agent_list = list(map(int, agents_padding(result=result, agent_list=agent_list)))
-    wpk_repo = wpk_repo if wpk_repo else common.wpk_repo_url_4_x
+    if not file_path:
+        wpk_repo = wpk_repo if wpk_repo else common.wpk_repo_url_4_x
     if version and not version.startswith('v'):
         version = f'v{version}'
     msg = {'version': 1,
            'origin': {'module': 'api'},
            'command': 'upgrade' if not (installer or file_path) else 'upgrade_custom',
            'parameters': {
-                'agents': list(),
-                'version': version,
-                'force_upgrade': force,
-                'use_http': use_http,
-                'wpk_repo': f'{wpk_repo}/' if not wpk_repo.endswith('/') else wpk_repo,
-                'file_path': file_path,
-                'installer': installer
-            }
+               'agents': list(),
+               'version': version,
+               'force_upgrade': force,
+               'use_http': use_http,
+               'wpk_repo': f'{wpk_repo}/' if wpk_repo and not wpk_repo.endswith('/') else wpk_repo,
+               'file_path': file_path,
+               'installer': installer
+           }
            }
 
     msg['parameters'] = {k: v for k, v in msg['parameters'].items() if v is not None}
-    agents_result_chunks = [agent_list[x:x+250] for x in range(0, len(agent_list), 250)]
+    agents_result_chunks = [agent_list[x:x + 250] for x in range(0, len(agent_list), 250)]
 
     agent_results = list()
     for agents_chunk in agents_result_chunks:
