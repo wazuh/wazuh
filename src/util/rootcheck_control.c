@@ -22,7 +22,7 @@ static void helpmsg(void) __attribute__((noreturn));
 
 static void helpmsg()
 {
-    printf("\n%s %s: This binary it's deprecated, use API calls related below instead\n",
+    printf("\n%s %s: This binary has been deprecated, use API calls related below instead\n",
            __ossec_name, ARGV0);
     printf("\nManages the policy and auditing database.\n");
     printf("Available options:\n\n");

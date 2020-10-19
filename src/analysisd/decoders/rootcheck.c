@@ -16,7 +16,6 @@
 #include "alerts/alerts.h"
 #include "decoder.h"
 #include "rootcheck_op.h"
-#include "wazuh_db/wdb.h"
 #include <pthread.h>
 
 #define ROOTCHECK_DIR    "/queue/rootcheck"
@@ -83,6 +82,6 @@ int DecodeRootcheck(Eventinfo *lf)
 
         break;
     }
-    
+
     return return_value;
 }
