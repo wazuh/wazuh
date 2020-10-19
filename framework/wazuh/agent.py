@@ -713,7 +713,8 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
                                       sort_fields=['task_id'], sort_ascending='True')
 
     agent_list = list(map(int, agents_padding(result=result, agent_list=agent_list)))
-    wpk_repo = wpk_repo if wpk_repo else common.wpk_repo_url_4_x
+    if not file_path:
+        wpk_repo = wpk_repo if wpk_repo else common.wpk_repo_url_4_x
     if version and not version.startswith('v'):
         version = f'v{version}'
     msg = {'version': 1,
@@ -724,7 +725,7 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
                 'version': version,
                 'force_upgrade': force,
                 'use_http': use_http,
-                'wpk_repo': f'{wpk_repo}/' if not wpk_repo.endswith('/') else wpk_repo,
+                'wpk_repo': f'{wpk_repo}/' if wpk_repo and not wpk_repo.endswith('/') else wpk_repo,
                 'file_path': file_path,
                 'installer': installer
             }
