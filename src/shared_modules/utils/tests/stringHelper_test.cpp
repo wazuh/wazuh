@@ -75,3 +75,34 @@ TEST_F(StringUtilsTest, CheckNotFirstReplacement)
     EXPECT_EQ(string_base, "hello_world");
     EXPECT_FALSE(ret_val);
 }
+
+TEST_F(StringUtilsTest, RightTrim)
+{
+    EXPECT_EQ("Hello", Utils::rightTrim("Hello"));
+    EXPECT_EQ("Hello", Utils::rightTrim("Hello "));
+    EXPECT_EQ("Hello", Utils::rightTrim("Hello  "));
+    EXPECT_EQ("Hello", Utils::rightTrim("Hello            "));
+    EXPECT_EQ(" Hello", Utils::rightTrim(" Hello"));
+    EXPECT_EQ("\tHello", Utils::rightTrim("\tHello\t", "\t"));
+    EXPECT_EQ(" \t\nHello", Utils::rightTrim(" \t\nHello \t\n ", "\t\n "));
+}
+
+TEST_F(StringUtilsTest, LeftTrim)
+{
+    EXPECT_EQ("Hello", Utils::leftTrim("Hello"));
+    EXPECT_EQ("Hello", Utils::leftTrim(" Hello"));
+    EXPECT_EQ("Hello", Utils::leftTrim(" Hello"));
+    EXPECT_EQ("Hello", Utils::leftTrim("          Hello"));
+    EXPECT_EQ("Hello\t ", Utils::leftTrim(" \tHello\t ", " \t"));
+    EXPECT_EQ("Hello\t\n ", Utils::leftTrim(" \t\nHello\t\n ", " \t\n"));
+}
+
+TEST_F(StringUtilsTest, Trim)
+{
+    EXPECT_EQ("Hello", Utils::trim("Hello"));
+    EXPECT_EQ("Hello", Utils::trim(" Hello "));
+    EXPECT_EQ("Hello", Utils::trim(" Hello "));
+    EXPECT_EQ("Hello", Utils::trim("          Hello      "));
+    EXPECT_EQ("Hello", Utils::trim(" \tHello\t ", " \t"));
+    EXPECT_EQ("Hello", Utils::trim(" \t\nHello\t\n ", " \t\n"));
+}
