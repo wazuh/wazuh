@@ -12,6 +12,7 @@
 #include "cmdHelper.h"
 #include "stringHelper.h"
 #include <sys/sysctl.h>
+#include <sys/vmmeter.h>
 
 void SysInfo::getMemory(nlohmann::json& info)
 {
@@ -65,9 +66,8 @@ void SysInfo::getMemory(nlohmann::json& info)
 
 int SysInfo::getCpuMHz()
 {
-    constexpr auto MHz{1000000};
     unsigned long cpuMHz{0};
-    constexpr auto clockRate{"hw.clockRate"};
+    constexpr auto clockRate{"hw.clockrate"};
     size_t len{sizeof(cpuMHz)};
     const auto ret{sysctlbyname(clockRate, &cpuMHz, &len, nullptr, 0)};
     if(ret)
@@ -79,7 +79,7 @@ int SysInfo::getCpuMHz()
             "Error reading cpu frequency."
         };
     }
-    return cpuMHz/MHz;
+    return cpuMHz;
 }
 
 std::string SysInfo::getSerialNumber()
