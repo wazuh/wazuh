@@ -77,4 +77,6 @@ cJSON* __wrap_wm_agent_upgrade_send_tasks_information(const cJSON *message_objec
 
 int __wrap_wm_agent_upgrade_prepare_upgrades();
 
+int __wrap_wm_agent_upgrade_cancel_pending_upgrades();
+
 #endif

@@ -70,6 +70,9 @@ size_t wm_task_manager_dispatch(const char *msg, char **response) {
         task_response = wm_task_manager_analyze_task(task_object, &error_code);
 
         switch (error_code) {
+        case WM_TASK_INVALID_NODE:
+            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_UNKNOWN_VALUE_ERROR, task_manager_json_keys[WM_TASK_NODE], task);
+            break;
         case WM_TASK_INVALID_MODULE:
             mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_UNKNOWN_VALUE_ERROR, task_manager_json_keys[WM_TASK_MODULE], task);
             break;

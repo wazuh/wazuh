@@ -102,6 +102,38 @@ static int teardown_upgrade_task_string(void **state) {
 
 // Tests
 
+void test_wm_agent_upgrade_cancel_pending_upgrades(void **state)
+{
+    (void) state;
+
+    cJSON *request = cJSON_CreateObject();
+    cJSON *origin = cJSON_CreateObject();
+    cJSON *parameters = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(origin, "module", "upgrade_module");
+    cJSON_AddItemToObject(request, "origin", origin);
+    cJSON_AddStringToObject(request, "command", "upgrade_cancel_tasks");
+    cJSON_AddItemToObject(request, "parameters", parameters);
+
+    cJSON *task_response = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(task_response, "error", WM_UPGRADE_SUCCESS);
+    cJSON_AddStringToObject(task_response, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+
+    // wm_agent_upgrade_parse_task_module_request
+
+    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_CANCEL_TASKS);
+    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, request);
+
+    // wm_agent_upgrade_task_module_callback
+
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, request, sizeof(request));
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response);
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
+
+    wm_agent_upgrade_cancel_pending_upgrades();
+}
+
 void test_wm_agent_upgrade_validate_agent_task_upgrade_ok(void **state)
 {
     (void) state;
@@ -1599,6 +1631,8 @@ void test_wm_agent_upgrade_process_upgrade_command_no_agents(void **state)
 
 int main(void) {
     const struct CMUnitTest tests[] = {
+        // wm_agent_upgrade_cancel_pending_upgrades
+        cmocka_unit_test(test_wm_agent_upgrade_cancel_pending_upgrades),
         // wm_agent_upgrade_validate_agent_task
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_agent_task_upgrade_ok, setup_config_agent_task, teardown_config_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_agent_task_upgrade_custom_ok, setup_config_agent_task, teardown_config_agent_task),
