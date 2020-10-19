@@ -37,7 +37,6 @@ void SysInfo::getMemory(nlohmann::json& info)
 
 int SysInfo::getCpuMHz()
 {
-    constexpr auto MHz{1000000};
     unsigned long cpuMHz{0};
     const std::vector<int> mib{CTL_HW, HW_CPUSPEED};
     size_t len{sizeof(cpuMHz)};
@@ -51,7 +50,7 @@ int SysInfo::getCpuMHz()
             "Error reading cpu frequency."
         };
     }
-    return cpuMHz/MHz;
+    return cpuMHz;
 }
 
 std::string SysInfo::getSerialNumber()
