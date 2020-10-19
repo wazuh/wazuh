@@ -36,7 +36,6 @@ void RootcheckInit()
     rootcheck_dec->fts = 0;
 
     /* New fields as dynamic */
-
     os_calloc(Config.decoder_order_size, sizeof(char *), rootcheck_dec->fields);
     rootcheck_dec->fields[RK_TITLE] = "title";
     rootcheck_dec->fields[RK_FILE] = "file";
@@ -63,16 +62,22 @@ int DecodeRootcheck(Eventinfo *lf)
     case -2:
         // Fallthrough
     case -1:
-        os_free(lf->data);
+        merror("Rootcheck decoder unexpected result: '%s'", response);
         break;
     default:
         return_value = 1;
-        mdebug1("Rootcheck decoder response: %s", response);
+        mdebug1("Rootcheck decoder response: '%s'", response);
         break;
     }
 
     if (return_value) {
         lf->decoder_info = rootcheck_dec;
+        char *op_code = wstr_chr(response, ' ');
+        if (strtol(++op_code, NULL, 10) == 2) {
+            // Entry was inserted
+            lf->decoder_info->fts = FTS_DONE;
+        }
+        
         lf->nfields = RK_NFIELDS;
         os_strdup(rootcheck_dec->fields[RK_TITLE], lf->fields[RK_TITLE].key);
         lf->fields[RK_TITLE].value = rk_get_title(lf->log);

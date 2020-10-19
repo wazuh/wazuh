@@ -887,7 +887,19 @@ int wdb_parse(char * input, char * output);
 
 int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output);
 
-int wdb_parse_rootcheck(wdb_t * wdb, char * input, char * output);
+/**
+ * @brief Parses a rootcheck command
+ * Commands:
+ * 1. delete: Deletes pm table
+ * 2. save: Inserts the entry or updates if it already exists
+ * @param wdb Database of an agent
+ * @param input buffer input
+ * @param output buffer output, on success responses are:
+ *        "ok 0" -> If entry was deleted
+ *        "ok 1" -> If entry was updated
+ *        "ok 2" -> If entry was inserted
+ * */
+int wdb_parse_rootcheck(wdb_t * wdb, char * input , char * output) __attribute__((nonnull)); 
 
 int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output);
 

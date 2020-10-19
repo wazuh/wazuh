@@ -123,7 +123,6 @@ typedef struct _Eventinfo {
     char *ppid;
     char *process_id;
     u_int16_t decoder_syscheck_id;
-    int rootcheck_fts;
     int is_a_copy;
     char **last_events;
     int r_firedtimes;

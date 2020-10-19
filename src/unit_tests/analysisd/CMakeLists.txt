@@ -43,7 +43,7 @@ LIST(APPEND analysisd_names "test_same_different_loop")
 LIST(APPEND analysisd_flags "-W")
 
 LIST(APPEND analysisd_names "test_decoder_rootcheck")
-LIST(APPEND analysisd_flags "-Wl,--wrap,send_rootcheck_log")
+LIST(APPEND analysisd_flags "-Wl,--wrap,send_rootcheck_log -Wl,--wrap,_merror -Wl,--wrap,_mdebug1")
 
 list(LENGTH analysisd_names count)
 math(EXPR count "${count} - 1")

@@ -240,7 +240,7 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_rootcheck(wdb, next, output);
             }
-        }else if (strcmp(query, "sql") == 0) {
+        } else if (strcmp(query, "sql") == 0) {
             if (!next) {
                 mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
                 mdebug2("DB(%s) query error near: %s", sagent_id, query);
@@ -4081,7 +4081,7 @@ int wdb_parse_rootcheck(wdb_t * wdb, char * input, char * output) {
     if (strcmp(curr, "delete") == 0) {
         result = wdb_rootcheck_delete(wdb);
         if (result >= 0) {
-            snprintf(output, OS_MAXSTR + 1, "ok");
+            snprintf(output, OS_MAXSTR + 1, "ok 0");
             return 0;
         } else {
             snprintf(output, OS_MAXSTR + 1, "err Error deleting rootcheck PM tuple");
@@ -4102,8 +4102,6 @@ int wdb_parse_rootcheck(wdb_t * wdb, char * input, char * output) {
         event.date_first = event.date_last;
         event.log = ptr;
 
-        
-
         if (event.date_last == LONG_MAX || event.date_last < 0) {
             mdebug2("DB(%s) Invalid rootcheck date timestamp: %li", wdb->id, event.date_last);
             snprintf(output, OS_MAXSTR + 1, "err Invalid rootcheck query syntax, near '%.32s'", input);
@@ -4121,14 +4119,13 @@ int wdb_parse_rootcheck(wdb_t * wdb, char * input, char * output) {
                     merror("DB(%s) Error inserting rootcheck PM tuple on SQLite database for agent", wdb->id);
                     snprintf(output, OS_MAXSTR + 1, "err Error updating rootcheck PM tuple");
                     result = -1;
+                } else {
+                    snprintf(output, OS_MAXSTR + 1, "ok 2");
                 }
                 break;
             default: 
+                snprintf(output, OS_MAXSTR + 1, "ok 1");
                 break;
-        }
-
-        if (!result) {
-            snprintf(output, OS_MAXSTR + 1, "ok");
         }
     } else {
         mdebug2("DB(%s) Invalid rootcheck query syntax: %s", wdb->id, input);
