@@ -221,14 +221,20 @@ typedef struct registry {
     int opts;
     int recursion_level;
     int diff_size_limit;
-    OSMatch *filerestrict;
+    OSMatch *restrict_key;
+    OSMatch *restrict_value;
     char *tag;
 } registry;
 
-typedef struct registry_regex {
+typedef struct registry_ignore {
+    char *entry;
+    int arch;
+} registry_ignore;
+
+typedef struct registry_ignore_regex {
     OSMatch *regex;
     int arch;
-} registry_regex;
+} registry_ignore_regex;
 
 #endif
 
@@ -379,14 +385,16 @@ typedef struct _config {
 
     /* Windows only registry checking */
 #ifdef WIN32
-    char realtime_change;                       // Variable to activate the change to realtime from a whodata monitoring
-    registry *registry_ignore;                  /* list of registry entries to ignore */
-    registry_regex *registry_ignore_regex;      /* regex of registry entries to ignore */
-    registry *registry;                         /* array of registry entries to be scanned */
-    int max_fd_win_rt;
+    char realtime_change;                              /* Variable to activate the change to realtime from a whodata monitoring*/
+    registry_ignore *key_ignore;                       /* List of registry keys to ignore */
+    registry_ignore_regex *key_ignore_regex;           /* Regex of registry keys to ignore */
+    registry_ignore *value_ignore;                     /* List of registry values to ignore*/
+    registry_ignore_regex *value_ignore_regex;         /* Regex of registry values to ignore */
+    registry *registry;                                /* array of registry entries to be scanned */
+    int max_fd_win_rt;                                 /* Maximum number of descriptors in realtime */
     whodata wdata;
-    registry *registry_nodiff;                     /* list of values/registries to never output diff */
-    registry_regex *registry_nodiff_regex;            /* regex of values/registries to never output diff */
+    registry *registry_nodiff;                         /* list of values/registries to never output diff */
+    registry_ignore_regex *registry_nodiff_regex;      /* regex of values/registries to never output diff */
 #endif
     int max_audit_entries;          /* Maximum entries for Audit (whodata) */
     char **audit_key;               // Listen audit keys
@@ -457,7 +465,8 @@ void dump_syscheck_file(syscheck_config *syscheck, char *entry, int vals, const 
  * @param syscheck Syscheck configuration structure
  * @param entry Entry to be dumped
  * @param opts Indicates the attributes for registries to be set
- * @param restrictfile The restrict regex to be set
+ * @param restrict_key The restrict regex to be set for keys.
+ * @param restrict_key The restrict regex to be set for values.
  * @param recursion_level The recursion level to be set
  * @param tag The tag to be set
  * @param arch Indicates whether to monitor the 64 or 32 version of the registry
@@ -466,11 +475,12 @@ void dump_syscheck_file(syscheck_config *syscheck, char *entry, int vals, const 
 void dump_syscheck_registry(syscheck_config *syscheck,
                             char *entry,
                             int opts,
-                            const char *restrictfile,
+                            const char *restrict_key,
+                            const char *restrict_value,
                             int recursion_level,
                             const char *tag,
                             int arch,
-                            int diff_size) __attribute__((nonnull(1, 2)));
+                            int diff_size);
 #endif
 
 /**
