@@ -622,16 +622,14 @@ stages:
  - name: Try get upgrade result agents 003 and 004 (Denied)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/upgrade_result?wait_for_complete=true"
+     url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result?wait_for_complete=true"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
      params:
        list_agents: "003,004"
    response:
-     status_code: 400
-     json:
-       <<: *permission_denied
+     <<: *permission_denied
 
 ---
 test_name: DELETE /agents/{agent_id}/group/{group_id}
@@ -1615,16 +1613,14 @@ stages:
   - name: Try to upgrade agents 003 and 004 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/upgrade"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         list_agents: "003,004"
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
 ---
 test_name: PUT /agents/upgrade_custom
@@ -1634,16 +1630,14 @@ stages:
   - name: Try to customly upgrade agents 003 and 004 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/upgrade_custom?installer=agent_upgrade.py&file_path=/var/ossec"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom?installer=agent_upgrade.py&file_path=/var/ossec"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         list_agents: "003,004"
     response:
-      status_code: 400
-      json:
-        <<: *permission_denied
+      <<: *permission_denied
 
 ---
 test_name: GET /agents (deny cluster:read)
