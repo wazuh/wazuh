@@ -15,7 +15,7 @@
 
 #ifdef WIN32
 static char *SYSCHECK_EMPTY[] = { NULL };
-static registry REGISTRY_EMPTY[] = { { NULL, 0, 0, 512, 0, NULL, NULL } };
+static registry REGISTRY_EMPTY[] = { { NULL, 0, 0, 512, 0, NULL, NULL, NULL} };
 #endif
 
 
@@ -342,8 +342,11 @@ cJSON *getSyscheckConfig(void) {
                 cJSON_AddStringToObject(pair, "tags", syscheck.registry[i].tag);
             }
 
-            if (syscheck.registry[i].filerestrict) {
-                cJSON_AddStringToObject(pair,"restrict", syscheck.registry[i].filerestrict->raw);
+            if (syscheck.registry[i].restrict_key) {
+                cJSON_AddStringToObject(pair,"restrict_key", syscheck.registry[i].restrict_key->raw);
+            }
+            if (syscheck.registry[i].restrict_value) {
+                cJSON_AddStringToObject(pair,"restrict_value", syscheck.registry[i].restrict_value->raw);
             }
 
             if (syscheck.file_size_enabled && syscheck.registry[i].diff_size_limit) {

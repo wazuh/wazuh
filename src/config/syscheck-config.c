@@ -278,7 +278,8 @@ void dump_syscheck_file(syscheck_config *syscheck,
 void dump_syscheck_registry(syscheck_config *syscheck,
                             char *entry,
                             int opts,
-                            const char *restrictfile,
+                            const char *restrict_key,
+                            const char *restrict_value,
                             int recursion_level,
                             const char *tag,
                             int arch,
@@ -292,7 +293,8 @@ void dump_syscheck_registry(syscheck_config *syscheck,
         syscheck->registry[pl].tag = NULL;
         syscheck->registry[pl + 1].tag = NULL;
         syscheck->registry[pl + 1].recursion_level = 0;
-        syscheck->registry[pl + 1].filerestrict = NULL;
+        syscheck->registry[pl + 1].restrict_key = NULL;
+        syscheck->registry[pl + 1].restrict_value = NULL;
         syscheck->registry[pl + 1].diff_size_limit = -1;
         os_strdup(entry, syscheck->registry[pl].entry);
     } else {
@@ -311,13 +313,18 @@ void dump_syscheck_registry(syscheck_config *syscheck,
             syscheck->registry[pl].tag = NULL;
             syscheck->registry[pl + 1].tag = NULL;
             syscheck->registry[pl + 1].recursion_level = 0;
-            syscheck->registry[pl + 1].filerestrict = NULL;
+            syscheck->registry[pl + 1].restrict_key = NULL;
+            syscheck->registry[pl + 1].restrict_value = NULL;
             syscheck->registry[pl + 1].diff_size_limit = -1;
             os_strdup(entry, syscheck->registry[pl].entry);
         } else {
-            if (syscheck->registry[pl].filerestrict) {
-                OSMatch_FreePattern(syscheck->registry[pl].filerestrict);
-                os_free(syscheck->registry[pl].filerestrict);
+            if (syscheck->registry[pl].restrict_key) {
+                OSMatch_FreePattern(syscheck->registry[pl].restrict_key);
+                os_free(syscheck->registry[pl].restrict_key);
+            }
+            if (syscheck->registry[pl].restrict_value) {
+                OSMatch_FreePattern(syscheck->registry[pl].restrict_value);
+                os_free(syscheck->registry[pl].restrict_value);
             }
             os_free(syscheck->registry[pl].tag);
         }
@@ -329,16 +336,22 @@ void dump_syscheck_registry(syscheck_config *syscheck,
     if (tag) {
         os_strdup(tag, syscheck->registry[pl].tag);
     }
-    if (restrictfile) {
-        os_calloc(1, sizeof(OSMatch), syscheck->registry[pl].filerestrict);
-        if (!OSMatch_Compile(restrictfile, syscheck->registry[pl].filerestrict, 0)) {
-            merror(REGEX_COMPILE, restrictfile, syscheck->registry[pl].filerestrict->error);
-            os_free(syscheck->registry[pl].filerestrict);
+    if (restrict_key) {
+        os_calloc(1, sizeof(OSMatch), syscheck->registry[pl].restrict_key);
+        if (!OSMatch_Compile(restrict_key, syscheck->registry[pl].restrict_key, 0)) {
+            merror(REGEX_COMPILE, restrict_key, syscheck->registry[pl].restrict_key->error);
+            os_free(syscheck->registry[pl].restrict_key);
+        }
+    }
+    if (restrict_value) {
+        os_calloc(1, sizeof(OSMatch), syscheck->registry[pl].restrict_value);
+        if (!OSMatch_Compile(restrict_value, syscheck->registry[pl].restrict_value, 0)) {
+            merror(REGEX_COMPILE, restrict_value, syscheck->registry[pl].restrict_value->error);
+            os_free(syscheck->registry[pl].restrict_value);
         }
     }
 }
 #endif
-
 
 #ifdef WIN32
 
@@ -469,13 +482,15 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
     const char *xml_check_perm = "check_perm";
     const char *xml_check_mtime = "check_mtime";
     const char *xml_check_type = "check_type";
-    const char *xml_restrict = "restrict";
+    const char *xml_restrict_registry = "restrict_key";
+    const char *xml_restrict_value = "restrict_value";
     const char *xml_diff_size_limit = "diff_size_limit";
 
     int i;
     char **entry;
     char *tag = NULL;
-    char *restrictfile = NULL;
+    char *restrict_key = NULL;
+    char *restrict_value = NULL;
     int arch = ARCH_32BIT;
     int recursion_level = MAX_REGISTRY_DEPTH;
     int opts = REGISTRY_CHECK_ALL;
@@ -524,9 +539,12 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
                     mwarn(FIM_INVALID_REG_OPTION_SKIP, values[i], attributes[i], entries);
                     goto clean_reg;
                 }
-            } else if (strcmp(attributes[i], xml_restrict) == 0) {
-                os_free(restrictfile);
-                os_strdup(values[i], restrictfile);
+            } else if (strcmp(attributes[i], xml_restrict_registry) == 0) {
+                os_free(restrict_key);
+                os_strdup(values[i], restrict_key);
+            } else if (strcmp(attributes[i], xml_restrict_value) == 0) {
+                os_free(restrict_value);
+                os_strdup(values[i], restrict_value);
             } else if (strcmp(attributes[i], xml_check_all) == 0) {
                 if (strcmp(values[i], "yes") == 0) {
                     opts |= REGISTRY_CHECK_ALL;
@@ -687,10 +705,10 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
 
         /* Add new entry */
         if (arch == ARCH_BOTH) {
-            dump_syscheck_registry(syscheck, tmp_entry, opts, restrictfile, recursion_level, tag, ARCH_64BIT, tmp_diff_size);
-            dump_syscheck_registry(syscheck, tmp_entry, opts, restrictfile, recursion_level, tag, ARCH_32BIT, tmp_diff_size);
+            dump_syscheck_registry(syscheck, tmp_entry, opts, restrict_key, restrict_value, recursion_level, tag, ARCH_64BIT, tmp_diff_size);
+            dump_syscheck_registry(syscheck, tmp_entry, opts, restrict_key, restrict_value, recursion_level, tag, ARCH_32BIT, tmp_diff_size);
         } else {
-            dump_syscheck_registry(syscheck, tmp_entry, opts, restrictfile, recursion_level, tag, arch, tmp_diff_size);
+            dump_syscheck_registry(syscheck, tmp_entry, opts, restrict_key, restrict_value, recursion_level, tag, arch, tmp_diff_size);
         }
 
         /* Next entry */
@@ -701,7 +719,8 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
     retval = 1;
 clean_reg:
     os_free(tag);
-    os_free(restrictfile);
+    os_free(restrict_key);
+    os_free(restrict_value);
     return retval;
 }
 #endif /* WIN32 */
@@ -2417,10 +2436,15 @@ void Free_Syscheck(syscheck_config * config) {
                 if (config->registry[i].tag) {
                     free(config->registry[i].tag);
                 }
-                if (config->registry[i].filerestrict) {
-                    OSMatch_FreePattern(config->registry[i].filerestrict);
-                    free(config->registry[i].filerestrict);
-                    config->registry[i].filerestrict = NULL;
+                if (config->registry[i].restrict_key) {
+                    OSMatch_FreePattern(config->registry[i].restrict_key);
+                    free(config->registry[i].restrict_key);
+                    config->registry[i].restrict_key = NULL;
+                }
+                if (config->registry[i].restrict_value) {
+                    OSMatch_FreePattern(config->registry[i].restrict_value);
+                    free(config->registry[i].restrict_value);
+                    config->registry[i].restrict_value = NULL;
                 }
             }
             free(config->registry);

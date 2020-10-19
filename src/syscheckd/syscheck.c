@@ -131,7 +131,7 @@ int Start_win32_Syscheck()
         }
 
         if (!syscheck.registry) {
-            dump_syscheck_registry(&syscheck, "", 0, NULL, 0, NULL, 0, -1);
+            dump_syscheck_registry(&syscheck, "", 0, NULL, NULL,  0, NULL, 0, -1);
         }
         os_free(syscheck.registry[0].entry);
 

@@ -221,7 +221,8 @@ typedef struct registry {
     int opts;
     int recursion_level;
     int diff_size_limit;
-    OSMatch *filerestrict;
+    OSMatch *restrict_key;
+    OSMatch *restrict_value;
     char *tag;
 } registry;
 
@@ -464,7 +465,8 @@ void dump_syscheck_file(syscheck_config *syscheck, char *entry, int vals, const 
  * @param syscheck Syscheck configuration structure
  * @param entry Entry to be dumped
  * @param opts Indicates the attributes for registries to be set
- * @param restrictfile The restrict regex to be set
+ * @param restrict_key The restrict regex to be set for keys.
+ * @param restrict_key The restrict regex to be set for values.
  * @param recursion_level The recursion level to be set
  * @param tag The tag to be set
  * @param arch Indicates whether to monitor the 64 or 32 version of the registry
@@ -473,11 +475,12 @@ void dump_syscheck_file(syscheck_config *syscheck, char *entry, int vals, const 
 void dump_syscheck_registry(syscheck_config *syscheck,
                             char *entry,
                             int opts,
-                            const char *restrictfile,
+                            const char *restrict_key,
+                            const char *restrict_value,
                             int recursion_level,
                             const char *tag,
                             int arch,
-                            int diff_size) __attribute__((nonnull(1, 2)));
+                            int diff_size);
 #endif
 
 /**

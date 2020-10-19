@@ -668,7 +668,7 @@ void fim_registry_process_value_event(fim_entry *new,
         return;
     }
 
-    if (fim_check_restrict(value_path, configuration->filerestrict)) {
+    if (fim_check_restrict(new->registry_entry.value->name, configuration->restrict_value)) {
         return;
     }
 
@@ -869,8 +869,8 @@ void fim_open_key(HKEY root_key_handle,
     if (saved.registry_entry.key != NULL) {
         new.registry_entry.key->id = saved.registry_entry.key->id;
     }
-
-    if (!fim_check_restrict(full_key, configuration->filerestrict)) {
+    // Ignore all the values of the ignored key.
+    if (!fim_check_restrict(full_key, configuration->restrict_key)) {
         cJSON *json_event =
         fim_registry_event(&new, &saved, configuration, mode,
                            saved.registry_entry.key == NULL ? FIM_ADD : FIM_MODIFICATION, NULL, NULL);
@@ -891,12 +891,11 @@ void fim_open_key(HKEY root_key_handle,
         }
 
         fim_db_set_registry_key_scanned(syscheck.database, full_key, arch);
-    }
 
-    if (value_count) {
-        fim_read_values(current_key_handle, &new, &saved, arch, value_count, mode);
+        if (value_count) {
+            fim_read_values(current_key_handle, &new, &saved, arch, value_count, mode);
+        }
     }
-
     w_mutex_unlock(&syscheck.fim_registry_mutex);
 
     fim_registry_free_key(new.registry_entry.key);
