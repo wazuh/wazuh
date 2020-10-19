@@ -1,13 +1,13 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import re
 
 from wazuh.core.exception import WazuhError, WazuhPermissionError
-from wazuh.rbac.auth_context import RBAChecker
-from wazuh.rbac.orm import AuthenticationManager
 from wazuh.core.results import WazuhResult
+from wazuh.rbac.auth_context import RBAChecker, get_policies_from_roles
+from wazuh.rbac.orm import AuthenticationManager
 
 
 class PreProcessor:
@@ -43,7 +43,7 @@ class PreProcessor:
 
     @staticmethod
     def is_combination(resource):
-        """This function checks whether a given resource is a combination or not.
+        """Check whether a given resource is a combination or not.
 
         :param resource: Resource to be checked
         :return Tuple with a flag that indicates whether it is a combination or not and if so,
@@ -56,8 +56,7 @@ class PreProcessor:
         return False, [resource]
 
     def process_policy(self, policy):
-        """Receives an unprocessed policy and transforms it into a specific format for
-        treatment in the decorator.
+        """Receive an unprocessed policy and transforms it into a specific format for treatment in the decorator.
 
         :param policy: Policy of the user
         """
@@ -80,14 +79,25 @@ class PreProcessor:
                 self.odict[action]['&'.join(resource)] = policy['effect']
 
     def get_optimize_dict(self):
-        """This function preprocess the policies of the user for a more easy treatment
-        in the decorator of the RBAC
-        """
         return self.odict
 
 
-def optimize_resources(auth_context=None, user_id=None):
-    """This function preprocess the policies of the user for a more easy treatment in the decorator of the RBAC
+def optimize_resources(roles=None):
+    """Preprocess the policies of the user for a more easy treatment in the decorator of the RBAC
+
+    :param roles: Roles of the current user
+    """
+    policies = get_policies_from_roles(roles=roles)
+
+    preprocessor = PreProcessor()
+    for policy in policies:
+        preprocessor.process_policy(policy)
+
+    return preprocessor.get_optimize_dict()
+
+
+def get_roles(auth_context=None, user_id=None):
+    """Obtain the roles of a user using auth_context or user_id
 
     :param auth_context: Authorization context of the current user
     :param user_id: Username of the current user
@@ -97,31 +107,29 @@ def optimize_resources(auth_context=None, user_id=None):
     rbac = RBAChecker(auth_context=auth_context, user_id=user_id)
     # Authorization Context method
     if auth_context:
-        data = rbac.run_auth_context()
+        roles = rbac.run_auth_context_roles()
     # User-role link method
     else:
-        data = rbac.run_user_role_link(user_id)
-    policies = data['policies']
-    roles = data['roles']
+        roles = rbac.run_user_role_link_roles(user_id)
 
-    preprocessor = PreProcessor()
-    for policy in policies:
-        preprocessor.process_policy(policy)
-
-    return preprocessor.get_optimize_dict(), roles
+    return roles
 
 
 def get_permissions(user_id=None, auth_context=None):
+    """Obtain the permissions of a user using auth_context or user_id
+
+    :param auth_context: Authorization context of the current user
+    :param user_id: Username of the current user
+    """
     with AuthenticationManager() as auth:
         if not auth.user_allow_run_as(user_id) and auth_context:
             raise WazuhPermissionError(code=6004)
         elif auth.user_allow_run_as(user_id):
-            permissions, roles = optimize_resources(auth_context=auth_context, user_id=user_id)
+            roles = get_roles(auth_context=auth_context, user_id=user_id)
         else:
-            permissions, roles = optimize_resources(user_id=user_id)
+            roles = get_roles(user_id=user_id)
 
         result = {
-            'policies': permissions,
             'roles': roles
         }
 

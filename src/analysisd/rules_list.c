@@ -476,17 +476,19 @@ void os_remove_ruleinfo(RuleInfo *ruleinfo) {
     }
 
     if (ruleinfo->srcip) {
-        for (int i = 0; ruleinfo->srcip[i]; i++) {
-            os_free(ruleinfo->srcip[i]->ip);
-            os_free(ruleinfo->srcip[i]);
+        for (int i = 0; ruleinfo->srcip->ips[i]; i++) {
+            os_free(ruleinfo->srcip->ips[i]->ip);
+            os_free(ruleinfo->srcip->ips[i]);
         }
+        os_free(ruleinfo->srcip);
     }
 
     if (ruleinfo->dstip) {
-        for (int i = 0; ruleinfo->dstip[i]; i++) {
-            os_free(ruleinfo->dstip[i]->ip);
-            os_free(ruleinfo->dstip[i]);
+        for (int i = 0; ruleinfo->dstip->ips[i]; i++) {
+            os_free(ruleinfo->dstip->ips[i]->ip);
+            os_free(ruleinfo->dstip->ips[i]);
         }
+        os_free(ruleinfo->dstip);
     }
 
     if (ruleinfo->fields) {
@@ -545,56 +547,106 @@ void os_remove_ruleinfo(RuleInfo *ruleinfo) {
         }
     }
 
-    if (ruleinfo->match) OSMatch_FreePattern(ruleinfo->match);
-    os_free(ruleinfo->match);
+    if (ruleinfo->match){
+        OSMatch_FreePattern(ruleinfo->match->match);
+        os_free(ruleinfo->match);
+    }
 
-    if (ruleinfo->regex) OSRegex_FreePattern(ruleinfo->regex);
-    os_free(ruleinfo->regex);
+    if (ruleinfo->regex){
+        OSRegex_FreePattern(ruleinfo->regex->regex);
+        os_free(ruleinfo->regex->regex);
+        os_free(ruleinfo->regex);
+    }
 
-    if (ruleinfo->srcgeoip) OSMatch_FreePattern(ruleinfo->srcgeoip);
-    os_free(ruleinfo->srcgeoip);
+    if (ruleinfo->srcgeoip){
+        OSMatch_FreePattern(ruleinfo->srcgeoip->match);
+        os_free(ruleinfo->srcgeoip->match);
+        os_free(ruleinfo->srcgeoip);
+    }
 
-    if (ruleinfo->dstgeoip) OSMatch_FreePattern(ruleinfo->dstgeoip);
-    os_free(ruleinfo->dstgeoip);
+    if (ruleinfo->dstgeoip){
+        OSMatch_FreePattern(ruleinfo->dstgeoip->match);
+        os_free(ruleinfo->dstgeoip->match);
+        os_free(ruleinfo->dstgeoip);
+    }
 
-    if (ruleinfo->srcport) OSMatch_FreePattern(ruleinfo->srcport);
-    os_free(ruleinfo->srcport);
+    if (ruleinfo->srcport){
+        OSMatch_FreePattern(ruleinfo->srcport->match);
+        os_free(ruleinfo->srcport->match);
+        os_free(ruleinfo->srcport);
+    }
 
-    if (ruleinfo->dstport) OSMatch_FreePattern(ruleinfo->dstport);
-    os_free(ruleinfo->dstport);
+    if (ruleinfo->dstport){
+        OSMatch_FreePattern(ruleinfo->dstport->match);
+        os_free(ruleinfo->dstport->match);
+        os_free(ruleinfo->dstport);
+    }
 
-    if (ruleinfo->user) OSMatch_FreePattern(ruleinfo->user);
-    os_free(ruleinfo->user);
+    if (ruleinfo->user){
+        OSMatch_FreePattern(ruleinfo->user->match);
+        os_free(ruleinfo->user->match);
+        os_free(ruleinfo->user);
+    }
 
-    if (ruleinfo->url) OSMatch_FreePattern(ruleinfo->url);
-    os_free(ruleinfo->url);
+    if (ruleinfo->url){
+        OSMatch_FreePattern(ruleinfo->url->match);
+        os_free(ruleinfo->url->match);
+        os_free(ruleinfo->url);
+    }
+
+    if (ruleinfo->id){
+        OSMatch_FreePattern(ruleinfo->id->match);
+        os_free(ruleinfo->id->match);
+        os_free(ruleinfo->id);
+    }
+
+    if (ruleinfo->status){
+        OSMatch_FreePattern(ruleinfo->status->match);
+        os_free(ruleinfo->status->match);
+        os_free(ruleinfo->status);
+    }
     
-    if (ruleinfo->id) OSMatch_FreePattern(ruleinfo->id);
-    os_free(ruleinfo->id);
+    if (ruleinfo->hostname){
+        OSMatch_FreePattern(ruleinfo->hostname->match);
+        os_free(ruleinfo->hostname->match);
+        os_free(ruleinfo->hostname);
+    }
     
-    if (ruleinfo->status) OSMatch_FreePattern(ruleinfo->status);
-    os_free(ruleinfo->status);
+    if (ruleinfo->program_name){
+        OSMatch_FreePattern(ruleinfo->program_name->match);
+        os_free(ruleinfo->program_name->match);
+        os_free(ruleinfo->program_name);
+    }
     
-    if (ruleinfo->hostname) OSMatch_FreePattern(ruleinfo->hostname);
-    os_free(ruleinfo->hostname);
-    
-    if (ruleinfo->program_name) OSMatch_FreePattern(ruleinfo->program_name);
-    os_free(ruleinfo->program_name);
-    
-    if (ruleinfo->data) OSMatch_FreePattern(ruleinfo->data);
-    os_free(ruleinfo->data);
+    if (ruleinfo->data){
+        OSMatch_FreePattern(ruleinfo->data->match);
+        os_free(ruleinfo->data->match);
+        os_free(ruleinfo->data);
+    }
 
-    if (ruleinfo->extra_data) OSMatch_FreePattern(ruleinfo->extra_data);
-    os_free(ruleinfo->extra_data);
+    if (ruleinfo->extra_data){
+        OSMatch_FreePattern(ruleinfo->extra_data->match);
+        os_free(ruleinfo->extra_data->match);
+        os_free(ruleinfo->extra_data);
+    }
 
-    if (ruleinfo->location) OSMatch_FreePattern(ruleinfo->location);
-    os_free(ruleinfo->location);
+    if (ruleinfo->location){
+        OSMatch_FreePattern(ruleinfo->location->match);
+        os_free(ruleinfo->location->match);
+        os_free(ruleinfo->location);
+    }
 
-    if (ruleinfo->system_name) OSMatch_FreePattern(ruleinfo->system_name);
-    os_free(ruleinfo->system_name);
+    if (ruleinfo->system_name){
+        OSMatch_FreePattern(ruleinfo->system_name->match);
+        os_free(ruleinfo->system_name->match);
+        os_free(ruleinfo->system_name);
+    }
 
-    if (ruleinfo->protocol) OSMatch_FreePattern(ruleinfo->protocol);
-    os_free(ruleinfo->protocol);
+    if (ruleinfo->protocol){
+        OSMatch_FreePattern(ruleinfo->protocol->match);
+        os_free(ruleinfo->protocol->match);
+        os_free(ruleinfo->protocol);
+    }
 
     if (ruleinfo->if_matched_regex) OSRegex_FreePattern(ruleinfo->if_matched_regex);
     os_free(ruleinfo->if_matched_regex);

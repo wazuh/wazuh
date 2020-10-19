@@ -554,7 +554,7 @@ void test_w_enrollment_send_message_fix_invalid_hostname(void **state) {
     expect_string(__wrap_SSL_write, buf, "OSSEC A:'InvalidHostname'\n");
     will_return(__wrap_SSL_write, -1);
     expect_string(__wrap__merror, formatted_msg, "SSL write error (unable to send message.)");
-    expect_string(__wrap__merror, formatted_msg, "If Agent verification is enabled, agent key and certifiates are required!");
+    expect_string(__wrap__merror, formatted_msg, "If Agent verification is enabled, agent key and certificates are required!");
     int ret = w_enrollment_send_message(cfg);
     assert_int_equal(ret, -1);
 }
@@ -573,7 +573,7 @@ void test_w_enrollment_send_message_ssl_error(void **state) {
     expect_string(__wrap_SSL_write, buf, "OSSEC A:'host.name'\n");
     will_return(__wrap_SSL_write, -1);
     expect_string(__wrap__merror, formatted_msg, "SSL write error (unable to send message.)");
-    expect_string(__wrap__merror, formatted_msg, "If Agent verification is enabled, agent key and certifiates are required!");
+    expect_string(__wrap__merror, formatted_msg, "If Agent verification is enabled, agent key and certificates are required!");
     int ret = w_enrollment_send_message(cfg);
     assert_int_equal(ret, -1);
 
@@ -722,7 +722,7 @@ void test_w_enrollment_process_response_ssl_error(void **state) {
     will_return(__wrap_SSL_get_error, SSL_ERROR_WANT_READ);
 
     expect_string(__wrap__merror, formatted_msg, "SSL read (unable to receive message)");
-    expect_string(__wrap__merror, formatted_msg, "If Agent verification is enabled, agent key and certifiates may be incorrect!");
+    expect_string(__wrap__merror, formatted_msg, "If Agent verification is enabled, agent key and certificates may be incorrect!");
 
     int ret = w_enrollment_process_response(ssl);
     assert_int_equal(ret, -1);

@@ -92,4 +92,6 @@ wdbc_result __wrap_wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, cha
 
 cJSON* __wrap_wdb_global_get_agent_info(wdb_t *wdb, int id);
 
+int __wrap_wdb_global_check_manager_keepalive(wdb_t *wdb);
+
 #endif
