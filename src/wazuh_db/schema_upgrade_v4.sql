@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS sync_info (
 BEGIN;
 
 INSERT OR REPLACE INTO metadata (key, value) VALUES ('db_version', 4);
-INSERT INTO _fim_entry (file, type, date, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path) SELECT file, type, date, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path FROM fim_entry;
+INSERT INTO _fim_entry (file, type, date, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, attributes, symbolic_path) SELECT file, type, date, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, attributes, symbolic_path FROM fim_entry;
 INSERT INTO sync_info (component) VALUES ('fim');
 
 END;
