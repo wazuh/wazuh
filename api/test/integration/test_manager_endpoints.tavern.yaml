@@ -249,7 +249,7 @@ stages:
     response:
         status_code: 400
         json:
-          code: 1308
+          error: 1308
 
   - name: Manager stats
     request:
@@ -288,7 +288,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1308
+        error: 1308
 
 ---
 test_name: GET /manager/stats/hourly
@@ -1060,7 +1060,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1906
+        error: 1906
 
   # GET /manager/files
   - name: Get unexisting decoder file with right path
@@ -1075,7 +1075,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1906
+        error: 1906
 
   # GET /manager/files
   - name: Get unexisting list file with right path
@@ -1090,7 +1090,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1906
+        error: 1906
 
 ---
 test_name: PUT /manager/files

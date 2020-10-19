@@ -65,7 +65,7 @@ def get_agents_summary_status(agent_list=None):
     :param agent_list: List of agents ID's.
     :return: WazuhResult.
     """
-    result = WazuhResult({'active': 0, 'disconnected': 0, 'never_connected': 0, 'pending': 0, 'total': 0})
+    summary = {'active': 0, 'disconnected': 0, 'never_connected': 0, 'pending': 0, 'total': 0}
     if len(agent_list) != 0:
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
@@ -73,10 +73,10 @@ def get_agents_summary_status(agent_list=None):
         data = db_query.run()
 
         for agent in data['items']:
-            result[agent['status']] += 1
-            result['total'] += 1
+            summary[agent['status']] += 1
+            summary['total'] += 1
 
-    return result
+    return WazuhResult({'data': summary})
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
@@ -314,7 +314,7 @@ def add_agent(name=None, agent_id=None, key=None, ip='any', force_time=-1, use_o
 
     new_agent = Agent(name=name, ip=ip, id=agent_id, key=key, force=force_time, use_only_authd=use_only_authd)
 
-    return WazuhResult({'id': new_agent.id, 'key': new_agent.key})
+    return WazuhResult({'data': {'id': new_agent.id, 'key': new_agent.key}})
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"],
@@ -745,7 +745,7 @@ def get_agent_config(agent_list=None, component=None, config=None):
     if my_agent.status != "active":
         raise WazuhError(1740)
 
-    return WazuhResult(my_agent.getconfig(component=component, config=config))
+    return WazuhResult({'data': my_agent.getconfig(component=component, config=config)})
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
@@ -823,7 +823,8 @@ def get_agent_conf(group_list=None, filename='agent.conf', offset=0, limit=commo
     # a list of groups
     group_id = group_list[0]
 
-    return WazuhResult(configuration.get_agent_conf(group_id=group_id, filename=filename, offset=offset, limit=limit))
+    return WazuhResult(
+        {'data': configuration.get_agent_conf(group_id=group_id, filename=filename, offset=offset, limit=limit)})
 
 
 @expose_resources(actions=["group:update_config"], resources=["group:id:{group_list}"], post_proc_func=None)
@@ -864,4 +865,4 @@ def get_full_overview() -> WazuhResult:
     result = {'nodes': stats_distinct_node, 'groups': groups, 'agent_os': stats_distinct_os, 'agent_status': summary,
               'agent_version': stats_version, 'last_registered_agent': last_registered_agent}
 
-    return WazuhResult(result)
+    return WazuhResult({'data': result})

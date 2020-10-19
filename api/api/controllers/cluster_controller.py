@@ -13,7 +13,7 @@ import wazuh.manager as manager
 import wazuh.stats as stats
 from api import configuration
 from api.encoder import dumps, prettify
-from api.models.base_model_ import Data, Body
+from api.models.base_model_ import Body
 from api.models.configuration import APIConfigurationModel
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
 from wazuh.core.cluster.control import get_system_nodes
@@ -133,9 +133,8 @@ async def get_status(request, pretty=False, wait_for_complete=False):
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_config(request, pretty=False, wait_for_complete=False):

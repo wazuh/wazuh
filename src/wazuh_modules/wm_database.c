@@ -61,6 +61,7 @@ char * wm_inotify_pop();
 #endif // INOTIFY_ENABLED
 
 wm_database *module;
+int wdb_wmdb_sock = -1;
 
 // Module main function. It won't return
 static void* wm_database_main(wm_database *data);
@@ -212,7 +213,7 @@ void wm_sync_manager() {
     os_calloc(HOST_NAME_MAX, sizeof(char), manager_data->manager_host);
 
     if (gethostname(manager_data->manager_host, HOST_NAME_MAX) == 0)
-        wdb_update_agent_name(0, manager_data->manager_host);
+        wdb_update_agent_name(0, manager_data->manager_host, &wdb_wmdb_sock);
     else
         mterror(WM_DATABASE_LOGTAG, "Couldn't get manager's hostname: %s.", strerror(errno));
 
@@ -242,7 +243,7 @@ void wm_sync_manager() {
         os_strdup(__ossec_name " " __ossec_version, manager_data->version);
         os_strdup("synced", manager_data->sync_status);
 
-        wdb_update_agent_data(manager_data);
+        wdb_update_agent_data(manager_data, &wdb_wmdb_sock);
 
         os_free(os_uname);
     }
@@ -257,17 +258,17 @@ void wm_sync_manager() {
         // Don't print error if stat fails because syscheck and rootcheck must not exist
 
         if (!stat(path, &buffer) && buffer.st_size > 0) {
-            switch (wdb_get_agent_status(0)) {
+            switch (wdb_get_agent_status(0, &wdb_wmdb_sock)) {
             case -1:
                 mterror(WM_DATABASE_LOGTAG, "Couldn't get database status for manager.");
                 break;
             case WDB_AGENT_EMPTY:
-                if (OS_SUCCESS != wdb_set_agent_offset(0, WDB_SYSCHECK, buffer.st_size))
+                if (OS_SUCCESS != wdb_set_agent_offset(0, WDB_SYSCHECK, buffer.st_size, &wdb_wmdb_sock))
                     mterror(WM_DATABASE_LOGTAG, "Couldn't write offset data on database for manager.");
             }
         }
 
-        if (OS_SUCCESS != wdb_set_agent_status(0, WDB_AGENT_UPDATED)) {
+        if (OS_SUCCESS != wdb_set_agent_status(0, WDB_AGENT_UPDATED, &wdb_wmdb_sock)) {
             mterror(WM_DATABASE_LOGTAG, "Couldn't write agent status on database for manager.");
         }
     }
@@ -331,14 +332,15 @@ void wm_sync_agents() {
             *group = 0;
         }
 
-        if (!(wdb_insert_agent(id, entry->name, NULL, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, entry->key, *group ? group : NULL,1) || module->full_sync)) {
+        if (!(wdb_insert_agent(id, entry->name, NULL, OS_CIDRtoStr(entry->ip, cidr, 20) ? 
+                               entry->ip->ip : cidr, entry->key, *group ? group : NULL,1, &wdb_wmdb_sock) || module->full_sync)) {
             // Find files
             snprintf(path, PATH_MAX, "%s/(%s) %s->syscheck", DEFAULTDIR SYSCHECK_DIR, entry->name, entry->ip->ip);
 
             if (stat(path, &buffer) < 0) {
                 if (errno != ENOENT)
                     mterror(WM_DATABASE_LOGTAG, FSTAT_ERROR, path, errno, strerror(errno));
-            } else if (OS_SUCCESS != wdb_set_agent_offset(id, WDB_SYSCHECK, buffer.st_size))
+            } else if (OS_SUCCESS != wdb_set_agent_offset(id, WDB_SYSCHECK, buffer.st_size, &wdb_wmdb_sock))
                 mterror(WM_DATABASE_LOGTAG, "Couldn't write offset data on database for agent %d (%s).", id, entry->name);
 
             snprintf(path, PATH_MAX, "%s/(%s) %s->syscheck-registry", DEFAULTDIR SYSCHECK_DIR, entry->name, entry->ip->ip);
@@ -346,7 +348,7 @@ void wm_sync_agents() {
             if (stat(path, &buffer) < 0) {
                 if (errno != ENOENT)
                     mterror(WM_DATABASE_LOGTAG, FSTAT_ERROR, path, errno, strerror(errno));
-            } else if (OS_SUCCESS != wdb_set_agent_offset(id, WDB_SYSCHECK_REGISTRY, buffer.st_size))
+            } else if (OS_SUCCESS != wdb_set_agent_offset(id, WDB_SYSCHECK_REGISTRY, buffer.st_size, &wdb_wmdb_sock))
                 mterror(WM_DATABASE_LOGTAG, "Couldn't write offset data on database for agent %d (%s).", id, entry->name);
         } else {
             // The agent already exists, update group only.
@@ -356,14 +358,14 @@ void wm_sync_agents() {
 
     /* Delete old keys */
 
-    if ((agents = wdb_get_all_agents(FALSE))) {
+    if ((agents = wdb_get_all_agents(FALSE, &wdb_wmdb_sock))) {
         char id[9];
 
         for (i = 0; agents[i] != -1; i++) {
             snprintf(id, 9, "%03d", agents[i]);
 
             if (OS_IsAllowedID(&keys, id) == -1) {
-                if (wdb_remove_agent(agents[i]) < 0) {
+                if (wdb_remove_agent(agents[i], &wdb_wmdb_sock) < 0) {
                     mtdebug1(WM_DATABASE_LOGTAG, "Couldn't remove agent %s", id);
                 }
             }
@@ -402,7 +404,7 @@ void wm_clean_dangling_db() {
             if (end = strchr(dirent->d_name, '-'), end) {
                 *end = 0;
 
-                if (name = wdb_get_agent_name(atoi(dirent->d_name)), name) {
+                if (name = wdb_get_agent_name(atoi(dirent->d_name), &wdb_wmdb_sock), name) {
                     // Agent found: OK
                     free(name);
                 } else {
@@ -426,7 +428,7 @@ void wm_clean_dangling_db() {
 
 void wm_sync_multi_groups(const char *dirname) {
 
-    wdb_update_groups(dirname);
+    wdb_update_groups(dirname, &wdb_wmdb_sock);
 }
 
 #endif // LOCAL
@@ -439,9 +441,9 @@ int wm_sync_agent_group(int id_agent, const char *fname) {
 
     get_agent_group(fname, group, OS_SIZE_65536);
 
-    if (OS_SUCCESS != wdb_update_agent_group(id_agent, *group ? group : NULL)) {
+    if (OS_SUCCESS != wdb_update_agent_group(id_agent, *group ? group : NULL, &wdb_wmdb_sock)) {
         mterror(WM_DATABASE_LOGTAG, "Couldn't sync agent '%s' group.", fname);
-        wdb_delete_agent_belongs(id_agent);
+        wdb_delete_agent_belongs(id_agent, &wdb_wmdb_sock);
         result = -1;
     }
 
@@ -463,11 +465,11 @@ int wm_sync_shared_group(const char *fname) {
 
     /* The group was deleted */
     if (!dp) {
-        wdb_remove_group_db(fname);
+        wdb_remove_group_db(fname, &wdb_wmdb_sock);
     }
     else {
-        if(wdb_find_group(fname) <= 0){
-            wdb_insert_group(fname);
+        if(wdb_find_group(fname, &wdb_wmdb_sock) <= 0){
+            wdb_insert_group(fname, &wdb_wmdb_sock);
         }
         closedir(dp);
     }
@@ -541,10 +543,10 @@ int wm_sync_file(const char *dirname, const char *fname) {
             return -1;
         }
 
-        if (wdb_get_agent_status(id_agent) < 0) {
+        if (wdb_get_agent_status(id_agent, &wdb_wmdb_sock) < 0) {
             snprintf(del_path, PATH_MAX - 1, DEFAULTDIR GROUPS_DIR "/%03d", id_agent);
             unlink(del_path);
-            wdb_delete_agent_belongs(id_agent);
+            wdb_delete_agent_belongs(id_agent, &wdb_wmdb_sock);
             return -1;
         }
 
@@ -560,10 +562,14 @@ int wm_sync_file(const char *dirname, const char *fname) {
         if (id_agent) {
             switch (wm_extract_agent(fname, name, addr, &is_registry)) {
             case 0:
-                if ((id_agent = wdb_find_agent(name, addr)) < 0) {
+                if ((id_agent = wdb_find_agent(name, addr, &wdb_wmdb_sock)), id_agent == -2) {
                     mtdebug1(WM_DATABASE_LOGTAG, "No such agent at database for file %s/%s", dirname, fname);
                     snprintf(del_path, PATH_MAX, "%s/%s", dirname, fname);
                     unlink(del_path);
+                    return -1;
+                }
+                else if (id_agent == -1) {
+                    mtdebug1(WM_DATABASE_LOGTAG, "Error querying database for file %s/%s", dirname, fname);
                     return -1;
                 }
 
@@ -592,20 +598,20 @@ int wm_sync_file(const char *dirname, const char *fname) {
         }
     }
 
-    switch (wdb_get_agent_status(id_agent)) {
+    switch (wdb_get_agent_status(id_agent, &wdb_wmdb_sock)) {
     case -1:
         mterror(WM_DATABASE_LOGTAG, "Couldn't get database status for agent '%d'.", id_agent);
         return -1;
     case WDB_AGENT_PENDING:
         mtwarn(WM_DATABASE_LOGTAG, "Agent '%d' database status was 'pending'. Data could be lost.", id_agent);
-        wdb_set_agent_status(id_agent, WDB_AGENT_UPDATED);
+        wdb_set_agent_status(id_agent, WDB_AGENT_UPDATED, &wdb_wmdb_sock);
         break;
     }
 
     switch (type) {
     case WDB_SYSCHECK:
     case WDB_SYSCHECK_REGISTRY:
-        if ((offset = wdb_get_agent_offset(id_agent, type)) < 0) {
+        if ((offset = wdb_get_agent_offset(id_agent, type, &wdb_wmdb_sock)) < 0) {
             mterror(WM_DATABASE_LOGTAG, "Couldn't file offset from database for agent '%d'.", id_agent);
             return -1;
         }
@@ -621,13 +627,13 @@ int wm_sync_file(const char *dirname, const char *fname) {
                 return -1;
             }
 
-            if (OS_SUCCESS != wdb_set_agent_status(id_agent, WDB_AGENT_PENDING)) {
+            if (OS_SUCCESS != wdb_set_agent_status(id_agent, WDB_AGENT_PENDING, &wdb_wmdb_sock)) {
                 mterror(WM_DATABASE_LOGTAG, "Couldn't write agent status on database for agent %d (%s).", id_agent, name);
                 sqlite3_close_v2(db);
                 return -1;
             }
 
-            if (OS_SUCCESS != wdb_set_agent_offset(id_agent, type, buffer.st_size)) {
+            if (OS_SUCCESS != wdb_set_agent_offset(id_agent, type, buffer.st_size, &wdb_wmdb_sock)) {
                 mterror(WM_DATABASE_LOGTAG, "Couldn't write offset data on database for agent %d (%s).", id_agent, name);
                 sqlite3_close_v2(db);
                 return -1;
@@ -636,7 +642,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
             offset = wm_fill_syscheck(db, path, offset, is_registry);
             sqlite3_close_v2(db);
 
-            if (OS_SUCCESS != wdb_set_agent_status(id_agent, WDB_AGENT_UPDATED)) {
+            if (OS_SUCCESS != wdb_set_agent_status(id_agent, WDB_AGENT_UPDATED, &wdb_wmdb_sock)) {
                 mterror(WM_DATABASE_LOGTAG, "Couldn't write agent status on database for agent %d (%s).", id_agent, name);
                 return -1;
             }
@@ -646,7 +652,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
                 return -1;
             }
 
-            if (offset != buffer.st_size && OS_SUCCESS != wdb_set_agent_offset(id_agent, type, offset)) {
+            if (offset != buffer.st_size && OS_SUCCESS != wdb_set_agent_offset(id_agent, type, offset, &wdb_wmdb_sock)) {
                 mterror(WM_DATABASE_LOGTAG, "Couldn't write offset data on database for agent %d (%s) (post-fill).", id_agent, name);
                 return -1;
             }
@@ -987,7 +993,7 @@ void wm_inotify_setup(wm_database * data) {
 
         wm_sync_agents();
         wm_sync_multi_groups(DEFAULTDIR SHAREDCFG_DIR);
-        wdb_agent_belongs_first_time();
+        wdb_agent_belongs_first_time(&wdb_wmdb_sock);
     }
 
 #endif

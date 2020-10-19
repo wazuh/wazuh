@@ -107,7 +107,7 @@ void *update_shared_files(void *none);
 void parse_agent_controlmsg(const keyentry * key, char *msg, size_t msg_length);
 
 /* Save control messages */
-void save_controlmsg(const keyentry * key, char *msg, size_t msg_length);
+void save_controlmsg(const keyentry * key, char *msg, size_t msg_length, int *wdb_sock);
 
 // Request listener thread entry point
 void * req_main(void * arg);
