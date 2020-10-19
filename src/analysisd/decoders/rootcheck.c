@@ -67,10 +67,7 @@ int DecodeRootcheck(Eventinfo *lf)
     default:
         return_value = 1;
         mdebug1("Rootcheck decoder response: '%s'", response);
-        break;
-    }
 
-    if (return_value) {
         lf->decoder_info = rootcheck_dec;
         char *op_code = wstr_chr(response, ' ');
         if (strtol(++op_code, NULL, 10) == 2) {
@@ -83,7 +80,9 @@ int DecodeRootcheck(Eventinfo *lf)
         lf->fields[RK_TITLE].value = rk_get_title(lf->log);
         os_strdup(rootcheck_dec->fields[RK_FILE], lf->fields[RK_FILE].key);
         lf->fields[RK_FILE].value = rk_get_file(lf->log);
-    }
 
+        break;
+    }
+    
     return return_value;
 }
