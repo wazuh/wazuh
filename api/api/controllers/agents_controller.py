@@ -406,6 +406,7 @@ async def restart_agent(request, agent_id, pretty=False, wait_for_complete=False
 async def put_upgrade_agents(request, list_agents='*', pretty=False, wait_for_complete=False, wpk_repo=None,
                              version=None, use_http=False, force=False):
     """Upgrade agents using a WPK file from online repository.
+
     Parameters
     ----------
     pretty : bool
@@ -422,6 +423,7 @@ async def put_upgrade_agents(request, list_agents='*', pretty=False, wait_for_co
         Use protocol http. If it's false use https. By default the value is set to false.
     force : bool
         Force upgrade.
+
     Returns
     -------
     ApiResponse
@@ -437,7 +439,7 @@ async def put_upgrade_agents(request, list_agents='*', pretty=False, wait_for_co
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
-                          wait_for_complete=wait_for_complete,
+                          wait_for_complete=True,
                           logger=logger,
                           broadcasting=list_agents == '*',
                           rbac_permissions=request['token_info']['rbac_policies']
@@ -450,6 +452,7 @@ async def put_upgrade_agents(request, list_agents='*', pretty=False, wait_for_co
 async def put_upgrade_custom_agents(request, list_agents='*', pretty=False, wait_for_complete=False,
                                     file_path=None, installer=None):
     """Upgrade agents using a local WPK file.
+
     Parameters
     ----------
     pretty : bool
@@ -462,6 +465,7 @@ async def put_upgrade_custom_agents(request, list_agents='*', pretty=False, wait
         Path to the WPK file. The file must be on a folder on the Wazuh's installation directory (by default, <code>/var/ossec</code>).
     installer : str
         Installation file.
+
     Returns
     -------
     ApiResponse
@@ -475,7 +479,7 @@ async def put_upgrade_custom_agents(request, list_agents='*', pretty=False, wait
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
-                          wait_for_complete=wait_for_complete,
+                          wait_for_complete=True,
                           logger=logger,
                           broadcasting=list_agents == '*',
                           rbac_permissions=request['token_info']['rbac_policies']
@@ -487,6 +491,7 @@ async def put_upgrade_custom_agents(request, list_agents='*', pretty=False, wait
 
 async def get_agent_upgrade(request, list_agents=None, pretty=False, wait_for_complete=False):
     """Get upgrade results from agents.
+
     Parameters
     ----------
     pretty : bool
@@ -495,6 +500,7 @@ async def get_agent_upgrade(request, list_agents=None, pretty=False, wait_for_co
         Disable timeout response.
     list_agents : list
         List of agent IDs. All possible values since 000 onwards.
+
     Returns
     -------
     ApiResponse
@@ -506,7 +512,7 @@ async def get_agent_upgrade(request, list_agents=None, pretty=False, wait_for_co
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
-                          wait_for_complete=wait_for_complete,
+                          wait_for_complete=True,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )

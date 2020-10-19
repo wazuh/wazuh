@@ -1209,3 +1209,47 @@ def get_rbac_filters(system_resources=None, permitted_resources=None, filters=No
         negate = True
 
     return {'filters': filters, 'rbac_negate': negate}
+
+
+def agents_padding(result, agent_list):
+    """This function remove agent 000 from agent_list and
+    it transforms the format of the agent ids to the general format
+
+    Parameters
+    ----------
+    result : AffectedItemsWazuhResult
+    agent_list : list
+        List of agent's IDs
+
+    Returns
+    -------
+    Formatted agent list
+    """
+    agent_list = [str(agent).zfill(3) for agent in agent_list]
+    if '000' in agent_list:
+        result.add_failed_item(id_='000', error=WazuhError(code=1703))
+        agent_list.remove('000')
+
+    return agent_list
+
+
+def core_upgrade_agents(command, get_result=False):
+    """Send command to upgrade module / task module
+
+    Parameters
+    ----------
+    command
+    get_result : bool
+        Get the result of an update (True -> Task module), Create new upgrade task (False -> Upgrade module)
+
+    Returns
+    -------
+    Message received from the socket (Task module or Upgrade module)
+    """
+    # Send upgrading command
+    s = OssecSocket(common.UPGRADE_SOCKET) if not get_result else OssecSocket(common.TASKS_SOCKET)
+    s.send(dumps(command).encode())
+    data = loads(s.receive().decode())
+    s.close()
+
+    return data

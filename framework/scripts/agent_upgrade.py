@@ -5,12 +5,11 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import argparse
-import concurrent.futures
-import logging
-from asyncio import run
+import os
+import re
 from os.path import dirname
 from signal import signal, SIGINT
-from sys import exit, path, argv
+from sys import exit, path, argv, stdout
 from time import sleep
 
 # Set framework path
@@ -18,24 +17,25 @@ path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Waz
 
 # Import framework
 try:
+    from wazuh import Wazuh
     import wazuh.agent
-    from api.util import raise_if_exc
-    from wazuh.agent import upgrade_agents, get_upgrade_result
-    from wazuh.core import common
     from wazuh.core.agent import Agent
-    from wazuh.core.cluster.dapi.dapi import DistributedAPI
     from wazuh.core.exception import WazuhError
+    from wazuh.core import common
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
     exit()
-
-logger = logging.getLogger('wazuh')
 
 
 # Functions
 def signal_handler(n_signal, frame):
     print("")
     exit(1)
+
+
+def print_progress(value):
+    stdout.write("Sending WPK: [%-25s] %d%%   \r" % ('=' * int(value / 4), value))
+    stdout.flush()
 
 
 def list_outdated():
@@ -177,7 +177,7 @@ def main():
         list_outdated()
         exit(0)
 
-    if not args.agents:
+    if not args.agent:
         arg_parser.print_help()
         exit(0)
 
@@ -200,7 +200,7 @@ def main():
 if __name__ == "__main__":
 
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("-a", "--agents", nargs='+', help="Agent IDs to upgrade.")
+    arg_parser.add_argument("-a", "--agent", type=str, help="Agent ID to upgrade.")
     arg_parser.add_argument("-r", "--repository", type=str, help="Specify a repository URL. [Default: {0}]".format(
         common.wpk_repo_url_4_x))
     arg_parser.add_argument("-v", "--version", type=str, help="Version to upgrade. [Default: latest Wazuh version]")
@@ -210,6 +210,10 @@ if __name__ == "__main__":
     arg_parser.add_argument("-d", "--debug", action="store_true", help="Debug mode.")
     arg_parser.add_argument("-l", "--list_outdated", action="store_true",
                             help="Generates a list with all outdated agents.")
+    arg_parser.add_argument("-c", "--chunk_size", type=int,
+                            help="Chunk size sending WPK file. Allowed values: [1 - 64000]. [Default: {0}]".format(
+                                common.wpk_chunk_size))
+    arg_parser.add_argument("-t", "--timeout", type=int, help="Timeout until agent restart is unlocked.")
     arg_parser.add_argument("-f", "--file", type=str, help="Custom WPK filename.")
     arg_parser.add_argument("-x", "--execute", type=str,
                             help="Executable filename in the WPK custom file. [Default: upgrade.sh]")
@@ -219,10 +223,10 @@ if __name__ == "__main__":
     try:
         main()
     except WazuhError as e:
-        print(f"Error {e.code}: {e.message}")
+        print("Error {0}: {1}".format(e.code, e.message))
         if args.debug:
             raise
     except Exception as e:
-        print(f"Internal error: {str(e)}")
+        print("Internal error: {0}".format(str(e)))
         if args.debug:
             raise

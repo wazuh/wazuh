@@ -96,30 +96,6 @@ def test_validate_data_dict_field(response, fields_dict):
                 assert isinstance(element['count'], int)
 
 
-def test_validate_upgrade(response):
-    # We accept the test as passed if it either upgrades correctly or the version is not available
-    assert response.json().get('message', None) == "Upgrade procedure started" \
-           or response.json().get('error', None) == 1718
-    if response.json().get('message', None) == "Upgrade procedure started":
-        time.sleep(45)
-        return Box({"upgraded": 1})
-    else:
-        return Box({"upgraded": 0})
-
-
-def test_validate_upgrade_result(response, upgraded):
-    upgraded = int(upgraded, 10)
-    if upgraded == 1:
-        assert response.json().get('message', None) == "Agent was successfully upgraded"
-    else:
-        # If upgrade didnt work because no version was available, we expect an empty upgrade_result with error 1716
-        assert response.json().get('error', None) == 1716
-
-
-def test_validate_update_latest_version(response):
-    assert response.json().get('error', None) == 1749 or response.json().get('error', None) == 1718
-
-
 def test_count_elements(response, n_expected_items):
     """
     :param response: Request response
