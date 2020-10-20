@@ -1035,6 +1035,16 @@ int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output);
 int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * output);
 
 /**
+ * @brief Function to parse the update the agent connection status.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the agent data in JSON format.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_update_connection_status(wdb_t * wdb, char * input, char * output);
+
+/**
  * @brief Function to parse the agent delete from agent table request.
  *
  * @param [in] wdb The global struct database.
