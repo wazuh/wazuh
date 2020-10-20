@@ -26,6 +26,7 @@ extern void mock_assert(const int result, const char* const expression,
 #include "unit_tests/wrappers/windows/sddl_wrappers.h"
 #include "unit_tests/wrappers/windows/securitybaseapi_wrappers.h"
 #include "unit_tests/wrappers/windows/winbase_wrappers.h"
+#include "unit_tests/wrappers/windows/winreg_wrappers.h"
 
 #endif
 #endif
@@ -682,6 +683,7 @@ char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_
         *AcctName = '\0';
         goto end;
     }
+    printf("#### %s:%d ~~~~~~ get_user\n", __func__, __LINE__);
 
     // Get the owner SID of the file or registry
     dwRtnCode = GetSecurityInfo(hndl,                       // Object handle
@@ -697,6 +699,7 @@ char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_
         dwSecurityInfoErrorCode = GetLastError();
     }
 
+    printf("#### %s:%d ~~~~~~ 2\n", __func__, __LINE__);
     if (!ConvertSidToStringSid(pSidOwner, &local_sid)) {
         *sid = NULL;
         mdebug1("The user's SID could not be extracted.");
@@ -712,6 +715,7 @@ char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_
         goto end;
     }
 
+    printf("#### %s:%d ~~~~~~ 3\n", __func__, __LINE__);
     // Second call to LookupAccountSid to get the account name.
     bRtnBool = LookupAccountSid(NULL,                   // Name of local or remote computer
                                 pSidOwner,              // Security identifier
@@ -1015,6 +1019,7 @@ DWORD get_registry_permissions(HKEY hndl, char *perm_key) {
     int perm_size = OS_SIZE_6144;
     char *permissions = perm_key;
 
+    printf("#### %s:%d ~~~~~~ pre reggetkey\n", __func__, __LINE__);
     if (RegGetKeySecurity(hndl, DACL_SECURITY_INFORMATION, NULL, &lpcbSecurityDescriptor) != ERROR_INSUFFICIENT_BUFFER) {
         dwErrorCode = GetLastError();
         return dwErrorCode;
@@ -1040,7 +1045,9 @@ DWORD get_registry_permissions(HKEY hndl, char *perm_key) {
                                          &pDacl,                // Pointer to ACL
                                          &fDaclDefaulted);      // Flag set to the value of the SE_DACL_DEFAULTED flag
 
+    printf("#### %s:%d ~~~~~~ preif\n", __func__, __LINE__);
     if (bRtnBool == FALSE) {
+        printf("#### %s:%d ~~~~~~ if\n", __func__, __LINE__);
         dwErrorCode = GetLastError();
         mdebug2("GetSecurityDescriptorDacl failed. GetLastError returned: %ld", dwErrorCode);
         os_free(pSecurityDescriptor);
@@ -1098,6 +1105,8 @@ unsigned int get_registry_mtime(HKEY hndl) {
 
     dwRtnCode = RegQueryInfoKeyA(hndl, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &lpftLastWriteTime);
 
+    printf("#### %s:%d ~~~~~~ mtime dwRtnCode\n", __func__, __LINE__);
+    printf("#### %s:%d ~~~~~~ mtime dwRtnCode: %ld\n", __func__, __LINE__, dwRtnCode);
     if (dwRtnCode != ERROR_SUCCESS) {
         mwarn("Couldn't get modification time for registry key.");
         return 0;

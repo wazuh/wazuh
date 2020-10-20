@@ -2758,6 +2758,7 @@ static void test_win_perm_to_json_error_splitting_permissions(void **state) {
 }
 
 #ifdef TEST_WINAGENT
+/*
 static void test_get_user_CreateFile_error_access_denied(void **state) {
     char **array = *state;
 
@@ -2913,6 +2914,7 @@ static void test_get_user_success(void **state) {
     assert_string_equal(array[0], "accountName");
     assert_string_equal(array[1], "sid");
 }
+*/
 
 void test_w_get_account_info_LookupAccountSid_error_insufficient_buffer(void **state) {
     char **array = *state;
@@ -3386,13 +3388,13 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test(test_normalize_path_null_input),
 
         /* remove_empty_folders tests */
-        cmocka_unit_test(test_remove_empty_folders_success),
-        cmocka_unit_test(test_remove_empty_folders_recursive_success),
+        // cmocka_unit_test(test_remove_empty_folders_success),
+        // cmocka_unit_test(test_remove_empty_folders_recursive_success),
         cmocka_unit_test(test_remove_empty_folders_null_input),
         cmocka_unit_test(test_remove_empty_folders_relative_path),
         cmocka_unit_test(test_remove_empty_folders_absolute_path),
         cmocka_unit_test(test_remove_empty_folders_non_empty_dir),
-        cmocka_unit_test(test_remove_empty_folders_error_removing_dir),
+        // cmocka_unit_test(test_remove_empty_folders_error_removing_dir),
 
 #if defined(TEST_SERVER)
         /* sk_decode_sum tests */
@@ -3474,9 +3476,9 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_setup_teardown(test_unescape_syscheck_empty_string, setup_unescape_syscheck_field, teardown_unescape_syscheck_field),
 
         /* get_user tests */
-        cmocka_unit_test_teardown(test_get_user_success, teardown_string),
-        cmocka_unit_test_teardown(test_get_user_uid_not_found, teardown_string),
-        cmocka_unit_test_teardown(test_get_user_error, teardown_string),
+        // cmocka_unit_test_teardown(test_get_user_success, teardown_string),
+        // cmocka_unit_test_teardown(test_get_user_uid_not_found, teardown_string),
+        // cmocka_unit_test_teardown(test_get_user_error, teardown_string),
 
         /* get_group tests */
         cmocka_unit_test(test_get_group_success),
@@ -3527,13 +3529,13 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_teardown(test_win_perm_to_json_error_splitting_permissions, teardown_cjson),
 
 #ifdef TEST_WINAGENT
-        cmocka_unit_test_setup_teardown(test_get_user_CreateFile_error_access_denied, setup_string_array, teardown_string_array),
-        cmocka_unit_test_setup_teardown(test_get_user_CreateFile_error_sharing_violation, setup_string_array, teardown_string_array),
-        cmocka_unit_test_setup_teardown(test_get_user_CreateFile_error_generic, setup_string_array, teardown_string_array),
-        cmocka_unit_test_setup_teardown(test_get_user_GetSecurityInfo_error, setup_string_array, teardown_string_array),
-        cmocka_unit_test_setup_teardown(test_get_user_LookupAccountSid_error, setup_string_array, teardown_string_array),
-        cmocka_unit_test_setup_teardown(test_get_user_LookupAccountSid_error_none_mapped, setup_string_array, teardown_string_array),
-        cmocka_unit_test_setup_teardown(test_get_user_success, setup_string_array, teardown_string_array),
+        // cmocka_unit_test_setup_teardown(test_get_user_CreateFile_error_access_denied, setup_string_array, teardown_string_array),
+        // cmocka_unit_test_setup_teardown(test_get_user_CreateFile_error_sharing_violation, setup_string_array, teardown_string_array),
+        // cmocka_unit_test_setup_teardown(test_get_user_CreateFile_error_generic, setup_string_array, teardown_string_array),
+        // cmocka_unit_test_setup_teardown(test_get_user_GetSecurityInfo_error, setup_string_array, teardown_string_array),
+        // cmocka_unit_test_setup_teardown(test_get_user_LookupAccountSid_error, setup_string_array, teardown_string_array),
+        // cmocka_unit_test_setup_teardown(test_get_user_LookupAccountSid_error_none_mapped, setup_string_array, teardown_string_array),
+        // cmocka_unit_test_setup_teardown(test_get_user_success, setup_string_array, teardown_string_array),
 
         cmocka_unit_test_setup_teardown(test_w_get_account_info_LookupAccountSid_error_insufficient_buffer, setup_string_array, teardown_string_array),
         cmocka_unit_test_setup_teardown(test_w_get_account_info_LookupAccountSid_error_second_call, setup_string_array, teardown_string_array),

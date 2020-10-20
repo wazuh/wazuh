@@ -37,15 +37,13 @@ WINBOOL wrap_LookupAccountSid(__UNUSED_PARAM(LPCSTR lpSystemName),
                               __UNUSED_PARAM(PSID_NAME_USE peUse)) {
     if (Name != NULL) {
         strncpy(Name, mock_type(char*), *cchName);
-    }
-    else {
+    } else {
         *cchName = mock();
     }
 
     if (ReferencedDomainName != NULL) {
         strncpy(ReferencedDomainName, mock_type(char*), *cchReferencedDomainName);
-    }
-    else {
+    } else {
         *cchReferencedDomainName = mock();
     }
 
@@ -61,8 +59,7 @@ WINBOOL wrap_GetFileSecurity(LPCSTR lpFileName,
 
     if(!nLength) {
         *lpnLengthNeeded = mock();
-    }
-    else {
+    } else {
         PSECURITY_DESCRIPTOR sec_desc = mock_type(PSECURITY_DESCRIPTOR);
 
         if(sec_desc) {

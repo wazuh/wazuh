@@ -13,16 +13,18 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int __wrap_fim_db_data_checksum_range(fdb_t *fim_sql,
-                                      const char *start,
-                                      const char *top,
-                                      const long id,
-                                      const int n,
-                                      __attribute__ ((__unused__)) pthread_mutex_t *mutex) {
+int __wrap_fim_db_get_checksum_range(fdb_t *fim_sql,
+                                     __attribute__ ((__unused__)) fim_type type,
+                                     const char *start,
+                                     const char *top,
+                                     int n,
+                                     __attribute__ ((__unused__)) EVP_MD_CTX *ctx_left,
+                                     __attribute__ ((__unused__)) EVP_MD_CTX *ctx_right,
+                                     __attribute__ ((__unused__)) char **str_pathlh,
+                                     __attribute__ ((__unused__)) char **str_pathuh){
     check_expected_ptr(fim_sql);
     check_expected(start);
     check_expected(top);
-    check_expected(id);
     check_expected(n);
 
     return mock();
