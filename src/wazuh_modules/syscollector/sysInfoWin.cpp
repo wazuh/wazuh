@@ -101,7 +101,15 @@ std::string SysInfo::getSerialNumber()
     if (isVistaOrLater())
     {
         const auto rawData{Utils::exec("wmic baseboard get SerialNumber")};
-        ret = Utils::trim(rawData.substr(rawData.find("\r\n")), " \t\r\n");
+        const auto pos{rawData.find("\r\n")};
+        if (pos != std::string::npos)
+        {
+            ret = Utils::trim(rawData.substr(pos), " \t\r\n");
+        }
+        else
+        {
+            ret = "unknown";
+        }
     }
     else
     {
