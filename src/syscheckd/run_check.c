@@ -523,18 +523,11 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
 
         w_mutex_lock(&syscheck.fim_scan_mutex);
         for (i = 0; syscheck.dir[i]; i++) {
-            if (!syscheck.symbolic_links[i]) {
+            if (!syscheck.symbolic_links[i] || !(CHECK_FOLLOW & syscheck.opts[i])) {
                 continue;
             }
 
-            if (CHECK_FOLLOW & syscheck.opts[i]) {
-                real_path = realpath(syscheck.symbolic_links[i], NULL);
-            }
-            else {
-                // Taking the link itself if follow_symbolic_link is not enabled
-                os_calloc(strlen(syscheck.symbolic_links[i]) + 1, sizeof(char), real_path);
-                snprintf(real_path, strlen(syscheck.symbolic_links[i]) + 1, "%s", syscheck.symbolic_links[i]);
-            }
+            real_path = realpath(syscheck.symbolic_links[i], NULL);
 
             if (*syscheck.dir[i]) {
                 if (real_path) {
