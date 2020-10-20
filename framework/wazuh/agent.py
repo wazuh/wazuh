@@ -730,9 +730,10 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
                 'installer': installer
             }
            }
+           }
 
     msg['parameters'] = {k: v for k, v in msg['parameters'].items() if v is not None}
-    agents_result_chunks = [agent_list[x:x+250] for x in range(0, len(agent_list), 250)]
+    agents_result_chunks = [agent_list[x:x + 250] for x in range(0, len(agent_list), 250)]
 
     agent_results = list()
     for agents_chunk in agents_result_chunks:

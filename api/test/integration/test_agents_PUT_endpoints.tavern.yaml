@@ -733,6 +733,7 @@ stages:
         <<: *error_spec
 
   - name: Upgrade an agent
+    skip: True # At this time this test does not work because the 4.0.0 packages of the agents are not in production server
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -988,7 +989,7 @@ stages:
               task_id: !anyint
               module: upgrade_module
               command: upgrade_custom
-              status: Updated
+              status: Updating
               create_time: !anystr
               update_time: !anystr
           total_affected_items: 1

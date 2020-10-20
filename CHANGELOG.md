@@ -3,6 +3,17 @@ All notable changes to this project will be documented in this file.
 
 # [v4.1.0]
 
+### Added
+
+### Changed
+
+- Agent upgrade module refactored. ([#5387](https://github.com/wazuh/wazuh/issues/5387))
+
+### Fixed
+
+### Removed
+
+
 ## [v4.0.0] -
 
 ### Added
