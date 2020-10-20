@@ -116,12 +116,17 @@ char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_
         }
     }
 
-    json_task_module_request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_UPGRADE, agents_array, NULL, NULL);
+    if (cJSON_GetArraySize(agents_array) > 0) {
+        json_task_module_request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_UPGRADE, agents_array, NULL, NULL);
 
-    // Send request to task module and store task ids
-    if (!wm_agent_upgrade_task_module_callback(data_array, json_task_module_request, wm_agent_upgrade_upgrade_success_callback, wm_agent_upgrade_remove_entry)) {
-        wm_agent_upgrade_prepare_upgrades();
+        // Send request to task module and store task ids
+        if (!wm_agent_upgrade_task_module_callback(data_array, json_task_module_request, wm_agent_upgrade_upgrade_success_callback, wm_agent_upgrade_remove_entry)) {
+            wm_agent_upgrade_prepare_upgrades();
+        } else {
+            mtwarn(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_NO_AGENTS_TO_UPGRADE);
+        }
     } else {
+        cJSON_Delete(agents_array);
         mtwarn(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_NO_AGENTS_TO_UPGRADE);
     }
 
@@ -168,12 +173,17 @@ char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_u
         }
     }
 
-    json_task_module_request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_UPGRADE_CUSTOM, agents_array, NULL, NULL);
+    if (cJSON_GetArraySize(agents_array) > 0) {
+        json_task_module_request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_UPGRADE_CUSTOM, agents_array, NULL, NULL);
 
-    // Send request to task module and store task ids
-    if (!wm_agent_upgrade_task_module_callback(data_array, json_task_module_request, wm_agent_upgrade_upgrade_success_callback, wm_agent_upgrade_remove_entry)) {
-        wm_agent_upgrade_prepare_upgrades();
+        // Send request to task module and store task ids
+        if (!wm_agent_upgrade_task_module_callback(data_array, json_task_module_request, wm_agent_upgrade_upgrade_success_callback, wm_agent_upgrade_remove_entry)) {
+            wm_agent_upgrade_prepare_upgrades();
+        } else {
+            mtwarn(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_NO_AGENTS_TO_UPGRADE);
+        }
     } else {
+        cJSON_Delete(agents_array);
         mtwarn(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_NO_AGENTS_TO_UPGRADE);
     }
 

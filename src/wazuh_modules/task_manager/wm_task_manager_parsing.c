@@ -329,10 +329,6 @@ STATIC wm_task_manager_upgrade_update_status* wm_task_manager_parse_upgrade_upda
 
     if (error_msg_json && (error_msg_json->type == cJSON_String)) {
         os_strdup(error_msg_json->valuestring, task_parameters->error_msg);
-    } else {
-        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_ERROR_MSG]);
-        wm_task_manager_free_upgrade_update_status_parameters(task_parameters);
-        return NULL;
     }
 
     task_parameters->agent_ids = wm_task_manager_parse_ids(agents_json);
