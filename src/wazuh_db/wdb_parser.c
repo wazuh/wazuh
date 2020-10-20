@@ -4093,6 +4093,7 @@ int wdb_parse_rootcheck(wdb_t * wdb, char * input, char * output) {
         if (!next) {
             mdebug2("DB(%s) Invalid rootcheck query syntax: %s", wdb->id, input);
             snprintf(output, OS_MAXSTR + 1, "err Invalid rootcheck query syntax, near '%.32s'", input);
+            return -1;
         }
 
         char *ptr = wstr_chr(next, ' ');
