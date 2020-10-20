@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 
 - Wazuh API:
     - Added new endpoints to run the logtest tool and delete a logtest session ([#5984](https://github.com/wazuh/wazuh/pull/5984))  
+- Added new framework modules to use the logtest tool ([#5870](https://github.com/wazuh/wazuh/pull/5870))
 
 ### Changed
 
