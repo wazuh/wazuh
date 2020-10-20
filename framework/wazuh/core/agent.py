@@ -9,7 +9,6 @@ import ipaddress
 import socket
 from base64 import b64encode
 from datetime import date, datetime, timedelta, timezone
-from glob import glob
 from os import chown, chmod, path, makedirs, urandom, stat, remove
 from platform import platform
 from shutil import copyfile, rmtree
@@ -20,7 +19,6 @@ import requests
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
-from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.ossec_queue import OssecQueue
 from wazuh.core.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
@@ -46,25 +44,6 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                               date_fields={'lastKeepAlive', 'dateAdd'}, extra_fields={'internal_key'},
                               distinct=distinct, rbac_negate=rbac_negate)
         self.remove_extra_fields = remove_extra_fields
-
-    def _filter_status(self, status_filter):
-        # set the status value to lowercase in case it's a string. If not, the value will be return unmodified.
-        status_filter['value'] = getattr(status_filter['value'], 'lower', lambda: status_filter['value'])()
-        result = datetime.utcnow() - timedelta(seconds=common.limit_seconds)
-        self.request['time_active'] = result.replace(tzinfo=timezone.utc).timestamp()
-        if status_filter['operator'] == '!=':
-            self.query += ' NOT '
-
-        if status_filter['value'] == 'active':
-            self.query += '(last_keepalive >= :time_active AND version IS NOT NULL) or id = 0'
-        elif status_filter['value'] == 'disconnected':
-            self.query += 'last_keepalive < :time_active'
-        elif status_filter['value'] == "never_connected":
-            self.query += 'last_keepalive IS NULL AND id != 0'
-        elif status_filter['value'] == 'pending':
-            self.query += 'last_keepalive IS NOT NULL AND version IS NULL'
-        else:
-            raise WazuhError(1729, extra_message=status_filter['value'])
 
     def _filter_date(self, date_filter, filter_db_name):
         WazuhDBQuery._filter_date(self, date_filter, filter_db_name)
@@ -92,8 +71,6 @@ class WazuhDBQueryAgents(WazuhDBQuery):
     def _format_data_into_dictionary(self):
         fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
 
-        today = datetime.utcnow()
-
         # compute 'status' field, format id with zero padding and remove non-user-requested fields.
         # Also remove, extra fields (internal key and registration IP)
         selected_fields = self.select - self.extra_fields if self.remove_extra_fields else self.select
@@ -101,11 +78,9 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         aux = list()
         for item in self._data:
             aux_dict = dict()
-            lastkeepalive = item.get('lastKeepAlive')
-            version = item.get('version')
             for key, value in item.items():
                 if key in selected_fields:
-                    aux_dict[key] = format_fields(key, value, today, lastkeepalive, version)
+                    aux_dict[key] = format_fields(key, value)
 
             aux.append(aux_dict)
 
@@ -277,13 +252,6 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
     def __init__(self, filter_fields, *args, **kwargs):
         self.real_fields = copy.deepcopy(filter_fields)
 
-        if filter_fields is not None:
-            if 'status' in filter_fields:
-                if 'lastKeepAlive' not in filter_fields:
-                    filter_fields.append('lastKeepAlive')
-                if 'version' not in filter_fields:
-                    filter_fields.append('version')
-
         WazuhDBQueryAgents.__init__(self, *args, **kwargs)
         WazuhDBQueryGroupBy.__init__(self, *args, table=self.table, fields=self.fields, filter_fields=filter_fields,
                                      default_sort_field=self.default_sort_field, backend=self.backend, **kwargs)
@@ -300,13 +268,11 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
         else:
             fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
 
-            today = datetime.utcnow()
-
             # compute 'status' field, format id with zero padding and remove non-user-requested fields.
             # Also remove, extra fields (internal key and registration IP)
             selected_fields = self.select - self.extra_fields if self.remove_extra_fields else self.select
             selected_fields |= {'id'}
-            self._data = [{key: format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'))
+            self._data = [{key: format_fields(key, value)
                            for key, value in item.items() if key in selected_fields} for item in self._data]
 
             # Create tuples like ({values in self.real_fields}, count) in order to keep the 'count' field and discard
@@ -357,7 +323,7 @@ class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
 class Agent:
     """OSSEC Agent object.
     """
-    fields = {'id': 'id', 'name': 'name', 'ip': 'coalesce(ip,register_ip)', 'status': 'status',
+    fields = {'id': 'id', 'name': 'name', 'ip': 'coalesce(ip,register_ip)', 'status': 'connection_status',
               'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
               'version': 'version', 'manager': 'manager_host', 'dateAdd': 'date_add',
               'group': '`group`', 'mergedSum': 'merged_sum', 'configSum': 'config_sum',
@@ -1645,11 +1611,9 @@ class Agent:
         return configuration.get_active_configuration(self.id, component, config)
 
 
-def format_fields(field_name, value, today, lastKeepAlive=None, version=None):
+def format_fields(field_name, value):
     if field_name == 'id':
         return str(value).zfill(3)
-    elif field_name == 'status':
-        return calculate_status(lastKeepAlive, version is None, today)
     elif field_name == 'group':
         return value.split(',')
     elif field_name in ['dateAdd', 'lastKeepAlive']:
