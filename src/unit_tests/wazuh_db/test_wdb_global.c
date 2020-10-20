@@ -2934,7 +2934,6 @@ void test_wdb_global_select_agent_name_cache_fail(void **state)
 void test_wdb_global_select_agent_name_bind_fail(void **state)
 {
     cJSON *result = NULL;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_begin2, 1);
@@ -2954,7 +2953,6 @@ void test_wdb_global_select_agent_name_bind_fail(void **state)
 void test_wdb_global_select_agent_name_exec_fail(void **state)
 {
     cJSON *result = NULL;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_begin2, 1);
@@ -2975,7 +2973,6 @@ void test_wdb_global_select_agent_name_exec_fail(void **state)
 void test_wdb_global_select_agent_name_success(void **state)
 {
     cJSON *result = NULL;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_begin2, 1);
@@ -2994,7 +2991,6 @@ void test_wdb_global_select_agent_name_success(void **state)
 void test_wdb_global_select_agent_group_transaction_fail(void **state)
 {
     cJSON *result = NULL;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_begin2, -1);
@@ -3008,7 +3004,6 @@ void test_wdb_global_select_agent_group_transaction_fail(void **state)
 void test_wdb_global_select_agent_group_cache_fail(void **state)
 {
     cJSON *result = NULL;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_begin2, 1);
@@ -3023,7 +3018,6 @@ void test_wdb_global_select_agent_group_cache_fail(void **state)
 void test_wdb_global_select_agent_group_bind_fail(void **state)
 {
     cJSON *result = NULL;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_begin2, 1);
@@ -3043,7 +3037,6 @@ void test_wdb_global_select_agent_group_bind_fail(void **state)
 void test_wdb_global_select_agent_group_exec_fail(void **state)
 {
     cJSON *result = NULL;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_begin2, 1);
@@ -3064,7 +3057,6 @@ void test_wdb_global_select_agent_group_exec_fail(void **state)
 void test_wdb_global_select_agent_group_success(void **state)
 {
     cJSON *result = NULL;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_begin2, 1);
@@ -3083,7 +3075,6 @@ void test_wdb_global_select_agent_group_success(void **state)
 void test_wdb_global_select_agent_status_transaction_fail(void **state)
 {
     cJSON *result = NULL;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_begin2, -1);
@@ -3097,7 +3088,6 @@ void test_wdb_global_select_agent_status_transaction_fail(void **state)
 void test_wdb_global_select_agent_status_cache_fail(void **state)
 {
     cJSON *result = NULL;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_begin2, 1);
@@ -3112,7 +3102,6 @@ void test_wdb_global_select_agent_status_cache_fail(void **state)
 void test_wdb_global_select_agent_status_bind_fail(void **state)
 {
     cJSON *result = NULL;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_begin2, 1);
@@ -3132,7 +3121,6 @@ void test_wdb_global_select_agent_status_bind_fail(void **state)
 void test_wdb_global_select_agent_status_exec_fail(void **state)
 {
     cJSON *result = NULL;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_begin2, 1);
@@ -3153,7 +3141,6 @@ void test_wdb_global_select_agent_status_exec_fail(void **state)
 void test_wdb_global_select_agent_status_success(void **state)
 {
     cJSON *result = NULL;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_begin2, 1);
@@ -3172,7 +3159,6 @@ void test_wdb_global_select_agent_status_success(void **state)
 void test_wdb_global_select_groups_transaction_fail(void **state)
 {
     cJSON *result = NULL;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_begin2, -1);
@@ -3186,7 +3172,6 @@ void test_wdb_global_select_groups_transaction_fail(void **state)
 void test_wdb_global_select_groups_cache_fail(void **state)
 {
     cJSON *result = NULL;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_begin2, 1);
@@ -3201,7 +3186,6 @@ void test_wdb_global_select_groups_cache_fail(void **state)
 void test_wdb_global_select_groups_exec_fail(void **state)
 {
     cJSON *result = NULL;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_begin2, 1);
@@ -3219,7 +3203,6 @@ void test_wdb_global_select_groups_exec_fail(void **state)
 void test_wdb_global_select_groups_success(void **state)
 {
     cJSON *result = NULL;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_begin2, 1);
@@ -3234,7 +3217,6 @@ void test_wdb_global_select_groups_success(void **state)
 void test_wdb_global_select_agent_keepalive_transaction_fail(void **state)
 {
     cJSON *result = NULL;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     char *name = "test_name";
     char *ip = "0.0.0.0";
@@ -3250,7 +3232,6 @@ void test_wdb_global_select_agent_keepalive_transaction_fail(void **state)
 void test_wdb_global_select_agent_keepalive_cache_fail(void **state)
 {
     cJSON *result = NULL;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     char *name = "test_name";
     char *ip = "0.0.0.0";
@@ -3267,7 +3248,6 @@ void test_wdb_global_select_agent_keepalive_cache_fail(void **state)
 void test_wdb_global_select_agent_keepalive_bind1_fail(void **state)
 {
     cJSON *result = NULL;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     char *name = "test_name";
     char *ip = "0.0.0.0";
@@ -3290,7 +3270,6 @@ void test_wdb_global_select_agent_keepalive_bind1_fail(void **state)
 void test_wdb_global_select_agent_keepalive_bind2_fail(void **state)
 {
     cJSON *result = NULL;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     char *name = "test_name";
     char *ip = "0.0.0.0";
@@ -3316,7 +3295,6 @@ void test_wdb_global_select_agent_keepalive_bind2_fail(void **state)
 void test_wdb_global_select_agent_keepalive_bind3_fail(void **state)
 {
     cJSON *result = NULL;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     char *name = "test_name";
     char *ip = "0.0.0.0";
@@ -3345,7 +3323,6 @@ void test_wdb_global_select_agent_keepalive_bind3_fail(void **state)
 void test_wdb_global_select_agent_keepalive_exec_fail(void **state)
 {
     cJSON *result = NULL;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     char *name = "test_name";
     char *ip = "0.0.0.0";
@@ -4888,13 +4865,60 @@ void test_wdb_global_check_manager_keepalive_step_ok(void **state) {
     assert_int_equal(wdb_global_check_manager_keepalive(data->wdb), 1);
 }
 
+void test_wdb_global_reset_agents_connection_transaction_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
 
+    will_return(__wrap_wdb_begin2, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
+    int result = wdb_global_reset_agents_connection(data->wdb);
 
+    assert_int_equal(result, OS_INVALID);
+}
 
+void test_wdb_global_reset_agents_connection_cache_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
 
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
+    int result = wdb_global_reset_agents_connection(data->wdb);
 
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_reset_agents_step_fail(void **state)
+{
+    int last_agent_id = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    will_return(__wrap_wdb_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
+
+    int result = wdb_global_reset_agents_connection(data->wdb);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_reset_agents_connection_success(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+
+    int result = wdb_global_reset_agents_connection(data->wdb);
+
+    assert_int_equal(result, OS_SUCCESS);
+}
 
 int main()
 {
@@ -5084,6 +5108,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_check_manager_keepalive_step_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_check_manager_keepalive_step_nodata, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_check_manager_keepalive_step_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_reset_agents_connection_transaction_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_reset_agents_connection_cache_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_reset_agents_step_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_reset_agents_connection_success, test_setup, test_teardown)
         };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
