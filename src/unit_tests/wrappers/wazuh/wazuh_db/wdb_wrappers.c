@@ -111,7 +111,7 @@ int __wrap_wdbc_parse_result(char *result, char **payload) {
 }
 
 int __wrap_wdbc_query_ex(int *sock, const char *query, char *response, const int len) {
-    check_expected(sock);
+    check_expected(*sock);
     check_expected(query);
     check_expected(len);
 

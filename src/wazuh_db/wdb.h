@@ -35,9 +35,8 @@
 
 #define WDB_SYSCHECK 0
 #define WDB_SYSCHECK_REGISTRY 1
-#define WDB_ROOTCHECK 2
-#define WDB_GROUPS 3
-#define WDB_SHARED_GROUPS 4
+#define WDB_GROUPS 2
+#define WDB_SHARED_GROUPS 3
 #define WDB_NETADDR_IPV4 0
 
 #define WDB_MULTI_GROUP_DELIM '-'
@@ -125,6 +124,9 @@ typedef enum wdb_stmt {
     WDB_STMT_SYNC_UPDATE_ATTEMPT,
     WDB_STMT_SYNC_UPDATE_COMPLETION,
     WDB_STMT_MITRE_NAME_GET,
+    WDB_STMT_ROOTCHECK_INSERT_PM,
+    WDB_STMT_ROOTCHECK_UPDATE_PM,
+    WDB_STMT_ROOTCHECK_DELETE_PM,
     WDB_STMT_GLOBAL_INSERT_AGENT,
     WDB_STMT_GLOBAL_UPDATE_AGENT_NAME,
     WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION,
@@ -315,10 +317,10 @@ int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum);
 int wdb_fim_delete(wdb_t * wdb, const char * file);
 
 /* Insert configuration assessment entry. Returns ID on success or -1 on error. */
-int wdb_insert_pm(sqlite3 *db, const rk_event_t *event);
+int wdb_rootcheck_insert(wdb_t * wdb, const rk_event_t *event);
 
 /* Update configuration assessment last date. Returns number of affected rows on success or -1 on error. */
-int wdb_update_pm(sqlite3 *db, const rk_event_t *event);
+int wdb_rootcheck_update(wdb_t * wdb, const rk_event_t *event);
 
 /* Look for a configuration assessment entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
 int wdb_sca_find(wdb_t * wdb, int pm_id, char * output);
@@ -776,7 +778,10 @@ void wdb_delete_fim_all();
 /* Delete PM events of an agent. Returns number of affected rows on success or -1 on error. */
 int wdb_delete_pm(int id);
 
-/* Delete PM events of all agents */
+/* Delete PM events of an agent. Returns number of affected rows on success or -1 on error. */
+int wdb_rootcheck_delete(wdb_t * wdb);
+
+/* Deletes PM events of all agents */
 void wdb_delete_pm_all();
 
 /* Rebuild database. Returns 0 on success or -1 on error. */
@@ -916,6 +921,20 @@ int wdb_stmt_cache(wdb_t * wdb, int index);
 int wdb_parse(char * input, char * output);
 
 int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Parses a rootcheck command
+ * Commands:
+ * 1. delete: Deletes pm table
+ * 2. save: Inserts the entry or updates if it already exists
+ * @param wdb Database of an agent
+ * @param input buffer input
+ * @param output buffer output, on success responses are:
+ *        "ok 0" -> If entry was deleted
+ *        "ok 1" -> If entry was updated
+ *        "ok 2" -> If entry was inserted
+ * */
+int wdb_parse_rootcheck(wdb_t * wdb, char * input , char * output) __attribute__((nonnull)); 
 
 int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output);
 

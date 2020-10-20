@@ -513,7 +513,7 @@ static void test_fim_send_db_query_success(void **state) {
     const char *result = "This is a mock query result, it wont go anywhere";
     int sock = 1;
 
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, query);
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
@@ -530,7 +530,7 @@ static void test_fim_send_db_query_communication_error(void **state) {
     const char *result = "This is a mock query result, it wont go anywhere";
     int sock = 1;
 
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, query);
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
@@ -546,7 +546,7 @@ static void test_fim_send_db_query_no_response(void **state) {
     const char *result = "This is a mock query result, it wont go anywhere";
     int sock = 1;
 
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, query);
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
@@ -562,7 +562,7 @@ static void test_fim_send_db_query_format_error(void **state) {
     const char *result = "This is a mock query result, it wont go anywhere";
     int sock = 1;
 
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, query);
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
@@ -586,7 +586,7 @@ static void test_fim_send_db_delete_success(void **state) {
 
     // Assertion of this test is done through fim_send_db_query.
     // The following lines configure the test to check a correct input message.
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent 001 syscheck delete /a/path");
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
@@ -618,7 +618,7 @@ static void test_fim_send_db_delete_null_agent_id(void **state) {
     const char *path = "/a/path";
     const char *result = "This is a mock query result, it wont go anywhere";
 
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent (null) syscheck delete /a/path");
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
@@ -637,7 +637,7 @@ static void test_fim_send_db_delete_null_path(void **state) {
 
     // Assertion of this test is done through fim_send_db_query.
     // The following lines configure the test to check a correct input message.
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent 001 syscheck delete (null)");
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
@@ -660,7 +660,7 @@ static void test_fim_send_db_save_success(void **state) {
 
     // Assertion of this test is done through fim_send_db_query.
     // The following lines configure the test to check a correct input message.
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
         "{\"path\":\"/a/path\","
         "\"timestamp\":123456789,"
@@ -721,7 +721,7 @@ static void test_fim_send_db_save_null_agent_id(void **state) {
 
     // Assertion of this test is done through fim_send_db_query.
     // The following lines configure the test to check a correct input message.
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent (null) syscheck save2 "
         "{\"path\":\"/a/path\","
         "\"timestamp\":123456789,"
@@ -758,7 +758,7 @@ static void test_fim_send_db_save_null_data(void **state) {
 
     // Assertion of this test is done through fim_send_db_query.
     // The following lines configure the test to check a correct input message.
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 (null)");
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
@@ -781,7 +781,7 @@ static void test_fim_process_scan_info_scan_start(void **state) {
 
     // Assertion of this test is done through fim_send_db_query.
     // The following lines configure the test to check a correct input message.
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck scan_info_update start_scan 123456789");
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
@@ -803,7 +803,7 @@ static void test_fim_process_scan_info_scan_end(void **state) {
 
     // Assertion of this test is done through fim_send_db_query.
     // The following lines configure the test to check a correct input message.
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck scan_info_update end_scan 123456789");
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
@@ -854,7 +854,7 @@ static void test_fim_process_scan_info_null_agent_id(void **state) {
 
     // Assertion of this test is done through fim_send_db_query.
     // The following lines configure the test to check a correct input message.
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent (null) syscheck scan_info_update start_scan 123456789");
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
@@ -1875,7 +1875,7 @@ static void test_fim_process_alert_added_success(void **state) {
         fail();
 
     /* Inside fim_send_db_save */
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
         "{\"path\":\"/a/path\","
         "\"timestamp\":123456789,"
@@ -1976,7 +1976,7 @@ static void test_fim_process_alert_modified_success(void **state) {
         fail();
 
     /* Inside fim_send_db_save */
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
         "{\"path\":\"/a/path\","
         "\"timestamp\":123456789,"
@@ -2091,7 +2091,7 @@ static void test_fim_process_alert_deleted_success(void **state) {
         fail();
 
     /* Inside fim_send_db_delete */
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck delete /a/path");
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
@@ -2235,7 +2235,7 @@ static void test_fim_process_alert_no_path(void **state) {
         fail();
 
     /* Inside fim_send_db_save */
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
         "{\"timestamp\":123456789,"
         "\"attributes\":{"
@@ -2333,7 +2333,7 @@ static void test_fim_process_alert_no_hard_links(void **state) {
         fail();
 
     /* Inside fim_send_db_save */
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
         "{\"path\":\"/a/path\","
         "\"timestamp\":123456789,"
@@ -2433,7 +2433,7 @@ static void test_fim_process_alert_no_mode(void **state) {
         fail();
 
     /* Inside fim_send_db_save */
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
         "{\"path\":\"/a/path\","
         "\"timestamp\":123456789,"
@@ -2532,7 +2532,7 @@ static void test_fim_process_alert_no_tags(void **state) {
         fail();
 
     /* Inside fim_send_db_save */
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
         "{\"path\":\"/a/path\","
         "\"timestamp\":123456789,"
@@ -2633,7 +2633,7 @@ static void test_fim_process_alert_no_content_changes(void **state) {
         fail();
 
     /* Inside fim_send_db_save */
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
         "{\"path\":\"/a/path\","
         "\"timestamp\":123456789,"
@@ -2733,7 +2733,7 @@ static void test_fim_process_alert_no_changed_attributes(void **state) {
         fail();
 
     /* Inside fim_send_db_save */
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
         "{\"path\":\"/a/path\","
         "\"timestamp\":123456789,"
@@ -2834,7 +2834,7 @@ static void test_fim_process_alert_no_attributes(void **state) {
         fail();
 
     /* Inside fim_send_db_save */
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
         "{\"path\":\"/a/path\","
         "\"timestamp\":123456789}");
@@ -2933,7 +2933,7 @@ static void test_fim_process_alert_no_old_attributes(void **state) {
         fail();
 
     /* Inside fim_send_db_save */
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
         "{\"path\":\"/a/path\","
         "\"timestamp\":123456789,"
@@ -3046,7 +3046,7 @@ static void test_fim_process_alert_no_audit(void **state) {
         fail();
 
     /* Inside fim_send_db_save */
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
         "{\"path\":\"/a/path\","
         "\"timestamp\":123456789,"
@@ -3161,7 +3161,7 @@ static void test_decode_fim_event_type_event(void **state) {
     lf->decoder_info->fields[FIM_MODE] = strdup("mode");
 
     /* Inside fim_process_alert */
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
         "{\"path\":\"/a/path\","
         "\"timestamp\":123456789,"
@@ -3266,7 +3266,7 @@ static void test_decode_fim_event_type_scan_start(void **state) {
         fail();
 
     /* inside fim_process_scan_info */
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck scan_info_update start_scan 123456789");
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
@@ -3299,7 +3299,7 @@ static void test_decode_fim_event_type_scan_end(void **state) {
         fail();
 
     /* inside fim_process_scan_info */
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck scan_info_update end_scan 123456789");
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);

@@ -273,7 +273,7 @@ void test_queryname_error_socket(void **state) {
     will_return(__wrap_wdbc_query_parse_json, tactic_array);
 
     /* Mitre technique's name query */
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_any(__wrap_wdbc_query_ex, query);
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, "");
@@ -302,7 +302,7 @@ void test_queryname_no_response(void **state) {
     will_return(__wrap_wdbc_query_parse_json, tactic_array);
 
     /* Mitre technique's name query */
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_any(__wrap_wdbc_query_ex, query);
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, "");
@@ -330,7 +330,7 @@ void test_queryname_bad_response(void **state) {
     will_return(__wrap_wdbc_query_parse_json, tactic_array);
 
     /* Mitre technique's name query */
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_any(__wrap_wdbc_query_ex, query);
     expect_any(__wrap_wdbc_query_ex, len);
     // will_return(__wrap_wdbc_query_ex, 0);
@@ -361,7 +361,7 @@ void test_querytactics_repeated_id(void **state)
     will_return(__wrap_wdbc_query_parse_json, tactic_array);
 
     /* Mitre technique's name query */
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_any(__wrap_wdbc_query_ex, query);
     expect_any(__wrap_wdbc_query_ex, len);
     // will_return(__wrap_wdbc_query_ex, 0);
@@ -373,7 +373,7 @@ void test_querytactics_repeated_id(void **state)
     will_return(__wrap_wdbc_query_parse_json, tactic_array_2);
 
     /* Mitre technique's name query */
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_any(__wrap_wdbc_query_ex, query);
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, "ok Data Obfuscation");
@@ -400,7 +400,7 @@ void test_querytactics_success(void **state)
     will_return(__wrap_wdbc_query_parse_json, tactic_array);
 
     /* Mitre technique's name query */
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_any(__wrap_wdbc_query_ex, query);
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, "ok Data Obfuscation");
@@ -410,7 +410,7 @@ void test_querytactics_success(void **state)
     will_return(__wrap_wdbc_query_parse_json, tactic_array_2);
 
     /* Mitre technique's name query */
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_any(__wrap_wdbc_query_ex, query);
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, "ok Data Compressed");

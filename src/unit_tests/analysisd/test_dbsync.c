@@ -430,7 +430,7 @@ static void test_dispatch_check_success(void **state) {
     snprintf(data->ctx->agent_id, OS_SIZE_16, "007");
     snprintf(data->ctx->component, OS_SIZE_16, "syscheck");
 
-    expect_value(__wrap_wdbc_query_ex, sock, &data->ctx->db_sock);
+    expect_value(__wrap_wdbc_query_ex, *sock, data->ctx->db_sock);
     expect_string(__wrap_wdbc_query_ex, query,
         "agent 007 syscheck command {\"tail\":\"tail\",\"checksum\":\"checksum\",\"begin\":\"/a/path\",\"end\":\"/z/path\"}");
     expect_value(__wrap_wdbc_query_ex, len, OS_MAXSTR);
@@ -485,7 +485,7 @@ static void test_dispatch_check_unable_to_communicate_with_db(void **state) {
     snprintf(data->ctx->agent_id, OS_SIZE_16, "007");
     snprintf(data->ctx->component, OS_SIZE_16, "syscheck");
 
-    expect_value(__wrap_wdbc_query_ex, sock, &data->ctx->db_sock);
+    expect_value(__wrap_wdbc_query_ex, *sock, data->ctx->db_sock);
     expect_string(__wrap_wdbc_query_ex, query,
         "agent 007 syscheck command {\"tail\":\"tail\",\"checksum\":\"checksum\",\"begin\":\"/a/path\",\"end\":\"/z/path\"}");
     expect_value(__wrap_wdbc_query_ex, len, OS_MAXSTR);
@@ -506,7 +506,7 @@ static void test_dispatch_check_no_response_from_db(void **state) {
     snprintf(data->ctx->agent_id, OS_SIZE_16, "007");
     snprintf(data->ctx->component, OS_SIZE_16, "syscheck");
 
-    expect_value(__wrap_wdbc_query_ex, sock, &data->ctx->db_sock);
+    expect_value(__wrap_wdbc_query_ex, *sock, data->ctx->db_sock);
     expect_string(__wrap_wdbc_query_ex, query,
         "agent 007 syscheck command {\"tail\":\"tail\",\"checksum\":\"checksum\",\"begin\":\"/a/path\",\"end\":\"/z/path\"}");
     expect_value(__wrap_wdbc_query_ex, len, OS_MAXSTR);
@@ -527,7 +527,7 @@ static void test_dispatch_check_error_parsing_response(void **state) {
     snprintf(data->ctx->agent_id, OS_SIZE_16, "007");
     snprintf(data->ctx->component, OS_SIZE_16, "syscheck");
 
-    expect_value(__wrap_wdbc_query_ex, sock, &data->ctx->db_sock);
+    expect_value(__wrap_wdbc_query_ex, *sock, data->ctx->db_sock);
     expect_string(__wrap_wdbc_query_ex, query,
         "agent 007 syscheck command {\"tail\":\"tail\",\"checksum\":\"checksum\",\"begin\":\"/a/path\",\"end\":\"/z/path\"}");
     expect_value(__wrap_wdbc_query_ex, len, OS_MAXSTR);
@@ -551,7 +551,7 @@ static void test_dispatch_state_success(void **state) {
     snprintf(data->ctx->agent_id, OS_SIZE_16, "007");
     snprintf(data->ctx->component, OS_SIZE_16, "syscheck");
 
-    expect_value(__wrap_wdbc_query_ex, sock, &data->ctx->db_sock);
+    expect_value(__wrap_wdbc_query_ex, *sock, data->ctx->db_sock);
     expect_string(__wrap_wdbc_query_ex, query,
         "agent 007 syscheck save2 "
         "{\"tail\":\"tail\",\"checksum\":\"checksum\",\"begin\":\"/a/path\",\"end\":\"/z/path\"}");
@@ -608,7 +608,7 @@ static void test_dispatch_state_unable_to_communicate_with_db(void **state) {
     snprintf(data->ctx->agent_id, OS_SIZE_16, "007");
     snprintf(data->ctx->component, OS_SIZE_16, "syscheck");
 
-    expect_value(__wrap_wdbc_query_ex, sock, &data->ctx->db_sock);
+    expect_value(__wrap_wdbc_query_ex, *sock, data->ctx->db_sock);
     expect_string(__wrap_wdbc_query_ex, query,
         "agent 007 syscheck save2 "
         "{\"tail\":\"tail\",\"checksum\":\"checksum\",\"begin\":\"/a/path\",\"end\":\"/z/path\"}");
@@ -629,7 +629,7 @@ static void test_dispatch_state_no_response_from_db(void **state) {
     snprintf(data->ctx->agent_id, OS_SIZE_16, "007");
     snprintf(data->ctx->component, OS_SIZE_16, "syscheck");
 
-    expect_value(__wrap_wdbc_query_ex, sock, &data->ctx->db_sock);
+    expect_value(__wrap_wdbc_query_ex, *sock, data->ctx->db_sock);
     expect_string(__wrap_wdbc_query_ex, query,
         "agent 007 syscheck save2 "
         "{\"tail\":\"tail\",\"checksum\":\"checksum\",\"begin\":\"/a/path\",\"end\":\"/z/path\"}");
@@ -651,7 +651,7 @@ static void test_dispatch_state_error_parsing_response(void **state) {
     snprintf(data->ctx->agent_id, OS_SIZE_16, "007");
     snprintf(data->ctx->component, OS_SIZE_16, "syscheck");
 
-    expect_value(__wrap_wdbc_query_ex, sock, &data->ctx->db_sock);
+    expect_value(__wrap_wdbc_query_ex, *sock, data->ctx->db_sock);
     expect_string(__wrap_wdbc_query_ex, query,
         "agent 007 syscheck save2 "
         "{\"tail\":\"tail\",\"checksum\":\"checksum\",\"begin\":\"/a/path\",\"end\":\"/z/path\"}");
@@ -678,7 +678,7 @@ static void test_dispatch_clear_success(void **state) {
     snprintf(data->ctx->agent_id, OS_SIZE_16, "007");
     snprintf(data->ctx->component, OS_SIZE_16, "syscheck");
 
-    expect_value(__wrap_wdbc_query_ex, sock, &data->ctx->db_sock);
+    expect_value(__wrap_wdbc_query_ex, *sock, data->ctx->db_sock);
     expect_string(__wrap_wdbc_query_ex, query,
         "agent 007 syscheck integrity_clear "
         "{\"tail\":\"tail\",\"checksum\":\"checksum\",\"begin\":\"/a/path\",\"end\":\"/z/path\"}");
@@ -734,7 +734,7 @@ static void test_dispatch_clear_unable_to_communicate_with_db(void **state) {
     snprintf(data->ctx->agent_id, OS_SIZE_16, "007");
     snprintf(data->ctx->component, OS_SIZE_16, "syscheck");
 
-    expect_value(__wrap_wdbc_query_ex, sock, &data->ctx->db_sock);
+    expect_value(__wrap_wdbc_query_ex, *sock, data->ctx->db_sock);
     expect_string(__wrap_wdbc_query_ex, query,
         "agent 007 syscheck integrity_clear "
         "{\"tail\":\"tail\",\"checksum\":\"checksum\",\"begin\":\"/a/path\",\"end\":\"/z/path\"}");
@@ -755,7 +755,7 @@ static void test_dispatch_clear_no_response_from_db(void **state) {
     snprintf(data->ctx->agent_id, OS_SIZE_16, "007");
     snprintf(data->ctx->component, OS_SIZE_16, "syscheck");
 
-    expect_value(__wrap_wdbc_query_ex, sock, &data->ctx->db_sock);
+    expect_value(__wrap_wdbc_query_ex, *sock, data->ctx->db_sock);
     expect_string(__wrap_wdbc_query_ex, query,
         "agent 007 syscheck integrity_clear "
         "{\"tail\":\"tail\",\"checksum\":\"checksum\",\"begin\":\"/a/path\",\"end\":\"/z/path\"}");
@@ -777,7 +777,7 @@ static void test_dispatch_clear_error_parsing_response(void **state) {
     snprintf(data->ctx->agent_id, OS_SIZE_16, "007");
     snprintf(data->ctx->component, OS_SIZE_16, "syscheck");
 
-    expect_value(__wrap_wdbc_query_ex, sock, &data->ctx->db_sock);
+    expect_value(__wrap_wdbc_query_ex, *sock, data->ctx->db_sock);
     expect_string(__wrap_wdbc_query_ex, query,
         "agent 007 syscheck integrity_clear "
         "{\"tail\":\"tail\",\"checksum\":\"checksum\",\"begin\":\"/a/path\",\"end\":\"/z/path\"}");
@@ -804,7 +804,7 @@ static void test_DispatchDBSync_integrity_check_success(void **state) {
 
     data->ctx->db_sock = 65555;
 
-    expect_value(__wrap_wdbc_query_ex, sock, &data->ctx->db_sock);
+    expect_value(__wrap_wdbc_query_ex, *sock, data->ctx->db_sock);
     expect_string(__wrap_wdbc_query_ex, query,
         "agent 007 syscheck integrity_check_test {\"tail\":\"tail\",\"checksum\":\"checksum\",\"begin\":\"/a/path\",\"end\":\"/z/path\"}");
     expect_value(__wrap_wdbc_query_ex, len, OS_MAXSTR);
@@ -841,7 +841,7 @@ static void test_DispatchDBSync_state_success(void **state) {
 
     cJSON_Delete(root);
 
-    expect_value(__wrap_wdbc_query_ex, sock, &data->ctx->db_sock);
+    expect_value(__wrap_wdbc_query_ex, *sock, data->ctx->db_sock);
     expect_string(__wrap_wdbc_query_ex, query,
         "agent 007 syscheck save2 "
         "{\"tail\":\"tail\",\"checksum\":\"checksum\",\"begin\":\"/a/path\",\"end\":\"/z/path\"}");
@@ -872,7 +872,7 @@ static void test_DispatchDBSync_integrity_clear_success(void **state) {
 
     cJSON_Delete(root);
 
-    expect_value(__wrap_wdbc_query_ex, sock, &data->ctx->db_sock);
+    expect_value(__wrap_wdbc_query_ex, *sock, data->ctx->db_sock);
     expect_string(__wrap_wdbc_query_ex, query,
         "agent 007 syscheck integrity_clear "
         "{\"tail\":\"tail\",\"checksum\":\"checksum\",\"begin\":\"/a/path\",\"end\":\"/z/path\"}");
