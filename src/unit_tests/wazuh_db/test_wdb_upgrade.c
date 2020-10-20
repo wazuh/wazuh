@@ -44,7 +44,7 @@ int setup_wdb(void **state) {
     test_struct_t *init_data = NULL;
     os_calloc(1,sizeof(test_struct_t),init_data);
     os_calloc(1,sizeof(wdb_t),init_data->wdb);
-    os_strdup("000",init_data->wdb->id);
+    os_strdup("global",init_data->wdb->id);
     os_calloc(256,sizeof(char),init_data->output);
     os_calloc(1,sizeof(sqlite3 *),init_data->wdb->db);
     *state = init_data;
@@ -71,7 +71,7 @@ void test_wdb_upgrade_global_table_fail(void **state)
 
     expect_string(__wrap_wdb_metadata_table_check, key, "metadata");
     will_return(__wrap_wdb_metadata_table_check, OS_INVALID);
-    expect_string(__wrap__mwarn, formatted_msg, "DB(000) Error trying to find metadata table");
+    expect_string(__wrap__mwarn, formatted_msg, "DB(global) Error trying to find metadata table");
 
     //Global backup success
     will_return(__wrap_wdb_close, 0);
@@ -111,10 +111,10 @@ void test_wdb_upgrade_global_update_success(void **state)
 
     expect_string(__wrap_wdb_metadata_table_check, key, "metadata");
     will_return(__wrap_wdb_metadata_table_check, 0);
-    expect_string(__wrap__mdebug2, formatted_msg, "Updating database '000' to version 1");
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 1");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v1_sql);
     will_return(__wrap_wdb_sql_exec, 0);
-    expect_string(__wrap__mdebug2, formatted_msg, "Updating database '000' to version 2");
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 2");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v2_sql);
     will_return(__wrap_wdb_sql_exec, 0);
     will_return(__wrap_wdb_global_check_manager_keepalive, 1);
@@ -171,7 +171,7 @@ void test_wdb_upgrade_global_update_fail(void **state)
 
     expect_string(__wrap_wdb_metadata_table_check, key, "metadata");
     will_return(__wrap_wdb_metadata_table_check, 0);
-    expect_string(__wrap__mdebug2, formatted_msg, "Updating database '000' to version 1");
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 1");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v1_sql);
     will_return(__wrap_wdb_sql_exec, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Failed to update global.db to version 1");
@@ -219,7 +219,7 @@ void test_wdb_upgrade_global_get_version_fail(void **state)
     expect_string(__wrap_wdb_metadata_get_entry, key, "db_version");
     will_return(__wrap_wdb_metadata_get_entry, "1");
     will_return(__wrap_wdb_metadata_get_entry, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "DB(000): Error trying to get DB version");
+    expect_string(__wrap__mwarn, formatted_msg, "DB(global): Error trying to get DB version");
 
     //Global backup success
     will_return(__wrap_wdb_close, 0);
@@ -262,9 +262,12 @@ void test_wdb_upgrade_global_get_version_success(void **state)
     will_return(__wrap_wdb_metadata_table_check, 1);
 
     expect_string(__wrap_wdb_metadata_get_entry, key, "db_version");
-    will_return(__wrap_wdb_metadata_get_entry, "1");
+    will_return(__wrap_wdb_metadata_get_entry, "0");
     will_return(__wrap_wdb_metadata_get_entry, 1);
-    expect_string(__wrap__mdebug2, formatted_msg, "Updating database '000' to version 2");
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 1");
+    expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v1_sql);
+    will_return(__wrap_wdb_sql_exec, 0);
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 2");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v2_sql);
     will_return(__wrap_wdb_sql_exec, 0);
 
@@ -284,7 +287,7 @@ void test_wdb_upgrade_global_update_v1_to_v2_fail(void **state)
     expect_string(__wrap_wdb_metadata_get_entry, key, "db_version");
     will_return(__wrap_wdb_metadata_get_entry, "1");
     will_return(__wrap_wdb_metadata_get_entry, 1);
-    expect_string(__wrap__mdebug2, formatted_msg, "Updating database '000' to version 2");
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 2");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v2_sql);
     will_return(__wrap_wdb_sql_exec, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Failed to update global.db to version 2");
@@ -331,7 +334,7 @@ void test_wdb_upgrade_global_fail_backup_fail(void **state)
     expect_string(__wrap_wdb_metadata_get_entry, key, "db_version");
     will_return(__wrap_wdb_metadata_get_entry, "1");
     will_return(__wrap_wdb_metadata_get_entry, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "DB(000): Error trying to get DB version");
+    expect_string(__wrap__mwarn, formatted_msg, "DB(global): Error trying to get DB version");
     will_return(__wrap_wdb_close, -1);
     expect_string(__wrap__merror, formatted_msg, "Couldn't create SQLite Global backup database.");
 
