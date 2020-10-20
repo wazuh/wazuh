@@ -5745,7 +5745,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/agents_list'
         - $ref: '#/components/parameters/wpk_repo'
         - $ref: '#/components/parameters/upgrade_version'
         - $ref: '#/components/parameters/use_http'
@@ -5781,7 +5781,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/agents_list'
         - $ref: '#/components/parameters/file_path'
         - $ref: '#/components/parameters/installer'
       responses:
@@ -5815,7 +5815,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents'
+        - $ref: '#/components/parameters/agents_list'
       responses:
         '200':
           description: "Get agent upgrade results"
