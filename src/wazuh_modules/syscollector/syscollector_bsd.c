@@ -47,7 +47,7 @@
 #include <netdb.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <plist/plist.h>
+#include "external/libplist/include/plist/plist.h"
 
 #if !HAVE_SOCKADDR_SA_LEN
 #define SA_LEN(sa)      af_to_len(sa->sa_family)
@@ -260,8 +260,8 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
         if (fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) {
             if (!memcmp(read_buff, "bplist00", 8)) {  // Apple binary plist
                 sys_convert_bin_plist(&fp, (char *)read_buff, filepath);
-            } 
-            
+            }
+
             if (!(strncmp(read_buff, "<?xml", 5))) { // XML plist
                 while(fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) {
 
@@ -471,7 +471,7 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
 
 /**
  * @brief Converts/Decompresses an Apple binary plist file into an XML.
- * 
+ *
  * @param filepath Path of the binary file.
  * @param magic_bytes The first bytes of the newly extracted XML.
  * @param fp File Descriptor of the binary file. (On success, fp will point to the new XML file)
@@ -497,7 +497,7 @@ bool sys_convert_bin_plist(FILE **fp, char *magic_bytes, char *filepath) {
         goto clean;
     }
 
-    
+
     if (plist_from_bin(bin, filestats.st_size, &root_node), root_node == NULL) {
         goto clean;
     }

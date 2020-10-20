@@ -733,7 +733,7 @@ endif
 #### libplist ##########
 
 ${LIBPLIST_LIB}:
-	cd ${EXTERNAL_LIBPLIST} && mkdir bin && ./autogen.sh --prefix=${PWD}/${EXTERNAL_LIBPLIST}bin && ${MAKE} && ${MAKE} install
+	cd ${EXTERNAL_LIBPLIST} && ./autogen.sh --prefix=${PWD}/${EXTERNAL_LIBPLIST}bin && ${MAKE} && ${MAKE} install
 
 #### libffi ##########
 
@@ -1943,7 +1943,7 @@ ifneq ($(wildcard external/*/*),)
 	-cd ${EXTERNAL_LIBFFI} && ${MAKE} clean
 	rm -f $(msgpack_o) $(EXTERNAL_MSGPACK)libmsgpack.a
 	-${MAKE} -C $(EXTERNAL_BZIP2) clean
-	-cd ${EXTERNAL_LIBPLIST} && ${MAKE} clean && rm -rf bin/* 
+	-cd ${EXTERNAL_LIBPLIST} && ${MAKE} clean && rm -rf bin/*
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && ${MAKE} realclean
