@@ -402,7 +402,7 @@ async def restart_agent(request, agent_id, pretty=False, wait_for_complete=False
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_upgrade_agents(request, list_agents='*', pretty=False, wait_for_complete=False, wpk_repo=None,
+async def put_upgrade_agents(request, agents_list='*', pretty=False, wait_for_complete=False, wpk_repo=None,
                              version=None, use_http=False, force=False):
     """Upgrade agents using a WPK file from online repository.
 
@@ -412,7 +412,7 @@ async def put_upgrade_agents(request, list_agents='*', pretty=False, wait_for_co
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    list_agents : list
+    agents_list : list
         List of agent IDs. All possible values since 000 onwards.
     wpk_repo : str
         WPK repository.
@@ -428,7 +428,7 @@ async def put_upgrade_agents(request, list_agents='*', pretty=False, wait_for_co
     ApiResponse
         Upgrade message after trying to upgrade the agents.
     """
-    f_kwargs = {'agent_list': list_agents,
+    f_kwargs = {'agent_list': agents_list,
                 'wpk_repo': wpk_repo,
                 'version': version,
                 'use_http': use_http,
@@ -440,7 +440,7 @@ async def put_upgrade_agents(request, list_agents='*', pretty=False, wait_for_co
                           is_async=False,
                           wait_for_complete=True,
                           logger=logger,
-                          broadcasting=list_agents == '*',
+                          broadcasting=agents_list == '*',
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
@@ -458,7 +458,7 @@ async def put_upgrade_custom_agents(request, agents_list='*', pretty=False, wait
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    list_agents : list
+    agents_list : list
         List of agent IDs. All possible values since 000 onwards.
     file_path : str
         Path to the WPK file. The file must be on a folder on the Wazuh's installation directory (by default, <code>/var/ossec</code>).
@@ -488,7 +488,7 @@ async def put_upgrade_custom_agents(request, agents_list='*', pretty=False, wait
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agent_upgrade(request, list_agents=None, pretty=False, wait_for_complete=False):
+async def get_agent_upgrade(request, agents_list=None, pretty=False, wait_for_complete=False):
     """Get upgrade results from agents.
 
     Parameters
@@ -497,7 +497,7 @@ async def get_agent_upgrade(request, list_agents=None, pretty=False, wait_for_co
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    list_agents : list
+    agents_list : list
         List of agent IDs. All possible values since 000 onwards.
 
     Returns
@@ -505,7 +505,7 @@ async def get_agent_upgrade(request, list_agents=None, pretty=False, wait_for_co
     ApiResponse
         Upgrade message after having upgraded the agents.
     """
-    f_kwargs = {'agent_list': list_agents}
+    f_kwargs = {'agent_list': agents_list}
 
     dapi = DistributedAPI(f=agent.get_upgrade_result,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
