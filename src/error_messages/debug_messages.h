@@ -240,12 +240,11 @@
 #define FIM_DIR_RECURSION_LEVEL             "(6347): Directory '%s' is already on the max recursion_level (%d), it will not be scanned."
 #define FIM_DIFF_FOLDER_SIZE                "(6348): Size of '%s' folder: %.5f KB."
 #define FIM_BIG_FILE_REPORT_CHANGES         "(6349): File '%s' is too big for configured maximum size to perform diff operation."
-#define FIM_DISK_QUOTA_LIMIT_REACHED        "(6350): The maximum configured size for the '%s' folder has been reached, the diff operation cannot be performed."
-#define FIM_DISK_QUOTA_ESTIMATION           "(6351): The estimate of the file size '%s' exceeds the disk_quota. Operation discarded. "
-#define FIM_DIFF_IDENTICAL_MD5_FILES        "(6352): The files are identical, don't compute differences"
-#define FIM_DIFF_COMMAND_OUTPUT_EQUAL       "(6353): Command diff/fc output 0, files are the same"
-#define FIM_EMPTY_REGISTRY_CONFIG           "(6354): Empty windows_registry tag found in the configuration."
-#define FIM_REGISTRY_ENTRIES_INFO           "(6355): Fim registry entries: %d"
-#define FIM_DIFF_FOLDER_NOT_EXIST           "(6356): Can't remove folder '%s', not exist."
+#define FIM_DISK_QUOTA_LIMIT_REACHED        "(6350): The %s of the file size '%s' exceeds the disk_quota. Operation discarded."
+#define FIM_DIFF_IDENTICAL_MD5_FILES        "(6351): The files are identical, don't compute differences"
+#define FIM_DIFF_COMMAND_OUTPUT_EQUAL       "(6352): Command diff/fc output 0, files are the same"
+#define FIM_EMPTY_REGISTRY_CONFIG           "(6353): Empty windows_registry tag found in the configuration."
+#define FIM_REGISTRY_ENTRIES_INFO           "(6354): Fim registry entries: %d"
+#define FIM_DIFF_FOLDER_NOT_EXIST           "(6355): Can't remove folder '%s', not exist."
 
 #endif /* DEBUG_MESSAGES_H */

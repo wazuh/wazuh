@@ -240,8 +240,7 @@ char *fim_registry_value_diff(const char *key_name,
         mdebug2(FIM_BIG_FILE_REPORT_CHANGES, full_value_name);
         goto cleanup;
     } else if (limits_reached == 2){
-        mdebug2(FIM_DISK_QUOTA_ESTIMATION, full_value_name);
-        mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
+        mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, "estimation", full_value_name);
         goto cleanup;
     }
 
@@ -406,8 +405,7 @@ char *fim_file_diff(const char *filename) {
 
     // Generate diff structure
     diff_data *diff = initialize_file_diff_data(filename);
-    if (!strcmp("error", diff->compress_file)){
-        free_diff_data(diff);
+    if (!diff){
         return NULL;
     }
 
@@ -418,8 +416,7 @@ char *fim_file_diff(const char *filename) {
         mdebug2(FIM_BIG_FILE_REPORT_CHANGES, filename);
         goto cleanup;
     } else if (limits_reached == 2){
-        mdebug2(FIM_DISK_QUOTA_ESTIMATION, filename);
-        mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
+        mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, "estimation", filename);
         goto cleanup;
     }
 
@@ -547,8 +544,8 @@ diff_data *initialize_file_diff_data(const char *filename){
     return diff;
 
 error:
-    os_strdup("error", diff->compress_file);
-    return diff;
+    free_diff_data(diff);
+    return NULL;
 }
 
 void free_diff_data(diff_data *diff) {
@@ -629,7 +626,7 @@ int fim_diff_create_compress_file(const diff_data *diff) {
         if (syscheck.diff_folder_size + zip_size > syscheck.disk_quota_limit) {
             if (syscheck.disk_quota_full_msg) {
                 syscheck.disk_quota_full_msg = false;
-                mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
+                mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, "calculate", diff->file_origin);
             }
             fim_diff_modify_compress_estimation(zip_size, diff->file_size);
             return -1;
