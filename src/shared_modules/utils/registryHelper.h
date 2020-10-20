@@ -25,7 +25,7 @@
 
 namespace Utils
 {
-    class Registry
+    class Registry final
     {
     public:
         Registry(const HKEY key, const std::string& subKey)
@@ -35,7 +35,7 @@ namespace Utils
         {
             RegCloseKey(m_registryKey);
         }
-        DWORD dword(const std::string& valueName)
+        DWORD dword(const std::string& valueName) const
         {
             DWORD ret{};
             DWORD size{sizeof(DWORD)};
@@ -55,7 +55,7 @@ namespace Utils
             return ret;
         }
 
-        std::string string(const std::string& valueName)
+        std::string string(const std::string& valueName) const
         {
             DWORD size{0};
             auto result

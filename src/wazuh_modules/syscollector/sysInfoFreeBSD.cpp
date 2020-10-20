@@ -14,11 +14,10 @@
 #include <sys/sysctl.h>
 #include <sys/vmmeter.h>
 
-void SysInfo::getMemory(nlohmann::json& info)
+void SysInfo::getMemory(nlohmann::json& info) const
 {
     constexpr auto vmPageSize{"vm.stats.vm.v_page_size"};
     constexpr auto vmTotal{"vm.vmtotal"};
-    constexpr auto KByte{1024};
     uint64_t ram{0};
     const std::vector<int> mib{CTL_HW, HW_PHYSMEM};
     size_t len{sizeof(ram)};
@@ -64,7 +63,7 @@ void SysInfo::getMemory(nlohmann::json& info)
 }
 
 
-int SysInfo::getCpuMHz()
+int SysInfo::getCpuMHz() const
 {
     unsigned long cpuMHz{0};
     constexpr auto clockRate{"hw.clockrate"};
@@ -82,7 +81,7 @@ int SysInfo::getCpuMHz()
     return cpuMHz;
 }
 
-std::string SysInfo::getSerialNumber()
+std::string SysInfo::getSerialNumber() const
 {
     return "unknown";
 }

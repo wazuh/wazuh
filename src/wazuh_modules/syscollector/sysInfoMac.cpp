@@ -13,11 +13,10 @@
 #include "stringHelper.h"
 #include <sys/sysctl.h>
 
-void SysInfo::getMemory(nlohmann::json& info)
+void SysInfo::getMemory(nlohmann::json& info) const
 {
     constexpr auto vmPageSize{"vm.pagesize"};
     constexpr auto vmPageFreeCount{"vm.page_free_count"};
-    constexpr auto KByte{1024};
     uint64_t ram{0};
     const std::vector<int> mib{CTL_HW, HW_MEMSIZE};
     size_t len{sizeof(ram)};
@@ -62,7 +61,7 @@ void SysInfo::getMemory(nlohmann::json& info)
     info["ram_usage"] = 100 - (100 * ramFree / ramTotal);
 }
 
-int SysInfo::getCpuMHz()
+int SysInfo::getCpuMHz() const
 {
     constexpr auto MHz{1000000};
     unsigned long cpuMHz{0};
@@ -81,7 +80,7 @@ int SysInfo::getCpuMHz()
     return cpuMHz/MHz;
 }
 
-std::string SysInfo::getSerialNumber()
+std::string SysInfo::getSerialNumber() const
 {
     const auto rawData{Utils::exec("system_profiler SPHardwareDataType | grep Serial")};
     return Utils::trim(rawData.substr(rawData.find(":")), " :\t\r\n");
