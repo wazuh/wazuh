@@ -11,11 +11,19 @@
 #include "sysInfo.hpp"
 #include <fstream>
 #include <iostream>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include "stringHelper.h"
 
 constexpr auto WM_SYS_HW_DIR{"/sys/class/dmi/id/board_serial"};
 constexpr auto WM_SYS_CPU_DIR{"/proc/cpuinfo"};
 constexpr auto WM_SYS_MEM_DIR{"/proc/meminfo"};
+
+static bool existDir(const std::string& path)
+{
+    struct stat info{};
+    return !stat(path.c_str(), &info) && (info.st_mode & S_IFDIR);
+}
 
 static void parseLineAndFillMap(const std::string& line, const std::string& separator, std::map<std::string, std::string>& systemInfo)
 {
@@ -27,6 +35,7 @@ static void parseLineAndFillMap(const std::string& line, const std::string& sepa
         systemInfo[key] = value;
     }
 }
+
 static bool getSystemInfo(const std::string& fileName, const std::string& separator, std::map<std::string, std::string>& systemInfo)
 {
     std::string info;
@@ -38,7 +47,97 @@ static bool getSystemInfo(const std::string& fileName, const std::string& separa
         while(file.good())
         {
             std::getline(file, line);
+            std::cout << line << std::endl;
             parseLineAndFillMap(line, separator, systemInfo);
+        }
+    }
+    return ret;
+}
+
+static nlohmann::json parsePackage(const std::vector<std::string>& entries)
+{
+    std::map<std::string, std::string> info;
+    nlohmann::json ret;
+    for (const auto& entry: entries)
+    {
+        const auto pos{entry.find(":")};
+        if (pos != std::string::npos)
+        {
+            const auto key{Utils::trim(entry.substr(0, pos))};
+            const auto value{Utils::trim(entry.substr(pos + 1), " \n")};
+            info[key] = value;
+        }
+    }
+    if (!info.empty() && info.at("Status") == "install ok installed")
+    {
+        ret["name"] = info.at("Package");
+        auto it{info.find("Priority")};
+        if (it != info.end())
+        {
+            ret["priority"] = it->second;
+        }
+        it = info.find("Section");
+        if (it != info.end())
+        {
+            ret["group"] = it->second;
+        }
+        it = info.find("Installed-Size");
+        if (it != info.end())
+        {
+            ret["size"] = it->second;
+        }
+        it = info.find("Multi-Arch");
+        if (it != info.end())
+        {
+            ret["multi-arch"] = it->second;
+        }
+        it = info.find("Architecture");
+        if (it != info.end())
+        {
+            ret["architecture"] = it->second;
+        }
+        it = info.find("Source");
+        if (it != info.end())
+        {
+            ret["source"] = it->second;
+        }
+        it = info.find("Version");
+        if (it != info.end())
+        {
+            ret["version"] = it->second;
+        }
+    }
+    return ret;
+}
+
+static nlohmann::json getDpkgInfo(const std::string& fileName)
+{
+    nlohmann::json ret;
+    std::fstream file{fileName, std::ios_base::in};
+    if (file.is_open())
+    {
+        while(file.good())
+        {
+            std::string line;
+            std::vector<std::string> data;
+            do
+            {
+                std::getline(file, line);
+                if(line.front() == ' ')//additional info
+                {
+                    data.back() = data.back() + line + "\n";
+                }
+                else
+                {
+                    data.push_back(line + "\n");
+                }
+            }
+            while(!line.empty());//end of package item info
+            const auto packageInfo{ parsePackage(data) };
+            if (!packageInfo[0].empty())
+            {
+                ret.push_back(packageInfo[0]);
+            }
         }
     }
     return ret;
@@ -89,4 +188,14 @@ void SysInfo::getMemory(nlohmann::json& info)
     info["ram_total"] = memTotal;
     info["ram_free"] = memFree;
     info["ram_usage"] = 100 - (100*memFree/memTotal);
+}
+
+nlohmann::json SysInfo::getPackages()
+{
+    nlohmann::json packages;
+    if (existDir("/var/lib/dpkg/"))
+    {
+        packages = getDpkgInfo("/var/lib/dpkg/status");
+    }
+    return packages;
 }
