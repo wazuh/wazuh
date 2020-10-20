@@ -97,7 +97,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
 
         if (wdb_sql_exec(wdb, UPDATES[i]) == -1) {
             mwarn("Failed to update global.db to version %d", i + 1);
-            wdb = wdb_backup_global(wdb, i);
+            wdb = wdb_backup_global(wdb, version);
             break;
         }
     }
