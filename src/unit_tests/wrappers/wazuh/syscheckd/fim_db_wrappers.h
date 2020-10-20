@@ -13,12 +13,15 @@
 
 #include "syscheckd/syscheck.h"
 
-int __wrap_fim_db_data_checksum_range(fdb_t *fim_sql,
-                                      const char *start,
-                                      const char *top,
-                                      const long id,
-                                      const int n,
-                                      pthread_mutex_t *mutex);
+int __wrap_fim_db_get_checksum_range(fdb_t *fim_sql,
+                                     fim_type type,
+                                     const char *start,
+                                     const char *top,
+                                     int n,
+                                     EVP_MD_CTX *ctx_left,
+                                     EVP_MD_CTX *ctx_right,
+                                     char **str_pathlh,
+                                     char **str_pathuh);
 
 int __wrap_fim_db_delete_not_scanned(fdb_t * fim_sql,
                                      fim_tmp_file *file,

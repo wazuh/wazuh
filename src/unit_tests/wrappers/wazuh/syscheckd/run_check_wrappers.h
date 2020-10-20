@@ -15,7 +15,7 @@
 
 void __wrap_fim_send_scan_info(fim_scan_event event);
 
-void __wrap_fim_send_sync_msg(const char * msg);
+void __wrap_fim_send_sync_msg(const char *location, const char * msg);
 
 int __wrap_send_log_msg(const char * msg);
 

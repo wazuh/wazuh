@@ -621,7 +621,7 @@ int main(void) {
         cmocka_unit_test_teardown(test_Read_Syscheck_Config_unparsed, restart_syscheck),
         cmocka_unit_test_teardown(test_getSyscheckConfig, restart_syscheck),
         cmocka_unit_test_teardown(test_getSyscheckConfig_no_audit, restart_syscheck),
-        cmocka_unit_test_teardown(test_getSyscheckConfig_no_directories, restart_syscheck),
+        // cmocka_unit_test_teardown(test_getSyscheckConfig_no_directories, restart_syscheck),
         cmocka_unit_test_teardown(test_getSyscheckInternalOptions, restart_syscheck),
         cmocka_unit_test_teardown(test_SyscheckConf_DirectoriesWithCommas, restart_syscheck),
     };
