@@ -163,39 +163,6 @@ def test_WazuhDBQueryAgents__init__(socket_mock, send_mock, backend_mock, value)
             WazuhDBQueryAgents()
 
 
-@pytest.mark.parametrize('value, expected_query', [
-    ('active', '(last_keepalive >= :time_active AND version IS NOT NULL) or id = 0'),
-    ('disconnected', 'last_keepalive < :time_active'),
-    ('never_connected', 'last_keepalive IS NULL AND id != 0'),
-    ('pending', 'last_keepalive IS NOT NULL AND version IS NULL')
-])
-@patch('socket.socket.connect')
-def test_WazuhDBQueryAgents_filter_status(mock_socket_conn, value, expected_query):
-    """Tests _filter_status of WazuhDBQueryAgents returns expected query
-
-    Parameters
-    ----------
-    value : str
-        Value of the agent status.
-    expected_query
-        Query expected for the status value.
-    """
-    query_agent = WazuhDBQueryAgents()
-    query_agent._filter_status({'value': value, 'operator': '=='})
-    assert expected_query in query_agent.query, 'Query returned does not match the expected one'
-
-    query_agent._filter_status({'value': value, 'operator': '!='})
-    assert ('NOT ' + expected_query) in query_agent.query, 'Query returned does not match the expected one'
-
-
-@patch('socket.socket.connect')
-def test_WazuhDBQueryAgents_filter_status_ko(mock_socket_conn):
-    """Tests _filter_status of WazuhDBQueryAgents raises expected exception"""
-    with pytest.raises(WazuhException, match=f'.* 1729 .*'):
-        query_agent = WazuhDBQueryAgents()
-        query_agent._filter_status({'value': 'unknown', 'operator': '=='})
-
-
 @patch('socket.socket.connect')
 def test_WazuhDBQueryAgents_filter_date(mock_socket_conn):
     """Tests _filter_date of WazuhDBQueryAgents returns expected query"""
@@ -239,7 +206,7 @@ def test_WazuhDBQueryAgents_add_search_to_query(mock_socket_conn):
 @patch('socket.socket.connect')
 def test_WazuhDBQueryAgents_format_data_into_dictionary(mock_socket_conn):
     """Tests _format_data_into_dictionary of WazuhDBQueryAgents returns expected data"""
-    data = [{'id': 0, 'status': 'updated', 'group': 'default,group1,group2', 'manager': 'master',
+    data = [{'id': 0, 'status': 'active', 'group': 'default,group1,group2', 'manager': 'master',
              'dateAdd': 1000000000}]
 
     query_agent = WazuhDBQueryAgents(offset=0, limit=1, sort=None,
@@ -253,7 +220,7 @@ def test_WazuhDBQueryAgents_format_data_into_dictionary(mock_socket_conn):
 
     # Assert format_fields inside _format_data_into_dictionary is working as expected
     assert result['items'][0]['id'] == '000', 'ID is not as expected'
-    assert result['items'][0]['status'] == 'never_connected', 'status is not as expected'
+    assert result['items'][0]['status'] == 'active', 'status is not as expected'
     assert type(result['items'][0]['group']) == list and len(result['items'][0]['group']) == 3, \
         '"group" has different type or length than expected'
     assert type(result['items'][0]['dateAdd']) == datetime, 'Not date type'
@@ -380,9 +347,9 @@ def test_WazuhDBQueryGroupByAgents_format_data_into_dictionary_status(mock_socke
 
     query_group.select = {'os.name', 'count', 'status', 'lastKeepAlive', 'version'}
     query_group._data = [
-        {'os.name': 'Ubuntu', 'count': 1, 'version': 'Wazuh v4.0.0', 'status': 'updated', 'lastKeepAlive': 1593093968},
-        {'os.name': 'Ubuntu', 'count': 2, 'version': 'Wazuh v3.13.0', 'status': 'empty', 'lastKeepAlive': 1593093968},
-        {'os.name': 'Ubuntu', 'count': 1, 'version': 'Wazuh v3.13.0', 'status': 'empty', 'lastKeepAlive': 1593093976}]
+        {'os.name': 'Ubuntu', 'count': 1, 'version': 'Wazuh v4.0.0', 'status': 'disconnected', 'lastKeepAlive': 1593093968},
+        {'os.name': 'Ubuntu', 'count': 2, 'version': 'Wazuh v3.13.0', 'status': 'disconnected', 'lastKeepAlive': 1593093968},
+        {'os.name': 'Ubuntu', 'count': 1, 'version': 'Wazuh v3.13.0', 'status': 'disconnected', 'lastKeepAlive': 1593093976}]
 
     result = query_group._format_data_into_dictionary()
     assert result == {'items': [{'os': {'name': 'Ubuntu'}, 'status': 'disconnected', 'count': 4}], 'totalItems': 0}
@@ -695,7 +662,6 @@ def test_agent_remove_authd(mock_ossec_socket):
 @patch('wazuh.core.agent.chown')
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.stat')
-@patch('wazuh.core.agent.glob')
 @patch("wazuh.common.ossec_path", new=test_data_path)
 @patch('wazuh.core.agent.path.exists')
 @patch('wazuh.core.database.isfile', return_value=True)
@@ -710,7 +676,7 @@ def test_agent_remove_authd(mock_ossec_socket):
 @patch('wazuh.core.wdb.WazuhDBConnection.run_wdb_command')
 @patch('socket.socket.connect')
 def test_agent_remove_manual(socket_mock, run_wdb_mock, send_mock, grp_mock, pwd_mock, chmod_r_mock, makedirs_mock,
-                             safe_move_mock, isdir_mock, isfile_mock, exists_mock, glob_mock, stat_mock, chmod_mock,
+                             safe_move_mock, isdir_mock, isfile_mock, exists_mock, stat_mock, chmod_mock,
                              chown_mock, rmtree_mock, remove_mock, mock_delete_agents, backup, exists_backup_dir):
     """Test the _remove_manual function
 
@@ -1106,15 +1072,14 @@ def test_agent_get_agents_overview_query(socket_mock, send_mock, query, totalIte
     assert len(agents['items']) == totalItems
 
 
-@pytest.mark.parametrize("status, older_than, totalItems, exception", [
-    ('active', '9m', 4, None),
-    ('all', '1s', 8, None),
-    ('never_connected', '30m', 1, None),
-    (55, '30m', 0, 1729)
+@pytest.mark.parametrize("status, older_than, totalItems", [
+    ('active', '9m', 4),
+    ('all', '1s', 8),
+    ('never_connected', '30m', 1)
 ])
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_get_agents_overview_status_olderthan(socket_mock, send_mock, status, older_than, totalItems, exception):
+def test_agent_get_agents_overview_status_olderthan(socket_mock, send_mock, status, older_than, totalItems):
     """Test filtering by status
 
     Parameters
@@ -1125,18 +1090,12 @@ def test_agent_get_agents_overview_status_olderthan(socket_mock, send_mock, stat
         Filter agents with this value.
     totalItems : int
         Expected number of items to be returned.
-    exception : int
-        Error code of expected exception.
     """
     kwargs = {'filters': {'status': status, 'older_than': older_than},
               'select': {'name', 'id', 'status', 'lastKeepAlive', 'dateAdd'}}
 
-    if exception is None:
-        agents = Agent.get_agents_overview(**kwargs)
-        assert agents['totalItems'] == totalItems
-    else:
-        with pytest.raises(WazuhException, match=f'.* {exception} .*'):
-            Agent.get_agents_overview(**kwargs)
+    agents = Agent.get_agents_overview(**kwargs)
+    assert agents['totalItems'] == totalItems
 
 
 @pytest.mark.parametrize("sort, first_id", [
@@ -2178,7 +2137,6 @@ def test_expand_group(socket_mock, send_mock, group, expected_agents):
 @patch('wazuh.core.agent.chown')
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.stat')
-@patch('wazuh.core.agent.glob')
 @patch("wazuh.common.client_keys", new=os.path.join(test_data_path, 'etc', 'client.keys'))
 @patch('wazuh.core.agent.path.isdir', return_value=True)
 @patch('wazuh.core.agent.makedirs')
@@ -2189,7 +2147,7 @@ def test_expand_group(socket_mock, send_mock, group, expected_agents):
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_remove_manual_ko(socket_mock, send_mock, grp_mock, pwd_mock, chmod_r_mock, makedirs_mock,
-                                isdir_mock, glob_mock, stat_mock, chmod_mock, chown_mock, rmtree_mock, remove_mock, delete_mock,
+                                isdir_mock, stat_mock, chmod_mock, chown_mock, rmtree_mock, remove_mock, delete_mock,
                                  agent_id, expected_exception):
     """Test the _remove_manual function error cases.
 
