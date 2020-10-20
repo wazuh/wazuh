@@ -12,7 +12,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
-#include <plist/plist.h>
+#include "external/libplist/include/plist/plist.h"
 #include "../common.h"
 
 void wrap_plist_from_bin (char * bin, size_t size, plist_t *node) {

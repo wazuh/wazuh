@@ -10,7 +10,7 @@
 #ifndef STDIO_WRAPPERS_LIBPLIST_H
 #define STDIO_WRAPPERS_LIBPLIST_H
 
-#include <plist/plist.h>
+#include "external/libplist/include/plist/plist.h"
 
 #undef plist_from_bin
 #define plist_from_bin wrap_plist_from_bin
