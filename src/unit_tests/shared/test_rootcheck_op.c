@@ -48,6 +48,12 @@ void test_rk_get_file_start4(void **state) {
     assert_ptr_equal(file_str, NULL);
 }
 
+void test_rk_get_file_start5(void **state) {
+    char *file_str = rk_get_file("ASDASDASD String");
+    *state = file_str;
+    assert_ptr_equal(file_str, NULL);
+}
+
 void test_send_rootcheck_bad_query(void **state) {
     char response[OS_SIZE_6144] = {'\0'};
     const char* agent_id = "015";
@@ -86,6 +92,7 @@ int main() {
         cmocka_unit_test_teardown(test_rk_get_file_start2, test_free_file),
         cmocka_unit_test_teardown(test_rk_get_file_start3, test_free_file),
         cmocka_unit_test_teardown(test_rk_get_file_start4, test_free_file),
+        cmocka_unit_test_teardown(test_rk_get_file_start5, test_free_file),
         cmocka_unit_test(test_send_rootcheck_bad_query),
         cmocka_unit_test(test_send_rootcheck),
     };
