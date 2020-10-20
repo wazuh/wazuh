@@ -83,7 +83,7 @@ void test_rootcheck_success(void **state) {
     assert_int_equal(ret, 1);
     assert_string_equal(lf->fields[RK_FILE].value, "file_name");
     assert_string_equal(lf->fields[RK_TITLE].value, TEST_LOG_STRING);
-    assert_int_equal(lf->decoder_info->fts, FTS_DONE);
+    assert_int_equal(lf->rootcheck_fts, FTS_DONE);
 }
 
 

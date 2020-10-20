@@ -721,6 +721,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->last_events = NULL;
     lf->r_firedtimes = -1;
     lf->queue_added = 0;
+    lf->rootcheck_fts = 0;
     lf->decoder_syscheck_id = 0;
     lf->tid = -1;
 
@@ -1363,5 +1364,6 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
 
     lf_cpy->labels = labels_dup(lf->labels);
     lf_cpy->decoder_syscheck_id = lf->decoder_syscheck_id;
+    lf_cpy->rootcheck_fts = lf->rootcheck_fts;
     lf_cpy->is_a_copy = 1;
 }

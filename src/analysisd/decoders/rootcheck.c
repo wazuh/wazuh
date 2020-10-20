@@ -71,7 +71,7 @@ int DecodeRootcheck(Eventinfo *lf)
         char *op_code = wstr_chr(response, ' ');
         if (strtol(++op_code, NULL, 10) == 2) {
             // Entry was inserted
-            lf->decoder_info->fts = FTS_DONE;
+            lf->rootcheck_fts = FTS_DONE;
         }
         
         lf->nfields = RK_NFIELDS;

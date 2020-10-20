@@ -1317,10 +1317,10 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
     /* Check for the FTS flag */
     if (rule->alert_opts & DO_FTS) {
         /** FTS CHECKS **/
-        if (lf->decoder_info->fts) {
+        if (lf->decoder_info->fts || lf->rootcheck_fts) {
             char * _line = NULL;
             char * _line_cpy;
-            if (lf->decoder_info->fts & FTS_DONE)  {
+            if ((lf->decoder_info->fts & FTS_DONE) || (lf->rootcheck_fts & FTS_DONE))  {
                 /* We already did the fts in here */
             } else if (_line = FTS(lf),_line == NULL) {
                 return (NULL);
