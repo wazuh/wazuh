@@ -133,6 +133,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_LABELS_DEL,
     WDB_STMT_GLOBAL_LABELS_SET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE,
+    WDB_STMT_GLOBAL_UPDATE_AGENT_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_DELETE_AGENT,
     WDB_STMT_GLOBAL_SELECT_AGENT_NAME,
     WDB_STMT_GLOBAL_SELECT_AGENT_GROUP,
@@ -1478,6 +1479,16 @@ int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value);
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *sync_status);
+
+/**
+ * @brief Function to update an agent connection status.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id The agent ID.
+ * @param [in] connection_status The connection status to be set.
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char* connection_status);
 
 /**
  * @brief Function to delete an agent from the agent table.
