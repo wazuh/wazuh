@@ -15,27 +15,36 @@
 #include "shared.h"
 
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
+#include "../wrappers/posix/unistd_wrappers.h"
 
 /* setup/teardown */
+int test_free_file(void **state)  {
+    os_free(*state);
+    return 0;
+}
 
 /* tests */
 void test_rk_get_file_start1(void **state) {
     char *file_str = rk_get_file("File: /file/path.");
+    *state = file_str;
     assert_string_equal(file_str, "/file/path");
 }
 
 void test_rk_get_file_start2(void **state) {
     char *file_str = rk_get_file("File: /file/path");
+    *state = file_str;
     assert_ptr_equal(file_str, NULL);
 }
 
 void test_rk_get_file_start3(void **state) {
     char *file_str = rk_get_file("File '/var/lib/docker/tmp/linkfile' is owned by root and has written permissions to anyone.");
+    *state = file_str;
     assert_string_equal(file_str, "/var/lib/docker/tmp/linkfile");
 }
 
 void test_rk_get_file_start4(void **state) {
     char *file_str = rk_get_file("File '/var/lib/docker/tmp/linkfile is owned by root and has written permissions to anyone.");
+    *state = file_str;
     assert_ptr_equal(file_str, NULL);
 }
 
@@ -73,10 +82,10 @@ void test_send_rootcheck(void **state) {
 /* ***************** */
 int main() {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_rk_get_file_start1),
-        cmocka_unit_test(test_rk_get_file_start2),
-        cmocka_unit_test(test_rk_get_file_start3),
-        cmocka_unit_test(test_rk_get_file_start4),
+        cmocka_unit_test_teardown(test_rk_get_file_start1, test_free_file),
+        cmocka_unit_test_teardown(test_rk_get_file_start2, test_free_file),
+        cmocka_unit_test_teardown(test_rk_get_file_start3, test_free_file),
+        cmocka_unit_test_teardown(test_rk_get_file_start4, test_free_file),
         cmocka_unit_test(test_send_rootcheck_bad_query),
         cmocka_unit_test(test_send_rootcheck),
     };

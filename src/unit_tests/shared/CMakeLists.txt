@@ -67,7 +67,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap=OS_StrIsNum,--wrap=_merror,--wrap=w_t
                                 -Wl,--wrap=OSRegex_Compile -Wl,--wrap=OSRegex_Execute")
 
 list(APPEND shared_tests_names "test_rootcheck_op")
-list(APPEND shared_tests_flags "-Wl,--wrap=wdbc_query_ex -Wl,--wrap=_merror")
+list(APPEND shared_tests_flags "-Wl,--wrap=wdbc_query_ex -Wl,--wrap=_merror,--wrap=close,--wrap=getpid")
 endif()
 
 list(APPEND shared_tests_names "test_syscheck_op")
