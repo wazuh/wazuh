@@ -11,6 +11,7 @@
 
 #include <string>
 #include "rsync.h"
+#include "rsync.hpp"
 #include "rsync_exception.h"
 #include "dbsyncWrapper.h"
 #include "rsyncImplementation.h"
@@ -90,7 +91,7 @@ EXPORTED int rsync_start_sync(const RSYNC_HANDLE handle,
                 }
             };
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(start_configuration)};
-            RSyncImplementation::instance().startRSync(handle, std::make_shared<DBSyncWrapper>(dbsync_handle), spJsonBytes.get(), callbackWrapper);
+            RSyncImplementation::instance().startRSync(handle, std::make_shared<DBSyncWrapper>(dbsync_handle), nlohmann::json::parse(spJsonBytes.get()), callbackWrapper);
             retVal = 0;
         }
         // LCOV_EXCL_START
@@ -128,7 +129,7 @@ EXPORTED int rsync_register_sync_id(const RSYNC_HANDLE handle,
                 }
             };
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(sync_configuration)};
-            RSyncImplementation::instance().registerSyncId(handle, message_header_id, std::make_shared<DBSyncWrapper>(dbsync_handle), spJsonBytes.get(), callbackWrapper);
+            RSyncImplementation::instance().registerSyncId(handle, message_header_id, std::make_shared<DBSyncWrapper>(dbsync_handle), nlohmann::json::parse(spJsonBytes.get()), callbackWrapper);
             retVal = 0;
         }
         // LCOV_EXCL_START
@@ -198,3 +199,63 @@ EXPORTED int rsync_close(const RSYNC_HANDLE handle)
 #ifdef __cplusplus
 }
 #endif
+
+void RemoteSync::teardown()
+{
+    RSyncImplementation::instance().release();
+}
+
+RemoteSync::RemoteSync()
+: m_shouldBeRemove{ true } 
+{
+    m_handle = RSyncImplementation::instance().create();
+}
+
+RemoteSync::RemoteSync(RSYNC_HANDLE handle)
+: m_handle { handle }
+, m_shouldBeRemove{ false } 
+{ }
+
+RemoteSync::~RemoteSync()
+{
+    if (m_shouldBeRemove)
+    {
+        RSyncImplementation::instance().releaseContext(m_handle);
+    }
+}
+
+void RemoteSync::startSync(const DBSYNC_HANDLE   dbsyncHandle,
+                           const nlohmann::json& startConfiguration,
+                           SyncCallbackData&     callbackData)
+{
+    const auto callbackWrapper
+    {
+        [callbackData](const std::string& payload)
+        {
+            callbackData(payload);
+        }
+    };
+    RSyncImplementation::instance().startRSync(m_handle, std::make_shared<DBSyncWrapper>(dbsyncHandle), startConfiguration, callbackWrapper);
+            
+}
+
+void RemoteSync::registerSyncID(const std::string&    messageHeaderID, 
+                                const DBSYNC_HANDLE   dbsyncHandle,
+                                const nlohmann::json& syncConfiguration,
+                                SyncCallbackData&     callbackData)
+{
+    const auto callbackWrapper
+    {
+        [callbackData](const std::string& payload)
+        {
+            callbackData(payload);
+        }
+    };
+    RSyncImplementation::instance().registerSyncId(m_handle, messageHeaderID, std::make_shared<DBSyncWrapper>(dbsyncHandle), syncConfiguration, callbackWrapper);       
+}
+
+void RemoteSync::pushMessage(const std::vector<uint8_t>& payload)
+{
+    RSyncImplementation::instance().push(m_handle, payload);       
+}
+

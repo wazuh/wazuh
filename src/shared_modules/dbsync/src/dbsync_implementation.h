@@ -30,24 +30,24 @@ namespace DbSync
             return s_instance;
         }
 
-        void insertBulkData(const DBSYNC_HANDLE handle,
-                            const char*         jsonRaw);
+        void insertBulkData(const DBSYNC_HANDLE     handle,
+                            const nlohmann::json&   json);
 
-        void syncRowData(const DBSYNC_HANDLE  handle,
-                         const char*          jsonRaw,
-                         const ResultCallback callback);
+        void syncRowData(const DBSYNC_HANDLE    handle,
+                         const nlohmann::json&  json,
+                         const ResultCallback   callback);
 
-        void syncRowData(const DBSYNC_HANDLE  handle,
-                         const TXN_HANDLE     txnHandle,
-                         const char*          jsonRaw,
-                         const ResultCallback callback);
+        void syncRowData(const DBSYNC_HANDLE    handle,
+                         const TXN_HANDLE       txnHandle,
+                         const nlohmann::json&  json,
+                         const ResultCallback   callback);
 
-        void deleteRowsData(const DBSYNC_HANDLE  handle,
-                            const char*          jsonRaw);
+        void deleteRowsData(const DBSYNC_HANDLE     handle,
+                            const nlohmann::json&   json);
 
-        void updateSnapshotData(const DBSYNC_HANDLE  handle,
-                                const char*          jsonSnapshot,
-                                const ResultCallback callback);
+        void updateSnapshotData(const DBSYNC_HANDLE     handle,
+                                const nlohmann::json&   json,
+                                const ResultCallback    callback);
 
         DBSYNC_HANDLE initialize(const HostType     hostType,
                                  const DbEngineType dbType,
@@ -58,8 +58,8 @@ namespace DbSync
                         const std::string& table,
                         const unsigned long long maxRows);
 
-        TXN_HANDLE createTransaction(const DBSYNC_HANDLE handle,
-                                     const char* tables);
+        TXN_HANDLE createTransaction(const DBSYNC_HANDLE    handle,
+                                     const nlohmann::json&  json);
 
         void closeTransaction(const DBSYNC_HANDLE handle,
                               const TXN_HANDLE txnHandle);
@@ -69,13 +69,15 @@ namespace DbSync
                         const ResultCallback  callback);
 
         void selectData(const DBSYNC_HANDLE    handle,
-                        const char*            jsonRaw,
+                        const nlohmann::json&  json,
                         const ResultCallback&  callback);
 
         void addTableRelationship(const DBSYNC_HANDLE   handle, 
-                                  const char*           jsonRaw);
+                                  const nlohmann::json& json);
 
         void release();
+
+        void releaseContext(const DBSYNC_HANDLE handle);
     private:
 
         struct TransactionContext final
