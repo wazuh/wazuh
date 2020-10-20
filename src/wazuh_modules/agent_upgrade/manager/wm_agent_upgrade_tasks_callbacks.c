@@ -91,10 +91,7 @@ cJSON* wm_agent_upgrade_upgrade_success_callback(int *error, cJSON* input_json) 
     response = input_json;
 
     if (wm_agent_upgrade_validate_task_ids_message(input_json, &agent_id, &task_id, &data)) {
-        if(task_id) {
-            // Store task_id
-            wm_agent_upgrade_insert_task_id(agent_id, task_id);
-        } else {
+        if(!task_id) {
             // Remove from table since upgrade will not be started
             wm_agent_upgrade_remove_entry(agent_id, 1);
             response = wm_agent_upgrade_parse_data_response(WM_UPGRADE_TASK_MANAGER_FAILURE, data, &agent_id);

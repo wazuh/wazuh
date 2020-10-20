@@ -32,13 +32,69 @@ typedef enum _error_code {
     WM_TASK_INVALID_NODE,
     WM_TASK_INVALID_MODULE,
     WM_TASK_INVALID_COMMAND,
-    WM_TASK_INVALID_AGENT_ID,
-    WM_TASK_INVALID_TASK_ID,
+    WM_TASK_INVALID_AGENTS,
+    WM_TASK_INVALID_TASKS,
     WM_TASK_INVALID_STATUS,
     WM_TASK_DATABASE_NO_TASK,
     WM_TASK_DATABASE_ERROR,
     WM_TASK_UNKNOWN_ERROR
 } error_code;
+
+/**
+ * Definition of upgrade parameters
+ */
+typedef struct _wm_task_manager_upgrade {
+    char *node;
+    char *module;
+    int *agent_ids;
+} wm_task_manager_upgrade;
+
+/**
+ * Definition of upgrade get status parameters
+ */
+typedef struct _wm_task_manager_upgrade_get_status {
+    char *node;
+    int *agent_ids;
+} wm_task_manager_upgrade_get_status;
+
+/**
+ * Definition of upgrade update status parameters
+ */
+typedef struct _wm_task_manager_upgrade_update_status {
+    char *node;
+    int *agent_ids;
+    char *status;
+    char *error_msg;
+} wm_task_manager_upgrade_update_status;
+
+/**
+ * Definition of upgrade result parameters
+ */
+typedef struct _wm_task_manager_upgrade_result {
+    int *agent_ids;
+} wm_task_manager_upgrade_result;
+
+/**
+ * Definition of upgrade cancel tasks parameters
+ */
+typedef struct _wm_task_manager_upgrade_cancel_tasks {
+    char *node;
+} wm_task_manager_upgrade_cancel_tasks;
+
+/**
+ * Definition of task result parameters
+ */
+typedef struct _wm_task_manager_task_result {
+    int *task_ids;
+} wm_task_manager_task_result;
+
+/**
+ * Definition of task structure
+ */
+typedef struct _wm_task_manager_task {
+    command_list command;
+    void *parameters;
+} wm_task_manager_task;
 
 extern const wm_context WM_TASK_MANAGER_CONTEXT;   // Context
 
@@ -54,12 +110,12 @@ int wm_task_manager_read(xml_node **nodes, wmodule *module);
 size_t wm_task_manager_dispatch(const char *msg, char **response) __attribute__((nonnull));
 
 /**
- * Analyze a task by module and call appropiate analyze function.
- * @param task_object JSON object with a task to be analyzed.
+ * Process a task and call appropiate command function.
+ * @param task Task to be processed.
  * @param error_code Variable to store an error code if something is wrong.
  * @return JSON object with the response for this task.
  * */
-cJSON* wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) __attribute__((nonnull));
+cJSON* wm_task_manager_process_task(const wm_task_manager_task *task, int *error_code) __attribute__((nonnull));
 
 #endif
 #endif

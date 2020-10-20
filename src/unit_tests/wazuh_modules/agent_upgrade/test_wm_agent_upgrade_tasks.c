@@ -110,37 +110,6 @@ void test_wm_agent_upgrade_create_task_entry_duplicate(void **state)
     assert_int_equal(ret, OSHASH_DUPLICATE);
 }
 
-void test_wm_agent_upgrade_insert_task_id_ok(void **state)
-{
-    int agent_id = 8;
-    int task_id = 100;
-    wm_agent_task *agent_task = *state;
-
-    agent_task->task_info = wm_agent_upgrade_init_task_info();
-
-    expect_value(__wrap_OSHash_Get_ex, self, task_table_by_agent_id);
-    expect_string(__wrap_OSHash_Get_ex, key, "8");
-    will_return(__wrap_OSHash_Get_ex, agent_task);
-
-    will_return(__wrap_OSHash_Update_ex, OSHASH_SUCCESS);
-
-    wm_agent_upgrade_insert_task_id(agent_id, task_id);
-
-    assert_int_equal(agent_task->task_info->task_id, task_id);
-}
-
-void test_wm_agent_upgrade_insert_task_id_err(void **state)
-{
-    int agent_id = 8;
-    int task_id = 100;
-
-    expect_value(__wrap_OSHash_Get_ex, self, task_table_by_agent_id);
-    expect_string(__wrap_OSHash_Get_ex, key, "8");
-    will_return(__wrap_OSHash_Get_ex, NULL);
-
-    wm_agent_upgrade_insert_task_id(agent_id, task_id);
-}
-
 void test_wm_agent_upgrade_remove_entry_ok(void **state)
 {
     int agent_id = 10;
@@ -743,9 +712,6 @@ int main(void) {
         // wm_agent_upgrade_upgrade_success_callback
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_create_task_entry_ok, setup_agent_task, teardown_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_create_task_entry_duplicate, setup_agent_task, teardown_agent_task),
-        // wm_agent_upgrade_insert_task_id
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_insert_task_id_ok, setup_agent_task, teardown_agent_task),
-        cmocka_unit_test(test_wm_agent_upgrade_insert_task_id_err),
         // wm_agent_upgrade_remove_entry
         cmocka_unit_test_setup(test_wm_agent_upgrade_remove_entry_ok, setup_agent_task),
         cmocka_unit_test(test_wm_agent_upgrade_remove_entry_err),

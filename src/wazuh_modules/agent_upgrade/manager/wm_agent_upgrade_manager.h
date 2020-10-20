@@ -92,7 +92,6 @@ typedef struct _wm_upgrade_agent_status_task {
  * Definition of the structure that will represent a certain task
  */
 typedef struct _wm_task_info {
-    int task_id;                 ///> task_id associated with the task
     wm_upgrade_command command;  ///> command that has been requested
     void *task;                  ///> pointer to a task structure (depends on command)
 } wm_task_info;

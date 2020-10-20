@@ -47,9 +47,6 @@ void test_wm_agent_upgrade_upgrade_success_callback_ok(void **state)
     will_return(__wrap_wm_agent_upgrade_validate_task_ids_message, data);
     will_return(__wrap_wm_agent_upgrade_validate_task_ids_message, 1);
 
-    expect_value(__wrap_wm_agent_upgrade_insert_task_id, agent_id, agent);
-    expect_value(__wrap_wm_agent_upgrade_insert_task_id, task_id, task);
-
     cJSON *response = wm_agent_upgrade_upgrade_success_callback(&error, input);
 
     state[0] = (void *)input;
@@ -311,9 +308,6 @@ void test_wm_agent_upgrade_task_module_callback_success_callback_ok(void **state
     will_return(__wrap_wm_agent_upgrade_validate_task_ids_message, "Success");
     will_return(__wrap_wm_agent_upgrade_validate_task_ids_message, 1);
 
-    expect_value(__wrap_wm_agent_upgrade_insert_task_id, agent_id, 12);
-    expect_value(__wrap_wm_agent_upgrade_insert_task_id, task_id, 115);
-
     will_return(__wrap_wm_agent_upgrade_validate_task_ids_message, 10);
     will_return(__wrap_wm_agent_upgrade_validate_task_ids_message, 0);
     will_return(__wrap_wm_agent_upgrade_validate_task_ids_message, "Error");
@@ -569,9 +563,6 @@ void test_wm_agent_upgrade_task_module_callback_success_error_callback_error(voi
     will_return(__wrap_wm_agent_upgrade_validate_task_ids_message, 115);
     will_return(__wrap_wm_agent_upgrade_validate_task_ids_message, "Success");
     will_return(__wrap_wm_agent_upgrade_validate_task_ids_message, 1);
-
-    expect_value(__wrap_wm_agent_upgrade_insert_task_id, agent_id, 12);
-    expect_value(__wrap_wm_agent_upgrade_insert_task_id, task_id, 115);
 
     will_return(__wrap_wm_agent_upgrade_validate_task_ids_message, 10);
     will_return(__wrap_wm_agent_upgrade_validate_task_ids_message, 116);
