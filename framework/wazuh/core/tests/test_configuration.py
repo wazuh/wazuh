@@ -146,22 +146,22 @@ def test_get_ossec_conf():
             conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf'))
 
     assert configuration.get_ossec_conf(conf_file=os.path.join(
-        parent_directory, tmp_path, 'configuration/ossec.conf')).to_dict()['result']['cluster']['name'] == 'wazuh'
+        parent_directory, tmp_path, 'configuration/ossec.conf'))['cluster']['name'] == 'wazuh'
 
     assert configuration.get_ossec_conf(
         section='cluster',
         conf_file=os.path.join(parent_directory, tmp_path,
-                               'configuration/ossec.conf')).to_dict()['result']['cluster']['name'] == 'wazuh'
+                               'configuration/ossec.conf'))['cluster']['name'] == 'wazuh'
 
     assert configuration.get_ossec_conf(
         section='cluster', field='name',
         conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf')
-    ).to_dict()['result']['cluster']['name'] == 'wazuh'
+    )['cluster']['name'] == 'wazuh'
 
     assert configuration.get_ossec_conf(
         section='integration', field='node',
         conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf')
-    ).to_dict()['result']['integration'][0]['node'] == 'wazuh-worker'
+    )['integration'][0]['node'] == 'wazuh-worker'
 
 
 def test_get_agent_conf():

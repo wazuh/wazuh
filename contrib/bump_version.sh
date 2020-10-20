@@ -65,6 +65,7 @@ FW_SETUP="../framework/setup.py"
 FW_INIT="../framework/wazuh/__init__.py"
 CLUSTER_INIT="../framework/wazuh/core/cluster/__init__.py"
 API_SETUP="../api/setup.py"
+API_SPEC="../api/api/spec/spec.yaml"
 VERSION_DOCU="../src/Doxyfile"
 RULESET_VERSION="../src/update/ruleset/RULESET_VERSION"
 
@@ -122,6 +123,7 @@ then
 
     # API
     sed -E -i'' -e "s/VERSION = '.+'/VERSION = '${version:1}'/g" $API_SETUP
+    sed -E -i'' -e "s/version: '.+'/version: '${version:1}'/g" $API_SPEC
 
     # Documentation config file
 
@@ -155,6 +157,10 @@ then
     # Cluster
 
     sed -E -i'' -e "s/__revision__ = '.+'/__revision__ = '$revision'/g" $CLUSTER_INIT
+
+    # API
+
+    sed -E -i'' -e "s/x-revision: .+'/x-revision: '$revision'/g" $API_SPEC
 
     # Documentation config file
 

@@ -24,6 +24,7 @@ from wazuh.core.ossec_queue import OssecQueue
 from wazuh.core.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
     WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, safe_move
 from wazuh.core.wazuh_socket import OssecSocket, OssecSocketJSON
+from wazuh.core.wdb import WazuhDBConnection
 
 
 class WazuhDBQueryAgents(WazuhDBQuery):
@@ -540,18 +541,13 @@ class Agent:
             raise WazuhInternalError(1746, extra_message=str(e))
 
         # Tell wazuhbd to delete agent database
-        wdb_conn = WazuhDBBackend(self.id).connect_to_db()
-        wdb_conn.delete_agents_db([self.id])
+        wdb_backend_conn = WazuhDBBackend(self.id).connect_to_db()
+        wdb_backend_conn.delete_agents_db([self.id])
 
         try:
             # remove agent from groups
-            db_global = glob(common.database_path_global)
-            if not db_global:
-                raise WazuhError(1600)
-
-            conn = Connection(db_global[0])
-            conn.execute('DELETE FROM belongs WHERE id_agent = :id_agent', {'id_agent': int(self.id)})
-            conn.commit()
+            wdb_conn = WazuhDBConnection()
+            wdb_conn.run_wdb_command(f'global sql DELETE FROM belongs WHERE id_agent = {self.id}')
         except Exception as e:
             raise WazuhInternalError(1747, extra_message=str(e))
 
@@ -723,13 +719,8 @@ class Agent:
         force = force if type(force) == int else int(force)
 
         # Check manager name
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhInternalError(1600)
-
-        conn = Connection(db_global[0])
-        conn.execute("SELECT name FROM agent WHERE (id = 0)")
-        manager_name = str(conn.fetch())
+        wdb_conn = WazuhDBConnection()
+        manager_name = wdb_conn.execute("global sql SELECT name FROM agent WHERE (id = 0)")[0]['name']
 
         if name == manager_name:
             raise WazuhError(1705, extra_message=name)

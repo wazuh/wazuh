@@ -383,7 +383,13 @@ static int _base_line = 0;
     }
 
 #else
-    mwarn(FIM_WARN_REALTIME_UNSUPPORTED);
+    for (int i = 0; syscheck.dir[i]; i++) {
+        if (syscheck.opts[i] & REALTIME_ACTIVE) {
+            mwarn(FIM_WARN_REALTIME_UNSUPPORTED);
+            break;
+        }
+    }
+
     pthread_exit(NULL);
 #endif
 
@@ -471,7 +477,9 @@ int fim_whodata_initialize() {
 #endif
 
 #else
-    mwarn(FIM_WARN_WHODATA_UNSUPPORTED);
+    if (syscheck.enable_whodata) {
+        mwarn(FIM_WARN_WHODATA_UNSUPPORTED);
+    }
 #endif
 
     return retval;
