@@ -40,7 +40,7 @@ stages:
           token: !anystr
           messages: !anything
           output: !anything
-          alert: !anystr
+          alert: !anybool
           codemsg: 1 # codemsg = 1 because there is a warning (token generated)
       save:
         json:
