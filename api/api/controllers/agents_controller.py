@@ -22,22 +22,22 @@ from wazuh.core.exception import WazuhError
 logger = logging.getLogger('wazuh')
 
 
-async def delete_agents(request, pretty=False, wait_for_complete=False, list_agents=None, purge=False, status='all',
+async def delete_agents(request, pretty=False, wait_for_complete=False, agents_list=None, purge=False, status='all',
                         older_than="7d"):
     """Delete all agents or a list of them with optional criteria based on the status or time of the last connection.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param list_agents: List of agent's IDs.
+    :param agents_list: List of agent's IDs.
     :param purge: Delete an agent from the key store
     :param status: Filters by agent status. Use commas to enter multiple statuses.
     :param older_than: Filters out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’,
     ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, uses the register date.
     :return: AllItemsResponseAgentIDs
     """
-    if 'all' in list_agents:
-        list_agents = None
-    f_kwargs = {'agent_list': list_agents,
+    if 'all' in agents_list:
+        agents_list = None
+    f_kwargs = {'agent_list': agents_list,
                 'purge': purge,
                 'status': status,
                 'older_than': older_than,
@@ -56,14 +56,14 @@ async def delete_agents(request, pretty=False, wait_for_complete=False, list_age
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agents(request, pretty=False, wait_for_complete=False, list_agents=None, offset=0, limit=database_limit,
+async def get_agents(request, pretty=False, wait_for_complete=False, agents_list=None, offset=0, limit=database_limit,
                      select=None, sort=None, search=None, status=None, q=None, older_than=None,
                      manager=None, version=None, group=None, node_name=None, name=None, ip=None):
     """Get information about all agents or a list of them
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param list_agents: List of agent's IDs.
+    :param agents_list: List of agent's IDs.
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
     :param select: Select which fields to return (separated by comma)
@@ -82,7 +82,7 @@ async def get_agents(request, pretty=False, wait_for_complete=False, list_agents
     :param ip: Filters by agent IP
     :return: AllItemsResponseAgents
     """
-    f_kwargs = {'agent_list': list_agents,
+    f_kwargs = {'agent_list': agents_list,
                 'offset': offset,
                 'limit': limit,
                 'sort': parse_api_param(sort, 'sort'),
@@ -157,15 +157,15 @@ async def add_agent(request, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def restart_agents(request, pretty=False, wait_for_complete=False, list_agents='*'):
+async def restart_agents(request, pretty=False, wait_for_complete=False, agents_list='*'):
     """ Restarts all agents
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param list_agents: List of agent's IDs.
+    :param agents_list: List of agent's IDs.
     :return: AllItemsResponseAgentIDs
     """
-    f_kwargs = {'agent_list': list_agents}
+    f_kwargs = {'agent_list': agents_list}
 
     dapi = DistributedAPI(f=agent.restart_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -173,7 +173,7 @@ async def restart_agents(request, pretty=False, wait_for_complete=False, list_ag
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          broadcasting=list_agents == '*',
+                          broadcasting=agents_list == '*',
                           logger=logger
                           )
     data = raise_if_exc(await dapi.distribute_function())
@@ -246,20 +246,19 @@ async def get_agent_config(request, pretty=False, wait_for_complete=False, agent
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_single_agent_multiple_groups(request, agent_id, list_groups=None, pretty=False,
-                                              wait_for_complete=False):
+async def delete_single_agent_multiple_groups(request, agent_id, groups_list=None, pretty=False, wait_for_complete=False):
     """'Remove the agent from all groups or a list of them.
 
     The agent will automatically revert to the "default" group if it is removed from all its assigned groups.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param agent_id: Agent ID. All possible values since 000 onwards.
-    :param list_groups: Array of group's IDs.
+    :param agent_id: Agent ID. All posible values since 000 onwards.
+    :param groups_list: Array of group's IDs.
     :return: AllItemsResponseGroupIDs
     """
     f_kwargs = {'agent_list': [agent_id],
-                'group_list': list_groups}
+                'group_list': groups_list}
 
     dapi = DistributedAPI(f=agent.remove_agent_from_groups,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -403,7 +402,7 @@ async def restart_agent(request, agent_id, pretty=False, wait_for_complete=False
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_upgrade_agents(request, list_agents='*', pretty=False, wait_for_complete=False, wpk_repo=None,
+async def put_upgrade_agents(request, agents_list='*', pretty=False, wait_for_complete=False, wpk_repo=None,
                              version=None, use_http=False, force=False):
     """Upgrade agents using a WPK file from online repository.
 
@@ -413,7 +412,7 @@ async def put_upgrade_agents(request, list_agents='*', pretty=False, wait_for_co
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    list_agents : list
+    agents_list : list
         List of agent IDs. All possible values since 000 onwards.
     wpk_repo : str
         WPK repository.
@@ -429,7 +428,7 @@ async def put_upgrade_agents(request, list_agents='*', pretty=False, wait_for_co
     ApiResponse
         Upgrade message after trying to upgrade the agents.
     """
-    f_kwargs = {'agent_list': list_agents,
+    f_kwargs = {'agent_list': agents_list,
                 'wpk_repo': wpk_repo,
                 'version': version,
                 'use_http': use_http,
@@ -441,7 +440,7 @@ async def put_upgrade_agents(request, list_agents='*', pretty=False, wait_for_co
                           is_async=False,
                           wait_for_complete=True,
                           logger=logger,
-                          broadcasting=list_agents == '*',
+                          broadcasting=agents_list == '*',
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
@@ -449,7 +448,7 @@ async def put_upgrade_agents(request, list_agents='*', pretty=False, wait_for_co
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_upgrade_custom_agents(request, list_agents='*', pretty=False, wait_for_complete=False,
+async def put_upgrade_custom_agents(request, agents_list='*', pretty=False, wait_for_complete=False,
                                     file_path=None, installer=None):
     """Upgrade agents using a local WPK file.
 
@@ -459,7 +458,7 @@ async def put_upgrade_custom_agents(request, list_agents='*', pretty=False, wait
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    list_agents : list
+    agents_list : list
         List of agent IDs. All possible values since 000 onwards.
     file_path : str
         Path to the WPK file. The file must be on a folder on the Wazuh's installation directory (by default, <code>/var/ossec</code>).
@@ -471,7 +470,7 @@ async def put_upgrade_custom_agents(request, list_agents='*', pretty=False, wait
     ApiResponse
         Upgrade message after trying to upgrade the agents.
     """
-    f_kwargs = {'agent_list': list_agents,
+    f_kwargs = {'agent_list': agents_list,
                 'file_path': file_path,
                 'installer': installer}
 
@@ -481,7 +480,7 @@ async def put_upgrade_custom_agents(request, list_agents='*', pretty=False, wait
                           is_async=False,
                           wait_for_complete=True,
                           logger=logger,
-                          broadcasting=list_agents == '*',
+                          broadcasting=agents_list == '*',
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
@@ -489,7 +488,7 @@ async def put_upgrade_custom_agents(request, list_agents='*', pretty=False, wait
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agent_upgrade(request, list_agents=None, pretty=False, wait_for_complete=False):
+async def get_agent_upgrade(request, agents_list=None, pretty=False, wait_for_complete=False):
     """Get upgrade results from agents.
 
     Parameters
@@ -498,7 +497,7 @@ async def get_agent_upgrade(request, list_agents=None, pretty=False, wait_for_co
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    list_agents : list
+    agents_list : list
         List of agent IDs. All possible values since 000 onwards.
 
     Returns
@@ -506,7 +505,7 @@ async def get_agent_upgrade(request, list_agents=None, pretty=False, wait_for_co
     ApiResponse
         Upgrade message after having upgraded the agents.
     """
-    f_kwargs = {'agent_list': list_agents}
+    f_kwargs = {'agent_list': agents_list}
 
     dapi = DistributedAPI(f=agent.get_upgrade_result,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -542,24 +541,23 @@ async def post_new_agent(request, agent_name, pretty=False, wait_for_complete=Fa
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_multiple_agent_single_group(request, group_id, list_agents=None, pretty=False,
+async def delete_multiple_agent_single_group(request, group_id, agents_list=None, pretty=False,
                                              wait_for_complete=False):
     """Removes agents assignment from a specified group.
 
     :param group_id: Group ID.
-    :param list_agents: Array of agent's IDs.
+    :param agents_list: Array of agent's IDs.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :return: AllItemsResponseAgentIDs
     """
-    if 'all' in list_agents:
-        list_agents = None
-    f_kwargs = {'agent_list': list_agents,
+    if 'all' in agents_list:
+        agents_list = None
+    f_kwargs = {'agent_list': agents_list,
                 'group_list': [group_id]}
 
     dapi = DistributedAPI(f=agent.remove_agents_from_group,
@@ -575,18 +573,18 @@ async def delete_multiple_agent_single_group(request, group_id, list_agents=None
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_multiple_agent_single_group(request, group_id, list_agents=None, pretty=False, wait_for_complete=False,
+async def put_multiple_agent_single_group(request, group_id, agents_list=None, pretty=False, wait_for_complete=False,
                                           force_single_group=False):
     """Add multiple agents to a group
 
     :param group_id: Group ID.
-    :param list_agents: List of agents ID.
+    :param agents_list: List of agents ID.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param force_single_group: Forces the agent to belong to a single group
     :return: AllItemsResponseAgentIDs
     """
-    f_kwargs = {'agent_list': list_agents,
+    f_kwargs = {'agent_list': agents_list,
                 'group_list': [group_id],
                 'replace': force_single_group}
 
@@ -603,17 +601,17 @@ async def put_multiple_agent_single_group(request, group_id, list_agents=None, p
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_groups(request, list_groups=None, pretty=False, wait_for_complete=False):
+async def delete_groups(request, groups_list=None, pretty=False, wait_for_complete=False):
     """Delete all groups or a list of them.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param list_groups: Array of group's IDs.
+    :param groups_list: Array of group's IDs.
     :return: AllItemsResponseGroupIDs + AgentGroupDeleted
     """
-    if 'all' in list_groups:
-        list_groups = None
-    f_kwargs = {'group_list': list_groups}
+    if 'all' in groups_list:
+        groups_list = None
+    f_kwargs = {'group_list': groups_list}
 
     dapi = DistributedAPI(f=agent.delete_groups,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -628,7 +626,7 @@ async def delete_groups(request, list_groups=None, pretty=False, wait_for_comple
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_list_group(request, pretty=False, wait_for_complete=False, list_groups=None, offset=0, limit=None,
+async def get_list_group(request, pretty=False, wait_for_complete=False, groups_list=None, offset=0, limit=None,
                          sort=None, search=None):
     """Get groups.
 
@@ -637,7 +635,7 @@ async def get_list_group(request, pretty=False, wait_for_complete=False, list_gr
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param list_groups: Array of group's IDs.
+    :param groups_list: Array of group's IDs.
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
@@ -648,7 +646,7 @@ async def get_list_group(request, pretty=False, wait_for_complete=False, list_gr
     hash_ = request.query.get('hash', 'md5')  # Select algorithm to generate the returned checksums.
     f_kwargs = {'offset': offset,
                 'limit': limit,
-                'group_list': list_groups,
+                'group_list': groups_list,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
                 'hash_algorithm': hash_}

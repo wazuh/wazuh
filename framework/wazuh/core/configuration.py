@@ -483,7 +483,7 @@ def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
         except KeyError:
             raise WazuhError(1103)
 
-    return WazuhResult(data)
+    return data
 
 
 def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename='agent.conf', return_format=None):
