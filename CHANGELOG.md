@@ -3,6 +3,17 @@ All notable changes to this project will be documented in this file.
 
 # [v4.1.0]
 
+### Added
+
+- Wazuh API:
+    - Added new endpoints to run the logtest tool and delete a logtest session ([#5984](https://github.com/wazuh/wazuh/pull/5984))  
+
+### Changed
+
+### Fixed
+
+### Removed
+
 ## [v4.0.0] -
 
 ### Added

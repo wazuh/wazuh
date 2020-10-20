@@ -9004,13 +9004,17 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
-          description: "Successfully deleted the saved session."
+          description: "Successfully deleted the saved session or no session found"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "Successfully deleted the saved session."
+                error: 0
+                data:
+                  messages: ["INFO: (7206): The session '573ed2ca' was closed successfully"]
+                  codemsg: 0
+
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':

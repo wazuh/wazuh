@@ -6,6 +6,7 @@ marks:
 
 stages:
 
+  # Run logtest with an invalid json body (with an invalid key)
   - name: Run logtest with an invalid body
     request:
       verify: False
@@ -15,10 +16,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
-        name: "token"
-        event: "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."
-        log_format: "syslog"
-        location: "master->/var/log/syslog"
+        invalid_key: "token"
     response:
       status_code: 400
 
@@ -37,16 +35,16 @@ stages:
         location: "master->/var/log/syslog"
     response:
       status_code: 200
-      json:
+      json: &logtest_json_response
         data:
           token: !anystr
-          output:
-            full_log: "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."
-            location: "master->/var/log/syslog"
+          messages: !anything
+          output: !anything
+          alert: !anystr
           codemsg: 1 # codemsg = 1 because there is a warning (token generated)
       save:
         json:
-          returned_token_1: data.token
+          returned_token: data.token
 
   - name: Run logtest with a valid body but no token
     request:
@@ -63,12 +61,7 @@ stages:
     response:
       status_code: 200
       json:
-        data:
-          token: !anystr
-          output:
-            full_log: "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."
-            location: "master->/var/log/syslog"
-          codemsg: 1 # codemsg = 1 because there is a warning (token generated)
+        <<: *logtest_json_response
 
   - name: Run logtest with the token generated before
     request:
@@ -79,18 +72,16 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
-        token: "{returned_token_1}"
+        token: "{returned_token}"
         event: "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."
         log_format: "syslog"
         location: "master->/var/log/syslog"
     response:
       status_code: 200
       json:
+        <<: *logtest_json_response
         data:
-          token: "{returned_token_1}"
-          output:
-            full_log: "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."
-            location: "master->/var/log/syslog"
+          token: "{returned_token}"
           codemsg: 0
 
 
@@ -116,13 +107,9 @@ stages:
       json:
         data:
           token: !anystr
-          output:
-            full_log: "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."
-            location: "master->/var/log/syslog"
-          codemsg: 1 # codemsg = 1 because there is a warning (token generated)
       save:
         json:
-          returned_token_2: data.token
+          delete_session_token: data.token
 
   - name: Try to end logtest session of an invalid token
     request:
@@ -140,7 +127,7 @@ stages:
   - name: End logtest session
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/logtest/sessions/{returned_token_2:s}"
+      url: "{protocol:s}://{host:s}:{port:d}/logtest/sessions/{delete_session_token:s}"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -153,7 +140,7 @@ stages:
   - name: Check the logtest session has ended
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/logtest/sessions/{returned_token_2:s}"
+      url: "{protocol:s}://{host:s}:{port:d}/logtest/sessions/{delete_session_token:s}"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -161,4 +148,4 @@ stages:
       status_code: 200
       json:
         data:
-          codemsg: -1
+          codemsg: -1 # codemsg = -1 because there is an error (session not found)
