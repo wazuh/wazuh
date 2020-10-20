@@ -76,8 +76,9 @@ if(${TARGET} STREQUAL "winagent")
     )
 
   target_link_libraries(SYSCHECK_EVENT_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
-  
+
   add_subdirectory(registry)
+  add_subdirectory(db)
 endif()
 
 # Generate Syscheckd tests
@@ -178,7 +179,7 @@ set(FIM_SYNC_BASE_FLAGS "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,_mwarn -Wl,--wr
                          -Wl,--wrap,_merror -Wl,--wrap,_mdebug2 -Wl,--wrap,queue_push_ex \
                          -Wl,--wrap,fim_db_get_row_path -Wl,--wrap,fim_db_get_data_checksum \
                          -Wl,--wrap,dbsync_check_msg -Wl,--wrap,fim_send_sync_msg -Wl,--wrap,fim_db_get_count_range \
-                         -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_entry_json -Wl,--wrap,fim_db_data_checksum_range \
+                         -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_entry_json -Wl,--wrap,fim_db_get_checksum_range \
                          -Wl,--wrap,dbsync_state_msg -Wl,--wrap,fim_db_sync_path_range \
                          -Wl,--wrap,fim_db_get_path_range")
 
