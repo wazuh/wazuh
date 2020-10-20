@@ -648,7 +648,7 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
      params:
-       list_agents: "003,004"
+       agents_list: "003,004"
    response:
      <<: *permission_denied
 
@@ -1663,7 +1663,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: "003,004"
+        agents_list: "003,004"
     response:
       <<: *permission_denied
 
@@ -1680,7 +1680,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: "003,004"
+        agents_list: "003,004"
     response:
       <<: *permission_denied
 

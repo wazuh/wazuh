@@ -696,7 +696,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '999'
+        agents_list: '999'
     response: &resource_not_found
       status_code: 200
       json:
@@ -721,7 +721,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '000'
+        agents_list: '000'
     response:
       status_code: 200
       json:
@@ -746,7 +746,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: 'wrong_id'
+        agents_list: 'wrong_id'
     response:
       status_code: 400
       json:
@@ -762,7 +762,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         force: True
-        list_agents: '006'
+        agents_list: '006'
     response:
       status_code: 200
       json:
@@ -784,7 +784,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '006'
+        agents_list: '006'
     response:
       status_code: 200
       json:
@@ -812,7 +812,7 @@ stages:
         version: v3.9.3
         force: true
         wait_for_complete: 'true'
-        list_agents: '003'
+        agents_list: '003'
     response:
       status_code: 200
     delay_after: !float "{upgrade_delay}"
@@ -826,7 +826,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '004'
+        agents_list: '004'
         use_http: true
         force: true
         wait_for_complete: 'true'
@@ -851,7 +851,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '005'
+        agents_list: '005'
         version: 4.0.0
         force: true
     response:
@@ -881,7 +881,7 @@ stages:
       params:
         installer: upgrade.sh
         file_path: "{custom_wpk_path:s}"
-        list_agents: 999
+        agents_list: 999
     response:
       <<: *resource_not_found
 
@@ -893,7 +893,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '000'
+        agents_list: '000'
         installer: upgrade.sh
         file_path: "{custom_wpk_path:s}"
     response:
@@ -920,7 +920,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: wrong_id
+        agents_list: wrong_id
         installer: upgrade.sh
         file_path: "{custom_wpk_path:s}"
     response:
@@ -936,7 +936,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: 006
+        agents_list: 006
     response:
       status_code: 400
       json:
@@ -950,7 +950,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '007'
+        agents_list: '007'
         installer: upgrade.sh
         file_path: "{custom_wpk_path:s}"
         wait_for_complete: 'true'
@@ -974,7 +974,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: 008
+        agents_list: 008
         file_path: "{custom_wpk_path:s}"
         wait_for_complete: 'true'
     response:
@@ -998,7 +998,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '007'
+        agents_list: '007'
     response: &upgrade_result
       status_code: 200
       json:
@@ -1025,6 +1025,6 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '008'
+        agents_list: '008'
     response:
       <<: *upgrade_result
