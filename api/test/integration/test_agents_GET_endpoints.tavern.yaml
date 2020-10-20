@@ -3989,7 +3989,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '000'
+        agents_list: '000'
     response:
       status_code: 200
       json:
@@ -4011,7 +4011,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: 999,1000
+        agents_list: 999,1000
     response:
       status_code: 200
       json:
@@ -4034,7 +4034,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: bad_id
+        agents_list: bad_id
     response:
       status_code: 400
       json:
@@ -4049,7 +4049,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         force: True
-        list_agents: 001,002,000
+        agents_list: 001,002,000
         version: 4.0.0
         wpk_repo: packages-dev.wazuh.com/pre-release/wpk
     response:
@@ -4080,7 +4080,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: 000,001,002,009,010,999
+        agents_list: 000,001,002,009,010,999
     response:
       status_code: 200
       json:
