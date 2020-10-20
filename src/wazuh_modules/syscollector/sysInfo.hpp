@@ -17,7 +17,7 @@ class SysInfo
 public:
 	SysInfo() = default;
 	virtual ~SysInfo() = default;
-	virtual nlohmann::json hardware();
+	nlohmann::json hardware();
 private:
     virtual std::string getSerialNumber();
     virtual std::string getCpuName();

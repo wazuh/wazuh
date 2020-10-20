@@ -80,3 +80,6 @@ endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
     )
 
 add_subdirectory(testtool)
+if(UNIT_TEST)
+add_subdirectory(tests)
+endif(UNIT_TEST)
