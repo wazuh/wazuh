@@ -18,10 +18,11 @@ stages:
         command: "restart-ossec0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
-        list_agents: '001'
+        agents_list: '001'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '001'
@@ -41,10 +42,11 @@ stages:
         command: "restart-ossec0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
-        list_agents: '002'
+        agents_list: '002'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '002'
@@ -65,10 +67,11 @@ stages:
         command: "restart-ossec0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
-        list_agents: 002,004,005,007,010
+        agents_list: 002,004,005,007,010
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items:
@@ -92,10 +95,11 @@ stages:
         command: "restart-ossec0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
-        list_agents: '009'
+        agents_list: '009'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -118,10 +122,11 @@ stages:
         command: "restart-ossec0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
-        list_agents: '251'
+        agents_list: '251'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -140,7 +145,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '004'
+        agents_list: '004'
     response:
       status_code: 400
 
@@ -156,7 +161,7 @@ stages:
         comMmand: "restart-ossec0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
-        list_agents: '005'
+        agents_list: '005'
     response:
       status_code: 400
 
@@ -172,10 +177,11 @@ stages:
         command: "restart-ossec0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
-        list_agents: '003'
+        agents_list: '003'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -207,6 +213,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items:

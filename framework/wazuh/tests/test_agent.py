@@ -95,12 +95,13 @@ def test_agent_get_agents_summary_status(socket_mock, send_mock):
     assert isinstance(summary, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
     # Asserts are based on what it should get from the fake database
     expected_results = {'active': 3, 'disconnected': 1, 'never_connected': 1, 'pending': 1, 'total': 6}
-    assert set(summary.keys()) == set(expected_results.keys())
-    assert summary['active'] == expected_results['active']
-    assert summary['disconnected'] == expected_results['disconnected']
-    assert summary['never_connected'] == expected_results['never_connected']
-    assert summary['pending'] == expected_results['pending']
-    assert summary['total'] == expected_results['total']
+    summary_data = summary['data']
+    assert set(summary_data.keys()) == set(expected_results.keys())
+    assert summary_data['active'] == expected_results['active']
+    assert summary_data['disconnected'] == expected_results['disconnected']
+    assert summary_data['never_connected'] == expected_results['never_connected']
+    assert summary_data['pending'] == expected_results['pending']
+    assert summary_data['total'] == expected_results['total']
 
 
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
@@ -336,8 +337,8 @@ def test_agent_add_agent(socket_mock, send_mock, open_mock, safe_move_mock, comm
     """
     try:
         add_result = add_agent(name=name, agent_id=agent_id, key=key, use_only_authd=False)
-        assert add_result.dikt['id'] == agent_id
-        assert add_result.dikt['key']
+        assert add_result.dikt['data']['id'] == agent_id
+        assert add_result.dikt['data']['key']
     except WazuhError as e:
         assert e.code == 1738, 'The exception was raised as expected but "error_code" does not match.'
 
@@ -1042,7 +1043,7 @@ def test_agent_get_agent_config(socket_mock, send_mock, ossec_socket_mock, agent
 
     result = get_agent_config(agent_list=agent_list, component=component, config=configuration)
     assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
-    assert result.dikt == {"test": "conf"}, 'Result message is not as expected.'
+    assert result.dikt['data'] == {"test": "conf"}, 'Result message is not as expected.'
 
 
 @pytest.mark.parametrize('agent_list', [
@@ -1151,8 +1152,8 @@ def test_agent_get_agent_conf(group_list):
     """
     result = get_agent_conf(group_list=group_list)
     assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
-    assert 'total_affected_items' in result.dikt
-    assert result.dikt['total_affected_items'] == 1
+    assert 'total_affected_items' in result.dikt['data']
+    assert result.dikt['data']['total_affected_items'] == 1
 
 
 @pytest.mark.parametrize('group_list', [
@@ -1228,8 +1229,8 @@ def test_agent_get_full_overview(socket_mock, send_mock, get_mock, summary_mock,
     get_mock.side_effect = mocked_get_agents
     result = get_full_overview()
     assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
-    assert set(result.dikt.keys()) == set(expected_fields)
+    assert set(result.dikt['data'].keys()) == set(expected_fields)
     if index_error:
-        assert len(result.dikt['last_registered_agent']) == 0
+        assert len(result.dikt['data']['last_registered_agent']) == 0
     else:
-        assert result.dikt['last_registered_agent'][0]['id'] == last_agent
+        assert result.dikt['data']['last_registered_agent'][0]['id'] == last_agent
