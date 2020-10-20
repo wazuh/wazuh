@@ -303,9 +303,9 @@ static void * close_fp_main(void * args) {
                     if (first_node_key->fp != NULL) {
                         mdebug2("Closing rids for agent %s.", first_node_key->id);
                         fclose(first_node_key->fp);
+                        first_node_key->fp = NULL;
                     }
                     first_node_key->updating_time = 0;
-                    first_node_key->fp = NULL;
                     first_node_key->rids_node = NULL;
                 } else {
                     flag = 0;
