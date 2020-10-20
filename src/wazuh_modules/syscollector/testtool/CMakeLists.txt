@@ -51,6 +51,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 	target_link_libraries(syscollector_test_tool
 	    rsync
 	    dbsync
+		psapi
 	    -static-libgcc -static-libstdc++
 	)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
@@ -64,6 +65,8 @@ else()
 	    dbsync
 	    dl
 	    pthread
+		proc
+		gcov
 	)
 
 	if(SOLARIS)

@@ -8,8 +8,10 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+
 #ifndef _SYS_INFO_HPP
 #define _SYS_INFO_HPP
+
 #include "json.hpp"
 
 class SysInfo
@@ -17,14 +19,15 @@ class SysInfo
 public:
 	SysInfo() = default;
 	virtual ~SysInfo() = default;
-	nlohmann::json hardware();
+	virtual nlohmann::json hardware();
+	virtual nlohmann::json processes();
 private:
     virtual std::string getSerialNumber();
     virtual std::string getCpuName();
     virtual int getCpuMHz();
     virtual int getCpuCores();
     virtual void getMemory(nlohmann::json& info);
+    virtual nlohmann::json getProcessesInfo();
 };
-
 
 #endif //_SYS_INFO_HPP
