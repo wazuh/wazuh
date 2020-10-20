@@ -1,5 +1,5 @@
 /*
- * Wazuh RSYNC
+ * Wazuh SysCollector
  * Copyright (C) 2015-2020, Wazuh Inc.
  * October 8, 2020.
  *

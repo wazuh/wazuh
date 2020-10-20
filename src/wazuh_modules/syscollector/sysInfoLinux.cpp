@@ -1,5 +1,5 @@
 /*
- * Wazuh RSYNC
+ * Wazuh SysInfo
  * Copyright (C) 2015-2020, Wazuh Inc.
  * October 7, 2020.
  *

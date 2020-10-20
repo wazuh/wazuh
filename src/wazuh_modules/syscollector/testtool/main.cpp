@@ -1,5 +1,5 @@
 /*
- * Wazuh RSYNC
+ * Wazuh SysCollector Test tool
  * Copyright (C) 2015-2020, Wazuh Inc.
  * October 7, 2020.
  *
