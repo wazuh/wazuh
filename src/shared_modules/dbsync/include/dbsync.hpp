@@ -81,6 +81,9 @@ public:
                        const unsigned int    threadNumber,
                        const unsigned int    maxQueueSize,
                        ResultCallbackData&   callbackData);
+
+    DBSyncTxn(const TXN_HANDLE handle);
+
     // LCOV_EXCL_START
     virtual ~DBSyncTxn();
     // LCOV_EXCL_STOP
@@ -89,8 +92,11 @@ public:
 
     virtual void getDeletedRows(ResultCallbackData& callbackData);
 
+    TXN_HANDLE getHandle() { return m_txn; }
+
 private:
     TXN_HANDLE m_txn;
+    bool m_shouldBeRemove;
 };
 
 

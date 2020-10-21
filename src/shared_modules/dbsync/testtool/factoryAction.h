@@ -63,6 +63,47 @@ public:
         {
             return std::make_unique<AddTableRelationship>();
         }
+        // C++ Interface
+        else if (0 == actionCode.compare("insertData"))
+        {
+            return std::make_unique<InsertDataCPP>();
+        }
+        else if (0 == actionCode.compare("updateWithSnapshot"))
+        {
+            return std::make_unique<UpdateWithSnapshotActionCPP>();
+        }
+        else if (0 == actionCode.compare("createTxn"))
+        {
+            return std::make_unique<CreateTransactionActionCPP>();
+        }
+        else if (0 == actionCode.compare("setTableMaxRows"))
+        {
+            return std::make_unique<SetMaxRowsActionCPP>();
+        }
+        else if (0 == actionCode.compare("addTableRelationship"))
+        {
+            return std::make_unique<AddTableRelationshipCPP>();
+        }
+        else if (0 == actionCode.compare("getDeletedRows"))
+        {
+            return std::make_unique<GetDeletedRowsActionCPP>();
+        }
+        else if (0 == actionCode.compare("syncRow"))
+        {
+            return std::make_unique<SyncRowActionCPP>();
+        }
+        else if (0 == actionCode.compare("syncTxnRow"))
+        {
+            return std::make_unique<SyncTxnRowsActionCPP>();
+        }
+        else if (0 == actionCode.compare("deleteRows"))
+        {
+            return std::make_unique<DeleteRowsActionCPP>();
+        }
+        else if (0 == actionCode.compare("selectRows"))
+        {
+            return std::make_unique<SelectRowsActionCPP>();
+        }
         else
         {
             throw std::runtime_error { "Invalid action: " + actionCode };

@@ -725,6 +725,7 @@ DBSyncTxn::DBSyncTxn(const DBSYNC_HANDLE   handle,
                      const unsigned int    threadNumber,
                      const unsigned int    maxQueueSize,
                      ResultCallbackData&   callbackData)
+: m_shouldBeRemove { true }
 {
     const auto callbackWrapper
     {
@@ -734,6 +735,12 @@ DBSyncTxn::DBSyncTxn(const DBSYNC_HANDLE   handle,
         }
     };
     m_txn = PipelineFactory::instance().create(handle, tables, threadNumber, maxQueueSize, callbackWrapper);
+}
+
+DBSyncTxn::DBSyncTxn(const TXN_HANDLE handle)
+: m_shouldBeRemove { false }
+{
+    m_txn = handle;
 }
 
 DBSyncTxn::~DBSyncTxn()
