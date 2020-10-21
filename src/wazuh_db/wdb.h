@@ -660,7 +660,7 @@ int wdb_delete_agent_belongs(int id, int *sock);
 int wdb_remove_group_from_belongs_db(const char *name, int *sock);
 
 /**
- * @brief Resets the connection_status column of every agent.
+ * @brief Resets the connection_status column of every agent (excluding the manager).
  *        If connection_status is pending or connected it will be changed to disconnected.
  *        If connection_status is disconnected or never_connected it will not be changed.
  *
@@ -1727,7 +1727,7 @@ wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, c
 wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **output);
 
 /**
- * @brief Function to reset connection_status column of every agent.
+ * @brief Function to reset connection_status column of every agent (excluding the manager).
  *        If connection_status is pending or connected it will be changed to disconnected.
  *        If connection_status is disconnected or never_connected it will not be changed.
  * 
