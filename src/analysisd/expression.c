@@ -128,7 +128,7 @@ bool w_expression_compile(w_expression_t * expression, char * pattern, int flags
             if (!expression->pcre2) {
                 PCRE2_UCHAR error_message[OS_SIZE_256];
                 pcre2_get_error_message(errornumber, error_message, OS_SIZE_256);
-                merror("PCRE2 compilation failed at offset %d: %s\n", (int)erroroffset, error_message);
+                merror(REGEX_PCRE2_COMPILE, (int)erroroffset, error_message);
                 retval = false;
             }
 
@@ -145,6 +145,9 @@ bool w_expression_test(w_expression_t * expression, char * str_test, size_t str_
 
     bool retval = false;
 
+    /* OSRegex */
+    regex_matching decoder_match;
+    /* PCRE2 */
     pcre2_match_data * match_data;
     int rc = 0;
 
@@ -159,7 +162,8 @@ bool w_expression_test(w_expression_t * expression, char * str_test, size_t str_
             break;
 
         case EXP_TYPE_OSREGEX:
-            retval = (OSRegex_Execute(str_test, expression->regex) == NULL) ? false : true;
+            memset(&decoder_match, 0, sizeof(regex_matching));
+            retval = (OSRegex_Execute_ex(str_test, expression->regex, &decoder_match) == NULL) ? false : true;
             break;
 
         case EXP_TYPE_STRING:
@@ -173,7 +177,6 @@ bool w_expression_test(w_expression_t * expression, char * str_test, size_t str_
         case EXP_TYPE_PCRE2:
             match_data = pcre2_match_data_create_from_pattern(expression->pcre2, NULL);
             rc = pcre2_match(expression->pcre2, (PCRE2_SPTR) str_test, str_length, 0, 0, match_data, NULL);
-            
             pcre2_match_data_free(match_data);
             retval = (rc > 0) ? true : false;
             break;
@@ -183,4 +186,69 @@ bool w_expression_test(w_expression_t * expression, char * str_test, size_t str_
     }
 
     return retval;
+}
+
+const char * w_expression_execute(w_expression_t * expression, const char * str_test, regex_matching * regex_match) {
+
+    const char * retval = NULL;
+
+    pcre2_match_data * match_data;
+    PCRE2_SIZE * ovector;
+    int rc = 0;
+
+    if (expression == NULL || str_test == NULL || regex_match == NULL) {
+        return retval;
+    }
+
+    switch (expression->exp_type) {
+
+        case EXP_TYPE_OSREGEX:
+            retval = OSRegex_Execute_ex(str_test, expression->regex, regex_match);
+            break;
+
+        case EXP_TYPE_PCRE2:
+            match_data = pcre2_match_data_create_from_pattern(expression->pcre2, NULL);
+            rc = pcre2_match(expression->pcre2, (PCRE2_SPTR) str_test, strlen(str_test), 0, 0, match_data, NULL);
+
+            if (rc > 0) {
+                ovector = pcre2_get_ovector_pointer(match_data);
+                retval = str_test + ovector[1] - 1;
+                w_expression_PCRE2_fill_regex_match(rc, str_test, match_data, regex_match);
+            }
+            pcre2_match_data_free(match_data);
+            break;
+
+        default:
+            break;
+    }
+
+    return retval;
+}
+
+void w_expression_PCRE2_fill_regex_match(int rc, const char * str_test, pcre2_match_data * match_data,
+                                         regex_matching * regex_match) {
+
+    PCRE2_SIZE * ovector;
+    char ***sub_strings;
+    regex_dynamic_size *str_sizes;
+
+    if (rc < 2) {
+        return;
+    }
+
+    sub_strings = &regex_match->sub_strings;
+    str_sizes = &regex_match->d_size;
+
+    w_FreeArray(*sub_strings);
+    os_realloc(*sub_strings, sizeof(char *) * rc, *sub_strings);
+    memset((void*)*sub_strings, 0, sizeof(char *) * rc);
+    str_sizes->sub_strings_size = rc;
+
+
+    ovector = pcre2_get_ovector_pointer(match_data);
+    for (int i = 1; i < rc; i++) {
+        size_t substring_length = ovector[2 * i + 1] - ovector[2 * i];
+        regex_match->sub_strings[i - 1] = strndup(str_test + ovector[2 * i], substring_length);
+    }
+    regex_match->sub_strings[rc - 1] = NULL;
 }
