@@ -217,8 +217,8 @@ static int teardown_group(void **state) {
     syscheck.audit_key = NULL;
 
 #ifdef TEST_WINAGENT
-    syscheck.registry_ignore = NULL;
-    syscheck.registry_ignore_regex = NULL;
+    syscheck.key_ignore = NULL;
+    syscheck.key_ignore_regex = NULL;
 #endif
 
     return 0;
