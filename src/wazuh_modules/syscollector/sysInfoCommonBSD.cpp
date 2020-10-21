@@ -33,7 +33,6 @@ int SysInfo::getCpuCores() const
 
 std::string SysInfo::getCpuName() const
 {
-    std::unique_ptr<char> spBuff;
     const std::vector<int> mib{CTL_HW, HW_MODEL};
     size_t len{0};
     auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), nullptr, &len, nullptr, 0)};
