@@ -27,6 +27,7 @@ static const char *global_db_commands[] = {
     [WDB_UPDATE_AGENT_NAME] = "global update-agent-name %s",
     [WDB_UPDATE_AGENT_DATA] = "global update-agent-data %s",
     [WDB_UPDATE_AGENT_KEEPALIVE] = "global update-keepalive %s",
+    [WDB_UPDATE_AGENT_CONNECTION_STATUS] = "global update-connection-status %s",
     [WDB_UPDATE_AGENT_STATUS] = "global update-agent-status %s",
     [WDB_UPDATE_AGENT_GROUP] = "global update-agent-group %s",
     [WDB_UPDATE_FIM_OFFSET] = "global update-fim-offset %s",
@@ -375,6 +376,61 @@ int wdb_update_agent_keepalive(int id, const char *sync_status, int *sock) {
             mdebug2("Global DB SQL query: %s", wdbquery);
             result = OS_INVALID;
     }
+
+    return result;
+}
+
+int wdb_update_agent_connection_status(int id, const char *connection_status, int *sock) {
+    int result = 0;
+    cJSON *data_in = NULL;
+    char *data_in_str = NULL;
+    char *wdbquery = NULL;
+    char *wdboutput = NULL;
+    char *payload = NULL;
+    int aux_sock = -1;
+
+    data_in = cJSON_CreateObject();
+
+    if (!data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddNumberToObject(data_in, "id", id);
+    cJSON_AddStringToObject(data_in, "connection_status", connection_status);
+    data_in_str = cJSON_PrintUnformatted(data_in);
+
+    os_calloc(WDBQUERY_SIZE+1, sizeof(char), wdbquery);
+    os_calloc(WDBOUTPUT_SIZE, sizeof(char), wdboutput);
+    snprintf(wdbquery, WDBQUERY_SIZE, global_db_commands[WDB_UPDATE_AGENT_KEEPALIVE], data_in_str);
+
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
+
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Global DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            break;
+        default:
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            result = OS_INVALID;
+    }
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    cJSON_Delete(data_in);
+    os_free(data_in_str);
+    os_free(wdbquery);
+    os_free(wdboutput);
 
     return result;
 }
