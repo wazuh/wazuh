@@ -16,11 +16,12 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: 1
               username: wazuh
-              allow_run_as: false
+              allow_run_as: true
               roles:
                 - 1
             - id: 2
@@ -62,6 +63,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: 102
@@ -86,7 +88,7 @@ stages:
     response: &permission_denied
       status_code: 403
       json:
-        code: 4000
+        error: 4000
 
   - name: Get a list of users by its username (Allow)
     request:
@@ -100,11 +102,12 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: 1
               username: wazuh
-              allow_run_as: false
+              allow_run_as: true
               roles:
                 - 1
             - id: 102
@@ -148,11 +151,12 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: 1
               username: wazuh
-              allow_run_as: false
+              allow_run_as: true
               roles:
                 - 1
             - id: 102
@@ -168,10 +172,10 @@ stages:
                 code: 4000
                 remediation: !anystr
               id:
-                - '100'
-                - '101'
-                - '103'
-                - '105'
+                - 100
+                - 101
+                - 103
+                - 105
 
 ---
 test_name: GET ROLES RBAC
@@ -188,6 +192,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items: []
@@ -221,6 +226,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: 1
@@ -262,6 +268,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -281,6 +288,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -299,6 +307,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -306,7 +315,7 @@ stages:
                 code: 4007
                 remediation: !anystr
               id:
-                - '999'
+                - 999
           total_affected_items: 0
           total_failed_items: 1
 
@@ -322,6 +331,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items:
@@ -329,7 +339,7 @@ stages:
                 code: 4007
                 remediation: !anystr
               id:
-                - '999'
+                - 999
           total_affected_items: 2
           total_failed_items: 1
 
@@ -382,6 +392,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: 105
@@ -403,6 +414,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: 103
@@ -429,6 +441,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: 104
@@ -461,6 +474,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -468,7 +482,7 @@ stages:
                 code: 4008
                 remediation: !anything
               id:
-                - '1'
+                - 1
           total_affected_items: 0
           total_failed_items: 1
 
@@ -492,6 +506,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: 105
@@ -533,6 +548,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -540,7 +556,7 @@ stages:
                 code: 4008
                 remediation: !anything
               id:
-                - '1'
+                - 1
           total_affected_items: 0
           total_failed_items: 1
 
@@ -569,6 +585,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: 103
@@ -623,6 +640,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: 103
@@ -637,16 +655,16 @@ stages:
             - error:
                 code: 4000
               id:
-                - '102'
-                - '103'
+                - 102
+                - 103
             - error:
                 code: 4002
               id:
-                - '106'
+                - 106
             - error:
                 code: 4017
               id:
-                - '101'
+                - 101
 
   - name: Create one specified link between one user and a list of roles (Allow)
     request:
@@ -660,6 +678,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: 102
@@ -672,7 +691,7 @@ stages:
             - error:
                 code: 4017
               id:
-                - '104'
+                - 104
           total_affected_items: 1
           total_failed_items: 1
 
@@ -695,6 +714,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: 106
@@ -757,6 +777,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: 104
@@ -766,9 +787,9 @@ stages:
             - error:
                 code: 4016
               id:
-                - '5'
-                - '100'
-                - '101'
+                - 5
+                - 100
+                - 101
           total_affected_items: 3
           total_failed_items: 3
 
@@ -789,6 +810,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: 104
@@ -803,7 +825,7 @@ stages:
             - error:
                 code: 4000
               id:
-                - '104'
+                - 104
 
 ---
 test_name: DELETE LINK ROLE-POLICIES RBAC
@@ -822,6 +844,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: 104
@@ -835,7 +858,7 @@ stages:
             - error:
                 code: 4010
               id:
-                - '104'
+                - 104
 
 ---
 test_name: CREATE LINK ROLE-RULES RBAC
@@ -854,6 +877,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: 101
@@ -865,7 +889,7 @@ stages:
           total_failed_items: 1
           failed_items:
             - id:
-                - '104'
+                - 104
               error:
                 code: 4000
 
@@ -886,6 +910,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: 101
@@ -925,6 +950,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: 100
@@ -946,6 +972,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: 102
@@ -985,6 +1012,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items: []
@@ -1003,21 +1031,22 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
             - error:
                 code: 4000
               id:
-                - "105"
+                - 105
             - error:
                 code: 5001
               id:
-                - "100"
+                - 100
             - error:
                 code: 5004
               id:
-                - "1"
+                - 1
           total_affected_items: 0
           total_failed_items: 3
 
@@ -1038,6 +1067,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: 103
@@ -1058,15 +1088,15 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: # Admin rules cannot be deleted. 105 is denied
-            - id: 99
             - id: 100
             - id: 101
             - id: 102
             - id: 104
           failed_items: []
-          total_affected_items: 5
+          total_affected_items: 4
           total_failed_items: 0
 
 ---
@@ -1103,6 +1133,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: 103
@@ -1132,6 +1163,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1156,6 +1188,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: 103
@@ -1175,10 +1208,11 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: 6
+          total_affected_items: 5
           total_failed_items: 0
     delay_after: 20
 

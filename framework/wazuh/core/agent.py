@@ -22,26 +22,27 @@ from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.ossec_queue import OssecQueue
 from wazuh.core.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
-    WazuhDBQueryDistinct, WazuhDBQueryGroupBy, SQLiteBackend, WazuhDBBackend, safe_move
+    WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, safe_move
 from wazuh.core.wazuh_socket import OssecSocket, OssecSocketJSON
+from wazuh.core.wdb import WazuhDBConnection
 
 
 class WazuhDBQueryAgents(WazuhDBQuery):
 
     def __init__(self, offset=0, limit=common.database_limit, sort=None, search=None, select=None, count=True,
                  get_data=True, query='', filters=None, default_sort_field='id', min_select_fields=None,
-                 remove_extra_fields=True, distinct=False):
+                 remove_extra_fields=True, distinct=False, rbac_negate=True):
         if filters is None:
             filters = {}
         if min_select_fields is None:
             min_select_fields = {'lastKeepAlive', 'version', 'id'}
-        backend = SQLiteBackend(common.database_path_global)
+        backend = WazuhDBBackend(query_format='global')
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select,
                               filters=filters, fields=Agent.fields, default_sort_field=default_sort_field,
                               default_sort_order='ASC', query=query, backend=backend,
                               min_select_fields=min_select_fields, count=count, get_data=get_data,
                               date_fields={'lastKeepAlive', 'dateAdd'}, extra_fields={'internal_key'},
-                              distinct=distinct)
+                              distinct=distinct, rbac_negate=rbac_negate)
         self.remove_extra_fields = remove_extra_fields
 
     def _filter_status(self, status_filter):
@@ -95,8 +96,18 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         # Also remove, extra fields (internal key and registration IP)
         selected_fields = self.select - self.extra_fields if self.remove_extra_fields else self.select
         selected_fields |= {'id'}
-        self._data = [{key: format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'))
-                       for key, value in item.items() if key in selected_fields} for item in self._data]
+        aux = list()
+        for item in self._data:
+            aux_dict = dict()
+            lastkeepalive = item.get('lastKeepAlive')
+            version = item.get('version')
+            for key, value in item.items():
+                if key in selected_fields:
+                    aux_dict[key] = format_fields(key, value, today, lastkeepalive, version)
+
+            aux.append(aux_dict)
+
+        self._data = aux
 
         self._data = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in self._data]
 
@@ -109,7 +120,49 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                          "(lastKeepAlive>{0};status!=never_connected,dateAdd>{0};status=never_connected)".format(
                              self.legacy_filters['older_than'])
             del self.legacy_filters['older_than']
-        WazuhDBQuery._parse_legacy_filters(self)
+
+        """Parses legacy filters."""
+        # some legacy filters can contain multiple values to filter separated by commas. That must split in a list.
+        self.legacy_filters.get('older_than', None) == '0s' and self.legacy_filters.pop('older_than')
+        legacy_filters_as_list = {
+            name: value if isinstance(value, list) else [value] for name, value in self.legacy_filters.items()
+        }
+        # each filter is represented using a dictionary containing the following fields:
+        #   * Value     -> Value to filter by
+        #   * Field     -> Field to filter by. Since there can be multiple filters over the same field, a numeric ID
+        #                  must be added to the field name.
+        #   * Operator  -> Operator to use in the database query. In legacy filters the only available one is =.
+        #   * Separator -> Logical operator used to join queries. In legacy filters, the AND operator is used when
+        #                  different fields are filtered and the OR operator is used when filtering by the same field
+        #                  multiple times.
+        #   * Level     -> The level defines the number of parenthesis the query has. In legacy filters, no
+        #                  parenthesis are used except when filtering over the same field.
+
+        # Add RBAC filters and remove them from query_filters
+        if 'rbac_ids' in legacy_filters_as_list:
+            rbac_value = legacy_filters_as_list.pop('rbac_ids')
+            operator = 'NOT IN' if self.rbac_negate else 'IN'
+        else:
+            rbac_value = None
+
+        if rbac_value:
+            self.query_filters += [{'value': rbac_value,
+                                    'field': 'rbac_id',
+                                    'operator': operator,
+                                    'separator': 'AND',
+                                    'level': 0}]
+
+        self.query_filters += [{'value': None if subvalue == "null" else subvalue,
+                                'field': '{}${}'.format(name, i),
+                                'operator': '=',
+                                'separator': 'AND' if len(value) <= 1 or len(value) == i + 1 else 'OR',
+                                'level': 0 if i == len(value) - 1 else 1}
+                               for name, value in legacy_filters_as_list.items()
+                               for i, subvalue in enumerate(value) if not self._pass_filter(subvalue)]
+
+        if self.query_filters:
+            # if only traditional filters have been defined, remove last AND from the query.
+            self.query_filters[-1]['separator'] = '' if not self.q else 'AND'
 
     def _process_filter(self, field_name, field_filter, q_filter):
         if field_name == 'group' and q_filter['value'] is not None:
@@ -128,17 +181,18 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 class WazuhDBQueryGroup(WazuhDBQuery):
     def __init__(self, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
                  get_data=True, query='', filters=None, count=True, default_sort_field='name', min_select_fields=None,
-                 remove_extra_fields=True):
+                 remove_extra_fields=True, rbac_negate=True):
         if filters is None:
             filters = {}
         if min_select_fields is None:
             min_select_fields = {'name'}
-        backend = SQLiteBackend(common.database_path_global)
+        backend = WazuhDBBackend(query_format='global')
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='`group`', sort=sort, search=search,
                               select=select,
                               filters=filters, fields={'name': 'name'},
                               default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
-                              backend=backend, min_select_fields=min_select_fields, count=count, get_data=get_data)
+                              backend=backend, min_select_fields=min_select_fields, count=count, get_data=get_data,
+                              rbac_negate=rbac_negate)
         self.remove_extra_fields = remove_extra_fields
 
     def _add_select_to_query(self):
@@ -160,6 +214,57 @@ class WazuhDBQueryGroup(WazuhDBQuery):
 
     def _execute_data_query(self):
         self._data = self.backend.execute(self.query, self.request)
+
+    def _parse_legacy_filters(self):
+        if 'older_than' in self.legacy_filters and self.legacy_filters['older_than'] != '0s':
+            if self.legacy_filters['older_than']:
+                self.q = (self.q + ';' if self.q else '') + \
+                         "(lastKeepAlive>{0};status!=never_connected,dateAdd>{0};status=never_connected)".format(
+                             self.legacy_filters['older_than'])
+            del self.legacy_filters['older_than']
+
+        """Parses legacy filters."""
+        # some legacy filters can contain multiple values to filter separated by commas. That must split in a list.
+        self.legacy_filters.get('older_than', None) == '0s' and self.legacy_filters.pop('older_than')
+        legacy_filters_as_list = {
+            name: value if isinstance(value, list) else [value] for name, value in self.legacy_filters.items()
+        }
+        # each filter is represented using a dictionary containing the following fields:
+        #   * Value     -> Value to filter by
+        #   * Field     -> Field to filter by. Since there can be multiple filters over the same field, a numeric ID
+        #                  must be added to the field name.
+        #   * Operator  -> Operator to use in the database query. In legacy filters the only available one is =.
+        #   * Separator -> Logical operator used to join queries. In legacy filters, the AND operator is used when
+        #                  different fields are filtered and the OR operator is used when filtering by the same field
+        #                  multiple times.
+        #   * Level     -> The level defines the number of parenthesis the query has. In legacy filters, no
+        #                  parenthesis are used except when filtering over the same field.
+
+        # Add RBAC filters and remove them from query_filters
+        if 'rbac_ids' in legacy_filters_as_list:
+            rbac_value = legacy_filters_as_list.pop('rbac_ids')
+            operator = 'NOT IN' if self.rbac_negate else 'IN'
+        else:
+            rbac_value = None
+
+        if rbac_value:
+            self.query_filters += [{'value': rbac_value,
+                                    'field': 'rbac_name',
+                                    'operator': operator,
+                                    'separator': 'AND',
+                                    'level': 0}]
+
+        self.query_filters += [{'value': None if subvalue == "null" else subvalue,
+                                'field': '{}${}'.format(name, i),
+                                'operator': '=',
+                                'separator': 'AND' if len(value) <= 1 or len(value) == i + 1 else 'OR',
+                                'level': 0 if i == len(value) - 1 else 1}
+                               for name, value in legacy_filters_as_list.items()
+                               for i, subvalue in enumerate(value) if not self._pass_filter(subvalue)]
+
+        if self.query_filters:
+            # if only traditional filters have been defined, remove last AND from the query.
+            self.query_filters[-1]['separator'] = '' if not self.q else 'AND'
 
 
 class WazuhDBQueryDistinctAgents(WazuhDBQueryDistinct, WazuhDBQueryAgents):
@@ -436,18 +541,13 @@ class Agent:
             raise WazuhInternalError(1746, extra_message=str(e))
 
         # Tell wazuhbd to delete agent database
-        wdb_conn = WazuhDBBackend(self.id).connect_to_db()
-        wdb_conn.delete_agents_db([self.id])
+        wdb_backend_conn = WazuhDBBackend(self.id).connect_to_db()
+        wdb_backend_conn.delete_agents_db([self.id])
 
         try:
             # remove agent from groups
-            db_global = glob(common.database_path_global)
-            if not db_global:
-                raise WazuhError(1600)
-
-            conn = Connection(db_global[0])
-            conn.execute('DELETE FROM belongs WHERE id_agent = :id_agent', {'id_agent': int(self.id)})
-            conn.commit()
+            wdb_conn = WazuhDBConnection()
+            wdb_conn.run_wdb_command(f'global sql DELETE FROM belongs WHERE id_agent = {self.id}')
         except Exception as e:
             raise WazuhInternalError(1747, extra_message=str(e))
 
@@ -619,13 +719,8 @@ class Agent:
         force = force if type(force) == int else int(force)
 
         # Check manager name
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhInternalError(1600)
-
-        conn = Connection(db_global[0])
-        conn.execute("SELECT name FROM agent WHERE (id = 0)")
-        manager_name = str(conn.fetch())
+        wdb_conn = WazuhDBConnection()
+        manager_name = wdb_conn.execute("global sql SELECT name FROM agent WHERE (id = 0)")[0]['name']
 
         if name == manager_name:
             raise WazuhError(1705, extra_message=name)
@@ -742,20 +837,15 @@ class Agent:
 
         return {'message': msg}
 
-    def get_agent_attr(self, attr):
+    def get_agent_os_name(self):
         """Returns a string with an agent's os name
         """
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhInternalError(1600)
+        query = WazuhDBQueryAgents(select=['os.name'], filters={'id': [self.id]})
 
-        conn = Connection(db_global[0])
-        query = "SELECT {0} FROM agent WHERE id = {1}".format(attr, self.id)
-        request = {'attr': attr, 'id': self.id}
-        conn.execute(query, request)
-        query_value = str(conn.fetch())
-
-        return query_value
+        try:
+            return query.run()['items'][0]['os'].get('name', 'null')
+        except KeyError:
+            return 'null'
 
     @staticmethod
     def get_agents_overview(offset=0, limit=common.database_limit, sort=None, search=None, select=None,
@@ -1020,7 +1110,7 @@ def get_agents_info():
 
     :return: List of agents ids
     """
-    db_query = WazuhDBQueryAgents(select=['id'])
+    db_query = WazuhDBQueryAgents(select=['id'], limit=None)
     query_data = db_query.run()
 
     return {str(agent_info['id']).zfill(3) for agent_info in query_data['items']}
@@ -1032,7 +1122,7 @@ def get_groups():
 
     :return: List of group names
     """
-    db_query = WazuhDBQueryGroup()
+    db_query = WazuhDBQueryGroup(limit=None)
     query_data = db_query.run()
 
     return {group['name'] for group in query_data['items']}
@@ -1045,7 +1135,7 @@ def expand_group(group_name):
     :return: List of agents ids
     """
     if group_name == '*':
-        data = WazuhDBQueryAgents(select=['group']).run()['items']
+        data = WazuhDBQueryAgents(select=['group'], limit=None).run()['items']
         groups = set()
         for agent_group in data:
             groups.update(set(agent_group.get('group', list())))
@@ -1053,11 +1143,41 @@ def expand_group(group_name):
         groups = {group_name}
     agents_ids = set()
     for group in groups:
-        agents_group = WazuhDBQueryMultigroups(group, select=['id']).run()['items']
+        agents_group = WazuhDBQueryMultigroups(group, select=['id'], limit=None).run()['items']
         for agent in agents_group:
             agents_ids.add(str(agent['id']).zfill(3))
 
     return agents_ids
+
+
+def get_rbac_filters(system_resources=None, permitted_resources=None, filters=None):
+    """This function calculate the list of allowed or denied depending on the list size
+
+    Parameters
+    ----------
+    system_resources : set
+        System resources for the current request
+    permitted_resources : list
+        Resources granted by RBAC
+    filters : dict
+        Dictionary with additional filters for the current request
+
+    Returns
+    -------
+    Dictionary with the original filters plus those added by RBAC
+    """
+    if not filters:
+        filters = dict()
+    non_permitted_resources = system_resources - set(permitted_resources)
+
+    if len(permitted_resources) < len(non_permitted_resources):
+        filters['rbac_ids'] = permitted_resources
+        negate = False
+    else:
+        filters['rbac_ids'] = list(non_permitted_resources)
+        negate = True
+
+    return {'filters': filters, 'rbac_negate': negate}
 
 
 def agents_padding(result, agent_list):

@@ -257,7 +257,6 @@ void fim_rt_delay();
 
 /**
  * @brief Checks for deleted files, deletes them from the agent's database and sends a deletion event on scheduled scans
- *
  */
 void check_deleted_files();
 

@@ -18,6 +18,7 @@ stages:
       status_code: 200
       json:
         # We get totalItems number of arrays in items, using !anything to check items key is in the response
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -34,6 +35,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           # We define this items answer as a common one array full answer
           affected_items: &full_items_array
@@ -74,6 +76,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - file: "{returned_file}"
@@ -95,6 +98,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - date: !anystr
@@ -116,6 +120,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *full_items_array
@@ -139,6 +144,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
               # Save second item to check offset in next stage
@@ -172,6 +178,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: *full_items_array
           failed_items: []
@@ -189,6 +196,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -206,6 +214,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -223,6 +232,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - md5: "{tavern.request_vars.params.md5}"
@@ -241,6 +251,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - sha1: "{tavern.request_vars.params.sha1}"
@@ -259,6 +270,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - sha256: "{tavern.request_vars.params.sha256}"
@@ -277,6 +289,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - md5: "{tavern.request_vars.params.hash}"
@@ -295,6 +308,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - sha1: "{tavern.request_vars.params.hash}"
@@ -313,6 +327,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - sha256: "{tavern.request_vars.params.hash}"
@@ -331,6 +346,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - file: "{tavern.request_vars.params.file}"
@@ -349,6 +365,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *full_items_array
@@ -367,7 +384,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
     # GET /syscheck/000?limit=1&select=wrongparam
   - name: Try to get syscheck scan results for agent 000 using an invalid select parameter
@@ -380,7 +397,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1724
+        error: 1724
 
     # GET /syscheck/000?pretty=false&wait_for_complete=true&offset=0&select=uname%2Cperm&distinct=true
   - name: Try to get syscheck scan results for agent 000 using distinct parameter
@@ -442,6 +459,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: *full_items_array
           failed_items: []
@@ -464,6 +482,7 @@ stages:
           extra_kwargs:
             select_key: "{field:s}"
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -483,6 +502,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - end: !anything
@@ -504,10 +524,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '000'
+        agents_list: '000'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '000'
@@ -523,10 +544,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '000,002,004,006,008,010,012'
+        agents_list: '000,002,004,006,008,010,012'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '000'
@@ -538,11 +560,11 @@ stages:
             - error:
                 code: 1601
               id:
-                - '012'
+                - '010'
             - error:
                 code: 1601
               id:
-                - '010'
+                - '012'
           total_affected_items: 5
           total_failed_items: 2
 
@@ -561,6 +583,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -577,6 +600,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           # We define this items answer as a common one array full answer
           affected_items: &full_items_array_002
@@ -618,6 +642,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - date: !anystr
@@ -639,6 +664,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *full_items_array_002
@@ -662,6 +688,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
               # Save second item to check offset in next stage
@@ -695,6 +722,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: *full_items_array_002
           failed_items: []
@@ -712,6 +740,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -729,6 +758,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -746,6 +776,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - md5: "{tavern.request_vars.params.md5}"
@@ -764,6 +795,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - sha1: "{tavern.request_vars.params.sha1}"
@@ -782,6 +814,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - sha256: "{tavern.request_vars.params.sha256}"
@@ -800,6 +833,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - md5: "{tavern.request_vars.params.hash}"
@@ -818,6 +852,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - sha1: "{tavern.request_vars.params.hash}"
@@ -836,6 +871,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - sha256: "{tavern.request_vars.params.hash}"
@@ -854,6 +890,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - file: "{tavern.request_vars.params.file}"
@@ -873,6 +910,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *full_items_array_002
@@ -892,7 +930,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
     # GET /syscheck/002?limit=1&select=wrongparam
   - name: Try to get syscheck scan results for agent 002 using an invalid select parameter
@@ -905,7 +943,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1724
+        error: 1724
 
 ---
 # Another GET /syscheck/{agent_id} test to parametrize values for sort and select parameters
@@ -943,6 +981,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: *full_items_array_002
           failed_items: []
@@ -965,6 +1004,7 @@ stages:
         extra_kwargs:
           select_key: "{field:s}"
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -984,6 +1024,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - end: !anything
@@ -1007,6 +1048,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1029,18 +1071,19 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items:
             - error:
                 code: 1601
               id:
-                - '011'
-                - '012'
+                - '009'
+                - '010'
             - error:
                 code: 1601
               id:
-                - '009'
-                - '010'
+                - '011'
+                - '012'
           total_affected_items: 9
           total_failed_items: 4

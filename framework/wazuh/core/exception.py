@@ -4,7 +4,8 @@
 
 
 from copy import deepcopy
-from wazuh.core.common import wazuh_version as wazuh_full_version
+from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE, wazuh_version as wazuh_full_version
+
 
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
 WAZUH_VERSION = 'current' if wazuh_full_version == '' else '.'.join(wazuh_full_version.split('.')[:2]).lstrip('v')
@@ -91,6 +92,7 @@ class WazuhException(Exception):
                'remediation': 'Experimental features can be enabled in WAZUH_PATH/configuration/api.yaml or '
                               'using API endpoint https://documentation.wazuh.com/current/user-manual/api/reference.html#operation/api.controllers.manager_controller.put_api_config or '
                               'https://documentation.wazuh.com/current/user-manual/api/reference.html#operation/api.controllers.cluster_controller.put_api_config'},
+        1123: {'message': f"Error communicating with socket. Query too long, maximum allowed size for queries is {MAX_SOCKET_BUFFER_SIZE // 1024} KB"},
 
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
@@ -467,7 +469,7 @@ class WazuhException(Exception):
         4004: {'message': 'The specified name is invalid'},
         4005: {'message': 'The specified name or rule already exists'},
         4006: {'message': 'The specified policy is invalid',
-               'remediation': 'The policy must be in JSON format and its keys must be "access", "resources" and'
+               'remediation': 'The policy must be in JSON format and its keys must be "actions", "resources" and'
                               ' "effect". The actions and resources must be split by ":". Example: agent:id:001'},
         4007: {'message': 'The specified policy does not exist',
                'remediation': 'Please, create the specified policy with the endpoint POST /security/policies'},
@@ -501,6 +503,7 @@ class WazuhException(Exception):
         4024: {'message': 'The specified role-rule relation does not exist',
                'remediation': 'Please, create the specified role-rules relation with the endpoint '
                               'POST /security/roles/{role_id}/rules'},
+        4025: {'message': 'The specify relationship could not be removed'},
         4500: {'message': 'The specified resources are invalid',
                'remediation': 'Please, make sure permissions are properly defined, '
                               f'for more information on setting up permissions please visit https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/rbac/configuration.html'},

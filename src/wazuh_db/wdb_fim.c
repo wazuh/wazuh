@@ -194,8 +194,9 @@ int wdb_insert_fim(sqlite3 *db, int type, long timestamp, const char *f_name, co
 int wdb_delete_fim(int id) {
     sqlite3 *db;
     sqlite3_stmt *stmt;
-    char *name = id ? wdb_agent_name(id) : strdup("localhost");
     int result;
+
+    char *name = id ? wdb_get_agent_name(id, NULL) : strdup("localhost");
 
     if (!name)
         return -1;
@@ -239,8 +240,8 @@ int wdb_delete_fim(int id) {
 
 /* Delete FIM events of all agents */
 void wdb_delete_fim_all() {
-    int *agents = wdb_get_all_agents();
     int i;
+    int *agents = wdb_get_all_agents(FALSE, NULL);
 
     if (agents) {
         wdb_delete_fim(0);

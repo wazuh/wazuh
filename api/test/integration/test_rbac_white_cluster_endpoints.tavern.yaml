@@ -16,6 +16,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: !anystr
@@ -44,10 +45,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'worker1,worker2'
+        nodes_list: 'worker1,worker2'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - info:
@@ -75,6 +77,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - info:
@@ -109,6 +112,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - cluster: wazuh
@@ -135,6 +139,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: &cluster_nodes_response
             - name: !anystr
@@ -154,6 +159,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -171,6 +177,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -189,6 +196,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -210,11 +218,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'worker1'
+        nodes_list: 'worker1'
     response: &permission_denied
       status_code: 403
       json:
-        code: 4000
+        error: 4000
 
   - name: Get cluster {worker2} (Allow)
     request:
@@ -224,10 +232,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'worker2'
+        nodes_list: 'worker2'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -244,10 +253,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'master-node,worker1,worker2'
+        nodes_list: 'master-node,worker1,worker2'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -277,6 +287,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           enabled: "yes"
           running: "yes"
@@ -296,17 +307,15 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
-            - agentless: !anything
-              alerts: !anything
+            - alerts: !anything
               auth: !anything
               cis-cat: !anything
               cluster: !anything
               command: !anything
-              email_alerts: !anything
               global: !anything
-              integration: !anything
               localfile: !anything
               osquery: !anything
               remote: !anything
@@ -315,7 +324,6 @@ stages:
               sca: !anything
               syscheck: !anything
               syscollector: !anything
-              syslog_output: !anything
               vulnerability-detector: !anything
           failed_items: []
           total_affected_items: 1
@@ -343,6 +351,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - alerts:
@@ -367,6 +376,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: master-node
@@ -385,10 +395,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'worker1,worker2'
+        nodes_list: 'worker1,worker2'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: worker2
@@ -566,10 +577,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'worker1,worker2'
+        nodes_list: 'worker1,worker2'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - node_name: 'worker2'
@@ -601,6 +613,7 @@ stages:
     response:
       status_code: 200
       json: &update_api_config_ok
+        error: !anyint
         data:
           affected_items:
             - master-node
@@ -622,10 +635,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'worker1,worker2'
+        nodes_list: 'worker1,worker2'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - worker2
@@ -648,6 +662,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'worker2'

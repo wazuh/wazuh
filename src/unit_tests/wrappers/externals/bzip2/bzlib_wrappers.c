@@ -76,3 +76,13 @@ BZFILE* __wrap_BZ2_bzWriteOpen(int* bzerror,
 
     return mock_type(BZFILE*);
 }
+
+#ifndef TEST_WINAGENT
+int __wrap_bzip2_uncompress(const char *filebz2,
+                            const char *file) {
+
+    check_expected_ptr(filebz2);
+    check_expected_ptr(file);
+    return mock();
+}
+#endif

@@ -102,6 +102,38 @@ static int teardown_upgrade_task_string(void **state) {
 
 // Tests
 
+void test_wm_agent_upgrade_cancel_pending_upgrades(void **state)
+{
+    (void) state;
+
+    cJSON *request = cJSON_CreateObject();
+    cJSON *origin = cJSON_CreateObject();
+    cJSON *parameters = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(origin, "module", "upgrade_module");
+    cJSON_AddItemToObject(request, "origin", origin);
+    cJSON_AddStringToObject(request, "command", "upgrade_cancel_tasks");
+    cJSON_AddItemToObject(request, "parameters", parameters);
+
+    cJSON *task_response = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(task_response, "error", WM_UPGRADE_SUCCESS);
+    cJSON_AddStringToObject(task_response, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+
+    // wm_agent_upgrade_parse_task_module_request
+
+    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_CANCEL_TASKS);
+    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, request);
+
+    // wm_agent_upgrade_task_module_callback
+
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, request, sizeof(request));
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response);
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
+
+    wm_agent_upgrade_cancel_pending_upgrades();
+}
+
 void test_wm_agent_upgrade_validate_agent_task_upgrade_ok(void **state)
 {
     (void) state;
@@ -535,6 +567,16 @@ void test_wm_agent_upgrade_analyze_agent_ok(void **state)
     agent_task->task_info->command = WM_UPGRADE_UPGRADE;
     agent_task->task_info->task = upgrade_task;
 
+    cJSON *agent_info_array = cJSON_CreateArray();
+    cJSON *agent_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(agent_info, "os_platform", platform);
+    cJSON_AddStringToObject(agent_info, "os_major", major);
+    cJSON_AddStringToObject(agent_info, "os_minor", minor);
+    cJSON_AddStringToObject(agent_info, "os_arch", arch);
+    cJSON_AddStringToObject(agent_info, "version", version);
+    cJSON_AddNumberToObject(agent_info, "last_keepalive", keep_alive);
+    cJSON_AddItemToArray(agent_info_array, agent_info);
+
     cJSON *request_status = cJSON_CreateObject();
     cJSON *origin_status = cJSON_CreateObject();
     cJSON *parameters_status = cJSON_CreateObject();
@@ -556,14 +598,8 @@ void test_wm_agent_upgrade_analyze_agent_ok(void **state)
 
     // wdb_agent_info
 
-    expect_value(__wrap_wdb_agent_info, id, agent);
-    will_return(__wrap_wdb_agent_info, platform);
-    will_return(__wrap_wdb_agent_info, major);
-    will_return(__wrap_wdb_agent_info, minor);
-    will_return(__wrap_wdb_agent_info, arch);
-    will_return(__wrap_wdb_agent_info, version);
-    will_return(__wrap_wdb_agent_info, keep_alive);
-    will_return(__wrap_wdb_agent_info, 0);
+    expect_value(__wrap_wdb_get_agent_info, id, agent);
+    will_return(__wrap_wdb_get_agent_info, agent_info_array);
 
     // wm_agent_upgrade_validate_id
 
@@ -638,6 +674,16 @@ void test_wm_agent_upgrade_analyze_agent_duplicated_err(void **state)
     agent_task->task_info->command = WM_UPGRADE_UPGRADE;
     agent_task->task_info->task = upgrade_task;
 
+    cJSON *agent_info_array = cJSON_CreateArray();
+    cJSON *agent_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(agent_info, "os_platform", platform);
+    cJSON_AddStringToObject(agent_info, "os_major", major);
+    cJSON_AddStringToObject(agent_info, "os_minor", minor);
+    cJSON_AddStringToObject(agent_info, "os_arch", arch);
+    cJSON_AddStringToObject(agent_info, "version", version);
+    cJSON_AddNumberToObject(agent_info, "last_keepalive", keep_alive);
+    cJSON_AddItemToArray(agent_info_array, agent_info);
+
     cJSON *request_status = cJSON_CreateObject();
     cJSON *origin_status = cJSON_CreateObject();
     cJSON *parameters_status = cJSON_CreateObject();
@@ -658,14 +704,8 @@ void test_wm_agent_upgrade_analyze_agent_duplicated_err(void **state)
 
     // wdb_agent_info
 
-    expect_value(__wrap_wdb_agent_info, id, agent);
-    will_return(__wrap_wdb_agent_info, platform);
-    will_return(__wrap_wdb_agent_info, major);
-    will_return(__wrap_wdb_agent_info, minor);
-    will_return(__wrap_wdb_agent_info, arch);
-    will_return(__wrap_wdb_agent_info, version);
-    will_return(__wrap_wdb_agent_info, keep_alive);
-    will_return(__wrap_wdb_agent_info, 0);
+    expect_value(__wrap_wdb_get_agent_info, id, agent);
+    will_return(__wrap_wdb_get_agent_info, agent_info_array);
 
     // wm_agent_upgrade_validate_id
 
@@ -740,6 +780,16 @@ void test_wm_agent_upgrade_analyze_agent_unknown_err(void **state)
     agent_task->task_info->command = WM_UPGRADE_UPGRADE;
     agent_task->task_info->task = upgrade_task;
 
+    cJSON *agent_info_array = cJSON_CreateArray();
+    cJSON *agent_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(agent_info, "os_platform", platform);
+    cJSON_AddStringToObject(agent_info, "os_major", major);
+    cJSON_AddStringToObject(agent_info, "os_minor", minor);
+    cJSON_AddStringToObject(agent_info, "os_arch", arch);
+    cJSON_AddStringToObject(agent_info, "version", version);
+    cJSON_AddNumberToObject(agent_info, "last_keepalive", keep_alive);
+    cJSON_AddItemToArray(agent_info_array, agent_info);
+
     cJSON *request_status = cJSON_CreateObject();
     cJSON *origin_status = cJSON_CreateObject();
     cJSON *parameters_status = cJSON_CreateObject();
@@ -760,14 +810,8 @@ void test_wm_agent_upgrade_analyze_agent_unknown_err(void **state)
 
     // wdb_agent_info
 
-    expect_value(__wrap_wdb_agent_info, id, agent);
-    will_return(__wrap_wdb_agent_info, platform);
-    will_return(__wrap_wdb_agent_info, major);
-    will_return(__wrap_wdb_agent_info, minor);
-    will_return(__wrap_wdb_agent_info, arch);
-    will_return(__wrap_wdb_agent_info, version);
-    will_return(__wrap_wdb_agent_info, keep_alive);
-    will_return(__wrap_wdb_agent_info, 0);
+    expect_value(__wrap_wdb_get_agent_info, id, agent);
+    will_return(__wrap_wdb_get_agent_info, agent_info_array);
 
     // wm_agent_upgrade_validate_id
 
@@ -842,16 +886,20 @@ void test_wm_agent_upgrade_analyze_agent_validate_err(void **state)
     agent_task->task_info->command = WM_UPGRADE_UPGRADE;
     agent_task->task_info->task = upgrade_task;
 
+    cJSON *agent_info_array = cJSON_CreateArray();
+    cJSON *agent_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(agent_info, "os_platform", platform);
+    cJSON_AddStringToObject(agent_info, "os_major", major);
+    cJSON_AddStringToObject(agent_info, "os_minor", minor);
+    cJSON_AddStringToObject(agent_info, "os_arch", arch);
+    cJSON_AddStringToObject(agent_info, "version", version);
+    cJSON_AddNumberToObject(agent_info, "last_keepalive", keep_alive);
+    cJSON_AddItemToArray(agent_info_array, agent_info);
+
     // wdb_agent_info
 
-    expect_value(__wrap_wdb_agent_info, id, agent);
-    will_return(__wrap_wdb_agent_info, platform);
-    will_return(__wrap_wdb_agent_info, major);
-    will_return(__wrap_wdb_agent_info, minor);
-    will_return(__wrap_wdb_agent_info, arch);
-    will_return(__wrap_wdb_agent_info, version);
-    will_return(__wrap_wdb_agent_info, keep_alive);
-    will_return(__wrap_wdb_agent_info, 0);
+    expect_value(__wrap_wdb_get_agent_info, id, agent);
+    will_return(__wrap_wdb_get_agent_info, agent_info_array);
 
     // wm_agent_upgrade_validate_id
 
@@ -876,12 +924,6 @@ void test_wm_agent_upgrade_analyze_agent_global_db_err(void **state)
 
     wm_upgrade_error_code error_code = WM_UPGRADE_SUCCESS;
     int agent = 119;
-    int keep_alive = 123456789;
-    char *platform = "ubuntu";
-    char *major = "18";
-    char *minor = "04";
-    char *arch = "x86_64";
-    char *version = "v3.13.1";
     wm_upgrade_task *upgrade_task = NULL;
 
     wm_manager_configs *config = state[0];
@@ -895,25 +937,18 @@ void test_wm_agent_upgrade_analyze_agent_global_db_err(void **state)
 
     // wdb_agent_info
 
-    expect_value(__wrap_wdb_agent_info, id, agent);
-    will_return(__wrap_wdb_agent_info, platform);
-    will_return(__wrap_wdb_agent_info, major);
-    will_return(__wrap_wdb_agent_info, minor);
-    will_return(__wrap_wdb_agent_info, arch);
-    will_return(__wrap_wdb_agent_info, version);
-    will_return(__wrap_wdb_agent_info, keep_alive);
-    will_return(__wrap_wdb_agent_info, OS_INVALID);
+    expect_value(__wrap_wdb_get_agent_info, id, agent);
+    will_return(__wrap_wdb_get_agent_info, NULL);
 
     error_code = wm_agent_upgrade_analyze_agent(agent, agent_task, config);
 
     assert_int_equal(error_code, WM_UPGRADE_GLOBAL_DB_FAILURE);
     assert_non_null(agent_task->agent_info);
-    assert_string_equal(agent_task->agent_info->platform, platform);
-    assert_string_equal(agent_task->agent_info->major_version, major);
-    assert_string_equal(agent_task->agent_info->minor_version, minor);
-    assert_string_equal(agent_task->agent_info->architecture, arch);
-    assert_string_equal(agent_task->agent_info->wazuh_version, version);
-    assert_int_equal(agent_task->agent_info->last_keep_alive, keep_alive);
+    assert_null(agent_task->agent_info->platform);
+    assert_null(agent_task->agent_info->major_version);
+    assert_null(agent_task->agent_info->minor_version);
+    assert_null(agent_task->agent_info->architecture);
+    assert_null(agent_task->agent_info->wazuh_version);
 }
 
 void test_wm_agent_upgrade_process_agent_result_command_done(void **state)
@@ -1082,6 +1117,16 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
 
     state[0] = (void *)upgrade_custom_task;
 
+    cJSON *agent_info_array1 = cJSON_CreateArray();
+    cJSON *agent_info1 = cJSON_CreateObject();
+    cJSON_AddStringToObject(agent_info1, "os_platform", "ubuntu");
+    cJSON_AddStringToObject(agent_info1, "os_major", "18");
+    cJSON_AddStringToObject(agent_info1, "os_minor", "04");
+    cJSON_AddStringToObject(agent_info1, "os_arch", "x86_64");
+    cJSON_AddStringToObject(agent_info1, "version", "v3.13.1");
+    cJSON_AddNumberToObject(agent_info1, "last_keepalive", 123456789);
+    cJSON_AddItemToArray(agent_info_array1, agent_info1);
+
     cJSON *status_request1 = cJSON_CreateObject();
     cJSON *status_origin1 = cJSON_CreateObject();
     cJSON *status_parameters1 = cJSON_CreateObject();
@@ -1135,14 +1180,8 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
 
     // wdb_agent_info
 
-    expect_value(__wrap_wdb_agent_info, id, agents[0]);
-    will_return(__wrap_wdb_agent_info, "ubuntu");
-    will_return(__wrap_wdb_agent_info, "18");
-    will_return(__wrap_wdb_agent_info, "04");
-    will_return(__wrap_wdb_agent_info, "x86_64");
-    will_return(__wrap_wdb_agent_info, "v3.13.1");
-    will_return(__wrap_wdb_agent_info, 123456789);
-    will_return(__wrap_wdb_agent_info, 0);
+    expect_value(__wrap_wdb_get_agent_info, id, agents[0]);
+    will_return(__wrap_wdb_get_agent_info, agent_info_array1);
 
     // wm_agent_upgrade_validate_id
 
@@ -1184,14 +1223,8 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
 
     // wdb_agent_info
 
-    expect_value(__wrap_wdb_agent_info, id, agents[1]);
-    will_return(__wrap_wdb_agent_info, "ubuntu");
-    will_return(__wrap_wdb_agent_info, "16");
-    will_return(__wrap_wdb_agent_info, "04");
-    will_return(__wrap_wdb_agent_info, "x86");
-    will_return(__wrap_wdb_agent_info, "v3.5.0");
-    will_return(__wrap_wdb_agent_info, 234567890);
-    will_return(__wrap_wdb_agent_info, OS_INVALID);
+    expect_value(__wrap_wdb_get_agent_info, id, agents[1]);
+    will_return(__wrap_wdb_get_agent_info, NULL);
 
     expect_value(__wrap_wm_agent_upgrade_parse_data_response, error_id, WM_UPGRADE_GLOBAL_DB_FAILURE);
     expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
@@ -1283,14 +1316,8 @@ void test_wm_agent_upgrade_process_upgrade_custom_command_no_agents(void **state
 
     // wdb_agent_info
 
-    expect_value(__wrap_wdb_agent_info, id, agents[0]);
-    will_return(__wrap_wdb_agent_info, "ubuntu");
-    will_return(__wrap_wdb_agent_info, "18");
-    will_return(__wrap_wdb_agent_info, "04");
-    will_return(__wrap_wdb_agent_info, "x86_64");
-    will_return(__wrap_wdb_agent_info, "v3.13.1");
-    will_return(__wrap_wdb_agent_info, 123456789);
-    will_return(__wrap_wdb_agent_info, OS_INVALID);
+    expect_value(__wrap_wdb_get_agent_info, id, agents[0]);
+    will_return(__wrap_wdb_get_agent_info, NULL);
 
     expect_value(__wrap_wm_agent_upgrade_parse_data_response, error_id, WM_UPGRADE_GLOBAL_DB_FAILURE);
     expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
@@ -1301,14 +1328,8 @@ void test_wm_agent_upgrade_process_upgrade_custom_command_no_agents(void **state
 
     // wdb_agent_info
 
-    expect_value(__wrap_wdb_agent_info, id, agents[1]);
-    will_return(__wrap_wdb_agent_info, "ubuntu");
-    will_return(__wrap_wdb_agent_info, "16");
-    will_return(__wrap_wdb_agent_info, "04");
-    will_return(__wrap_wdb_agent_info, "x86");
-    will_return(__wrap_wdb_agent_info, "v3.5.0");
-    will_return(__wrap_wdb_agent_info, 234567890);
-    will_return(__wrap_wdb_agent_info, OS_INVALID);
+    expect_value(__wrap_wdb_get_agent_info, id, agents[1]);
+    will_return(__wrap_wdb_get_agent_info, NULL);
 
     expect_value(__wrap_wm_agent_upgrade_parse_data_response, error_id, WM_UPGRADE_GLOBAL_DB_FAILURE);
     expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
@@ -1363,6 +1384,16 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
 
     state[0] = (void *)upgrade_task;
 
+    cJSON *agent_info_array1 = cJSON_CreateArray();
+    cJSON *agent_info1 = cJSON_CreateObject();
+    cJSON_AddStringToObject(agent_info1, "os_platform", "ubuntu");
+    cJSON_AddStringToObject(agent_info1, "os_major", "18");
+    cJSON_AddStringToObject(agent_info1, "os_minor", "04");
+    cJSON_AddStringToObject(agent_info1, "os_arch", "x86_64");
+    cJSON_AddStringToObject(agent_info1, "version", "v3.13.1");
+    cJSON_AddNumberToObject(agent_info1, "last_keepalive", 123456789);
+    cJSON_AddItemToArray(agent_info_array1, agent_info1);
+
     cJSON *status_request1 = cJSON_CreateObject();
     cJSON *status_origin1 = cJSON_CreateObject();
     cJSON *status_parameters1 = cJSON_CreateObject();
@@ -1416,14 +1447,8 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
 
     // wdb_agent_info
 
-    expect_value(__wrap_wdb_agent_info, id, agents[0]);
-    will_return(__wrap_wdb_agent_info, "ubuntu");
-    will_return(__wrap_wdb_agent_info, "18");
-    will_return(__wrap_wdb_agent_info, "04");
-    will_return(__wrap_wdb_agent_info, "x86_64");
-    will_return(__wrap_wdb_agent_info, "v3.13.1");
-    will_return(__wrap_wdb_agent_info, 123456789);
-    will_return(__wrap_wdb_agent_info, 0);
+    expect_value(__wrap_wdb_get_agent_info, id, agents[0]);
+    will_return(__wrap_wdb_get_agent_info, agent_info_array1);
 
     // wm_agent_upgrade_validate_id
 
@@ -1467,14 +1492,8 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
 
     // wdb_agent_info
 
-    expect_value(__wrap_wdb_agent_info, id, agents[1]);
-    will_return(__wrap_wdb_agent_info, "ubuntu");
-    will_return(__wrap_wdb_agent_info, "16");
-    will_return(__wrap_wdb_agent_info, "04");
-    will_return(__wrap_wdb_agent_info, "x86");
-    will_return(__wrap_wdb_agent_info, "v3.5.0");
-    will_return(__wrap_wdb_agent_info, 234567890);
-    will_return(__wrap_wdb_agent_info, OS_INVALID);
+    expect_value(__wrap_wdb_get_agent_info, id, agents[1]);
+    will_return(__wrap_wdb_get_agent_info, NULL);
 
     expect_value(__wrap_wm_agent_upgrade_parse_data_response, error_id, WM_UPGRADE_GLOBAL_DB_FAILURE);
     expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
@@ -1561,14 +1580,8 @@ void test_wm_agent_upgrade_process_upgrade_command_no_agents(void **state)
 
     // wdb_agent_info
 
-    expect_value(__wrap_wdb_agent_info, id, agents[0]);
-    will_return(__wrap_wdb_agent_info, "ubuntu");
-    will_return(__wrap_wdb_agent_info, "18");
-    will_return(__wrap_wdb_agent_info, "04");
-    will_return(__wrap_wdb_agent_info, "x86_64");
-    will_return(__wrap_wdb_agent_info, "v3.13.1");
-    will_return(__wrap_wdb_agent_info, 123456789);
-    will_return(__wrap_wdb_agent_info, OS_INVALID);
+    expect_value(__wrap_wdb_get_agent_info, id, agents[0]);
+    will_return(__wrap_wdb_get_agent_info, NULL);
 
     expect_value(__wrap_wm_agent_upgrade_parse_data_response, error_id, WM_UPGRADE_GLOBAL_DB_FAILURE);
     expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
@@ -1579,14 +1592,8 @@ void test_wm_agent_upgrade_process_upgrade_command_no_agents(void **state)
 
     // wdb_agent_info
 
-    expect_value(__wrap_wdb_agent_info, id, agents[1]);
-    will_return(__wrap_wdb_agent_info, "ubuntu");
-    will_return(__wrap_wdb_agent_info, "16");
-    will_return(__wrap_wdb_agent_info, "04");
-    will_return(__wrap_wdb_agent_info, "x86");
-    will_return(__wrap_wdb_agent_info, "v3.5.0");
-    will_return(__wrap_wdb_agent_info, 234567890);
-    will_return(__wrap_wdb_agent_info, OS_INVALID);
+    expect_value(__wrap_wdb_get_agent_info, id, agents[1]);
+    will_return(__wrap_wdb_get_agent_info, NULL);
 
     expect_value(__wrap_wm_agent_upgrade_parse_data_response, error_id, WM_UPGRADE_GLOBAL_DB_FAILURE);
     expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
@@ -1624,6 +1631,8 @@ void test_wm_agent_upgrade_process_upgrade_command_no_agents(void **state)
 
 int main(void) {
     const struct CMUnitTest tests[] = {
+        // wm_agent_upgrade_cancel_pending_upgrades
+        cmocka_unit_test(test_wm_agent_upgrade_cancel_pending_upgrades),
         // wm_agent_upgrade_validate_agent_task
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_agent_task_upgrade_ok, setup_config_agent_task, teardown_config_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_agent_task_upgrade_custom_ok, setup_config_agent_task, teardown_config_agent_task),

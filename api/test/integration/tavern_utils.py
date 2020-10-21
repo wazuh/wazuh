@@ -153,7 +153,7 @@ def test_validate_restart_by_node_rbac(response, permitted_agents):
             assert data['total_affected_items'] == 0
     else:
         assert response.status_code == 403
-        assert response.json()['code'] == 4000
+        assert response.json()['error'] == 4000
         assert 'agent:id' in response.json()['detail']
 
 
@@ -166,6 +166,18 @@ def test_validate_auth_context(response, expected_roles=None):
     expected_roles : list
         List of expected roles after checking the authorization context
     """
-    token = response.json()['token'].split('.')[1]
+    token = response.json()['data']['token'].split('.')[1]
     payload = loads(b64decode(token + '===').decode())
     assert payload['rbac_roles'] == expected_roles
+
+
+def test_validate_syscollector_hotfix(response, hotfix_filter=None, experimental=False):
+    hotfixes_keys = {'hotfix', 'scan_id', 'scan_time'}
+    if experimental:
+        hotfixes_keys.add('agent_id')
+    affected_items = response.json()['data']['affected_items']
+    if affected_items:
+        for item in affected_items:
+            assert set(item.keys()) == hotfixes_keys
+            if hotfix_filter:
+                assert item['hotfix'] == hotfix_filter

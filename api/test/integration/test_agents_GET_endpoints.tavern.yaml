@@ -16,6 +16,7 @@ stages:
     response:
       status_code: 200
       json: &basic_response
+        error: !anyint
         data:
           affected_items:
             - id: '000'
@@ -44,6 +45,7 @@ stages:
     response:
       status_code: 200
       json: &basic_response_inverse
+        error: !anyint
         data:
           affected_items:
             - id: '012'
@@ -83,6 +85,7 @@ stages:
           expected_name: data.affected_items[0].name
           expected_ip: data.affected_items[0].ip
       json:
+        error: !anyint
         data:
           affected_items:
             - status: active
@@ -125,7 +128,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 2003
+        error: 2003
 
   - name: Try to show agents with limit 0
     request:
@@ -168,6 +171,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '012'
@@ -185,7 +189,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
   - name: Search
     request:
@@ -196,6 +200,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '000'
@@ -212,6 +217,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data: &affected_empty_answer
           affected_items: []
           failed_items: []
@@ -228,6 +234,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '000'
@@ -251,6 +258,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '001'
@@ -272,7 +280,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1724
+        error: 1724
 
   - name: Try to show agents using not allowed selector (invalid character)
     request:
@@ -294,6 +302,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '009'
@@ -311,6 +320,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           <<: *affected_empty_answer
 
@@ -335,6 +345,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '000'
@@ -353,6 +364,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           <<: *affected_empty_answer
 
@@ -377,6 +389,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '000'
@@ -395,6 +408,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           <<: *affected_empty_answer
 
@@ -419,6 +433,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '000'
@@ -437,6 +452,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           <<: *affected_empty_answer
 
@@ -461,6 +477,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '000'
@@ -477,6 +494,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           <<: *affected_empty_answer
 
@@ -500,6 +518,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '000'
@@ -517,6 +536,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           <<: *affected_empty_answer
 
@@ -540,6 +560,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '000'
@@ -557,6 +578,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           <<: *affected_empty_answer
 
@@ -581,6 +603,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - manager: "{expected_manager_host:s}"
@@ -596,6 +619,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           <<: *affected_empty_answer
 
@@ -619,6 +643,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '009'
@@ -636,6 +661,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '009'
@@ -644,6 +670,24 @@ stages:
             - id: '012'
           failed_items: []
           total_affected_items: 4
+          total_failed_items: 0
+
+  - name: Filter by agent status 3 (Upper and lowercase letters in values)
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        status: DiScoNNected
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - id: '009'
+            - id: '010'
+          failed_items: []
+          total_affected_items: 2
           total_failed_items: 0
 
   - name: Try to show agents with a non existing status
@@ -666,6 +710,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '001'
@@ -686,6 +731,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           <<: *affected_empty_answer
 
@@ -709,6 +755,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '002'
@@ -728,6 +775,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '000'
@@ -747,7 +795,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1408
+        error: 1408
 
   - name: Try to show agents using an invalid query
     request:
@@ -769,6 +817,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '009'
@@ -795,10 +844,11 @@ stages:
       verify: False
       <<: *get_agents
       params:
-        list_agents: "001,002,003"
+        agents_list: "001,002,003"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - status: active
@@ -816,7 +866,7 @@ test_name: GET /agents with single agent id
 
 stages:
 
-  # GET /agents?list_agents=000
+  # GET /agents?agents_list=000
   - name: Basic response agent
     request: &get_agent
       verify: False
@@ -825,10 +875,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '000'
+        agents_list: '000'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - dateAdd: !anystr
@@ -854,7 +905,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  # GET /agents?list_agents=999
+  # GET /agents?agents_list=999
   - name: Try to show not existing agent
     request:
       verify: False
@@ -863,10 +914,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '999'
+        agents_list: '999'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -877,7 +929,7 @@ stages:
           total_affected_items: 0
           total_failed_items: 1
 
-  # GET /agents?list_agents=wrong_name
+  # GET /agents?agents_list=wrong_name
   - name: Try show not existing agent by name
     request:
       verify: False
@@ -886,23 +938,24 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: wrong_name
+        agents_list: wrong_name
     response:
       status_code: 400
       json:
         <<: *error_spec
 
-  # GET /agents?list_agents=000&select=os.platform
+  # GET /agents?agents_list=000&select=os.platform
   - name: Filter select one field
     request:
       verify: False
       <<: *get_agent
       params:
         select: 'os.platform'
-        list_agents: '000'
+        agents_list: '000'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '000'
@@ -912,17 +965,18 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  # GET /agents?list_agents=000&select=dateAdd,status
+  # GET /agents?agents_list=000&select=dateAdd,status
   - name: Filter select multiple fields
     request:
       verify: False
       <<: *get_agent
       params:
         select: 'dateAdd,status'
-        list_agents: '000'
+        agents_list: '000'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '000'
@@ -932,27 +986,27 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  # GET /agents?list_agents=000&select=param_test
+  # GET /agents?agents_list=000&select=param_test
   - name: Try show agents with not allowed selector
     request:
       verify: False
       <<: *get_agent
       params:
         select: param_test
-        list_agents: '000'
+        agents_list: '000'
     response:
       status_code: 400
       json:
-        code: 1724
+        error: 1724
 
-  # GET /agents?list_agents=000&select=param_%_test
+  # GET /agents?agents_list=000&select=param_%_test
   - name: Try show agents with not allowed selector (invalid character)
     request:
       verify: False
       <<: *get_agent
       params:
         select: param_%_test
-        list_agents: '000'
+        agents_list: '000'
     response:
       status_code: 400
       json:
@@ -974,6 +1028,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           client:
             auto_restart: !anystr
@@ -994,6 +1049,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           buffer:
             disabled: !anystr
@@ -1010,6 +1066,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           labels: !anything
 
@@ -1023,6 +1080,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           internal:
             agent:
@@ -1050,25 +1108,6 @@ stages:
               request_rto_sec: !anyint
               verify_msg_id: !anyint
 
-  - name: Request-Agentless-Agentless
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/agentless/agentless"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          agentless:
-            - arguments: !anystr
-              frequency: !anyint
-              host: !anything
-              port: !anyint
-              state: !anystr
-              type: !anystr
-
   - name: Request-Analysis-Global
     request:
       verify: False
@@ -1079,6 +1118,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           global:
             alerts_log: !anystr
@@ -1107,6 +1147,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           active-response: !anything
 
@@ -1120,6 +1161,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           alerts:
             email_alert_level: !anyint
@@ -1135,6 +1177,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           command: !anything
 
@@ -1148,6 +1191,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           internal:
             analysisd:
@@ -1175,6 +1219,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           auth:
             ciphers: !anystr
@@ -1201,6 +1246,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           active-response:
             ca_verification: !anystr
@@ -1216,6 +1262,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           active-response:
             ca_store: !anything
@@ -1232,6 +1279,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           internal:
             execd:
@@ -1248,6 +1296,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           internal:
             execd:
@@ -1264,6 +1313,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           bind_addr: !anystr
           disabled: !anybool
@@ -1275,43 +1325,6 @@ stages:
           nodes: !anything
           port: !anyint
 
-  - name: Request-Csyslog-Csyslog
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/csyslog/csyslog"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          syslog_output:
-            - format: !anystr
-              level: !anyint
-              port: !anyint
-              server: !anystr
-              use_fqdn: !anystr
-
-  - name: Request-Integrator-Integration
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/integrator/integration"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          integration:
-            - alert_format: !anystr
-              api_key: !anystr
-              group: !anystr
-              level: !anyint
-              max_log: !anyint
-              name: !anystr
-
   - name: Request-Logcollector-Localfile (Manager)
     request:
       verify: False
@@ -1322,6 +1335,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           localfile: !anything
 
@@ -1335,6 +1349,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           localfile: !anything
 
@@ -1368,6 +1383,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           internal:
             logcollector:
@@ -1397,6 +1413,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           internal:
             logcollector:
@@ -1416,53 +1433,6 @@ stages:
               sock_fail_time: !anyint
               vcheck_files: !anyint
 
-  - name: Request-Mail-Global
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/mail/global"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          global:
-            email_from: !anystr
-            email_log_source: !anystr
-            email_maxperhour: !anyint
-            email_to: !anything
-            smtp_server: !anystr
-
-  - name: Request-Mail-Alerts
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/mail/alerts"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          email_alerts: !anything
-
-  - name: Request-Mail-Internal
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/mail/internal"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          internal:
-            mail:
-              grouping: !anyint
-              strict_checking: !anyint
-
   - name: Request-Monitor-Internal
     request:
       verify: False
@@ -1473,6 +1443,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           monitord:
             compress: !anyint
@@ -1495,6 +1466,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           remote:
             - connection: !anystr
@@ -1513,6 +1485,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           internal:
             remoted:
@@ -1546,6 +1519,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           syscheck:
             directories: !anything
@@ -1567,6 +1541,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           syscheck:
             directories: !anything
@@ -1588,6 +1563,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           rootcheck:
             check_dev: !anystr
@@ -1615,6 +1591,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           rootcheck:
             check_dev: !anystr
@@ -1642,6 +1619,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           internal:
             rootcheck:
@@ -1664,6 +1642,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           internal:
             syscheck:
@@ -1687,6 +1666,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           wmodules: !anything
 
@@ -1700,6 +1680,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           wmodules: !anything
 
@@ -1713,7 +1694,7 @@ stages:
     response: &resource_not_found
       status_code: 404
       json:
-        code: 1701
+        error: 1701
 
   - name: Try to show config of an invalid agent
     request:
@@ -1726,18 +1707,6 @@ stages:
       status_code: 400
       json:
         <<: *error_spec
-
-  - name: Request Error
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/mail/global"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 400
-      json:
-        code: 1117
 
   - name: Request Error Component Parameter
     request:
@@ -1790,6 +1759,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1810,6 +1780,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1842,6 +1813,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '001'
@@ -1865,6 +1837,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1885,6 +1858,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1917,6 +1891,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '001'
@@ -1942,6 +1917,7 @@ stages:
         json:
           expected_total_agents: data.affected_items[2].count
       json:
+        error: !anyint
         data: &get_groups_answer
           affected_items:
             - name: 'default'
@@ -1966,6 +1942,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: 'group2'
@@ -2005,6 +1982,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items: []
@@ -2021,7 +1999,7 @@ stages:
       status_code: 400 # /groups now uses WazuhDBQuery and SQLite cannot handle too large integers
       json:
         detail: !anystr
-        code: 2003
+        error: 2003
 
   - name: Try show groups with limit 0
     request:
@@ -2063,6 +2041,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: 'group3'
@@ -2086,7 +2065,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
   - name: Search
     request:
@@ -2097,6 +2076,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: 'default'
@@ -2114,6 +2094,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           <<: *affected_empty_answer
 
@@ -2133,10 +2114,11 @@ stages:
       verify: False
       <<: *get_agents_groups
       params:
-        list_groups: 'group1,group3'
+        groups_list: 'group1,group3'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: 'group1'
@@ -2176,6 +2158,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           <<: *get_groups_answer
 
@@ -2194,6 +2177,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '003'
@@ -2214,6 +2198,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '006'
@@ -2253,7 +2238,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 2003
+        error: 2003
 
   - name: Try show agents with limit 0
     request:
@@ -2296,7 +2281,7 @@ stages:
     response: &resource_not_found_group
       status_code: 404
       json:
-        code: 1710
+        error: 1710
 
   - name: Params, invalid group name (not alphanumeric)
     request:
@@ -2320,6 +2305,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '008'
@@ -2338,7 +2324,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
   - name: Search
     request:
@@ -2349,6 +2335,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '008'
@@ -2365,6 +2352,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           <<: *affected_empty_answer
 
@@ -2377,6 +2365,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '003'
@@ -2406,6 +2395,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '007'
@@ -2424,7 +2414,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1724
+        error: 1724
 
   - name: Try show agents with not allowed selector (invalid character)
     request:
@@ -2446,6 +2436,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '003'
@@ -2476,6 +2467,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '007'
@@ -2493,6 +2485,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '003'
@@ -2509,7 +2502,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1408
+        error: 1408
 
   - name: Try show agents with bad query (invalid character)
     request:
@@ -2563,6 +2556,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '003'
@@ -2582,6 +2576,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: !anystr
@@ -2609,6 +2604,7 @@ stages:
     response:
       status_code: 200
       json: &groups_id_config_response
+        error: !anyint
         data:
           affected_items:
             - config: !anything
@@ -2684,6 +2680,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: 1
@@ -2737,6 +2734,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - filename: !anystr
@@ -2761,6 +2759,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - filename: "{filename_saved}"
@@ -2800,6 +2799,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: !anyint
@@ -2849,6 +2849,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: 0
@@ -2882,6 +2883,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           total_affected_items: !anyint
@@ -2897,7 +2899,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
   - name: Search
     request:
@@ -2908,6 +2910,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - filename: !anystr
@@ -2925,6 +2928,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: 0
@@ -2973,6 +2977,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - filename: !anystr
@@ -2996,6 +3001,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data: !anything
 
   - name: Try get one file of a group, bad group
@@ -3077,6 +3083,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data: &get_agents_by_name_response
           affected_items:
             - id: '001'
@@ -3097,6 +3104,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: 0
 
@@ -3110,6 +3118,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           <<: *get_agents_by_name_response
 
@@ -3123,6 +3132,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '001'
@@ -3142,7 +3152,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1724
+        error: 1724
 
 ---
 test_name: GET /agents/no_group
@@ -3159,6 +3169,7 @@ stages:
     response:
       status_code: 200
       json: &no_group_response
+        error: !anyint
         data:
           affected_items:
             - id: '011'
@@ -3177,6 +3188,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '011'
@@ -3215,7 +3227,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 2003
+        error: 2003
 
   - name: Try show agents with limit 0
     request:
@@ -3257,6 +3269,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '012'
@@ -3274,7 +3287,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
   - name: Search
     request:
@@ -3285,6 +3298,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '011'
@@ -3301,6 +3315,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           <<: *affected_empty_answer
 
@@ -3324,7 +3339,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1408
+        error: 1408
 
   - name: Try show agents with bad query (invalid character)
     request:
@@ -3395,15 +3410,19 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 2
         sort: -id
     response:
       status_code: 200
       json:
+        error: !anyint
         data: &outdated_agents_response
           affected_items:
             - id: '010'
             - id: '009'
+            - id: '008'
+            - id: '007'
+            - id: '006'
+            - id: '005'
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -3419,6 +3438,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: '009'
@@ -3457,7 +3477,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 2003
+        error: 2003
 
   - name: Try show agents with limit 0
     request:
@@ -3499,7 +3519,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
   - name: Filter agents by query
     request:
@@ -3511,25 +3531,34 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
-          <<: *outdated_agents_response
+          affected_items:
+            - id: '010'
+            - id: '009'
+          failed_items: [ ]
+          total_affected_items: 2
+          total_failed_items: 0
 
   - name: Filter agents by query
     request:
       verify: False
       <<: *agents_outdated_request
       params:
-        q: id<5;id!=2;manager~waz;(os.major=16,os.major=18)
+        q: id>5;id!=9;name~waz;(os.major=16,os.major=18)
+        limit: 30
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
-            - id: '001'
-            - id: '003'
-            - id: '004'
+            - id: '006'
+            - id: '007'
+            - id: '008'
+            - id: '010'
           failed_items: []
-          total_affected_items: !anyint
+          total_affected_items: 4
           total_failed_items: 0
 
   - name: Try show agents with bad query
@@ -3541,7 +3570,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1408
+        error: 1408
 
   - name: Try show agents with bad query (invalid character)
     request:
@@ -3581,6 +3610,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - count: !anyint
@@ -3604,6 +3634,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - count: !anyint
@@ -3633,7 +3664,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1724
+        error: 1724
 
   - name: Get the different combinations for os.platform, search
     request:
@@ -3648,6 +3679,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - count: !anyint
@@ -3671,7 +3703,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1724
+        error: 1724
 
   - name: Pagination
     request:
@@ -3683,6 +3715,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - count: !anyint
@@ -3721,7 +3754,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 2003
+        error: 2003
 
   - name: Try show agents with limit 0
     request:
@@ -3774,7 +3807,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
   - name: Search
     request:
@@ -3786,6 +3819,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - count: 2
@@ -3803,6 +3837,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           <<: *affected_empty_answer
 
@@ -3815,7 +3850,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1408
+        error: 1408
 
   - name: Try show agents with bad query (invalid character)
     request:
@@ -3838,6 +3873,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - count: 4
@@ -3887,6 +3923,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -3908,6 +3945,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           active: 9
           disconnected: 2
@@ -3930,6 +3968,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - ubuntu
@@ -3950,7 +3989,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '000'
+        agents_list: '000'
     response:
       status_code: 200
       json:
@@ -3972,7 +4011,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: 999,1000
+        agents_list: 999,1000
     response:
       status_code: 200
       json:
@@ -3983,7 +4022,7 @@ stages:
                 - '999'
                 - '1000'
               error:
-                code: 1817
+                code: 1818
           total_affected_items: 0
           total_failed_items: 2
 
@@ -3995,7 +4034,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: bad_id
+        agents_list: bad_id
     response:
       status_code: 400
       json:
@@ -4010,15 +4049,17 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         force: True
-        list_agents: 001,002,000
+        agents_list: 001,002,000
+        version: 4.0.0
+        wpk_repo: packages-dev.wazuh.com/pre-release/wpk
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - agent_id: !anystr
+            - agent: !anystr
               task_id: 1
-            - agent_id: !anystr
+            - agent: !anystr
               task_id: 2
           total_affected_items: 2
           total_failed_items: 1
@@ -4039,7 +4080,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: 000,001,002,009,010,999
+        agents_list: 000,001,002,009,010,999
     response:
       status_code: 200
       json:
@@ -4071,7 +4112,7 @@ stages:
               id:
                 - '000'
             - error:
-                code: 1817
+                code: 1818
                 message: !anystr
                 remediation: !anything
               id:

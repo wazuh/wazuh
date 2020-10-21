@@ -26,6 +26,20 @@ wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, cha
 wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(const cJSON* params, char** error_message);
 wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status(const cJSON* params, char** error_message);
 
+// Wrappers
+
+int __wrap_OS_ReadXML(const char *file, OS_XML *_lxml) {
+    return mock();
+}
+
+char* __wrap_OS_GetOneContentforElement(OS_XML *_lxml, const char **element_name) {
+    return mock_type(char *);
+}
+
+void __wrap_OS_ClearXML(OS_XML *_lxml) {
+    return;
+}
+
 // Setup / teardown
 
 static int teardown_json(void **state) {
@@ -155,12 +169,19 @@ void test_wm_agent_upgrade_parse_response_data_object(void **state) {
 void test_wm_agent_upgrade_parse_task_module_request_complete(void **state)
 {
     int command = 1;
+    char *node = NULL;
     char *status = "Failed";
     char *error = "Error string";
+
+    os_strdup("node00", node);
 
     cJSON *agent_array = cJSON_CreateArray();
     cJSON_AddItemToArray(agent_array, cJSON_CreateNumber(10));
     cJSON_AddItemToArray(agent_array, cJSON_CreateNumber(11));
+
+    will_return(__wrap_OS_ReadXML, 1);
+
+    will_return(__wrap_OS_GetOneContentforElement, node);
 
     cJSON *response = wm_agent_upgrade_parse_task_module_request(command, agent_array, status, error);
 
@@ -168,6 +189,8 @@ void test_wm_agent_upgrade_parse_task_module_request_complete(void **state)
 
     assert_non_null(cJSON_GetObjectItem(response, "origin"));
     cJSON *origin = cJSON_GetObjectItem(response, "origin");
+    assert_non_null(cJSON_GetObjectItem(origin, "name"));
+    assert_string_equal(cJSON_GetObjectItem(origin, "name")->valuestring, "node00");
     assert_non_null(cJSON_GetObjectItem(origin, "module"));
     assert_string_equal(cJSON_GetObjectItem(origin, "module")->valuestring, "upgrade_module");
     assert_non_null(cJSON_GetObjectItem(response, "command"));
@@ -187,10 +210,17 @@ void test_wm_agent_upgrade_parse_task_module_request_complete(void **state)
 void test_wm_agent_upgrade_parse_task_module_request_without_status_and_error(void **state)
 {
     int command = 1;
+    char *node = NULL;
+
+    os_strdup("node00", node);
 
     cJSON *agent_array = cJSON_CreateArray();
     cJSON_AddItemToArray(agent_array, cJSON_CreateNumber(10));
     cJSON_AddItemToArray(agent_array, cJSON_CreateNumber(11));
+
+    will_return(__wrap_OS_ReadXML, 1);
+
+    will_return(__wrap_OS_GetOneContentforElement, node);
 
     cJSON *response = wm_agent_upgrade_parse_task_module_request(command, agent_array, NULL, NULL);
 
@@ -198,6 +228,40 @@ void test_wm_agent_upgrade_parse_task_module_request_without_status_and_error(vo
 
     assert_non_null(cJSON_GetObjectItem(response, "origin"));
     cJSON *origin = cJSON_GetObjectItem(response, "origin");
+    assert_non_null(cJSON_GetObjectItem(origin, "name"));
+    assert_string_equal(cJSON_GetObjectItem(origin, "name")->valuestring, "node00");
+    assert_non_null(cJSON_GetObjectItem(origin, "module"));
+    assert_string_equal(cJSON_GetObjectItem(origin, "module")->valuestring, "upgrade_module");
+    assert_non_null(cJSON_GetObjectItem(response, "command"));
+    assert_string_equal(cJSON_GetObjectItem(response, "command")->valuestring, "upgrade_custom");
+    assert_non_null(cJSON_GetObjectItem(response, "parameters"));
+    cJSON *parameters = cJSON_GetObjectItem(response, "parameters");
+    assert_non_null(cJSON_GetObjectItem(parameters, "agents"));
+    assert_int_equal(cJSON_GetArrayItem(cJSON_GetObjectItem(parameters, "agents"), 0)->valueint, 10);
+    assert_int_equal(cJSON_GetArrayItem(cJSON_GetObjectItem(parameters, "agents"), 1)->valueint, 11);
+    assert_null(cJSON_GetArrayItem(cJSON_GetObjectItem(parameters, "agents"), 2));
+    assert_null(cJSON_GetObjectItem(parameters, "status"));
+    assert_null(cJSON_GetObjectItem(parameters, "error_msg"));
+}
+
+void test_wm_agent_upgrade_parse_task_module_request_xml_error(void **state)
+{
+    int command = 1;
+
+    cJSON *agent_array = cJSON_CreateArray();
+    cJSON_AddItemToArray(agent_array, cJSON_CreateNumber(10));
+    cJSON_AddItemToArray(agent_array, cJSON_CreateNumber(11));
+
+    will_return(__wrap_OS_ReadXML, -1);
+
+    cJSON *response = wm_agent_upgrade_parse_task_module_request(command, agent_array, NULL, NULL);
+
+    *state = response;
+
+    assert_non_null(cJSON_GetObjectItem(response, "origin"));
+    cJSON *origin = cJSON_GetObjectItem(response, "origin");
+    assert_non_null(cJSON_GetObjectItem(origin, "name"));
+    assert_string_equal(cJSON_GetObjectItem(origin, "name")->valuestring, "");
     assert_non_null(cJSON_GetObjectItem(origin, "module"));
     assert_string_equal(cJSON_GetObjectItem(origin, "module")->valuestring, "upgrade_module");
     assert_non_null(cJSON_GetObjectItem(response, "command"));
@@ -376,14 +440,12 @@ void test_wm_agent_upgrade_parse_upgrade_command_success(void **state)
     char *error = NULL;
     char *repo = "wazuh.com";
     char *ver = "v4.0.0";
-    bool http = false;
-    bool force = false;
 
     cJSON *params = cJSON_CreateObject();
     cJSON_AddStringToObject(params, "wpk_repo", repo);
     cJSON_AddStringToObject(params, "version", ver);
-    cJSON_AddNumberToObject(params, "use_http", http);
-    cJSON_AddNumberToObject(params, "force_upgrade", force);
+    cJSON_AddTrueToObject(params, "use_http");
+    cJSON_AddTrueToObject(params, "force_upgrade");
 
     wm_upgrade_task* upgrade_task = wm_agent_upgrade_parse_upgrade_command(params, &error);
 
@@ -396,8 +458,8 @@ void test_wm_agent_upgrade_parse_upgrade_command_success(void **state)
     assert_non_null(upgrade_task);
     assert_string_equal(upgrade_task->wpk_repository, repo);
     assert_string_equal(upgrade_task->custom_version, ver);
-    assert_int_equal(upgrade_task->use_http, http);
-    assert_int_equal(upgrade_task->force_upgrade, force);
+    assert_int_equal(upgrade_task->use_http, true);
+    assert_int_equal(upgrade_task->force_upgrade, true);
     assert_null(upgrade_task->wpk_file);
     assert_null(upgrade_task->wpk_sha1);
     assert_null(error);
@@ -420,8 +482,8 @@ void test_wm_agent_upgrade_parse_upgrade_command_default(void **state)
     assert_non_null(upgrade_task);
     assert_null(upgrade_task->wpk_repository);
     assert_null(upgrade_task->custom_version);
-    assert_int_equal(upgrade_task->use_http, 0);
-    assert_int_equal(upgrade_task->force_upgrade, 0);
+    assert_int_equal(upgrade_task->use_http, false);
+    assert_int_equal(upgrade_task->force_upgrade, false);
     assert_null(upgrade_task->wpk_file);
     assert_null(upgrade_task->wpk_sha1);
     assert_null(error);
@@ -430,12 +492,10 @@ void test_wm_agent_upgrade_parse_upgrade_command_default(void **state)
 void test_wm_agent_upgrade_parse_upgrade_command_invalid_repo_type(void **state)
 {
     char *error = NULL;
-    bool http = true;
-    bool force = false;
 
     cJSON *params = cJSON_CreateObject();
-    cJSON_AddNumberToObject(params, "use_http", http);
-    cJSON_AddNumberToObject(params, "force_upgrade", force);
+    cJSON_AddTrueToObject(params, "use_http");
+    cJSON_AddFalseToObject(params, "force_upgrade");
     cJSON_AddNumberToObject(params, "wpk_repo", 555);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
@@ -455,12 +515,10 @@ void test_wm_agent_upgrade_parse_upgrade_command_invalid_repo_type(void **state)
 void test_wm_agent_upgrade_parse_upgrade_command_invalid_version_type(void **state)
 {
     char *error = NULL;
-    bool http = false;
-    bool force = true;
 
     cJSON *params = cJSON_CreateObject();
-    cJSON_AddNumberToObject(params, "use_http", http);
-    cJSON_AddNumberToObject(params, "force_upgrade", force);
+    cJSON_AddFalseToObject(params, "use_http");
+    cJSON_AddTrueToObject(params, "force_upgrade");
     cJSON_AddNumberToObject(params, "version", 111);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
@@ -482,10 +540,10 @@ void test_wm_agent_upgrade_parse_upgrade_command_invalid_http(void **state)
     char *error = NULL;
 
     cJSON *params = cJSON_CreateObject();
-    cJSON_AddStringToObject(params, "use_http", "yes");
+    cJSON_AddNumberToObject(params, "use_http", 1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Parameter \"use_http\" should be a number'");
+    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Parameter \"use_http\" should be true or false'");
 
     wm_upgrade_task* upgrade_task = wm_agent_upgrade_parse_upgrade_command(params, &error);
 
@@ -495,28 +553,7 @@ void test_wm_agent_upgrade_parse_upgrade_command_invalid_http(void **state)
     state[1] = NULL;
 
     assert_non_null(error);
-    assert_string_equal(error, "Parameter \"use_http\" should be a number");
-}
-
-void test_wm_agent_upgrade_parse_upgrade_command_invalid_http_number(void **state)
-{
-    char *error = NULL;
-
-    cJSON *params = cJSON_CreateObject();
-    cJSON_AddNumberToObject(params, "use_http", 5);
-
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Parameter \"use_http\" can take only values [0, 1]'");
-
-    wm_upgrade_task* upgrade_task = wm_agent_upgrade_parse_upgrade_command(params, &error);
-
-    cJSON_Delete(params);
-
-    state[0] = (void*)error;
-    state[1] = NULL;
-
-    assert_non_null(error);
-    assert_string_equal(error, "Parameter \"use_http\" can take only values [0, 1]");
+    assert_string_equal(error, "Parameter \"use_http\" should be true or false");
 }
 
 void test_wm_agent_upgrade_parse_upgrade_command_invalid_force(void **state)
@@ -524,10 +561,10 @@ void test_wm_agent_upgrade_parse_upgrade_command_invalid_force(void **state)
     char *error = NULL;
 
     cJSON *params = cJSON_CreateObject();
-    cJSON_AddStringToObject(params, "force_upgrade", "no");
+    cJSON_AddNumberToObject(params, "force_upgrade", 0);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Parameter \"force_upgrade\" should be a number'");
+    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Parameter \"force_upgrade\" should be true or false'");
 
     wm_upgrade_task* upgrade_task = wm_agent_upgrade_parse_upgrade_command(params, &error);
 
@@ -537,28 +574,7 @@ void test_wm_agent_upgrade_parse_upgrade_command_invalid_force(void **state)
     state[1] = NULL;
 
     assert_non_null(error);
-    assert_string_equal(error, "Parameter \"force_upgrade\" should be a number");
-}
-
-void test_wm_agent_upgrade_parse_upgrade_command_invalid_force_number(void **state)
-{
-    char *error = NULL;
-
-    cJSON *params = cJSON_CreateObject();
-    cJSON_AddNumberToObject(params, "force_upgrade", 5);
-
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Parameter \"force_upgrade\" can take only values [0, 1]'");
-
-    wm_upgrade_task* upgrade_task = wm_agent_upgrade_parse_upgrade_command(params, &error);
-
-    cJSON_Delete(params);
-
-    state[0] = (void*)error;
-    state[1] = NULL;
-
-    assert_non_null(error);
-    assert_string_equal(error, "Parameter \"force_upgrade\" can take only values [0, 1]");
+    assert_string_equal(error, "Parameter \"force_upgrade\" should be true or false");
 }
 
 void test_wm_agent_upgrade_parse_upgrade_command_invalid_json(void **state)
@@ -861,8 +877,8 @@ void test_wm_agent_upgrade_parse_message_upgrade_success(void **state)
                    "        \"agents\": [1,15,24],"
                    "        \"wpk_repo\":\"wazuh.com\","
                    "        \"version\":\"v4.0.0\","
-                   "        \"use_http\":0,"
-                   "        \"force_upgrade\":1"
+                   "        \"use_http\":false,"
+                   "        \"force_upgrade\":true"
                    "    }"
                    "}";
 
@@ -901,8 +917,8 @@ void test_wm_agent_upgrade_parse_message_upgrade_agent_error(void **state)
                    "        \"agents\": [1,15,\"24\"],"
                    "        \"wpk_repo\":\"wazuh.com\","
                    "        \"version\":\"v4.0.0\","
-                   "        \"use_http\":0,"
-                   "        \"force_upgrade\":1"
+                   "        \"use_http\":false,"
+                   "        \"force_upgrade\":true"
                    "    }"
                    "}";
 
@@ -934,12 +950,12 @@ void test_wm_agent_upgrade_parse_message_upgrade_task_error(void **state)
                    "        \"wpk_repo\":\"wazuh.com\","
                    "        \"version\":\"v4.0.0\","
                    "        \"use_http\":\"yes\","
-                   "        \"force_upgrade\":1"
+                   "        \"force_upgrade\":true"
                    "    }"
                    "}";
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Parameter \"use_http\" should be a number'");
+    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Parameter \"use_http\" should be true or false'");
 
     int command = wm_agent_upgrade_parse_message(buffer, (void*)&upgrade_task, &agent_ids, &error);
 
@@ -954,7 +970,7 @@ void test_wm_agent_upgrade_parse_message_upgrade_task_error(void **state)
     assert_int_equal(agent_ids[2], 24);
     assert_int_equal(agent_ids[3], -1);
     assert_non_null(error);
-    assert_string_equal(error, "{\"error\":3,\"data\":[{\"error\":3,\"message\":\"Parameter \\\"use_http\\\" should be a number\"}],\"message\":\"JSON parameter not recognized\"}");
+    assert_string_equal(error, "{\"error\":3,\"data\":[{\"error\":3,\"message\":\"Parameter \\\"use_http\\\" should be true or false\"}],\"message\":\"JSON parameter not recognized\"}");
 }
 
 void test_wm_agent_upgrade_parse_message_upgrade_custom_success(void **state)
@@ -1264,6 +1280,7 @@ int main(void) {
         // wm_agent_upgrade_parse_task_module_request
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_task_module_request_complete, teardown_json),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_task_module_request_without_status_and_error, teardown_json),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_task_module_request_xml_error, teardown_json),
         // wm_agent_upgrade_parse_agent_response
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_ok_with_data),
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_ok_without_data),
@@ -1282,9 +1299,7 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_repo_type, teardown_parse_upgrade),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_version_type, teardown_parse_upgrade),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_http, teardown_parse_upgrade),
-        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_http_number, teardown_parse_upgrade),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_force, teardown_parse_upgrade),
-        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_force_number, teardown_parse_upgrade),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_json, teardown_parse_upgrade),
         // wm_agent_upgrade_parse_upgrade_custom_command
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_custom_command_success, teardown_parse_upgrade_custom),

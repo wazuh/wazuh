@@ -17,10 +17,12 @@ stages:
     response:
       status_code: 200
       json:
-        api_version: !anystr
-        hostname: !anystr
-        license_name: !anystr
-        license_url: !anystr
-        revision: !anyint
-        timestamp: !anystr
-        title: !anystr
+        error: !anyint
+        data:
+          api_version: !anystr
+          hostname: !anystr
+          license_name: !anystr
+          license_url: !anystr
+          revision: !anyint
+          timestamp: !anystr
+          title: !anystr

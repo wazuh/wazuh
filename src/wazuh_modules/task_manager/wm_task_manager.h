@@ -29,6 +29,7 @@ typedef struct _wm_task_manager {
 typedef enum _error_code {
     WM_TASK_SUCCESS = 0,
     WM_TASK_INVALID_MESSAGE,
+    WM_TASK_INVALID_NODE,
     WM_TASK_INVALID_MODULE,
     WM_TASK_INVALID_COMMAND,
     WM_TASK_INVALID_AGENT_ID,

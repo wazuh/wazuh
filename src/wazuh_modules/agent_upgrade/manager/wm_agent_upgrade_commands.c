@@ -67,6 +67,19 @@ STATIC int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_tas
  * */
 STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task, const wm_manager_configs* manager_configs) __attribute__((nonnull));
 
+void wm_agent_upgrade_cancel_pending_upgrades() {
+    cJSON *cancel_request = NULL;
+    cJSON *cancel_response = NULL;
+
+    cancel_response = cJSON_CreateArray();
+    cancel_request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_CANCEL_TASKS, NULL, NULL, NULL);
+
+    wm_agent_upgrade_task_module_callback(cancel_response, cancel_request, NULL, NULL);
+
+    cJSON_Delete(cancel_request);
+    cJSON_Delete(cancel_response);
+}
+
 char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task, const wm_manager_configs* manager_configs) {
     char* response = NULL;
     int agent = 0;
@@ -210,18 +223,52 @@ char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, const 
 
 STATIC int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task, const wm_manager_configs* manager_configs) {
     int validate_result = WM_UPGRADE_SUCCESS;
+    cJSON *agent_info = NULL;
+    cJSON *value = NULL;
 
     // Agent information
     agent_task->agent_info = wm_agent_upgrade_init_agent_info();
     agent_task->agent_info->agent_id = agent_id;
 
-    if (!wdb_agent_info(agent_id,
-                        &agent_task->agent_info->platform,
-                        &agent_task->agent_info->major_version,
-                        &agent_task->agent_info->minor_version,
-                        &agent_task->agent_info->architecture,
-                        &agent_task->agent_info->wazuh_version,
-                        &agent_task->agent_info->last_keep_alive)) {
+    agent_info = wdb_get_agent_info(agent_id, NULL);
+
+    if (agent_info && agent_info->child) {
+
+        // Platform
+        value = cJSON_GetObjectItem(agent_info->child, "os_platform");
+        if(cJSON_IsString(value) && value->valuestring != NULL){
+            os_strdup(value->valuestring, agent_task->agent_info->platform);
+        }
+
+        // Major version
+        value = cJSON_GetObjectItem(agent_info->child, "os_major");
+        if(cJSON_IsString(value) && value->valuestring != NULL){
+            os_strdup(value->valuestring, agent_task->agent_info->major_version);
+        }
+
+        // Minor version
+        value = cJSON_GetObjectItem(agent_info->child, "os_minor");
+        if(cJSON_IsString(value) && value->valuestring != NULL){
+            os_strdup(value->valuestring, agent_task->agent_info->minor_version);
+        }
+
+        // Architecture
+        value = cJSON_GetObjectItem(agent_info->child, "os_arch");
+        if(cJSON_IsString(value) && value->valuestring != NULL){
+            os_strdup(value->valuestring, agent_task->agent_info->architecture);
+        }
+
+        // Wazuh version
+        value = cJSON_GetObjectItem(agent_info->child, "version");
+        if(cJSON_IsString(value) && value->valuestring != NULL){
+            os_strdup(value->valuestring, agent_task->agent_info->wazuh_version);
+        }
+
+        // Last keep alive
+        value = cJSON_GetObjectItem(agent_info->child, "last_keepalive");
+        if(cJSON_IsNumber(value)){
+            agent_task->agent_info->last_keep_alive = value->valueint;
+        }
 
         // Validate agent and task information
         validate_result = wm_agent_upgrade_validate_agent_task(agent_task, manager_configs);
@@ -236,6 +283,9 @@ STATIC int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_tas
                 validate_result = WM_UPGRADE_UNKNOWN_ERROR;
             }
         }
+
+        cJSON_Delete(agent_info);
+
     } else {
         validate_result = WM_UPGRADE_GLOBAL_DB_FAILURE;
     }
@@ -277,7 +327,7 @@ STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task,
     wm_agent_upgrade_task_module_callback(status_response, status_request, NULL, NULL);
     if (!wm_agent_upgrade_validate_task_status_message(cJSON_GetArrayItem(status_response, 0), &status, NULL)) {
         validate_result = WM_UPGRADE_TASK_MANAGER_COMMUNICATION;
-    } else if (status && !strcmp(status, task_statuses[WM_TASK_IN_PROGRESS])) {
+    } else if (status && (!strcmp(status, task_statuses[WM_TASK_PENDING]) || !strcmp(status, task_statuses[WM_TASK_IN_PROGRESS]))) {
         validate_result = WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS;
     }
 

@@ -224,32 +224,22 @@ STATIC wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* para
                 }
             } else if(strcmp(item->string, "use_http") == 0) {
                 /* use_http */
-                if (item->type == cJSON_Number) {
-                    if (item->valueint == 1) {
-                        task->use_http = true;
-                    } else if(item->valueint == 0) {
-                        task->use_http = false;
-                    } else {
-                        sprintf(output, "Parameter \"%s\" can take only values [0, 1]", item->string);
-                        error_flag = 1;
-                    }
+                if (item->type == cJSON_True) {
+                    task->use_http = true;
+                } else if(item->type == cJSON_False) {
+                    task->use_http = false;
                 } else {
-                    sprintf(output, "Parameter \"%s\" should be a number", item->string);
+                    sprintf(output, "Parameter \"%s\" should be true or false", item->string);
                     error_flag = 1;
                 }
             } else if(strcmp(item->string, "force_upgrade") == 0) {
                 /* force_upgrade */
-                if (item->type == cJSON_Number) {
-                    if(item->valueint == 0) {
-                        task->force_upgrade = false;
-                    } else if(item->valueint == 1) {
-                        task->force_upgrade = true;
-                    } else {
-                        sprintf(output, "Parameter \"%s\" can take only values [0, 1]", item->string);
-                        error_flag = 1;
-                    }
+                if (item->type == cJSON_True) {
+                    task->force_upgrade = true;
+                } else if(item->type == cJSON_False) {
+                    task->force_upgrade = false;
                 } else {
-                    sprintf(output, "Parameter \"%s\" should be a number", item->string);
+                    sprintf(output, "Parameter \"%s\" should be true or false", item->string);
                     error_flag = 1;
                 }
             }
@@ -411,10 +401,24 @@ cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, cJ
     cJSON *origin = cJSON_CreateObject();
     cJSON *parameters = cJSON_CreateObject();
 
+    char* node_name = NULL;
+    OS_XML xml;
+
+    const char *(xml_node[]) = {"ossec_config", "cluster", "node_name", NULL};
+
+    if (OS_ReadXML(DEFAULTCPATH, &xml) >= 0) {
+        node_name = OS_GetOneContentforElement(&xml, xml_node);
+    }
+
+    OS_ClearXML(&xml);
+
+    cJSON_AddStringToObject(origin, task_manager_json_keys[WM_TASK_NAME], node_name ? node_name : "");
     cJSON_AddStringToObject(origin, task_manager_json_keys[WM_TASK_MODULE], task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
     cJSON_AddItemToObject(request, task_manager_json_keys[WM_TASK_ORIGIN], origin);
     cJSON_AddStringToObject(request, task_manager_json_keys[WM_TASK_COMMAND], task_manager_commands_list[command]);
-    cJSON_AddItemToObject(parameters, task_manager_json_keys[WM_TASK_AGENTS], agents_array);
+    if (agents_array) {
+        cJSON_AddItemToObject(parameters, task_manager_json_keys[WM_TASK_AGENTS], agents_array);
+    }
     if (status) {
         cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_STATUS], status);
     }
@@ -422,6 +426,8 @@ cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, cJ
         cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_ERROR_MSG], error);
     }
     cJSON_AddItemToObject(request, task_manager_json_keys[WM_TASK_PARAMETERS], parameters);
+
+    os_free(node_name);
 
     return request;
 }

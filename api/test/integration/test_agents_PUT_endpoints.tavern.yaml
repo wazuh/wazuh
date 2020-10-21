@@ -19,15 +19,15 @@ stages:
     response: &resource_not_found_group
       status_code: 404
       json:
-        code: 1710
+        error: 1710
 
-    # PUT /agents/group?group_id=wrong_group&list_agents=wrong_agent
+    # PUT /agents/group?group_id=wrong_group&agents_list=wrong_agent
   - name: Try to assign an invalid agent_id to a non existing group
     request:
       verify: False
       <<: *put_agents_group
       params:
-        list_agents: "wrong_agent"
+        agents_list: "wrong_agent"
         group_id: "wrong_group"
     response:
       status_code: 400
@@ -50,7 +50,7 @@ stages:
       json:
         <<: *error_spec
 
-    # PUT /agents/group?group_id=default&list_agents=998,999
+    # PUT /agents/group?group_id=default&agents_list=998,999
   - name: Try to assign non existing agents to group default
     request:
       verify: False
@@ -59,11 +59,12 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: "998,999"
+        agents_list: "998,999"
         group_id: default
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -75,7 +76,7 @@ stages:
           total_affected_items: 0
           total_failed_items: 2
 
-    # PUT /agents/group?group_id=default&list_agents=000,999
+    # PUT /agents/group?group_id=default&agents_list=000,999
   - name: Try to assign 000 and a non existing agent to group default
     request:
       verify: False
@@ -84,11 +85,12 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: "000,999"
+        agents_list: "000,999"
         group_id: default
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -103,7 +105,7 @@ stages:
           total_affected_items: 0
           total_failed_items: 2
 
-    # PUT /agents/group?group_id=default&list_agents=001,002
+    # PUT /agents/group?group_id=default&agents_list=001,002
   - name: Try to assign agents 001 and 002 to group default where they already belong
     request:
       verify: False
@@ -112,11 +114,12 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: "001,002"
+        agents_list: "001,002"
         group_id: default
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -128,7 +131,7 @@ stages:
           total_affected_items: 0
           total_failed_items: 2
 
-    # PUT /agents/group?group_id=group1&list_agents=003,004,005
+    # PUT /agents/group?group_id=group1&agents_list=003,004,005
   - name: Assign agents 003, 004 and 005 to group1
     request:
       verify: False
@@ -137,11 +140,12 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: "003,004,005"
+        agents_list: "003,004,005"
         group_id: group1
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "003"
@@ -167,6 +171,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "001"
@@ -190,6 +195,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "001"
@@ -250,7 +256,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 2007
+        error: 2007
 
     # PUT /groups/group1/configuration
   - name: Try to update configuration using an invalid configuration file
@@ -266,7 +272,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1113
+        error: 1113
 
     # PUT /groups/group1/configuration
   - name: Try to update configuration using a wrong configuration file
@@ -282,7 +288,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1114
+        error: 1114
 
 ---
 test_name: PUT /agents/group/{group_id}/restart
@@ -301,7 +307,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1755
+        error: 1755
 
     # PUT /agents/group/group2/restart (Agents 009 and 010 are disconnected)
   - name: Restart all agents from group2
@@ -315,6 +321,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "001"
@@ -352,7 +359,7 @@ test_name: PUT /agents/restart
 
 stages:
 
-  # PUT /agents/restart?list_agents=wrong_id
+  # PUT /agents/restart?agents_list=wrong_id
   - name: Try to restart agent with wrong_id
     request: &agent_restart_request
       verify: False
@@ -361,22 +368,23 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: "wrong_id"
+        agents_list: "wrong_id"
     response:
       status_code: 400
       json:
         <<: *error_spec
 
-    # PUT /agents/restart?list_agents=998,999
+    # PUT /agents/restart?agents_list=998,999
   - name: Try to restart non existing agents
     request:
       verify: False
       <<: *agent_restart_request
       params:
-        list_agents: "998,999"
+        agents_list: "998,999"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -387,16 +395,17 @@ stages:
           total_failed_items: 2
 
 
-    # PUT /agents/restart?list_agents=000,999
+    # PUT /agents/restart?agents_list=000,999
   - name: Try to restart agent 000 and a non existing agent
     request:
       verify: False
       <<: *agent_restart_request
       params:
-        list_agents: "000,999"
+        agents_list: "000,999"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -411,16 +420,17 @@ stages:
           total_affected_items: 0
           total_failed_items: 2
 
-    # PUT /agents/restart?list_agents=001,002,999
+    # PUT /agents/restart?agents_list=001,002,999
   - name: Try to restart agents 001,002 and 999
     request:
       verify: False
       <<: *agent_restart_request
       params:
-        list_agents: "001,002,999"
+        agents_list: "001,002,999"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "001"
@@ -445,6 +455,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "001"
@@ -476,6 +487,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "001"
@@ -505,6 +517,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -528,6 +541,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "001"
@@ -549,6 +563,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -570,6 +585,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -604,6 +620,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "002"
@@ -640,6 +657,8 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
+      json:
+        error: !anyint
       verify_response_with:
         - function: tavern_utils:test_validate_restart_by_node
           extra_kwargs:
@@ -655,6 +674,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -664,7 +684,7 @@ stages:
                 - "notexists"
 
 ---
-test_name: PUT /agents/{agent_id}/upgrade
+test_name: PUT /agents/upgrade
 
 stages:
 
@@ -676,7 +696,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '999'
+        agents_list: '999'
     response: &resource_not_found
       status_code: 200
       json:
@@ -701,7 +721,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '000'
+        agents_list: '000'
     response:
       status_code: 200
       json:
@@ -726,13 +746,14 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: 'wrong_id'
+        agents_list: 'wrong_id'
     response:
       status_code: 400
       json:
         <<: *error_spec
 
   - name: Upgrade an agent
+    skip: True # At this time this test does not work because the 4.0.0 packages of the agents are not in production server
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -741,13 +762,13 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         force: True
-        list_agents: '006'
+        agents_list: '006'
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - agent_id: '006'
+            - agent: '006'
               task_id: !anyint
           total_affected_items: 1
           total_failed_items: 0
@@ -755,6 +776,7 @@ stages:
         message: !anystr
 
   - name: Try to upgrade an agent that is updated to the latest version
+    skip: True # At this time this test does not work because the 4.0.0 packages of the agents are not in production server
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -762,7 +784,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '006'
+        agents_list: '006'
     response:
       status_code: 200
       json:
@@ -790,12 +812,13 @@ stages:
         version: v3.9.3
         force: true
         wait_for_complete: 'true'
-        list_agents: '003'
+        agents_list: '003'
     response:
       status_code: 200
     delay_after: !float "{upgrade_delay}"
 
   - name: Upgrade an agent using http
+    skip: True # At this time this test does not work because the 4.0.0 packages of the agents are not in production server
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -803,7 +826,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '004'
+        agents_list: '004'
         use_http: true
         force: true
         wait_for_complete: 'true'
@@ -812,7 +835,7 @@ stages:
       json:
         data:
           affected_items:
-            - agent_id: '004'
+            - agent: '004'
               task_id: !anyint
           total_affected_items: 1
           total_failed_items: 0
@@ -820,6 +843,7 @@ stages:
         message: !anystr
 
   - name: Upgrade an agent using wkp repo to a 4.x version
+    skip: True # At this time this test does not work because the 4.0.0 packages of the agents are not in production server
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -827,7 +851,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '005'
+        agents_list: '005'
         version: 4.0.0
         force: true
     response:
@@ -835,7 +859,7 @@ stages:
       json:
         data:
           affected_items:
-            - agent_id: '005'
+            - agent: '005'
               task_id: !anyint
           total_affected_items: 1
           total_failed_items: 0
@@ -857,7 +881,7 @@ stages:
       params:
         installer: upgrade.sh
         file_path: "{custom_wpk_path:s}"
-        list_agents: 999
+        agents_list: 999
     response:
       <<: *resource_not_found
 
@@ -869,7 +893,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '000'
+        agents_list: '000'
         installer: upgrade.sh
         file_path: "{custom_wpk_path:s}"
     response:
@@ -896,7 +920,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: wrong_id
+        agents_list: wrong_id
         installer: upgrade.sh
         file_path: "{custom_wpk_path:s}"
     response:
@@ -912,7 +936,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: 006
+        agents_list: 006
     response:
       status_code: 400
       json:
@@ -926,7 +950,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '007'
+        agents_list: '007'
         installer: upgrade.sh
         file_path: "{custom_wpk_path:s}"
         wait_for_complete: 'true'
@@ -935,7 +959,7 @@ stages:
       json:
         data:
           affected_items:
-            - agent_id: '007'
+            - agent: '007'
               task_id: !anyint
           total_affected_items: 1
           total_failed_items: 0
@@ -950,7 +974,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: 008
+        agents_list: 008
         file_path: "{custom_wpk_path:s}"
         wait_for_complete: 'true'
     response:
@@ -958,7 +982,7 @@ stages:
       json:
         data:
           affected_items:
-            - agent_id: '008'
+            - agent: '008'
               task_id: !anyint
           total_affected_items: 1
           total_failed_items: 0
@@ -974,7 +998,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '007'
+        agents_list: '007'
     response: &upgrade_result
       status_code: 200
       json:
@@ -985,7 +1009,7 @@ stages:
               task_id: !anyint
               module: upgrade_module
               command: upgrade_custom
-              status: Updated
+              status: Updating
               create_time: !anystr
               update_time: !anystr
           total_affected_items: 1
@@ -1001,6 +1025,6 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '008'
+        agents_list: '008'
     response:
       <<: *upgrade_result

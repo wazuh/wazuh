@@ -14,10 +14,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: all
+        agents_list: all
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '000'
@@ -37,10 +38,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,002,005,006'
+        agents_list: '001,002,005,006'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '002'
@@ -69,6 +71,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - agent_id: '002'
@@ -87,10 +90,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '002,003,007,008'
+        agents_list: '002,003,007,008'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - agent_id: '002'
@@ -119,6 +123,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data: &even_affected_agent_list
           affected_items:
             - agent_id: '000'
@@ -138,10 +143,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,002,006,007'
+        agents_list: '001,002,006,007'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - agent_id: '002'
@@ -170,6 +176,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           <<: *even_affected_agent_list
 
@@ -181,10 +188,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '005,006,007,008'
+        agents_list: '005,006,007,008'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - agent_id: '006'
@@ -213,6 +221,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           <<: *even_affected_agent_list
 
@@ -224,10 +233,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,005,007,008'
+        agents_list: '001,005,007,008'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - agent_id: '008'
@@ -256,6 +266,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           <<: *even_affected_agent_list
 
@@ -267,10 +278,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '002,004,005,008'
+        agents_list: '002,004,005,008'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - agent_id: '002'
@@ -299,6 +311,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           <<: *even_affected_agent_list
 
@@ -310,10 +323,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,002,003,004'
+        agents_list: '001,002,003,004'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - agent_id: '002'
@@ -342,6 +356,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -356,11 +371,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 403
       json:
-        code: 4000
+        error: 4000
 
 ---
 test_name: GET /experimental/syscollector/ports
@@ -377,6 +392,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             # The answer must include at least one item whose agent is shown below
@@ -397,10 +413,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '002,004,006,008'
+        agents_list: '002,004,006,008'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - agent_id: '002'
@@ -426,6 +443,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -440,10 +458,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,004,005,008'
+        agents_list: '001,004,005,008'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items:
@@ -469,11 +488,14 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_validate_syscollector_hotfix
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: 1  # Only the agent 000 will have results
+          total_affected_items: !anyint
           total_failed_items: 0
 
   - name: Request
@@ -484,20 +506,21 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '000,004,005,006'  # Only the agent 000 will have results. Agent 005 has no permission
+        agents_list: '000,004,005,006'  # Only the agent 000 will have results. Agent 005 has no permission
     response:
       status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_validate_syscollector_hotfix
+        extra_kwargs:
+          experimental: true
       json:
+        error: !anyint
         data:
-          affected_items:
-            - scan_id: !anyint
-              hotfix: !anystr
-              scan_time: !anystr
-              agent_id: '000'
+          affected_items: !anything
           failed_items:
             - error:
                 code: 4000
               id:
                 - '005'
-          total_affected_items: 1
+          total_affected_items: !anyint
           total_failed_items: 1
