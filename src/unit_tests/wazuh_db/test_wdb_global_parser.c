@@ -2196,7 +2196,6 @@ void test_wdb_parse_reset_agents_connection_success(void **state)
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     char query[OS_BUFFER_SIZE] = "global reset-agents-connection";
-    cJSON *j_object = NULL;
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: reset-agents-connection");
