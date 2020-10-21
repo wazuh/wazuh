@@ -173,6 +173,7 @@ typedef enum global_db_access {
     WDB_UPDATE_AGENT_NAME,
     WDB_UPDATE_AGENT_DATA,
     WDB_UPDATE_AGENT_KEEPALIVE,
+    WDB_UPDATE_AGENT_CONNECTION_STATUS,
     WDB_UPDATE_AGENT_STATUS,
     WDB_UPDATE_AGENT_GROUP,
     WDB_UPDATE_FIM_OFFSET,
@@ -454,7 +455,7 @@ int wdb_update_agent_name(int id, const char *name, int *sock);
 int wdb_update_agent_data(agent_info_data *agent_data, int *sock);
 
 /**
- * @brief Update agent's last keepalive ond modifies the cluster synchronization status.
+ * @brief Update agent's last keepalive and modifies the cluster synchronization status.
  *
  * @param[in] id Id of the agent for whom the keepalive must be updated.
  * @param[in] sync_status String with the cluster synchronization status to be set.
@@ -462,6 +463,16 @@ int wdb_update_agent_data(agent_info_data *agent_data, int *sock);
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
 int wdb_update_agent_keepalive(int id, const char *sync_status, int *sock);
+
+/**
+ * @brief Update agent's connection status.
+ *
+ * @param[in] id Id of the agent for whom the connection status must be updated.
+ * @param[in] connection_status String with the connection status to be set.
+ * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @return OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_update_agent_connection_status(int id, const char *connection_status, int *sock);
 
 /**
  * @brief Set agent updating status.
