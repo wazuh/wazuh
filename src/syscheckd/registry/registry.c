@@ -884,12 +884,12 @@ void fim_open_key(HKEY root_key_handle,
         }
 
         fim_db_set_registry_key_scanned(syscheck.database, full_key, arch);
+
+        if (value_count) {
+            fim_read_values(current_key_handle, &new, &saved, value_count, mode);
+        }
     }
-  
-    if (value_count) {
-        fim_read_values(current_key_handle, &new, &saved, value_count, mode);
-    }
-  
+
     w_mutex_unlock(&syscheck.fim_registry_mutex);
 
     fim_registry_free_key(new.registry_entry.key);
