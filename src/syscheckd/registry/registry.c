@@ -612,26 +612,26 @@ void fim_registry_process_unscanned_entries() {
     fim_event_mode event_mode = FIM_SCHEDULED;
     int result;
 
-    w_mutex_lock(&syscheck.fim_registry_mutex);
+    w_mutex_lock(&syscheck.fim_entry_mutex);
     result = fim_db_get_registry_keys_not_scanned(syscheck.database, &file, syscheck.database_store);
-    w_mutex_unlock(&syscheck.fim_registry_mutex);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (result != FIMDB_OK) {
         mwarn(FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
     } else if (file && file->elements) {
-        fim_db_process_read_file(syscheck.database, file, FIM_TYPE_REGISTRY, &syscheck.fim_registry_mutex,
+        fim_db_process_read_file(syscheck.database, file, FIM_TYPE_REGISTRY, &syscheck.fim_entry_mutex,
                                  fim_registry_process_key_delete_event, syscheck.database_store, &_base_line,
                                  &event_mode, NULL);
     }
 
-    w_mutex_lock(&syscheck.fim_registry_mutex);
+    w_mutex_lock(&syscheck.fim_entry_mutex);
     result = fim_db_get_registry_data_not_scanned(syscheck.database, &file, syscheck.database_store);
-    w_mutex_unlock(&syscheck.fim_registry_mutex);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (result != FIMDB_OK) {
         mwarn(FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
     } else if (file && file->elements) {
-        fim_db_process_read_registry_data_file(syscheck.database, file, &syscheck.fim_registry_mutex,
+        fim_db_process_read_registry_data_file(syscheck.database, file, &syscheck.fim_entry_mutex,
                                                fim_registry_process_value_delete_event, syscheck.database_store,
                                                &_base_line, &event_mode, NULL);
     }
@@ -853,7 +853,7 @@ void fim_open_key(HKEY root_key_handle,
         return;
     }
 
-    w_mutex_lock(&syscheck.fim_registry_mutex);
+    w_mutex_lock(&syscheck.fim_entry_mutex);
 
     saved.type = FIM_TYPE_REGISTRY;
     saved.registry_entry.key = fim_db_get_registry_key(syscheck.database, full_key, arch);
@@ -890,7 +890,7 @@ void fim_open_key(HKEY root_key_handle,
         }
     }
 
-    w_mutex_unlock(&syscheck.fim_registry_mutex);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     fim_registry_free_key(new.registry_entry.key);
     fim_registry_free_key(saved.registry_entry.key);
