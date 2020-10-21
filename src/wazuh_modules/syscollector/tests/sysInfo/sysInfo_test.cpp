@@ -20,11 +20,11 @@ void SysInfoTest::TearDown()
 using ::testing::_;
 using ::testing::Return;
 
-std::string SysInfo::getSerialNumber(){return "";}
-std::string SysInfo::getCpuName(){return "";}
-int SysInfo::getCpuMHz(){return 0;}
-int SysInfo::getCpuCores(){return 0;}
-void SysInfo::getMemory(nlohmann::json&){}
+std::string SysInfo::getSerialNumber() const {return "";}
+std::string SysInfo::getCpuName() const {return "";}
+int SysInfo::getCpuMHz() const {return 0;}
+int SysInfo::getCpuCores() const {return 0;}
+void SysInfo::getMemory(nlohmann::json&) const {}
 nlohmann::json SysInfo::getPackages(){return "";}
 
 class SysInfoWrapper: public SysInfo
@@ -32,11 +32,11 @@ class SysInfoWrapper: public SysInfo
 public:
     SysInfoWrapper() = default;
     ~SysInfoWrapper() = default;
-    MOCK_METHOD(std::string, getSerialNumber, (), (override));
-    MOCK_METHOD(std::string, getCpuName, (), (override));
-    MOCK_METHOD(int, getCpuMHz, (), (override));
-    MOCK_METHOD(int, getCpuCores, (), (override));
-    MOCK_METHOD(void, getMemory, (nlohmann::json&), (override));
+    MOCK_METHOD(std::string, getSerialNumber, (), (const override));
+    MOCK_METHOD(std::string, getCpuName, (), (const override));
+    MOCK_METHOD(int, getCpuMHz, (), (const override));
+    MOCK_METHOD(int, getCpuCores, (), (const override));
+    MOCK_METHOD(void, getMemory, (nlohmann::json&), (const override));
     MOCK_METHOD(nlohmann::json, getPackages, (), (override));
 };
 

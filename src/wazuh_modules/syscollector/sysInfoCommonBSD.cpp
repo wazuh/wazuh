@@ -13,7 +13,7 @@
 #include "stringHelper.h"
 #include <sys/sysctl.h>
 
-int SysInfo::getCpuCores()
+int SysInfo::getCpuCores() const
 {
     int cores{0};
     size_t len{sizeof(cores)};
@@ -31,9 +31,8 @@ int SysInfo::getCpuCores()
     return cores;
 }
 
-std::string SysInfo::getCpuName()
+std::string SysInfo::getCpuName() const
 {
-    std::unique_ptr<char> spBuff;
     const std::vector<int> mib{CTL_HW, HW_MODEL};
     size_t len{0};
     auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), nullptr, &len, nullptr, 0)};
@@ -46,7 +45,7 @@ std::string SysInfo::getCpuName()
             "Error getting cpu name size."
         };
     }
-    spBuff.reset(new char[len+1]);
+    const auto spBuff{std::make_unique<char[]>(len+1)};
     if(!spBuff)
     {
         throw std::runtime_error

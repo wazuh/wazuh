@@ -12,20 +12,22 @@
 #define _SYS_INFO_HPP
 #include "json.hpp"
 
+constexpr auto KByte{1024};
+
 class SysInfo
 {
 public:
-	SysInfo() = default;
-	virtual ~SysInfo() = default;
-	nlohmann::json hardware();
-	nlohmann::json packages();
+    SysInfo() = default;
+    virtual ~SysInfo() = default;
+    nlohmann::json hardware();
+    nlohmann::json packages();
 private:
-    virtual std::string getSerialNumber();
-    virtual std::string getCpuName();
-    virtual int getCpuMHz();
-    virtual int getCpuCores();
-    virtual void getMemory(nlohmann::json& info);
-	virtual nlohmann::json getPackages();
+    virtual std::string getSerialNumber() const;
+    virtual std::string getCpuName() const;
+    virtual int getCpuMHz() const;
+    virtual int getCpuCores() const;
+    virtual void getMemory(nlohmann::json& info) const;
+    virtual nlohmann::json getPackages();
 };
 
 

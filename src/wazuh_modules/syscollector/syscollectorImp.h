@@ -16,17 +16,17 @@
 #include "sysInfo.hpp"
 #include "json.hpp"
 
-class Syscollector
+class Syscollector final
 {
 public:
-	Syscollector(const std::chrono::milliseconds& timeout);
-	void start();
-	~Syscollector();
+    Syscollector(const std::chrono::milliseconds& timeout);
+    void start();
+    ~Syscollector();
 private:
-	void sync();
-	const std::chrono::milliseconds m_timeout;
-	std::atomic_bool				m_running;
-	std::thread 					m_thread;
+    void sync();
+    const std::chrono::milliseconds m_timeout;
+    std::atomic_bool                m_running;
+    std::thread                     m_thread;
     SysInfo                         m_info;
 };
 

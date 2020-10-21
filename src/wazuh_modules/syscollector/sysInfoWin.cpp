@@ -19,6 +19,7 @@
 #include <versionhelpers.h>
 
 constexpr auto BASEBOARD_INFORMATION_TYPE{2};
+constexpr auto CENTRAL_PROCESSOR_REGISTRY{"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
 
 typedef struct RawSMBIOSData
 {
@@ -66,7 +67,7 @@ static std::string parseRawSmbios(const BYTE* rawData, const DWORD rawDataSize)
     {
         SMBIOSStructureHeader header{};
         memcpy(&header, rawData + offset, sizeof(SMBIOSStructureHeader));
-        if (header.Type == BASEBOARD_INFORMATION_TYPE)
+        if (BASEBOARD_INFORMATION_TYPE == header.Type)
         {
             SMBIOSBasboardInfoStructure info{};
             memcpy(&info, rawData + offset, sizeof(SMBIOSBasboardInfoStructure));
@@ -95,7 +96,7 @@ static std::string parseRawSmbios(const BYTE* rawData, const DWORD rawDataSize)
     return serialNumber;
 }
 
-std::string SysInfo::getSerialNumber()
+std::string SysInfo::getSerialNumber() const
 {
     std::string ret;
     if (isVistaOrLater())
@@ -116,13 +117,13 @@ std::string SysInfo::getSerialNumber()
         const auto size {GetSystemFirmwareTable('RSMB', 0, nullptr, 0)};
         if (size)
         {
-            std::unique_ptr<unsigned char> buff{new unsigned char[size]};
-            if (buff)
+            const auto spBuff{std::make_unique<unsigned char[]>(size)};
+            if (spBuff)
             {
                 /* Get raw SMBIOS firmware table */
-                if (GetSystemFirmwareTable('RSMB', 0, buff.get(), size) == size)
+                if (GetSystemFirmwareTable('RSMB', 0, spBuff.get(), size) == size)
                 {
-                    PRawSMBIOSData smbios{reinterpret_cast<PRawSMBIOSData>(buff.get())};
+                    PRawSMBIOSData smbios{reinterpret_cast<PRawSMBIOSData>(spBuff.get())};
                     /* Parse SMBIOS structures */
                     ret = parseRawSmbios(smbios->SMBIOSTableData, size);
                 }
@@ -132,30 +133,30 @@ std::string SysInfo::getSerialNumber()
     return ret;
 }
 
-std::string SysInfo::getCpuName()
+std::string SysInfo::getCpuName() const
 {
-    Utils::Registry reg(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0");
-    return reg.string("ProcessorNameString");    
+    Utils::Registry reg(HKEY_LOCAL_MACHINE, CENTRAL_PROCESSOR_REGISTRY);
+    return reg.string("ProcessorNameString");
 }
-int SysInfo::getCpuMHz()
+int SysInfo::getCpuMHz() const
 {
-    Utils::Registry reg(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0");
+    Utils::Registry reg(HKEY_LOCAL_MACHINE, CENTRAL_PROCESSOR_REGISTRY);
     return reg.dword("~MHz");
 }
-int SysInfo::getCpuCores()
+int SysInfo::getCpuCores() const
 {
     SYSTEM_INFO siSysInfo{};
     GetSystemInfo(&siSysInfo);
     return siSysInfo.dwNumberOfProcessors;
 }
-void SysInfo::getMemory(nlohmann::json& info)
+void SysInfo::getMemory(nlohmann::json& info) const
 {
     MEMORYSTATUSEX statex;
     statex.dwLength = sizeof(statex);
     if (GlobalMemoryStatusEx(&statex))
     {
-        info["ram_total"] = statex.ullTotalPhys/1024;
-        info["ram_free"] = statex.ullAvailPhys/1024;
+        info["ram_total"] = statex.ullTotalPhys/KByte;
+        info["ram_free"] = statex.ullAvailPhys/KByte;
         info["ram_usage"] = statex.dwMemoryLoad;
     }
     else
