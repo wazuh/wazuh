@@ -33,7 +33,7 @@ cJSON *fim_registry_value_attributes_json(const fim_registry_value_data *data, c
 
     cJSON *attributes = cJSON_CreateObject();
 
-    cJSON_AddStringToObject(attributes, "type", "registry");
+    cJSON_AddStringToObject(attributes, "type", "registry_value");
 
     if (configuration->opts & CHECK_TYPE && data->type <= REG_QWORD) {
         cJSON_AddStringToObject(attributes, "value_type", VALUE_TYPE[data->type]);
@@ -175,7 +175,7 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
 cJSON *fim_registry_key_attributes_json(const fim_registry_key *data, const registry *configuration) {
     cJSON *attributes = cJSON_CreateObject();
 
-    cJSON_AddStringToObject(attributes, "type", "registry");
+    cJSON_AddStringToObject(attributes, "type", "registry_key");
 
     if (configuration->opts & CHECK_PERM) {
         cJSON_AddStringToObject(attributes, "perm", data->perm);

@@ -11,7 +11,7 @@
 CREATE TABLE IF NOT EXISTS _fim_entry (
     full_path TEXT NOT NULL PRIMARY KEY,
     file TEXT,
-    type TEXT NOT NULL CHECK (type IN ('file', 'registry')),
+    type TEXT NOT NULL CHECK (type IN ('file', 'registry_key', 'registry_value')),
     date INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
     changes INTEGER NOT NULL DEFAULT 1,
     arch TEXT CHECK (arch IN (NULL, '[x64]', '[x32]')),
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS _fim_entry (
     checksum TEXT
 );
 
-INSERT INTO _fim_entry (full_path, file, type, date, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path) SELECT file, file, type, date, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path FROM fim_entry;
+INSERT INTO _fim_entry (full_path, file, type, date, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path) SELECT file, file, CASE type WHEN 'registry' THEN 'registry_key' ELSE 'file' END, date, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path FROM fim_entry;
 
 DROP TABLE IF EXISTS fim_entry;
 ALTER TABLE _fim_entry RENAME TO fim_entry;

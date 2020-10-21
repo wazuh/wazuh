@@ -487,8 +487,8 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
 // LCOV_EXCL_STOP
 
 int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
-    cJSON *json_path, *json_arch, *json_value_name;
-    char *path, *arch, *value_name, *full_path;
+    cJSON *json_path;
+    char *path, *arch, *value_name, *full_path, *item_type;
     if (!wdb) {
         merror("WDB object cannot be null.");
         return -1;
@@ -509,28 +509,55 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
         return -1;
     }
 
-    json_arch = cJSON_GetObjectItem(data, "arch");
-    if (!json_arch) {
+    cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
+
+    if (!cJSON_IsObject(attributes)) {
+        merror("DB(%s) fim/save request with no valid attributes.", wdb->id);
+        return -1;
+    }
+
+    item_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type"));
+
+    if (item_type == NULL) {
+        merror("DB(%s) fim/save request with no type attribute.", wdb->id);
+        return -1;
+    } else if (strcmp(item_type, "file") == 0) {
         arch = NULL;
         value_name = NULL;
         os_strdup(path, full_path);
-    } else {
+    } else if(strcmp(item_type, "registry") == 0) {
+        arch = NULL;
+        value_name = NULL;
+        os_strdup(path, full_path);
+        item_type = "registry_key";
+    } else if (strncmp(item_type, "registry_", 9) == 0) {
         int full_path_length;
         char *path_escaped = wstr_replace(path, ":", "::");
 
-        arch = cJSON_GetStringValue(json_arch);
+        arch = cJSON_GetStringValue(cJSON_GetObjectItem(data, "arch"));
 
-        json_value_name = cJSON_GetObjectItem(data, "value_name");
-        if (!json_value_name) {
+        if (arch == NULL) {
+            merror("DB(%s) fim/save registry request with no arch argument.", wdb->id);
+            os_free(path_escaped);
+            return -1;
+        }
+
+        if (strcmp(item_type + 9, "key") == 0) {
             value_name = NULL;
             full_path_length = snprintf(NULL, 0, "%s %s:", arch, path_escaped);
 
             os_calloc(full_path_length + 1, sizeof(char), full_path);
 
             snprintf(full_path, full_path_length + 1, "%s %s:", arch, path_escaped);
-        } else {
+        } else if (strcmp(item_type + 9, "value") == 0) {
             char *value_name_escaped;
-            value_name = cJSON_GetStringValue(json_value_name);
+            value_name = cJSON_GetStringValue(cJSON_GetObjectItem(data, "value_name"));
+
+            if (value_name == NULL) {
+                merror("DB(%s) fim/save registry value request with no value name argument.", wdb->id);
+                os_free(path_escaped);
+                return -1;
+            }
 
             value_name_escaped = wstr_replace(value_name, ":", "::");
 
@@ -541,15 +568,15 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
             snprintf(full_path, full_path_length + 1, "%s %s:%s", arch, path_escaped, value_name_escaped);
 
             os_free(value_name_escaped);
+        } else {
+            merror("DB(%s) fim/save request with invalid '%s' type argument.", wdb->id, item_type);
+            os_free(path_escaped);
+            return -1;
         }
+
         os_free(path_escaped);
-    }
-
-    cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
-
-    if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) fim/save request with no valid attributes.", wdb->id);
-        os_free(full_path);
+    } else {
+        merror("DB(%s) fim/save request with invalid '%s' type argument.", wdb->id, item_type);
         return -1;
     }
 
@@ -561,6 +588,7 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
 
     sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_FIM_INSERT_ENTRY2];
     sqlite3_bind_text(stmt, 1, path, -1, NULL);
+    sqlite3_bind_text(stmt, 2, item_type, -1, NULL);
     sqlite3_bind_int64(stmt, 3, (long)timestamp->valuedouble);
     sqlite3_bind_text(stmt, 18, arch, -1, NULL);
     sqlite3_bind_text(stmt, 19, value_name, -1, NULL);
@@ -592,7 +620,7 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
 
         case cJSON_String:
             if (strcmp(element->string, "type") == 0) {
-                sqlite3_bind_text(stmt, 2, element->valuestring, -1, NULL);
+                // Already bound before.
             } else if (strcmp(element->string, "perm") == 0) {
                 sqlite3_bind_text(stmt, 5, element->valuestring, -1, NULL);
             } else if (strcmp(element->string, "uid") == 0) {
