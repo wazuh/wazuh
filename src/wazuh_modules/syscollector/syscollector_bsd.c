@@ -241,7 +241,7 @@ cJSON* sys_parse_pkg(const char * app_folder) {
     char filepath[PATH_LENGTH];
     FILE *fp;
     int i = 0;
-    int invalid = 0;
+    int read_name = 0;
     char * vendor_name = NULL;
     char * package_name = NULL;
 
@@ -268,7 +268,6 @@ cJSON* sys_parse_pkg(const char * app_folder) {
 
         if (strncmp(read_buff, "<?xml", 5)) {   // Unknown format
             mtwarn(WM_SYS_LOGTAG, "Unable to read package information from '%s' (invalid format)", filepath);
-            invalid = 1;
         } else {
             // Valid Info.plist file
             while(fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) {
@@ -299,6 +298,7 @@ cJSON* sys_parse_pkg(const char * app_folder) {
                             os_free(parts[i]);
                         }
                         os_free(parts);
+                        read_name = 1;
                     }
                     else if((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
                         char ** parts = OS_StrBreak('>', read_buff, 2);
@@ -324,8 +324,8 @@ cJSON* sys_parse_pkg(const char * app_folder) {
                             os_free(parts[i]);
                         }
                         os_free(parts);
+                        read_name = 1;
                     }
-
                 } else if (strstr(read_buff, "CFBundleShortVersionString")){
                     if (strstr(read_buff, "<string>")){
                         char ** parts = OS_StrBreak('>', read_buff, 4);
@@ -434,7 +434,7 @@ cJSON* sys_parse_pkg(const char * app_folder) {
 
     cJSON_AddStringToObject(package, "location", app_folder);
 
-    if (invalid) {
+    if (!read_name) {
         char * program_name;
         char * end;
 
