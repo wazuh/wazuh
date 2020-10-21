@@ -22,10 +22,10 @@ int wdbc_connect() {
     char sockname[PATH_MAX + 1];
 
     if (isChroot()) {
-		strcpy(sockname, WDB_LOCAL_SOCK);
-	} else {
-		strcpy(sockname, DEFAULTDIR WDB_LOCAL_SOCK);
-	}
+        strcpy(sockname, WDB_LOCAL_SOCK);
+    } else {
+        strcpy(sockname, DEFAULTDIR WDB_LOCAL_SOCK);
+    }
 
     for (attempts = 1; attempts <= 3 && (wdb_socket = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_SIZE_6144)) < 0; attempts++) {
         switch (errno) {
@@ -179,12 +179,14 @@ int wdbc_parse_result(char *result, char **payload) {
         *payload = ptr;
     }
 
-    if (!strcmp(result, "ok")) {
+    if (!strcmp(result, WDBC_RESULT[WDBC_OK])) {
         retval = WDBC_OK;
-    } else if (!strcmp(result, "err")) {
+    } else if (!strcmp(result, WDBC_RESULT[WDBC_ERROR])) {
         retval = WDBC_ERROR;
-    } else if (!strcmp(result, "ign")) {
+    } else if (!strcmp(result, WDBC_RESULT[WDBC_IGNORE])) {
         retval = WDBC_IGNORE;
+    } else if (!strcmp(result, WDBC_RESULT[WDBC_DUE])) {
+        retval = WDBC_DUE;
     }
 
     return retval;
@@ -227,4 +229,13 @@ cJSON * wdbc_query_parse_json(int *sock, const char *query, char *response, cons
 
     root = cJSON_Parse(arg);
     return root;
+}
+
+int wdbc_close(int* sock) {
+    int ret = 0;
+    if (*sock >= 0) {
+        ret = close(*sock);
+        *sock = -1;
+    }
+    return ret;
 }

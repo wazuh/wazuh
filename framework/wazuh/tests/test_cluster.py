@@ -20,6 +20,7 @@ with patch('wazuh.common.ossec_uid'):
         from wazuh import cluster
         from wazuh.core.exception import WazuhError, WazuhResourceNotFound
         from wazuh.core.cluster.local_client import LocalClient
+        from wazuh.core.results import WazuhResult
 
 default_config = {'disabled': True, 'node_type': 'master', 'name': 'wazuh', 'node_name': 'node01',
                   'key': '', 'port': 1516, 'bind_addr': '0.0.0.0', 'nodes': ['NODE_IP'], 'hidden': 'no'}
@@ -58,7 +59,7 @@ def test_node_wrapper_exception(mock_get_node):
 def test_get_status_json():
     """Verify that get_status_json returns the default status information."""
     result = cluster.get_status_json()
-    expected = {"enabled": "no" if default_config['disabled'] else "yes", "running": "no"}
+    expected = WazuhResult({'data': {"enabled": "no" if default_config['disabled'] else "yes", "running": "no"}})
     assert result == expected
 
 

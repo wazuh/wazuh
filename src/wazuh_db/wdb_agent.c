@@ -11,272 +11,1237 @@
 
 #include "wdb.h"
 #include "defs.h"
+#include "wazuhdb_op.h"
 
 #ifdef WIN32
 #define chown(x, y, z) 0
 #endif
 
-static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (?, ?, ?, ?, ?, ?, ?);";
-static const char *SQL_UPDATE_AGENT_NAME = "UPDATE agent SET name = ? WHERE id = ?;";
-static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ? WHERE id = ?;";
-static const char *SQL_UPDATE_AGENT_VERSION_IP = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ? , ip = ? WHERE id = ?;";
-static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = ? WHERE id = ?;";
-static const char *SQL_SELECT_AGENT_STATUS = "SELECT status FROM agent WHERE id = ?;";
-static const char *SQL_UPDATE_AGENT_STATUS = "UPDATE agent SET status = ? WHERE id = ?;";
-static const char *SQL_UPDATE_AGENT_GROUP = "UPDATE agent SET `group` = ? WHERE id = ?;";
-static const char *SQL_INSERT_AGENT_GROUP = "INSERT INTO `group` (name) VALUES(?)";
-static const char *SQL_SELECT_AGENT_GROUP = "SELECT `group` FROM agent WHERE id = ?;";
-static const char *SQL_INSERT_AGENT_BELONG = "INSERT INTO belongs (id_group, id_agent) VALUES(?, ?)";
-static const char *SQL_DELETE_AGENT_BELONG = "DELETE FROM belongs WHERE id_agent = ?";
-static const char *SQL_DELETE_GROUP_BELONG = "DELETE FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ? );";
-static const char *SQL_SELECT_FIM_OFFSET = "SELECT fim_offset FROM agent WHERE id = ?;";
-static const char *SQL_SELECT_REG_OFFSET = "SELECT reg_offset FROM agent WHERE id = ?;";
-static const char *SQL_UPDATE_FIM_OFFSET = "UPDATE agent SET fim_offset = ? WHERE id = ?;";
-static const char *SQL_UPDATE_REG_OFFSET = "UPDATE agent SET reg_offset = ? WHERE id = ?;";
-static const char *SQL_DELETE_AGENT = "DELETE FROM agent WHERE id = ?;";
-static const char *SQL_SELECT_AGENT = "SELECT name FROM agent WHERE id = ?;";
-static const char *SQL_SELECT_AGENTS = "SELECT id FROM agent WHERE id != 0;";
-static const char *SQL_FIND_AGENT = "SELECT id FROM agent WHERE name = ? AND (register_ip = ? OR register_ip LIKE ?2 || '/_%');";
-static const char *SQL_FIND_GROUP = "SELECT id FROM `group` WHERE name = ?;";
-static const char *SQL_SELECT_GROUPS = "SELECT name FROM `group`;";
-static const char *SQL_DELETE_GROUP = "DELETE FROM `group` WHERE name = ?;";
+#define WDBQUERY_SIZE OS_BUFFER_SIZE
+#define WDBOUTPUT_SIZE OS_MAXSTR
 
-/* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *key, const char *group, int keep_date) {
+static const char *global_db_commands[] = {
+    [WDB_INSERT_AGENT] = "global insert-agent %s",
+    [WDB_INSERT_AGENT_GROUP] = "global insert-agent-group %s",
+    [WDB_INSERT_AGENT_BELONG] = "global insert-agent-belong %s",
+    [WDB_UPDATE_AGENT_NAME] = "global update-agent-name %s",
+    [WDB_UPDATE_AGENT_DATA] = "global update-agent-data %s",
+    [WDB_UPDATE_AGENT_KEEPALIVE] = "global update-keepalive %s",
+    [WDB_UPDATE_AGENT_STATUS] = "global update-agent-status %s",
+    [WDB_UPDATE_AGENT_GROUP] = "global update-agent-group %s",
+    [WDB_UPDATE_FIM_OFFSET] = "global update-fim-offset %s",
+    [WDB_UPDATE_REG_OFFSET] = "global update-reg-offset %s",
+    [WDB_SET_AGENT_LABELS] = "global set-labels %d %s",
+    [WDB_GET_ALL_AGENTS] = "global get-all-agents last_id %d",
+    [WDB_GET_AGENTS_BY_KEEPALIVE] = "global get-agents-by-keepalive condition %s %d last_id %d",
+    [WDB_FIND_AGENT] = "global find-agent %s",
+    [WDB_GET_AGENT_INFO] = "global get-agent-info %d",
+    [WDB_GET_AGENT_LABELS] = "global get-labels %d",
+    [WDB_SELECT_AGENT_NAME] = "global select-agent-name %d",
+    [WDB_SELECT_AGENT_GROUP] = "global select-agent-group %d",
+    [WDB_SELECT_AGENT_STATUS] = "global select-agent-status %d",
+    [WDB_SELECT_KEEPALIVE] = "global select-keepalive %s %s",
+    [WDB_SELECT_FIM_OFFSET] = "global select-fim-offset %d",
+    [WDB_SELECT_REG_OFFSET] = "global select-reg-offset %d",
+    [WDB_FIND_GROUP] = "global find-group %s",
+    [WDB_SELECT_GROUPS] = "global select-groups",
+    [WDB_DELETE_AGENT] = "global delete-agent %d",
+    [WDB_DELETE_GROUP] = "global delete-group %s",
+    [WDB_DELETE_AGENT_BELONG] = "global delete-agent-belong %d",
+    [WDB_DELETE_GROUP_BELONG] = "global delete-group-belong %s"
+};
+
+int wdb_insert_agent(int id,
+                     const char *name,
+                     const char *ip,
+                     const char *register_ip,
+                     const char *internal_key,
+                     const char *group,
+                     int keep_date,
+                     int *sock) {
     int result = 0;
-    sqlite3_stmt *stmt;
-    const char * sql = SQL_INSERT_AGENT;
-    time_t date;
-
-    if (wdb_open_global() < 0)
-        return -1;
+    time_t date_add = 0;
+    cJSON *data_in = NULL;
+    char *data_in_str = NULL;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
+    int aux_sock = -1;
 
     if(keep_date) {
-        date = get_agent_date_added(id);
+        date_add = get_agent_date_added(id);
     } else {
-        time(&date);
+        time(&date_add);
     }
 
-    if (wdb_prepare(wdb_global, sql, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
+    data_in = cJSON_CreateObject();
+
+    if (!data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
     }
 
-    sqlite3_bind_int(stmt, 1, id);
-    sqlite3_bind_text(stmt, 2, name, -1, NULL);
+    cJSON_AddNumberToObject(data_in, "id", id);
+    cJSON_AddStringToObject(data_in, "name", name);
+    cJSON_AddStringToObject(data_in, "ip", ip);
+    cJSON_AddStringToObject(data_in, "register_ip", register_ip);
+    cJSON_AddStringToObject(data_in, "internal_key", internal_key);
+    cJSON_AddStringToObject(data_in, "group", group);
+    cJSON_AddNumberToObject(data_in, "date_add", date_add);
 
-    if (ip){
-        sqlite3_bind_text(stmt, 3, ip, -1, NULL);
+    data_in_str = cJSON_PrintUnformatted(data_in);
+    cJSON_Delete(data_in);
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_INSERT_AGENT], data_in_str);
+    os_free(data_in_str);
+
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+    
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK == wdbc_parse_result(wdboutput, &payload)) {
+                result = wdb_create_agent_db(id, name);
+            }
+            else {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Global DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            break;
+        default:
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            result = OS_INVALID;
+    }
+
+    return result;
+}
+
+int wdb_insert_group(const char *name, int *sock) {
+    int result = 0;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
+    int aux_sock = -1;
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_INSERT_AGENT_GROUP], name);
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Global DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+        default:
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+    }
+
+    return result;
+}
+
+int wdb_update_agent_belongs(int id_group, int id_agent, int *sock) {
+    int result = 0;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
+    int aux_sock = -1;
+    char *data_in_str = NULL;
+    cJSON *data_in = cJSON_CreateObject();
+
+    if (!data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddNumberToObject(data_in, "id_group", id_group);
+    cJSON_AddNumberToObject(data_in, "id_agent", id_agent);
+
+    data_in_str = cJSON_PrintUnformatted(data_in);
+    cJSON_Delete(data_in);
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_INSERT_AGENT_BELONG], data_in_str);
+    os_free(data_in_str);
+
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Global DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+        default:
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+    }
+
+    return result;
+}
+
+int wdb_update_agent_name(int id, const char *name, int *sock) {
+    int result = 0;
+    cJSON *data_in = NULL;
+    char* data_in_str = NULL;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
+    int aux_sock = -1;
+
+    data_in = cJSON_CreateObject();
+
+    if (!data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddNumberToObject(data_in, "id", id);
+    cJSON_AddStringToObject(data_in, "name", name);
+    data_in_str = cJSON_PrintUnformatted(data_in);
+    cJSON_Delete(data_in);
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_NAME], data_in_str);
+    os_free(data_in_str);
+
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Global DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            break;
+        default:
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            result = OS_INVALID;
+    }
+
+    return result;
+}
+
+int wdb_update_agent_data(agent_info_data *agent_data, int *sock) {
+    int result = 0;
+    cJSON *data_in = NULL;
+    char *data_in_str = NULL;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
+    int aux_sock = -1;
+
+    if (!agent_data) {
+        mdebug1("Invalid data provided to set in global.db.");
+        return OS_INVALID;
+    }
+
+    data_in = cJSON_CreateObject();
+
+    if (!data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddNumberToObject(data_in, "id", agent_data->id);
+    cJSON_AddStringToObject(data_in, "version", agent_data->version);
+    cJSON_AddStringToObject(data_in, "config_sum", agent_data->config_sum);
+    cJSON_AddStringToObject(data_in, "merged_sum", agent_data->merged_sum);
+    cJSON_AddStringToObject(data_in, "manager_host", agent_data->manager_host);
+    cJSON_AddStringToObject(data_in, "node_name", agent_data->node_name);
+    cJSON_AddStringToObject(data_in, "agent_ip", agent_data->agent_ip);
+    cJSON_AddStringToObject(data_in, "labels", agent_data->labels);
+    cJSON_AddStringToObject(data_in, "sync_status", agent_data->sync_status);
+
+    if (agent_data->osd) {
+        cJSON_AddStringToObject(data_in, "os_name", agent_data->osd->os_name);
+        cJSON_AddStringToObject(data_in, "os_version", agent_data->osd->os_version);
+        cJSON_AddStringToObject(data_in, "os_major", agent_data->osd->os_major);
+        cJSON_AddStringToObject(data_in, "os_minor", agent_data->osd->os_minor);
+        cJSON_AddStringToObject(data_in, "os_codename", agent_data->osd->os_codename);
+        cJSON_AddStringToObject(data_in, "os_platform", agent_data->osd->os_platform);
+        cJSON_AddStringToObject(data_in, "os_build", agent_data->osd->os_build);
+        cJSON_AddStringToObject(data_in, "os_uname", agent_data->osd->os_uname);
+        cJSON_AddStringToObject(data_in, "os_arch", agent_data->osd->os_arch);
+    }
+
+    data_in_str = cJSON_PrintUnformatted(data_in);
+    cJSON_Delete(data_in);
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_DATA], data_in_str);
+    os_free(data_in_str);
+
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+   
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Global DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            break;
+        default:
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            result = OS_INVALID;
+    }
+
+    return result;
+}
+
+int wdb_update_agent_keepalive(int id, const char *sync_status, int *sock) {
+    int result = 0;
+    cJSON *data_in = NULL;
+    char *data_in_str = NULL;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
+    int aux_sock = -1;
+
+    data_in = cJSON_CreateObject();
+
+    if (!data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddNumberToObject(data_in, "id", id);
+    cJSON_AddStringToObject(data_in, "sync_status", sync_status);
+
+    data_in_str = cJSON_PrintUnformatted(data_in);
+    cJSON_Delete(data_in);
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_KEEPALIVE], data_in_str);
+    os_free(data_in_str);   
+
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+    
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Global DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            break;
+        default:
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            result = OS_INVALID;
+    }
+
+    return result;
+}
+
+int wdb_set_agent_status(int id_agent, int status, int *sock) {
+    int result = 0;
+    const char *str_status = NULL;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
+    cJSON *data_in = NULL;
+    char *data_in_str = NULL;
+    int aux_sock = -1;
+
+    switch (status) {
+    case WDB_AGENT_EMPTY:
+        str_status = "empty";
+        break;
+    case WDB_AGENT_PENDING:
+        str_status = "pending";
+        break;
+    case WDB_AGENT_UPDATED:
+        str_status = "updated";
+        break;
+    default:
+        return OS_INVALID;
+    }
+
+    data_in = cJSON_CreateObject();
+
+    if (!data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddNumberToObject(data_in, "id", id_agent);
+    cJSON_AddStringToObject(data_in, "status", str_status);
+
+    data_in_str = cJSON_PrintUnformatted(data_in);
+    cJSON_Delete(data_in);
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_STATUS], data_in_str);
+    os_free(data_in_str);   
+
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+    
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Global DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+        default:
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+    }
+
+    return result;
+}
+
+int wdb_update_agent_group(int id, char *group, int *sock) {
+    int result = 0;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
+    int aux_sock = -1;
+    char *data_in_str = NULL;
+    cJSON *data_in = cJSON_CreateObject();
+
+    if (!data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddNumberToObject(data_in, "id", id);
+    cJSON_AddStringToObject(data_in, "group", group);
+
+    data_in_str = cJSON_PrintUnformatted(data_in);
+    cJSON_Delete(data_in);
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_GROUP], data_in_str);
+    os_free(data_in_str);   
+
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
+            else if (wdb_update_agent_multi_group(id, group, sock?sock:&aux_sock) < 0) {
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Global DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            if (!sock) {
+                wdbc_close(&aux_sock);
+            }
+            return OS_INVALID;
+        default:
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            if (!sock) {
+                wdbc_close(&aux_sock);
+            }
+            return OS_INVALID;
+    }
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    return result;
+}
+
+int wdb_set_agent_offset(int id, int type, long offset, int *sock) {
+    int result = 0;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
+    int aux_sock = -1;
+    char *data_in_str = NULL;
+    cJSON *data_in = cJSON_CreateObject();
+
+    if (!data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddNumberToObject(data_in, "id", id);
+    cJSON_AddNumberToObject(data_in, "offset", offset);
+
+    data_in_str = cJSON_PrintUnformatted(data_in);
+    cJSON_Delete(data_in);
+
+    switch (type) {
+    case WDB_SYSCHECK:
+        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_FIM_OFFSET], data_in_str);
+        break;
+    case WDB_SYSCHECK_REGISTRY:
+        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_REG_OFFSET], data_in_str);
+        break;
+    default:
+        os_free(data_in_str);
+        return OS_INVALID;
+    }
+
+    os_free(data_in_str);
+
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+    
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Global DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+        default:
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+    }
+
+    return result;
+}
+
+int wdb_set_agent_labels(int id, const char *labels, int *sock) {
+    int result = 0;
+    // Making use of a big buffer for the query because it
+    // will contain all the keys and values.
+    // The output will be just a JSON OK.
+    char wdbquery[OS_MAXSTR] = "";
+    char wdboutput[OS_BUFFER_SIZE] = "";
+    char *payload = NULL;
+    int aux_sock = -1;
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SET_AGENT_LABELS], id, labels);
+
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+    
+    switch (result){
+        case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Global DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            break;
+        default:
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            result = OS_INVALID;
+    }
+
+    return result;
+}
+
+int* wdb_get_all_agents(bool include_manager, int *sock) {
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    int last_id = include_manager ? -1 : 0;
+    int *array = NULL;
+    int len = 0;
+    wdbc_result status = WDBC_DUE;
+    int aux_sock = -1;
+    
+    while (status == WDBC_DUE) {
+        // Query WazuhDB
+        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_ALL_AGENTS], last_id);
+        if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
+            // Parse result
+            char* payload = NULL;
+            status = wdbc_parse_result(wdboutput, &payload);
+            if (status == WDBC_OK || status == WDBC_DUE) {
+                const char delim = ','; 
+                const char sdelim[] = { delim, '\0' };
+                //Realloc new size
+                int new_len = os_strcnt(payload, delim)+1;
+                os_realloc(array, sizeof(int)*(len+new_len+1), array);
+                //Append IDs to array
+                char* agent_id = NULL;
+                char *savedptr = NULL;
+                for (agent_id = strtok_r(payload, sdelim, &savedptr); agent_id; agent_id = strtok_r(NULL, sdelim, &savedptr)) {
+                    array[len] = atoi(agent_id);
+                    last_id = array[len];
+                    len++;
+                }
+            }
+        }
+        else {
+            status = WDBC_ERROR;
+        }
+    }
+    if (status == WDBC_OK) {
+        array[len] = -1;
     }
     else {
-        sqlite3_bind_null(stmt, 3);
+        os_free(array);
     }
 
-    if(register_ip){
-        sqlite3_bind_text(stmt, 4, register_ip, -1, NULL);
-    }
-    else{
-        sqlite3_bind_null(stmt, 4);
+    if (!sock) {
+        wdbc_close(&aux_sock);
     }
 
-    if (key)
-        sqlite3_bind_text(stmt, 5, key, -1, NULL);
-    else
-        sqlite3_bind_null(stmt, 5);
-
-    sqlite3_bind_int64(stmt, 6, (long) date);
-    sqlite3_bind_text(stmt, 7, group, -1, NULL);
-
-    result = wdb_step(stmt) == SQLITE_DONE ? wdb_create_agent_db(id, name) : -1;
-    sqlite3_finalize(stmt);
-
-    return result;
+    return array;
 }
 
-/* Update agent name. It doesn't rename agent DB file. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_update_agent_name(int id, const char *name) {
-    int result = 0;
-    sqlite3_stmt *stmt;
+int* wdb_get_agents_by_keepalive(const char* condition, int keepalive, bool include_manager, int *sock) {
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    int last_id = include_manager ? -1 : 0;
+    int *array = NULL;
+    int len = 0;
+    wdbc_result status = WDBC_DUE;
+    int aux_sock = -1;
 
-    if (wdb_open_global() < 0)
-        return -1;
-
-    if (wdb_prepare(wdb_global, SQL_UPDATE_AGENT_NAME, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
-    }
-
-    sqlite3_bind_text(stmt, 1, name, -1, NULL);
-    sqlite3_bind_int(stmt, 2, id);
-
-    result = wdb_step(stmt) == SQLITE_DONE ? 0 : -1;
-    sqlite3_finalize(stmt);
-
-    return result;
-}
-
-/* Update agent version. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_version(int id, const char *os_name, const char *os_version, const char *os_major, const char *os_minor, const char *os_codename, const char *os_platform, const char *os_build, const char *os_uname, const char *os_arch, const char *version, const char *config_sum, const char *merged_sum, const char *manager_host, const char *node_name, const char *agent_ip) {
-    int result = 0;
-    sqlite3_stmt *stmt;
-    const char * sql = SQL_UPDATE_AGENT_VERSION;
-
-    if (wdb_open_global() < 0)
-        return -1;
-
-    if(agent_ip) {
-        sql = SQL_UPDATE_AGENT_VERSION_IP;
-    }
-
-    if (wdb_prepare(wdb_global, sql, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
-    }
-
-    sqlite3_bind_text(stmt, 1, os_name, -1, NULL);
-    sqlite3_bind_text(stmt, 2, os_version, -1, NULL);
-    sqlite3_bind_text(stmt, 3, os_major, -1, NULL);
-    sqlite3_bind_text(stmt, 4, os_minor, -1, NULL);
-    sqlite3_bind_text(stmt, 5, os_codename, -1, NULL);
-    sqlite3_bind_text(stmt, 6, os_platform, -1, NULL);
-    sqlite3_bind_text(stmt, 7, os_build, -1, NULL);
-    sqlite3_bind_text(stmt, 8, os_uname, -1, NULL);
-    sqlite3_bind_text(stmt, 9, os_arch, -1, NULL);
-    sqlite3_bind_text(stmt, 10, version, -1, NULL);
-    sqlite3_bind_text(stmt, 11, config_sum, -1, NULL);
-    sqlite3_bind_text(stmt, 12, merged_sum, -1, NULL);
-    sqlite3_bind_text(stmt, 13, manager_host, -1, NULL);
-    sqlite3_bind_text(stmt, 14, node_name, -1, NULL);
-    if (agent_ip) {
-        sqlite3_bind_text(stmt, 15, agent_ip, -1, NULL);
-        sqlite3_bind_int(stmt, 16, id);
-    } else {
-        sqlite3_bind_int(stmt, 15, id);
-    }
-
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
-    sqlite3_finalize(stmt);
-
-    return result;
-}
-
-/* Update agent's last keepalive time. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_keepalive(int id, long keepalive) {
-    int result = 0;
-    sqlite3_stmt *stmt;
-
-    if (wdb_open_global() < 0)
-        return -1;
-
-    if (wdb_prepare(wdb_global, SQL_UPDATE_AGENT_KEEPALIVE, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
-    }
-
-    sqlite3_bind_int64(stmt, 1, keepalive);
-    sqlite3_bind_int(stmt, 2, id);
-
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
-    sqlite3_finalize(stmt);
-
-    return result;
-}
-
-/* Delete agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_remove_agent(int id) {
-    int result;
-    sqlite3_stmt *stmt;
-    char * name;
-
-    if (wdb_open_global() < 0)
-        return -1;
-
-    if (wdb_prepare(wdb_global, SQL_DELETE_AGENT, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
-    }
-
-    name = wdb_agent_name(id);
-
-    sqlite3_bind_int(stmt, 1, id);
-    result = wdb_step(stmt) == SQLITE_DONE;
-    sqlite3_finalize(stmt);
-    wdb_delete_agent_belongs(id);
-
-    result = result && name ? wdb_remove_agent_db(id, name) : -1;
-
-    free(name);
-    return result;
-}
-
-/* Get name from agent. The string must be freed after using. Returns NULL on error. */
-char* wdb_agent_name(int id) {
-    sqlite3_stmt *stmt = NULL;
-    char *result = NULL;
-
-    if (wdb_open_global() < 0)
-        return NULL;
-
-    if (wdb_prepare(wdb_global, SQL_SELECT_AGENT, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return NULL;
-    }
-
-    sqlite3_bind_int(stmt, 1, id);
-
-    switch (wdb_step(stmt)) {
-    case SQLITE_ROW:
-        result = strdup((char*)sqlite3_column_text(stmt, 0));
-        break;
-    case SQLITE_DONE:
-        result = NULL;
-        break;
-    default:
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        result = NULL;
-    }
-
-    sqlite3_finalize(stmt);
-
-    return result;
-}
-
-/* Get group from agent. The string must be freed after using. Returns NULL on error. */
-char* wdb_agent_group(int id) {
-    sqlite3_stmt *stmt = NULL;
-    char *result = NULL;
-
-    if (wdb_open_global() < 0)
-        return NULL;
-
-    if (wdb_prepare(wdb_global, SQL_SELECT_AGENT_GROUP, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return NULL;
-    }
-
-    sqlite3_bind_int(stmt, 1, id);
-
-    switch (wdb_step(stmt)) {
-    case SQLITE_ROW:
-        result = (char*)sqlite3_column_text(stmt, 0);
-        if(result){
-            result = strdup((char*)sqlite3_column_text(stmt, 0));
+    while (status == WDBC_DUE) {
+        // Query WazuhDB
+        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_AGENTS_BY_KEEPALIVE], condition, keepalive, last_id);
+        if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
+            // Parse result
+            char* payload = NULL;
+            status = wdbc_parse_result(wdboutput, &payload);
+            if (status == WDBC_OK || status == WDBC_DUE) {
+                const char delim = ','; 
+                const char sdelim[] = { delim, '\0' };
+                //Realloc new size
+                int new_len = os_strcnt(payload, delim)+1;
+                os_realloc(array, sizeof(int)*(len+new_len+1), array);
+                //Append IDs to array
+                char* agent_id = NULL;
+                char *savedptr = NULL;
+                for (agent_id = strtok_r(payload, sdelim, &savedptr); agent_id; agent_id = strtok_r(NULL, sdelim, &savedptr)) {
+                    array[len] = atoi(agent_id);
+                    last_id = array[len];
+                    len++;
+                }
+            }
         }
-        break;
-    case SQLITE_DONE:
-        result = NULL;
-        break;
-    default:
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        result = NULL;
+        else {
+            status = WDBC_ERROR;
+        }
     }
 
-    sqlite3_finalize(stmt);
+    if (status == WDBC_OK) {
+        array[len] = -1;
+    }
+    else {
+        os_free(array);
+    }
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    return array;
+}
+
+int wdb_find_agent(const char *name, const char *ip, int *sock) {
+    int output = OS_INVALID;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    cJSON *data_in = NULL;
+    char *data_in_str = NULL;
+    cJSON *root = NULL;
+    cJSON *json_id = NULL;
+    int aux_sock = -1;
+
+    if (!name || !ip) {
+        mdebug1("Empty agent name or ip when trying to get agent ID.");
+        return OS_INVALID;
+    }
+
+    data_in = cJSON_CreateObject();
+
+    if (!data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddStringToObject(data_in, "name", name);
+    cJSON_AddStringToObject(data_in, "ip", ip);
+
+    data_in_str = cJSON_PrintUnformatted(data_in);
+    cJSON_Delete(data_in);
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_FIND_AGENT], data_in_str);
+    os_free(data_in_str); 
+
+    root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+    
+    if (!root) {
+        merror("Error querying Wazuh DB for agent ID.");
+        return OS_INVALID;
+    }
+
+    json_id = cJSON_GetObjectItem(root->child,"id");
+    if (cJSON_IsNumber(json_id)) {
+        output = json_id->valueint;
+    }
+    else {
+        output = -2;
+    }
+
+    cJSON_Delete(root);
+    return output;
+}
+
+cJSON* wdb_get_agent_info(int id, int *sock) {
+    cJSON *root = NULL;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    int aux_sock = -1;
+
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_commands[WDB_GET_AGENT_INFO], id);
+    root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    if (!root) {
+        merror("Error querying Wazuh DB to get the agent's %d information.", id);
+        return NULL;
+    }
+
+    return root;
+}
+
+cJSON* wdb_get_agent_labels(int id, int *sock) {
+    cJSON *root = NULL;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    int aux_sock = -1;
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_AGENT_LABELS], id);
+    root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+    
+    if (!root) {
+        merror("Error querying Wazuh DB to get the agent's %d labels.", id);
+        return NULL;
+    }
+
+    return root;
+}
+
+char* wdb_get_agent_name(int id, int *sock) {
+    char *output = NULL;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    cJSON *root = NULL;
+    cJSON *json_name = NULL;
+    int aux_sock = -1;
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_AGENT_NAME], id);
+    root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+    
+    if (!root) {
+        merror("Error querying Wazuh DB to get the agent's %d name.", id);
+        return NULL;
+    }
+
+    json_name = cJSON_GetObjectItem(root->child,"name");
+    if (cJSON_IsString(json_name) && json_name->valuestring != NULL) {
+        os_strdup(json_name->valuestring, output);
+    }
+
+    cJSON_Delete(root);
+    return output;
+}
+
+char* wdb_get_agent_group(int id, int *sock) {
+    char *output = NULL;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    cJSON *root = NULL;
+    cJSON *json_group = NULL;
+    int aux_sock = -1;
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_AGENT_GROUP], id);
+    root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+    
+    if (!root) {
+        merror("Error querying Wazuh DB to get the agent's %d group.", id);
+        return NULL;
+    }
+
+    json_group = cJSON_GetObjectItem(root->child,"group");
+    if (cJSON_IsString(json_group) && json_group->valuestring != NULL) {
+        os_strdup(json_group->valuestring, output);
+    }
+
+    cJSON_Delete(root);
+    return output;
+}
+
+int wdb_get_agent_status(int id_agent, int *sock) {
+    int output = -1;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    cJSON *root = NULL;
+    cJSON *json_status = NULL;
+    int aux_sock = -1;
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_AGENT_STATUS], id_agent);
+    root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+    
+    if (!root) {
+        merror("Error querying Wazuh DB to get the agent status.");
+        return OS_INVALID;
+    }
+
+    json_status = cJSON_GetObjectItem(root->child,"status");
+    if (cJSON_IsString(json_status) && json_status->valuestring != NULL) {
+        output = !strcmp(json_status->valuestring, "empty") ? WDB_AGENT_EMPTY : !strcmp(json_status->valuestring, "pending") ? WDB_AGENT_PENDING : WDB_AGENT_UPDATED;
+    } else {
+        output = OS_INVALID;
+    }
+
+    cJSON_Delete(root);
+    return output;
+}
+
+time_t wdb_get_agent_keepalive(const char *name, const char *ip, int *sock){
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    time_t output = 0;
+    cJSON *root = NULL;
+    cJSON *json_keepalive = NULL;
+    int aux_sock = -1;
+
+    if (!name || !ip) {
+        mdebug1("Empty agent name or ip when trying to get last keepalive.");
+        return OS_INVALID;
+    }
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_KEEPALIVE], name, ip);
+    root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+    
+    if (!root) {
+        merror("Error querying Wazuh DB to get the last agent keepalive.");
+        return OS_INVALID;
+    }
+
+    json_keepalive = cJSON_GetObjectItem(root->child,"last_keepalive");
+    output = cJSON_IsNumber(json_keepalive) ? json_keepalive->valueint : 0;
+
+    cJSON_Delete(root);
+    return output;
+}
+
+long wdb_get_agent_offset(int id, int type, int *sock) {
+    long int output = 0;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    cJSON *root = NULL;
+    cJSON *json_offset = NULL;
+    char * column = NULL;
+    int aux_sock = -1;
+
+    switch (type) {
+    case WDB_SYSCHECK:
+        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_FIM_OFFSET], id);
+        column = "fim_offset";
+        break;
+    case WDB_SYSCHECK_REGISTRY:
+        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_REG_OFFSET],id);
+        column = "reg_offset";
+        break;
+    default:
+        return OS_INVALID;
+    }
+
+    root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+    
+    if (!root) {
+        merror("Error querying Wazuh DB to get agent offset.");
+        return OS_INVALID;
+    }
+
+    json_offset = cJSON_GetObjectItem(root->child,column);
+    output = cJSON_IsNumber(json_offset) ? json_offset->valueint : OS_INVALID;
+
+    cJSON_Delete(root);
+    return output;
+}
+
+int wdb_find_group(const char *name, int *sock) {
+    int output = OS_INVALID;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    cJSON *root = NULL;
+    cJSON *json_group = NULL;
+    int aux_sock = -1;
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_FIND_GROUP], name);
+    root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+    
+    if (!root) {
+        merror("Error querying Wazuh DB to get the agent group id.");
+        return OS_INVALID;
+    }
+
+    json_group = cJSON_GetObjectItem(root->child,"id");
+    output = cJSON_IsNumber(json_group) ? json_group->valueint : OS_INVALID;
+
+    cJSON_Delete(root);
+    return output;
+}
+
+int wdb_update_groups(const char *dirname, int *sock) {
+    int result = OS_SUCCESS;
+    int n = 0;
+    int i = 0;
+    char **array = NULL;
+    cJSON *json_name = NULL;
+    cJSON *item = NULL;
+    cJSON *root = NULL;
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    int aux_sock = -1;
+    int* query_sock = sock?sock:&aux_sock;
+
+    root = wdbc_query_parse_json(query_sock, global_db_commands[WDB_SELECT_GROUPS], wdboutput, sizeof(wdboutput));
+
+    if (!root) {
+        merror("Error querying Wazuh DB to update groups.");
+        if (!sock) {
+            wdbc_close(&aux_sock);
+        }
+        return OS_INVALID;
+    }
+
+    item = root->child;
+    os_calloc(cJSON_GetArraySize(root) + 1 , sizeof(char *),array);
+
+    while (item)
+    {
+        json_name = cJSON_GetObjectItem(item,"name");
+
+        if(cJSON_IsString(json_name) && json_name->valuestring != NULL ){
+            os_strdup(json_name->valuestring, array[n]);
+            n++;
+        }
+
+        item=item->next;
+    }
+
+    array[n] = NULL;
+    cJSON_Delete(root);
+
+    for (i=0; array[i]; i++) {
+        /* Check if the group exists in dir */
+        char group_path[PATH_MAX + 1] = {0};
+        DIR *dp;
+
+        if (snprintf(group_path, PATH_MAX + 1, "%s/%s", dirname,array[i]) > PATH_MAX) {
+            merror("At wdb_update_groups(): path too long.");
+            continue;
+        }
+
+        dp = opendir(group_path);
+
+        /* Group doesnt exists anymore, delete it */
+        if (!dp) {
+            if (wdb_remove_group_db((char *)array[i], query_sock) < 0) {
+                free_strarray(array);
+                if (!sock) {
+                    wdbc_close(&aux_sock);
+                }
+                return OS_INVALID;
+            }
+        } else {
+            closedir(dp);
+        }
+    }
+
+    free_strarray(array);
+
+    /* Add new groups from the folder /etc/shared if they dont exists on database */
+    DIR *dir;
+    struct dirent *dirent = NULL;
+
+    if (!(dir = opendir(dirname))) {
+        merror("Couldn't open directory '%s': %s.", dirname, strerror(errno));
+        if (!sock) {
+            wdbc_close(&aux_sock);
+        }
+        return OS_INVALID;
+    }
+
+    while ((dirent = readdir(dir))) {
+        if (dirent->d_name[0] != '.') {
+            char path[PATH_MAX];
+            snprintf(path,PATH_MAX,"%s/%s",dirname,dirent->d_name);
+
+            if (!IsDir(path)) {
+                if (wdb_find_group(dirent->d_name, query_sock) <= 0){
+                    wdb_insert_group(dirent->d_name, query_sock);
+                }
+            }
+        }
+    }
+    closedir(dir);
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
 
     return result;
 }
 
-/* Create database for agent from profile. Returns 0 on success or -1 on error. */
+int wdb_remove_agent(int id, int *sock) {
+    int result = 0 ;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
+    char *name = NULL;
+    int aux_sock = -1;
+    int* query_sock = sock?sock:&aux_sock;
+
+    // Getting the agent's name before removing it from global.db
+    name = wdb_get_agent_name(id, query_sock);
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DELETE_AGENT], id);
+    result = wdbc_query_ex(query_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK == wdbc_parse_result(wdboutput, &payload)) {
+                result = wdb_delete_agent_belongs(id, query_sock);
+
+                if ((OS_SUCCESS == result) && name &&
+                     OS_INVALID == wdb_remove_agent_db(id, name)) {
+                     mdebug1("Unable to remove agent DB: %d - %s", id, name);
+                }
+            }
+            else {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Global DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            break;
+        default:
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            result = OS_INVALID;
+    }
+
+    os_free(name);
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    return result;
+}
+
+int wdb_remove_group_db(const char *name, int *sock) {
+    int result = 0;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
+    int aux_sock = -1;
+
+    if (OS_INVALID == wdb_remove_group_from_belongs_db(name, sock?sock:&aux_sock)) {
+        merror("At wdb_remove_group_from_belongs_db(): couldn't delete '%s' from 'belongs' table.", name);        
+        if (!sock) {
+            wdbc_close(&aux_sock);
+        }
+        return OS_INVALID;
+    }
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DELETE_GROUP], name);
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+    
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Global DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+        default:
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+    }
+
+    return result;
+}
+
+int wdb_delete_agent_belongs(int id, int *sock) {
+    int result = 0;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
+    int aux_sock = -1;
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DELETE_AGENT_BELONG], id);
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+    
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Global DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+        default:
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+    }
+
+    return result;
+}
+
+int wdb_remove_group_from_belongs_db(const char *name, int *sock) {
+    int result = 0;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
+    int aux_sock = -1;
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DELETE_GROUP_BELONG], name);
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+   
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Global DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+        default:
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+    }
+
+    return result;
+}
+
 int wdb_create_agent_db(int id, const char *name) {
     const char *ROOT = "root";
     char path[OS_FLSIZE + 1];
@@ -323,13 +1288,10 @@ int wdb_create_agent_db(int id, const char *name) {
     }
 
     fclose(source);
-    if (fclose(dest) == -1) {
-        merror("Couldn't write/close file %s completely ", path);
+    if (fclose(dest) == -1 || result < 0) {
+        merror("Couldn't write/close file '%s' completely.", path);
         return -1;
     }
-
-    if (result < 0)
-        return -1;
 
     uid = Privsep_GetUser(ROOT);
     gid = Privsep_GetGroup(GROUPGLOBAL);
@@ -352,7 +1314,6 @@ int wdb_create_agent_db(int id, const char *name) {
     return 0;
 }
 
-/* Create database for agent from profile. Returns 0 on success or -1 on error. */
 int wdb_remove_agent_db(int id, const char * name) {
     char path[PATH_MAX];
     char path_aux[PATH_MAX];
@@ -368,256 +1329,23 @@ int wdb_remove_agent_db(int id, const char * name) {
         if (remove(path_aux) < 0) {
             mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
         }
-        return 0;
+        return OS_SUCCESS;
     } else
-        return -1;
+        return OS_INVALID;
 }
 
-/* Get an array containing the ID of every agent (except 0), ended with -1 */
-int* wdb_get_all_agents() {
-    int i;
-    int n = 1;
-    int *array;
-    sqlite3_stmt *stmt = NULL;
-
-    if (!(array = malloc(sizeof(int)))) {
-        merror("wdb_get_all_agents(): memory error");
-        return NULL;
-    }
-
-    if (wdb_open_global() < 0) {
-        free(array);
-        return NULL;
-    }
-
-    if (wdb_prepare(wdb_global, SQL_SELECT_AGENTS, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        wdb_close_global();
-        free(array);
-        return NULL;
-    }
-
-    for (i = 0; wdb_step(stmt) == SQLITE_ROW; i++) {
-        if (i + 1 == n) {
-            int *newarray;
-
-            if (!(newarray = realloc(array, sizeof(int) * (n *= 2)))) {
-                merror("wdb_get_all_agents(): memory error");
-                free(array);
-                sqlite3_finalize(stmt);
-                wdb_close_global();
-                return NULL;
-            }
-
-            array = newarray;
-        }
-
-        array[i] = sqlite3_column_int(stmt, 0);
-    }
-
-    array[i] = -1;
-
-    sqlite3_finalize(stmt);
-
-    return array;
-}
-
-/* Find agent by name and address. Returns id if success, -1 on failure or -2 if it has not been found. */
-int wdb_find_agent(const char *name, const char *ip) {
-    sqlite3_stmt *stmt = NULL;
-    int result;
-
-    if (wdb_open_global() < 0)
-        return -1;
-
-    if (wdb_prepare(wdb_global, SQL_FIND_AGENT, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        wdb_close_global();
-        return -1;
-    }
-
-    sqlite3_bind_text(stmt, 1, name, -1, NULL);
-    sqlite3_bind_text(stmt, 2, ip, -1, NULL);
-
-    if (result = wdb_step(stmt), result == SQLITE_ROW) {
-        result = sqlite3_column_int(stmt, 0);
-    } else if (result == SQLITE_DONE) {
-        result = -2;
-    } else {
-        result = -1;
-    }
-
-    sqlite3_finalize(stmt);
-    return result;
-}
-
-/* Get the file offset. Returns -1 on error or NULL. */
-long wdb_get_agent_offset(int id_agent, int type) {
-    int result;
-    const char *sql;
-    sqlite3_stmt *stmt;
-
-    switch (type) {
-    case WDB_SYSCHECK:
-        sql = SQL_SELECT_FIM_OFFSET;
-        break;
-    case WDB_SYSCHECK_REGISTRY:
-        sql = SQL_SELECT_REG_OFFSET;
-        break;
-    default:
-        return -1;
-    }
-
-    if (wdb_open_global() < 0)
-        return -1;
-
-    if (wdb_prepare(wdb_global, sql, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
-    }
-
-    sqlite3_bind_int(stmt, 1, id_agent);
-    result = wdb_step(stmt) == SQLITE_ROW ? sqlite3_column_int64(stmt, 0) : -1;
-    sqlite3_finalize(stmt);
-
-    return result;
-}
-
-/* Set the file offset. Returns number of affected rows, or -1 on failure. */
-int wdb_set_agent_offset(int id_agent, int type, long offset) {
-    int result;
-    const char *sql;
-    sqlite3_stmt *stmt;
-
-    switch (type) {
-    case WDB_SYSCHECK:
-        sql = SQL_UPDATE_FIM_OFFSET;
-        break;
-    case WDB_SYSCHECK_REGISTRY:
-        sql = SQL_UPDATE_REG_OFFSET;
-        break;
-    default:
-        return -1;
-    }
-
-    if (wdb_open_global() < 0)
-        return -1;
-
-    if (wdb_prepare(wdb_global, sql, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
-    }
-
-    sqlite3_bind_int64(stmt, 1, offset);
-    sqlite3_bind_int(stmt, 2, id_agent);
-
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
-    sqlite3_finalize(stmt);
-
-    return result;
-}
-
-/* Set agent updating status. Returns WDB_AGENT_*, or -1 on error. */
-int wdb_get_agent_status(int id_agent) {
-    int result;
-    const char *status;
-    sqlite3_stmt *stmt;
-
-    if (wdb_open_global() < 0)
-        return -1;
-
-    if (wdb_prepare(wdb_global, SQL_SELECT_AGENT_STATUS, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
-    }
-
-    sqlite3_bind_int(stmt, 1, id_agent);
-
-    if (wdb_step(stmt) == SQLITE_ROW) {
-        status = (const char*)sqlite3_column_text(stmt, 0);
-        result = !strcmp(status, "empty") ? WDB_AGENT_EMPTY : !strcmp(status, "pending") ? WDB_AGENT_PENDING : WDB_AGENT_UPDATED;
-    } else
-        result = -1;
-
-    sqlite3_finalize(stmt);
-
-    return result;
-}
-
-/* Set agent updating status. Returns number of affected rows, or -1 on error. */
-int wdb_set_agent_status(int id_agent, int status) {
-    int result;
-    const char *str_status;
-    sqlite3_stmt *stmt;
-
-    switch (status) {
-    case WDB_AGENT_EMPTY:
-        str_status = "empty";
-        break;
-    case WDB_AGENT_PENDING:
-        str_status = "pending";
-        break;
-    case WDB_AGENT_UPDATED:
-        str_status = "updated";
-        break;
-    default:
-        return -1;
-    }
-
-    if (wdb_open_global() < 0)
-        return -1;
-
-    if (wdb_prepare(wdb_global, SQL_UPDATE_AGENT_STATUS, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
-    }
-
-    sqlite3_bind_text(stmt, 1, str_status, -1, NULL);
-    sqlite3_bind_int(stmt, 2, id_agent);
-
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
-    sqlite3_finalize(stmt);
-
-    return result;
-}
-
-/* Update agent group. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_group(int id, char *group) {
-    int result = 0;
-    sqlite3_stmt *stmt;
-
-    if (wdb_open_global() < 0)
-        return -1;
-
-    if (wdb_prepare(wdb_global, SQL_UPDATE_AGENT_GROUP, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
-    }
-
-    sqlite3_bind_text(stmt, 1, group, -1, NULL);
-    sqlite3_bind_int(stmt, 2, id);
-
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
-    sqlite3_finalize(stmt);
-
-    if(wdb_update_agent_multi_group(id,group) < 0){
-        return -1;
-    }
-
-    return result;
-}
-
-/* Update agent multi group. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_multi_group(int id, char *group) {
-    int result = 0;
-
+int wdb_update_agent_multi_group(int id, char *group, int *sock) {
+    int aux_sock = -1;
+    int* query_sock = sock?sock:&aux_sock;
+    
     /* Wipe out the agent multi groups relation for this agent */
-    if (wdb_delete_agent_belongs(id) < 0) {
-        return -1;
+    if (wdb_delete_agent_belongs(id, query_sock) < 0) {
+        return OS_INVALID;
     }
 
     /* Update the belongs table if multi group */
     const char delim[2] = ",";
+
     if (group) {
         char *multi_group;
         char *save_ptr = NULL;
@@ -625,299 +1353,75 @@ int wdb_update_agent_multi_group(int id, char *group) {
         multi_group = strchr(group, MULTIGROUP_SEPARATOR);
 
         if (multi_group) {
-
             /* Get the first group */
             multi_group = strtok_r(group, delim, &save_ptr);
 
-            while( multi_group != NULL ) {
-
+            while (multi_group != NULL) {
                 /* Update de groups table */
-                int id_group = wdb_find_group(multi_group);
+                int id_group = wdb_find_group(multi_group, query_sock);
 
-                if(id_group <= 0){
-                    id_group = wdb_insert_group(multi_group);
+                if(id_group <= 0 && OS_SUCCESS == wdb_insert_group(multi_group, query_sock)) {
+                    id_group = wdb_find_group(multi_group, query_sock);
                 }
 
-                if (wdb_update_agent_belongs(id_group,id) < 0){
-                    return -1;
+                if (OS_SUCCESS != wdb_update_agent_belongs(id_group, id, query_sock)) {                    
+                    if (!sock) {
+                        wdbc_close(&aux_sock);
+                    }
+                    return OS_INVALID;
                 }
 
                 multi_group = strtok_r(NULL, delim, &save_ptr);
             }
         } else {
-
             /* Update de groups table */
-            int id_group = wdb_find_group(group);
+            int id_group = wdb_find_group(group, query_sock);
 
-            if(id_group <= 0){
-                id_group = wdb_insert_group(group);
+            if (id_group <= 0 && OS_SUCCESS == wdb_insert_group(group, query_sock)) {
+                id_group = wdb_find_group(group, query_sock);
             }
 
-            if ( wdb_update_agent_belongs(id_group,id) < 0){
-                return -1;
-            }
-        }
-    }
-
-    return result;
-}
-
-/* Find group by name. Returns id if success or -1 on failure. */
-int wdb_find_group(const char *name) {
-    sqlite3_stmt *stmt = NULL;
-    int result;
-
-    if (wdb_open_global() < 0)
-        return -1;
-
-    if (wdb_prepare(wdb_global, SQL_FIND_GROUP, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        wdb_close_global();
-        return -1;
-    }
-
-    sqlite3_bind_text(stmt, 1, name, -1, NULL);
-
-    result = wdb_step(stmt) == SQLITE_ROW ? sqlite3_column_int(stmt, 0) : -1;
-    sqlite3_finalize(stmt);
-    return result;
-}
-
-/* Insert a new group. Returns id if success or -1 on failure. */
-int wdb_insert_group(const char *name) {
-    sqlite3_stmt *stmt = NULL;
-    int result;
-
-    if (wdb_open_global() < 0)
-        return -1;
-
-    if (wdb_prepare(wdb_global, SQL_INSERT_AGENT_GROUP, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        wdb_close_global();
-        return -1;
-    }
-
-    sqlite3_bind_text(stmt, 1, name, -1, NULL);
-
-    if (wdb_step(stmt) == SQLITE_DONE)
-        result = (int)sqlite3_last_insert_rowid(wdb_global);
-    else {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        result = -1;
-    }
-
-    sqlite3_finalize(stmt);
-    return result;
-}
-
-/* Update agent belongs table. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_belongs(int id_group, int id_agent) {
-    int result = 0;
-    sqlite3_stmt *stmt;
-
-    if (wdb_open_global() < 0)
-        return -1;
-
-    if (wdb_prepare(wdb_global, SQL_INSERT_AGENT_BELONG, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
-    }
-
-    sqlite3_bind_int(stmt, 1, id_group);
-    sqlite3_bind_int(stmt, 2, id_agent);
-
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
-    sqlite3_finalize(stmt);
-
-    return result;
-}
-
-/* Delete agent belongs table. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_delete_agent_belongs(int id_agent) {
-    int result = 0;
-    sqlite3_stmt *stmt;
-
-    if (wdb_open_global() < 0)
-        return -1;
-
-    if (wdb_prepare(wdb_global, SQL_DELETE_AGENT_BELONG, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
-    }
-
-    sqlite3_bind_int(stmt, 1, id_agent);
-
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
-    sqlite3_finalize(stmt);
-
-    return result;
-}
-
-int wdb_update_groups(const char *dirname) {
-    int result =  0;
-    int i;
-    int n = 1;
-    char **array;
-    sqlite3_stmt *stmt = NULL;
-
-    if (!(array = (char**) calloc(1, sizeof(char*)))) {
-        merror("wdb_update_groups(): memory error");
-        return -1;
-    }
-
-    if (wdb_open_global() < 0) {
-        free(array);
-        return -1;
-    }
-
-    if (wdb_prepare(wdb_global, SQL_SELECT_GROUPS, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        wdb_close_global();
-        free(array);
-        return -1;
-    }
-
-    for (i = 0; wdb_step(stmt) == SQLITE_ROW; i++) {
-        if (i + 1 == n) {
-            char **newarray;
-
-            if (!(newarray = (char **)realloc(array, sizeof(char *) * (n *= 2)))) {
-                merror("wdb_update_groups(): memory error");
-                sqlite3_finalize(stmt);
-                wdb_close_global();
-                free(array);
-                return -1;
-            }
-
-            array = newarray;
-        }
-        os_strdup((char*)sqlite3_column_text(stmt, 0),array[i]);
-    }
-
-    array[i] = NULL;
-
-    sqlite3_finalize(stmt);
-
-    for(i=0;array[i];i++){
-        /* Check if the group exists in dir */
-        char group_path[PATH_MAX + 1] = {0};
-        DIR *dp;
-
-        if (snprintf(group_path, PATH_MAX + 1, "%s/%s", dirname,array[i]) > PATH_MAX) {
-            merror("At wdb_update_groups(): path too long.");
-            continue;
-        }
-
-        dp = opendir(group_path);
-
-        /* Group doesnt exists anymore, delete it */
-        if (!dp) {
-            if (wdb_remove_group_db((char *)array[i]) < 0) {
-                free_strarray(array);
-                return -1;
-            }
-        } else {
-            closedir(dp);
-        }
-    }
-
-    free_strarray(array);
-
-    /* Add new groups from the folder /etc/shared if they dont exists on database */
-    DIR *dir;
-    struct dirent *dirent = NULL;
-
-    if (!(dir = opendir(dirname))) {
-        merror("Couldn't open directory '%s': %s.", dirname, strerror(errno));
-        return -1;
-    }
-
-    while ((dirent = readdir(dir))){
-        if (dirent->d_name[0] != '.'){
-            char path[PATH_MAX];
-            snprintf(path,PATH_MAX,"%s/%s",dirname,dirent->d_name);
-
-            if (!IsDir(path)) {
-                if(wdb_find_group(dirent->d_name) <= 0){
-                    wdb_insert_group(dirent->d_name);
+            if (OS_SUCCESS != wdb_update_agent_belongs(id_group, id, query_sock)) {
+                if (!sock) {
+                    wdbc_close(&aux_sock);
                 }
+                return OS_INVALID;
             }
         }
     }
-    closedir(dir);
 
-    return result;
-}
-
-/* Delete group from belongs table. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_remove_group_from_belongs_db(const char *name) {
-
-    int result;
-    sqlite3_stmt *stmt;
-
-    if (wdb_open_global() < 0)
-        return -1;
-
-    // Delete from belongs
-    if (wdb_prepare(wdb_global, SQL_DELETE_GROUP_BELONG, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
+    if (!sock) {
+        wdbc_close(&aux_sock);
     }
 
-    sqlite3_bind_text(stmt, 1, name, -1, NULL);
-
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
-    sqlite3_finalize(stmt);
-
-    return result;
+    return OS_SUCCESS;
 }
 
-/* Delete group. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_remove_group_db(const char *name) {
-
-    if(wdb_remove_group_from_belongs_db(name) == -1){
-        merror("At wdb_remove_group_from_belongs_db(): couldn't delete '%s' from 'belongs' table.", name);
-        return -1;
-    }
-
-    int result;
-    sqlite3_stmt *stmt;
-
-    if (wdb_open_global() < 0)
-        return -1;
-
-    if (wdb_prepare(wdb_global, SQL_DELETE_GROUP, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
-    }
-
-    sqlite3_bind_text(stmt, 1, name, -1, NULL);
-
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
-    sqlite3_finalize(stmt);
-
-    return result;
-}
-
-int wdb_agent_belongs_first_time(){
+int wdb_agent_belongs_first_time(int *sock){
     int i;
     char *group;
     int *agents;
+    int aux_sock = -1;
+    int* query_sock = sock?sock:&aux_sock;
 
-    if ((agents = wdb_get_all_agents())) {
+    if ((agents = wdb_get_all_agents(FALSE, query_sock))) {
 
         for (i = 0; agents[i] != -1; i++) {
-            group = wdb_agent_group(agents[i]);
+            group = wdb_get_agent_group(agents[i], query_sock);
 
-            if(group){
-                wdb_update_agent_multi_group(agents[i],group);
-                free(group);
+            if (group) {
+                wdb_update_agent_multi_group(agents[i],group, query_sock);
+                os_free(group);
             }
         }
-        free(agents);
+        os_free(agents);
     }
 
-    return 0;
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    return OS_SUCCESS;
 }
 
 time_t get_agent_date_added(int agent_id) {
@@ -972,7 +1476,7 @@ time_t get_agent_date_added(int agent_id) {
                 *endl = '\0';
             }
 
-            if (sscanf(date, "%d-%d-%d %d:%d:%d",&t.tm_year, &t.tm_mon, &t.tm_mday, &t.tm_hour, &t.tm_min, &t.tm_sec)<6) {
+            if (sscanf(date, "%d-%d-%d %d:%d:%d",&t.tm_year, &t.tm_mon, &t.tm_mday, &t.tm_hour, &t.tm_min, &t.tm_sec) < 6) {
                 merror("Invalid date format in file '%s' for agent '%d'", TIMESTAMP_FILE, agent_id);
                 free(date);
                 free_strarray(data);

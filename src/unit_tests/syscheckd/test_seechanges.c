@@ -1094,6 +1094,11 @@ void test_gen_diff_alert_exceed_disk_quota_limit(void **state) {
     expect_string(__wrap_rmdir_ex, name, containing_folder);
     will_return(__wrap_rmdir_ex, 0);
 
+    char debug_msg[OS_SIZE_512];
+    snprintf(debug_msg, OS_SIZE_512, FIM_DIFF_FOLDER_DELETED, containing_folder);
+
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+
     // gen_diff_alert
 #ifndef TEST_WINAGENT
     expect_string(__wrap_rmdir_ex, name, "/var/ossec/queue/diff/localtmp");
@@ -2712,6 +2717,11 @@ void test_seechanges_addfile_file_size_exceeded(void **state) {
     expect_string(__wrap_rmdir_ex, name, containing_folder);
     will_return(__wrap_rmdir_ex, 0);
 
+    char debug_msg[OS_SIZE_512];
+    snprintf(debug_msg, OS_SIZE_512, FIM_DIFF_FOLDER_DELETED, containing_folder);
+
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+
     seechanges_addfile(file_name);
 }
 
@@ -3564,6 +3574,11 @@ void test_seechanges_delete_compressed_file_successful(void **state) {
 
     expect_string(__wrap_rmdir_ex, name, containing_folder);
     will_return(__wrap_rmdir_ex, 0);
+
+    char debug_msg[OS_SIZE_512];
+    snprintf(debug_msg, OS_SIZE_512, FIM_DIFF_FOLDER_DELETED, containing_folder);
+
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     seechanges_delete_compressed_file(file_name_abs);
 }
