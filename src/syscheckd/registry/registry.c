@@ -683,8 +683,8 @@ void fim_registry_process_value_event(fim_entry *new,
                                     saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFICATION, NULL, diff);
 
     if (json_event) {
-        if (fim_db_insert_registry_data(syscheck.database, new->registry_entry.value, new->registry_entry.key->id) !=
-            FIMDB_OK) {
+        if (fim_db_insert_registry_data(syscheck.database, new->registry_entry.value, new->registry_entry.key->id,
+                                        saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFICATION) != FIMDB_OK) {
             mwarn(FIM_REGISTRY_FAIL_TO_INSERT_VALUE, new->registry_entry.key->arch == ARCH_32BIT ? "[x32]" : "[x64]",
                   new->registry_entry.key->path, new->registry_entry.value->name);
         }
@@ -871,7 +871,13 @@ void fim_open_key(HKEY root_key_handle,
         if (json_event) {
             if (fim_db_insert_registry_key(syscheck.database, new.registry_entry.key, new.registry_entry.key->id) !=
                 FIMDB_OK) {
-                mwarn("Couldn't insert into DB");
+                // Something went wrong or the DB is full, either way we need to stop scanning.
+                w_mutex_unlock(&syscheck.fim_entry_mutex);
+                cJSON_Delete(json_event);
+                fim_registry_free_key(new.registry_entry.key);
+                fim_registry_free_key(saved.registry_entry.key);
+                RegCloseKey(current_key_handle);
+                return;
             }
 
             if (_base_line) {

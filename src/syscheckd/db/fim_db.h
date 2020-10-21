@@ -406,4 +406,13 @@ int fim_db_get_data_checksum(fdb_t *fim_sql, fim_type type, void *arg);
  */
 int fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **buffer);
 
+/**
+ * @brief Get count of all entries in the FIM DB.
+ *
+ * @param fim_sql FIM database struct.
+ *
+ * @return Number of entries in the FIM DB.
+ */
+int fim_db_get_count_entries(fdb_t * fim_sql);
+
 #endif /* FIM_DB_COMMON_H */
