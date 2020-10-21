@@ -1204,8 +1204,8 @@ class Agent:
             with open(wpk_file_path, 'wb') as fd:
                 for chunk in result.iter_content(chunk_size=128):
                     fd.write(chunk)
-                chown(wpk_file_path, common.ossec_gid(), common.ossec_gid())
-                chmod(wpk_file_path, 0o660)
+            chown(wpk_file_path, common.ossec_gid(), common.ossec_gid())
+            chmod(wpk_file_path, 0o660)
         else:
             error = "Can't access to the WPK file in {}".format(wpk_url)
             raise WazuhInternalError(1714, extra_message=str(error))
