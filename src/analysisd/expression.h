@@ -89,4 +89,23 @@ bool w_expression_compile(w_expression_t * expression, char * pattern, int flags
  */
 bool w_expression_test(w_expression_t * expression, char * str_test, size_t str_length);
 
+/**
+ * @brief Execute a compiled pattern to string (only OSRegex & PCRE2)
+ * @param expression expression with compiled pattern
+ * @param str_test string to test
+ * @param regex_match Structure to manage pattern matches
+ * @return Returns end of matched str on success. NULL otherwise
+ */
+const char * w_expression_execute(w_expression_t * expression, const char * str_test, regex_matching * regex_match);
+
+/**
+ * @brief Fill a match_data with PCRE2 result
+ * @param rc number of matches of PCRE2 execute
+ * @param str_test string to test
+ * @param match_data PCRE2 block data
+ * @param regex_match to fill 
+ */
+void w_expression_PCRE2_fill_regex_match(int rc, const char * str_test, pcre2_match_data * match_data,
+                                         regex_matching * regex_match);
+
 #endif
