@@ -240,7 +240,7 @@ char *fim_registry_value_diff(const char *key_name,
         mdebug2(FIM_BIG_FILE_REPORT_CHANGES, full_value_name);
         goto cleanup;
     } else if (limits_reached == 2){
-        mdebug2(FIM_DISK_QUOTA_ESTIMATION, full_value_name);
+        mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, "estimation", full_value_name);
         goto cleanup;
     }
 
@@ -294,7 +294,7 @@ cleanup:
 
 diff_data *initialize_registry_diff_data(const char *key_name, const char *value_name, const registry *configuration) {
     diff_data *diff;
-    char buffer[PATH_MAX + 1];
+    char buffer[PATH_MAX];
 
     os_calloc(1, sizeof(diff_data), diff);
 
@@ -406,7 +406,7 @@ char *fim_file_diff(const char *filename) {
     // Generate diff structure
     diff_data *diff = initialize_file_diff_data(filename);
     if (!diff){
-        goto cleanup;
+        return NULL;
     }
 
     mkdir_ex(diff->tmp_folder);
@@ -416,7 +416,7 @@ char *fim_file_diff(const char *filename) {
         mdebug2(FIM_BIG_FILE_REPORT_CHANGES, filename);
         goto cleanup;
     } else if (limits_reached == 2){
-        mdebug2(FIM_DISK_QUOTA_ESTIMATION, filename);
+        mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, "estimation", filename);
         goto cleanup;
     }
 
@@ -470,9 +470,8 @@ cleanup:
 
 diff_data *initialize_file_diff_data(const char *filename){
     diff_data *diff;
-    char buffer[PATH_MAX + 8];
-    char abs_diff_dir_path[PATH_MAX + 1];
-    char *path_filtered = NULL;
+    char buffer[PATH_MAX];
+    char abs_diff_dir_path[PATH_MAX];
 
     os_calloc(1, sizeof(diff_data), diff);
 
@@ -487,40 +486,50 @@ diff_data *initialize_file_diff_data(const char *filename){
     // Get absolute path of filename:
     if (abspath(filename, buffer, sizeof(buffer)) == NULL) {
         merror(FIM_ERROR_GET_ABSOLUTE_PATH, filename, strerror(errno), errno);
-        return NULL;
+        goto error;
     }
 
     os_strdup(buffer, diff->file_origin);
 
 #ifdef WIN32
+    char *path_filtered = NULL;
+
     // Remove ":" from file_origin
     path_filtered = os_strip_char(diff->file_origin, ':');
 
     if (path_filtered == NULL) {
         merror(FIM_ERROR_REMOVE_COLON, diff->file_origin);
-        return NULL;
+        goto error;
     }
 
     // Get cwd for Windows
     if (abspath(DIFF_DIR_PATH, abs_diff_dir_path, sizeof(abs_diff_dir_path)) == NULL) {
         merror(FIM_ERROR_GET_ABSOLUTE_PATH, DIFF_DIR_PATH, strerror(errno), errno);
-        return NULL;
+        os_free(path_filtered);
+        goto error;
     }
 
-    snprintf(buffer, PATH_MAX + 7, "%s/local/%s", abs_diff_dir_path, path_filtered);
+    snprintf(buffer, PATH_MAX, "%s/local/%s", abs_diff_dir_path, path_filtered);
+    os_free(path_filtered);
 #else
     strcpy(abs_diff_dir_path, DIFF_DIR_PATH);
 
     // This snprintf is duplicated to avoid a double slash ('/') in UNIX systems
-    snprintf(buffer, PATH_MAX + 7, "%s/local%s", abs_diff_dir_path, diff->file_origin);
+    snprintf(buffer, PATH_MAX, "%s/local%s", abs_diff_dir_path, diff->file_origin);
 #endif
+
+    // Check if the full_diff_path for filename, is too long
+    if (strlen(abs_diff_dir_path) + strlen(diff->file_origin) + 14 > PATH_MAX) {
+        merror(FIM_DIFF_FILE_PATH_TOO_LONG, diff->file_origin);
+        goto error;
+    }
 
     os_strdup(buffer, diff->compress_folder);
 
     snprintf(buffer, PATH_MAX, "%s/last-entry.gz", diff->compress_folder);
     os_strdup(buffer, diff->compress_file);
 
-    snprintf(buffer, PATH_MAX + 5, "%s/tmp", abs_diff_dir_path);
+    snprintf(buffer, PATH_MAX, "%s/tmp", abs_diff_dir_path);
     os_strdup(buffer, diff->tmp_folder);
 
     snprintf(buffer, PATH_MAX, "%s/tmp-entry", diff->tmp_folder);
@@ -532,9 +541,11 @@ diff_data *initialize_file_diff_data(const char *filename){
     snprintf(buffer, PATH_MAX, "%s/diff-file", diff->tmp_folder);
     os_strdup(buffer, diff->diff_file);
 
-    os_free(path_filtered);
-
     return diff;
+
+error:
+    free_diff_data(diff);
+    return NULL;
 }
 
 void free_diff_data(diff_data *diff) {
@@ -575,7 +586,7 @@ int fim_diff_delete_compress_folder(const char *folder) {
     float dir_size = 0.0;
 
     if (IsDir(folder) == -1) {
-        return -1;     // The folder does not exist
+        return -2;     // The folder does not exist
     }
 
     dir_size = (float)DirSize(folder) / 1024;
@@ -615,7 +626,7 @@ int fim_diff_create_compress_file(const diff_data *diff) {
         if (syscheck.diff_folder_size + zip_size > syscheck.disk_quota_limit) {
             if (syscheck.disk_quota_full_msg) {
                 syscheck.disk_quota_full_msg = false;
-                mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
+                mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, "calculate", diff->file_origin);
             }
             fim_diff_modify_compress_estimation(zip_size, diff->file_size);
             return -1;
@@ -944,10 +955,11 @@ next_it:
 
 int fim_diff_process_delete_file(const char *filename){
     char *full_path;
+    int ret;
     os_malloc(sizeof(char) * (strlen(DIFF_DIR_PATH) + strlen(filename) + 8), full_path);
-    snprintf(full_path, PATH_MAX, "%s/local/", DIFF_DIR_PATH);
 
 #ifdef WIN32
+    snprintf(full_path, PATH_MAX, "%s/local/", DIFF_DIR_PATH);
     // Remove ":" from filename
     char *buffer = NULL;
     buffer = os_strip_char(filename, ':');
@@ -959,12 +971,17 @@ int fim_diff_process_delete_file(const char *filename){
     strcat(full_path, buffer);
     os_free(buffer);
 #else
+    snprintf(full_path, PATH_MAX, "%s/local", DIFF_DIR_PATH);
     strcat(full_path, filename);
 #endif
 
-
-    if(fim_diff_delete_compress_folder(full_path) == -1){
+    ret = fim_diff_delete_compress_folder(full_path);
+    if(ret == -1){
         merror(FIM_DIFF_DELETE_DIFF_FOLDER_ERROR, full_path);
+        os_free(full_path);
+        return -1;
+    } else if (ret == -2){
+        mdebug2(FIM_DIFF_FOLDER_NOT_EXIST, full_path);
         os_free(full_path);
         return -1;
     }
