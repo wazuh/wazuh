@@ -15,7 +15,6 @@
 #include <pthread.h>
 
 typedef struct wlabel_data_t {
-    pthread_rwlock_t labels_rwlock;
     wlabel_t *labels;
     time_t mtime;
 } wlabel_data_t;
@@ -23,12 +22,16 @@ typedef struct wlabel_data_t {
 /* Initialize label cache */
 int labels_init();
 
+/* Finalize label cache */
+void labels_finalize();
+
 /**
  * @brief Finds the label array of an agent that generated an event.
  * 
- * @param lf The Eventinfo data structure.
+ * @param agent_id The ID of the agent for whom the labels are requested.
+ * @param sock The Wazuh DB socket connection.
  * @retval The agent's labels array on success. NULL on error.
  */
-wlabel_t* labels_find(const Eventinfo *lf);
+wlabel_t* labels_find(char *agent_id, int *sock);
 
 #endif

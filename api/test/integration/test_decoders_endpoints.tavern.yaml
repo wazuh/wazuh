@@ -17,6 +17,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           total_affected_items: !anyint
@@ -31,6 +32,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: &full_items_array
             - details: !anything
@@ -62,6 +64,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *full_items_array
@@ -85,6 +88,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
               # Check offset matches with previous request
@@ -109,6 +113,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *full_items_array
@@ -127,6 +132,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - filename: "{tavern.request_vars.params.filename}"
@@ -145,6 +151,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - relative_dirname: "{tavern.request_vars.params.relative_dirname}"
@@ -163,6 +170,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - status: "{tavern.request_vars.params.status}"
@@ -193,7 +201,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
   - name: Show decoders using valid select
     request:
@@ -210,6 +218,7 @@ stages:
           select_key: 'filename,position,name,details.parent' # required_fields={'filename', 'position'}
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
           failed_items: []
@@ -224,7 +233,7 @@ stages:
     response:
       status_code: 400
       json: &invalid_select
-        code: 1724
+        error: 1724
 
   - name: Show decoders using select (one select is invalid)
     request:
@@ -247,6 +256,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items: []
@@ -263,6 +273,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *full_items_array
@@ -282,6 +293,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *full_items_array
@@ -300,6 +312,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items: []
@@ -332,6 +345,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: *full_items_array
           failed_items: []
@@ -349,6 +363,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: *full_items_array
           failed_items: []
@@ -376,6 +391,7 @@ stages:
       status_code: 200
       json:
         # We get totalItems number of arrays in items, using !anything to check items key is in the response
+        error: !anyint
         data: &decoder_name_response
           affected_items:
             - details: !anything
@@ -400,6 +416,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *full_items_array
@@ -423,6 +440,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
               # Check offset matches with previous request
@@ -447,6 +465,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *full_items_array
@@ -477,7 +496,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
 ---
 test_name: GET /decoders/{decoder_name}
@@ -503,6 +522,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -522,6 +542,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -545,6 +566,7 @@ stages:
       status_code: 200
       json:
         # We get totalItems number of arrays in items, using !anything to check items key is in the response
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -561,6 +583,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: &full_items_array_files
             - filename: !anystr
@@ -588,6 +611,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *full_items_array_files
@@ -611,6 +635,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
               # Check offset matches with previous request
@@ -632,6 +657,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *full_items_array_files
@@ -650,6 +676,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - filename: "{tavern.request_vars.params.filename}"
@@ -668,6 +695,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - relative_dirname: "{tavern.request_vars.params.relative_dirname}"
@@ -686,6 +714,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - status: "{returned_files_status:s}"
@@ -716,7 +745,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
 ---
 test_name: GET /decoders/files
@@ -741,6 +770,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: *full_items_array_files
           failed_items: []
@@ -758,6 +788,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: *full_items_array_files
           failed_items: []
@@ -781,6 +812,7 @@ stages:
       status_code: 200
       json:
         # We get totalItems number of arrays in items, using !anything to check items key is in the response
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -797,6 +829,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: &full_items_array_parents
             - details: !anything
@@ -819,6 +852,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *full_items_array_parents
@@ -840,6 +874,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
               # Check offset matches with previous request
@@ -862,6 +897,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *full_items_array_parents
@@ -890,7 +926,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1403
+        error: 1403
 
 ---
 test_name: GET /decoders/parents
@@ -917,6 +953,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: *full_items_array_parents
           total_affected_items: !anyint
@@ -932,6 +969,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: *full_items_array_parents
           total_affected_items: !anyint
@@ -965,4 +1003,4 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1503
+        error: 1503

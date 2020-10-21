@@ -1098,7 +1098,7 @@ int read_data_unit(const char *content) {
 
             if (OS_StrIsNum(value_str)) {
                 read_value = atoi(value_str);
-                
+
                 switch (content[len_value_str - 2]) {
                     case 'M':
                         // Fallthrough

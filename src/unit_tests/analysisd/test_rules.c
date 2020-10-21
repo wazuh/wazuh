@@ -21,6 +21,8 @@
 
 char *loadmemory(char *at, const char *str, OSList* log_msg);
 int get_info_attributes(char **attributes, char **values, OSList* log_msg);
+bool w_check_attr_negate(xml_node *node, int rule_id, OSList* log_msg);
+bool w_check_attr_field_name(xml_node * node, FieldInfo ** field, int rule_id, OSList* log_msg);
 
 
 /* setup/teardown */
@@ -394,6 +396,229 @@ void test_get_info_attributes_invalid_type(void ** state)
     os_free(values);
 }
 
+// w_check_attr_negate
+
+void w_check_attr_negate_non_attr(void **state)
+{
+    OSList log_msg = {0};
+    xml_node node = {0, NULL, NULL, NULL, NULL};
+    int rule_id = 1234;
+    bool ret_val;
+
+    ret_val = w_check_attr_negate(&node, rule_id, &log_msg);
+
+    assert_false(ret_val);
+}
+
+void w_check_attr_negate_attr_to_yes(void **state)
+{
+    OSList log_msg = {0};
+    xml_node node;
+    int rule_id = 1234;
+    bool ret_val;
+
+    node.key = 0;
+    node.element = NULL;
+    os_calloc(2, sizeof(char*), node.attributes);
+    os_strdup("negate", node.attributes[0]);
+    node.attributes[1] = NULL;
+    os_calloc(1, sizeof(char*), node.values);
+    os_strdup("yes", node.values[0]);
+
+    ret_val = w_check_attr_negate(&node, rule_id, &log_msg);
+
+    os_free(node.attributes[0]);
+    os_free(node.values[0]);
+    os_free(node.attributes);
+    os_free(node.values);
+
+    assert_true(ret_val);
+}
+
+void w_check_attr_negate_attr_to_no(void **state)
+{
+    OSList log_msg = {0};
+    xml_node node;
+    int rule_id = 1234;
+    bool ret_val;
+
+    node.key = 0;
+    node.element = NULL;
+    os_calloc(2, sizeof(char*), node.attributes);
+    os_strdup("negate", node.attributes[0]);
+    node.attributes[1] = NULL;
+    os_calloc(1, sizeof(char*), node.values);
+    os_strdup("no", node.values[0]);
+
+    ret_val = w_check_attr_negate(&node, rule_id, &log_msg);
+
+    os_free(node.attributes[0]);
+    os_free(node.values[0]);
+    os_free(node.attributes);
+    os_free(node.values);
+
+    assert_false(ret_val);
+}
+
+void w_check_attr_negate_attr_unknow_val(void **state)
+{
+    xml_node node;
+    int rule_id = 1234;
+    bool ret_val;
+
+    node.key = 0;
+    node.element = NULL;
+    os_calloc(2, sizeof(char*), node.attributes);
+    os_strdup("negate", node.attributes[0]);
+    node.attributes[1] = NULL;
+    os_calloc(1, sizeof(char*), node.values);
+    os_strdup("hello", node.values[0]);
+
+    OSList log_msg = {0};
+    char expected_msg[OS_SIZE_2048];
+    snprintf(expected_msg, OS_SIZE_2048, "(7600): Invalid value 'hello' for attribute 'negate' in rule 1234");
+
+    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_ERROR);
+    expect_value(__wrap__os_analysisd_add_logmsg, list, &log_msg);
+    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, expected_msg);
+
+    ret_val = w_check_attr_negate(&node, rule_id, &log_msg);
+
+    os_free(node.attributes[0]);
+    os_free(node.values[0]);
+    os_free(node.attributes);
+    os_free(node.values);
+
+    assert_false(ret_val);
+}
+
+void w_check_attr_negate_attr_non_negate_attr(void **state)
+{
+    OSList log_msg = {0};
+    xml_node node;
+    int rule_id = 1234;
+    bool ret_val;
+
+    node.key = 0;
+    node.element = NULL;
+    os_calloc(2, sizeof(char*), node.attributes);
+    os_strdup("hello", node.attributes[0]);
+    node.attributes[1] = NULL;
+
+    ret_val = w_check_attr_negate(&node, rule_id, &log_msg);
+
+    os_free(node.attributes[0]);
+    os_free(node.attributes);
+
+    assert_false(ret_val);
+}
+
+// w_check_attr_field_name
+
+void w_check_attr_field_name_non_attr(void **state)
+{
+    OSList log_msg = {0};
+    xml_node node = {0, NULL, NULL, NULL, NULL};
+    int rule_id = 1234;
+    FieldInfo *field = NULL;
+    bool ret_val;
+
+    ret_val = w_check_attr_field_name(&node, &field, rule_id, &log_msg);
+
+    assert_false(ret_val);
+}
+
+void w_check_attr_field_name_static_field(void **state)
+{
+    xml_node node;
+    int rule_id = 1234;
+    FieldInfo *field = NULL;
+    bool ret_val;
+
+    node.key = 0;
+    node.element = NULL;
+    os_calloc(2, sizeof(char*), node.attributes);
+    os_strdup("name", node.attributes[0]);
+    node.attributes[1] = NULL;
+    os_calloc(1, sizeof(char*), node.values);
+    os_strdup("action", node.values[0]);
+
+    OSList log_msg = {0};
+    char expected_msg[OS_SIZE_2048];
+    snprintf(expected_msg, OS_SIZE_2048, "Failure to read rule 1234. Field 'action' is static.");
+
+    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_ERROR);
+    expect_value(__wrap__os_analysisd_add_logmsg, list, &log_msg);
+    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, expected_msg);
+
+    ret_val = w_check_attr_field_name(&node, &field, rule_id, &log_msg);
+
+    assert_false(ret_val);
+
+    os_free(node.attributes[0]);
+    os_free(node.values[0]);
+    os_free(node.attributes);
+    os_free(node.values);
+}
+
+void w_check_attr_field_name_non_name_attr(void **state)
+{
+    xml_node node;
+    int rule_id = 1234;
+    FieldInfo *field = NULL;
+    bool ret_val;
+
+    node.key = 0;
+    node.element = NULL;
+    os_calloc(2, sizeof(char*), node.attributes);
+    os_strdup("hello", node.attributes[0]);
+    node.attributes[1] = NULL;
+
+    OSList log_msg = {0};
+    char expected_msg[OS_SIZE_2048];
+    snprintf(expected_msg, OS_SIZE_2048, "Failure to read rule 1234. No such attribute 'name' for field.");
+
+    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_ERROR);
+    expect_value(__wrap__os_analysisd_add_logmsg, list, &log_msg);
+    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, expected_msg);
+
+    ret_val = w_check_attr_field_name(&node, &field, rule_id, &log_msg);
+
+    assert_false(ret_val);
+
+    os_free(node.attributes[0]);
+    os_free(node.attributes);
+}
+
+void w_check_attr_field_name_dynamic_field(void **state)
+{
+    OSList log_msg = {0};
+    xml_node node;
+    int rule_id = 1234;
+    FieldInfo *field = NULL;
+    bool ret_val;
+
+    node.key = 0;
+    node.element = NULL;
+    os_calloc(2, sizeof(char*), node.attributes);
+    os_strdup("name", node.attributes[0]);
+    node.attributes[1] = NULL;
+    os_calloc(1, sizeof(char*), node.values);
+    os_strdup("dynamicField", node.values[0]);
+
+    ret_val = w_check_attr_field_name(&node, &field, rule_id, &log_msg);
+
+    assert_true(ret_val);
+
+    os_free(node.attributes[0]);
+    os_free(node.values[0]);
+    os_free(node.attributes);
+    os_free(node.values);
+    os_free(field->name);
+    os_free(field);
+}
+
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -411,7 +636,18 @@ int main(void)
         cmocka_unit_test(test_get_info_attributes_cve),
         cmocka_unit_test(test_get_info_attributes_osvdb),
         cmocka_unit_test(test_get_info_attributes_invalid_value),
-        cmocka_unit_test(test_get_info_attributes_invalid_type)
+        cmocka_unit_test(test_get_info_attributes_invalid_type),
+        // Test w_check_attr_negate
+        cmocka_unit_test(w_check_attr_negate_non_attr),
+        cmocka_unit_test(w_check_attr_negate_attr_to_yes),
+        cmocka_unit_test(w_check_attr_negate_attr_to_no),
+        cmocka_unit_test(w_check_attr_negate_attr_unknow_val),
+        cmocka_unit_test(w_check_attr_negate_attr_non_negate_attr),
+        // Test w_check_attr_field_name
+        cmocka_unit_test(w_check_attr_field_name_non_attr),
+        cmocka_unit_test(w_check_attr_field_name_static_field),
+        cmocka_unit_test(w_check_attr_field_name_non_name_attr),
+        cmocka_unit_test(w_check_attr_field_name_dynamic_field),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
