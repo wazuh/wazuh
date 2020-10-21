@@ -26,6 +26,14 @@
 #include <ifaddrs.h>
 #include <string.h>
 
+#ifdef WAZUH_UNIT_TESTING
+#define STATIC
+#include "unit_tests/wrappers/macos/libc/stdio_wrappers.h"
+#include "unit_tests/wrappers/macos/libplist_wrappers.h"
+#include "unit_tests/wrappers/macos/libwazuh_wrappers.h"
+#else
+#define STATIC static
+#endif
 
 #ifdef __MACH__
 
@@ -37,6 +45,9 @@
 #include <sys/proc.h>
 #include <sys/proc_info.h>
 #include <netdb.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include "external/libplist/include/plist/plist.h"
 
 #if !HAVE_SOCKADDR_SA_LEN
 #define SA_LEN(sa)      af_to_len(sa->sa_family)
@@ -56,7 +67,9 @@ hw_info *get_system_bsd();    // Get system information
 #if defined(__MACH__)
 OSHash *gateways;
 
-char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_id);
+STATIC char *get_port_state();
+STATIC char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_id);
+STATIC bool sys_convert_bin_plist(FILE **fp, char *magic_bytes, char *filepath);
 
 // Get installed programs inventory
 
@@ -227,11 +240,13 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
     FILE *fp;
     int i = 0;
     int invalid = 0;
+    char * vendor_name = NULL;
+    char * package_name = NULL;
 
     snprintf(filepath, PATH_LENGTH - 1, "%s/%s", app_folder, INFO_FILE);
     memset(read_buff, 0, OS_MAXSTR);
 
-    if ((fp = fopen(filepath, "r"))) {
+    if ((fp = fopen(filepath, "rb"))) {
 
         cJSON *object = cJSON_CreateObject();
         cJSON *package = cJSON_CreateObject();
@@ -241,13 +256,13 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
         cJSON_AddItemToObject(object, "program", package);
         cJSON_AddStringToObject(package, "format", "pkg");
 
-        // Check if valid Info.plist file (not an Apple binary property list)
+        // Check if valid Info.plist file
         if (fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) {
-            if (strncmp(read_buff, "<?xml", 5)) {   // Invalid file
-                mtdebug1(WM_SYS_LOGTAG, "Unable to read package information from '%s' (invalid format)", filepath);
-                invalid = 1;
-            } else {
-                // Valid Info.plist file
+            if (!memcmp(read_buff, "bplist00", 8)) {  // Apple binary plist
+                sys_convert_bin_plist(&fp, (char *)read_buff, filepath);
+            }
+
+            if (!(strncmp(read_buff, "<?xml", 5))) { // XML plist
                 while(fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) {
 
                     if (strstr(read_buff, "CFBundleName")) {
@@ -256,7 +271,16 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
                             char ** parts = OS_StrBreak('>', read_buff, 4);
                             char ** _parts = OS_StrBreak('<', parts[3], 2);
 
-                            cJSON_AddStringToObject(package, "name", _parts[0]);
+                            if (normalize_mac_package_name(_parts[0], &vendor_name, &package_name)) {
+                                cJSON_AddStringToObject(package, "name", package_name);
+                                os_free(package_name);
+                                if (vendor_name) {
+                                    cJSON_AddStringToObject(package, "vendor", vendor_name);
+                                    os_free(vendor_name);
+                                }
+                            } else {
+                                cJSON_AddStringToObject(package, "name", _parts[0]);
+                            }
 
                             for (i = 0; _parts[i]; i++) {
                                 os_free(_parts[i]);
@@ -272,7 +296,16 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
                             char ** parts = OS_StrBreak('>', read_buff, 2);
                             char ** _parts = OS_StrBreak('<', parts[1], 2);
 
-                            cJSON_AddStringToObject(package, "name", _parts[0]);
+                            if (normalize_mac_package_name(_parts[0], &vendor_name, &package_name)) {
+                                cJSON_AddStringToObject(package, "name", package_name);
+                                os_free(package_name);
+                                if (vendor_name) {
+                                    cJSON_AddStringToObject(package, "vendor", vendor_name);
+                                    os_free(vendor_name);
+                                }
+                            } else {
+                                cJSON_AddStringToObject(package, "name", _parts[0]);
+                            }
 
                             for (i = 0; _parts[i]; i++) {
                                 os_free(_parts[i]);
@@ -386,7 +419,12 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
                         }
                     }
                 }
+
+            } else {  // Invalid file
+                mtdebug1(WM_SYS_LOGTAG, "Unable to read package information from '%s' (invalid format)", filepath);
+                invalid = 1;
             }
+
         } else {
             mtwarn(WM_SYS_LOGTAG, "Unable to read file '%s'", filepath);
         }
@@ -408,7 +446,16 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
             end = strchr(program_name, '.');
             *end = '\0';
 
-            cJSON_AddStringToObject(package, "name", program_name);
+            if (normalize_mac_package_name(program_name, &vendor_name, &package_name)) {
+                cJSON_AddStringToObject(package, "name", package_name);
+                os_free(package_name);
+                if (vendor_name) {
+                    cJSON_AddStringToObject(package, "vendor", vendor_name);
+                    os_free(vendor_name);
+                }
+            } else {
+                cJSON_AddStringToObject(package, "name", program_name);
+            }
         }
 
         char *string;
@@ -420,6 +467,62 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
     }
 
     return NULL;
+}
+
+/**
+ * @brief Converts/Decompresses an Apple binary plist file into an XML.
+ *
+ * @param filepath Path of the binary file.
+ * @param magic_bytes The first bytes of the newly extracted XML.
+ * @param fp File Descriptor of the binary file. (On success, fp will point to the new XML file)
+ * @return True on success, false otherwise.
+ **/
+bool sys_convert_bin_plist(FILE **fp, char *magic_bytes, char *filepath) {
+    char * bin = MAP_FAILED;
+    char * xml = NULL;
+    uint32_t size = 0;
+    plist_t root_node = NULL;
+    struct stat filestats = {0};
+    int fd = fileno(*fp); // Retrieve the real file descriptor number.
+    bool status = false;
+
+    if (fstat(fd, &filestats) < 0) {
+        mterror(WM_SYS_LOGTAG, "Failed to stat file '%s': %s", filepath, strerror(errno));
+        goto clean;
+    }
+
+    bin = (char *) mmap(NULL, filestats.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (bin == MAP_FAILED) {
+        mterror(WM_SYS_LOGTAG, "Failed to mmap file '%s': %s", filepath, strerror(errno));
+        goto clean;
+    }
+
+
+    if (plist_from_bin(bin, filestats.st_size, &root_node), root_node == NULL) {
+        goto clean;
+    }
+
+    if (plist_to_xml(root_node, &xml, &size), !xml || !size) {
+        goto clean;
+    }
+
+    fclose(*fp);
+
+    if (*fp = tmpfile(), *fp == NULL) {
+        mterror(WM_SYS_LOGTAG, "Failed to open tmpfile: %s", strerror(errno));
+        goto clean;
+    }
+
+    fwrite(xml, size, sizeof(char), *fp);
+    fseek(*fp, 0, SEEK_SET);
+    fgets(magic_bytes, OS_MAXSTR - 1, *fp); // Hopefully the expected XML format.
+
+    status = true;
+
+clean:
+    if (root_node) plist_free(root_node);
+    if (bin != MAP_FAILED) munmap(bin, filestats.st_size);
+    return status;
 }
 
 #elif defined(__FreeBSD__)
@@ -1654,6 +1757,57 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
     wm_sendmsg(usec, queue_fd, end_msg, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     os_free(end_msg);
+}
+
+/* This function normalize the macOS package's name */
+int normalize_mac_package_name(const char * source_package, char ** vendor_name, char ** package_name) {
+    int result = 1;
+    int i;
+    char * next = NULL;
+    char * package_cpy = NULL;
+    char * vendor_in_package[] = {
+        "Microsoft",
+        "VMware"
+    };
+    char * version_in_package[] = {
+        "1Password"
+    };
+    int array_size_vendor = sizeof(vendor_in_package) / sizeof(vendor_in_package[0]);
+    int array_size_version = sizeof(version_in_package) / sizeof(version_in_package[0]);
+
+    if (!source_package) {
+        return 0;
+    }
+    os_strdup(source_package, package_cpy);
+
+    if (next = wstr_chr(package_cpy, ' '), !next) {
+        if (!strcmp(package_cpy, "zoom.us")) {
+            os_strdup("zoom", *package_name);
+        } else {
+            result = 0;
+        }
+    } else {
+        *next++ = '\0';
+        for (i = 0; i < array_size_vendor; i++) {
+            if (!strcmp(package_cpy, vendor_in_package[i])) {
+                os_strdup(package_cpy, *vendor_name);
+                os_strdup(next, *package_name);
+                os_free(package_cpy);
+                return 1;
+            }
+        }
+        for (i = 0; i < array_size_version; i++) {
+            if (!strcmp(package_cpy, version_in_package[i])) {
+                os_strdup(package_cpy, *package_name);
+                os_free(package_cpy);
+                return 1;
+            }
+        }
+        result = 0;
+    }
+
+    os_free(package_cpy);
+    return result;
 }
 
 #endif

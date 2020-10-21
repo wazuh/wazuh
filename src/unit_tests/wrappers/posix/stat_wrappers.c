@@ -26,15 +26,21 @@ int __wrap_lstat(const char *filename, struct stat *buf) {
     return mock();
 }
 
-#ifndef WIN32
-int __wrap_mkdir(const char *__path, __mode_t __mode) {
+#ifdef WIN32
+int __wrap_mkdir(const char *__path) {
+    check_expected(__path);
+    return mock();
+}
+#elif defined(__MACH__)
+int __wrap_mkdir(const char *__path, mode_t __mode) {
     check_expected(__path);
     check_expected(__mode);
     return mock();
 }
 #else
-int __wrap_mkdir(const char *__path) {
+int __wrap_mkdir(const char *__path, __mode_t __mode) {
     check_expected(__path);
+    check_expected(__mode);
     return mock();
 }
 #endif
