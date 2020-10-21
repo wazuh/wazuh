@@ -1384,6 +1384,32 @@ wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **out
     return status;
 }
 
+int wdb_global_reset_agents_connection(wdb_t *wdb) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("Cannot begin transaction");
+        return OS_INVALID;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS) < 0) {
+        mdebug1("Cannot cache statement");
+        return OS_INVALID;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS];
+
+    switch (wdb_step(stmt)) {
+    case SQLITE_ROW:
+    case SQLITE_DONE:
+        return OS_SUCCESS;
+        break;
+    default:
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+}
+
 // Check the agent 0 status in the global database
 int wdb_global_check_manager_keepalive(wdb_t *wdb) {
     if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE) < 0) {
