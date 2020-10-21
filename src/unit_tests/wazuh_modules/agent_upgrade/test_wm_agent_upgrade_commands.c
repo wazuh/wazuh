@@ -1297,16 +1297,6 @@ void test_wm_agent_upgrade_process_upgrade_custom_command_no_agents(void **state
     cJSON_AddStringToObject(task_response2, "message", upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
     cJSON_AddNumberToObject(task_response2, "agent", agents[1]);
 
-    cJSON *request_json = cJSON_CreateObject();
-    cJSON *origin_json = cJSON_CreateObject();
-    cJSON *parameters_json= cJSON_CreateObject();
-
-    cJSON_AddStringToObject(origin_json, "module", "upgrade_module");
-    cJSON_AddItemToObject(request_json, "origin", origin_json);
-    cJSON_AddStringToObject(request_json, "command", "upgrade_custom");
-    cJSON_AddItemToObject(parameters_json, "agents", cJSON_CreateArray());
-    cJSON_AddItemToObject(request_json, "parameters", parameters_json);
-
     cJSON *response_json = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(response_json, "error", WM_UPGRADE_SUCCESS);
@@ -1335,17 +1325,6 @@ void test_wm_agent_upgrade_process_upgrade_custom_command_no_agents(void **state
     expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
     expect_value(__wrap_wm_agent_upgrade_parse_data_response, agent_int, agents[1]);
     will_return(__wrap_wm_agent_upgrade_parse_data_response, task_response2);
-
-    // wm_agent_upgrade_parse_task_module_request
-
-    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_UPGRADE_CUSTOM);
-    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, request_json);
-
-    // wm_agent_upgrade_task_module_callback
-
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, request_json, sizeof(request_json));
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, NULL);
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, OS_INVALID);
 
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtwarn, formatted_msg, "(8160): There are no valid agents to upgrade.");
@@ -1561,16 +1540,6 @@ void test_wm_agent_upgrade_process_upgrade_command_no_agents(void **state)
     cJSON_AddStringToObject(task_response2, "message", upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
     cJSON_AddNumberToObject(task_response2, "agent", agents[1]);
 
-    cJSON *request_json = cJSON_CreateObject();
-    cJSON *origin_json = cJSON_CreateObject();
-    cJSON *parameters_json= cJSON_CreateObject();
-
-    cJSON_AddStringToObject(origin_json, "module", "upgrade_module");
-    cJSON_AddItemToObject(request_json, "origin", origin_json);
-    cJSON_AddStringToObject(request_json, "command", "upgrade");
-    cJSON_AddItemToObject(parameters_json, "agents", cJSON_CreateArray());
-    cJSON_AddItemToObject(request_json, "parameters", parameters_json);
-
     cJSON *response_json = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(response_json, "error", WM_UPGRADE_SUCCESS);
@@ -1599,17 +1568,6 @@ void test_wm_agent_upgrade_process_upgrade_command_no_agents(void **state)
     expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
     expect_value(__wrap_wm_agent_upgrade_parse_data_response, agent_int, agents[1]);
     will_return(__wrap_wm_agent_upgrade_parse_data_response, task_response2);
-
-    // wm_agent_upgrade_parse_task_module_request
-
-    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_UPGRADE);
-    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, request_json);
-
-    // wm_agent_upgrade_task_module_callback
-
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, request_json, sizeof(request_json));
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, NULL);
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, OS_INVALID);
 
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtwarn, formatted_msg, "(8160): There are no valid agents to upgrade.");

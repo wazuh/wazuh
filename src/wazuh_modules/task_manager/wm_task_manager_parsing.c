@@ -124,11 +124,7 @@ static const char *upgrade_statuses[] = {
 static const char *error_codes[] = {
     [WM_TASK_SUCCESS] = "Success",
     [WM_TASK_INVALID_MESSAGE] = "Invalid message",
-    [WM_TASK_INVALID_NODE] = "Invalid node",
-    [WM_TASK_INVALID_MODULE] = "Invalid module",
     [WM_TASK_INVALID_COMMAND] = "Invalid command",
-    [WM_TASK_INVALID_AGENTS] = "Invalid agents",
-    [WM_TASK_INVALID_TASKS] = "Invalid tasks",
     [WM_TASK_INVALID_STATUS] = "Invalid status",
     [WM_TASK_DATABASE_NO_TASK] = "No task in DB",
     [WM_TASK_DATABASE_ERROR] = "Database error",
@@ -195,16 +191,13 @@ wm_task_manager_task* wm_task_manager_parse_message(const char *msg) {
         task->command = WM_TASK_TASK_RESULT;
         task->parameters = wm_task_manager_parse_task_result_parameters(parameters_json);
     } else {
-        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_UNDEFINED_ACTION_ERRROR, command_json->valuestring);
-        wm_task_manager_free_task(task);
+        task->command = WM_TASK_UNKNOWN;
         cJSON_Delete(event_json);
-        return NULL;
+        return task;
     }
 
     if (!task->parameters) {
         wm_task_manager_free_task(task);
-        cJSON_Delete(event_json);
-        return NULL;
     }
 
     cJSON_Delete(event_json);

@@ -527,7 +527,7 @@
 #define MOD_TASK_SOCKTERR_ERROR                     "(8255): Response size is bigger than expected."
 #define MOD_TASK_LENGTH_ERROR                       "(8256): Received message > '%i'"
 #define MOD_TASK_PARSE_JSON_ERROR                   "(8257): Error parsing JSON event: '%s'"
-#define MOD_TASK_UNDEFINED_ACTION_ERRROR            "(8258): No action defined for command: '%s'"
+#define MOD_TASK_UNDEFINED_ACTION_ERRROR            "(8258): No action defined for command provided."
 #define MOD_TASK_PARSE_KEY_ERROR                    "(8259): Invalid message. '%s' not found."
 #define MOD_TASK_INVALID_ELEMENT_ERROR              "(8260): Invalid element in array."
 #define MOD_TASK_DB_ERROR                           "(8261): Database error."

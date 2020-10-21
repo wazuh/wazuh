@@ -24,8 +24,8 @@ cJSON* __wrap_wm_task_manager_parse_message(const char *msg) {
     return mock_type(cJSON*);
 }
 
-cJSON* __wrap_wm_task_manager_analyze_task(const cJSON *task_object, int *error_code) {
-    check_expected(task_object);
+cJSON* __wrap_wm_task_manager_process_task(const wm_task_manager_task *task, int *error_code) {
+    check_expected(task);
 
     *error_code = mock();
 
