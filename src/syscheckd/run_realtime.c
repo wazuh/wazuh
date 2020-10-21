@@ -58,7 +58,7 @@ int realtime_start() {
 }
 
 /* Add a directory to real time checking */
-int realtime_adddir(const char *dir, __attribute__((unused)) int whodata, __attribute__((unused))int followsl) {
+int realtime_adddir(const char *dir, int whodata, int followsl) {
     if (whodata && audit_thread_active) {
         // Save dir into saved rules list
         w_mutex_lock(&audit_mutex);
@@ -151,6 +151,7 @@ void realtime_process() {
 
             if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
                 mwarn("Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
+                syscheck.realtime->queue_overflow = true;
                 send_log_msg("ossec: Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
             }
             else {
@@ -217,6 +218,72 @@ void realtime_process() {
         free_strarray(paths);
         rbtree_destroy(tree);
     }
+}
+
+int realtime_update_watch(const char *wd, const char *dir) {
+    int old_wd, new_wd, index;
+    char wdchar[33];
+    char *data;
+    int retval;
+
+    if (syscheck.realtime->fd < 0) {
+        return -1;
+    }
+
+    index = fim_configuration_directory(dir, "file");
+
+    if (index < 0) {
+        mwarn("#### Removing non configured directory '%s'", dir);
+        inotify_rm_watch(syscheck.realtime->fd, atoi(wd));
+        free(OSHash_Delete_ex(syscheck.realtime->dirtb, wd));
+        return 0;
+    }
+
+    old_wd = atoi(wd);
+
+    new_wd = inotify_add_watch(syscheck.realtime->fd, dir,
+                               (syscheck.opts[index] & CHECK_FOLLOW) == 0 ? (REALTIME_MONITOR_FLAGS | IN_DONT_FOLLOW) :
+                                                                            REALTIME_MONITOR_FLAGS);
+
+    if (new_wd < 0) {
+        if (errno == ENOSPC) {
+            merror(FIM_ERROR_INOTIFY_ADD_MAX_REACHED, dir, new_wd, errno);
+            return -1;
+        } else if (errno == ENOENT) {
+            if (strcmp(dir, syscheck.dir[index])) {
+                mdebug1("Removing watch on non existent directory '%s'", dir);
+                inotify_rm_watch(syscheck.realtime->fd, old_wd);
+                free(OSHash_Delete_ex(syscheck.realtime->dirtb, wd));
+                return 0;
+            }
+        } else {
+            mdebug1(FIM_INOTIFY_ADD_WATCH, dir, new_wd, errno, strerror(errno));
+            return -1;
+        }
+    }
+
+    if (new_wd == old_wd) {
+        return -1;
+    }
+
+    snprintf(wdchar, 33, "%d", new_wd);
+    os_strdup(dir, data);
+
+    // Remove the old wd entry
+    free(OSHash_Delete_ex(syscheck.realtime->dirtb, wd));
+
+    if (!OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
+        if (retval = OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
+            os_free(data);
+            merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
+        }
+
+        mdebug1(FIM_REALTIME_NEWDIRECTORY, dir);
+    } else if (retval = OSHash_Update_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
+        merror("Unable to update 'dirtb'. Directory not found: '%s'", data);
+        os_free(data);
+    }
+    return 0;
 }
 
 void free_syscheck_dirtb_data(char *data) {
@@ -595,17 +662,31 @@ unsigned int count_watches() {
     OSHashNode *hash_node;
     unsigned int inode_it = 0;
     unsigned int num_watches = 0;
+    struct timespec start;
+    struct timespec end;
 
     if(syscheck.realtime != NULL) {
+        gettime(&start);
         w_mutex_lock(&syscheck.fim_realtime_mutex);
         hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
 
         while(hash_node) {
+            if (syscheck.realtime->queue_overflow) {
+                if (realtime_update_watch(hash_node->key, hash_node->data) == 0) {
+                    num_watches = 0;
+                    hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
+                    continue;
+                }
+            }
+
             num_watches++;
             hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node);
         }
+        syscheck.realtime->queue_overflow = false;
 
         w_mutex_unlock(&syscheck.fim_realtime_mutex);
+        gettime(&end);
+        mdebug2("Time spent sanitizing wd hashmap: %.3f seconds", time_diff(&start, &end));
     }
 
     return num_watches;
