@@ -731,7 +731,7 @@ os_info *get_unix_version()
                         if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
                             mdebug1("Cannot read from command output (sw_vers -productName).");
                         } else {
-                            info->os_name = strdup(strtok_r(buff, "\n", &save_ptr));
+                            w_strdup(strtok_r(buff, "\n", &save_ptr), info->os_name);
                         }
                         pclose(cmd_output_ver);
                     }
@@ -739,7 +739,7 @@ os_info *get_unix_version()
                         if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
                             mdebug1("Cannot read from command output (sw_vers -productVersion).");
                         } else {
-                            info->os_version = strdup(strtok_r(buff, "\n", &save_ptr));
+                            w_strdup(strtok_r(buff, "\n", &save_ptr), info->os_version);
                         }
                         pclose(cmd_output_ver);
                     }
@@ -747,7 +747,7 @@ os_info *get_unix_version()
                         if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
                             mdebug1("Cannot read from command output (sw_vers -buildVersion).");
                         } else {
-                            info->os_build = strdup(strtok_r(buff, "\n", &save_ptr));
+                            w_strdup(strtok_r(buff, "\n", &save_ptr), info->os_build);
                         }
                         pclose(cmd_output_ver);
                     }
@@ -760,7 +760,7 @@ os_info *get_unix_version()
                         char *kern = NULL;
                         kern = malloc(match_size +1);
                         snprintf(kern, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
-                        info->os_codename = strdup(OSX_ReleaseName(atoi(kern)));
+                        w_strdup(OSX_ReleaseName(atoi(kern)), info->os_codename);
                         free(kern);
                     }
                     pclose(cmd_output_ver);
