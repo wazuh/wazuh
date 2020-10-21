@@ -71,7 +71,7 @@ namespace Utils
                     "Error reading the size of: " + valueName
                 };
             }
-            std::unique_ptr<BYTE> spBuff{new BYTE[size]};
+            const auto spBuff{std::make_unique<BYTE[]>(size)};
             if (!spBuff)
             {
                 throw std::runtime_error

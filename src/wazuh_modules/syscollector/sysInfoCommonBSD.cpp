@@ -46,7 +46,7 @@ std::string SysInfo::getCpuName() const
             "Error getting cpu name size."
         };
     }
-    spBuff.reset(new char[len+1]);
+    const auto spBuff{std::make_unique<char[]>(len+1)};
     if(!spBuff)
     {
         throw std::runtime_error

@@ -54,7 +54,6 @@ int SysInfo::getCpuMHz() const
 
 std::string SysInfo::getSerialNumber() const
 {
-    std::unique_ptr<char> spBuff;
     const std::vector<int> mib{CTL_HW, HW_SERIALNO};
     size_t len{0};
     auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), nullptr, &len, nullptr, 0)};
@@ -67,7 +66,7 @@ std::string SysInfo::getSerialNumber() const
             "Error getting board serial size."
         };
     }
-    spBuff.reset(new char[len+1]);
+    const auto spBuff{std::make_unique<char[]>(len+1)};
     if(!spBuff)
     {
         throw std::runtime_error

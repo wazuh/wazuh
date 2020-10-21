@@ -67,7 +67,7 @@ static std::string parseRawSmbios(const BYTE* rawData, const DWORD rawDataSize)
     {
         SMBIOSStructureHeader header{};
         memcpy(&header, rawData + offset, sizeof(SMBIOSStructureHeader));
-        if (header.Type == BASEBOARD_INFORMATION_TYPE)
+        if (BASEBOARD_INFORMATION_TYPE == header.Type)
         {
             SMBIOSBasboardInfoStructure info{};
             memcpy(&info, rawData + offset, sizeof(SMBIOSBasboardInfoStructure));
@@ -117,13 +117,13 @@ std::string SysInfo::getSerialNumber() const
         const auto size {GetSystemFirmwareTable('RSMB', 0, nullptr, 0)};
         if (size)
         {
-            std::unique_ptr<unsigned char> buff{new unsigned char[size]};
-            if (buff)
+            const auto spBuff{std::make_unique<unsigned char[]>(size)};
+            if (spBuff)
             {
                 /* Get raw SMBIOS firmware table */
-                if (GetSystemFirmwareTable('RSMB', 0, buff.get(), size) == size)
+                if (GetSystemFirmwareTable('RSMB', 0, spBuff.get(), size) == size)
                 {
-                    PRawSMBIOSData smbios{reinterpret_cast<PRawSMBIOSData>(buff.get())};
+                    PRawSMBIOSData smbios{reinterpret_cast<PRawSMBIOSData>(spBuff.get())};
                     /* Parse SMBIOS structures */
                     ret = parseRawSmbios(smbios->SMBIOSTableData, size);
                 }
@@ -136,7 +136,7 @@ std::string SysInfo::getSerialNumber() const
 std::string SysInfo::getCpuName() const
 {
     Utils::Registry reg(HKEY_LOCAL_MACHINE, CENTRAL_PROCESSOR_REGISTRY);
-    return reg.string("ProcessorNameString");    
+    return reg.string("ProcessorNameString");
 }
 int SysInfo::getCpuMHz() const
 {

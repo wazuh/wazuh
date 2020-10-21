@@ -29,14 +29,14 @@ namespace Utils
             pclose(file);
         }
     };
-    static std::string exec(const std::string& cmd)
+    static std::string exec(const std::string& cmd, const size_t bufferSize = 128)
     {
         const std::unique_ptr<FILE, FileSmartDeleter> file{popen(cmd.c_str(), "r")};
-        char buffer[128];
+        char buffer[bufferSize];
         std::string result;
         if (file)
         {
-            while(fgets(buffer, 128, file.get()))
+            while(fgets(buffer, bufferSize, file.get()))
             {
                 result += buffer;
             }
