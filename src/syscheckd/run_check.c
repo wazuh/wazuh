@@ -533,7 +533,7 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
                 if (real_path) {
                     // Check if link has changed
                     if (strcmp(real_path, syscheck.dir[i])) {
-                        minfo(FIM_LINKCHECK_CHANGED, syscheck.dir[i], syscheck.symbolic_links[i], real_path);
+                        minfo(FIM_LINKCHECK_CHANGED, syscheck.symbolic_links[i], syscheck.dir[i], real_path);
                         fim_link_update(i, real_path);
                     } else {
                         mdebug1(FIM_LINKCHECK_NOCHANGE, syscheck.dir[i]);
