@@ -90,8 +90,12 @@ STATIC bool sys_convert_bin_plist(FILE **fp, char *magic_bytes, char *filepath);
 
 STATIC char *get_port_state();
 
-// Get installed programs inventory
-
+/**
+ * @brief Get installed programs inventory
+ *
+ * @param queue_fd File descriptor of the queue to send events.
+ * @param LOCATION Identifier of the component to attach it to the events.
+ **/
 void sys_packages_bsd(int queue_fd, const char* LOCATION) {
 
     int random_id = os_random();
@@ -144,6 +148,17 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION) {
     free(timestamp);
 }
 
+/**
+ * @brief Read macOS applications installed in a given directory.
+ *
+ * @param app_folder Path to the directory to scan.
+ * @param timestamp Timestamp of the scan to be attached to the events.
+ * @param random_id Id of the scan, to be attached to the events.
+ * @param queue_fd File descriptor of the queue to send events.
+ * @param LOCATION Identifier of the component to attach it to the events.
+ * @param recursive Scan the directory recursively.
+ * @return 0 on success, 1 otherwise.
+ **/
 int sys_read_apps(const char * app_folder, const char * timestamp, int random_id, int queue_fd, const char* LOCATION, int recursive) {
 
     struct dirent *de;
@@ -214,6 +229,12 @@ int sys_read_apps(const char * app_folder, const char * timestamp, int random_id
     return 0;
 }
 
+/**
+ * @brief Read macOS plist files
+ *
+ * @param app_folder Path to the directory where the plist file is located.
+ * @return JSON structure with the parsed fields, NULL on error
+ **/
 cJSON* sys_parse_pkg(const char * app_folder) {
 
     char read_buff[OS_MAXSTR];
@@ -440,6 +461,16 @@ cJSON* sys_parse_pkg(const char * app_folder) {
 
 }
 
+/**
+ * @brief Read macOS applications installed by homebrew.
+ *
+ * @param app_folder Path to the directory to scan.
+ * @param timestamp Timestamp of the scan to be attached to the events.
+ * @param random_id Id of the scan, to be attached to the events.
+ * @param queue_fd File descriptor of the queue to send events.
+ * @param LOCATION Identifier of the component to attach it to the events.
+ * @return 0 on success, 1 otherwise.
+ **/
 int sys_read_homebrew_apps(const char * app_folder, const char * timestamp, int random_id, int queue_fd, const char* LOCATION) {
 
     DIR *dr;
