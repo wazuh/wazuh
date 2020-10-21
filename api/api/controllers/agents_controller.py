@@ -138,9 +138,8 @@ async def add_agent(request, pretty=False, wait_for_complete=False):
             except KeyError:
                 raise_if_exc(WazuhError(1120))
         else:
-            peername = request.transport.get_extra_info('peername')
-            if peername is not None:
-                f_kwargs['ip'], _ = peername
+            f_kwargs['ip'] = 'any'
+
     f_kwargs['use_only_authd'] = configuration.api_conf['use_only_authd']
 
     dapi = DistributedAPI(f=agent.add_agent,
