@@ -316,6 +316,7 @@ static void * close_fp_main(void * args) {
         }
         key_unlock();
     }
+    return NULL;
 }
 
 static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock) {
