@@ -289,7 +289,7 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state)
     syscheck.ignore_regex = syscheck_ignore_regex;
 
     registry syscheck_registry_ignore[] = { { "Entry1", 1, 0, 0, 0, NULL, "Tag1" } , { NULL, 0, 0, 0, 0, NULL, NULL }};
-    syscheck.registry_ignore = syscheck_registry_ignore;
+    syscheck.key_ignore = syscheck_registry_ignore;
 
     char *syscheck_nodiff[] = {"Diff", NULL};
     syscheck.nodiff = syscheck_nodiff;
@@ -354,7 +354,7 @@ void test_Start_win32_Syscheck_whodata_active(void **state)
 
     syscheck.ignore = NULL;
     syscheck.ignore_regex = NULL;
-    syscheck.registry_ignore = NULL;
+    syscheck.key_ignore = NULL;
     syscheck.nodiff = NULL;
 
     char info_msg[OS_MAXSTR];

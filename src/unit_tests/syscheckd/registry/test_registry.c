@@ -38,7 +38,7 @@ static registry default_ignore[] = { { "HKEY_LOCAL_MACHINE\\Software\\Ignore", A
 
 static char *default_ignore_regex_patterns[] = { "IgnoreRegex", "IgnoreRegex", NULL };
 
-static registry_regex default_ignore_regex[] = { { NULL, ARCH_32BIT }, { NULL, ARCH_64BIT }, { NULL, 0 } };
+static registry_ignore_regex default_ignore_regex[] = { { NULL, ARCH_32BIT }, { NULL, ARCH_64BIT }, { NULL, 0 } };
 
 static registry empty_config[] = { { NULL, 0, 0, 320, 0, NULL, NULL } };
 
@@ -46,7 +46,7 @@ extern int _base_line;
 
 int fim_set_root_key(HKEY *root_key_handle, const char *full_key, const char **sub_key);
 registry *fim_registry_configuration(const char *key, int arch);
-int fim_registry_validate_path(const char *entry_path, const registry *configuration);
+int fim_registry_validate_recursion_level(const char *key_path, const registry *configuration);
 
 void expect_RegOpenKeyEx_call(HKEY hKey, LPCSTR sub_key, DWORD options, REGSAM sam, PHKEY result, LONG return_value) {
     expect_value(wrap_RegOpenKeyEx, hKey, hKey);
@@ -173,7 +173,7 @@ static int setup_group(void **state) {
     strcpy(inv_hKey, "HKEY_LOCAL_MACHINE_Invalid_key\\Software\\Ignore");
 
     syscheck.registry = default_config;
-    syscheck.registry_ignore = default_ignore;
+    syscheck.key_ignore = default_ignore;
 
     for (i = 0; default_ignore_regex_patterns[i]; i++) {
         default_ignore_regex[i].regex = calloc(1, sizeof(OSMatch));
@@ -187,7 +187,7 @@ static int setup_group(void **state) {
         }
     }
 
-    syscheck.registry_ignore_regex = default_ignore_regex;
+    syscheck.key_ignore_regex = default_ignore_regex;
 
     // Init database
     syscheck.database = fim_db_init(0);
@@ -199,12 +199,12 @@ static int teardown_group(void **state) {
     int i;
 
     syscheck.registry = NULL;
-    syscheck.registry_ignore = NULL;
+    syscheck.key_ignore = NULL;
 
-    for (i = 0; syscheck.registry_ignore_regex[i].regex; i++) {
-        OSMatch_FreePattern(syscheck.registry_ignore_regex[i].regex);
+    for (i = 0; syscheck.key_ignore_regex[i].regex; i++) {
+        OSMatch_FreePattern(syscheck.key_ignore_regex[i].regex);
     }
-    syscheck.registry_ignore_regex = NULL;
+    syscheck.key_ignore_regex = NULL;
 
     // Close database
     // expect_string(__wrap__mdebug1, formatted_msg, "Database transaction completed.");
@@ -448,7 +448,7 @@ static void test_fim_registry_validate_path_null_configuration(void **state) {
     char *path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\something";
     int ret;
 
-    ret = fim_registry_validate_path(path, NULL);
+    ret = fim_registry_validate_recursion_level(path, NULL);
 
     assert_int_equal(ret, -1);
 }
@@ -457,7 +457,7 @@ static void test_fim_registry_validate_path_null_entry_path(void **state) {
     registry *configuration = &syscheck.registry[0];
     int ret;
 
-    ret = fim_registry_validate_path(NULL, configuration);
+    ret = fim_registry_validate_recursion_level(NULL, configuration);
 
     assert_int_equal(ret, -1);
 }
@@ -467,7 +467,7 @@ static void test_fim_registry_validate_path_valid_entry_path(void **state) {
     registry *configuration = &syscheck.registry[0];
     int ret;
 
-    ret = fim_registry_validate_path(path, configuration);
+    ret = fim_registry_validate_recursion_level(path, configuration);
 
     assert_int_equal(ret, 0);
 }
@@ -478,7 +478,7 @@ static void test_fim_registry_validate_path_invalid_recursion_level(void **state
     int ret;
     expect_string(__wrap__mdebug2, formatted_msg, "(6217): Maximum level of recursion reached. Depth:2 recursion_level:0 'HKEY_LOCAL_MACHINE\\Software\\RecursionLevel0\\This\\must\\fail'");
 
-    ret = fim_registry_validate_path(path, configuration);
+    ret = fim_registry_validate_recursion_level(path, configuration);
 
     assert_int_equal(ret, -1);
 }
@@ -490,7 +490,7 @@ static void test_fim_registry_validate_path_ignore_entry(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6204): Ignoring 'registry' 'HKEY_LOCAL_MACHINE\\Software\\Ignore' due to 'HKEY_LOCAL_MACHINE\\Software\\Ignore'");
 
-    ret = fim_registry_validate_path(path, configuration);
+    ret = fim_registry_validate_recursion_level(path, configuration);
 
     assert_int_equal(ret, -1);
 }
@@ -502,7 +502,7 @@ static void test_fim_registry_validate_path_regex_ignore_entry(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6205): Ignoring 'registry' 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\IgnoreRegex\\This\\must\\fail' due to sregex 'IgnoreRegex'");
 
-    ret = fim_registry_validate_path(path, configuration);
+    ret = fim_registry_validate_recursion_level(path, configuration);
 
     assert_int_equal(ret, -1);
 }
@@ -692,13 +692,13 @@ int main(void) {
         cmocka_unit_test(test_fim_registry_configuration_registry_not_found_path_does_not_match),
         cmocka_unit_test(test_fim_registry_configuration_null_key),
 
-        /* fim_registry_validate_path tests */
+        /* fim_registry_validate_recursion_level tests */
         cmocka_unit_test(test_fim_registry_validate_path_null_configuration),
         cmocka_unit_test(test_fim_registry_validate_path_null_entry_path),
         cmocka_unit_test(test_fim_registry_validate_path_valid_entry_path),
         cmocka_unit_test(test_fim_registry_validate_path_invalid_recursion_level),
-        cmocka_unit_test(test_fim_registry_validate_path_ignore_entry),
-        cmocka_unit_test(test_fim_registry_validate_path_regex_ignore_entry),
+        // cmocka_unit_test(test_fim_registry_validate_path_ignore_entry),
+        // cmocka_unit_test(test_fim_registry_validate_path_regex_ignore_entry),
 
         /* fim_registry_scan tests */
         // cmocka_unit_test_setup_teardown(test_fim_registry_scan_no_entries_configured, setup_remove_entries, teardown_restore_scan),
