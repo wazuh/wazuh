@@ -1,5 +1,5 @@
 /*
- * Wazuh RSYNC
+ * Wazuh SysCollector Test tool
  * Copyright (C) 2015-2020, Wazuh Inc.
  * October 7, 2020.
  *
@@ -15,6 +15,7 @@
 #include <memory>
 #include "dbsync.h"
 #include "rsync.h"
+#include "syscollectorImp.h"
 
 static void logFunction(const char* msg)
 {
@@ -23,10 +24,13 @@ static void logFunction(const char* msg)
 
 int main(int argc, const char* argv[])
 {
+    const std::chrono::milliseconds timeout{5000};
+    Syscollector sysCollector{timeout};
     try
     {
         rsync_initialize(logFunction);
         dbsync_initialize(logFunction);
+        sysCollector.start();
     }
     catch(const std::exception& ex)
     {

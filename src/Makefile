@@ -312,6 +312,12 @@ ifeq (${CC}, gcc)
 endif
 
 CC=gcc
+ifeq (${TARGET}, winagent)
+CXX=g++-posix
+else
+CXX=g++
+endif
+
 ifneq (,$(shell which amd64-mingw32msvc-gcc))
 	ifeq (${CC}, gcc)
 		MING_BASE:=amd64-mingw32msvc-
@@ -351,7 +357,7 @@ endif
 
 endif #winagent
 
-
+OSSEC_CXXBIN   =${QUIET_CCBIN}${MING_BASE}${CXX}
 OSSEC_CC      =${QUIET_CC}${MING_BASE}${CC}
 OSSEC_CCBIN   =${QUIET_CCBIN}${MING_BASE}${CC}
 OSSEC_SHARED  =${QUIET_CCBIN}${MING_BASE}${CC} -shared
@@ -1185,8 +1191,8 @@ config/%.o: config/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
 build_shared_modules:
-	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && make
-	cd ${RSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${RSYNC_TEST} ${SOLARIS_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && make
+	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
+	cd ${RSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${RSYNC_TEST} ${SOLARIS_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
 	cd ${SHARED_UTILS_TEST} &&  mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && make
@@ -1196,14 +1202,18 @@ endif
 #### Syscollector ##
 
 build_syscollector: build_shared_modules
-	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SYSCOLLECTOR_OS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && make
+	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SYSCOLLECTOR_OS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && ${MAKE}
 
 ifeq (${TARGET},winagent)
-syscollector_cpp := $(wildcard wazuh_modules/syscollector/*Common.cpp) $(wildcard wazuh_modules/syscollector/*Win.cpp)
+syscollector_cpp := $(wildcard wazuh_modules/syscollector/*Win.cpp)
+else ifeq (${uname_S},Linux)
+syscollector_cpp := $(wildcard wazuh_modules/syscollector/*Linux.cpp)
 else ifeq (${uname_S},Darwin)
-syscollector_cpp := $(wildcard wazuh_modules/syscollector/*Common.cpp) $(wildcard wazuh_modules/syscollector/*Mac.cpp)
-else
-syscollector_cpp := $(wildcard wazuh_modules/syscollector/*Common.cpp) $(wildcard wazuh_modules/syscollector/*Linux.cpp)
+syscollector_cpp := $(wildcard wazuh_modules/syscollector/*Mac.cpp) $(wildcard wazuh_modules/syscollector/*CommonBSD.cpp)
+else ifeq (${uname_S},FreeBSD)
+syscollector_cpp := $(wildcard wazuh_modules/syscollector/*FreeBSD.cpp) $(wildcard wazuh_modules/syscollector/*CommonBSD.cpp)
+else ifeq (${uname_S},OpenBSD)
+syscollector_cpp := $(wildcard wazuh_modules/syscollector/*OpenBSD.cpp) $(wildcard wazuh_modules/syscollector/*CommonBSD.cpp)
 endif
 
 ifeq (${TARGET},winagent)
@@ -1410,7 +1420,7 @@ os_execd/%.o: os_execd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"ossec-execd\" -c $^ -o $@
 
 ossec-execd: ${os_execd_o} ${syscollector_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CXXBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 
 #### logcollectord ####
@@ -1426,7 +1436,7 @@ logcollector/%-event.o: logcollector/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DEVENTCHANNEL_SUPPORT -DARGV0=\"ossec-logcollector\" -c $^ -o $@
 
 ossec-logcollector: ${os_logcollector_o} ${syscollector_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CXXBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 #### remoted #########
 
@@ -1448,7 +1458,7 @@ client-agent/%.o: client-agent/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./client-agent -DARGV0=\"ossec-agentd\" -c $^ -o $@
 
 ossec-agentd: ${client_agent_o} ${syscollector_o} monitord/rotate_log.o monitord/compress_log.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CXXBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 #### addagent ######
 
@@ -1546,7 +1556,7 @@ syscheckd/%-event.o: syscheckd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -DEVENTCHANNEL_SUPPORT -DARGV0=\"ossec-syscheckd\" -c $^ -o $@
 
 ossec-syscheckd: ${syscheck_o} rootcheck.a ${syscollector_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CXXBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 #### Monitor #######
 
@@ -1708,7 +1718,7 @@ wmodulesd_c := wazuh_modules/main.c
 wmodulesd_o := $(wmodulesd_c:.c=.o)
 
 wazuh-modulesd: ${wmodulesd_o} ${syscollector_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SHARED_MODULES_LDFLAGS} -o $@
+	${OSSEC_CXXBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SHARED_MODULES_LDFLAGS} -o $@
 
 ### wazuh-framework ##
 ifneq (,$(filter ${USE_FRAMEWORK_LIB},YES yes y Y 1))
@@ -1959,10 +1969,10 @@ win32/ui/%.o: win32/ui/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"ossec-win32ui\" -c $^ -o $@
 
 win32/ossec-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o ${syscollector_o} ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o wazuh_modules/syscollector/syscollector_win_ext.dll
-	${OSSEC_CCBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SHARED_MODULES_LDFLAGS} -o $@
+	${OSSEC_CXXBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SHARED_MODULES_LDFLAGS} -o $@
 
 win32/ossec-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out syscheckd/main-event.o, ${syscollector_o} ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o wazuh_modules/syscollector/syscollector_win_ext.dll
-	${OSSEC_CCBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SHARED_MODULES_LDFLAGS} -o $@
+	${OSSEC_CXXBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SHARED_MODULES_LDFLAGS} -o $@
 
 win32/ossec-rootcheck.exe: win32/icon.o win32/win_service_rk.o ${rootcheck_rk_o}
 	${OSSEC_CCBIN} -DARGV0=\"ossec-rootcheck\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@

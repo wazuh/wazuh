@@ -26,6 +26,7 @@ add_executable(utils_unit_test
     "${UTIL_CXX_UNITTEST_SRC}")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    add_definitions(-DWIN32=1)
     target_link_libraries(utils_unit_test
         debug gtestd
         debug gmockd

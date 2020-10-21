@@ -1,0 +1,87 @@
+/*
+ * Wazuh SysInfo
+ * Copyright (C) 2015-2020, Wazuh Inc.
+ * October 7, 2020.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+#include "sysInfo.hpp"
+#include "cmdHelper.h"
+#include "stringHelper.h"
+#include <sys/sysctl.h>
+#include <sys/vmmeter.h>
+
+void SysInfo::getMemory(nlohmann::json& info) const
+{
+    constexpr auto vmPageSize{"vm.stats.vm.v_page_size"};
+    constexpr auto vmTotal{"vm.vmtotal"};
+    uint64_t ram{0};
+    const std::vector<int> mib{CTL_HW, HW_PHYSMEM};
+    size_t len{sizeof(ram)};
+    auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), &ram, &len, nullptr, 0)};
+    if(ret)
+    {
+        throw std::system_error
+        {
+            ret,
+            std::system_category(),
+            "Error reading total RAM."
+        };
+    }
+    const auto ramTotal{ram/KByte};
+    info["ram_total"] = ramTotal;
+    u_int pageSize{0};
+    len = sizeof(pageSize);
+    ret = sysctlbyname(vmPageSize, &pageSize, &len, nullptr, 0);
+    if(ret)
+    {
+        throw std::system_error
+        {
+            ret,
+            std::system_category(),
+            "Error reading page size."
+        };
+    }
+    struct vmtotal vmt{};
+    len = sizeof(vmt);
+    ret = sysctlbyname(vmTotal, &vmt, &len, nullptr, 0);
+    if(ret)
+    {
+        throw std::system_error
+        {
+            ret,
+            std::system_category(),
+            "Error reading total memory."
+        };
+    }
+    const auto ramFree{(vmt.t_free * pageSize)/KByte};
+    info["ram_free"] = ramFree;
+    info["ram_usage"] = 100 - (100 * ramFree / ramTotal);
+}
+
+
+int SysInfo::getCpuMHz() const
+{
+    unsigned long cpuMHz{0};
+    constexpr auto clockRate{"hw.clockrate"};
+    size_t len{sizeof(cpuMHz)};
+    const auto ret{sysctlbyname(clockRate, &cpuMHz, &len, nullptr, 0)};
+    if(ret)
+    {
+        throw std::system_error
+        {
+            ret,
+            std::system_category(),
+            "Error reading cpu frequency."
+        };
+    }
+    return cpuMHz;
+}
+
+std::string SysInfo::getSerialNumber() const
+{
+    return "unknown";
+}
