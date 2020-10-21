@@ -14,10 +14,12 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "stringHelper.h"
+#include "cmdHelper.h"
 
 constexpr auto WM_SYS_HW_DIR{"/sys/class/dmi/id/board_serial"};
 constexpr auto WM_SYS_CPU_DIR{"/proc/cpuinfo"};
 constexpr auto WM_SYS_MEM_DIR{"/proc/meminfo"};
+#define DPKG_PATH "/var/lib/dpkg/"
 
 static bool existDir(const std::string& path)
 {
@@ -47,7 +49,6 @@ static bool getSystemInfo(const std::string& fileName, const std::string& separa
         while(file.good())
         {
             std::getline(file, line);
-            std::cout << line << std::endl;
             parseLineAndFillMap(line, separator, systemInfo);
         }
     }
@@ -143,6 +144,87 @@ static nlohmann::json getDpkgInfo(const std::string& fileName)
     return ret;
 }
 
+static nlohmann::json parseRpm(const std::string& packageInfo)
+{
+    nlohmann::json ret;
+    std::string token;
+    std::istringstream tokenStream{ packageInfo };
+    std::map<std::string, std::string> info;
+    while (std::getline(tokenStream, token))
+    {
+        const auto pos{token.find(":")};
+        if (pos != std::string::npos && (pos + 1) < token.size())
+        {
+            const auto key{Utils::trim(token.substr(0, pos))};
+            const auto value{Utils::trim(token.substr(pos + 1))};
+            info[key] = value;
+        }
+    }
+    auto it{info.find("Name")};
+    if (it != info.end() && it->second != "gpg-pubkey")
+    {
+        std::string version;
+        ret["name"] = it->second;
+        it = info.find("Size");
+        if (it != info.end())
+        {
+            ret["size"] = it->second;
+        }
+        it = info.find("Install Date");
+        if (it != info.end())
+        {
+            ret["install_time"] = it->second;
+        }
+        it = info.find("Group");
+        if (it != info.end())
+        {
+            ret["group"] = it->second;
+        }
+        it = info.find("Epoch");
+        if (it != info.end())
+        {
+            version += it->second + "-";
+        }
+        it = info.find("Release");
+        if (it != info.end())
+        {
+            version += it->second + "-";
+        }
+        it = info.find("Version");
+        if (it != info.end())
+        {
+            version += it->second;
+        }
+        ret["version"] = version;
+    }
+    return ret;
+}
+
+static nlohmann::json getRpmInfo()
+{
+    nlohmann::json ret;
+    auto rawData{ Utils::exec("rpm -qai") };
+    if (!rawData.empty())
+    {
+        std::vector<std::string> packages;
+        auto pos{rawData.rfind("Name")};
+        while(pos != std::string::npos)
+        {
+            const auto package{parseRpm(rawData.substr(pos))};
+            if (!package[0].empty())
+            {
+                ret.push_back(package[0]);
+            }
+            rawData = rawData.substr(0, pos);
+            pos = rawData.rfind("Name");
+        }
+    }
+    else
+    {
+    }
+    return ret;
+}
+
 std::string SysInfo::getSerialNumber()
 {
     std::string serial;
@@ -193,9 +275,13 @@ void SysInfo::getMemory(nlohmann::json& info)
 nlohmann::json SysInfo::getPackages()
 {
     nlohmann::json packages;
-    if (existDir("/var/lib/dpkg/"))
+    if (existDir(DPKG_PATH))
     {
-        packages = getDpkgInfo("/var/lib/dpkg/status");
+        packages.push_back(getDpkgInfo(DPKG_PATH "status"));
     }
-    return packages;
+    else
+    {
+        packages.push_back(getRpmInfo());
+    }
+    return packages[0];
 }
