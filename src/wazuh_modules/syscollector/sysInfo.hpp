@@ -27,7 +27,7 @@ private:
     virtual int getCpuMHz() const;
     virtual int getCpuCores() const;
     virtual void getMemory(nlohmann::json& info) const;
-    virtual nlohmann::json getPackages();
+    virtual nlohmann::json getPackages() const;
 };
 
 

@@ -272,7 +272,7 @@ void SysInfo::getMemory(nlohmann::json& info) const
     info["ram_usage"] = 100 - (100*memFree/memTotal);
 }
 
-nlohmann::json SysInfo::getPackages()
+nlohmann::json SysInfo::getPackages() const
 {
     nlohmann::json packages;
     if (existDir(DPKG_PATH))
