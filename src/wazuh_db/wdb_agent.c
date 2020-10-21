@@ -1244,11 +1244,12 @@ int wdb_remove_group_from_belongs_db(const char *name, int *sock) {
 }
 
 int wdb_reset_agents_connection(int *sock) {
-    int result = 0;
-    char wdboutput[WDBOUTPUT_SIZE] = "";
+    int result = OS_SUCCESS;
+    char* wdboutput = NULL;
     char *payload = NULL;
     int aux_sock = -1;
 
+    os_calloc(WDBOUTPUT_SIZE, sizeof(char), wdboutput);
     result = wdbc_query_ex(sock?sock:&aux_sock, global_db_commands[WDB_RESET_AGENTS_CONNECTION], wdboutput, sizeof(wdboutput));
 
     if (!sock) {
@@ -1265,12 +1266,16 @@ int wdb_reset_agents_connection(int *sock) {
         case OS_INVALID:
             mdebug1("Global DB Error in the response from socket");
             mdebug2("Global DB SQL query: %s", global_db_commands[WDB_RESET_AGENTS_CONNECTION]);
-            return OS_INVALID;
+            result = OS_INVALID;
+            break;
         default:
             mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", global_db_commands[WDB_RESET_AGENTS_CONNECTION]);
-            return OS_INVALID;
+            result = OS_INVALID;
+            break;
     }
+
+    os_free(wdboutput);
 
     return result;
 }
