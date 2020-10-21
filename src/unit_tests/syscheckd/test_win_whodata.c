@@ -3287,9 +3287,9 @@ void test_get_volume_names_error_on_next_volume(void **state) {
         will_return(wrap_GetVolumePathNamesForVolumeNameW, volume_paths);
         will_return(wrap_GetVolumePathNamesForVolumeNameW, 1);
 
-        expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point 'A'");
-        expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point 'C'");
-        expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point '\\Some\\path'");
+        expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C\\' associated with the mounting point 'A'");
+        expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C\\' associated with the mounting point 'C'");
+        expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C\\' associated with the mounting point '\\Some\\path'");
     }
 
     expect_value(wrap_FindNextVolumeW, hFindVolume, (HANDLE)123456);
@@ -3331,9 +3331,9 @@ void test_get_volume_names_no_more_files(void **state) {
         will_return(wrap_GetVolumePathNamesForVolumeNameW, volume_paths);
         will_return(wrap_GetVolumePathNamesForVolumeNameW, 1);
 
-        expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point 'A'");
-        expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point 'C'");
-        expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point '\\Some\\path'");
+        expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C\\' associated with the mounting point 'A'");
+        expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C\\' associated with the mounting point 'C'");
+        expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C\\' associated with the mounting point '\\Some\\path'");
     }
 
     expect_value(wrap_FindNextVolumeW, hFindVolume, (HANDLE)123456);
@@ -5418,7 +5418,7 @@ void test_whodata_callback_4663_abort_scan(void **state) {
     expect_any(__wrap_pthread_rwlock_unlock, rwlock);
     will_return(__wrap_pthread_rwlock_unlock, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6241): The 'c:\\a\\path' directory has been scanned. It does not need to do it again.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6241): The 'c:\\a\\path' directory has been scanned. It does not need to be scanned again.");
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 0);
@@ -7307,9 +7307,9 @@ void test_whodata_audit_start_success(void **state) {
             will_return(wrap_GetVolumePathNamesForVolumeNameW, volume_paths);
             will_return(wrap_GetVolumePathNamesForVolumeNameW, 1);
 
-            expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point 'A'");
-            expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point 'C'");
-            expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point '\\Some\\path'");
+            expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C\\' associated with the mounting point 'A'");
+            expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C\\' associated with the mounting point 'C'");
+            expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C\\' associated with the mounting point '\\Some\\path'");
         }
 
         expect_value(wrap_FindNextVolumeW, hFindVolume, (HANDLE)123456);

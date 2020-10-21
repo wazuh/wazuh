@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import copy
 import fcntl
 import json
 import random
@@ -16,9 +17,9 @@ from os.path import exists, join
 from pyexpat import ExpatError
 from shutil import Error
 from typing import Dict
+from xml.dom.minidom import parseString
 
 import yaml
-from xml.dom.minidom import parseString
 
 from api import configuration
 from wazuh import WazuhInternalError, WazuhError
@@ -355,12 +356,12 @@ def replace_in_comments(original_content, to_be_replaced, replacement):
 
 
 def get_api_conf():
-    """Returns current API configuration."""
-    return configuration.api_conf
+    """Return current API configuration."""
+    return copy.deepcopy(configuration.api_conf)
 
 
 def update_api_conf(new_config):
-    """Update dict and subdicts without overriding unspecified keys and write it in the API.yaml file.
+    """Update the API.yaml file.
 
     Parameters
     ----------
@@ -368,16 +369,9 @@ def update_api_conf(new_config):
         Dictionary with the new configuration.
     """
     if new_config:
-        for key in new_config:
-            if key in configuration.api_conf:
-                if isinstance(configuration.api_conf[key], dict) and isinstance(new_config[key], dict):
-                    configuration.api_conf[key].update(new_config[key])
-                else:
-                    configuration.api_conf[key] = new_config[key]
-
         try:
             with open(common.api_config_path, 'w+') as f:
-                yaml.dump(configuration.api_conf, f)
+                yaml.dump(new_config, f)
         except IOError:
             raise WazuhInternalError(1005)
     else:

@@ -456,6 +456,16 @@ components:
             title: "Unauthorized"
             detail: "No authorization token provided"
 
+    InvalidCredentialsResponse:
+      description: "Response to report a problem with authentication"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RequestError'
+          example:
+            title: "Unauthorized"
+            detail: "Invalid credentials"
+
     InvalidHTTPMethodResponse:
       description: "Response to an invalid HTTP method"
       content:
@@ -508,7 +518,7 @@ components:
           example:
             title: "Resource Not Found"
             detail: "The group does not exist"
-            remediation: "Please, use `GET /agents/groups` to find all available groups://documentation.wazuh.com/current/user-manual/api/rbac/configuration.html"
+            remediation: "Please, use `GET /groups` to find all available groups://documentation.wazuh.com/current/user-manual/api/rbac/configuration.html"
             code: 1710
             dapi_errors:
               unknown-node:
@@ -1751,6 +1761,12 @@ components:
         roles:
           type: array
           description: "User's roles"
+    Token:
+      type: object
+      properties:
+        token:
+          type: string
+          description: "User's token"
 
     # Cluster and manager models
     WazuhDaemonsStatus:
@@ -2229,6 +2245,7 @@ components:
           type: string
           description: "Wazuh component that logged the event"
           enum:
+            - agent_control
             - ossec-agentlessd
             - ossec-analysisd
             - ossec-authd
@@ -3310,7 +3327,7 @@ components:
                 properties:
                   name:
                     type: string
-                    format: alphanumeric
+                    format: alphanumeric_symbols
                   platform:
                     type: string
                     format: alphanumeric
@@ -4052,6 +4069,15 @@ components:
       in: query
       name: 'rule_ids'
       description: "List of rule IDs (separated by comma)"
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Security_rule_id'
+    security_rule_ids_required:
+      in: query
+      name: 'rule_ids'
+      description: "List of rule IDs (separated by comma)"
+      required: true
       schema:
         type: array
         items:
@@ -5080,6 +5106,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: 'AR command was sent to all agents'
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5139,6 +5166,7 @@ paths:
                   older_than: 1s
                   total_affected_items: 3
                 message: 'All selected agents were deleted'
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5271,6 +5299,7 @@ paths:
                       version: Wazuh v3.10.0
                   total_affected_items: 3
                 message: 'All selected agents information was returned'
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5433,6 +5462,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: 'Specified agent was removed from returned groups'
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5478,6 +5508,7 @@ paths:
                   total_affected_items: 1
                   total_failed_items: 0
                 message: 'Sync info was returned for all selected agents'
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5513,6 +5544,7 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: "Agent '004' removed from group 'dmz'."
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5556,6 +5588,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "All selected agents were assigned to group3"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5603,6 +5636,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "Obtained keys for all selected agents"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5647,6 +5681,7 @@ paths:
                     failed_items: []
                     total_failed_items: 0
                   message: "Restart command sent to all agents"
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5684,6 +5719,7 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: "Upgrade procedure started"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5719,6 +5755,7 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: "Installation started"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5758,6 +5795,7 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: Agent was successfully upgraded
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5808,6 +5846,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: All selected agents were removed from group group1
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5870,6 +5909,7 @@ paths:
                   total_affected_items: 2
                   total_failed_items: 2
                 message: Some agents were not assigned to group2 and removed from the other groups
+                error: 2
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5910,6 +5950,7 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseAgentIDs'
                 example:
                   message: "Restart command sent to all agents"
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5964,6 +6005,7 @@ paths:
                   total_affected_items: 2
                   total_failed_items: 0
                   message: "All selected groups were deleted"
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6023,6 +6065,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "All selected groups information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6055,6 +6098,7 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: "Group 'pciserver' created"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6181,6 +6225,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "All selected agents information is shown"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6293,6 +6338,7 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: Agent configuration was successfully updated
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6367,6 +6413,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: 'All selected groups files were returned'
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6456,6 +6503,16 @@ paths:
             application/xml:
               schema:
                 type: string
+              example: |
+                <agent_config>
+                  <!-- Shared agent configuration here -->
+                  <agent_config os="Linux">
+                    <localfile>
+                      <location>/var/log/linux.log</location>
+                      <log_format>syslog</log_format>
+                    </localfile>
+                  </agent_config>
+                </agent_config>
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6697,6 +6754,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: All selected agents information is shown
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6744,6 +6802,7 @@ paths:
                     failed_items: []
                     total_failed_items: 0
                   message: "Restart command sent to all agents"
+                  error: 0
           '400':
             $ref: '#/components/responses/ResponseError'
           '401':
@@ -6797,6 +6856,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: 'All selected agents information was returned'
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6835,6 +6895,7 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseAgentIDs'
                 example:
                   message: 'Restart command was sent to all agents'
+                  error: 0
                   data:
                     affected_items:
                       - '002'
@@ -6939,6 +7000,7 @@ paths:
                   total_failed_items: 0
                   failed_items: []
                 message: 'All selected agents information was returned'
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6979,6 +7041,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: Showing the operative system of all specified agents
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7089,6 +7152,7 @@ paths:
                   total_affected_items: 1
                   total_failed_items: 0
                 message: 'All CISCAT results were returned'
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7143,6 +7207,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "All selected information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7205,6 +7270,7 @@ paths:
                   total_failed_items: 0
                   failed_items: []
                 message: "All selected information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7276,6 +7342,7 @@ paths:
                         sync_agentinfo_free: true
                         sync_extravalid_free: true
                 message: "All selected nodes healthcheck information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7411,6 +7478,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "All selected information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7458,7 +7526,7 @@ paths:
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
                         access:
-                          max_login_attempts: 5
+                          max_login_attempts: 50
                           block_time: 300
                           max_request_per_minute: 300
                         logs:
@@ -7504,6 +7572,7 @@ paths:
                   total_failed_items: 0
                   failed_items: []
                 message: "API configuration was successfully read in all specified nodes"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7548,6 +7617,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "API configuration was successfully updated in all specified nodes. Some settings may require restarting the API to be applied"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7591,6 +7661,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "API configuration was successfully updated in all specified nodes. Some settings may require restarting the API to be applied"
+                error: 0
 
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -7652,6 +7723,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "Processes status was successfully read"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7704,6 +7776,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "Basic information was successfully read"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7782,6 +7855,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "Configuration was successfully read"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8350,6 +8424,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "Logs were successfully read in specified node"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8508,6 +8583,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "File was successfully updated"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8550,6 +8626,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: File was successfully deleted
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8589,6 +8666,7 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseNodeIDs'
                 example:
                   message: "Restart request sent to all specified nodes"
+                  error: 0
                   data:
                     affected_items:
                       - 'master-node'
@@ -8645,6 +8723,7 @@ paths:
                     failed_items: []
                     total_failed_items: 0
                   message: Validation was successfully checked in all nodes
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8785,6 +8864,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: 'All specified lists were returned'
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8841,6 +8921,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: 'All specified paths were returned'
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8900,6 +8981,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "Processes status successfully read"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8951,6 +9033,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "Basic information was successfully read"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9028,6 +9111,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "Configuration was successfully read"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9590,6 +9674,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: Logs read successfully in specified node
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9653,6 +9738,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "Log was successfully summarized"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9742,6 +9828,7 @@ paths:
                   - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 message: "File was uploaded successfully"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9785,6 +9872,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: File was deleted successfully
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9830,7 +9918,7 @@ paths:
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
                         access:
-                          max_login_attempts: 5
+                          max_login_attempts: 50
                           block_time: 300
                           max_request_per_minute: 300
                         logs:
@@ -9851,6 +9939,7 @@ paths:
                   total_failed_items: 0
                   failed_items: []
                 message: "API configuration was successfully read"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9893,6 +9982,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "API configuration was successfully updated. Some settings may require restarting the API to be applied"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9935,6 +10025,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "API configuration was successfully updated. Some settings may require restarting the API to be applied"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9974,6 +10065,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "Restart request sent to all specified nodes"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10013,6 +10105,7 @@ paths:
                     failed_items: []
                     total_failed_items: 0
                   message: "Validation was successfully checked in all nodes"
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10059,6 +10152,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "Active configuration was successfully read in specified node"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10142,6 +10236,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "All selected MITRE information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10237,6 +10332,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "All selected rules were returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10289,6 +10385,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "All groups in rules were returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10343,6 +10440,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "All selected rules were returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10404,6 +10502,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "All rules files were returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10435,6 +10534,57 @@ paths:
             application/xml:
               schema:
                 type: string
+              example: |
+                <!--
+                  -  Rules config
+                  -  Author: Daniel Cid.
+                  -  Updated by Wazuh, Inc.
+                  -  Copyright (C) 2015-2020, Wazuh Inc.
+                  -  Copyright (C) 2009 Trend Micro Inc.
+                  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+                -->
+                <group name="syslog,">
+                  <rule id="1" level="0" noalert="1">
+                    <category>syslog</category>
+                    <description>Generic template for all syslog rules.</description>
+                  </rule>
+                </group>
+                <group name="firewall,">
+                  <rule id="2" level="0" noalert="1">
+                    <category>firewall</category>
+                    <description>Generic template for all firewall rules.</description>
+                  </rule>
+                </group>
+                <group name="ids,">
+                  <rule id="3" level="0" noalert="1">
+                    <category>ids</category>
+                    <description>Generic template for all ids rules.</description>
+                  </rule>
+                </group>
+                <group name="web-log,">
+                  <rule id="4" level="0" noalert="1">
+                    <category>web-log</category>
+                    <description>Generic template for all web rules.</description>
+                  </rule>
+                </group>
+                <group name="squid,">
+                  <rule id="5" level="0" noalert="1">
+                    <category>squid</category>
+                    <description>Generic template for all web proxy rules.</description>
+                  </rule>
+                </group>
+                <group name="windows,">
+                  <rule id="6" level="0" noalert="1">
+                    <category>windows</category>
+                    <description>Generic template for all windows rules.</description>
+                  </rule>
+                </group>
+                <group name="ossec,">
+                  <rule id="7" level="0" noalert="1">
+                    <category>ossec</category>
+                    <description>Generic template for all ossec rules.</description>
+                  </rule>
+                </group>
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10510,6 +10660,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "All selected sca information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10604,6 +10755,7 @@ paths:
                   total_affected_items: 2
                   total_failed_items: 0
                 message: "All selected sca/policy information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10651,6 +10803,7 @@ paths:
                   total_affected_items: 4
                   total_failed_items: 0
                 message: "Syscheck scan was restarted on returned agents"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10738,6 +10891,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "FIM findings of the agent were returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10781,6 +10935,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "Syscheck database was cleared on returned agents"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10826,6 +10981,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "Last syscheck scan of the agent was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10896,6 +11052,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "All selected decoders were returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10954,6 +11111,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "All decoder files were returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10985,6 +11143,21 @@ paths:
             application/xml:
               schema:
                 type: string
+              example: |
+                  <!--
+                  - JSON Decoders
+                  - Copyright (C) 2015-2020, Wazuh Inc.
+                  - April 21, 2017.
+                  -
+                  - This program is a free software; you can redistribute it
+                  - and/or modify it under the terms of the GNU General Public
+                  - License (version 2) as published by the FSF - Free Software
+                  - Foundation.
+                  -->
+                  <decoder name="json">
+                    <prematch>^{\s*"</prematch>
+                    <plugin_decoder>JSON_Decoder</plugin_decoder>
+                  </decoder>
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -11047,6 +11220,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "All selected decoders were returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -11103,6 +11277,7 @@ paths:
                   total_affected_items: 13
                   total_failed_items: 0
                 message: Cleared syscheck database on shown agents
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -11195,6 +11370,7 @@ paths:
                   total_affected_items: 3
                   total_failed_items: 0
                 message: 'All CISCAT results were returned'
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -11288,6 +11464,7 @@ paths:
                   total_affected_items: 3
                   total_failed_items: 0
                 message: "All specified syscollector information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -11364,6 +11541,7 @@ paths:
                   total_affected_items: 3
                   total_failed_items: 0
                 message: "All specified syscollector information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -11482,6 +11660,7 @@ paths:
                   total_affected_items: 3
                   total_failed_items: 0
                 message: "All specified syscollector information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -11555,6 +11734,7 @@ paths:
                   total_failed_items: 0
                   failed_items: []
                 message: "All specified syscollector information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -11656,6 +11836,7 @@ paths:
                   total_failed_items: 0
                   failed_items: []
                 message: "All specified syscollector information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -11754,6 +11935,7 @@ paths:
                   total_failed_items: 0
                   failed_items: []
                 message: "All specified syscollector information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -11855,6 +12037,7 @@ paths:
                   total_failed_items: 0
                   failed_items: []
                 message: "All specified syscollector information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -11981,6 +12164,7 @@ paths:
                   total_failed_items: 0
                   failed_items: []
                 message: "All specified syscollector information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12038,6 +12222,7 @@ paths:
                   total_affected_items: 2
                   total_failed_items: 0
                 message: "All specified syscollector information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12096,6 +12281,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "All specified syscollector information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12150,6 +12336,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "All specified syscollector information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12211,6 +12398,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "All specified syscollector information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12292,6 +12480,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "All specified syscollector information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12352,6 +12541,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "All specified syscollector information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12412,6 +12602,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "All specified syscollector information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12511,6 +12702,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                   message: "All specified syscollector information was returned"
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12613,6 +12805,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "All specified syscollector information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12740,6 +12933,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                   message: "All specified syscollector information was returned"
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12768,10 +12962,12 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  token:
-                    type: string
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Token'
               example:
                 token: "<generated_token>"
             text/plain:
@@ -12781,7 +12977,7 @@ paths:
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
+          $ref: '#/components/responses/InvalidCredentialsResponse'
         '403':
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
@@ -12804,6 +13000,7 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: "User wazuh was successfully logged out"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12845,6 +13042,14 @@ paths:
                 token: "<generated_token>"
         '400':
           $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/InvalidCredentialsResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/actions:
     get:
@@ -12967,6 +13172,13 @@ paths:
       responses:
         '200':
           description: "Tokens were successfully revoked"
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                message: "Tokens were successfully revoked"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13029,6 +13241,7 @@ paths:
                         - 3
                   total_affected_items: 2
                 message: "All specified roles were returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13081,6 +13294,7 @@ paths:
                           definition: limit_access
                   total_affected_items: 1
                 message: "Role was successfully created"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13152,6 +13366,7 @@ paths:
                   total_affected_items: 1
                   total_failed_items: 0
                 message: All specified roles were deleted
+                error: 0
 
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -13207,6 +13422,7 @@ paths:
                           definition: normalRule8
                   total_affected_items: 1
                 message: "Role was successfully updated"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13267,6 +13483,7 @@ paths:
                           privileges: 'limit_access'
                   total_affected_items: 2
                 message: "All specified security rules were returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13325,6 +13542,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "Security rule was successfully created"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13377,6 +13595,7 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "All specified security rules were deleted"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13436,6 +13655,7 @@ paths:
                     failed_items: []
                     total_failed_items: 0
                   message: "Security rule was successfully updated"
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13499,6 +13719,7 @@ paths:
                           - agent:id:006
                   total_affected_items: 2
                 message: "All specified policies were returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13549,18 +13770,22 @@ paths:
                       data:
                         $ref: '#/components/schemas/AllItemsResponsePolicies'
               example:
-                #TODO AffectedItemWazuhResult
                 data:
-                  id: 2
-                  name: 'normal_policy'
-                  policy:
-                    actions:
-                      - "agent:delete"
-                    resources:
-                      - "agent:id:001"
-                    effect: "allow"
-                  roles: []
+                  affected_items:
+                    - id: 2
+                      name: 'normal_policy'
+                      policy:
+                        actions:
+                          - "agent:delete"
+                        resources:
+                          - "agent:id:001"
+                        effect: "allow"
+                      roles: []
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
                 message: "Policy was successfully created"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13626,6 +13851,7 @@ paths:
                   total_affected_items: 1
                   total_failed_items: 0
                 message: "All specified policies were deleted"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13693,6 +13919,7 @@ paths:
                       roles: []
                   total_affected_items: 1
                 message: "Policy was successfully updated"
+                error: 0
 
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -13766,6 +13993,7 @@ paths:
                   total_affected_items: 2
                   total_failed_items: 0
                 message: All policies were linked to role 3
+                error: 0
 
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -13813,6 +14041,7 @@ paths:
                   total_affected_items: 2
                   total_failed_items: 0
                 message: All policies were unlinked from role 3
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13835,7 +14064,7 @@ paths:
         - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
         - $ref: '#/components/parameters/role_id'
-        - $ref: '#/components/parameters/security_rule_ids'
+        - $ref: '#/components/parameters/security_rule_ids_required'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -13861,6 +14090,7 @@ paths:
                   total_affected_items: 1
                   total_failed_items: 0
                 message: "All security rules were linked to role 5"
+                error: 0
 
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -13906,6 +14136,7 @@ paths:
                   total_affected_items: 2
                   total_failed_items: 0
                 message: "All security rules were unlinked from role 3"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13956,6 +14187,7 @@ paths:
                   total_failed_items: 0
                   failed_items: []
                 message: All roles were linked to user 3
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14002,6 +14234,7 @@ paths:
                   total_failed_items: 0
                   failed_items: []
                 message: All roles were unlinked from user 3
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14075,12 +14308,48 @@ paths:
                     total_failed_items: 0
                     failed_items: []
                   message: "Current user information was returned"
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '403':
           $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+
+  /security/users/me/policies:
+    get:
+      tags:
+        - security
+      summary: "Get current user processed policies"
+      description: "Get the processed policies information for the current user"
+      operationId: api.controllers.security_controller.get_user_me_policies
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+      responses:
+        '200':
+          description: "Information about current user processed policies"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+              example:
+                data:
+                  syscheck:run:
+                    agent:id:*: allow
+                  syscollector:read:
+                    agent:id:*: allow
+                  rbac_mode: black
+                message: "Current user processed policies information was returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -14163,6 +14432,7 @@ paths:
                     total_affected_items: 8
                     total_failed_items: 0
                   message: "All specified users were returned"
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14228,6 +14498,7 @@ paths:
                     total_affected_items: 1
                     total_failed_items: 0
                   message: "User was successfully created"
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14265,8 +14536,21 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseUsers'
                 example:
                   data:
-                    # TODO AffectedItemWazuhResult
-                    message: "Users were successfully deleted"
+                    affected_items:
+                      - id: 100
+                        username: new_user
+                        allow_run_as: false
+                        roles: []
+                      - id: 102
+                        username: another_user
+                        allow_run_as: true
+                        roles:
+                          - 6
+                    total_affected_items: 2
+                    failed_items: []
+                    total_failed_items: 0
+                  message: "Users were successfully deleted"
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14320,13 +14604,16 @@ paths:
                 example:
                   data:
                     affected_items:
-                      - username: wazuh-wui
+                      - id: 100
+                        username: wazuh-test
+                        allow_run_as: false
                         roles:
                           - 2
                     total_affected_items: 1
-                    total_failed_items: 0
                     failed_items: []
+                    total_failed_items: 0
                   message: "User was successfully updated"
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14487,6 +14774,13 @@ paths:
       responses:
         '200':
           description: 'Configuration successfully updated'
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                message: 'Configuration successfully updated'
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14511,7 +14805,14 @@ paths:
         - $ref: "#/components/parameters/wait_for_complete"
       responses:
         '200':
-          description: 'Configuration successfully restored'
+          description: 'Configuration successfully updated'
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                message: 'Configuration successfully updated'
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':

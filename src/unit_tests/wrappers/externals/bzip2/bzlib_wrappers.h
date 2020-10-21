@@ -47,4 +47,9 @@ BZFILE* __wrap_BZ2_bzWriteOpen(int* bzerror,
                                int verbosity,
                                int workFactor);
 
+#ifndef TEST_WINAGENT
+int __wrap_bzip2_uncompress(const char *filebz2,
+                            const char *file);
+#endif
+
 #endif

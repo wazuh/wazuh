@@ -1216,6 +1216,8 @@ int get_volume_names() {
 
         // Convert device name
         wcstombs(convert_device, device_name, ARRAYSIZE(device_name));
+        /* Add a backslash to the device name */
+        strncat(convert_device, "\\", MAX_PATH);
         // Get all drive letters
         get_drive_names(volume_name, convert_device);
 
@@ -1251,6 +1253,7 @@ int get_drive_names(wchar_t *volume_name, char *device) {
     unsigned int device_it;
     size_t success = -1;
     size_t retval = -1;
+    unsigned int name_len = 0;
 
     while (1) {
         // Allocate a buffer to hold the paths.
@@ -1278,9 +1281,9 @@ int get_drive_names(wchar_t *volume_name, char *device) {
     if (success) {
         // Save information in FIM whodata structure
         char convert_name[MAX_PATH] = "";
-
-        for (nameit = names; nameit[0] != L'\0'; nameit += wcslen(nameit) + 1) {
-            wcstombs(convert_name, nameit, wcslen(nameit));
+        for (nameit = names; nameit[0] != L'\0'; nameit += name_len + 1) {
+            name_len = wcslen(nameit);
+            wcstombs(convert_name, nameit, name_len);
             mdebug1(FIM_WHODATA_DEVICE_LETTER, device, convert_name);
 
             if(syscheck.wdata.device) {

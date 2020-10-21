@@ -857,6 +857,24 @@ stages:
           failed_items: []
 
 ---
+test_name: GET /security/users/me/policies
+
+stages:
+
+  - name: Get information about the current user processed policies
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/me/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        data: !anything
+        message: !anystr
+
+---
 test_name: GET /security/users
 
 stages:
@@ -889,7 +907,7 @@ stages:
             - <<: *user
           total_affected_items: 2
 
-  - name: Get an user by its id (invalid id)
+  - name: Get a user by its id (invalid id)
     request:
       <<: *all_users_request
       params:
@@ -897,7 +915,7 @@ stages:
     response:
       status_code: 400
 
-  - name: Get an user by its id (invalid id)
+  - name: Get a user by its id (invalid id)
     request:
       <<: *all_users_request
       params:
@@ -1284,18 +1302,19 @@ stages:
     response:
       status_code: 200
       json:
-        active-response:command:
-          description: !anystr
-          resources:
-            - agent:id
-          example:
-            actions:
-              - active-response:command
+        data:
+          active-response:command:
+            description: !anystr
             resources:
-              - agent:id:001
-            effect: allow
-          related_endpoints:
-            - PUT /active-response
+              - agent:id
+            example:
+              actions:
+                - active-response:command
+              resources:
+                - agent:id:001
+              effect: allow
+            related_endpoints:
+              - PUT /active-response
 
   - name: Testing RBAC's actions catalog
     request:
@@ -1305,18 +1324,19 @@ stages:
     response:
       status_code: 200
       json:
-        rules:read:
-          description: !anystr
-          resources:
-            - rule:file
-          example:
-            actions:
-              - rules:read
+        data:
+          rules:read:
+            description: !anystr
             resources:
-              - rule:file:0610-win-ms_logs_rules.xml
-            effect: allow
-          related_endpoints:
-            - GET /rules/files
+              - rule:file
+            example:
+              actions:
+                - rules:read
+              resources:
+                - rule:file:0610-win-ms_logs_rules.xml
+              effect: allow
+            related_endpoints:
+              - GET /rules/files
 
 ---
 test_name: GET /security/resources
@@ -1332,29 +1352,30 @@ stages:
     response:
       status_code: 200
       json:
-        "*:*":
-          description: 'Resource applied in functions which take part in the creation of a specific resource.
-          We call these functions, resourceless functions. Example: agent:create'
-        agent:id:
-          description: Reference agents via agent ID (i.e. agent:id:001)
-        group:id:
-          description: Reference agent groups via group ID (i.e. group:id:default)
-        node:id:
-          description: Reference cluster nodes via node ID (i.e. node:id:worker1)
-        file:path:
-          description: Reference files via its path (i.e. file:path:etc/rules/new_rule.xml)
-        decoder:file:
-          description: Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)
-        list:path:
-          description: Reference list files via its path (i.e. list:path:etc/lists/audit-keys)
-        rule:file:
-          description: Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)
-        policy:id:
-          description: Reference security policies via its id (i.e. policy:id:1)
-        role:id:
-          description: Reference security roles via its id (i.e. role:id:1)
-        user:id:
-          description: Reference security users via its id (i.e. user:id:1)
+        data:
+          "*:*":
+            description: 'Resource applied in functions which take part in the creation of a specific resource.
+            We call these functions, resourceless functions. Example: agent:create'
+          agent:id:
+            description: Reference agents via agent ID (i.e. agent:id:001)
+          group:id:
+            description: Reference agent groups via group ID (i.e. group:id:default)
+          node:id:
+            description: Reference cluster nodes via node ID (i.e. node:id:worker1)
+          file:path:
+            description: Reference files via its path (i.e. file:path:etc/rules/new_rule.xml)
+          decoder:file:
+            description: Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)
+          list:path:
+            description: Reference list files via its path (i.e. list:path:etc/lists/audit-keys)
+          rule:file:
+            description: Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)
+          policy:id:
+            description: Reference security policies via its id (i.e. policy:id:1)
+          role:id:
+            description: Reference security roles via its id (i.e. role:id:1)
+          user:id:
+            description: Reference security users via its id (i.e. user:id:1)
 
   - name: Testing RBAC's actions catalog
     request:
@@ -1364,8 +1385,9 @@ stages:
     response:
       status_code: 200
       json:
-        agent:id:
-          description: Reference agents via agent ID (i.e. agent:id:001)
+        data:
+          agent:id:
+            description: Reference agents via agent ID (i.e. agent:id:001)
 
 ---
 test_name: GET /security/config
@@ -1382,5 +1404,6 @@ stages:
     response:
       status_code: 200
       json:
-        auth_token_exp_timeout: !anyint
-        rbac_mode: !anystr
+        data:
+          auth_token_exp_timeout: !anyint
+          rbac_mode: !anystr

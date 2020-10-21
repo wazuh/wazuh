@@ -12,8 +12,8 @@
 #define WARN_MESSAGES_H
 
 /* File integrity monitoring warning messages*/
-#define FIM_WARN_ACCESS                         "(6900): Accessing to '%s': [(%d) - (%s)]"
-#define FIM_WARN_DELETE                         "(6901): Could not delete of filesystem '%s'"
+#define FIM_WARN_ACCESS                         "(6900): Accessing  '%s': [(%d) - (%s)]"
+#define FIM_WARN_DELETE                         "(6901): Could not delete from filesystem '%s'"
 #define FIM_WARN_DELETE_HASH_TABLE              "(6902): Could not delete from hash table '%s'"
 #define FIM_WARN_SYMLINKS_UNSUPPORTED           "(6903) Links are not supported: '%s'"
 #define FIM_WARN_STAT_BROKEN_LINK               "(6904): Error in stat() function: %s. This may be caused by a broken symbolic link (%s)."
@@ -37,7 +37,7 @@
 #define FIM_PATH_NOT_OPEN                       "(6922): Cannot open '%s': %s"
 #define FIM_WARN_SKIP_EVENT                     "(6923): Unable to process file '%s'"
 #define FIM_AUDIT_NORUNNING                     "(6924): Who-data engine cannot start because Auditd is not running."
-#define FIM_INVALID_OPTION_SKIP                 "(6925): Invalid option '%s' for attribute '%s'. The paths '%s' not be monitored."
+#define FIM_INVALID_OPTION_SKIP                 "(6925): Invalid option '%s' for attribute '%s'. The paths '%s' will not be monitored."
 #define FIM_WARN_WHODATA_ADD_RULE               "(6926): Unable to add audit rule for '%s'"
 #define FIM_DB_FULL_ALERT                       "(6927): Sending DB 100%% full alert."
 #define FIM_WARN_WHODATA_GETID                  "(6928): Couldn't get event ID from Audit message. Line: '%s'."
