@@ -13,9 +13,8 @@
 #include "stringHelper.h"
 #include <sys/sysctl.h>
 
-void SysInfo::getMemory(nlohmann::json& info)
+void SysInfo::getMemory(nlohmann::json& info) const
 {
-    constexpr auto KByte{1024};
     uint64_t ram{0};
     const std::vector<int> mib{CTL_HW, HW_PHYSMEM};
     size_t len{sizeof(ram)};
@@ -35,7 +34,7 @@ void SysInfo::getMemory(nlohmann::json& info)
     info["ram_usage"] = 0;
 }
 
-int SysInfo::getCpuMHz()
+int SysInfo::getCpuMHz() const
 {
     unsigned long cpuMHz{0};
     const std::vector<int> mib{CTL_HW, HW_CPUSPEED};
@@ -53,9 +52,8 @@ int SysInfo::getCpuMHz()
     return cpuMHz;
 }
 
-std::string SysInfo::getSerialNumber()
+std::string SysInfo::getSerialNumber() const
 {
-    std::unique_ptr<char> spBuff;
     const std::vector<int> mib{CTL_HW, HW_SERIALNO};
     size_t len{0};
     auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), nullptr, &len, nullptr, 0)};
@@ -68,7 +66,7 @@ std::string SysInfo::getSerialNumber()
             "Error getting board serial size."
         };
     }
-    spBuff.reset(new char[len+1]);
+    const auto spBuff{std::make_unique<char[]>(len+1)};
     if(!spBuff)
     {
         throw std::runtime_error

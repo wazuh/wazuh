@@ -118,7 +118,7 @@ static nlohmann::json getProcessInfo(const SysInfoProcess& process)
 	return jsProcessInfo;
 }
 
-std::string SysInfo::getSerialNumber()
+std::string SysInfo::getSerialNumber() const
 {
     std::string serial;
     std::fstream file{WM_SYS_HW_DIR, std::ios_base::in};
@@ -133,28 +133,28 @@ std::string SysInfo::getSerialNumber()
     return serial;
 }
 
-std::string SysInfo::getCpuName()
+std::string SysInfo::getCpuName() const
 {
     std::map<std::string, std::string> systemInfo;
     getSystemInfo(WM_SYS_CPU_DIR, ":", systemInfo);
     return systemInfo.at("model name");
 }
 
-int SysInfo::getCpuCores()
+int SysInfo::getCpuCores() const
 {
     std::map<std::string, std::string> systemInfo;
     getSystemInfo(WM_SYS_CPU_DIR, ":", systemInfo);
     return (std::stoi(systemInfo.at("processor")) + 1);
 }
 
-int SysInfo::getCpuMHz()
+int SysInfo::getCpuMHz() const
 {
     std::map<std::string, std::string> systemInfo;
     getSystemInfo(WM_SYS_CPU_DIR, ":", systemInfo);
     return (std::stoi(systemInfo.at("cpu MHz")));
 }
 
-void SysInfo::getMemory(nlohmann::json& info)
+void SysInfo::getMemory(nlohmann::json& info) const
 {
     std::map<std::string, std::string> systemInfo;
     getSystemInfo(WM_SYS_MEM_DIR, ":", systemInfo);
@@ -165,7 +165,7 @@ void SysInfo::getMemory(nlohmann::json& info)
     info["ram_usage"] = 100 - (100*memFree/memTotal);
 }
 
-nlohmann::json SysInfo::getProcessesInfo()
+nlohmann::json SysInfo::getProcessesInfo() const
 {
 	nlohmann::json jsProcessesList{};
 

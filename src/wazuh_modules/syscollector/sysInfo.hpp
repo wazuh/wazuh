@@ -14,6 +14,8 @@
 
 #include "json.hpp"
 
+constexpr auto KByte{1024};
+
 class SysInfo
 {
 public:
@@ -22,12 +24,12 @@ public:
 	virtual nlohmann::json hardware();
 	virtual nlohmann::json processes();
 private:
-    virtual std::string getSerialNumber();
-    virtual std::string getCpuName();
-    virtual int getCpuMHz();
-    virtual int getCpuCores();
-    virtual void getMemory(nlohmann::json& info);
-    virtual nlohmann::json getProcessesInfo();
+    virtual std::string getSerialNumber() const;
+    virtual std::string getCpuName() const;
+    virtual int getCpuMHz() const;
+    virtual int getCpuCores() const;
+    virtual void getMemory(nlohmann::json& info) const;
+    virtual nlohmann::json getProcessesInfo() const;
 };
 
 #endif //_SYS_INFO_HPP
