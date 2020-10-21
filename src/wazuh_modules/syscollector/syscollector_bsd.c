@@ -471,7 +471,17 @@ int sys_read_homebrew_apps(const char * app_folder, const char * timestamp, int 
         cJSON_AddStringToObject(object, "timestamp", timestamp);
         cJSON_AddItemToObject(object, "program", package);
         cJSON_AddStringToObject(package, "format", "pkg");
-        cJSON_AddStringToObject(package, "name", de->d_name);
+
+        // Some packages may come with a '@' followed up by the product's version.
+        // Since we already have said version, we can discard it.
+        char * tmp = NULL;
+        char * name_str = NULL;
+        os_strdup(de->d_name, name_str);
+        if (tmp = strchr(name_str, '@'), tmp != NULL) {
+            *tmp = '\0';
+        }
+        cJSON_AddStringToObject(package, "name", name_str);
+        os_free(name_str);
 
         snprintf(path, PATH_LENGTH - 1, "%s/%s", app_folder, de->d_name);
         cJSON_AddStringToObject(package, "location", path);
