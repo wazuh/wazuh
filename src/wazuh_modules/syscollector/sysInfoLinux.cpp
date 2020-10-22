@@ -19,7 +19,8 @@
 constexpr auto WM_SYS_HW_DIR{"/sys/class/dmi/id/board_serial"};
 constexpr auto WM_SYS_CPU_DIR{"/proc/cpuinfo"};
 constexpr auto WM_SYS_MEM_DIR{"/proc/meminfo"};
-#define DPKG_PATH "/var/lib/dpkg/"
+constexpr auto DPKG_PATH {"/var/lib/dpkg/"};
+constexpr auto DPKG_STATUS_PATH {"/var/lib/dpkg/status"};
 
 static bool existDir(const std::string& path)
 {
@@ -152,12 +153,22 @@ static nlohmann::json parseRpm(const std::string& packageInfo)
     std::map<std::string, std::string> info;
     while (std::getline(tokenStream, token))
     {
-        const auto pos{token.find(":")};
-        if (pos != std::string::npos && (pos + 1) < token.size())
+        auto pos{token.find(":")};
+        while (pos != std::string::npos && (pos + 1) < token.size())
         {
             const auto key{Utils::trim(token.substr(0, pos))};
-            const auto value{Utils::trim(token.substr(pos + 1))};
-            info[key] = value;
+            token = Utils::trim(token.substr(pos + 1));
+            if(((pos = token.find("  ")) != std::string::npos) ||
+               ((pos = token.find("\t")) != std::string::npos))
+            {
+                info[key] = Utils::trim(token.substr(0, pos), " \t");
+                token = Utils::trim(token.substr(pos));
+                pos = token.find(":");
+            }
+            else
+            {
+                info[key] = token;
+            }
         }
     }
     auto it{info.find("Name")};
@@ -219,9 +230,6 @@ static nlohmann::json getRpmInfo()
             pos = rawData.rfind("Name");
         }
     }
-    else
-    {
-    }
     return ret;
 }
 
@@ -277,7 +285,7 @@ nlohmann::json SysInfo::getPackages() const
     nlohmann::json packages;
     if (existDir(DPKG_PATH))
     {
-        packages.push_back(getDpkgInfo(DPKG_PATH "status"));
+        packages.push_back(getDpkgInfo(DPKG_STATUS_PATH));
     }
     else
     {
