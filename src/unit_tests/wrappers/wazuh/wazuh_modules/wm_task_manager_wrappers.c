@@ -14,6 +14,8 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
+#ifndef CLIENT
+
 int __wrap_wm_task_manager_check_db() {
     return mock();
 }
@@ -112,3 +114,5 @@ int __wrap_wm_task_manager_cancel_upgrade_tasks(const char *node) {
 
     return mock();
 }
+
+#endif
