@@ -389,6 +389,13 @@ static int w_enrollment_store_key_entry(const char* keys) {
         merror(FOPEN_ERROR, isChroot() ? AUTH_FILE : KEYSFILE_PATH, errno, strerror(errno));
         return -1;
     }
+
+    if (chmod(file.name, 0640) == -1) {
+        merror(CHMOD_ERROR, file.name, errno, strerror(errno));
+        fclose(file.fp);
+        return -1;
+    }
+
     fprintf(file.fp, "%s\n", keys);
     fclose(file.fp);
 
