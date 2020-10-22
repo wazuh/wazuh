@@ -37,7 +37,7 @@ TEST_F(RSyncImplementationTest, InvalidConfigurationParse)
     const auto handle { RSync::RSyncImplementation::instance().create() };
     const auto config { R"({"decoder_type"===="JSON_RANGE"})" };
 
-    EXPECT_THROW(RSync::RSyncImplementation::instance().registerSyncId(handle,"test_id",nullptr,config, {}), nlohmann::detail::exception);
+    EXPECT_THROW(RSync::RSyncImplementation::instance().registerSyncId(handle,"test_id",nullptr,nlohmann::json::parse(config), {}), nlohmann::detail::exception);
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
 }
 
@@ -46,7 +46,7 @@ TEST_F(RSyncImplementationTest, InvalidDecoder)
     const auto handle { RSync::RSyncImplementation::instance().create() };
     const auto config { R"({"decoder_type":"JSON_RANGE_INVALID"})" };
 
-    EXPECT_THROW(RSync::RSyncImplementation::instance().registerSyncId(handle,"test_id",nullptr,config, {}), std::out_of_range);
+    EXPECT_THROW(RSync::RSyncImplementation::instance().registerSyncId(handle,"test_id",nullptr, nlohmann::json::parse(config), {}), std::out_of_range);
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
 }
 
@@ -55,7 +55,7 @@ TEST_F(RSyncImplementationTest, ValidDecoder)
     const auto handle { RSync::RSyncImplementation::instance().create() };
     const auto config { R"({"decoder_type":"JSON_RANGE"})" };
 
-    EXPECT_NO_THROW(RSync::RSyncImplementation::instance().registerSyncId(handle,"test_id",nullptr,config, {}));
+    EXPECT_NO_THROW(RSync::RSyncImplementation::instance().registerSyncId(handle,"test_id",nullptr, nlohmann::json::parse(config), {}));
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
 } 
@@ -68,7 +68,7 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedNoData)
     auto mockDbSync { std::make_shared<MockDBSync>() };
 
     EXPECT_CALL(*mockDbSync, select(_,_));
-    EXPECT_NO_THROW(RSync::RSyncImplementation::instance().registerSyncId(handle,"test_id", mockDbSync, config, {}));
+    EXPECT_NO_THROW(RSync::RSyncImplementation::instance().registerSyncId(handle,"test_id", mockDbSync, nlohmann::json::parse(config), {}));
 
     std::string buffer{R"(test_id no_data {"begin":"1","end":"2","id":1})"};
 
@@ -158,7 +158,7 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFail)
         }
     };
    
-    EXPECT_NO_THROW(RSync::RSyncImplementation::instance().registerSyncId(handle,"test_id", mockDbSync, config, callbackWrapper));
+    EXPECT_NO_THROW(RSync::RSyncImplementation::instance().registerSyncId(handle,"test_id", mockDbSync, nlohmann::json::parse(config), callbackWrapper));
 
     std::string buffer{R"(test_id checksum_fail {"begin":"1","end":"2","id":1})"};
 
@@ -274,7 +274,7 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFailToSplit)
         }
     };
     
-    EXPECT_NO_THROW(RSync::RSyncImplementation::instance().registerSyncId(handle,"test_id", mockDbSync, config, callbackWrapper));
+    EXPECT_NO_THROW(RSync::RSyncImplementation::instance().registerSyncId(handle,"test_id", mockDbSync, nlohmann::json::parse(config), callbackWrapper));
 
     std::string buffer{R"(test_id checksum_fail {"begin":"1","end":"2","id":1})"};
 
@@ -328,7 +328,7 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumInvalidOperation)
 
     EXPECT_CALL(*mockDbSync, select(_,_)).Times(0);
 
-    EXPECT_NO_THROW(RSync::RSyncImplementation::instance().registerSyncId(handle,"test_id", mockDbSync, config, nullptr));
+    EXPECT_NO_THROW(RSync::RSyncImplementation::instance().registerSyncId(handle,"test_id", mockDbSync, nlohmann::json::parse(config), nullptr));
 
     std::string buffer{R"(test_id checksum_fails {"begin":"1","end":"2","id":1})"};
 
@@ -389,7 +389,7 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumNoData)
         (*callback)(json);
     }));
 
-    EXPECT_NO_THROW(RSync::RSyncImplementation::instance().registerSyncId(handle,"test_id", mockDbSync, config, nullptr));
+    EXPECT_NO_THROW(RSync::RSyncImplementation::instance().registerSyncId(handle,"test_id", mockDbSync, nlohmann::json::parse(config), nullptr));
 
     std::string buffer{R"(test_id checksum_fail {"begin":"1","end":"2","id":1})"};
 

@@ -101,13 +101,13 @@ namespace RSync
 
         void startRSync(const RSYNC_HANDLE handle,
                         const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
-                        const char* startConfiguration,
+                        const nlohmann::json& startConfiguration,
                         const ResultCallback callbackWrapper);
 
         void registerSyncId(const RSYNC_HANDLE handle, 
                             const std::string& messageHeaderId, 
                             const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper, 
-                            const char* syncConfigurationRaw, 
+                            const nlohmann::json& syncConfiguration, 
                             const ResultCallback callbackWrapper);
 
         void push(const RSYNC_HANDLE handle, 

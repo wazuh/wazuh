@@ -48,12 +48,11 @@ RSYNC_HANDLE RSyncImplementation::create()
 
 void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
                                      const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
-                                     const char* startConfiguration,
+                                     const nlohmann::json& startConfiguration,
                                      const ResultCallback callbackWrapper)
 {
     const auto ctx                  { remoteSyncContext(handle) };
-    const auto jsStartConfiguration { nlohmann::json::parse(startConfiguration) };
-    const auto& jsStartParams       { jsStartConfiguration.at(0)             };
+    const auto& jsStartParams       { startConfiguration                     };
     const auto& jsStartParamsTable  { jsStartParams.at("table")              };
     const auto& firstQuery          { jsStartParams.find("first_query")      };
     const auto& lastQuery           { jsStartParams.find("last_query")       };
@@ -124,29 +123,28 @@ void callbackDBSync(ReturnTypeCallback /*resultType*/, const cJSON* resultJson, 
 void RSyncImplementation::registerSyncId(const RSYNC_HANDLE handle, 
                                          const std::string& messageHeaderID,
                                          const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
-                                         const char* syncConfigurationRaw, 
+                                         const nlohmann::json& syncConfiguration, 
                                          const ResultCallback callbackWrapper)
 {
     const auto ctx { remoteSyncContext(handle) };
-    const auto& jsonSyncConfiguration { nlohmann::json::parse(syncConfigurationRaw) };
     
-    const SyncMsgBodyType syncMessageType { SyncMsgBodyTypeMap.at(jsonSyncConfiguration.at("decoder_type")) };
+    const SyncMsgBodyType syncMessageType { SyncMsgBodyTypeMap.at(syncConfiguration.at("decoder_type")) };
     
     ctx->m_msgDispatcher.setMessageDecoderType(messageHeaderID, syncMessageType);
     
     const auto registerCallback
     {
-        [spDBSyncWrapper, jsonSyncConfiguration, callbackWrapper] (const SyncInputData& syncData)
+        [spDBSyncWrapper, syncConfiguration, callbackWrapper] (const SyncInputData& syncData)
         {
             try
             {
                 if (0 == syncData.command.compare("checksum_fail"))
                 {
-                    sendChecksumFail(spDBSyncWrapper, jsonSyncConfiguration, callbackWrapper, syncData);
+                    sendChecksumFail(spDBSyncWrapper, syncConfiguration, callbackWrapper, syncData);
                 } 
                 else if (0 == syncData.command.compare("no_data"))
                 {
-                    sendAllData(spDBSyncWrapper, jsonSyncConfiguration, callbackWrapper);
+                    sendAllData(spDBSyncWrapper, syncConfiguration, callbackWrapper);
                 }
                 else 
                 {
