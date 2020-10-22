@@ -391,6 +391,7 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - PUT /logtest
+          - DELETE /logtest/sessions/{token}
       manager:read:
         description: Read Wazuh manager configuration
         resources:
