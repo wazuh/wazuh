@@ -1431,6 +1431,9 @@ end:
 
 
 static int fim_generate_alert(Eventinfo *lf, char *event_type, cJSON *attributes, cJSON *old_attributes, cJSON *audit) {
+    static const char *ENTRY_TYPE_FILE = "File";
+    static const char *ENTRY_TYPE_REGISTRY_KEY = "Registry Key";
+    static const char *ENTRY_TYPE_REGISTRY_VALUE = "Registry Value";
 
     cJSON *object = NULL;
     char change_size[OS_FLSIZE + 1] = {'\0'};
@@ -1445,7 +1448,11 @@ static int fim_generate_alert(Eventinfo *lf, char *event_type, cJSON *attributes
     char change_mtime[OS_FLSIZE + 1] = {'\0'};
     char change_inode[OS_FLSIZE + 1] = {'\0'};
     char change_win_attributes[OS_SIZE_256 + 1] = {'\0'};
+    const char *entry_type = NULL;
     int it;
+    int path_len = 0;
+    char path_buffer[757];
+    char *path;
 
     /* Dynamic Fields */
     lf->nfields = FIM_NFIELDS;
@@ -1546,25 +1553,54 @@ static int fim_generate_alert(Eventinfo *lf, char *event_type, cJSON *attributes
         os_free(hard_links_tmp);
     }
 
-    // When full_log field is too long (max 756), it is fixed to show the last part of the path (more relevant)
-    char path_splitted[757];
-    int path_log_len = 0;
+    if (strcmp("file", lf->fields[FIM_ENTRY_TYPE].value) == 0 ||
+        strcmp("registry", lf->fields[FIM_ENTRY_TYPE].value) == 0) {
+        entry_type = ENTRY_TYPE_FILE;
+        path_len = strlen(lf->fields[FIM_FILE].value);
 
-    if(lf->fields[FIM_FILE].value != NULL) {
-        path_log_len = strlen(lf->fields[FIM_FILE].value);
-        if (path_log_len > 756){
-            char * aux = lf->fields[FIM_FILE].value + path_log_len - 30;
-            snprintf(path_splitted, 757, "%.719s [...] %s", lf->fields[FIM_FILE].value, aux);
+        if (path_len > 756) {
+            char *aux = lf->fields[FIM_FILE].value + path_len - 30;
+            snprintf(path_buffer, 757, "%.719s [...] %s", lf->fields[FIM_FILE].value, aux);
+            path = path_buffer;
+        } else {
+            path = lf->fields[FIM_FILE].value;
+        }
+    } else if (strcmp("registry_key", lf->fields[FIM_ENTRY_TYPE].value) == 0) {
+        entry_type = ENTRY_TYPE_REGISTRY_KEY;
+        path = path_buffer;
+
+        path_len = 6 + strlen(lf->fields[FIM_FILE].value);
+        if (path_len > 756) {
+            char *aux = lf->fields[FIM_FILE].value + path_len - 30;
+            path_len = snprintf(path_buffer, 757, "%s %.713s [...] %s", lf->fields[FIM_REGISTRY_ARCH].value,
+                                lf->fields[FIM_FILE].value, aux);
+        } else {
+            path_len =
+            snprintf(path_buffer, 757, "%s %s", lf->fields[FIM_REGISTRY_ARCH].value, lf->fields[FIM_FILE].value);
+        }
+    } else if (strcmp("registry_value", lf->fields[FIM_ENTRY_TYPE].value) == 0) {
+        int value_len = strlen(lf->fields[FIM_REGISTRY_VALUE_NAME].value);
+        entry_type = ENTRY_TYPE_REGISTRY_VALUE;
+        path = path_buffer;
+
+        path_len = 6 + strlen(lf->fields[FIM_FILE].value) + value_len;
+        if (path_len > 756) {
+            path_len = snprintf(path_buffer, 757, "%s %.*s [...] \\%s", lf->fields[FIM_REGISTRY_ARCH].value,
+                                751 - value_len < 0 ? 0 : 751 - value_len, lf->fields[FIM_FILE].value,
+                                lf->fields[FIM_REGISTRY_VALUE_NAME].value);
+        } else {
+            path_len = snprintf(path_buffer, 757, "%s %s\\%s", lf->fields[FIM_REGISTRY_ARCH].value,
+                                lf->fields[FIM_FILE].value, lf->fields[FIM_REGISTRY_VALUE_NAME].value);
         }
     }
 
     snprintf(lf->full_log, OS_MAXSTR,
-            "File '%s' %s\n"
+            "%s '%s' %s\n"
             "%s"
             "Mode: %s\n"
             "%s"
             "%s%s%s%s%s%s%s%s%s%s%s%s",
-            path_log_len > 756 ? path_splitted : lf->fields[FIM_FILE].value, event_type,
+            entry_type, path, event_type,
             lf->fields[FIM_HARD_LINKS].value ? hard_links : "",
             lf->fields[FIM_MODE].value,
             lf->fields[FIM_CHFIELDS].value ? changed_attributes : "",
