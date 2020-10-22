@@ -393,6 +393,7 @@ static int w_enrollment_store_key_entry(const char* keys) {
     if (chmod(file.name, 0640) == -1) {
         merror(CHMOD_ERROR, file.name, errno, strerror(errno));
         fclose(file.fp);
+        unlink(file.name);
         return -1;
     }
 
