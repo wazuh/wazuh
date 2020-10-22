@@ -1802,7 +1802,7 @@ void test_wdb_update_agent_connection_status_error_socket(void **state)
     const char *connection_status = "active";
 
     const char *json_str = strdup("{\"id\":1,\"connection_status\":\"active\"}");
-    const char *query_str = "global update-keepalive {\"id\":1,\"connection_status\":\"active\"}";
+    const char *query_str = "global update-connection-status {\"id\":1,\"connection_status\":\"active\"}";
     const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
@@ -1828,7 +1828,7 @@ void test_wdb_update_agent_connection_status_error_socket(void **state)
 
     // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-keepalive {\"id\":1,\"connection_status\":\"active\"}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-connection-status {\"id\":1,\"connection_status\":\"active\"}");
 
     ret = wdb_update_agent_connection_status(id, connection_status, NULL);
 
@@ -1842,7 +1842,7 @@ void test_wdb_update_agent_connection_status_error_sql_execution(void **state)
     const char *connection_status = "active";
 
     const char *json_str = strdup("{\"id\":1,\"connection_status\":\"active\"}");
-    const char *query_str = "global update-keepalive {\"id\":1,\"connection_status\":\"active\"}";
+    const char *query_str = "global update-connection-status {\"id\":1,\"connection_status\":\"active\"}";
     const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
@@ -1868,7 +1868,7 @@ void test_wdb_update_agent_connection_status_error_sql_execution(void **state)
 
     // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-keepalive {\"id\":1,\"connection_status\":\"active\"}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-connection-status {\"id\":1,\"connection_status\":\"active\"}");
 
     ret = wdb_update_agent_connection_status(id, connection_status, NULL);
 
@@ -1882,7 +1882,7 @@ void test_wdb_update_agent_connection_status_error_result(void **state)
     const char *connection_status = "active";
 
     const char *json_str = strdup("{\"id\":1,\"connection_status\":\"active\"}");
-    const char *query_str = "global update-keepalive {\"id\":1,\"connection_status\":\"active\"}";
+    const char *query_str = "global update-connection-status {\"id\":1,\"connection_status\":\"active\"}";
     const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
@@ -1923,7 +1923,7 @@ void test_wdb_update_agent_connection_status_success(void **state)
     const char *connection_status = "active";
 
     const char *json_str = strdup("{\"id\":1,\"connection_status\":\"active\"}");
-    const char *query_str = "global update-keepalive {\"id\":1,\"connection_status\":\"active\"}";
+    const char *query_str = "global update-connection-status {\"id\":1,\"connection_status\":\"active\"}";
     const char *response = "ok";
 
     will_return(__wrap_cJSON_CreateObject, 1);
