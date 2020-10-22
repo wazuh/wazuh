@@ -150,6 +150,9 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     const char *xml_custom_alert_output = "custom_alert_output";
     const char *xml_rotate_interval = "rotate_interval";
     const char *xml_max_output_size = "max_output_size";
+    const char *xml_agents_disconnection_time = "agents_disconnection_time";
+    const char *xml_alert_agent_disconnection_time = "alert_agent_disconnection_time";
+
 
     const char *xml_emailto = "email_to";
     const char *xml_emailfrom = "email_from";
@@ -650,6 +653,34 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
 
                 if (*end || Config->queue_size < 1) {
                     merror("Invalid value for option '<%s>'", xml_queue_size);
+                    return OS_INVALID;
+                }
+
+            }
+        } else if (strcmp(node[i]->element, xml_agents_disconnection_time) == 0) {
+            if (Config) {
+                if (!OS_StrIsNum(node[i]->content)) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    return (OS_INVALID);
+                }
+                Config->agents_disconnection_time = atoi(node[i]->content);
+
+                if (Config->agents_disconnection_time < 20) {
+                    merror("Invalid value for option '<%s>'", xml_agents_disconnection_time);
+                    return OS_INVALID;
+                }
+
+            }
+        } else if (strcmp(node[i]->element, xml_alert_agent_disconnection_time) == 0) {
+            if (Config) {
+                if (!OS_StrIsNum(node[i]->content)) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    return (OS_INVALID);
+                }
+                Config->alert_agent_disconnection_time = atoi(node[i]->content);
+
+                if (Config->agents_disconnection_time < 2) {
+                    merror("Invalid value for option '<%s>'", xml_alert_agent_disconnection_time);
                     return OS_INVALID;
                 }
 
