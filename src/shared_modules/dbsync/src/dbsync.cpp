@@ -612,19 +612,19 @@ DBSync::DBSync(const HostType     hostType,
                const DbEngineType dbType,
                const std::string& path,
                const std::string& sqlStatement)
-: m_shouldBeRemove{ true }
+: m_shouldBeRemoved{ true }
 {
     m_dbsyncHandle = DBSyncImplementation::instance().initialize(hostType, dbType, path, sqlStatement);
 }
 
 DBSync::DBSync(const DBSYNC_HANDLE dbsyncHandle)
-: m_dbsyncHandle { dbsyncHandle } 
-, m_shouldBeRemove{ false } 
+: m_dbsyncHandle { dbsyncHandle }
+, m_shouldBeRemoved{ false }
 { }
 
 DBSync::~DBSync()
 {
-    if (m_shouldBeRemove)
+    if (m_shouldBeRemoved)
     {
         DBSyncImplementation::instance().releaseContext(m_dbsyncHandle);
     }
@@ -654,7 +654,7 @@ void DBSync::setTableMaxRow(const std::string&       table,
 }
 
 void DBSync::syncRow(const nlohmann::json& jsInput,
-                     ResultCallbackData&   callbackData)
+                     ResultCallbackData    callbackData)
 {
     const auto callbackWrapper
     {
@@ -667,7 +667,7 @@ void DBSync::syncRow(const nlohmann::json& jsInput,
 }
 
 void DBSync::selectRows(const nlohmann::json& jsInput,
-                        ResultCallbackData&   callbackData)
+                        ResultCallbackData    callbackData)
 {
     const auto callbackWrapper
     {
@@ -706,7 +706,7 @@ void DBSync::updateWithSnapshot(const nlohmann::json& jsInput,
 }
 
 void DBSync::updateWithSnapshot(const nlohmann::json&     jsInput,
-                                ResultCallbackData&       callbackData)
+                                ResultCallbackData        callbackData)
 {
     const auto callbackWrapper
     {
@@ -723,8 +723,8 @@ DBSyncTxn::DBSyncTxn(const DBSYNC_HANDLE   handle,
                      const nlohmann::json& tables,
                      const unsigned int    threadNumber,
                      const unsigned int    maxQueueSize,
-                     ResultCallbackData&   callbackData)
-: m_shouldBeRemove { true }
+                     ResultCallbackData    callbackData)
+: m_shouldBeRemoved { true }
 {
     const auto callbackWrapper
     {
@@ -737,7 +737,7 @@ DBSyncTxn::DBSyncTxn(const DBSYNC_HANDLE   handle,
 }
 
 DBSyncTxn::DBSyncTxn(const TXN_HANDLE handle)
-: m_shouldBeRemove { false }
+: m_shouldBeRemoved { false }
 {
     m_txn = handle;
 }
@@ -752,7 +752,7 @@ void DBSyncTxn::syncTxnRow(const nlohmann::json& jsInput)
     PipelineFactory::instance().pipeline(m_txn)->syncRow(jsInput);
 }
 
-void DBSyncTxn::getDeletedRows(ResultCallbackData& callbackData)
+void DBSyncTxn::getDeletedRows(ResultCallbackData  callbackData)
 {
     const auto callbackWrapper
     {

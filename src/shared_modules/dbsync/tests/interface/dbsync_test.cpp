@@ -1565,7 +1565,7 @@ TEST_F(DBSyncTest, createTxnCPP)
     EXPECT_NO_THROW(dbSync->syncRow(nlohmann::json::parse(insertionSqlStmt1), callbackData));  // Expect an insert event
 
     std::unique_ptr<DBSyncTxn> dbSyncTxn;
-    EXPECT_NO_THROW(dbSyncTxn = std::make_unique<DBSyncTxn>(dbSync->getHandle(), nlohmann::json::parse(tables), 0, 100, callbackData));
+    EXPECT_NO_THROW(dbSyncTxn = std::make_unique<DBSyncTxn>(dbSync->handle(), nlohmann::json::parse(tables), 0, 100, callbackData));
 
     const auto insertionSqlStmt2{ R"({"table":"processes","data":[{"pid":7,"name":"Guake"}]})" }; // Insert
     EXPECT_NO_THROW(dbSyncTxn->syncTxnRow(nlohmann::json::parse(insertionSqlStmt2)));
@@ -1740,9 +1740,9 @@ TEST_F(DBSyncTest, constructorWithHandle)
     EXPECT_NO_THROW(dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql));
 
     std::unique_ptr<DBSync> dbSyncHandled;
-    EXPECT_NO_THROW(dbSyncHandled = std::make_unique<DBSync>(dbSync->getHandle()));
+    EXPECT_NO_THROW(dbSyncHandled = std::make_unique<DBSync>(dbSync->handle()));
 
-    EXPECT_EQ(dbSync->getHandle(), dbSyncHandled->getHandle());
+    EXPECT_EQ(dbSync->handle(), dbSyncHandled->handle());
     
 }
 

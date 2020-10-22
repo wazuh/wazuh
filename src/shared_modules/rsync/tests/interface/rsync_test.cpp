@@ -668,7 +668,7 @@ TEST_F(RSyncTest, RegisterAndPushCPP)
     EXPECT_CALL(wrapper, callbackMock(expectedResult6)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult7)).Times(1);
 
-    ASSERT_NO_THROW(remoteSync->registerSyncID("test_id", dbSync->getHandle(), nlohmann::json::parse(registerConfigStmt), callbackData));
+    ASSERT_NO_THROW(remoteSync->registerSyncID("test_id", dbSync->handle(), nlohmann::json::parse(registerConfigStmt), callbackData));
     
     std::string buffer1{R"(test_id checksum_fail {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
 
@@ -777,7 +777,7 @@ TEST_F(RSyncTest, startSyncWithIntegrityClearCPP)
         }
     };
 
-    EXPECT_NO_THROW(remoteSync->startSync(dbSync->getHandle(), nlohmann::json::parse(startConfigStmt), callbackData));
+    EXPECT_NO_THROW(remoteSync->startSync(dbSync->handle(), nlohmann::json::parse(startConfigStmt), callbackData));
 }
 
 
@@ -787,9 +787,9 @@ TEST_F(RSyncTest, constructorWithHandle)
     EXPECT_NO_THROW(remoteSync = std::make_unique<RemoteSync>());
 
     std::unique_ptr<RemoteSync> remoteSyncHandled;
-    EXPECT_NO_THROW(remoteSyncHandled = std::make_unique<RemoteSync>(remoteSync->getHandle()));
+    EXPECT_NO_THROW(remoteSyncHandled = std::make_unique<RemoteSync>(remoteSync->handle()));
 
-    EXPECT_EQ(remoteSync->getHandle(), remoteSyncHandled->getHandle());
+    EXPECT_EQ(remoteSync->handle(), remoteSyncHandled->handle());
     
 }
 

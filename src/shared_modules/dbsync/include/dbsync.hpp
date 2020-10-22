@@ -29,7 +29,7 @@
 #include "json.hpp"
 #include "db_exception.h"
 
-using ResultCallbackData = const std::function<void(ReturnTypeCallback, const nlohmann::json&) >&;
+using ResultCallbackData = const std::function<void(ReturnTypeCallback, const nlohmann::json&) >;
 
 class EXPORTED DBSync 
 {
@@ -95,7 +95,7 @@ public:
      *
      */
     virtual void syncRow(const nlohmann::json& jsInput,
-                         ResultCallbackData&   callbackData);
+                         ResultCallbackData    callbackData);
 
     /**
      * @brief Select data, based in \p jsInput data, from the database table.
@@ -105,7 +105,7 @@ public:
      *
      */
     virtual void selectRows(const nlohmann::json& jsInput,
-                            ResultCallbackData&   callbackData);
+                            ResultCallbackData    callbackData);
 
     /**
      * @brief Deletes a database table record and its relationships based on \p jsInput value.
@@ -134,17 +134,22 @@ public:
      *
      */
     virtual void updateWithSnapshot(const nlohmann::json& jsInput,
-                                    ResultCallbackData&   callbackData);
+                                    ResultCallbackData    callbackData);
 
     /**
      * @brief Turns off the services provided by the shared library.
      */
     static void teardown();
 
-    DBSYNC_HANDLE getHandle() { return m_dbsyncHandle; } 
+    /**
+     * @brief Get current dbsync handle in the instance.
+     *
+     * @return DBSYNC_HANDLE to be used in all internal calls.
+     */
+    DBSYNC_HANDLE handle() { return m_dbsyncHandle; }
 private:
     DBSYNC_HANDLE m_dbsyncHandle;
-    bool m_shouldBeRemove;
+    bool m_shouldBeRemoved;
 };
 
 class EXPORTED DBSyncTxn 
@@ -166,8 +171,13 @@ public:
                        const nlohmann::json& tables,
                        const unsigned int    threadNumber,
                        const unsigned int    maxQueueSize,
-                       ResultCallbackData&   callbackData);
-
+                       ResultCallbackData    callbackData);
+    /**
+     * @brief DBSync transaction Constructor.
+     *
+     * @param handle     handle to point another dbsync transaction instance.
+     *
+     */
     DBSyncTxn(const TXN_HANDLE handle);
 
     /**
@@ -192,13 +202,18 @@ public:
      * @param callbackData    Result callback(std::function) will be called for each result.
      *
      */
-    virtual void getDeletedRows(ResultCallbackData& callbackData);
+    virtual void getDeletedRows(ResultCallbackData callbackData);
 
-    TXN_HANDLE getHandle() { return m_txn; }
+    /**
+     * @brief Get current dbsync transaction handle in the instance.
+     *
+     * @return TXN_HANDLE to be used in all internal calls.
+     */
+    TXN_HANDLE handle() { return m_txn; }
 
 private:
     TXN_HANDLE m_txn;
-    bool m_shouldBeRemove;
+    bool m_shouldBeRemoved;
 };
 
 

@@ -206,19 +206,19 @@ void RemoteSync::teardown()
 }
 
 RemoteSync::RemoteSync()
-: m_shouldBeRemove{ true } 
+: m_shouldBeRemoved{ true }
 {
     m_handle = RSyncImplementation::instance().create();
 }
 
 RemoteSync::RemoteSync(RSYNC_HANDLE handle)
 : m_handle { handle }
-, m_shouldBeRemove{ false } 
+, m_shouldBeRemoved{ false }
 { }
 
 RemoteSync::~RemoteSync()
 {
-    if (m_shouldBeRemove)
+    if (m_shouldBeRemoved)
     {
         RSyncImplementation::instance().releaseContext(m_handle);
     }
@@ -226,7 +226,7 @@ RemoteSync::~RemoteSync()
 
 void RemoteSync::startSync(const DBSYNC_HANDLE   dbsyncHandle,
                            const nlohmann::json& startConfiguration,
-                           SyncCallbackData&     callbackData)
+                           SyncCallbackData      callbackData)
 {
     const auto callbackWrapper
     {
@@ -242,7 +242,7 @@ void RemoteSync::startSync(const DBSYNC_HANDLE   dbsyncHandle,
 void RemoteSync::registerSyncID(const std::string&    messageHeaderID, 
                                 const DBSYNC_HANDLE   dbsyncHandle,
                                 const nlohmann::json& syncConfiguration,
-                                SyncCallbackData&     callbackData)
+                                SyncCallbackData      callbackData)
 {
     const auto callbackWrapper
     {

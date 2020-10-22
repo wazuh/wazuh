@@ -485,14 +485,14 @@ struct CreateTransactionActionCPP final : public IAction
             std::unique_ptr<DBSync> dbSync { std::make_unique<DBSync>(ctx->handle) };
             std::unique_ptr<DBSyncTxn> dbSyncTxn
             {
-                std::make_unique<DBSyncTxn>(dbSync->getHandle(),
+                std::make_unique<DBSyncTxn>(dbSync->handle(),
                                             value.at("body").at("tables"),
                                             0,
                                             100,
                                             txnCallback)
             };
 
-            ctx->txnContext = dbSyncTxn->getHandle();
+            ctx->txnContext = dbSyncTxn->handle();
         }
         catch(const nlohmann::detail::exception& ex)
         {

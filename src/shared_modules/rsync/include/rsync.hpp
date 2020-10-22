@@ -28,7 +28,7 @@
 #include <functional>
 #include "json.hpp"
 
-using SyncCallbackData = const std::function<void(const std::string&)>&;
+using SyncCallbackData = const std::function<void(const std::string&)>;
 
 class EXPORTED RemoteSync 
 {
@@ -37,6 +37,13 @@ public:
      * @brief Remote sync initializes the instance. 
      */
     RemoteSync();
+
+    /**
+     * @brief RSync Constructor.
+     *
+     * @param handle     handle to point another rsync instance.
+     *
+     */
     RemoteSync(RSYNC_HANDLE handle);
     // LCOV_EXCL_START
     virtual ~RemoteSync();
@@ -56,12 +63,12 @@ public:
      */
     virtual void startSync(const DBSYNC_HANDLE   dbsyncHandle,
                            const nlohmann::json& startConfiguration,
-                           SyncCallbackData&     callbackData);
+                           SyncCallbackData      callbackData);
 
     /**
      * @brief Establishes a message-id to be processed in the agent-manager sync.
      *
-     * @param messageHeaderId    Message ID associated to procees messages between
+     * @param messageHeaderID    Message ID associated to procees messages between
      *                           agent and manager.
      * @param dbsyncHandle       DBSync handle to synchronize databases.
      * @param syncConfiguration  Statement used as a configuration.
@@ -71,7 +78,7 @@ public:
     virtual void registerSyncID(const std::string&    messageHeaderID, 
                                 const DBSYNC_HANDLE   dbsyncHandle,
                                 const nlohmann::json& syncConfiguration,
-                                SyncCallbackData&     callbackData);
+                                SyncCallbackData      callbackData);
     /**
      * @brief Pushes the \p payload message within a queue to process it in an async 
      *  dispatch queue.
@@ -80,12 +87,16 @@ public:
      *
      */
     virtual void pushMessage(const std::vector<uint8_t>& payload);
-
-    RSYNC_HANDLE getHandle() { return m_handle;}
+    /**
+     * @brief Get current rsync handle in the instance.
+     *
+     * @return RSYNC_HANDLE to be used in all internal calls.
+     */
+    RSYNC_HANDLE handle() { return m_handle; }
 
 private:
     RSYNC_HANDLE m_handle;
-    bool m_shouldBeRemove;
+    bool m_shouldBeRemoved;
 
 };
 
