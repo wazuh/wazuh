@@ -22,7 +22,7 @@ namespace DbSync
     public:
 
         Pipeline(const DBSYNC_HANDLE handle,
-                 const char* tables,
+                 const nlohmann::json& tables,
                  const unsigned int threadNumber,
                  const unsigned int maxQueueSize,
                  const ResultCallback callback)
@@ -108,7 +108,7 @@ namespace DbSync
                 (
                     m_handle,
                     m_txnContext,
-                    value.dump().c_str(),
+                    value,
                     [&result](ReturnTypeCallback resType, const nlohmann::json& resValue)
                     {
                         result.first = resType;
@@ -154,11 +154,11 @@ namespace DbSync
         std::lock_guard<std::mutex> lock{ m_contextsMutex };
         m_contexts.clear();
     }
-    PipelineCtxHandle PipelineFactory::create(const DBSYNC_HANDLE handle,
-                                              const char* tables,
-                                              const unsigned int threadNumber,
-                                              const unsigned int maxQueueSize,
-                                              const ResultCallback callback)
+    PipelineCtxHandle PipelineFactory::create(const DBSYNC_HANDLE   handle,
+                                              const nlohmann::json& tables,
+                                              const unsigned int    threadNumber,
+                                              const unsigned int    maxQueueSize,
+                                              const ResultCallback  callback)
     {
         const auto spContext
         {

@@ -385,6 +385,450 @@ struct AddTableRelationship final : public IAction
     }
 };
 
+struct InsertDataCPP final : public IAction
+{
+    void execute(std::unique_ptr<TestContext>& ctx,
+                 const nlohmann::json& value) override
+    {
+        std::stringstream oFileName;
+        oFileName << "action_" << ctx->currentId << ".json";
+        const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
+
+        int retVal{ 0 };
+
+        try
+        {
+            std::unique_ptr<DBSync> dbSync { std::make_unique<DBSync>(ctx->handle) };
+            dbSync->insertData(value.at("body"));
+        }
+        catch(const nlohmann::detail::exception& ex)
+        {
+            retVal = ex.id;
+        }
+        catch(const DbSync::dbsync_error& ex)
+        {
+            retVal = ex.id();
+        }
+        catch(...)
+        {
+            retVal = -1;
+        }
+
+        std::ofstream outputFile{ outputFileName };
+        const nlohmann::json jsonResult = { {"insertData", retVal } };
+        outputFile << jsonResult.dump() << std::endl;
+    }
+};
+
+struct UpdateWithSnapshotActionCPP final : public IAction
+{
+    void execute(std::unique_ptr<TestContext>& ctx,
+                 const nlohmann::json& value) override
+    {
+        std::stringstream oFileName;
+        oFileName << "action_" << ctx->currentId << ".json";
+        const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
+
+        int retVal{ 0 };
+        nlohmann::json snapshotLambda { };
+        try
+        {
+            std::unique_ptr<DBSync> dbSync { std::make_unique<DBSync>(ctx->handle) };
+            dbSync->updateWithSnapshot(value.at("body"), snapshotLambda);
+        }
+        catch(const nlohmann::detail::exception& ex)
+        {
+            retVal = ex.id;
+        }
+        catch(const DbSync::dbsync_error& ex)
+        {
+            retVal = ex.id();
+        }
+        catch(...)
+        {
+            retVal = -1;
+        }
+
+        snapshotLambda.push_back({"updateWithSnapshot", retVal });
+
+        std::ofstream outputFile{ outputFileName };
+        outputFile << snapshotLambda.dump() << std::endl;
+    }
+};
+
+struct CreateTransactionActionCPP final : public IAction
+{
+    void execute(std::unique_ptr<TestContext>& ctx,
+                 const nlohmann::json& value) override
+    {
+        int retVal{ 0 };
+
+        auto txnCallback = [&ctx](ReturnTypeCallback type, const nlohmann::json& json)
+        {
+            static std::mutex s_mutex;
+            std::lock_guard<std::mutex> lock{ s_mutex };
+
+            std::stringstream oFileName;
+            oFileName << "txn_" << reinterpret_cast<size_t>(ctx->txnContext) << ".json";
+            const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
+
+            nlohmann::json jsonResult { };
+            jsonResult.push_back(json);
+            jsonResult.push_back({{"result", type}});
+
+            std::ofstream outputFile{ outputFileName, std::ofstream::app};
+            outputFile << jsonResult.dump() << std::endl;
+        };
+
+        try
+        {
+            std::unique_ptr<DBSync> dbSync { std::make_unique<DBSync>(ctx->handle) };
+            std::unique_ptr<DBSyncTxn> dbSyncTxn
+            {
+                std::make_unique<DBSyncTxn>(dbSync->handle(),
+                                            value.at("body").at("tables"),
+                                            0,
+                                            100,
+                                            txnCallback)
+            };
+
+            ctx->txnContext = dbSyncTxn->handle();
+        }
+        catch(const nlohmann::detail::exception& ex)
+        {
+            retVal = ex.id;
+        }
+        catch(const DbSync::dbsync_error& ex)
+        {
+            retVal = ex.id();
+        }
+        catch(...)
+        {
+            retVal = -1;
+        }
+
+        std::stringstream oFileName;
+        oFileName << "action_" << ctx->currentId << ".json";
+        const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
+
+        std::ofstream outputFile{ outputFileName };
+        const nlohmann::json jsonResult = { {"createTransaction", nullptr != ctx->txnContext && 0 == retVal } };
+        outputFile << jsonResult.dump() << std::endl;
+    }
+};
+
+struct SetMaxRowsActionCPP final : public IAction
+{
+    void execute(std::unique_ptr<TestContext>& ctx,
+                 const nlohmann::json& value) override
+    {
+        const auto table{value.at("body").at("table").get<std::string>()};
+        const auto maxRows{value.at("body").at("max_rows").get<unsigned int>()};
+
+        int retVal{ 0 };
+
+        try
+        {
+            std::unique_ptr<DBSync> dbSync { std::make_unique<DBSync>(ctx->handle) };
+            dbSync->setTableMaxRow(table, maxRows);
+        }
+        catch(const nlohmann::detail::exception& ex)
+        {
+            retVal = ex.id;
+        }
+        catch(const DbSync::dbsync_error& ex)
+        {
+            retVal = ex.id();
+        }
+        catch(...)
+        {
+            retVal = -1;
+        }
+
+        std::stringstream oFileName;
+        oFileName << "action_" << ctx->currentId << ".json";
+        const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
+
+        std::ofstream outputFile{ outputFileName };
+        const nlohmann::json jsonResult = { {"SetMaxRowsAction", retVal } };
+        outputFile << jsonResult.dump() << std::endl;
+    }
+};
+
+struct AddTableRelationshipCPP final : public IAction
+{
+    void execute(std::unique_ptr<TestContext>& ctx,
+                 const nlohmann::json& value) override
+    {
+        std::stringstream oFileName;
+        oFileName << "action_" << ctx->currentId << ".json";
+        const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
+
+        int retVal{ 0 };
+
+        try
+        {
+            std::unique_ptr<DBSync> dbSync { std::make_unique<DBSync>(ctx->handle) };
+            dbSync->addTableRelationship(value.at("body"));
+        }
+        catch(const nlohmann::detail::exception& ex)
+        {
+            retVal = ex.id;
+        }
+        catch(const DbSync::dbsync_error& ex)
+        {
+            retVal = ex.id();
+        }
+        catch(...)
+        {
+            retVal = -1;
+        }
+
+        std::ofstream outputFile{ outputFileName };
+        const nlohmann::json jsonResult = { {"addTableRelationship", retVal } };
+        outputFile << jsonResult.dump() << std::endl;
+    }
+};
+
+struct GetDeletedRowsActionCPP final : public IAction
+{
+    void execute(std::unique_ptr<TestContext>& ctx,
+                 const nlohmann::json& /*value*/) override
+    {
+        std::stringstream oFileName;
+        oFileName << "action_" << ctx->currentId << ".json";
+        const auto& outputFileNameCallback{ ctx->outputPath + "/" + "callback." + oFileName.str() };
+        const auto& loggerContext { std::make_unique<GetCallbackLogger>(outputFileNameCallback) };
+
+        auto callbackDelete
+        {
+            [&loggerContext](ReturnTypeCallback /*result_type*/, const nlohmann::json& json)
+            {
+                std::lock_guard<std::mutex> lock(loggerContext->m_mutex);
+
+                std::ifstream inputFile{ loggerContext->m_fileName };
+
+                nlohmann::json jsonResult {};
+                if (inputFile.peek() != std::ifstream::traits_type::eof())
+                {
+                    jsonResult = nlohmann::json::parse(inputFile);
+                }
+
+                jsonResult.push_back(json);
+
+                std::ofstream outputFile{ loggerContext->m_fileName };
+                outputFile << jsonResult.dump() << std::endl;
+            }
+        };
+
+        int retVal { 0 };
+
+        try
+        {
+            std::unique_ptr<DBSyncTxn> dbSyncTxn { std::make_unique<DBSyncTxn>(ctx->txnContext) };
+            dbSyncTxn->getDeletedRows(callbackDelete);
+        }
+        catch(const nlohmann::detail::exception& ex)
+        {
+            retVal = ex.id;
+        }
+        catch(const DbSync::dbsync_error& ex)
+        {
+            retVal = ex.id();
+        }
+        catch(...)
+        {
+            retVal = -1;
+        }
+
+        const auto& outputFileName{ ctx->outputPath + "/" + oFileName.str() };
+        std::ofstream outputFile{ outputFileName };
+        const nlohmann::json& jsonResult { {"getDeletedRows", retVal } };
+        outputFile << jsonResult.dump() << std::endl;
+    }
+};
+
+struct SyncRowActionCPP final : public IAction
+{
+    void execute(std::unique_ptr<TestContext>& ctx,
+                 const nlohmann::json& value) override
+    {
+        std::stringstream oFileName;
+        oFileName << "action_" << ctx->currentId << ".json";
+        const auto& outputFileNameCallback{ ctx->outputPath + "/" + "callback." + oFileName.str() };
+        const auto& loggerContext { std::make_unique<GetCallbackLogger>(outputFileNameCallback) };
+
+        auto callbackSync
+        {
+            [&loggerContext](ReturnTypeCallback /*result_type*/, const nlohmann::json& json)
+            {
+                std::lock_guard<std::mutex> lock(loggerContext->m_mutex);
+                std::ifstream inputFile{ loggerContext->m_fileName };
+
+                nlohmann::json jsonResult {};
+                if (inputFile.peek() != std::ifstream::traits_type::eof())
+                {
+                    jsonResult = nlohmann::json::parse(inputFile);
+                }
+                jsonResult.push_back(json);
+
+                std::ofstream outputFile{ loggerContext->m_fileName };
+                outputFile << jsonResult.dump() << std::endl;
+            }
+        };
+ 
+        int retVal { 0 };
+
+        try
+        {
+            std::unique_ptr<DBSync> dbSync { std::make_unique<DBSync>(ctx->handle) };
+            dbSync->syncRow(value.at("body"), callbackSync);
+        }
+        catch(const nlohmann::detail::exception& ex)
+        {
+            retVal = ex.id;
+        }
+        catch(const DbSync::dbsync_error& ex)
+        {
+            retVal = ex.id();
+        }
+        catch(...)
+        {
+            retVal = -1;
+        }
+
+        const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
+
+        std::ofstream outputFile{ outputFileName };
+        const nlohmann::json jsonResult = { {"syncRow", retVal } };
+        outputFile << jsonResult.dump() << std::endl;
+    }
+};
+
+struct SyncTxnRowsActionCPP final : public IAction
+{
+    void execute(std::unique_ptr<TestContext>& ctx,
+                 const nlohmann::json& value) override
+    {
+        int retVal { 0 };
+
+        try
+        {
+            std::unique_ptr<DBSyncTxn> dbSyncTxn { std::make_unique<DBSyncTxn>(ctx->txnContext) };
+            dbSyncTxn->syncTxnRow(value.at("body"));
+        }
+        catch(const nlohmann::detail::exception& ex)
+        {
+            retVal = ex.id;
+        }
+        catch(const DbSync::dbsync_error& ex)
+        {
+            retVal = ex.id();
+        }
+        catch(...)
+        {
+            retVal = -1;
+        }
+
+        std::stringstream oFileName;
+        oFileName << "action_" << ctx->currentId << ".json";
+        const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
+
+        std::ofstream outputFile{ outputFileName };
+        const nlohmann::json jsonResult = { {"syncTxnRow", retVal } };
+        outputFile << jsonResult.dump() << std::endl;
+    }
+};
+
+struct DeleteRowsActionCPP final : public IAction
+{
+    void execute(std::unique_ptr<TestContext>& ctx,
+                 const nlohmann::json& value) override
+    {
+        int retVal { 0 };
+
+        try
+        {
+            std::unique_ptr<DBSync> dbSync { std::make_unique<DBSync>(ctx->handle) };
+            dbSync->deleteRows(value.at("body"));
+        }
+        catch(const nlohmann::detail::exception& ex)
+        {
+            retVal = ex.id;
+        }
+        catch(const DbSync::dbsync_error& ex)
+        {
+            retVal = ex.id();
+        }
+        catch(...)
+        {
+            retVal = -1;
+        }
+
+        std::stringstream oFileName;
+        oFileName << "action_" << ctx->currentId << ".json";
+        const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
+
+        std::ofstream outputFile{ outputFileName };
+        const nlohmann::json jsonResult = { {"deleteRows", retVal } };
+        outputFile << jsonResult.dump() << std::endl;
+    }
+};
+
+struct SelectRowsActionCPP final : public IAction
+{
+    void execute(std::unique_ptr<TestContext>& ctx,
+                 const nlohmann::json& value) override
+    {
+        std::stringstream oFileName;
+        oFileName << "action_" << ctx->currentId << ".json";
+        const auto& outputFileNameCallback{ ctx->outputPath + "/" + "callback." + oFileName.str() };
+        const auto& loggerContext { std::make_unique<GetCallbackLogger>(outputFileNameCallback) };
+
+        auto callbackSelect
+        {
+            [&loggerContext](ReturnTypeCallback /*result_type*/, const nlohmann::json& json)
+            {
+                std::lock_guard<std::mutex> lock(loggerContext->m_mutex);
+                std::ifstream inputFile{ loggerContext->m_fileName };
+
+                nlohmann::json jsonResult {};
+                if (inputFile.peek() != std::ifstream::traits_type::eof())
+                {
+                    jsonResult = nlohmann::json::parse(inputFile);
+                }
+                jsonResult.push_back(json);
+
+                std::ofstream outputFile{ loggerContext->m_fileName };
+                outputFile << jsonResult.dump() << std::endl;
+            }
+        };
+
+        int retVal { 0 };
+
+        try
+        {
+            std::unique_ptr<DBSync> dbSync { std::make_unique<DBSync>(ctx->handle) };
+            dbSync->selectRows(value.at("body"), callbackSelect);
+        }
+        catch(const nlohmann::detail::exception& ex)
+        {
+            retVal = ex.id;
+        }
+        catch(const DbSync::dbsync_error& ex)
+        {
+            retVal = ex.id();
+        }
+        catch(...)
+        {
+            retVal = -1;
+        }
+
+        std::ofstream outputFile{ ctx->outputPath + "/" + oFileName.str() };
+        const nlohmann::json jsonResult = { {"selectRows", retVal } };
+        outputFile << jsonResult.dump() << std::endl;
+    }
+};
 
 
 #endif //_ACTION_H

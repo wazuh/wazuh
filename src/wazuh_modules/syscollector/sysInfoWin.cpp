@@ -362,8 +362,8 @@ static std::string parseRawSmbios(const BYTE* rawData, const DWORD rawDataSize)
     return serialNumber;
 }
 
-static std::string getProcessName(PROCESSENTRY32 processEntry,
-								  std::string& execPath)
+static std::string processName(PROCESSENTRY32 processEntry,
+                               std::string& execPath)
 {
 	std::string ret;
 	const DWORD pId { processEntry.th32ProcessID };
@@ -377,6 +377,28 @@ static std::string getProcessName(PROCESSENTRY32 processEntry,
 		ret = processEntry.szExeFile;
 	}
 	return ret;
+}
+
+static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
+{
+	nlohmann::json jsProcessInfo{};
+	const DWORD pId { processEntry.th32ProcessID };
+	SysInfoProcess process(pId);
+	std::string execName;
+
+	// Current process information
+	jsProcessInfo["name"] 		= processName(processEntry, execName);
+	jsProcessInfo["cmd"]   		= (execName.compare("none") == 0) ? execName : process.cmd();
+	jsProcessInfo["stime"]  	= process.kernelModeTime();
+	jsProcessInfo["size"]  		= process.pageFileUsage();
+	jsProcessInfo["ppid"] 		= processEntry.th32ParentProcessID;
+	jsProcessInfo["priority"]	= processEntry.pcPriClassBase;
+	jsProcessInfo["pid"] 		= pId;
+	jsProcessInfo["session"]  	= process.sessionId();
+	jsProcessInfo["nlwp"] 		= processEntry.cntThreads;
+	jsProcessInfo["utime"] 		= process.userModeTime();
+	jsProcessInfo["vm_size"] 	= process.virtualSize();
+	return jsProcessInfo;
 }
 
 std::string SysInfo::getSerialNumber() const
@@ -456,26 +478,9 @@ void SysInfo::getMemory(nlohmann::json& info) const
     }
 }
 
-static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
+nlohmann::json SysInfo::getPackages() const
 {
-	nlohmann::json jsProcessInfo{};
-	const DWORD pId { processEntry.th32ProcessID };
-	SysInfoProcess process(pId);
-	std::string execName;
-
-	// Current process information
-	jsProcessInfo["name"] 		= getProcessName(processEntry, execName);
-	jsProcessInfo["cmd"]   		= (execName.compare("none") == 0) ? execName : process.cmd();
-	jsProcessInfo["stime"]  	= process.kernelModeTime();
-	jsProcessInfo["size"]  		= process.pageFileUsage();
-	jsProcessInfo["ppid"] 		= processEntry.th32ParentProcessID;
-	jsProcessInfo["priority"]	= processEntry.pcPriClassBase;
-	jsProcessInfo["pid"] 		= pId;
-	jsProcessInfo["session"]  	= process.sessionId();
-	jsProcessInfo["nlwp"] 		= processEntry.cntThreads;
-	jsProcessInfo["utime"] 		= process.userModeTime();
-	jsProcessInfo["vm_size"] 	= process.virtualSize();
-	return jsProcessInfo;
+    return {};
 }
 
 nlohmann::json SysInfo::getProcessesInfo() const

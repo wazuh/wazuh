@@ -21,6 +21,11 @@ nlohmann::json SysInfo::hardware()
     return ret;
 }
 
+nlohmann::json SysInfo::packages()
+{
+    return getPackages();
+}
+
 nlohmann::json SysInfo::processes()
 {
     return getProcessesInfo();
