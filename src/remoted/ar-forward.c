@@ -10,7 +10,7 @@
 
 #include <pthread.h>
 
-#include "monitord/monitord.h"
+#include "defs.h"
 #include "shared.h"
 #include "remoted.h"
 #include "os_net/os_net.h"
