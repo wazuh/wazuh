@@ -650,15 +650,15 @@ def load_wazuh_xml(xml_path):
     data = re.sub(r"<(?!/?\w+.+>|!--)", "&lt;", data)
 
     # replace \< by &lt;
-    data = re.sub(r'\\<', '&lt;', data)
+    data = re.sub(r'&backslash;<', '&backslash;&lt;', data)
 
     # replace \> by &gt;
-    data = re.sub(r'\\>', '&gt;', data)
+    data = re.sub(r'&backslash;>', '&backslash;&gt;', data)
 
     # default entities
     default_entities = ['amp', 'lt', 'gt', 'apos', 'quot']
 
-    # & characters should be scaped if they don't represent an &entity;
+    # & characters should be escaped if they don't represent an &entity;
     data = re.sub(f"&(?!({'|'.join(default_entities + list(custom_entities))});)", "&amp;", data)
 
     entities = '<!DOCTYPE xmlfile [\n' + \
