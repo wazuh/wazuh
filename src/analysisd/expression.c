@@ -141,7 +141,7 @@ bool w_expression_compile(w_expression_t * expression, char * pattern, int flags
     return retval;
 }
 
-bool w_expression_test(w_expression_t * expression, char * str_test, size_t str_length) {
+bool w_expression_test(w_expression_t * expression, const char * str_test) {
 
     bool retval = false;
 
@@ -158,7 +158,7 @@ bool w_expression_test(w_expression_t * expression, char * str_test, size_t str_
     switch (expression->exp_type) {
 
         case EXP_TYPE_OSMATCH:
-            retval = (OSMatch_Execute(str_test, str_length, expression->match) == 0) ? false : true;
+            retval = (OSMatch_Execute(str_test, sizeof(str_test), expression->match) == 0) ? false : true;
             break;
 
         case EXP_TYPE_OSREGEX:
@@ -176,7 +176,7 @@ bool w_expression_test(w_expression_t * expression, char * str_test, size_t str_
 
         case EXP_TYPE_PCRE2:
             match_data = pcre2_match_data_create_from_pattern(expression->pcre2, NULL);
-            rc = pcre2_match(expression->pcre2, (PCRE2_SPTR) str_test, str_length, 0, 0, match_data, NULL);
+            rc = pcre2_match(expression->pcre2, (PCRE2_SPTR) str_test, sizeof(str_test), 0, 0, match_data, NULL);
             pcre2_match_data_free(match_data);
             retval = (rc > 0) ? true : false;
             break;
