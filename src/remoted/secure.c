@@ -12,6 +12,13 @@
 #include "os_net/os_net.h"
 #include "remoted.h"
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 /* Global variables */
 int sender_pool;
 
@@ -31,7 +38,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
 
-static void * close_fp_main(void * args);
+STATIC void * close_fp_main(void * args);
 
 /* Status of keypolling wodle */
 static char key_request_available = 0;
@@ -278,7 +285,7 @@ void * rem_keyupdate_main(__attribute__((unused)) void * args) {
 }
 
 // Closer rids thread
-static void * close_fp_main(void * args) {
+STATIC void * close_fp_main(void * args) {
     keystore * keys = (keystore *)args;
     int seconds;
     int flag;
@@ -315,6 +322,9 @@ static void * close_fp_main(void * args) {
             }
         }
         key_unlock();
+    #ifdef WAZUH_UNIT_TESTING
+        break;
+    #endif
     }
     return NULL;
 }
