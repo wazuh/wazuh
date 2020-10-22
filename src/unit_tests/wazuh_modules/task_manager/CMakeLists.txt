@@ -1,4 +1,4 @@
-# Generate vulnerability detector library
+# Generate task manager library
 file(GLOB task_files
     ${SRC_FOLDER}/wazuh_modules/*.o
     ${SRC_FOLDER}/wazuh_modules/task_manager/*.o)

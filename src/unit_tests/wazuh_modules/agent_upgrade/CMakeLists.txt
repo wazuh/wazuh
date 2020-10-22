@@ -1,4 +1,4 @@
-# Generate vulnerability detector library
+# Generate agent upgrade library
 file(GLOB upgrade_files
     ${SRC_FOLDER}/wazuh_modules/*.o
     ${SRC_FOLDER}/wazuh_modules/agent_upgrade/*.o
