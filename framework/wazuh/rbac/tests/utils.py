@@ -23,6 +23,6 @@ def init_db(schema, test_data_path):
                     import wazuh.rbac.orm as orm
                     reload(orm)
     try:
-        create_memory_db(schema, orm._Session, test_data_path)
+        create_memory_db(schema, orm._Session(), test_data_path)
     except OperationalError:
         pass
