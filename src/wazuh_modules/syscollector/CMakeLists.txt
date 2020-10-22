@@ -74,6 +74,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   endif(UNIT_TEST)
 else()
     target_link_libraries(syscollector sqlite3 cjson proc)
+    add_subdirectory(testtool)
 endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
  add_custom_target(copy-files ALL
@@ -83,7 +84,6 @@ endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
     DEPENDS syscollector
     )
 
-add_subdirectory(testtool)
 if(UNIT_TEST)
 add_subdirectory(tests)
 endif(UNIT_TEST)

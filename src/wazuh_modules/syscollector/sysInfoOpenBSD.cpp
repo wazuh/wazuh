@@ -90,5 +90,6 @@ std::string SysInfo::getSerialNumber() const
 
 nlohmann::json SysInfo::getProcessesInfo() const
 {
+    // Currently not supported for this OS
     return {};
 }
