@@ -162,6 +162,13 @@ int main(int argc, char **argv)
         merror_exit(CONFIG_ERROR, cfg);
     }
 
+    /* Setting default values and reading global configuration */
+    Config.agents_disconnection_time = 20;
+    Config.alert_agent_disconnection_time = 2;
+    if (ReadConfig(CGLOBAL, cfg, &Config, NULL) < 0) {
+        merror_exit(CONFIG_ERROR, cfg);
+    }
+
     /* If we have any reports configured, read smtp/emailfrom */
     if (mond.reports) {
         OS_XML xml;
