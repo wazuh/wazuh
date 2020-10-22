@@ -85,3 +85,8 @@ std::string SysInfo::getSerialNumber() const
 {
     return "unknown";
 }
+
+nlohmann::json SysInfo::getProcessesInfo() const
+{
+    return {};
+}
