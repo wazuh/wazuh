@@ -13,7 +13,7 @@
 
 /* Global variables */
 monitor_config mond;
-
+_Config Config;
 
 void Monitord()
 {
@@ -151,6 +151,8 @@ cJSON *getMonitorInternalOptions(void) {
     cJSON_AddNumberToObject(monconf,"size_rotate",mond.size_rotate);
     cJSON_AddNumberToObject(monconf,"daily_rotations",mond.daily_rotations);
     cJSON_AddNumberToObject(monconf,"delete_old_agents",mond.delete_old_agents);
+    cJSON_AddNumberToObject(monconf,"agents_disconnection_time",Config.agents_disconnection_time);
+    cJSON_AddNumberToObject(monconf,"alert_agent_disconnection_time",Config.alert_agent_disconnection_time);
 
     cJSON_AddItemToObject(root,"monitord",monconf);
 
