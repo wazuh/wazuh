@@ -8,7 +8,7 @@
  * Foundation
  */
 
-#include "monitord/monitord.h"
+#include "defs.h"
 #include "shared.h"
 #include <pthread.h>
 #include "remoted.h"
