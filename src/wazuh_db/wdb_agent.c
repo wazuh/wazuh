@@ -400,10 +400,10 @@ int wdb_update_agent_connection_status(int id, const char *connection_status, in
     cJSON_AddStringToObject(data_in, "connection_status", connection_status);
     data_in_str = cJSON_PrintUnformatted(data_in);
 
-    os_calloc(WDBQUERY_SIZE+1, sizeof(char), wdbquery);
-    os_calloc(WDBOUTPUT_SIZE, sizeof(char), wdboutput);
-    snprintf(wdbquery, WDBQUERY_SIZE, global_db_commands[WDB_UPDATE_AGENT_KEEPALIVE], data_in_str);
+    os_malloc(WDBQUERY_SIZE, wdbquery);
+    snprintf(wdbquery, WDBQUERY_SIZE, global_db_commands[WDB_UPDATE_AGENT_CONNECTION_STATUS], data_in_str);
 
+    os_malloc(WDBOUTPUT_SIZE, wdboutput);
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
 
     switch (result) {
