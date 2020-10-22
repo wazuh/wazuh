@@ -10,6 +10,7 @@
 
 #include <pthread.h>
 
+#include "monitord/monitord.h"
 #include "shared.h"
 #include "remoted.h"
 #include "os_net/os_net.h"
@@ -126,7 +127,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
                 key_lock_read();
 
                 for (i = 0; i < keys.keysize; i++) {
-                    if (keys.keyentries[i]->rcvd >= (time(0) - DISCON_TIME)) {
+                    if (keys.keyentries[i]->rcvd >= (time(0) - Config.agents_disconnection_time)) {
                         strncpy(agent_id, keys.keyentries[i]->id, KEYSIZE);
                         key_unlock();
                         send_msg(agent_id, msg_to_send, -1);
