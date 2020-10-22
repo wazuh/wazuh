@@ -17,6 +17,7 @@
 
 #include "config/config.h"
 #include "config/remote-config.h"
+#include "config/global-config.h"
 #include "sec.h"
 
 #define FD_LIST_INIT_VALUE 1024
@@ -196,5 +197,6 @@ extern int tcp_keepidle;
 extern int tcp_keepintvl;
 extern int tcp_keepcnt;
 extern size_t global_counter;
+extern _Config Config;
 
 #endif /* LOGREMOTE_H */
