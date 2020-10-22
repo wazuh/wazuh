@@ -205,6 +205,7 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     fim_decoder->fields[FIM_REGISTRY_ARCH] = "arch";
     fim_decoder->fields[FIM_REGISTRY_VALUE_NAME] = "value_name";
     fim_decoder->fields[FIM_REGISTRY_VALUE_TYPE] = "value_type";
+    fim_decoder->fields[FIM_ENTRY_TYPE] = "entry_type";
 }
 
 // Initialize the necessary information to process the syscheck information
@@ -1266,13 +1267,10 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
             } else if (strcmp(object->string, "content_changes") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_DIFF].value);
             } else if (strcmp(object->string, "arch") == 0) {
-                os_strdup(object->valuestring, lf->arch);
                 os_strdup(object->valuestring, lf->fields[FIM_REGISTRY_ARCH].value);
             } else if (strcmp(object->string, "value_name") == 0) {
-                os_strdup(object->valuestring, lf->value_name);
                 os_strdup(object->valuestring, lf->fields[FIM_REGISTRY_VALUE_NAME].value);
             } else if (strcmp(object->string, "value_type") == 0) {
-                os_strdup(object->valuestring, lf->value_type);
                 os_strdup(object->valuestring, lf->fields[FIM_REGISTRY_VALUE_TYPE].value);
             }
 
@@ -1315,7 +1313,7 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
         return -1;
     }
 
-    if (strcmp("file", entry_type) == 0) {
+    if (strcmp("file", entry_type) == 0 || strcmp("registry", entry_type) == 0) {
         decoder = syscheck_decoders[FILE_DECODER];
     } else if (strcmp("registry_key", entry_type) == 0) {
         decoder = syscheck_decoders[REGISTRY_KEY_DECODER];
@@ -1325,6 +1323,7 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
         mdebug1("Invalid member 'type' in Syscheck attributes JSON payload");
         return -1;
     }
+    os_strdup(entry_type, lf->fields[FIM_ENTRY_TYPE].value);
 
     if (strcmp("added", event_type) == 0) {
         lf->event_type = FIM_ADDED;
