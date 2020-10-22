@@ -331,14 +331,6 @@ x-rbac-catalog:
         actions: ['lists:read']
         resources: ['list:path:etc/lists/audit-keys']
         effect: "deny"
-    'logtest:end_session':
-      description: "End logtest session"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: [ 'logtest:end_session' ]
-        resources: [ '*:*:*' ]
-        effect: "allow"
     'logtest:run':
       description: "Use logtest tool"
       resources:
@@ -5086,7 +5078,7 @@ tags:
     description: "Group of agents and centralized configurations"
   - name: Lists
     description: "CDB lists management"
-  - name: logtest
+  - name: Logtest
     description: "Logtest: testing and verification tool for rules and decoders"
   - name: Manager
     description: "Wazuh manager management"
@@ -9037,7 +9029,7 @@ paths:
   /logtest:
     put:
       tags:
-        - logtest
+        - Logtest
       summary: "Run logtest in a specified log"
       description: "Check if a specified log raises any alert among other information"
       operationId: api.controllers.logtest_controller.run_logtest_tool
@@ -9108,12 +9100,12 @@ paths:
   /logtest/sessions/{token}:
     delete:
       tags:
-        - logtest
+        - Logtest
       summary: "Delete a saved session"
       description: "Delete the saved session corresponding to {token}"
       operationId: api.controllers.logtest_controller.end_logtest_session
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/logtest:end_session'
+        - $ref: '#/x-rbac-catalog/actions/logtest:run'
       parameters:
         - $ref: '#/components/parameters/logtest_token'
         - $ref: '#/components/parameters/pretty'

@@ -4,9 +4,3 @@
   resources:
   - "*:*:*"
   effect: allow
-
-- actions:
-  - logtest:end_session
-  resources:
-  - "*:*:*"
-  effect: allow

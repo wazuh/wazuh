@@ -391,18 +391,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - PUT /logtest
-      logtest:end_session:
-        description: End logtest session
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - logtest:end_session
-          resources:
-            - "*:*:*"
-          effect: allow
-        related_endpoints:
-          - DELETE /logtest/sessions/{token}
       manager:read:
         description: Read Wazuh manager configuration
         resources:
