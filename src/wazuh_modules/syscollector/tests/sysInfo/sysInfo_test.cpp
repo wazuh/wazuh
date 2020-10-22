@@ -25,6 +25,7 @@ std::string SysInfo::getCpuName() const {return "";}
 int SysInfo::getCpuMHz() const {return 0;}
 int SysInfo::getCpuCores() const {return 0;}
 void SysInfo::getMemory(nlohmann::json&) const {}
+nlohmann::json SysInfo::getPackages() const {return "";}
 
 class SysInfoWrapper: public SysInfo
 {
@@ -36,6 +37,7 @@ public:
     MOCK_METHOD(int, getCpuMHz, (), (const override));
     MOCK_METHOD(int, getCpuCores, (), (const override));
     MOCK_METHOD(void, getMemory, (nlohmann::json&), (const override));
+    MOCK_METHOD(nlohmann::json, getPackages, (), (const override));
 };
 
 
@@ -48,5 +50,13 @@ TEST_F(SysInfoTest, hardware)
     EXPECT_CALL(info, getCpuMHz()).WillOnce(Return(2902));
     EXPECT_CALL(info, getMemory(_));
     const auto result {info.hardware()};
+    EXPECT_FALSE(result.empty());
+}
+
+TEST_F(SysInfoTest, packages)
+{
+    SysInfoWrapper info;
+    EXPECT_CALL(info, getPackages()).WillOnce(Return("packages"));
+    const auto result {info.packages()};
     EXPECT_FALSE(result.empty());
 }

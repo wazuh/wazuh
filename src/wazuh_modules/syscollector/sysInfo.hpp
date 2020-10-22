@@ -17,15 +17,17 @@ constexpr auto KByte{1024};
 class SysInfo
 {
 public:
-	SysInfo() = default;
-	virtual ~SysInfo() = default;
-	nlohmann::json hardware();
+    SysInfo() = default;
+    virtual ~SysInfo() = default;
+    nlohmann::json hardware();
+    nlohmann::json packages();
 private:
     virtual std::string getSerialNumber() const;
     virtual std::string getCpuName() const;
     virtual int getCpuMHz() const;
     virtual int getCpuCores() const;
     virtual void getMemory(nlohmann::json& info) const;
+    virtual nlohmann::json getPackages() const;
 };
 
 

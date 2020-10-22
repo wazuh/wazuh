@@ -20,3 +20,8 @@ nlohmann::json SysInfo::hardware()
     getMemory(ret);
     return ret;
 }
+
+nlohmann::json SysInfo::packages()
+{
+    return getPackages();
+}
