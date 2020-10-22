@@ -614,7 +614,7 @@ int wdb_create_file(const char *path, const char *source) {
         break;
     }
 
-    if (chmod(path, 0660) < 0) {
+    if (chmod(path, 0640) < 0) {
         merror(CHMOD_ERROR, path, errno, strerror(errno));
         return OS_INVALID;
     }
