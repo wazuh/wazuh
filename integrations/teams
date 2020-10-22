@@ -101,7 +101,7 @@ def generate_msg(alert):
 
         {
             'name': "Path",
-            'value': alert["syscheck"]["path"]
+            'value': alert["syscheck"]["path"] if "syscheck" in alert else "N/A"
         },
 
         {
