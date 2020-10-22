@@ -547,7 +547,13 @@ class WazuhException(Exception):
         6003: {'message': 'Error trying to load the JWT secret',
                'remediation': 'Make sure you have the right permissions: WAZUH_PATH/api/configuration/security/jwt_secret'},
         6004: {'message': 'The current user does not have authentication enabled through authorization context',
-               'remediation': f'You can enable it using the following endpoint: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#configuration-file'}
+               'remediation': f'You can enable it using the following endpoint: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#configuration-file'},
+
+        # Logtest
+        7000: {'message': 'Error trying to get logtest response'},
+        7001: {'message': 'Error trying to read logtest session token',
+               'remediation': 'Make sure you introduce the token within the field "token"'}
+
         # > 9000: Authd
     }
 

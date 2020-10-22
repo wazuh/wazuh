@@ -10,6 +10,9 @@ from struct import pack, unpack
 import asyncio
 
 
+SOCKET_COMMUNICATION_PROTOCOL_VERSION = 1
+
+
 class OssecSocket:
 
     MAX_SIZE = 65536
@@ -276,3 +279,18 @@ async def wazuh_sendsync(daemon_name=None, message=None):
         raise WazuhInternalError(1014, extra_message=e)
 
     return data
+
+
+def create_wazuh_socket_message(origin=None, command=None, parameters=None):
+    communication_protocol_message = {'version': SOCKET_COMMUNICATION_PROTOCOL_VERSION}
+
+    if origin:
+        communication_protocol_message['origin'] = origin
+
+    if command:
+        communication_protocol_message['command'] = command
+
+    if parameters:
+        communication_protocol_message['parameters'] = parameters
+
+    return communication_protocol_message

@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 # [v4.1.0]
 
+### Added
+
+- Added new framework modules to use the logtest tool ([#5870](https://github.com/wazuh/wazuh/pull/5870))
+
 ## [v4.0.0] -
 
 ### Added

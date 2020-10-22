@@ -88,6 +88,7 @@ EXECQ = os.path.join(ossec_path, 'queue', 'alerts', 'execq')
 # Socket
 AUTHD_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'auth')
 REQUEST_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'request')
+LOGTEST_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'logtest')
 
 # Wdb
 MAX_SOCKET_BUFFER_SIZE = 64 * 1024  # 64KB
