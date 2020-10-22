@@ -224,7 +224,7 @@ async def get_agent_config(request, pretty=False, wait_for_complete=False, agent
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param agent_id: Agent ID. All possible values since 000 onwards.
+    :param agent_id: Agent ID. All possible values from 000 onwards.
     :param component: Selected agent's component.
     :return: AgentConfiguration
     """
@@ -280,7 +280,7 @@ async def get_sync_agent(request, agent_id, pretty=False, wait_for_complete=Fals
     Returns whether the agent configuration has been synchronized with the agent
     or not. This can be useful to check after updating a group configuration.
 
-    :param agent_id: Agent ID. All possible values since 000 onwards.
+    :param agent_id: Agent ID. All possible values from 000 onwards.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout responseç
     :return: AgentSync
@@ -308,7 +308,7 @@ async def delete_single_agent_single_group(request, agent_id, group_id, pretty=F
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param agent_id: Agent ID. All possible values since 000 onwards.
+    :param agent_id: Agent ID. All possible values from 000 onwards.
     :param group_id: Group ID.
     :return: ApiResponse
     """
@@ -334,7 +334,7 @@ async def put_agent_single_group(request, agent_id, group_id, force_single_group
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param agent_id: Agent ID. All possible values since 000 onwards.
+    :param agent_id: Agent ID. All possible values from 000 onwards.
     :param group_id: Group ID.
     :param force_single_group: Forces the agent to belong to a single group
     :return: ApiResponse
@@ -361,7 +361,7 @@ async def get_agent_key(request, agent_id, pretty=False, wait_for_complete=False
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param agent_id: Agent ID. All possible values since 000 onwards.
+    :param agent_id: Agent ID. All possible values from 000 onwards.
     :return: AllItemsResponseAgentsKeys
     """
     f_kwargs = {'agent_list': [agent_id]}
@@ -382,7 +382,7 @@ async def get_agent_key(request, agent_id, pretty=False, wait_for_complete=False
 async def restart_agent(request, agent_id, pretty=False, wait_for_complete=False):
     """Restart an agent.
 
-    :param agent_id: Agent ID. All possible values since 000 onwards.
+    :param agent_id: Agent ID. All possible values from 000 onwards.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :return: AllItemsResponseAgentIDs
@@ -413,7 +413,7 @@ async def put_upgrade_agents(request, agents_list='*', pretty=False, wait_for_co
     wait_for_complete : bool
         Disable timeout response.
     agents_list : list
-        List of agent IDs. All possible values since 000 onwards.
+        List of agent IDs. All possible values from 000 onwards.
     wpk_repo : str
         WPK repository.
     version : str
@@ -459,7 +459,7 @@ async def put_upgrade_custom_agents(request, agents_list='*', pretty=False, wait
     wait_for_complete : bool
         Disable timeout response.
     agents_list : list
-        List of agent IDs. All possible values since 000 onwards.
+        List of agent IDs. All possible values from 000 onwards.
     file_path : str
         Path to the WPK file. The file must be on a folder on the Wazuh's installation directory (by default, <code>/var/ossec</code>).
     installer : str
@@ -498,7 +498,7 @@ async def get_agent_upgrade(request, agents_list=None, pretty=False, wait_for_co
     wait_for_complete : bool
         Disable timeout response.
     agents_list : list
-        List of agent IDs. All possible values since 000 onwards.
+        List of agent IDs. All possible values from 000 onwards.
 
     Returns
     -------
