@@ -118,9 +118,9 @@ static void test_fim_registry_event_invalid_saved_entry_type(void **state) {
 static void test_fim_registry_event_added_key_event(void **state) {
     fim_entry new;
     fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, "1234567890ABCDEF1234567890ABCDEF12345678"
+        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
     };
-    registry configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+    registry configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL, NULL };
     cJSON *ret, *data, *attributes;
 
     new.type = FIM_TYPE_REGISTRY;
@@ -136,14 +136,13 @@ static void test_fim_registry_event_added_key_event(void **state) {
 
     data = cJSON_GetObjectItem(ret, "data");
     assert_non_null(data);
-
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(data, "path")), "HKEY_USERS\\Some\\random\\key");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(data, "mode")), "scheduled");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(data, "type")), "added");
 
     attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry_key");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "uid")), "100");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "gid")), "200");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_name")), "user_name");
@@ -156,7 +155,7 @@ static void test_fim_registry_event_added_key_event(void **state) {
 static void test_fim_registry_event_added_key_event_attributes_disabled(void **state) {
     fim_entry new;
     fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, "1234567890ABCDEF1234567890ABCDEF12345678"
+        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
     };
     registry configuration = { "HKEY_USERS\\Some", ARCH_64BIT, 0, 320, 0, NULL, NULL };
     cJSON *ret, *data, *attributes;
@@ -181,7 +180,7 @@ static void test_fim_registry_event_added_key_event_attributes_disabled(void **s
 
     attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry_key");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry");
     assert_null(cJSON_GetObjectItem(attributes, "uid"));
     assert_null(cJSON_GetObjectItem(attributes, "gid"));
     assert_null(cJSON_GetObjectItem(attributes, "user_name"));
@@ -194,10 +193,10 @@ static void test_fim_registry_event_added_key_event_attributes_disabled(void **s
 static void test_fim_registry_event_modified_key_event(void **state) {
     fim_entry new, saved;
     fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, "1234567890ABCDEF1234567890ABCDEF12345678"
+        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
     };
     fim_registry_key saved_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-old-permission", "110", "220", "user_old_name", "group_old_name", 1100, ARCH_64BIT, 0, "234567890ABCDEF1234567890ABCDEF123456789"
+        3, "HKEY_USERS\\Some\\random\\key", "windows-old-permission", "110", "220", "user_old_name", "group_old_name", 1100, ARCH_64BIT, 0, 1234, "234567890ABCDEF1234567890ABCDEF123456789"
     };
     registry configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
     cJSON *ret, *data, *attributes, *old_attributes, *it;
@@ -231,7 +230,7 @@ static void test_fim_registry_event_modified_key_event(void **state) {
 
     attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry_key");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "uid")), "100");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "gid")), "200");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_name")), "user_name");
@@ -242,7 +241,7 @@ static void test_fim_registry_event_modified_key_event(void **state) {
 
     old_attributes = cJSON_GetObjectItem(data, "old_attributes");
     assert_non_null(old_attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes, "type")), "registry_key");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes, "type")), "registry");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes, "uid")), "110");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes, "gid")), "220");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes, "user_name")), "user_old_name");
@@ -255,10 +254,10 @@ static void test_fim_registry_event_modified_key_event(void **state) {
 static void test_fim_registry_event_modified_key_event_attributes_disabled(void **state) {
     fim_entry new, saved;
     fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, "1234567890ABCDEF1234567890ABCDEF12345678"
+        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
     };
     fim_registry_key saved_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-old-permission", "110", "220", "user_old_name", "group_old_name", 1100, ARCH_64BIT, 0, "234567890ABCDEF1234567890ABCDEF123456789"
+        3, "HKEY_USERS\\Some\\random\\key", "windows-old-permission", "110", "220", "user_old_name", "group_old_name", 1100, ARCH_64BIT, 0, 1234, "234567890ABCDEF1234567890ABCDEF123456789"
     };
     registry configuration = { "HKEY_USERS\\Some", ARCH_64BIT, 0, 320, 0, NULL, NULL };
     cJSON *ret;
@@ -279,7 +278,7 @@ static void test_fim_registry_event_modified_key_event_attributes_disabled(void 
 static void test_fim_registry_event_deleted_key_event(void **state) {
     fim_entry new;
     fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, "1234567890ABCDEF1234567890ABCDEF12345678"
+        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
     };
     registry configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
     cJSON *ret, *data, *attributes;
@@ -304,7 +303,7 @@ static void test_fim_registry_event_deleted_key_event(void **state) {
 
     attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry_key");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "uid")), "100");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "gid")), "200");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_name")), "user_name");
@@ -317,7 +316,7 @@ static void test_fim_registry_event_deleted_key_event(void **state) {
 static void test_fim_registry_event_deleted_key_event_attributes_disabled(void **state) {
     fim_entry new;
     fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, "1234567890ABCDEF1234567890ABCDEF12345678"
+        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
     };
     registry configuration = { "HKEY_USERS\\Some", ARCH_64BIT, 0, 320, 0, NULL, NULL };
     cJSON *ret, *data, *attributes;
@@ -342,7 +341,7 @@ static void test_fim_registry_event_deleted_key_event_attributes_disabled(void *
 
     attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry_key");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry");
     assert_null(cJSON_GetObjectItem(attributes, "uid"));
     assert_null(cJSON_GetObjectItem(attributes, "gid"));
     assert_null(cJSON_GetObjectItem(attributes, "user_name"));
@@ -355,7 +354,7 @@ static void test_fim_registry_event_deleted_key_event_attributes_disabled(void *
 static void test_fim_registry_event_added_value_event(void **state) {
     fim_entry new;
     fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, "1234567890ABCDEF1234567890ABCDEF12345678"
+        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
     };
     fim_registry_value_data new_value = { 3,
                                           "the\\value",
@@ -386,14 +385,16 @@ static void test_fim_registry_event_added_value_event(void **state) {
     assert_non_null(data);
 
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(data, "path")),
-                        "HKEY_USERS\\Some\\random\\key\\the\\value");
+                        "HKEY_USERS\\Some\\random\\key");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(data, "mode")), "scheduled");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(data, "type")), "added");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(data, "value_name")), "the\\value");
 
     attributes = cJSON_GetObjectItem(data, "attributes");
+
     assert_non_null(attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry_value");
-    assert_int_equal(cJSON_GetObjectItem(attributes, "registry_type")->valueint, REG_SZ);
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "value_type")), "REG_SZ");
     assert_int_equal(cJSON_GetObjectItem(attributes, "size")->valueint, 50);
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "hash_md5")),
                         "1234567890ABCDEF1234567890ABCDEF");
@@ -401,7 +402,6 @@ static void test_fim_registry_event_added_value_event(void **state) {
                         "1234567890ABCDEF1234567890ABCDEF12345678");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "hash_sha256")),
                         "1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF");
-    // assert_int_equal(cJSON_GetObjectItem(attributes, "last_event")->valueint, 10000);
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum")),
                         "1234567890ABCDEF1234567890ABCDEF12345678");
 }
@@ -409,7 +409,7 @@ static void test_fim_registry_event_added_value_event(void **state) {
 static void test_fim_registry_event_added_value_event_attributes_disabled(void **state) {
     fim_entry new;
     fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, "1234567890ABCDEF1234567890ABCDEF12345678"
+        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
     };
     fim_registry_value_data new_value = { 3,
                                           "the\\value",
@@ -440,19 +440,19 @@ static void test_fim_registry_event_added_value_event_attributes_disabled(void *
     assert_non_null(data);
 
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(data, "path")),
-                        "HKEY_USERS\\Some\\random\\key\\the\\value");
+                        "HKEY_USERS\\Some\\random\\key");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(data, "mode")), "scheduled");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(data, "type")), "added");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(data, "value_name")), "the\\value");
 
     attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry_value");
-    assert_null(cJSON_GetObjectItem(attributes, "registry_type"));
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry");
+    assert_null(cJSON_GetObjectItem(attributes, "value_type"));
     assert_null(cJSON_GetObjectItem(attributes, "size"));
     assert_null(cJSON_GetObjectItem(attributes, "hash_md5"));
     assert_null(cJSON_GetObjectItem(attributes, "hash_sha1"));
     assert_null(cJSON_GetObjectItem(attributes, "hash_sha256"));
-    // assert_int_equal(cJSON_GetObjectItem(attributes, "last_event")->valueint, 10000);
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum")),
                         "1234567890ABCDEF1234567890ABCDEF12345678");
 }
@@ -460,7 +460,7 @@ static void test_fim_registry_event_added_value_event_attributes_disabled(void *
 static void test_fim_registry_event_modified_value_event(void **state) {
     fim_entry new, saved;
     fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, "1234567890ABCDEF1234567890ABCDEF12345678"
+        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
     };
     fim_registry_value_data new_value = { 3,
                                           "the\\value",
@@ -474,7 +474,7 @@ static void test_fim_registry_event_modified_value_event(void **state) {
                                           "1234567890ABCDEF1234567890ABCDEF12345678",
                                           FIM_MODIFICATION };
     fim_registry_key saved_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, "1234567890ABCDEF1234567890ABCDEF12345678"
+        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
     };
     fim_registry_value_data saved_value = { 3,
                                           "the\\value",
@@ -511,17 +511,18 @@ static void test_fim_registry_event_modified_value_event(void **state) {
     assert_non_null(data);
 
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(data, "path")),
-                        "HKEY_USERS\\Some\\random\\key\\the\\value");
+                        "HKEY_USERS\\Some\\random\\key");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(data, "mode")), "scheduled");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(data, "type")), "modified");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(data, "value_name")), "the\\value");
     cJSON_ArrayForEach(it, cJSON_GetObjectItem(data, "changed_attributes")) {
         assert_string_equal(cJSON_GetStringValue(it), changed_attributes[attributes_it++]);
     }
 
     attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry_value");
-    assert_int_equal(cJSON_GetObjectItem(attributes, "registry_type")->valueint, REG_SZ);
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "value_type")), "REG_SZ");
     assert_int_equal(cJSON_GetObjectItem(attributes, "size")->valueint, 50);
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "hash_md5")),
                         "1234567890ABCDEF1234567890ABCDEF");
@@ -529,14 +530,13 @@ static void test_fim_registry_event_modified_value_event(void **state) {
                         "1234567890ABCDEF1234567890ABCDEF12345678");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "hash_sha256")),
                         "1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF");
-    // assert_int_equal(cJSON_GetObjectItem(attributes, "last_event")->valueint, 10000);
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum")),
                         "1234567890ABCDEF1234567890ABCDEF12345678");
 
     old_attributes = cJSON_GetObjectItem(data, "old_attributes");
     assert_non_null(old_attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes, "type")), "registry_value");
-        assert_int_equal(cJSON_GetObjectItem(old_attributes, "registry_type")->valueint, REG_SZ);
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes, "type")), "registry");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes, "value_type")), "REG_SZ");
     assert_int_equal(cJSON_GetObjectItem(old_attributes, "size")->valueint, 500);
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes, "hash_md5")),
                         "234567890ABCDEF1234567890ABCDEF1");
@@ -544,7 +544,6 @@ static void test_fim_registry_event_modified_value_event(void **state) {
                         "234567890ABCDEF1234567890ABCDEF123456789");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes, "hash_sha256")),
                         "234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1");
-    // assert_int_equal(cJSON_GetObjectItem(old_attributes, "last_event")->valueint, 10000);
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes, "checksum")),
                         "234567890ABCDEF1234567890ABCDEF123456789");
 }
@@ -552,7 +551,7 @@ static void test_fim_registry_event_modified_value_event(void **state) {
 static void test_fim_registry_event_modified_value_event_attributes_disabled(void **state) {
     fim_entry new, saved;
     fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, "1234567890ABCDEF1234567890ABCDEF12345678"
+        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
     };
     fim_registry_value_data new_value = { 3,
                                           "the\\value",
@@ -566,7 +565,7 @@ static void test_fim_registry_event_modified_value_event_attributes_disabled(voi
                                           "1234567890ABCDEF1234567890ABCDEF12345678",
                                           FIM_MODIFICATION };
     fim_registry_key saved_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, "1234567890ABCDEF1234567890ABCDEF12345678"
+        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
     };
     fim_registry_value_data saved_value = { 3,
                                           "the\\value",
@@ -600,7 +599,7 @@ static void test_fim_registry_event_modified_value_event_attributes_disabled(voi
 static void test_fim_registry_event_deleted_value_event(void **state) {
     fim_entry new;
     fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, "1234567890ABCDEF1234567890ABCDEF12345678"
+        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
     };
     fim_registry_value_data new_value = { 3,
                                           "the\\value",
@@ -631,14 +630,15 @@ static void test_fim_registry_event_deleted_value_event(void **state) {
     assert_non_null(data);
 
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(data, "path")),
-                        "HKEY_USERS\\Some\\random\\key\\the\\value");
+                        "HKEY_USERS\\Some\\random\\key");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(data, "mode")), "scheduled");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(data, "type")), "deleted");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(data, "value_name")), "the\\value");
 
     attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry_value");
-    assert_int_equal(cJSON_GetObjectItem(attributes, "registry_type")->valueint, REG_SZ);
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "value_type")), "REG_SZ");
     assert_int_equal(cJSON_GetObjectItem(attributes, "size")->valueint, 50);
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "hash_md5")),
                         "1234567890ABCDEF1234567890ABCDEF");
@@ -646,7 +646,6 @@ static void test_fim_registry_event_deleted_value_event(void **state) {
                         "1234567890ABCDEF1234567890ABCDEF12345678");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "hash_sha256")),
                         "1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF");
-    // assert_int_equal(cJSON_GetObjectItem(attributes, "last_event")->valueint, 10000);
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum")),
                         "1234567890ABCDEF1234567890ABCDEF12345678");
 }
@@ -654,7 +653,7 @@ static void test_fim_registry_event_deleted_value_event(void **state) {
 static void test_fim_registry_event_deleted_value_event_attributes_disabled(void **state) {
     fim_entry new;
     fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, "1234567890ABCDEF1234567890ABCDEF12345678"
+        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
     };
     fim_registry_value_data new_value = { 3,
                                           "the\\value",
@@ -685,19 +684,19 @@ static void test_fim_registry_event_deleted_value_event_attributes_disabled(void
     assert_non_null(data);
 
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(data, "path")),
-                        "HKEY_USERS\\Some\\random\\key\\the\\value");
+                        "HKEY_USERS\\Some\\random\\key");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(data, "mode")), "scheduled");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(data, "type")), "deleted");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(data, "value_name")), "the\\value");
 
     attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry_value");
-    assert_null(cJSON_GetObjectItem(attributes, "registry_type"));
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry");
+    assert_null(cJSON_GetObjectItem(attributes, "value_type"));
     assert_null(cJSON_GetObjectItem(attributes, "size"));
     assert_null(cJSON_GetObjectItem(attributes, "hash_md5"));
     assert_null(cJSON_GetObjectItem(attributes, "hash_sha1"));
     assert_null(cJSON_GetObjectItem(attributes, "hash_sha256"));
-    // assert_int_equal(cJSON_GetObjectItem(attributes, "last_event")->valueint, 10000);
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum")),
                         "1234567890ABCDEF1234567890ABCDEF12345678");
 }
@@ -709,18 +708,18 @@ int main(void) {
         cmocka_unit_test(test_fim_registry_event_invalid_new_entry_type),
         cmocka_unit_test(test_fim_registry_event_invalid_new_entry_type_null_saved_entry),
         cmocka_unit_test(test_fim_registry_event_invalid_saved_entry_type),
-        // cmocka_unit_test_teardown(test_fim_registry_event_added_key_event, teardown_cjson_object),
-        // cmocka_unit_test_teardown(test_fim_registry_event_added_key_event_attributes_disabled, teardown_cjson_object),
-        // cmocka_unit_test_teardown(test_fim_registry_event_modified_key_event, teardown_cjson_object),
-        // cmocka_unit_test(test_fim_registry_event_modified_key_event_attributes_disabled),
-        // cmocka_unit_test_teardown(test_fim_registry_event_deleted_key_event, teardown_cjson_object),
-        // cmocka_unit_test_teardown(test_fim_registry_event_deleted_key_event_attributes_disabled, teardown_cjson_object),
-        // cmocka_unit_test_teardown(test_fim_registry_event_added_value_event, teardown_cjson_object),
-        // cmocka_unit_test_teardown(test_fim_registry_event_added_value_event_attributes_disabled, teardown_cjson_object),
-        // cmocka_unit_test_teardown(test_fim_registry_event_modified_value_event, teardown_cjson_object),
-        // cmocka_unit_test(test_fim_registry_event_modified_value_event_attributes_disabled),
-        // cmocka_unit_test_teardown(test_fim_registry_event_deleted_value_event, teardown_cjson_object),
-        // cmocka_unit_test_teardown(test_fim_registry_event_deleted_value_event_attributes_disabled, teardown_cjson_object),
+        cmocka_unit_test_teardown(test_fim_registry_event_added_key_event, teardown_cjson_object),
+        cmocka_unit_test_teardown(test_fim_registry_event_added_key_event_attributes_disabled, teardown_cjson_object),
+        cmocka_unit_test_teardown(test_fim_registry_event_modified_key_event, teardown_cjson_object),
+        cmocka_unit_test(test_fim_registry_event_modified_key_event_attributes_disabled),
+        cmocka_unit_test_teardown(test_fim_registry_event_deleted_key_event, teardown_cjson_object),
+        cmocka_unit_test_teardown(test_fim_registry_event_deleted_key_event_attributes_disabled, teardown_cjson_object),
+        cmocka_unit_test_teardown(test_fim_registry_event_added_value_event, teardown_cjson_object),
+        cmocka_unit_test_teardown(test_fim_registry_event_added_value_event_attributes_disabled, teardown_cjson_object),
+        cmocka_unit_test_teardown(test_fim_registry_event_modified_value_event, teardown_cjson_object),
+        cmocka_unit_test(test_fim_registry_event_modified_value_event_attributes_disabled),
+        cmocka_unit_test_teardown(test_fim_registry_event_deleted_value_event, teardown_cjson_object),
+        cmocka_unit_test_teardown(test_fim_registry_event_deleted_value_event_attributes_disabled, teardown_cjson_object),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
