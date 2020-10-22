@@ -82,7 +82,7 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
             not_replaced = True
             for each ip in ip_list
                 If not_replaced Then
-                  strNewText = Replace(strNewText, "<address>0.0.0.0</address>", "<address>" & ip & "</address>")
+                  strText = Replace(strText, "<address>0.0.0.0</address>", "<address>" & ip & "</address>")
                   not_replaced = False
                 Else
                     formatted_list = formatted_list & "    <server>" & vbCrLf
@@ -92,65 +92,65 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
                     formatted_list = formatted_list & "    </server>" & vbCrLf
                 End If
             next
-            strNewText = Replace(strNewText, "    </server>", formatted_list)
+            strText = Replace(strText, "    </server>", formatted_list)
         ElseIf address <> "" and InStr(strText,"<address>") > 0 Then
-            strNewText = Replace(strNewText, "<address>0.0.0.0</address>", "<address>" & address & "</address>")
+            strText = Replace(strText, "<address>0.0.0.0</address>", "<address>" & address & "</address>")
 
         ElseIf address <> "" Then 'single address
             ' Fix for the legacy server-ip and server-hostname keynames
             Set re = new regexp
             re.Pattern = "<server-ip>.*</server-ip>"
             re.Global = True
-            strNewText = re.Replace(strNewText, "<server-ip>" & address & "</server-ip>")
+            strText = re.Replace(strText, "<server-ip>" & address & "</server-ip>")
             re.Pattern = "<server-hostname>.*</server-hostname>"
             re.Global = True
-            strNewText = re.Replace(strNewText, "<server-hostname>" & address & "</server-hostname>")
-            strNewText = Replace(strNewText, "<address>0.0.0.0</address>", "<address>" & address & "</address>")
+            strText = re.Replace(strText, "<server-hostname>" & address & "</server-hostname>")
+            strText = Replace(strText, "<address>0.0.0.0</address>", "<address>" & address & "</address>")
         End If
 
         If server_port <> "" Then ' manager server_port
-            If InStr(strNewText, "<port>") > 0 Then
-                strNewText = Replace(strNewText, "<port>1514</port>", "<port>" & server_port & "</port>")
+            If InStr(strText, "<port>") > 0 Then
+                strText = Replace(strText, "<port>1514</port>", "<port>" & server_port & "</port>")
             Else
                 ' Fix for the legacy files (not including the key)
-                strNewText = Replace(strNewText, "</client>", "  <port>" & server_port & "</port>"& vbCrLf &"  </client>")
+                strText = Replace(strText, "</client>", "  <port>" & server_port & "</port>"& vbCrLf &"  </client>")
             End If
 
         End If
 
         If protocol <> "" Then
-            If InStr(strNewText, "<protocol>") > 0 Then
+            If InStr(strText, "<protocol>") > 0 Then
                 Set re = new regexp
                 re.Pattern = "<protocol>.*</protocol>"
                 re.Global = True
-                strNewText = re.Replace(strNewText, "<protocol>" & LCase(protocol) & "</protocol>")
+                strText = re.Replace(strText, "<protocol>" & LCase(protocol) & "</protocol>")
             Else
             ' Fix for the legacy files (not including the key)
-                strNewText = Replace(strNewText, "</client>", "   <protocol>" & LCase(protocol) & "</protocol>"& vbCrLf &"  </client>")
+                strText = Replace(strText, "</client>", "   <protocol>" & LCase(protocol) & "</protocol>"& vbCrLf &"  </client>")
             End If
         End If
 
         If notify_time <> "" Then
-            If InStr(strNewText, "<notify_time>") > 0 Then
+            If InStr(strText, "<notify_time>") > 0 Then
                 Set re = new regexp
                 re.Pattern = "<notify_time>.*</notify_time>"
                 re.Global = True
-                strNewText = re.Replace(strNewText, "<notify_time>" & notify_time & "</notify_time>")
+                strText = re.Replace(strText, "<notify_time>" & notify_time & "</notify_time>")
             Else
                 ' Fix for the legacy files (not including the key)
-                strNewText = Replace(strNewText, "</client>", "   <notify_time>" & notify_time & "</notify_time>"& vbCrLf &"  </client>")
+                strText = Replace(strText, "</client>", "   <notify_time>" & notify_time & "</notify_time>"& vbCrLf &"  </client>")
             End If
         End If
 
         If time_reconnect <> "" Then 'TODO fix the - and use _
-            If InStr(strNewText, "<time-reconnect>") > 0 Then
+            If InStr(strText, "<time-reconnect>") > 0 Then
                 Set re = new regexp
                 re.Pattern = "<time-reconnect>.*</time-reconnect>"
                 re.Global = True
-                strNewText = re.Replace(strNewText, "<time-reconnect>" & time_reconnect & "</time-reconnect>")
+                strText = re.Replace(strText, "<time-reconnect>" & time_reconnect & "</time-reconnect>")
             Else
                 ' Fix for the legacy files (not including the key)
-                strNewText = Replace(strNewText, "</client>", "   <time-reconnect>" & time_reconnect & "</time-reconnect>"& vbCrLf &"  </client>")
+                strText = Replace(strText, "</client>", "   <time-reconnect>" & time_reconnect & "</time-reconnect>"& vbCrLf &"  </client>")
 
             End If
         End If
@@ -158,7 +158,7 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
         ' Writing the ossec.conf file
         const ForWriting = 2
         Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForWriting)
-        objFile.WriteLine strNewText
+        objFile.WriteLine strText
         objFile.Close
 
     End If

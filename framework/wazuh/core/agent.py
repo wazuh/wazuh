@@ -1178,11 +1178,13 @@ class Agent:
         wpk_file_path = path.join(common.ossec_path, 'var', 'upgrade', wpk_file)
 
         # If WPK is already downloaded
+        already_exist_invalid_checksum = False
         if path.isfile(wpk_file_path):
             # Get SHA1 file sum
             sha1hash = hashlib.sha1(open(wpk_file_path, 'rb').read()).hexdigest()
             # Comparing SHA1 hash
             if not sha1hash == agent_new_shasum:
+                already_exist_invalid_checksum = True
                 if debug:
                     print("Downloaded file SHA1 does not match "
                           "(downloaded: {0} / repository: {1})".format(sha1hash, agent_new_shasum))
@@ -1201,11 +1203,19 @@ class Agent:
             raise WazuhInternalError(1714, extra_message=str(e))
 
         if result.ok:
+            # Try to delete the detected invalid file. If there is no permission to do so,
+            # a new file with the current date will be generated in order to do the installation.
+            if already_exist_invalid_checksum:
+                try:
+                    remove(wpk_file_path)
+                except PermissionError:
+                    wpk_file_path = path.join(common.ossec_path, 'var', 'upgrade', f'{wpk_file[:-4]}{int(time())}.wpk')
+
             with open(wpk_file_path, 'wb') as fd:
                 for chunk in result.iter_content(chunk_size=128):
                     fd.write(chunk)
-                chown(wpk_file_path, common.ossec_gid(), common.ossec_gid())
-                chmod(wpk_file_path, 0o660)
+            chown(wpk_file_path, common.ossec_gid(), common.ossec_gid())
+            chmod(wpk_file_path, 0o660)
         else:
             error = "Can't access to the WPK file in {}".format(wpk_url)
             raise WazuhInternalError(1714, extra_message=str(error))
