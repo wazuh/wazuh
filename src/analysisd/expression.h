@@ -84,10 +84,9 @@ bool w_expression_compile(w_expression_t * expression, char * pattern, int flags
  * @brief Test match a compiled pattern to string
  * @param expression expression with compiled pattern
  * @param str_test string to test
- * @param str_length  Size of str_test (only valid in osmatch)
  * @return true on match. false otherwise
  */
-bool w_expression_test(w_expression_t * expression, char * str_test, size_t str_length);
+bool w_expression_test(w_expression_t * expression, const char * str_test);
 
 /**
  * @brief Execute a compiled pattern to string (only OSRegex & PCRE2)

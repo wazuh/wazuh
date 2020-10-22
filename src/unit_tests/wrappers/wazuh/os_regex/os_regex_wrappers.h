@@ -19,4 +19,8 @@ const char *__wrap_OSRegex_Execute(const char *str, OSRegex *reg);
 
 int __wrap_OS_StrIsNum(const char *str);
 
+int __wrap_OSMatch_Execute(const char *str, size_t str_len, OSMatch *reg);
+
+const char *__wrap_OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *regex_match);
+
 #endif

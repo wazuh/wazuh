@@ -51,3 +51,29 @@ int __wrap_OS_StrIsNum(const char *str) {
 
     return retval;
 }
+
+extern int __real_OSMatch_Execute(const char *str, size_t str_len, OSMatch *reg);
+int __wrap_OSMatch_Execute(const char *str, size_t str_len, OSMatch *reg){
+    if (test_mode) {
+        if (str) {
+            check_expected(str);
+        }
+
+        return mock();
+    }
+
+    return  __real_OSMatch_Execute(str, str_len, reg);
+}
+
+extern const char *__real_OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *regex_match);
+const char *__wrap_OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *regex_match) {
+    if (test_mode) {
+        if (str) {
+            check_expected(str);
+        }
+
+        return mock_type(const char *);
+    }
+
+    return __real_OSRegex_Execute_ex(str, reg, regex_match);
+}
