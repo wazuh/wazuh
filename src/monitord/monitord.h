@@ -16,6 +16,7 @@
 #endif
 
 #include "config/reports-config.h"
+#include "config/global-config.h"
 
 #define MAX_DAY_WAIT 600
 #define MONITORD_MSG_HEADER "1:" ARGV0 ":"
@@ -40,5 +41,6 @@ void * moncom_main(__attribute__((unused)) void * arg);
 
 /* Global variables */
 extern monitor_config mond;
+extern _Config Config;
 
 #endif /* MONITORD_H */

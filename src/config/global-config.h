@@ -111,6 +111,9 @@ typedef struct __Config {
     int min_rotate_interval;
     ssize_t max_output_size;
     long queue_size;
+
+    int agents_disconnection_time;
+    int alert_agent_disconnection_time;
 } _Config;
 
 
