@@ -32,23 +32,23 @@ static const std::map<int, std::string> s_mapTaskInfoState =
 static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_t pid)
 {
     nlohmann::json jsProcessInfo{};
-    jsProcessInfo["pid"] 		= pid;
-    jsProcessInfo["name"] 		= taskInfo.pbsd.pbi_name;
+    jsProcessInfo["pid"]        = pid;
+    jsProcessInfo["name"]       = taskInfo.pbsd.pbi_name;
 
     const auto procState { s_mapTaskInfoState.find(taskInfo.pbsd.pbi_status) };
-    jsProcessInfo["state"] 		= (procState != s_mapTaskInfoState.end()) ? procState->second : "E";
-    jsProcessInfo["ppid"] 		= taskInfo.pbsd.pbi_ppid;
+    jsProcessInfo["state"]      = (procState != s_mapTaskInfoState.end()) ? procState->second : "E";
+    jsProcessInfo["ppid"]       = taskInfo.pbsd.pbi_ppid;
 
     const auto eUser { getpwuid(taskInfo.pbsd.pbi_uid) };
     if (eUser)
     {
-        jsProcessInfo["euser"] 	= eUser->pw_name;
+        jsProcessInfo["euser"]  = eUser->pw_name;
     }
 
     const auto rUser { getpwuid(taskInfo.pbsd.pbi_ruid) };
     if (rUser)
     {
-        jsProcessInfo["ruser"] 	= rUser->pw_name;
+        jsProcessInfo["ruser"]  = rUser->pw_name;
     }
 
     const auto rGroup { getgrgid(taskInfo.pbsd.pbi_rgid) };
@@ -57,9 +57,9 @@ static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_
         jsProcessInfo["rgroup"] = rGroup->gr_name;
     }
 
-    jsProcessInfo["priority"]	= taskInfo.ptinfo.pti_priority;
-    jsProcessInfo["nice"] 	    = taskInfo.pbsd.pbi_nice;
-    jsProcessInfo["vm_size"] 	= taskInfo.ptinfo.pti_virtual_size / KByte;
+    jsProcessInfo["priority"]   = taskInfo.ptinfo.pti_priority;
+    jsProcessInfo["nice"]       = taskInfo.pbsd.pbi_nice;
+    jsProcessInfo["vm_size"]    = taskInfo.ptinfo.pti_virtual_size / KByte;
     return jsProcessInfo;
 }
 
@@ -171,5 +171,5 @@ nlohmann::json SysInfo::getProcessesInfo() const
         }
     }
 
-	return jsProcessesList;
+    return jsProcessesList;
 }

@@ -52,10 +52,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         # MinGW generates position-independent-code for DLL by default
   )
   target_link_libraries(rsync crypto ssl ws2_32 crypt32)
-else()
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set_target_properties(rsync PROPERTIES
-        LINK_FLAGS "-static-libgcc -static-libstdc++"
-  )
+        LINK_FLAGS "-static-libgcc -static-libstdc++")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     
 
