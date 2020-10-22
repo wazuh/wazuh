@@ -206,10 +206,10 @@ void RemoteSync::teardown()
 }
 
 RemoteSync::RemoteSync()
-: m_shouldBeRemoved{ true }
-{
-    m_handle = RSyncImplementation::instance().create();
-}
+: m_handle { RSyncImplementation::instance().create() }
+, m_shouldBeRemoved{ true }
+
+{ }
 
 RemoteSync::RemoteSync(RSYNC_HANDLE handle)
 : m_handle { handle }

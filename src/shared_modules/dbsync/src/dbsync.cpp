@@ -612,10 +612,9 @@ DBSync::DBSync(const HostType     hostType,
                const DbEngineType dbType,
                const std::string& path,
                const std::string& sqlStatement)
-: m_shouldBeRemoved{ true }
-{
-    m_dbsyncHandle = DBSyncImplementation::instance().initialize(hostType, dbType, path, sqlStatement);
-}
+: m_dbsyncHandle { DBSyncImplementation::instance().initialize(hostType, dbType, path, sqlStatement) }
+, m_shouldBeRemoved{ true }
+{ }
 
 DBSync::DBSync(const DBSYNC_HANDLE dbsyncHandle)
 : m_dbsyncHandle { dbsyncHandle }
@@ -737,10 +736,9 @@ DBSyncTxn::DBSyncTxn(const DBSYNC_HANDLE   handle,
 }
 
 DBSyncTxn::DBSyncTxn(const TXN_HANDLE handle)
-: m_shouldBeRemoved { false }
-{
-    m_txn = handle;
-}
+: m_txn { handle }
+, m_shouldBeRemoved { false }
+{ }
 
 DBSyncTxn::~DBSyncTxn()
 {
