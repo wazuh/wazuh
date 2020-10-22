@@ -730,6 +730,20 @@ stages:
     response:
       status_code: 200
 
+  - name: Create a new user (secure password 2)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        username: "symbols"
+        password: "new_user1A!@#~½¬?¿ñàÀ"
+        allow_run_as: true
+      method: POST
+    response:
+      status_code: 200
+
   - name: Create a new user (user already exists)
     request:
       verify: False
