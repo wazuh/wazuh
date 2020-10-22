@@ -220,7 +220,20 @@ def _read_option(section_name, opt):
         else:
             opt_value = opt.text
 
-    return opt_name, opt_value
+    return opt_name, _replace_custom_values(opt_value)
+
+
+def _replace_custom_values(opt_value):
+    """Replaces custom values introduced by 'load_wazuh_xml' with their real values."""
+    if type(opt_value) is list:
+        for i in range(0, len(opt_value)):
+            opt_value[i] = _replace_custom_values(opt_value[i])
+    elif type(opt_value) is dict:
+        for key in opt_value.keys():
+            opt_value[key] = _replace_custom_values(opt_value[key])
+    elif type(opt_value) is str:
+        return opt_value.replace('_custom_amp_lt_', '&lt;').replace('_custom_amp_gt_', '&gt;')
+    return opt_value
 
 
 def _conf2json(src_xml, dst_json):
