@@ -26,6 +26,7 @@ extern void mock_assert(const int result, const char* const expression,
 #include "unit_tests/wrappers/windows/sddl_wrappers.h"
 #include "unit_tests/wrappers/windows/securitybaseapi_wrappers.h"
 #include "unit_tests/wrappers/windows/winbase_wrappers.h"
+#include "unit_tests/wrappers/windows/winreg_wrappers.h"
 
 #endif
 #endif

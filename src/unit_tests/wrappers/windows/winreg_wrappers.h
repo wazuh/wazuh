@@ -15,6 +15,8 @@
 
 #undef RegQueryInfoKey
 #define RegQueryInfoKey wrap_RegQueryInfoKey
+#undef RegQueryInfoKeyA
+#define RegQueryInfoKeyA wrap_RegQueryInfoKeyA
 #undef RegEnumKeyEx
 #define RegEnumKeyEx wrap_RegEnumKeyEx
 #undef RegOpenKeyEx
@@ -25,8 +27,23 @@
 #define RegCloseKey wrap_RegCloseKey
 #undef RegQueryValueEx
 #define RegQueryValueEx wrap_RegQueryValueEx
+#undef RegGetKeySecurity
+#define RegGetKeySecurity wrap_RegGetKeySecurity
 
 LONG wrap_RegQueryInfoKey(HKEY hKey,
+                          LPSTR lpClass,
+                          LPDWORD lpcchClass,
+                          LPDWORD lpReserved,
+                          LPDWORD lpcSubKeys,
+                          LPDWORD lpcbMaxSubKeyLen,
+                          LPDWORD lpcbMaxClassLen,
+                          LPDWORD lpcValues,
+                          LPDWORD lpcbMaxValueNameLen,
+                          LPDWORD lpcbMaxValueLen,
+                          LPDWORD lpcbSecurityDescriptor,
+                          PFILETIME lpftLastWriteTime);
+
+LONG wrap_RegQueryInfoKeyA(HKEY hKey,
                           LPSTR lpClass,
                           LPDWORD lpcchClass,
                           LPDWORD lpReserved,
@@ -70,5 +87,10 @@ LONG wrap_RegEnumValue(HKEY hKey,
                        LPBYTE lpData,LPDWORD lpcbData);
 
 LONG wrap_RegCloseKey(HKEY hKey);
+
+WINBOOL wrap_RegGetKeySecurity(__UNUSED_PARAM(HKEY hKey),
+                               __UNUSED_PARAM(SECURITY_INFORMATION SecurityInformation),
+                               __UNUSED_PARAM(PSECURITY_DESCRIPTOR pSecurityDescriptor),
+                               LPDWORD lpcbSecurityDescriptor);
 
 #endif

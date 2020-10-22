@@ -17,7 +17,7 @@ void __wrap_fim_send_scan_info(__attribute__ ((__unused__)) fim_scan_event event
     return;
 }
 
-void __wrap_fim_send_sync_msg(const char * msg) {
+void __wrap_fim_send_sync_msg(__attribute__ ((__unused__)) const char *location, const char * msg) {
     check_expected(msg);
 }
 

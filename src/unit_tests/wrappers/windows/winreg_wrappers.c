@@ -13,8 +13,8 @@
 #include <cmocka.h>
 
 LONG wrap_RegQueryInfoKey(__UNUSED_PARAM(HKEY hKey),
-                          LPSTR lpClass,
-                          LPDWORD lpcchClass,
+                          __UNUSED_PARAM(LPSTR lpClass),
+                          __UNUSED_PARAM(LPDWORD lpcchClass),
                           __UNUSED_PARAM(LPDWORD lpReserved),
                           LPDWORD lpcSubKeys,
                           __UNUSED_PARAM(LPDWORD lpcbMaxSubKeyLen),
@@ -24,11 +24,28 @@ LONG wrap_RegQueryInfoKey(__UNUSED_PARAM(HKEY hKey),
                           __UNUSED_PARAM(LPDWORD lpcbMaxValueLen),
                           __UNUSED_PARAM(LPDWORD lpcbSecurityDescriptor),
                           PFILETIME lpftLastWriteTime) {
+    if (lpcSubKeys) *lpcSubKeys = mock_type(CHAR);
+    if (lpcValues) *lpcValues = mock_type(DWORD);
     PFILETIME mock_file_time;
-    *lpClass = mock_type(CHAR);
-    *lpcchClass = mock_type(DWORD);
-    *lpcSubKeys = mock_type(long);
-    *lpcValues = mock_type(long);
+    mock_file_time = mock_type(PFILETIME);
+    lpftLastWriteTime->dwLowDateTime = mock_file_time->dwLowDateTime;
+    lpftLastWriteTime->dwHighDateTime = mock_file_time->dwHighDateTime;
+    return mock();
+}
+
+LONG wrap_RegQueryInfoKeyA(__UNUSED_PARAM(HKEY hKey),
+                          __UNUSED_PARAM(LPSTR lpClass),
+                          __UNUSED_PARAM(LPDWORD lpcchClass),
+                          __UNUSED_PARAM(LPDWORD lpReserved),
+                          __UNUSED_PARAM(LPDWORD lpcSubKeys),
+                          __UNUSED_PARAM(LPDWORD lpcbMaxSubKeyLen),
+                          __UNUSED_PARAM(LPDWORD lpcbMaxClassLen),
+                          __UNUSED_PARAM(LPDWORD lpcValues),
+                          __UNUSED_PARAM(LPDWORD lpcbMaxValueNameLen),
+                          __UNUSED_PARAM(LPDWORD lpcbMaxValueLen),
+                          __UNUSED_PARAM(LPDWORD lpcbSecurityDescriptor),
+                          PFILETIME lpftLastWriteTime) {
+    PFILETIME mock_file_time;
     mock_file_time = mock_type(PFILETIME);
     lpftLastWriteTime->dwLowDateTime = mock_file_time->dwLowDateTime;
     lpftLastWriteTime->dwHighDateTime = mock_file_time->dwHighDateTime;
@@ -98,5 +115,13 @@ LONG wrap_RegQueryValueEx(__UNUSED_PARAM(HKEY hKey),
     if(data = mock_type(LPBYTE), data) {
         memcpy(lpData, data, *lpcbData);
     }
+    return mock();
+}
+
+WINBOOL wrap_RegGetKeySecurity(__UNUSED_PARAM(HKEY hKey),
+                               __UNUSED_PARAM(SECURITY_INFORMATION SecurityInformation),
+                               __UNUSED_PARAM(PSECURITY_DESCRIPTOR pSecurityDescriptor),
+                               LPDWORD lpcbSecurityDescriptor) {
+    *lpcbSecurityDescriptor = mock();
     return mock();
 }

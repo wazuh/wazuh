@@ -54,9 +54,9 @@ void test_wdb_metadata_table_check_prepare_fail(void **state)
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_prepare_v2(): ERROR MESSAGE");
-    
+
     ret = wdb_metadata_table_check(data->wdb, "metadata");
-    
+
     assert_int_equal(ret, OS_INVALID);
 }
 
@@ -73,9 +73,9 @@ void test_wdb_metadata_table_check_bind_fail(void **state)
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
-    
+
     ret = wdb_metadata_table_check(data->wdb, "metadata");
-    
+
     assert_int_equal(ret, OS_INVALID);
 }
 
@@ -88,14 +88,15 @@ void test_wdb_metadata_table_check_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "metadata");
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): ERROR MESSAGE");
-    
+
     ret = wdb_metadata_table_check(data->wdb, "metadata");
-    
+
     assert_int_equal(ret, OS_INVALID);
 }
 
@@ -108,13 +109,14 @@ void test_wdb_metadata_table_check_success(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "metadata");
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     expect_value(__wrap_sqlite3_column_int,iCol, 0);
     will_return(__wrap_sqlite3_column_int, 1);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
-    
+
     ret = wdb_metadata_table_check(data->wdb, "metadata");
-    
+
     assert_int_equal(ret, 1);
 }
 
@@ -126,6 +128,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_metadata_table_check_step_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_metadata_table_check_success, test_setup, test_teardown)
     };
-    
+
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

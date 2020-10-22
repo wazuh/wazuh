@@ -145,8 +145,8 @@ int syscheck_teardown(void ** state) {
     syscheck.tag = NULL;
     syscheck.symbolic_links = NULL;
     syscheck.recursion_level = NULL;
-    syscheck.registry_ignore = NULL;
-    syscheck.registry_ignore_regex = NULL;
+    syscheck.key_ignore = NULL;
+    syscheck.key_ignore_regex = NULL;
     syscheck.registry = NULL;
     syscheck.realtime = NULL;
     syscheck.prefilter_cmd = NULL;
