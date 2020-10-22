@@ -428,6 +428,8 @@ async def put_upgrade_agents(request, agents_list='*', pretty=False, wait_for_co
     ApiResponse
         Upgrade message after trying to upgrade the agents.
     """
+    if 'all' in agents_list:
+        agents_list = None
     f_kwargs = {'agent_list': agents_list,
                 'wpk_repo': wpk_repo,
                 'version': version,
@@ -470,6 +472,8 @@ async def put_upgrade_custom_agents(request, agents_list='*', pretty=False, wait
     ApiResponse
         Upgrade message after trying to upgrade the agents.
     """
+    if 'all' in agents_list:
+        agents_list = None
     f_kwargs = {'agent_list': agents_list,
                 'file_path': file_path,
                 'installer': installer}

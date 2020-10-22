@@ -133,9 +133,11 @@ This agent will use **any** as IP.
 
 ### PUT     /agents/upgrade
 * New endpoint. Upgrade all agents or a list of them to a different Wazuh version.
+* Nothing upgraded by default, it must be specified with the "all" keyword.
 
 ### PUT     /agents/upgrade_custom
 * New endpoint. Upgrade all agents or a list of them to a different Wazuh version using a local WPK file.
+* Nothing upgraded by default, it must be specified with the "all" keyword.
 
 ### GET     /agents/upgrade_result
 * New endpoint.  Get upgrade results from all agents or a list of them.
