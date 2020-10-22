@@ -628,7 +628,6 @@ DBSync::~DBSync()
     {
         DBSyncImplementation::instance().releaseContext(m_dbsyncHandle);
     }
-    
 }
 
 

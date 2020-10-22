@@ -34,37 +34,111 @@ using ResultCallbackData = const std::function<void(ReturnTypeCallback, const nl
 class EXPORTED DBSync 
 {
 public:
-    DBSync(const HostType     hostType,
-           const DbEngineType dbType,
-           const std::string& path,
-           const std::string& sqlStatement);
-    
+    /**
+     * @brief Explicit DBSync Constructor.
+     *
+     * @param hostType     Dynamic library host type to be used.
+     * @param dbType       Database type to be used (currently only supported SQLITE3)
+     * @param path         Path where the local database will be created.
+     * @param sqlStatement SQL sentence to create tables in a SQL engine.
+     *
+     */
+    explicit DBSync(const HostType     hostType,
+                    const DbEngineType dbType,
+                    const std::string& path,
+                    const std::string& sqlStatement);
+
+    /**
+     * @brief DBSync Constructor.
+     *
+     * @param handle     handle to point another dbsync instance.
+     *
+     */
     DBSync(const DBSYNC_HANDLE handle);
     // LCOV_EXCL_START
     virtual ~DBSync();
     // LCOV_EXCL_STOP
 
+    /**
+     * @brief Generates triggers that execute actions to maintain consistency between tables.
+     *
+     * @param jsInput      JSON information with tables relationship.
+     *
+     */
     virtual void addTableRelationship(const nlohmann::json& jsInput);
 
+    /**
+     * @brief Insert the \p jsInsert data in the database.
+     *
+     * @param jsInsert JSON information with values to be inserted.
+     *
+     */
     virtual void insertData(const nlohmann::json& jsInsert);
 
+    /**
+     * @brief Sets the max rows in the \p table table.
+     *
+     * @param table    Table name to apply the max rows configuration.
+     * @param maxRows  Max rows number to be applied in the table \p table table.
+     *
+     *
+     * @details The table will work as a queue if the limit is exceeded.
+     */
     virtual void setTableMaxRow(const std::string&       table,
                                 const unsigned long long maxRows);
 
+    /**
+     * @brief Inserts (or modifies) a database record.
+     *
+     * @param jsInput        JSON information used to add/modified a database record.
+     * @param callbackData   Result callback(std::function) will be called for each result.
+     *
+     */
     virtual void syncRow(const nlohmann::json& jsInput,
                          ResultCallbackData&   callbackData);
 
+    /**
+     * @brief Select data, based in \p jsInput data, from the database table.
+     *
+     * @param jsInput         JSON with table name, fields and filters to apply in the query.
+     * @param callbackData    Result callback(std::function) will be called for each result.
+     *
+     */
     virtual void selectRows(const nlohmann::json& jsInput,
                             ResultCallbackData&   callbackData);
 
+    /**
+     * @brief Deletes a database table record and its relationships based on \p jsInput value.
+     *
+     * @param jsInput JSON information to be applied/deleted in the database.
+     *
+     */
     virtual void deleteRows(const nlohmann::json& jsInput);
 
+    /**
+     * @brief Updates data table with \p jsInput information. \p jsResult value will
+     *  hold/contain the results of this operation (rows insertion, modification and/or deletion).
+     *
+     * @param jsInput    JSON information with snapshot values.
+     * @param jsResult   JSON with deletes, creations and modifications (diffs) in rows.
+     *
+     */
     virtual void updateWithSnapshot(const nlohmann::json& jsInput,
                                     nlohmann::json&       jsResult);
 
+    /**
+     * @brief Update data table, based on json_raw_snapshot bulk data based on json string.
+     *
+     * @param jsInput       JSON with snapshot values.
+     * @param callbackData  Result callback(std::function) will be called for each result.
+     *
+     */
     virtual void updateWithSnapshot(const nlohmann::json& jsInput,
-                                    ResultCallbackData&   callbackData);     
+                                    ResultCallbackData&   callbackData);
 
+    /**
+     * @brief Turns off the services provided by the shared library.
+     */
     static void teardown();
 
     DBSYNC_HANDLE getHandle() { return m_dbsyncHandle; } 
@@ -76,6 +150,18 @@ private:
 class EXPORTED DBSyncTxn 
 {
 public:
+    /**
+     * @brief DBSync Transaction constructor
+     *
+     * @param handle         Handle obtained from the \ref DBSync instance.
+     * @param tables         Tables to be created in the transaction.
+     * @param threadNumber   Number of worker threads for processing data. If 0 hardware concurrency
+     *                       value will be used.
+     * @param maxQueueSize   Max data number to hold/queue to be processed.
+     * @param callbackData   Result callback(std::function) will be called for each result.
+     *
+     * @details If the max queue size is reached then this will be processed synchronously.
+     */
     explicit DBSyncTxn(const DBSYNC_HANDLE   handle,
                        const nlohmann::json& tables,
                        const unsigned int    threadNumber,
@@ -84,12 +170,28 @@ public:
 
     DBSyncTxn(const TXN_HANDLE handle);
 
+    /**
+     * @brief Destructor closes the database transaction.
+     *
+     */
     // LCOV_EXCL_START
     virtual ~DBSyncTxn();
     // LCOV_EXCL_STOP
 
+    /**
+     * @brief Synchronizes the \p jsInput data.
+     *
+     * @param jsInput JSON information to be synchronized.
+     *
+     */
     virtual void syncTxnRow(const nlohmann::json& jsInput);
 
+    /**
+     * @brief Gets the deleted rows (diff) from the database.
+     *
+     * @param callbackData    Result callback(std::function) will be called for each result.
+     *
+     */
     virtual void getDeletedRows(ResultCallbackData& callbackData);
 
     TXN_HANDLE getHandle() { return m_txn; }

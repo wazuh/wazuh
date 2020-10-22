@@ -225,7 +225,7 @@ EXPORTED int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
  * @return 0 if succeeded,
  *         specific error code (OS dependent) otherwise.
  */
-  EXPORTED int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
+EXPORTED int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
                                               const cJSON*        js_snapshot,
                                               callback_data_t     callback_data);
 
@@ -237,7 +237,7 @@ EXPORTED int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
  * @details This function should only be used to free result objects obtained
  *  from the interface.
  */
-  EXPORTED void dbsync_free_result(cJSON** js_data);
+EXPORTED void dbsync_free_result(cJSON** js_data);
 
 #ifdef __cplusplus
     }
