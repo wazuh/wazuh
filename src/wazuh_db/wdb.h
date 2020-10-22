@@ -980,7 +980,8 @@ int wdb_parse_mitre_get(wdb_t * wdb, char * input, char * output);
  * @param [in] wdb The global struct database.
  * @param [in] input String with the agent data in JSON format.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output);
 
@@ -990,7 +991,8 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output);
  * @param [in] wdb The global struct database.
  * @param [in] input String with the agent data in JSON format.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_update_agent_name(wdb_t * wdb, char * input, char * output);
 
@@ -1000,7 +1002,8 @@ int wdb_parse_global_update_agent_name(wdb_t * wdb, char * input, char * output)
  * @param [in] wdb The global struct database.
  * @param [in] input String with the agent data in JSON format.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output);
 
@@ -1010,7 +1013,8 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
  * @param [in] wdb The global struct database.
  * @param [in] input String with 'agent_id'.
  * @param [out] output Response of the query in JSON format.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_get_agent_labels(wdb_t * wdb, char * input, char * output);
 
@@ -1031,7 +1035,8 @@ int wdb_parse_global_get_agent_info(wdb_t * wdb, char * input, char * output);
  * @param [in] wdb The global struct database.
  * @param [in] input String with 'agent_id labels_string'.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output);
 
@@ -1041,17 +1046,19 @@ int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output);
  * @param [in] wdb The global struct database.
  * @param [in] input String with the agent data in JSON format.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to parse the update the agent connection status.
+ * @brief Function to parse the update agent connection status.
  *
  * @param [in] wdb The global struct database.
  * @param [in] input String with the agent data in JSON format.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_update_connection_status(wdb_t * wdb, char * input, char * output);
 
@@ -1061,7 +1068,8 @@ int wdb_parse_global_update_connection_status(wdb_t * wdb, char * input, char * 
  * @param [in] wdb The global struct database.
  * @param [in] input String with 'agent_id'.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_delete_agent(wdb_t * wdb, char * input, char * output);
 
@@ -1071,7 +1079,8 @@ int wdb_parse_global_delete_agent(wdb_t * wdb, char * input, char * output);
  * @param [in] wdb The global struct database.
  * @param [in] input String with 'agent_id'.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_select_agent_name(wdb_t * wdb, char * input, char * output);
 
@@ -1081,7 +1090,8 @@ int wdb_parse_global_select_agent_name(wdb_t * wdb, char * input, char * output)
  * @param [in] wdb The global struct database.
  * @param [in] input String with 'agent_id'.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_select_agent_group(wdb_t * wdb, char * input, char * output);
 
@@ -1091,7 +1101,8 @@ int wdb_parse_global_select_agent_group(wdb_t * wdb, char * input, char * output
  * @param [in] wdb The global struct database.
  * @param [in] input String with 'agent_id'.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_delete_agent_belong(wdb_t * wdb, char * input, char * output);
 
@@ -1101,7 +1112,8 @@ int wdb_parse_global_delete_agent_belong(wdb_t * wdb, char * input, char * outpu
  * @param [in] wdb The global struct database.
  * @param [in] input String JSON with the agent name and ip.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_find_agent(wdb_t * wdb, char * input, char * output);
 
@@ -1131,7 +1143,8 @@ int wdb_parse_global_select_reg_offset(wdb_t * wdb, char * input, char * output)
  * @param [in] wdb The global struct database.
  * @param [in] input String with the agent and offset data in JSON format.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_update_fim_offset(wdb_t * wdb, char * input, char * output);
 
@@ -1141,7 +1154,8 @@ int wdb_parse_global_update_fim_offset(wdb_t * wdb, char * input, char * output)
  * @param [in] wdb The global struct database.
  * @param [in] input String with the agent and offset data in JSON format.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_update_reg_offset(wdb_t * wdb, char * input, char * output);
 
@@ -1161,7 +1175,8 @@ int wdb_parse_global_select_agent_status(wdb_t * wdb, char * input, char * outpu
  * @param [in] wdb The global struct database.
  * @param [in] input String with the agent and update status data in JSON format.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_update_agent_status(wdb_t * wdb, char * input, char * output);
 
@@ -1171,7 +1186,8 @@ int wdb_parse_global_update_agent_status(wdb_t * wdb, char * input, char * outpu
  * @param [in] wdb The global struct database.
  * @param [in] input String with the agent and group data in JSON format.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_update_agent_group(wdb_t * wdb, char * input, char * output);
 
@@ -1181,7 +1197,8 @@ int wdb_parse_global_update_agent_group(wdb_t * wdb, char * input, char * output
  * @param [in] wdb The global struct database.
  * @param [in] input String with the group name.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_find_group(wdb_t * wdb, char * input, char * output);
 
@@ -1191,7 +1208,8 @@ int wdb_parse_global_find_group(wdb_t * wdb, char * input, char * output);
  * @param [in] wdb The global struct database.
  * @param [in] input String with the group name.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_insert_agent_group(wdb_t * wdb, char * input, char * output);
 
@@ -1201,7 +1219,8 @@ int wdb_parse_global_insert_agent_group(wdb_t * wdb, char * input, char * output
  * @param [in] wdb The global struct database.
  * @param [in] input String with the group id and agent id in JSON format.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_insert_agent_belong(wdb_t * wdb, char * input, char * output);
 
@@ -1211,7 +1230,8 @@ int wdb_parse_global_insert_agent_belong(wdb_t * wdb, char * input, char * outpu
  * @param [in] wdb The global struct database.
  * @param [in] input String with the group name.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_delete_group_belong(wdb_t * wdb, char * input, char * output);
 
@@ -1221,7 +1241,8 @@ int wdb_parse_global_delete_group_belong(wdb_t * wdb, char * input, char * outpu
  * @param [in] wdb The global struct database.
  * @param [in] input String with the group name.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_delete_group(wdb_t * wdb, char * input, char * output);
 
@@ -1230,7 +1251,8 @@ int wdb_parse_global_delete_group(wdb_t * wdb, char * input, char * output);
  *
  * @param [in] wdb The global struct database.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_select_groups(wdb_t * wdb, char * output);
 
@@ -1240,7 +1262,8 @@ int wdb_parse_global_select_groups(wdb_t * wdb, char * output);
  * @param [in] wdb The global struct database.
  * @param [in] input String with 'agent_name agent_ip'.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_select_agent_keepalive(wdb_t * wdb, char * input, char * output);
 
@@ -1290,7 +1313,8 @@ int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output);
  * 
  * @param [in] wdb The global struct database.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_reset_agents_connection(wdb_t * wdb, char * output);
 
