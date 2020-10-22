@@ -62,7 +62,7 @@ def db_setup():
                     from wazuh.core.results import WazuhResult
                     from wazuh.core import security as core_security
     try:
-        create_memory_db('schema_security_test.sql', orm._Session)
+        create_memory_db('schema_security_test.sql', orm._Session())
     except OperationalError:
         pass
 
