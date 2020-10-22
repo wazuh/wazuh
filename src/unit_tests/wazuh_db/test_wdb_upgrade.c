@@ -253,7 +253,7 @@ void test_wdb_upgrade_global_get_version_fail(void **state)
     assert_int_equal(ret, 1);
 }
 
-void test_wdb_upgrade_global_get_version_success(void **state)
+void test_wdb_upgrade_global_all_versions_upgrade(void **state)
 {
     wdb_t *ret = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -267,6 +267,26 @@ void test_wdb_upgrade_global_get_version_success(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 1");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v1_sql);
     will_return(__wrap_wdb_sql_exec, 0);
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 2");
+    expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v2_sql);
+    will_return(__wrap_wdb_sql_exec, 0);
+
+    ret = wdb_upgrade_global(data->wdb);
+
+    assert_int_equal(ret, data->wdb);
+}
+
+void test_wdb_upgrade_global_update_v1_to_v2_success(void **state)
+{
+    wdb_t *ret = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_string(__wrap_wdb_metadata_table_check, key, "metadata");
+    will_return(__wrap_wdb_metadata_table_check, 1);
+
+    expect_string(__wrap_wdb_metadata_get_entry, key, "db_version");
+    will_return(__wrap_wdb_metadata_get_entry, "1");
+    will_return(__wrap_wdb_metadata_get_entry, 1);
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 2");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v2_sql);
     will_return(__wrap_wdb_sql_exec, 0);
@@ -580,8 +600,9 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_update_delete_old_version, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_update_fail, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_get_version_fail, setup_wdb, teardown_wdb),
-        cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_get_version_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_all_versions_upgrade, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_update_v1_to_v2_fail, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_update_v1_to_v2_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_fail_backup_fail, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_create_backup_global_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_create_backup_global_dst_fopen_fail, setup_wdb, teardown_wdb),
