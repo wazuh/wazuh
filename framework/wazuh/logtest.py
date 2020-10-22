@@ -43,7 +43,7 @@ def run_logtest(token=None, event=None, log_format=None, location=None):
     return response
 
 
-@expose_resources(actions=['logtest:end_session'], resources=['*:*:*'])
+@expose_resources(actions=['logtest:run'], resources=['*:*:*'])
 def end_logtest_session(token: str = None):
     """End the logtest session for the introduced token.
 
@@ -58,7 +58,7 @@ def end_logtest_session(token: str = None):
         Logtest response to the message.
     """
     if token is None:
-        raise WazuhError(7002)
+        raise WazuhError(7001)
 
     response = send_logtest_msg(command='remove_session', parameters={'token': token})
     if response['error'] != 0:

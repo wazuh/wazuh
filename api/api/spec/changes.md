@@ -27,24 +27,24 @@
 ## Active Response
 ### PUT     /active-response
 * New endpoint. Run commands in all agents by default. 
-* Use **list_agents** parameter in query to specify which agents must run the command.
+* Use **agents_list** parameter in query to specify which agents must run the command.
 
 ### PUT     /active-response/{agent_id}
-* Endpoint removed. Use `PUT /active-response?list_agents=agent_id` instead.
+* Endpoint removed. Use `PUT /active-response?agents_list=agent_id` instead.
 
 ## Agents
 ### DELETE  /agents
 * Nothing removed by default, it must be specified with the "all" keyword.
-* Removed **ids** query parameter. Use **list_agents** instead.
-* Added **list_agents** parameter in query used to specify which agents must be deleted. 
-* If no **list_agents** is provided in query all agents will be removed.
+* Removed **ids** query parameter. Use **agents_list** instead.
+* Added **agents_list** parameter in query used to specify which agents must be deleted. 
+* If no **agents_list** is provided in query all agents will be removed.
 
 ### DELETE  /agents/{agent_id}
-* Endpoint removed. Use `DELETE /agents?list_agents=agent_id` instead
+* Endpoint removed. Use `DELETE /agents?agents_list=agent_id` instead
 
 ### DELETE  /agents/{agent_id}/group
-* Added **list_groups** parameter in query to specify an array of group IDs to remove from the agent.
-* Removes the agent from all groups by default or a list of them if **list_groups** parameter is found.	
+* Added **groups_list** parameter in query to specify an array of group IDs to remove from the agent.
+* Removes the agent from all groups by default or a list of them if **groups_list** parameter is found.	
 
 ### DELETE  /agents/group
 * Nothing removed by default, it must be specified with the "all" keyword.
@@ -58,23 +58,23 @@
 * Endpoint removed. Use `DELETE /groups` instead.
 
 ### DELETE  /agents/groups/{group_id}
-* Endpoint removed. Use `DELETE /groups?list_groups=group_id` instead.
+* Endpoint removed. Use `DELETE /groups?groups_list=group_id` instead.
 
 ### GET     /agents
 * Return information about all available agents or a list of them.
-* Added parameter **list_agents** in query used to specify a list of agent IDs (separated by comma) from which agents get the information.
+* Added parameter **agents_list** in query used to specify a list of agent IDs (separated by comma) from which agents get the information.
 * Added parameter **registerIP** in query used to filter by the IP used when registering the agent.
 * With this new endpoint, you won't get a 400 response if agent name cannot be found,
 you will get a 200 response with 0 items in the result.
 
 ### GET     /agents/{agent_id}
-* Endpoint removed. Use `GET /agents?list_agents=agent_id` instead.
+* Endpoint removed. Use `GET /agents?agents_list=agent_id` instead.
 
 ### GET     /agents/groups
 * Endpoint removed. Use `GET /groups` instead.
 
 ### GET     /agents/groups/{group_id}
-* Endpoint removed. Use `GET /groups?list_groups=group_id` instead.
+* Endpoint removed. Use `GET /groups?groups_list=group_id` instead.
 To get all agents in a group use `GET /groups/{group_id}/agents`.
 
 ### GET     /agents/groups/{group_id}/configuration
@@ -153,8 +153,8 @@ This agent will use **any** as IP.
 * Endpoint removed. Use `PUT /agents/group/{group_id}/restart` instead.
 
 ### PUT     /agents/restart
-* Added **list_agents** parameter in query to specify which agents must be restarted.
-* Restarts all agents by default or a list of them if **list_agents** parameter is used.
+* Added **agents_list** parameter in query to specify which agents must be restarted.
+* Restarts all agents by default or a list of them if **agents_list** parameter is used.
 
 ### PUT     /agents/node/{node_id}/restart
 * New endpoint. Restart all agents belonging to a node.
@@ -177,12 +177,12 @@ This agent will use **any** as IP.
 * Endpoint removed. Use `GET /cluster/local/config` instead.
 
 ### GET     /cluster/configuration/validation
-* Added **list_nodes** parameter in query.
+* Added **nodes_list** parameter in query.
 * Return whether the Wazuh configuration is correct or not in all cluster nodes 
-or a list of them if parameter **list_nodes** is used.
+or a list of them if parameter **nodes_list** is used.
 
 ### GET     /cluster/healthcheck
-* Renamed **node** parameter in query to **list_nodes**.
+* Renamed **node** parameter in query to **nodes_list**.
 
 ### GET     /cluster/local/config
 * New endpoint. Get local node cluster configuration
@@ -191,13 +191,13 @@ or a list of them if parameter **list_nodes** is used.
 * New endpoint. Get information about the local node.
 
 ### GET     /cluster/node
-* Endpoint removed. Use `GET /cluster/nodes?list_agents=agent_id` instead.
+* Endpoint removed. Use `GET /cluster/nodes?agents_list=agent_id` instead.
 
 ### GET     /cluster/{node_id}/configuration/validation
-* Endpoint removed. Use `GET /cluster/configuration/validation?list_nodes=node_id` instead.
+* Endpoint removed. Use `GET /cluster/configuration/validation?nodes_list=node_id` instead.
 
 ### GET     /cluster/{node_id}/files
-* Removed **validation** parameter in query. Use `GET /cluster/configuration/validation?list_nodes=node_id` instead.
+* Removed **validation** parameter in query. Use `GET /cluster/configuration/validation?nodes_list=node_id` instead.
 
 ### GET ​   /cluster/{node_id}/logs
 * Renamed **category** parameter to **tag**.
@@ -222,10 +222,10 @@ or a list of them if parameter **list_nodes** is used.
 
 ### GET     /cluster/nodes
 * Get information about all nodes in the cluster or a list of them
-* Added **list_nodes** parameter in query used to specify from which nodes get the information.
+* Added **nodes_list** parameter in query used to specify from which nodes get the information.
 
 ### GET     /cluster/nodes/{node_name}
-* Endpoint removed. Use `GET /cluster/nodes?list_nodes=node_id` instead.
+* Endpoint removed. Use `GET /cluster/nodes?nodes_list=node_id` instead.
 
 ### POST    /cluster/{node_id}/files
 * Endpoint removed. Use `PUT /cluster/{node_id}/files` instead.
@@ -237,11 +237,11 @@ or a list of them if parameter **list_nodes** is used.
 * New endpoint. Replaces file contents with the data contained in the API request in a specified cluster node.
 
 ### PUT     /cluster/{node_id}/restart
-* Endpoint removed. Use `PUT /cluster/restart?list_nodes=node_id` instead.
+* Endpoint removed. Use `PUT /cluster/restart?nodes_list=node_id` instead.
 
 ### PUT     /cluster/restart
-* Added **list_nodes** parameter in query 
-* Restarts all nodes in the cluster by default or a list of them if **list_nodes** is found.
+* Added **nodes_list** parameter in query 
+* Restarts all nodes in the cluster by default or a list of them if **nodes_list** is found.
 
 ## Decoders
 ### GET     /decoders
@@ -269,7 +269,7 @@ or a list of them if parameter **list_nodes** is used.
 
 ## Experimental
 ### General
-* Added **list_agents** parameter in query to all experimental endpoints.
+* Added **agents_list** parameter in query to all experimental endpoints.
 * Removed **agent_id** parameter from all endpoints.
 
 ### GET ​   /experimental/ciscat/results
@@ -515,11 +515,29 @@ This API call expects a full valid XML file with the shared configuration tags/s
 ### POST    /security/user/authenticate/run_as
 * New endpoint. Auth_context based authentication to get an access token.
 
+### GET     /security/config
+* New endpoint. Get the security configuration in JSON format.
+
+### PUT     /security/config
+* New endpoint. Update the security configuration with the data contained in the API request
+
+### DELETE     /security/config
+* New endpoint. Replaces the security configuration with the original one
+
+### GET         /security/resources
+* New endpoint. Get all the current defined RBAC resources.
+
 ### PUT ​   /security/user/revoke
 * New endpoint. Revoke all active JWT tokens.
 
 ### GET ​   /security/users
 * New endpoint. Get user information.
+
+### GET ​   /security/users/me
+* New endpoint. Get current user information.
+
+### GET ​   /security/users/me/policies
+* New endpoint. Get current user processed policies information.
 
 ### POST ​  /security/users
 * New endpoint. Create new user.
@@ -544,10 +562,10 @@ This API call expects a full valid XML file with the shared configuration tags/s
 
 ## Syscheck
 ### PUT     /syscheck
-* Added **list_agents** parameter in query used to specify which agents must perform a syscheck scan.
+* Added **agents_list** parameter in query used to specify which agents must perform a syscheck scan.
 
 ### PUT     /syscheck/{agent_id}
-* Endpoint removed. Use `PUT /syscheck?list_agents=agent_id` instead.
+* Endpoint removed. Use `PUT /syscheck?agents_list=agent_id` instead.
 
 ## Syscollector
 ### GET     /syscollector/{agent_id}/netiface

@@ -276,7 +276,6 @@ default_policies:
       logtest:
         actions:
           - logtest:run
-          - logtest:end_session
         resources:
           - '*:*:*'
         effect: allow

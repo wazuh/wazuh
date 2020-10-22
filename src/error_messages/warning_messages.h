@@ -48,7 +48,6 @@
 #define FIM_WHODATA_RENDER_EVENT                "(6933): Error rendering the event. Error %lu."
 #define FIM_WHODATA_RENDER_PARAM                "(6934): Invalid number of rendered parameters."
 
-
 /* Monitord warning messages */
 #define ROTATE_LOG_LONG_PATH                    "(7500): The path of the rotated log is too long."
 #define ROTATE_JSON_LONG_PATH                   "(7501): The path of the rotated json is too long."
@@ -56,10 +55,13 @@
 #define COMPRESSED_JSON_LONG_PATH               "(7503): The path of the compressed json is too long."
 
 /* Wazuh-logtest warning messages*/
-#define LOGTEST_INV_NUM_THREADS             "(7000): Number of logtest threads too high. Only creates %d threads"
-#define LOGTEST_INV_NUM_USERS               "(7001): Number of maximum users connected in logtest too high. Only allows %d users"
-#define LOGTEST_INV_NUM_TIMEOUT             "(7002): Number of maximum user timeouts in logtest too high. Only allows %ds maximum timeouts"
-#define LOGTEST_WARN_TOKEN_EXPIRED          "(7003): '%s' token expires"
-#define LOGTEST_WARN_SESSION_NOT_FOUND      "(7004): No session found for token '%s'"
+#define LOGTEST_INV_NUM_THREADS                 "(7000): Number of logtest threads too high. Only creates %d threads"
+#define LOGTEST_INV_NUM_USERS                   "(7001): Number of maximum users connected in logtest too high. Only allows %d users"
+#define LOGTEST_INV_NUM_TIMEOUT                 "(7002): Number of maximum user timeouts in logtest too high. Only allows %ds maximum timeouts"
+#define LOGTEST_WARN_TOKEN_EXPIRED              "(7003): '%s' token expires"
+#define LOGTEST_WARN_SESSION_NOT_FOUND          "(7004): No session found for token '%s'"
+
+/* Ruleset reading warnings */
+#define ANALYSISD_INV_VALUE_RULE                "(7600): Invalid value '%s' for attribute '%s' in rule %d"
 
 #endif /* WARN_MESSAGES_H */

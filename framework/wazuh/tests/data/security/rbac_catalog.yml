@@ -5,8 +5,7 @@ get_rbac_actions:
     result:
       agent:read:
         description:
-          Access to one or more agents basic information (id, name, group, last
-          keep alive, etc)
+          Access agents information (id, name, group, last keep alive, etc)
         resources:
           - "agent:id"
         example:
@@ -21,7 +20,7 @@ get_rbac_actions:
       endpoint: DELETE /agents/{agent_id}/group
     result:
       agent:modify_group:
-        description: Change the group of specified agent
+        description: Change the group of agents
         resources:
           - "agent:id"
         example:
@@ -33,7 +32,7 @@ get_rbac_actions:
         related_endpoints:
           - DELETE /agents/{agent_id}/group
       group:modify_assignments:
-        description: Allow to change the agents assigned to the group
+        description: Change the agents assigned to the group
         resources:
           - "group:id"
         example:
@@ -51,7 +50,7 @@ get_rbac_actions:
       endpoint: None
     result:
       active-response:command:
-        description: Allow to execute active response commands in the agents
+        description: Execute active response commands in the agents
         resources:
           - agent:id
         example:
@@ -63,7 +62,7 @@ get_rbac_actions:
         related_endpoints:
           - PUT /active-response
       agent:delete:
-        description: Delete system's agents
+        description: Delete agents
         resources:
           - agent:id
         example:
@@ -75,8 +74,7 @@ get_rbac_actions:
         related_endpoints:
           - DELETE /agents
       agent:read:
-        description: Access to one or more agents basic information (id, name, group, last
-          keep alive, etc)
+        description: Access agents information (id, name, group, last keep alive, etc)
         resources:
           - agent:id
         example:
@@ -112,7 +110,7 @@ get_rbac_actions:
           - POST /agents/insert
           - POST /agents/insert/quick
       agent:modify_group:
-        description: Change the group of specified agent
+        description: Change the group of agents
         resources:
           - agent:id
         example:
@@ -129,7 +127,7 @@ get_rbac_actions:
           - PUT /agents/group
           - DELETE /groups
       group:modify_assignments:
-        description: Allow to change the agents assigned to the group
+        description: Change the agents assigned to the group
         resources:
           - group:id
         example:
@@ -146,7 +144,7 @@ get_rbac_actions:
           - PUT /agents/group
           - DELETE /groups
       agent:restart:
-        description: Restart Wazuh for allowed agents
+        description: Restart agents
         resources:
           - agent:id
         example:
@@ -162,7 +160,7 @@ get_rbac_actions:
           - PUT /agents/node/{node_id}/restart
           - PUT /agents/restart
       agent:upgrade:
-        description: Upgrade the version of an agent
+        description: Upgrade the version of the agents
         resources:
           - agent:id
         example:
@@ -176,7 +174,7 @@ get_rbac_actions:
           - PUT /agents/{agent_id}/upgrade_custom
           - GET /agents/{agent_id}/upgrade_result
       group:delete:
-        description: Delete system's groups
+        description: Delete agent groups
         resources:
           - group:id
         example:
@@ -188,7 +186,7 @@ get_rbac_actions:
         related_endpoints:
           - DELETE /groups
       group:read:
-        description: Access to one or more groups basic information (id, name, agents, etc)
+        description: Access agent groups information (id, name, agents, etc)
         resources:
           - "*:*"
         example:
@@ -206,7 +204,7 @@ get_rbac_actions:
           - GET /groups/{group_id}/files/{file_name}/xml
           - GET /overview/agents
       group:create:
-        description: Create new groups
+        description: Create new agent groups
         resources:
           - "*:*"
         example:
@@ -218,7 +216,7 @@ get_rbac_actions:
         related_endpoints:
           - POST /groups
       group:update_config:
-        description: Change group's configuration
+        description: Change the configuration of agent groups
         resources:
           - group:id
         example:
@@ -229,22 +227,8 @@ get_rbac_actions:
           effect: deny
         related_endpoints:
           - PUT /groups/{group_id}/configuration
-      ciscat:read:
-        description: Get CIS-CAT results for a list of agents
-        resources:
-          - agent:id
-        example:
-          actions:
-            - ciscat:read
-          resources:
-            - agent:id:001
-            - agent:id:003
-          effect: deny
-        related_endpoints:
-          - GET /ciscat/{agent_id}/results
-          - GET /experimental/ciscat/results
       cluster:read:
-        description: Read Wazuh's cluster configuration
+        description: Read Wazuh's cluster nodes configuration
         resources:
           - node:id
         example:
@@ -276,8 +260,22 @@ get_rbac_actions:
           - PUT /cluster/restart
           - GET /cluster/configuration/validation
           - GET /cluster/{node_id}/configuration/{component}/{configuration}
+      ciscat:read:
+        description: Access CIS-CAT results for agents
+        resources:
+          - agent:id
+        example:
+          actions:
+            - ciscat:read
+          resources:
+            - agent:id:001
+            - agent:id:003
+          effect: deny
+        related_endpoints:
+          - GET /ciscat/{agent_id}/results
+          - GET /experimental/ciscat/results
       cluster:status:
-        description: Check Wazuh's cluster status
+        description: Check Wazuh's cluster general status
         resources:
           - "*:*"
         example:
@@ -289,7 +287,7 @@ get_rbac_actions:
         related_endpoints:
           - GET /cluster/status
       cluster:read_api_config:
-        description: Check Wazuh's cluster API configuration
+        description: Check Wazuh's cluster nodes API configuration
         resources:
           - "*:*"
         example:
@@ -302,7 +300,7 @@ get_rbac_actions:
         related_endpoints:
           - GET /cluster/api/config
       cluster:update_api_config:
-        description: Modify Wazuh's cluster API configuration
+        description: Modify Wazuh's cluster nodes API configuration
         resources:
           - "*:*"
         example:
@@ -316,7 +314,7 @@ get_rbac_actions:
           - PUT /cluster/api/config
           - DELETE /cluster/api/config
       cluster:read_file:
-        description: Read Wazuh's cluster files
+        description: Read Wazuh's cluster nodes files
         resources:
           - node:id
           - file:path
@@ -330,7 +328,7 @@ get_rbac_actions:
         related_endpoints:
           - GET /cluster/{node_id}/files
       cluster:delete_file:
-        description: Delete Wazuh's cluster files
+        description: Delete Wazuh's cluster nodes files
         resources:
           - node:id
           - file:path
@@ -345,7 +343,7 @@ get_rbac_actions:
           - PUT /cluster/{node_id}/files
           - DELETE /cluster/{node_id}/files
       cluster:upload_file:
-        description: Upload new file to Wazuh's cluster node
+        description: Upload files to Wazuh's cluster nodes
         resources:
           - node:id
         example:
@@ -369,7 +367,7 @@ get_rbac_actions:
         related_endpoints:
           - PUT /cluster/restart
       lists:read:
-        description: Read lists files
+        description: Read cdb lists files
         resources:
           - list:path
         example:
@@ -458,7 +456,7 @@ get_rbac_actions:
           - PUT /manager/files
           - DELETE /manager/files
       manager:upload_file:
-        description: Upload new file to Wazuh manager node
+        description: Upload files to Wazuh manager
         resources:
           - "*:*"
         example:
@@ -495,7 +493,7 @@ get_rbac_actions:
           - PUT /manager/api/config
           - DELETE /manager/api/config
       manager:restart:
-        description: Restart Wazuh manager nodes
+        description: Restart Wazuh managers
         resources:
           - "*:*"
         example:
@@ -507,7 +505,7 @@ get_rbac_actions:
         related_endpoints:
           - PUT /manager/restart
       mitre:read:
-        description: Get attacks information from MITRE database.
+        description: Access attacks information from MITRE database
         resources:
           - "*:*"
         example:
@@ -535,8 +533,7 @@ get_rbac_actions:
           - GET /rules/files
           - GET /rules/files/{filename}/download
       sca:read:
-        description: Get a list of policies analyzed in the configuration assessment for
-          a given agent
+        description: Access agents security configuration assessment
         resources:
           - agent:id
         example:
@@ -549,7 +546,7 @@ get_rbac_actions:
           - GET /sca/{agent_id}
           - GET /sca/{agent_id}/checks/{policy_id}
       syscheck:run:
-        description: Run syscheck
+        description: Run agents syscheck scan
         resources:
           - agent:id
         example:
@@ -561,7 +558,7 @@ get_rbac_actions:
         related_endpoints:
           - PUT /syscheck
       syscheck:read:
-        description: Read information from syscheck's database
+        description: Access information from agents syscheck database
         resources:
           - agent:id
         example:
@@ -574,7 +571,7 @@ get_rbac_actions:
           - GET /syscheck/{agent_id}
           - GET /syscheck/{agent_id}/last_scan
       syscheck:clear:
-        description: Clear the syscheck database for specified agents
+        description: Clear the agents syscheck database
         resources:
           - agent:id
         example:
@@ -602,7 +599,7 @@ get_rbac_actions:
           - GET /decoders/files/{filename}/download
           - GET /decoders/parents
       syscollector:read:
-        description: Get syscollector information about a specified agents
+        description: Access agents syscollector information
         resources:
           - agent:id
         example:
@@ -631,7 +628,7 @@ get_rbac_actions:
           - GET /syscollector/{agent_id}/ports
           - GET /syscollector/{agent_id}/processes
       security:read:
-        description: Allow read information about system's security resources
+        description: Access information about system security resources
         resources:
           - policy:id
           - role:id
@@ -647,26 +644,24 @@ get_rbac_actions:
             - rule:id:3
           effect: allow
         related_endpoints:
+          - GET /security/users
           - GET /security/roles
           - GET /security/rules
           - GET /security/policies
-          - GET /security/users
-      security:create:
-        description: Create new system security resources
+      security:create_user:
+        description: Create new system users
         resources:
           - "*:*"
         example:
           actions:
-            - security:create
+            - security:create_user
           resources:
             - "*:*:*"
-          effect: deny
+          effect: allow
         related_endpoints:
-          - POST /security/roles
-          - POST /security/rules
-          - POST /security/policies
+          - POST /security/users
       security:delete:
-        description: Delete system's security resources
+        description: Delete system security resources
         resources:
           - policy:id
           - role:id
@@ -682,15 +677,15 @@ get_rbac_actions:
             - rule:id:2
           effect: deny
         related_endpoints:
+          - DELETE /security/users
           - DELETE /security/roles
           - DELETE /security/rules
           - DELETE /security/policies
+          - DELETE /security/users/{user_id}/roles
           - DELETE /security/roles/{role_id}/policies
           - DELETE /security/roles/{role_id}/rules
-          - DELETE /security/users/{user_id}/roles
-          - DELETE /security/users
       security:update:
-        description: Allow update the information of system's security resources
+        description: Update the information of system security resources
         resources:
           - policy:id
           - role:id
@@ -706,27 +701,29 @@ get_rbac_actions:
             - rule:id:4
           effect: deny
         related_endpoints:
+          - PUT /security/users/{user_id}
           - PUT /security/roles/{role_id}
           - PUT /security/rules/{rule_id}
           - PUT /security/policies/{policy_id}
+          - POST /security/users/{user_id}/roles
           - POST /security/roles/{role_id}/policies
           - POST /security/roles/{role_id}/rules
-          - POST /security/users/{user_id}/roles
-          - PUT /security/users/{user_id}
-      security:create_user:
-        description: Create new system user
+      security:create:
+        description: Create new system security resources
         resources:
           - "*:*"
         example:
           actions:
-            - security:create_user
+            - security:create
           resources:
             - "*:*:*"
-          effect: allow
+          effect: deny
         related_endpoints:
-          - POST /security/users
+          - POST /security/roles
+          - POST /security/rules
+          - POST /security/policies
       security:read_config:
-        description: Read current security configuration
+        description: Read current system security configuration
         resources:
           - "*:*"
         example:
@@ -738,7 +735,7 @@ get_rbac_actions:
         related_endpoints:
           - GET /security/config
       security:update_config:
-        description: Update current security configuration
+        description: Update current system security configuration
         resources:
           - "*:*"
         example:
@@ -757,7 +754,10 @@ get_rbac_resources:
       resource: None
     result:
       "*:*":
-        description: "Resource applied in functions which take part in the creation of a specific resource. We call these functions, resourceless functions. Example: agent:create"
+        description: Resource applied in functions acting on resources that do not yet exist
+          in the system. We call these functions, resourceless functions
+      agent:group:
+        description: Reference agents via group name (i.e. agent:group:web)
       agent:id:
         description: Reference agents via agent ID (i.e. agent:id:001)
       group:id:
@@ -776,10 +776,10 @@ get_rbac_resources:
         description: Reference security policies via its id (i.e. policy:id:1)
       role:id:
         description: Reference security roles via its id (i.e. role:id:1)
-      user:id:
-        description: Reference security users via its id (i.e. user:id:1)
       rule:id:
         description: Reference security rules via its id (i.e. rule:id:1)
+      user:id:
+        description: Reference security users via its id (i.e. user:id:1)
   - params:
       resource: "agent:id"
     result:
@@ -789,4 +789,5 @@ get_rbac_resources:
       resource: "*:*"
     result:
       "*:*":
-        description: "Resource applied in functions which take part in the creation of a specific resource. We call these functions, resourceless functions. Example: agent:create"
+        description: "Resource applied in functions acting on resources that do not yet exist
+                                in the system. We call these functions, resourceless functions"

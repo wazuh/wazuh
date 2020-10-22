@@ -100,4 +100,4 @@ def test_end_logtest_session_ko():
     try:
         end_logtest_session()
     except WazuhError as e:
-        assert e.code == 7002
+        assert e.code == 7001

@@ -17,6 +17,7 @@
 #include "../../analysisd/eventinfo.h"
 #include "../../analysisd/cdb/cdb.h"
 #include "../../analysisd/analysisd.h"
+#include "../../analysisd/rules.h"
 
 void os_count_rules(RuleNode *node, int *num_rules);
 void os_remove_rulenode(RuleNode *node, RuleInfo **rules, int *pos, int *max_size);
@@ -158,13 +159,8 @@ void test_os_remove_ruleinfo_OK(void **state)
     os_calloc(2, sizeof(char*), ruleinfo->ckignore_fields);
     os_strdup("test_ckignore_felds", ruleinfo->ckignore_fields[0]);
 
-    os_calloc(2, sizeof(os_ip*), ruleinfo->srcip);
-    os_calloc(1, sizeof(os_ip), ruleinfo->srcip[0]);
-    os_strdup("0.0.0.0", ruleinfo->srcip[0]->ip);
-
-    os_calloc(2, sizeof(os_ip*), ruleinfo->dstip);
-    os_calloc(1, sizeof(os_ip), ruleinfo->dstip[0]);
-    os_strdup("0.0.0.0", ruleinfo->dstip[0]->ip);
+    w_expression_add_osip(&ruleinfo->srcip, "0.0.0.0");
+    w_expression_add_osip(&ruleinfo->dstip, "0.0.0.0");
 
     os_calloc(2, sizeof(FieldInfo*), ruleinfo->fields);
     os_calloc(1, sizeof(FieldInfo), ruleinfo->fields[0]);
@@ -195,44 +191,27 @@ void test_os_remove_ruleinfo_OK(void **state)
     os_calloc(2, sizeof(char*), ruleinfo->mitre_id);
     os_strdup("test_mitre_id", ruleinfo->mitre_id[0]);
 
-    os_calloc(1, sizeof(OSMatch), ruleinfo->match);
-
-    os_calloc(1, sizeof(OSRegex), ruleinfo->regex);
-
-    os_calloc(1, sizeof(OSMatch), ruleinfo->dstgeoip);
-
-    os_calloc(1, sizeof(OSMatch), ruleinfo->srcport);
-
-    os_calloc(1, sizeof(OSMatch), ruleinfo->dstport);
-
-    os_calloc(1, sizeof(OSMatch), ruleinfo->user);
-
-    os_calloc(1, sizeof(OSMatch), ruleinfo->url);
-
-    os_calloc(1, sizeof(OSMatch), ruleinfo->id);
-
-    os_calloc(1, sizeof(OSMatch), ruleinfo->status);
-
-    os_calloc(1, sizeof(OSMatch), ruleinfo->hostname);
-
-    os_calloc(1, sizeof(OSMatch), ruleinfo->program_name);
-
-    os_calloc(1, sizeof(OSMatch), ruleinfo->data);
-
-    os_calloc(1, sizeof(OSMatch), ruleinfo->extra_data);
-
-    os_calloc(1, sizeof(OSMatch), ruleinfo->location);
-
-    os_calloc(1, sizeof(OSMatch), ruleinfo->system_name);
-
-    os_calloc(1, sizeof(OSMatch), ruleinfo->protocol);
+    w_calloc_expression_t(&ruleinfo->match, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&ruleinfo->regex, EXP_TYPE_OSREGEX);
+    w_calloc_expression_t(&ruleinfo->dstgeoip, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&ruleinfo->srcport, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&ruleinfo->dstport, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&ruleinfo->user, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&ruleinfo->url, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&ruleinfo->id, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&ruleinfo->status, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&ruleinfo->hostname, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&ruleinfo->program_name, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&ruleinfo->data, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&ruleinfo->extra_data, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&ruleinfo->location, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&ruleinfo->system_name, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&ruleinfo->protocol, EXP_TYPE_OSMATCH);
 
     os_calloc(1, sizeof(OSRegex), ruleinfo->if_matched_regex);
-
     os_calloc(1, sizeof(OSMatch), ruleinfo->if_matched_group);
 
     os_remove_ruleinfo(ruleinfo);
-
 }
 
 /* os_remove_rules_list */
@@ -249,13 +228,8 @@ void test_os_remove_rules_list_OK(void **state)
     os_calloc(2, sizeof(char*), node->ruleinfo->ckignore_fields);
     os_strdup("test_ckignore_felds", node->ruleinfo->ckignore_fields[0]);
 
-    os_calloc(2, sizeof(os_ip*), node->ruleinfo->srcip);
-    os_calloc(1, sizeof(os_ip), node->ruleinfo->srcip[0]);
-    os_strdup("0.0.0.0", node->ruleinfo->srcip[0]->ip);
-
-    os_calloc(2, sizeof(os_ip*), node->ruleinfo->dstip);
-    os_calloc(1, sizeof(os_ip), node->ruleinfo->dstip[0]);
-    os_strdup("0.0.0.0", node->ruleinfo->dstip[0]->ip);
+    w_expression_add_osip(&node->ruleinfo->srcip, "0.0.0.0");
+    w_expression_add_osip(&node->ruleinfo->dstip, "0.0.0.0");
 
     os_calloc(2, sizeof(FieldInfo*), node->ruleinfo->fields);
     os_calloc(1, sizeof(FieldInfo), node->ruleinfo->fields[0]);
@@ -286,40 +260,24 @@ void test_os_remove_rules_list_OK(void **state)
     os_calloc(2, sizeof(char*), node->ruleinfo->mitre_id);
     os_strdup("test_mitre_id", node->ruleinfo->mitre_id[0]);
 
-    os_calloc(1, sizeof(OSMatch), node->ruleinfo->match);
-
-    os_calloc(1, sizeof(OSRegex), node->ruleinfo->regex);
-
-    os_calloc(1, sizeof(OSMatch), node->ruleinfo->dstgeoip);
-
-    os_calloc(1, sizeof(OSMatch), node->ruleinfo->srcport);
-
-    os_calloc(1, sizeof(OSMatch), node->ruleinfo->dstport);
-
-    os_calloc(1, sizeof(OSMatch), node->ruleinfo->user);
-
-    os_calloc(1, sizeof(OSMatch), node->ruleinfo->url);
-
-    os_calloc(1, sizeof(OSMatch), node->ruleinfo->id);
-
-    os_calloc(1, sizeof(OSMatch), node->ruleinfo->status);
-
-    os_calloc(1, sizeof(OSMatch), node->ruleinfo->hostname);
-
-    os_calloc(1, sizeof(OSMatch), node->ruleinfo->program_name);
-
-    os_calloc(1, sizeof(OSMatch), node->ruleinfo->data);
-
-    os_calloc(1, sizeof(OSMatch), node->ruleinfo->extra_data);
-
-    os_calloc(1, sizeof(OSMatch), node->ruleinfo->location);
-
-    os_calloc(1, sizeof(OSMatch), node->ruleinfo->system_name);
-
-    os_calloc(1, sizeof(OSMatch), node->ruleinfo->protocol);
+    w_calloc_expression_t(&node->ruleinfo->match, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&node->ruleinfo->regex, EXP_TYPE_OSREGEX);
+    w_calloc_expression_t(&node->ruleinfo->dstgeoip, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&node->ruleinfo->srcport, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&node->ruleinfo->dstport, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&node->ruleinfo->user, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&node->ruleinfo->url, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&node->ruleinfo->id, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&node->ruleinfo->status, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&node->ruleinfo->hostname, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&node->ruleinfo->program_name, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&node->ruleinfo->data, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&node->ruleinfo->extra_data, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&node->ruleinfo->location, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&node->ruleinfo->system_name, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&node->ruleinfo->protocol, EXP_TYPE_OSMATCH);
 
     os_calloc(1, sizeof(OSRegex), node->ruleinfo->if_matched_regex);
-
     os_calloc(1, sizeof(OSMatch), node->ruleinfo->if_matched_group);
 
     os_remove_rules_list(node);
