@@ -332,7 +332,7 @@ x-rbac-catalog:
         resources: ['list:path:etc/lists/audit-keys']
         effect: "deny"
     'logtest:run':
-      description: "Use logtest tool"
+      description: "Run logtest tool or end a logtest session"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
@@ -9030,8 +9030,8 @@ paths:
     put:
       tags:
         - Logtest
-      summary: "Run logtest in a specified log"
-      description: "Check if a specified log raises any alert among other information"
+      summary: "Run logtest"
+      description: "Run logtest tool to check if a specified log raises any alert among other information"
       operationId: api.controllers.logtest_controller.run_logtest_tool
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/logtest:run'
@@ -9101,8 +9101,8 @@ paths:
     delete:
       tags:
         - Logtest
-      summary: "Delete a saved session"
-      description: "Delete the saved session corresponding to {token}"
+      summary: "End session"
+      description: "Delete the saved logtest session corresponding to {token}"
       operationId: api.controllers.logtest_controller.end_logtest_session
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/logtest:run'

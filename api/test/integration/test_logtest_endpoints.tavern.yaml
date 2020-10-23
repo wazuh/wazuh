@@ -6,8 +6,7 @@ marks:
 
 stages:
 
-  # Run logtest with an invalid json body (with an invalid key)
-  - name: Run logtest with an invalid body
+  - name: Run logtest with an invalid body (invalid key)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/logtest"
@@ -20,7 +19,7 @@ stages:
     response:
       status_code: 400
 
-  - name: Run logtest with an invalid token
+  - name: Run logtest with a token with no session started
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/logtest"
@@ -29,13 +28,14 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
-        token: "random_token_123"
+        token: "token_without_session"
         event: "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."
         log_format: "syslog"
         location: "master->/var/log/syslog"
     response:
       status_code: 200
       json: &logtest_json_response
+        error: 0
         data:
           token: !anystr
           messages: !anything
@@ -46,7 +46,7 @@ stages:
         json:
           returned_token: data.token
 
-  - name: Run logtest with a valid body but no token
+  - name: Run logtest with a valid body but no token (start session)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/logtest"
@@ -63,7 +63,7 @@ stages:
       json:
         <<: *logtest_json_response
 
-  - name: Run logtest with the token generated before
+  - name: Run logtest using a token from a running session
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/logtest"
@@ -90,7 +90,7 @@ test_name: DELETE /logtest/sessions
 
 stages:
 
-  - name: Run logtest in order to generate token
+  - name: Run logtest in order to generate the session token
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/logtest"
@@ -111,7 +111,7 @@ stages:
         json:
           delete_session_token: data.token
 
-  - name: Try to end logtest session of an invalid token
+  - name: Try to end logtest session using an invalid token
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/logtest/sessions/wrong_token"
@@ -134,6 +134,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: 0
         data:
           codemsg: 0
 
@@ -147,5 +148,6 @@ stages:
     response:
       status_code: 200
       json:
+        error: 0
         data:
           codemsg: -1 # codemsg = -1 because there is an error (session not found)

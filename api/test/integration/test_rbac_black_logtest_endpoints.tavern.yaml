@@ -26,9 +26,6 @@ stages:
 ---
 test_name: DELETE /logtest/sessions
 
-marks:
-  - rbac_tests
-
 stages:
 
   - name: End logtest session (deny)

@@ -60,7 +60,7 @@ async def end_logtest_session(request, pretty: bool = False, wait_for_complete: 
     Returns
     -------
     Data
-        Rsult after deleting the saved session corresponding to {token}.
+        Result after deleting the saved session corresponding to {token}.
     """
     f_kwargs = {'token': token}
 
