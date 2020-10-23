@@ -63,3 +63,31 @@ Jul 21 18:32:24 fw01 openvpn: user 'chapolin' authenticated
   <regex offset="after_prematch">^(\S+)'</regex>
   <order>srcuser</order>
 </decoder>
+
+<!--
+ Author: Stuart Williams <stwilliams@workforcesoftware.com>
+    Date: 2019-01-29
+    Note: Enhanced decoder rules to handle LDAP integrated authentication
+Comments: Not sure how useful the first entry is but will 'log' it - could be useful in auditing numbers etc
+-->
+
+<!--
+Jan 28 14:25:49 VPN-SERVER-05892 openvpn: LDAP bind failed: Invalid credentials (80090308: LdapErr: DSID-55555555, comment: AcceptSecurityContext error, data 775, v3839)
+-->
+<decoder name="openvpn_ldap_bind_failed">
+  <parent>openvpn</parent>
+  <prematch>^LDAP bind failed: </prematch>
+  <regex offset="after_prematch">^(\.+) \((\d+): LdapErr: (\S+), comment: (\.+),</regex>
+  <order>ldap_data.error_message,ldap_data.code,ldap_data.ldaperr,ldap_data.comment</order>
+</decoder>
+
+<!--
+Jan 28 14:25:49 VPN-SERVER-05892 openvpn: Incorrect password supplied for LDAP DN "CN=Harry T. Hacker,OU=business unit,OU=department,DC=domain,DC=com".
+-->
+<decoder name="openvpn_ldap_incorrect_password">
+  <parent>openvpn</parent>
+  <prematch>^Incorrect password supplied for LDAP DN </prematch>
+  <regex offset="after_prematch">^"CN=(\.+),OU=(\.+),(\.+)"</regex>
+  <order>ldap_data.Username,ldap_data.Department,ldap_data.SecurityGroup</order>
+</decoder>
+

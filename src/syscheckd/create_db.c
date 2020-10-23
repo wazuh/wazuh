@@ -88,51 +88,41 @@ void fim_scan() {
 
 
 #ifdef WIN32
-        os_winreg_check();
+    os_winreg_check();
 #endif
-
-    check_deleted_files();
-
     if (syscheck.file_limit_enabled) {
         w_mutex_lock(&syscheck.fim_entry_mutex);
         nodes_count = fim_db_get_count_entry_path(syscheck.database);
         w_mutex_unlock(&syscheck.fim_entry_mutex);
+    }
 
-        if (nodes_count < syscheck.file_limit) {
-            it = 0;
+    check_deleted_files();
 
-            w_mutex_lock(&syscheck.fim_scan_mutex);
+    if (syscheck.file_limit_enabled && (nodes_count >= syscheck.file_limit)) {
+        it = 0;
 
-            while ((syscheck.dir[it] != NULL) && (nodes_count < syscheck.file_limit)) {
-                struct fim_element *item;
-                os_calloc(1, sizeof(fim_element), item);
-                item->mode = FIM_SCHEDULED;
-                item->index = it;
-                fim_checker(syscheck.dir[it], item, NULL, 0);
-                it++;
-                os_free(item);
+        w_mutex_lock(&syscheck.fim_scan_mutex);
 
-                w_mutex_lock(&syscheck.fim_entry_mutex);
-                nodes_count = fim_db_get_count_entry_path(syscheck.database);
-                w_mutex_unlock(&syscheck.fim_entry_mutex);
-            }
+        while ((syscheck.dir[it] != NULL) && (!syscheck.database->full)) {
+            struct fim_element *item;
+            os_calloc(1, sizeof(fim_element), item);
+            item->mode = FIM_SCHEDULED;
+            item->index = it;
+            fim_checker(syscheck.dir[it], item, NULL, 0);
+            it++;
+            os_free(item);
+        }
 
-            w_mutex_unlock(&syscheck.fim_scan_mutex);
+        w_mutex_unlock(&syscheck.fim_scan_mutex);
 
 #ifdef WIN32
-            if (nodes_count < syscheck.file_limit) {
-                os_winreg_check();
-
-                w_mutex_lock(&syscheck.fim_entry_mutex);
-                fim_db_get_count_entry_path(syscheck.database);
-                w_mutex_unlock(&syscheck.fim_entry_mutex);
-            }
-#endif
-
-            w_mutex_lock(&syscheck.fim_entry_mutex);
-            fim_db_set_all_unscanned(syscheck.database);
-            w_mutex_unlock(&syscheck.fim_entry_mutex);
+        if (!syscheck.database->full) {
+            os_winreg_check();
         }
+#endif
+        w_mutex_lock(&syscheck.fim_entry_mutex);
+        fim_db_set_all_unscanned(syscheck.database);
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
     }
 
     gettime(&end);
@@ -904,7 +894,6 @@ void fim_get_checksum (fim_entry_data * data) {
 
 void check_deleted_files() {
     fim_tmp_file *file = NULL;
-
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
     if (fim_db_get_not_scanned(syscheck.database, &file, syscheck.database_store) != FIMDB_OK) {
@@ -916,12 +905,7 @@ void check_deleted_files() {
     if (file && file->elements) {
         fim_db_delete_not_scanned(syscheck.database, file, &syscheck.fim_entry_mutex, syscheck.database_store);
     }
-
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-    fim_db_set_all_unscanned(syscheck.database);
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
 }
-
 
 cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, int pos, unsigned int type, fim_event_mode mode, whodata_evt * w_evt, const char *diff) {
     cJSON * changed_attributes = NULL;

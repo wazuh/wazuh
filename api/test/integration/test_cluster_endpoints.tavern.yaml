@@ -16,6 +16,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: !anystr
@@ -44,10 +45,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'worker1,worker2'
+        nodes_list: 'worker1,worker2'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - info:
@@ -78,6 +80,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - info:
@@ -119,6 +122,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - cluster: wazuh
@@ -145,6 +149,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: &cluster_nodes_response
             - name: !anystr
@@ -164,6 +169,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -182,6 +188,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -200,6 +207,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items: []
@@ -228,6 +236,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -252,6 +261,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -276,6 +286,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -294,6 +305,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -311,6 +323,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -329,6 +342,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -356,6 +370,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: !anystr
@@ -377,6 +392,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - type: !anystr
@@ -416,10 +432,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: "{node_id:s}"
+        nodes_list: "{node_id:s}"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - ip: !anystr
@@ -452,7 +469,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: "master-node"
+        nodes_list: "master-node"
         select: "{field}"
     response:
       status_code: 200
@@ -477,6 +494,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           enabled: "yes"
           running: "yes"
@@ -496,6 +514,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - alerts: !anything
@@ -527,6 +546,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - alerts: !anything
@@ -560,6 +580,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - alerts:
@@ -582,6 +603,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - syscheck:
@@ -610,6 +632,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - syscollector:
@@ -638,6 +661,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - alerts:
@@ -659,6 +683,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - syscheck:
@@ -687,6 +712,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - syscollector:
@@ -718,6 +744,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: master-node
@@ -755,6 +782,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: worker1
@@ -791,10 +819,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'worker1,worker2'
+        nodes_list: 'worker1,worker2'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: worker1
@@ -813,10 +842,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'master-node'
+        nodes_list: 'master-node'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: master-node
@@ -824,6 +854,336 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
+
+---
+test_name: GET /cluster/api/config
+
+stages:
+
+  # GET /cluster/api/config
+  - name: Get API configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - node_name: "master-node"
+              node_api_config: &api_config
+                host: !anystr
+                port: !anyint
+                behind_proxy_server: !anybool
+                https:
+                  enabled: !anybool
+                  key: !anystr
+                  cert: !anystr
+                  use_ca: !anybool
+                  ca: !anystr
+                logs:
+                  level: !anystr
+                  path: !anystr
+                cors:
+                  enabled: !anybool
+                  source_route: !anystr
+                  expose_headers: !anystr
+                  allow_headers: !anystr
+                  allow_credentials: !anybool
+                cache:
+                  enabled: !anybool
+                  time: !anything
+                access:
+                  max_login_attempts: !anyint
+                  block_time: !anyint
+                  max_request_per_minute: !anyint
+                use_only_authd: !anybool
+                drop_privileges: !anybool
+                experimental_features: !anybool
+            - node_name: "worker1"
+              node_api_config:
+                <<: *api_config
+            - node_name: "worker2"
+              node_api_config:
+                <<: *api_config
+          total_affected_items: 3
+          total_failed_items: 0
+          failed_items: []
+
+  # GET /cluster/api/config/{node_list}
+  - name: Get API configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: 'worker1,worker2'
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - node_name: 'worker1'
+              node_api_config:
+                <<: *api_config
+            - node_name: 'worker2'
+              node_api_config:
+                <<: *api_config
+          total_affected_items: 2
+          total_failed_items: 0
+          failed_items: []
+
+---
+test_name: PUT /cluster/api/config
+
+stages:
+
+  # PUT /cluster/api/config
+  - name: Modify API configuration (some fields)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        cache:
+          enabled: false
+          time: 1
+    response:
+      status_code: 200
+      json: &update_api_config_ok
+        error: !anyint
+        data:
+          affected_items: !anything
+          total_affected_items: 3
+          total_failed_items: 0
+          failed_items: []
+
+  # PUT /cluster/api/config
+  - name: Modify API configuration (all allowed fields)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: 'worker1,worker2'
+      method: PUT
+      json:
+        logs:
+          level: "debug"
+        cache:
+          enabled: true
+          time: 3
+        access:
+          block_time: 0
+        use_only_authd: true
+        experimental_features: true
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - worker1
+            - worker2
+          total_affected_items: 2
+          total_failed_items: 0
+          failed_items: []
+
+  # PUT /cluster/api/config
+  - name: Modify API configuration (forbidden field)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        logs:
+          path: "test"
+    response:
+      status_code: 400
+
+  # Restart nodes to apply changes
+  - name: Restart cluster
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+    delay_after: !float "{restart_delay}"
+
+  # GET /cluster/api/config
+  - name: Get API configuration that was set above
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - node_name: 'master-node'
+              node_api_config:
+                <<: *api_config
+            - node_name: 'worker1'
+              node_api_config: &modified_api_config
+                logs:
+                  level: "debug"
+                cache:
+                  enabled: true
+                  time: 3
+                use_only_authd: true
+                experimental_features: true
+            - node_name: 'worker2'
+              node_api_config:
+                <<: *modified_api_config
+          total_affected_items: 3
+          total_failed_items: 0
+          failed_items: []
+
+---
+test_name: DELETE /cluster/api/config
+
+stages:
+
+  # DELETE /cluster/api/config (worker1)
+  - name: Restore API configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: 'worker1'
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: !anything
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+
+  # Restart nodes to apply changes
+  - name: Restart cluster
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+    delay_after: !float "{restart_delay}"
+
+  # GET /cluster/api/config
+  - name: Get API default configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - node_name: 'master-node'
+              node_api_config:
+                <<: *api_config
+            - node_name: 'worker1'
+              node_api_config:
+                logs:
+                  level: "info"
+                cache:
+                  enabled: true
+                  time: 0.75
+                use_only_authd: false
+                experimental_features: false
+            - node_name: 'worker2'
+              node_api_config:
+                <<: *modified_api_config
+          total_affected_items: 3
+          total_failed_items: 0
+          failed_items: []
+
+  # DELETE /cluster/api/config (all nodes)
+  - name: Restore API configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: !anything
+          total_affected_items: 3
+          total_failed_items: 0
+          failed_items: []
+
+  # Restart nodes to apply changes
+  - name: Restart cluster
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+    delay_after: !float "{restart_delay}"
+
+  # GET /cluster/api/config
+  - name: Get API default configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - node_name: 'master-node'
+              node_api_config:
+                <<: *api_config
+            - node_name: 'worker1'
+              node_api_config:
+                <<: *api_config
+            - node_name: 'worker2'
+              node_api_config:
+                <<: *api_config
+          total_affected_items: 3
+          total_failed_items: 0
+          failed_items: []
 
 ---
 test_name: GET /cluster/{node_id}/configuration/{component}/{configuration}
@@ -840,6 +1200,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - global:
@@ -872,6 +1233,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - active-response: !anything
@@ -889,6 +1251,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - alerts: !anything
@@ -907,6 +1270,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - command: !anything
@@ -924,6 +1288,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - auth:
@@ -953,6 +1318,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - internal:
@@ -973,6 +1339,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - internal:
@@ -1004,6 +1371,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - localfile: !anything
@@ -1021,6 +1389,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items: []
@@ -1037,6 +1406,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - internal:
@@ -1070,6 +1440,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - monitord:
@@ -1096,6 +1467,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - remote:
@@ -1118,6 +1490,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - internal:
@@ -1158,6 +1531,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - syscheck:
@@ -1176,6 +1550,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - rootcheck:
@@ -1208,6 +1583,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - internal:
@@ -1234,6 +1610,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - wmodules: !anything
@@ -1366,6 +1743,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/rules/local_rules.xml'
@@ -1382,6 +1760,7 @@ stages:
     response: &non_existing_file
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1400,6 +1779,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/decoders/local_decoder.xml'
@@ -1425,6 +1805,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/lists/audit-keys'
@@ -1470,6 +1851,7 @@ stages:
           ossec_conf: contents
       status_code: 200
       json:
+        error: 0
         contents: !anystr
 
   - name: Upload ossec.conf {node_id}
@@ -1487,6 +1869,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/ossec.conf'
@@ -1504,6 +1887,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/rules/new-rules.xml'
@@ -1522,6 +1906,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1543,6 +1928,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/rules/new-rules.xml'
@@ -1561,6 +1947,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1581,6 +1968,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/decoders/new-decoder.xml'
@@ -1599,6 +1987,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1620,6 +2009,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/decoders/new-decoder.xml'
@@ -1638,6 +2028,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1658,6 +2049,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/lists/new-list'
@@ -1676,6 +2068,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1697,6 +2090,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/lists/new-list'
@@ -1715,6 +2109,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1745,6 +2140,7 @@ stages:
     response: &unexisting_node
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: 0
@@ -1808,6 +2204,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - path: !anystr
@@ -1846,6 +2243,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1861,6 +2259,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - &cluster_log
@@ -1883,6 +2282,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_log
@@ -1903,6 +2303,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_log
@@ -1921,6 +2322,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_log
@@ -1938,6 +2340,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_log
@@ -1957,6 +2360,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_log
@@ -1975,6 +2379,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_log
@@ -1992,6 +2397,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_log
@@ -2012,6 +2418,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *cluster_log
@@ -2060,6 +2467,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -2090,7 +2498,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1308
+        error: 1308
 
   - name: Cluster stats {node_id} 2019-08-27
     request:
@@ -2101,6 +2509,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data: !anything
 
   - name: Cluster stats {node_id} day without stats
@@ -2112,7 +2521,7 @@ stages:
     response:
       status_code: 400
       json:
-        code: 1308
+        error: 1308
 
 ---
 test_name: GET /cluster/wrong_node/stats
@@ -2152,6 +2561,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - total_events_decoded: !anyfloat
@@ -2227,6 +2637,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - averages: !anything
@@ -2258,6 +2669,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - queue_size: !anyfloat
@@ -2295,6 +2707,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - Sun:
@@ -2345,296 +2758,12 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-
----
-test_name: GET /cluster/api/config
-
-stages:
-
-  # GET /cluster/api/config
-  - name: Get API configuration
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - node_name: "master-node"
-              node_api_config: &api_config
-                host: !anystr
-                port: !anyint
-                behind_proxy_server: !anybool
-                https:
-                  enabled: !anybool
-                  key: !anystr
-                  cert: !anystr
-                  use_ca: !anybool
-                  ca: !anystr
-                logs:
-                  level: !anystr
-                  path: !anystr
-                cors:
-                  enabled: !anybool
-                  source_route: !anystr
-                  expose_headers: !anystr
-                  allow_headers: !anystr
-                  allow_credentials: !anybool
-                cache:
-                  enabled: !anybool
-                  time: !anything
-                access:
-                  max_login_attempts: !anyint
-                  block_time: !anyint
-                  max_request_per_minute: !anyint
-                use_only_authd: !anybool
-                drop_privileges: !anybool
-                experimental_features: !anybool
-            - node_name: "worker1"
-              node_api_config:
-                <<: *api_config
-            - node_name: "worker2"
-              node_api_config:
-                <<: *api_config
-          total_affected_items: 3
-          total_failed_items: 0
-          failed_items: []
-
-  # GET /cluster/api/config/{node_list}
-  - name: Get API configuration
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        list_nodes: 'worker1,worker2'
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - node_name: 'worker1'
-              node_api_config:
-                <<: *api_config
-            - node_name: 'worker2'
-              node_api_config:
-                <<: *api_config
-          total_affected_items: 2
-          total_failed_items: 0
-          failed_items: []
-
----
-test_name: PUT /cluster/api/config
-
-stages:
-
-  # PUT /cluster/api/config
-  - name: Modify API configuration (some fields)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: PUT
-      json:
-        cache:
-          enabled: false
-          time: 1
-    response:
-      status_code: 200
-      json: &update_api_config_ok
-        data:
-          affected_items: !anything
-          total_affected_items: 3
-          total_failed_items: 0
-          failed_items: []
-
-  # PUT /cluster/api/config
-  - name: Modify API configuration (all allowed fields)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        list_nodes: 'worker1,worker2'
-      method: PUT
-      json:
-        logs:
-          level: "debug"
-        cache:
-          enabled: true
-          time: 3
-        access:
-          block_time: 0
-        use_only_authd: true
-        experimental_features: true
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - worker1
-            - worker2
-          total_affected_items: 2
-          total_failed_items: 0
-          failed_items: []
-
-  # PUT /cluster/api/config
-  - name: Modify API configuration (forbidden field)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: PUT
-      json:
-        logs:
-          path: "test"
-    response:
-      status_code: 400
-
-  # GET /cluster/api/config
-  - name: Get API configuration that was set above
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - node_name: 'master-node'
-              node_api_config:
-                <<: *api_config
-            - node_name: 'worker1'
-              node_api_config: &modified_api_config
-                logs:
-                  level: "debug"
-                cache:
-                  enabled: true
-                  time: 3
-                use_only_authd: true
-                experimental_features: true
-            - node_name: 'worker2'
-              node_api_config:
-                <<: *modified_api_config
-          total_affected_items: 3
-          total_failed_items: 0
-          failed_items: []
-
----
-test_name: DELETE /cluster/api/config
-
-stages:
-
-  # DELETE /cluster/api/config (worker1)
-  - name: Restore API configuration
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        list_nodes: 'worker1'
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items: !anything
-          total_affected_items: 1
-          total_failed_items: 0
-          failed_items: []
-
-  # GET /cluster/api/config
-  - name: Get API default configuration
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - node_name: 'master-node'
-              node_api_config:
-                <<: *api_config
-            - node_name: 'worker1'
-              node_api_config:
-                logs:
-                  level: "info"
-                cache:
-                  enabled: true
-                  time: 0.75
-                use_only_authd: false
-                experimental_features: false
-            - node_name: 'worker2'
-              node_api_config:
-                <<: *modified_api_config
-          total_affected_items: 3
-          total_failed_items: 0
-          failed_items: []
-
-  # DELETE /cluster/api/config (all nodes)
-  - name: Restore API configuration
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items: !anything
-          total_affected_items: 3
-          total_failed_items: 0
-          failed_items: []
-
-  # GET /cluster/api/config
-  - name: Get API default configuration
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - node_name: 'master-node'
-              node_api_config:
-                <<: *api_config
-            - node_name: 'worker1'
-              node_api_config:
-                <<: *api_config
-            - node_name: 'worker2'
-              node_api_config:
-                <<: *api_config
-          total_affected_items: 3
-          total_failed_items: 0
-          failed_items: []
 
 ---
 test_name: PUT /cluster/restart
@@ -2649,10 +2778,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_nodes: 'worker1,worker2'
+        nodes_list: 'worker1,worker2'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'worker1'
@@ -2672,6 +2802,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'master-node'

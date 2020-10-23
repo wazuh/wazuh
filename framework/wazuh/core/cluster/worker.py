@@ -16,6 +16,7 @@ import wazuh.core.cluster.cluster
 from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.agent import Agent
 from wazuh.core.cluster import client, common as c_common
+from wazuh.core.cluster import local_client
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhClusterError, WazuhInternalError
@@ -38,7 +39,7 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
 
 class SyncWorker:
     """
-    Defines methods to synchronize files with master
+    Define methods to synchronize files with master
     """
     def __init__(self, cmd: bytes, files_to_sync: Dict, checksums: Dict, logger, worker):
         """
@@ -59,7 +60,7 @@ class SyncWorker:
 
     async def sync(self):
         """
-        Starts synchronization process with the master and sends necessary information
+        Start synchronization process with the master and send necessary information
         """
         result = await self.worker.send_request(command=self.cmd+b'_p', data=b'')
         if isinstance(result, Exception):
@@ -96,6 +97,127 @@ class SyncWorker:
             result = await self.worker.send_request(command=self.cmd+b'_r', data=task_id + b' ' + exc_info)
         finally:
             os.unlink(compressed_data_path)
+
+
+class RetrieveAndSendToMaster:
+    """
+    Define methods to send information to self.daemon in the master through sendsync command.
+    """
+
+    def __init__(self, worker, destination_daemon, data_retriever: callable, logger=None, msg_format='{payload}',
+                 n_retries=3, retry_time=0.2, max_retry_time_allowed=10, cmd=None, expected_res='ok'):
+        """Class constructor
+
+        Parameters
+        ----------
+        worker : WorkerHandler object
+            Instance of worker object
+        destination_daemon : str
+            Daemon name on the master node to which send information.
+        cmd : bytes
+            Command to inform the master when the synchronization process starts and ends.
+        data_retriever : Callable
+            Function to be called to obtain chunks of data. It must return a list of chunks.
+        logger : Logging object
+             Logger to use during synchronization process.
+        msg_format : str
+            Format of the message to be executed in the master's daemon. It must
+            contain the label '{payload}', which will be replaced with every chunk of data.
+            I. e: 'global sync-agent-info-set {payload}'
+        n_retries : int
+            Number of times a chunk has to be resent when it fails.
+        retry_time : float
+            Time between resend attempts. It is multiplied by the number of retries carried out.
+        max_retry_time_allowed : float
+            Maximum total time allowed to retry failed requests. If this time has already been
+            elapsed, no new attempts will be made to resend all the chunks which response
+            does not begin with {expected_res}.
+        expected_res : str
+            Master's response that will be interpreted as correct. If it doesn't match,
+            send retries will be made.
+        """
+        self.worker = worker
+        self.daemon = destination_daemon
+        self.msg_format = msg_format
+        self.data_retriever = data_retriever
+        self.logger = logger if logger is not None else self.worker.setup_task_logger('Default logger')
+        self.n_retries = n_retries
+        self.retry_time = retry_time
+        self.max_retry_time_allowed = max_retry_time_allowed
+        self.cmd = cmd
+        self.expected_res = expected_res
+        self.lc = local_client.LocalClient()
+
+    async def retrieve_and_send(self, *args, **kwargs):
+        """Start synchronization process with the master and send necessary information
+
+        This method retrieves a list of payloads/chunks from self.data_retriever(*args, **kwargs).
+        The chunks are sent one by one through sendsync command.
+
+        Parameters
+        ----------
+        *args
+            Variable length argument list to be sent as parameter to data_retriever callable
+        **kwargs
+            Arbitrary keyword arguments to be sent as parameter to data_retriever callable.
+        """
+        self.logger.info(f"Obtaining data to be sent to master's {self.daemon}.")
+        try:
+            chunks_to_send = self.data_retriever(*args, **kwargs)
+            self.logger.debug(f"Obtained {len(chunks_to_send)} chunks of data to be sent.")
+        except exception.WazuhException as e:
+            self.logger.error(f"Error obtaining data: {e}")
+            return
+
+        if self.cmd:
+            # Send command to master so it knows when the task starts
+            result = await self.worker.send_request(command=self.cmd + b'_s', data=b'')
+            self.logger.debug(f"Master response for {self.cmd+b'_s'} command: {result}")
+
+        chunks_sent = 0
+        start_time = time.time()
+
+        self.logger.info(f"Starting to send information to {self.daemon}.")
+        for chunk in chunks_to_send:
+            data = json.dumps({
+                'daemon_name': self.daemon,
+                'message': self.msg_format.format(payload=chunk)
+            }).encode()
+
+            try:
+                # Send chunk of data to self.daemon of the master
+                result = await self.lc.execute(command=b'sendasync', data=data, wait_for_complete=False)
+                self.logger.debug(f"Master's {self.daemon} response: {result}.")
+
+                # Retry self.n_retries if result was not ok
+                if not result.startswith(self.expected_res):
+                    for i in range(self.n_retries):
+                        if (time.time() - start_time) < self.max_retry_time_allowed:
+                            await asyncio.sleep(i * self.retry_time)
+                            self.logger.info(f"Error sending chunk to master's {self.daemon}. Response does not start "
+                                             f"with {self.expected_res}. Retrying... {i}.")
+                            result = await self.lc.execute(command=b'sendasync', data=data, wait_for_complete=False)
+                            self.logger.debug(f"Master's {self.daemon} response: {result}.")
+                            if result.startswith(self.expected_res):
+                                chunks_sent += 1
+                                break
+                        else:
+                            self.logger.info(f"Error sending chunk to master's {self.daemon}. Response does not start "
+                                             f"with {self.expected_res}. Not retrying because total time exceeded "
+                                             f"{self.max_retry_time_allowed} seconds.")
+                            break
+                else:
+                    chunks_sent += 1
+
+            except exception.WazuhException as e:
+                self.logger.error(f"Error sending information to {self.daemon}: {e}")
+
+        if self.cmd:
+            # Send command to master so it knows when the task stops
+            result = await self.worker.send_request(command=self.cmd + b'_e', data=str(chunks_sent).encode())
+            self.logger.debug(f"Master response for {self.cmd+b'_e'} command: {result}")
+
+        self.logger.info(f"Finished sending information to {self.daemon} ({chunks_sent} chunks sent).")
 
 
 class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
@@ -249,25 +371,21 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         :return: None
         """
         agent_info_logger = self.task_loggers["Agent info"]
+        wdb_conn = WazuhDBConnection()
+        agent_info = RetrieveAndSendToMaster(worker=self, destination_daemon='wazuh-db', logger=agent_info_logger,
+                                             msg_format='global sync-agent-info-set {payload}', cmd=b'sync_a_w_m',
+                                             data_retriever=wdb_conn.run_wdb_command, max_retry_time_allowed=
+                                             self.cluster_items['intervals']['worker']['sync_files'])
+
         while True:
             try:
                 if self.connected:
+                    agent_info_logger.info("Starting agent-info sync process.")
                     before = time.time()
-                    agent_info_logger.info("Starting to send agent status files")
-                    worker_files = wazuh.core.cluster.cluster.get_files_status('worker', self.name, get_md5=False)
-                    await SyncWorker(cmd=b'sync_a_w_m', files_to_sync=worker_files, checksums=worker_files,
-                                     logger=agent_info_logger, worker=self).sync()
-                    after = time.time()
-                    agent_info_logger.debug2("Time synchronizing agent statuses: {} s".format(after - before))
-            except exception.WazuhException as e:
-                agent_info_logger.error("Error synchronizing agent status files: {}".format(e))
-                res = await self.send_request(command=b'sync_a_w_m_r',
-                                              data=json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
+                    await agent_info.retrieve_and_send('global sync-agent-info-get ')
+                    agent_info_logger.debug2("Time synchronizing agent statuses: {} s".format(time.time() - before))
             except Exception as e:
-                agent_info_logger.error("Error synchronizing agent status files: {}".format(e))
-                exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
-                                      cls=c_common.WazuhJSONEncoder)
-                res = await self.send_request(command=b'sync_a_w_m_r', data=exc_info.encode())
+                agent_info_logger.error("Error synchronizing agent info: {}".format(e))
 
             await asyncio.sleep(self.cluster_items['intervals']['worker']['sync_files'])
 
@@ -377,17 +495,15 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
         logger.info("Removing files from {} agents".format(len(agent_ids_list)))
         logger.debug("Agents to remove: {}".format(', '.join(agent_ids_list)))
-        # the agents must be removed in groups of 997: 999 is the limit of SQL variables per query. Limit and offset are
-        # always included in the SQL query, so that leaves 997 variables as limit.
-        for agents_ids_sublist in itertools.zip_longest(*itertools.repeat(iter(agent_ids_list), 997), fillvalue='0'):
+        # Remove agents in group of 500 elements (so wazuh-db socket is not saturated)
+        for agents_ids_sublist in itertools.zip_longest(*itertools.repeat(iter(agent_ids_list), 500), fillvalue='0'):
             agents_ids_sublist = list(filter(lambda x: x != '0', agents_ids_sublist))
             # Get info from DB
             agent_info = Agent.get_agents_overview(q=",".join(["id={}".format(i) for i in agents_ids_sublist]),
                                                    select=['ip', 'id', 'name'], limit=None)['items']
             logger.debug2("Removing files from agents {}".format(', '.join(agents_ids_sublist)))
 
-            files_to_remove = ['{ossec_path}/queue/agent-info/{name}-{ip}',
-                               '{ossec_path}/queue/rootcheck/({name}) {ip}->rootcheck',
+            files_to_remove = ['{ossec_path}/queue/rootcheck/({name}) {ip}->rootcheck',
                                '{ossec_path}/queue/diff/{name}', '{ossec_path}/queue/agent-groups/{id}',
                                '{ossec_path}/queue/rids/{id}',
                                '{ossec_path}/var/db/agents/{name}-{id}.db']
@@ -395,19 +511,12 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
             logger.debug2("Removing agent group assigments from database")
             # remove agent from groups
-            db_global = glob.glob(common.database_path_global)
-            if not db_global:
-                raise WazuhInternalError(1600)
-
-            conn = Connection(db_global[0])
-            agent_ids_db = {'id_agent{}'.format(i): int(i) for i in agents_ids_sublist}
-            conn.execute('delete from belongs where {}'.format(
-                ' or '.join(['id_agent = :{}'.format(i) for i in agent_ids_db.keys()])), agent_ids_db)
-            conn.commit()
-
-            # Tell wazuhbd to delete agent database
             wdb_conn = WazuhDBConnection()
-            wdb_conn.delete_agents_db(agents_ids_sublist)
+
+            query_to_execute = 'global sql delete from belongs where {}'.format(' or '.join([
+                'id_agent = {}'.format(agent_id) for agent_id in agents_ids_sublist
+            ]))
+            wdb_conn.run_wdb_command(query_to_execute)
 
         logger.info("Agent files removed")
 

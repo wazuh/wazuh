@@ -85,29 +85,34 @@ def test_read_configuration(mock_open, mock_exists, read_config):
 def test_read_wrong_configuration(mock_exists):
     """Verify that expected exceptions are raised when incorrect configuration"""
     with patch('api.configuration.yaml.safe_load') as m:
-        with pytest.raises(api_exception.APIError, match='.* 2004 .*'):
+        with pytest.raises(api_exception.APIError, match=r'\b2004\b'):
             configuration.read_yaml_config()
 
         with patch('builtins.open'):
             m.return_value = {'marta': 'yay'}
-            with pytest.raises(api_exception.APIError, match='.* 2000 .*'):
+            with pytest.raises(api_exception.APIError, match=r'\b2000\b'):
                 configuration.read_yaml_config()
 
 
+@patch('os.chmod')
 @patch('builtins.open')
-def test_generate_private_key(mock_open):
+def test_generate_private_key(mock_open, mock_chmod):
     """Verify that genetare_private_key returns expected key and 'open' method is called with expected parameters"""
     result_key = configuration.generate_private_key('test_path.crt', 65537, 2048)
 
     assert result_key.key_size == 2048
     mock_open.assert_called_once_with('test_path.crt', 'wb')
+    mock_chmod.assert_called_once()
 
 
+@patch('os.chmod')
 @patch('builtins.open')
-def test_generate_self_signed_certificate(mock_open):
+def test_generate_self_signed_certificate(mock_open, mock_chmod):
     """Verify that genetare_private_key returns expected key and 'open' method is called with expected parameters"""
     result_key = configuration.generate_private_key('test_path.crt', 65537, 2048)
     configuration.generate_self_signed_certificate(result_key, 'test_path.crt')
 
     assert mock_open.call_count == 2, 'Not expected number of calls'
+    assert mock_chmod.call_count == 2, 'Not expected number of calls'
+
 
