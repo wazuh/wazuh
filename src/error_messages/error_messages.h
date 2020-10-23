@@ -214,7 +214,6 @@
 /* Regex errors */
 #define REGEX_COMPILE   "(1450): Syntax error on regex: '%s': %d."
 #define REGEX_SUBS      "(1451): Missing sub_strings on regex: '%s'."
-#define REGEX_PCRE2_COMPILE   "(1452): PCRE2 compilation failed at offset %d: %s"
 
 /* Mail errors */
 #define INVALID_SMTP    "(1501): Invalid SMTP Server: %s"
