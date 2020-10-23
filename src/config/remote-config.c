@@ -23,7 +23,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     unsigned int deny_size = 1;
     remoted *logr;
     int defined_queue_size = 0;
-    int default_rids_closing_time = 300;
+    const int default_rids_closing_time = 300;
 
     /*** XML Definitions ***/
 

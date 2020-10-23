@@ -396,7 +396,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
             *output = f_msg;
             return KS_VALID;
         }
-        
+
         if (rcv_count >= _s_recv_flush) {
             ReloadCounter(keys, id, keys->keyentries[id]->id);
         }
@@ -430,6 +430,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
             merror(ENCTIME_ERROR, keys->keyentries[id]->name);
             return KS_RIDS;
         }
+        w_mutex_unlock(&keys->keyentries[id]->mutex);
     }
 
     /* Old format */
@@ -518,7 +519,6 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         w_mutex_unlock(&keys->keyentries[id]->mutex);
         return KS_RIDS;
     }
-    w_mutex_unlock(&keys->keyentries[id]->mutex);
     mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, srcip);
     return KS_ENCKEY;
 }

@@ -295,7 +295,7 @@ STATIC void * close_fp_main(void * args) {
 
     while (1) {
         sleep(seconds);
-        key_lock_write();
+        key_lock_read();
         flag = 1;
         while (flag) {
             w_linked_queue_node_t * first_node = keys->opened_fp_queue->first;
@@ -306,6 +306,7 @@ STATIC void * close_fp_main(void * args) {
                 mdebug2("Checking rids_node of agent %s.", first_node_key->id);
                 if ((now - seconds) > first_node_key->updating_time) {
                     first_node_key = (keyentry *)linked_queue_pop_ex(keys->opened_fp_queue);
+                    w_mutex_lock(&first_node_key->mutex);
                     mdebug2("Pop rids_node of agent %s.", first_node_key->id);
                     if (first_node_key->fp != NULL) {
                         mdebug2("Closing rids for agent %s.", first_node_key->id);
@@ -314,6 +315,7 @@ STATIC void * close_fp_main(void * args) {
                     }
                     first_node_key->updating_time = 0;
                     first_node_key->rids_node = NULL;
+                    w_mutex_unlock(&first_node_key->mutex);
                 } else {
                     flag = 0;
                 }
