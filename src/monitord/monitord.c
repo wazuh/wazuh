@@ -136,7 +136,6 @@ void Monitord()
     }
 }
 
-
 cJSON *getMonitorInternalOptions(void) {
 
     cJSON *root = cJSON_CreateObject();
@@ -151,6 +150,17 @@ cJSON *getMonitorInternalOptions(void) {
     cJSON_AddNumberToObject(monconf,"size_rotate",mond.size_rotate);
     cJSON_AddNumberToObject(monconf,"daily_rotations",mond.daily_rotations);
     cJSON_AddNumberToObject(monconf,"delete_old_agents",mond.delete_old_agents);
+
+    cJSON_AddItemToObject(root,"monitord",monconf);
+
+    return root;
+}
+
+cJSON *getMonitorGlobalOptions(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *monconf = cJSON_CreateObject();
+
     cJSON_AddNumberToObject(monconf,"agents_disconnection_time",Config.agents_disconnection_time);
     cJSON_AddNumberToObject(monconf,"alert_agent_disconnection_time",Config.alert_agent_disconnection_time);
 
@@ -158,7 +168,6 @@ cJSON *getMonitorInternalOptions(void) {
 
     return root;
 }
-
 
 cJSON *getReportsOptions(void) {
 
