@@ -11,9 +11,8 @@
 #include "sysInfo.hpp"
 #include <fstream>
 #include <iostream>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include "stringHelper.h"
+#include "filesystemHelper.h"
 #include "cmdHelper.h"
 
 constexpr auto WM_SYS_HW_DIR{"/sys/class/dmi/id/board_serial"};
@@ -21,12 +20,6 @@ constexpr auto WM_SYS_CPU_DIR{"/proc/cpuinfo"};
 constexpr auto WM_SYS_MEM_DIR{"/proc/meminfo"};
 constexpr auto DPKG_PATH {"/var/lib/dpkg/"};
 constexpr auto DPKG_STATUS_PATH {"/var/lib/dpkg/status"};
-
-static bool existDir(const std::string& path)
-{
-    struct stat info{};
-    return !stat(path.c_str(), &info) && (info.st_mode & S_IFDIR);
-}
 
 static void parseLineAndFillMap(const std::string& line, const std::string& separator, std::map<std::string, std::string>& systemInfo)
 {
@@ -283,7 +276,7 @@ void SysInfo::getMemory(nlohmann::json& info) const
 nlohmann::json SysInfo::getPackages() const
 {
     nlohmann::json packages;
-    if (existDir(DPKG_PATH))
+    if (Utils::existsDir(DPKG_PATH))
     {
         packages.push_back(getDpkgInfo(DPKG_STATUS_PATH));
     }

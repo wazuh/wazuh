@@ -11,7 +11,10 @@
 #include "sysInfo.hpp"
 #include "cmdHelper.h"
 #include "stringHelper.h"
+#include "filesystemHelper.h"
 #include <sys/sysctl.h>
+
+constexpr auto MAC_APPS_PATH{"/Applications"};
 
 void SysInfo::getMemory(nlohmann::json& info) const
 {
@@ -84,4 +87,15 @@ std::string SysInfo::getSerialNumber() const
 {
     const auto rawData{Utils::exec("system_profiler SPHardwareDataType | grep Serial")};
     return Utils::trim(rawData.substr(rawData.find(":")), " :\t\r\n");
+}
+
+nlohmann::json SysInfo::getPackages() const
+{
+    nlohmann::json ret;
+    const auto apps{Utils::enumerateDir(MAC_APPS_PATH)};
+    for(const auto& app : apps)
+    {
+        std::cout << app << std::endl;
+    }
+    return ret;
 }
