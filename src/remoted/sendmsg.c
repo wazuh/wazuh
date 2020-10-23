@@ -8,7 +8,6 @@
  * Foundation
  */
 
-#include "defs.h"
 #include "shared.h"
 #include <pthread.h>
 #include "remoted.h"
