@@ -233,7 +233,6 @@ int realtime_update_watch(const char *wd, const char *dir) {
     index = fim_configuration_directory(dir, "file");
 
     if (index < 0) {
-        mwarn("#### Removing non configured directory '%s'", dir);
         inotify_rm_watch(syscheck.realtime->fd, atoi(wd));
         free(OSHash_Delete_ex(syscheck.realtime->dirtb, wd));
         return 0;
@@ -650,46 +649,34 @@ void realtime_process()
     return;
 }
 
-unsigned int count_watches() {
-    return 0;
-}
-
 #endif /* WIN32 */
 
 #if defined(WIN32) || defined(INOTIFY_ENABLED)
 
-unsigned int count_watches() {
+void realtime_sanitize_watch_map() {
+#ifndef WIN32
     OSHashNode *hash_node;
     unsigned int inode_it = 0;
-    unsigned int num_watches = 0;
     struct timespec start;
     struct timespec end;
 
-    if(syscheck.realtime != NULL) {
-        gettime(&start);
-        w_mutex_lock(&syscheck.fim_realtime_mutex);
-        hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
+    gettime(&start);
+    w_mutex_lock(&syscheck.fim_realtime_mutex);
+    hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
 
-        while(hash_node) {
-            if (syscheck.realtime->queue_overflow) {
-                if (realtime_update_watch(hash_node->key, hash_node->data) == 0) {
-                    num_watches = 0;
-                    hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
-                    continue;
-                }
-            }
-
-            num_watches++;
-            hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node);
+    while (hash_node) {
+        if (realtime_update_watch(hash_node->key, hash_node->data) == 0) {
+            hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
+            continue;
         }
-        syscheck.realtime->queue_overflow = false;
 
-        w_mutex_unlock(&syscheck.fim_realtime_mutex);
-        gettime(&end);
-        mdebug2("Time spent sanitizing wd hashmap: %.3f seconds", time_diff(&start, &end));
+        hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node);
     }
 
-    return num_watches;
+    w_mutex_unlock(&syscheck.fim_realtime_mutex);
+    gettime(&end);
+    mdebug2("Time spent sanitizing wd hashmap: %.3f seconds", time_diff(&start, &end));
+#endif
 }
 
 #endif
