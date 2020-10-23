@@ -69,8 +69,6 @@ int __wrap_w_send_clustered_message(const char* command, const char* payload, ch
 
 bool __wrap_wm_agent_upgrade_validate_task_ids_message(const cJSON *input_json, int *agent_id, int *task_id, char** data);
 
-void __wrap_wm_agent_upgrade_insert_task_id(int agent_id, int task_id);
-
 char* __wrap_wm_agent_upgrade_send_command_to_agent(const char *command, const size_t command_size);
 
 cJSON* __wrap_wm_agent_upgrade_send_tasks_information(const cJSON *message_object);

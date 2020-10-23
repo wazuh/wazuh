@@ -1,4 +1,4 @@
-# Generate vulnerability detector library
+# Generate agent upgrade library
 file(GLOB upgrade_files
     ${SRC_FOLDER}/wazuh_modules/*.o
     ${SRC_FOLDER}/wazuh_modules/agent_upgrade/*.o
@@ -47,7 +47,7 @@ if(${TARGET} STREQUAL "server")
                             -Wl,--wrap,w_is_worker -Wl,--wrap,cJSON_Duplicate -Wl,--wrap,getpid -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Get")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_tasks_callbacks")
-    list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,wm_agent_upgrade_validate_task_ids_message -Wl,--wrap,wm_agent_upgrade_insert_task_id -Wl,--wrap,wm_agent_upgrade_remove_entry \
+    list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,wm_agent_upgrade_validate_task_ids_message -Wl,--wrap,wm_agent_upgrade_remove_entry \
                             -Wl,--wrap,wm_agent_upgrade_parse_data_response -Wl,--wrap,wm_agent_upgrade_parse_response -Wl,--wrap,wm_agent_upgrade_validate_task_status_message -Wl,--wrap,wm_agent_upgrade_send_command_to_agent \
                             -Wl,--wrap,wm_agent_upgrade_parse_agent_response -Wl,--wrap,wm_agent_upgrade_send_tasks_information")
 

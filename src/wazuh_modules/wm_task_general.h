@@ -55,7 +55,8 @@ typedef enum _command_list {
     WM_TASK_UPGRADE_UPDATE_STATUS,
     WM_TASK_UPGRADE_RESULT,
     WM_TASK_UPGRADE_CANCEL_TASKS,
-    WM_TASK_TASK_RESULT
+    WM_TASK_TASK_RESULT,
+    WM_TASK_UNKNOWN
 } command_list;
 
 /**

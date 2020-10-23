@@ -44,9 +44,9 @@ extern const char* task_statuses[];
  * }
  * 
  * @param msg Incomming message from a connection.
- * @return JSON array when succeed, NULL otherwise.
+ * @return task structure if there is no error, NULL otherwise.
  * */
-cJSON* wm_task_manager_parse_message(const char *msg) __attribute__((nonnull));
+wm_task_manager_task* wm_task_manager_parse_message(const char *msg) __attribute__((nonnull));
 
 /**
  * Build a JSON data object.
@@ -116,7 +116,7 @@ cJSON* wm_task_manager_parse_data_response(int error_code, int agent_id, int tas
  * @param last_update_time Date of update task.
  * @param request_command Command that requested the query.
  * */
-void wm_task_manager_parse_data_result(cJSON *response, const char *node, const char *module, const char *command, char *status, char *error, int create_time, int last_update_time, char *request_command) __attribute__((nonnull(1)));
+void wm_task_manager_parse_data_result(cJSON *response, const char *node, const char *module, const char *command, char *status, char *error, int create_time, int last_update_time, const char *request_command) __attribute__((nonnull(1)));
 
 /**
  * Build a JSON response object.

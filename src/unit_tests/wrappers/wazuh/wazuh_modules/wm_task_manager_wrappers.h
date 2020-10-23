@@ -14,11 +14,13 @@
 #include "headers/shared.h"
 #include "wazuh_modules/wmodules.h"
 
+#ifndef CLIENT
+
 int __wrap_wm_task_manager_check_db();
 
 cJSON* __wrap_wm_task_manager_parse_message(const char *msg);
 
-cJSON* __wrap_wm_task_manager_analyze_task(const cJSON *task_object, int *error_code);
+cJSON* __wrap_wm_task_manager_process_task(const wm_task_manager_task *task, int *error_code);
 
 cJSON* __wrap_wm_task_manager_parse_data_response(int error_code, int agent_id, int task_id, char *status);
 
@@ -35,5 +37,7 @@ int __wrap_wm_task_manager_get_upgrade_task_status(int agent_id, const char *nod
 int __wrap_wm_task_manager_update_upgrade_task_status(int agent_id, const char *node, const char *status, const char *error);
 
 int __wrap_wm_task_manager_cancel_upgrade_tasks(const char *node);
+
+#endif
 
 #endif

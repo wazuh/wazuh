@@ -233,11 +233,6 @@ bool __wrap_wm_agent_upgrade_validate_task_ids_message(__attribute__ ((__unused_
     return mock();
 }
 
-void __wrap_wm_agent_upgrade_insert_task_id(int agent_id, int task_id) {
-    check_expected(agent_id);
-    check_expected(task_id);
-}
-
 char* __wrap_wm_agent_upgrade_send_command_to_agent(const char *command, const size_t command_size) {
     check_expected(command);
     check_expected(command_size);

@@ -20,7 +20,95 @@
 
 #include "../wmodules.h"
 #include "wm_task_manager_parsing.h"
+#include "wm_task_manager_tasks.h"
 
+/**
+ * Parses agents/tasks array and returns an array of agent/tasks ids
+ * @param ids array of agents/tasks
+ * @return pointer to array of agent/tasks ids
+ * */
+STATIC int* wm_task_manager_parse_ids(const cJSON* ids);
+
+/**
+ * Parses task parameters and returns an upgrade task from the information
+ * Example:
+ * {
+ *      "node" : "node01",
+ *      "module"    : "api",
+ *      "agents"   : [1, 2, 3, 4],
+ * }
+ * @param origin JSON with the origin information
+ * @param parameters JSON with the parameters
+ * @return upgrade task if there is no error, NULL otherwise
+ * */
+STATIC wm_task_manager_upgrade* wm_task_manager_parse_upgrade_parameters(const cJSON* origin, const cJSON* parameters);
+
+/**
+ * Parses task parameters and returns an upgrade get status task from the information
+ * Example:
+ * {
+ *      "node" : "node02",
+ *      "agents"   : [5],
+ * }
+ * @param origin JSON with the origin information
+ * @param parameters JSON with the parameters
+ * @return upgrade get status task if there is no error, NULL otherwise
+ * */
+STATIC wm_task_manager_upgrade_get_status* wm_task_manager_parse_upgrade_get_status_parameters(const cJSON* origin, const cJSON* parameters);
+
+/**
+ * Parses task parameters and returns an upgrade update status task from the information
+ * Example:
+ * {
+ *      "node" : "node02",
+ *      "agents"   : [5],
+ *      "status"   : "Failed",
+ *      "error_msg"   : "SHA1 verification error"
+ * }
+ * @param origin JSON with the origin information
+ * @param parameters JSON with the parameters
+ * @return upgrade update status task if there is no error, NULL otherwise
+ * */
+STATIC wm_task_manager_upgrade_update_status* wm_task_manager_parse_upgrade_update_status_parameters(const cJSON* origin, const cJSON* parameters);
+
+/**
+ * Parses task parameters and returns an upgrade result task from the information
+ * Example:
+ * {
+ *      "agents"   : [15, 33, 87]
+ * }
+ * @param parameters JSON with the parameters
+ * @return upgrade result task if there is no error, NULL otherwise
+ * */
+STATIC wm_task_manager_upgrade_result* wm_task_manager_parse_upgrade_result_parameters(const cJSON* parameters);
+
+/**
+ * Parses task parameters and returns an upgrade cancel tasks task from the information
+ * Example:
+ * {
+ *      "node"   : "node06"
+ * }
+ * @param origin JSON with the origin information
+ * @return upgrade cancel tasks task if there is no error, NULL otherwise
+ * */
+STATIC wm_task_manager_upgrade_cancel_tasks* wm_task_manager_parse_upgrade_cancel_tasks_parameters(const cJSON* origin);
+
+/**
+ * Parses task parameters and returns a task result task from the information
+ * Example:
+ * {
+ *      "tasks"   : [28, 14, 101]
+ * }
+ * @param parameters JSON with the parameters
+ * @return task result task if there is no error, NULL otherwise
+ * */
+STATIC wm_task_manager_task_result* wm_task_manager_parse_task_result_parameters(const cJSON* parameters);
+
+/**
+ * Decode status to a more understandable string
+ * @param status status string
+ * @return status conversion
+ */
 STATIC const char* wm_task_manager_decode_status(char *status) __attribute__((nonnull));
 
 static const char *upgrade_statuses[] = {
@@ -36,154 +124,266 @@ static const char *upgrade_statuses[] = {
 static const char *error_codes[] = {
     [WM_TASK_SUCCESS] = "Success",
     [WM_TASK_INVALID_MESSAGE] = "Invalid message",
-    [WM_TASK_INVALID_NODE] = "Invalid node",
-    [WM_TASK_INVALID_MODULE] = "Invalid module",
     [WM_TASK_INVALID_COMMAND] = "Invalid command",
-    [WM_TASK_INVALID_AGENT_ID] = "Invalid agent ID",
-    [WM_TASK_INVALID_TASK_ID] = "Invalid task ID",
     [WM_TASK_INVALID_STATUS] = "Invalid status",
     [WM_TASK_DATABASE_NO_TASK] = "No task in DB",
     [WM_TASK_DATABASE_ERROR] = "Database error",
     [WM_TASK_UNKNOWN_ERROR] = "Unknown error"
 };
 
-cJSON* wm_task_manager_parse_message(const char *msg) {
-    cJSON *response_array = NULL;
+wm_task_manager_task* wm_task_manager_parse_message(const char *msg) {
     cJSON *event_json = NULL;
+    cJSON *origin_json = NULL;
     cJSON *command_json = NULL;
     cJSON *parameters_json = NULL;
-    cJSON *origin_json = NULL;
-    const char *error;
+    wm_task_manager_task *task = NULL;
+    const char *json_err;
 
     // Parsing event
-    if (event_json = cJSON_ParseWithOpts(msg, &error, 0), !event_json) {
+    if (event_json = cJSON_ParseWithOpts(msg, &json_err, 0), !event_json) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_JSON_ERROR, msg);
         return NULL;
     }
 
     // Detect origin
     if (origin_json = cJSON_GetObjectItem(event_json, task_manager_json_keys[WM_TASK_ORIGIN]), !origin_json || (origin_json->type != cJSON_Object)) {
-        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_ORIGIN], 0);
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_ORIGIN]);
         cJSON_Delete(event_json);
         return NULL;
     }
 
     // Detect command
     if (command_json = cJSON_GetObjectItem(event_json, task_manager_json_keys[WM_TASK_COMMAND]), !command_json || command_json->type != cJSON_String) {
-        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_COMMAND], 0);
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_COMMAND]);
         cJSON_Delete(event_json);
         return NULL;
     }
 
     // Detect parameters
     if (parameters_json = cJSON_GetObjectItem(event_json, task_manager_json_keys[WM_TASK_PARAMETERS]), !parameters_json || (parameters_json->type != cJSON_Object)) {
-        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_PARAMETERS], 0);
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_PARAMETERS]);
         cJSON_Delete(event_json);
         return NULL;
     }
 
-    // Create response JSON array
-    response_array = cJSON_CreateArray();
+    // Create task
+    task = wm_task_manager_init_task();
 
-    cJSON *name_json = cJSON_GetObjectItem(origin_json, task_manager_json_keys[WM_TASK_NAME]);
-    cJSON *module_json = cJSON_GetObjectItem(origin_json, task_manager_json_keys[WM_TASK_MODULE]);
-    cJSON *agents_json = cJSON_GetObjectItem(parameters_json, task_manager_json_keys[WM_TASK_AGENTS]);
-    cJSON *tasks_json = cJSON_GetObjectItem(parameters_json, task_manager_json_keys[WM_TASK_TASKS]);
-    cJSON *status_json = cJSON_GetObjectItem(parameters_json, task_manager_json_keys[WM_TASK_STATUS]);
-    cJSON *error_msg_json = cJSON_GetObjectItem(parameters_json, task_manager_json_keys[WM_TASK_ERROR_MSG]);
+    if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE], command_json->valuestring)) {
+        task->command = WM_TASK_UPGRADE;
+        task->parameters = wm_task_manager_parse_upgrade_parameters(origin_json, parameters_json);
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_CUSTOM], command_json->valuestring)) {
+        task->command = WM_TASK_UPGRADE_CUSTOM;
+        task->parameters = wm_task_manager_parse_upgrade_parameters(origin_json, parameters_json);
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_GET_STATUS], command_json->valuestring)) {
+        task->command = WM_TASK_UPGRADE_GET_STATUS;
+        task->parameters = wm_task_manager_parse_upgrade_get_status_parameters(origin_json, parameters_json);
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_UPDATE_STATUS], command_json->valuestring)) {
+        task->command = WM_TASK_UPGRADE_UPDATE_STATUS;
+        task->parameters = wm_task_manager_parse_upgrade_update_status_parameters(origin_json, parameters_json);
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_RESULT], command_json->valuestring)) {
+        task->command = WM_TASK_UPGRADE_RESULT;
+        task->parameters = wm_task_manager_parse_upgrade_result_parameters(parameters_json);
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_CANCEL_TASKS], command_json->valuestring)) {
+        task->command = WM_TASK_UPGRADE_CANCEL_TASKS;
+        task->parameters = wm_task_manager_parse_upgrade_cancel_tasks_parameters(origin_json);
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_TASK_RESULT], command_json->valuestring)) {
+        task->command = WM_TASK_TASK_RESULT;
+        task->parameters = wm_task_manager_parse_task_result_parameters(parameters_json);
+    } else {
+        task->command = WM_TASK_UNKNOWN;
+        cJSON_Delete(event_json);
+        return task;
+    }
 
-    if (agents_json && (agents_json->type == cJSON_Array)) {
-        cJSON *agent_json = NULL;
-        int agent_index = 0;
-
-        while(agent_json = cJSON_GetArrayItem(agents_json, agent_index), agent_json) {
-
-            if (agent_json->type == cJSON_Number) {
-                cJSON *task = cJSON_CreateObject();
-
-                cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_COMMAND], command_json->valuestring);
-                cJSON_AddNumberToObject(task, task_manager_json_keys[WM_TASK_AGENT_ID], agent_json->valueint);
-                if (name_json && (name_json->type == cJSON_String)) {
-                    cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_NODE], name_json->valuestring);
-                }
-                if (module_json && (module_json->type == cJSON_String)) {
-                    cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_MODULE], module_json->valuestring);
-                }
-                if (status_json && (status_json->type == cJSON_String)) {
-                    cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_STATUS], status_json->valuestring);
-                }
-                if (error_msg_json && (error_msg_json->type == cJSON_String)) {
-                    cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_ERROR_MSG], error_msg_json->valuestring);
-                }
-
-                cJSON_AddItemToArray(response_array, task);
-
-            } else {
-                mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_UNKNOWN_VALUE_ERROR, task_manager_json_keys[WM_TASK_AGENTS], agent_index);
-            }
-
-            agent_index++;
-        }
-
-    } else if (tasks_json && (tasks_json->type == cJSON_Array)) {
-        cJSON *task_json = NULL;
-        int task_index = 0;
-
-        while(task_json = cJSON_GetArrayItem(tasks_json, task_index), task_json) {
-
-            if (task_json->type == cJSON_Number) {
-                cJSON *task = cJSON_CreateObject();
-
-                cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_COMMAND], command_json->valuestring);
-                cJSON_AddNumberToObject(task, task_manager_json_keys[WM_TASK_TASK_ID], task_json->valueint);
-                if (name_json && (name_json->type == cJSON_String)) {
-                    cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_NODE], name_json->valuestring);
-                }
-                if (module_json && (module_json->type == cJSON_String)) {
-                    cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_MODULE], module_json->valuestring);
-                }
-                if (status_json && (status_json->type == cJSON_String)) {
-                    cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_STATUS], status_json->valuestring);
-                }
-                if (error_msg_json && (error_msg_json->type == cJSON_String)) {
-                    cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_ERROR_MSG], error_msg_json->valuestring);
-                }
-
-                cJSON_AddItemToArray(response_array, task);
-
-            } else {
-                mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_UNKNOWN_VALUE_ERROR, task_manager_json_keys[WM_TASK_TASKS], task_index);
-            }
-
-            task_index++;
-        }
-
-    } else if (!agents_json && !tasks_json) {
-        cJSON *task = cJSON_CreateObject();
-
-        cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_COMMAND], command_json->valuestring);
-        if (name_json && (name_json->type == cJSON_String)) {
-            cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_NODE], name_json->valuestring);
-        }
-        if (module_json && (module_json->type == cJSON_String)) {
-            cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_MODULE], module_json->valuestring);
-        }
-        if (status_json && (status_json->type == cJSON_String)) {
-            cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_STATUS], status_json->valuestring);
-        }
-        if (error_msg_json && (error_msg_json->type == cJSON_String)) {
-            cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_ERROR_MSG], error_msg_json->valuestring);
-        }
-
-        cJSON_AddItemToArray(response_array, task);
+    if (!task->parameters) {
+        wm_task_manager_free_task(task);
     }
 
     cJSON_Delete(event_json);
 
-    return response_array;
+    return task;
 }
 
-void wm_task_manager_parse_data_result(cJSON *response, const char *node, const char *module, const char *command, char *status, char *error, int create_time, int last_update_time, char *request_command) {
+STATIC int* wm_task_manager_parse_ids(const cJSON* ids) {
+    int *ids_array = NULL;
+    int size = 0;
+    int index = 0;
+
+    size = cJSON_GetArraySize(ids);
+
+    os_calloc(size + 1, sizeof(int), ids_array);
+    ids_array[index] = OS_INVALID;
+
+    while(index < size) {
+        cJSON *id = cJSON_GetArrayItem(ids, index);
+        if (id->type == cJSON_Number) {
+            ids_array[index] = id->valueint;
+            ids_array[index + 1] = OS_INVALID;
+        } else {
+            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_INVALID_ELEMENT_ERROR);
+            os_free(ids_array);
+            return NULL;
+        }
+        index++;
+    }
+
+    if (ids_array[0] == OS_INVALID) {
+        os_free(ids_array);
+        return NULL;
+    }
+
+    return ids_array;
+}
+
+STATIC wm_task_manager_upgrade* wm_task_manager_parse_upgrade_parameters(const cJSON* origin, const cJSON* parameters) {
+
+    wm_task_manager_upgrade *task_parameters = wm_task_manager_init_upgrade_parameters();
+
+    cJSON *name_json = cJSON_GetObjectItem(origin, task_manager_json_keys[WM_TASK_NAME]);
+    cJSON *module_json = cJSON_GetObjectItem(origin, task_manager_json_keys[WM_TASK_MODULE]);
+    cJSON *agents_json = cJSON_GetObjectItem(parameters, task_manager_json_keys[WM_TASK_AGENTS]);
+
+    if (name_json && (name_json->type == cJSON_String)) {
+        os_strdup(name_json->valuestring, task_parameters->node);
+    } else {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_NAME]);
+        wm_task_manager_free_upgrade_parameters(task_parameters);
+        return NULL;
+    }
+
+    if (module_json && (module_json->type == cJSON_String)) {
+        os_strdup(module_json->valuestring, task_parameters->module);
+    } else {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_MODULE]);
+        wm_task_manager_free_upgrade_parameters(task_parameters);
+        return NULL;
+    }
+
+    task_parameters->agent_ids = wm_task_manager_parse_ids(agents_json);
+    if (!task_parameters->agent_ids) {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_AGENTS]);
+        wm_task_manager_free_upgrade_parameters(task_parameters);
+        return NULL;
+    }
+
+    return task_parameters;
+}
+
+STATIC wm_task_manager_upgrade_get_status* wm_task_manager_parse_upgrade_get_status_parameters(const cJSON* origin, const cJSON* parameters) {
+
+    wm_task_manager_upgrade_get_status *task_parameters = wm_task_manager_init_upgrade_get_status_parameters();
+
+    cJSON *name_json = cJSON_GetObjectItem(origin, task_manager_json_keys[WM_TASK_NAME]);
+    cJSON *agents_json = cJSON_GetObjectItem(parameters, task_manager_json_keys[WM_TASK_AGENTS]);
+
+    if (name_json && (name_json->type == cJSON_String)) {
+        os_strdup(name_json->valuestring, task_parameters->node);
+    } else {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_NAME]);
+        wm_task_manager_free_upgrade_get_status_parameters(task_parameters);
+        return NULL;
+    }
+
+    task_parameters->agent_ids = wm_task_manager_parse_ids(agents_json);
+    if (!task_parameters->agent_ids) {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_AGENTS]);
+        wm_task_manager_free_upgrade_get_status_parameters(task_parameters);
+        return NULL;
+    }
+
+    return task_parameters;
+}
+
+STATIC wm_task_manager_upgrade_update_status* wm_task_manager_parse_upgrade_update_status_parameters(const cJSON* origin, const cJSON* parameters) {
+
+    wm_task_manager_upgrade_update_status *task_parameters = wm_task_manager_init_upgrade_update_status_parameters();
+
+    cJSON *name_json = cJSON_GetObjectItem(origin, task_manager_json_keys[WM_TASK_NAME]);
+    cJSON *agents_json = cJSON_GetObjectItem(parameters, task_manager_json_keys[WM_TASK_AGENTS]);
+    cJSON *status_json = cJSON_GetObjectItem(parameters, task_manager_json_keys[WM_TASK_STATUS]);
+    cJSON *error_msg_json = cJSON_GetObjectItem(parameters, task_manager_json_keys[WM_TASK_ERROR_MSG]);
+
+    if (name_json && (name_json->type == cJSON_String)) {
+        os_strdup(name_json->valuestring, task_parameters->node);
+    } else {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_NAME]);
+        wm_task_manager_free_upgrade_update_status_parameters(task_parameters);
+        return NULL;
+    }
+
+    if (status_json && (status_json->type == cJSON_String)) {
+        os_strdup(status_json->valuestring, task_parameters->status);
+    } else {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_STATUS]);
+        wm_task_manager_free_upgrade_update_status_parameters(task_parameters);
+        return NULL;
+    }
+
+    if (error_msg_json && (error_msg_json->type == cJSON_String)) {
+        os_strdup(error_msg_json->valuestring, task_parameters->error_msg);
+    }
+
+    task_parameters->agent_ids = wm_task_manager_parse_ids(agents_json);
+    if (!task_parameters->agent_ids) {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_AGENTS]);
+        wm_task_manager_free_upgrade_update_status_parameters(task_parameters);
+        return NULL;
+    }
+
+    return task_parameters;
+}
+
+STATIC wm_task_manager_upgrade_result* wm_task_manager_parse_upgrade_result_parameters(const cJSON* parameters) {
+
+    wm_task_manager_upgrade_result *task_parameters = wm_task_manager_init_upgrade_result_parameters();
+
+    cJSON *agents_json = cJSON_GetObjectItem(parameters, task_manager_json_keys[WM_TASK_AGENTS]);
+
+    task_parameters->agent_ids = wm_task_manager_parse_ids(agents_json);
+    if (!task_parameters->agent_ids) {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_AGENTS]);
+        wm_task_manager_free_upgrade_result_parameters(task_parameters);
+        return NULL;
+    }
+
+    return task_parameters;
+}
+
+STATIC wm_task_manager_upgrade_cancel_tasks* wm_task_manager_parse_upgrade_cancel_tasks_parameters(const cJSON* origin) {
+
+    wm_task_manager_upgrade_cancel_tasks *task_parameters = wm_task_manager_init_upgrade_cancel_tasks_parameters();
+
+    cJSON *name_json = cJSON_GetObjectItem(origin, task_manager_json_keys[WM_TASK_NAME]);
+
+    if (name_json && (name_json->type == cJSON_String)) {
+        os_strdup(name_json->valuestring, task_parameters->node);
+    } else {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_NAME]);
+        wm_task_manager_free_upgrade_cancel_tasks_parameters(task_parameters);
+        return NULL;
+    }
+
+    return task_parameters;
+}
+
+STATIC wm_task_manager_task_result* wm_task_manager_parse_task_result_parameters(const cJSON* parameters) {
+
+    wm_task_manager_task_result *task_parameters = wm_task_manager_init_task_result_parameters();
+
+    cJSON *tasks_json = cJSON_GetObjectItem(parameters, task_manager_json_keys[WM_TASK_TASKS]);
+
+    task_parameters->task_ids = wm_task_manager_parse_ids(tasks_json);
+    if (!task_parameters->task_ids) {
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_TASKS]);
+        wm_task_manager_free_task_result_parameters(task_parameters);
+        return NULL;
+    }
+
+    return task_parameters;
+}
+
+void wm_task_manager_parse_data_result(cJSON *response, const char *node, const char *module, const char *command, char *status, char *error, int create_time, int last_update_time, const char *request_command) {
 
     if (node != NULL) {
         cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_NODE], node);
@@ -198,7 +398,7 @@ void wm_task_manager_parse_data_result(cJSON *response, const char *node, const 
     }
 
     if (status != NULL) {
-        if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_RESULT], request_command)) {
+        if (request_command && !strcmp(task_manager_commands_list[WM_TASK_UPGRADE_RESULT], request_command)) {
             cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_STATUS], wm_task_manager_decode_status(status));
         } else {
             cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_STATUS], status);
