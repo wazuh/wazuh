@@ -285,6 +285,7 @@ static void getHotFixFromReg(const HKEY key, const std::string& subKey, nlohmann
 static void getHotFixFromRegNT(const HKEY key, const std::string& subKey, nlohmann::json& data)
 {
     static const std::string KB_PREFIX{"KB"};
+    static const auto KB_PREFIX_SIZE{KB_PREFIX.size()};
     try
     {
         std::set<std::string> hotfixes;
@@ -295,7 +296,7 @@ static void getHotFixFromRegNT(const HKEY key, const std::string& subKey, nlohma
             auto value{Utils::toUpperCase(package)};
             if (Utils::startsWith(value, KB_PREFIX))
             {
-                value = value.substr(KB_PREFIX.size());
+                value = value.substr(KB_PREFIX_SIZE);
                 value = Utils::trim(value.substr(0, value.find_first_not_of("1234567890")));
                 hotfixes.insert(KB_PREFIX + value);
             }

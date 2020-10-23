@@ -111,9 +111,9 @@ namespace Utils
 
     static bool startsWith(const std::string& str, const std::string& start)
     {
-        if (str.empty() == false && str.length() >= start.length())
+        if (!str.empty() && str.length() >= start.length())
         {
-          return str.compare(0, start.length(), start) == 0;
+            return str.compare(0, start.length(), start) == 0;
         }
         return false;
     }
