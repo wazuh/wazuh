@@ -143,6 +143,28 @@ default_policies:
           - list:path:*
         effect: allow
 
+  rootcheck_read:
+    description: Allow read rootcheck information
+    policies:
+      syscheck:
+        actions:
+          - rootcheck:read
+        resources:
+          - agent:id:*
+        effect: allow
+
+  rootcheck_all:
+    description: Allow read, run and clear rootcheck information
+    policies:
+      syscheck:
+        actions:
+          - rootcheck:clear
+          - rootcheck:read
+          - syscheck:run
+        resources:
+          - agent:id:*
+        effect: allow
+
   rules_read:
     description: Allow read all rule files in the system.
     policies:

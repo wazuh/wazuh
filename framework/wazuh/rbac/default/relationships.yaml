@@ -20,6 +20,7 @@ relationships:
         - ciscat_read
         - decoders_read
         - lists_read
+        - rootcheck_all
         - rules_read
         - mitre_read
         - sca_read
@@ -36,6 +37,7 @@ relationships:
         - cluster_read
         - decoders_read
         - lists_read
+        - rootcheck_read
         - rules_read
         - mitre_read
         - sca_read
