@@ -103,10 +103,14 @@ char **fim_db_get_all_registry_key(fdb_t *fim_sql, unsigned long int key_id);
  * @param fim_sql FIM database struct.
  * @param data Registry data to be inserted.
  * @param key_id Registry key ID.
+ * @param replace_entry 0 if a new registry_data entry is being inserted.
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert_registry_data(fdb_t *fim_sql, fim_registry_value_data *data, unsigned int key_id);
+int fim_db_insert_registry_data(fdb_t *fim_sql,
+                                fim_registry_value_data *data,
+                                unsigned int key_id,
+                                unsigned int replace_entry);
 
 /**
  * @brief Insert or update registry key.

@@ -461,8 +461,27 @@ int fim_db_get_count_registry_data(fdb_t *fim_sql) {
     return res;
 }
 
-int fim_db_insert_registry_data(fdb_t *fim_sql, fim_registry_value_data *data, unsigned int key_id) {
+int fim_db_insert_registry_data(fdb_t *fim_sql,
+                                fim_registry_value_data *data,
+                                unsigned int key_id,
+                                unsigned int replace_entry) {
     int res = 0;
+
+    // Check there is room in the DB in case of insertion.
+    if (syscheck.file_limit_enabled && replace_entry == 0) {
+        int count = fim_db_get_count_entries(syscheck.database);
+
+        if (count == FIMDB_ERR) {
+            mdebug1("Failed to get count of entries while inserting '%s'", data->name);
+            return FIMDB_ERR;
+        }
+
+        if ((unsigned int)count >= syscheck.file_limit) {
+            mdebug1("Couldn't insert '%s' value entry into DB. The DB is full, please check your configuration.",
+                    data->name);
+            return FIMDB_FULL;
+        }
+    }
 
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_REPLACE_REG_DATA);
     fim_db_bind_insert_registry_data(fim_sql, data, key_id);
@@ -478,6 +497,22 @@ int fim_db_insert_registry_data(fdb_t *fim_sql, fim_registry_value_data *data, u
 int fim_db_insert_registry_key(fdb_t *fim_sql, fim_registry_key *entry, unsigned int rowid) {
     int res = 0;
 
+    // Check there is room in the DB in case of insertion.
+    if (syscheck.file_limit_enabled && rowid == 0) {
+        int count = fim_db_get_count_entries(syscheck.database);
+
+        if (count == FIMDB_ERR) {
+            mdebug1("Failed to get count of entries while inserting '%s %s'", registry_arch[entry->arch], entry->path);
+            return FIMDB_ERR;
+        }
+
+        if ((unsigned int)count >= syscheck.file_limit) {
+            mdebug1("Couldn't insert '%s %s' entry into DB. The DB is full, please check your configuration.",
+                    registry_arch[entry->arch], entry->path);
+            return FIMDB_FULL;
+        }
+    }
+
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_REPLACE_REG_KEY);
     fim_db_bind_insert_registry_key(fim_sql, entry, rowid);
 
@@ -492,11 +527,13 @@ int fim_db_insert_registry_key(fdb_t *fim_sql, fim_registry_key *entry, unsigned
 int fim_db_insert_registry(fdb_t *fim_sql, fim_entry *new) {
     int res_data = 0;
     int res_key = 0;
+    unsigned int replace_entry = new->registry_entry.key->id == 0 ? 0 : 1;
 
     res_key = fim_db_insert_registry_key(fim_sql, new->registry_entry.key, new->registry_entry.key->id);
     fim_db_get_registry_key_rowid(fim_sql, new->registry_entry.key->path, new->registry_entry.key->arch,
                                   &new->registry_entry.key->id);
-    res_data = fim_db_insert_registry_data(fim_sql, new->registry_entry.value, new->registry_entry.key->id);
+    res_data = fim_db_insert_registry_data(fim_sql, new->registry_entry.value, new->registry_entry.key->id,
+                                           replace_entry);
 
     fim_db_check_transaction(fim_sql);
 

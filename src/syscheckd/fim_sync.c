@@ -60,7 +60,7 @@ void * fim_run_integrity(void * args) {
         fim_sync_checksum(FIM_TYPE_FILE, &syscheck.fim_entry_mutex);
 #ifdef WIN32
         if (syscheck.enable_registry_synchronization) {
-            fim_sync_checksum(FIM_TYPE_REGISTRY, &syscheck.fim_registry_mutex);
+            fim_sync_checksum(FIM_TYPE_REGISTRY, &syscheck.fim_entry_mutex);
         }
 #endif
         gettime(&end);
@@ -220,38 +220,34 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
     char *str_pathuh = NULL;
     EVP_MD_CTX *ctx_left;
     EVP_MD_CTX *ctx_right;
-    pthread_mutex_t *mutex;
     int result;
 
     if (strncmp(start, "[x32]", 5) == 0) {
         type = FIM_TYPE_REGISTRY;
         component = FIM_COMPONENT_REGISTRY;
-        mutex = &syscheck.fim_registry_mutex;
     } else if (strncmp(start, "[x64]", 5) == 0) {
         type = FIM_TYPE_REGISTRY;
         component = FIM_COMPONENT_REGISTRY;
-        mutex = &syscheck.fim_registry_mutex;
     } else {
         type = FIM_TYPE_FILE;
         component = FIM_COMPONENT_FILE;
-        mutex = &syscheck.fim_entry_mutex;
     }
 
-    w_mutex_lock(mutex);
+    w_mutex_lock(&syscheck.fim_entry_mutex);
     if (fim_db_get_count_range(syscheck.database, type, start, top, &range_size) != FIMDB_OK) {
         merror(FIM_DB_ERROR_COUNT_RANGE, start, top);
         range_size = 0;
     }
-    w_mutex_unlock(mutex)
+    w_mutex_unlock(&syscheck.fim_entry_mutex)
 
     switch (range_size) {
     case 0:
         return;
 
     case 1:
-        w_mutex_lock(mutex);
+        w_mutex_lock(&syscheck.fim_entry_mutex);
         entry = fim_db_get_entry_from_sync_msg(syscheck.database, type, start);
-        w_mutex_unlock(mutex);
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
 
         if (entry == NULL) {
             merror(FIM_DB_ERROR_GET_PATH, start);
@@ -272,10 +268,10 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
         EVP_DigestInit(ctx_left, EVP_sha1());
         EVP_DigestInit(ctx_right, EVP_sha1());
 
-        w_mutex_lock(mutex);
+        w_mutex_lock(&syscheck.fim_entry_mutex);
         result = fim_db_get_checksum_range(syscheck.database, type, start, top, range_size, ctx_left, ctx_right,
                                             &str_pathlh, &str_pathuh);
-        w_mutex_unlock(mutex)
+        w_mutex_unlock(&syscheck.fim_entry_mutex)
 
         if (result == FIMDB_OK) {
             unsigned char digest[EVP_MAX_MD_SIZE] = {0};
@@ -313,23 +309,19 @@ void fim_sync_send_list(const char *start, const char *top) {
     char *line;
     fim_type type;
     const char *component;
-    pthread_mutex_t *mutex;
 
     if (strncmp(start, "[x32]", 5) == 0) {
         type = FIM_TYPE_REGISTRY;
         component = FIM_COMPONENT_REGISTRY;
-        mutex = &syscheck.fim_registry_mutex;
     } else if (strncmp(start, "[x64]", 5) == 0) {
         type = FIM_TYPE_REGISTRY;
         component = FIM_COMPONENT_REGISTRY;
-        mutex = &syscheck.fim_registry_mutex;
     } else {
         type = FIM_TYPE_FILE;
         component = FIM_COMPONENT_FILE;
-        mutex = &syscheck.fim_entry_mutex;
     }
 
-    w_mutex_lock(mutex);
+    w_mutex_lock(&syscheck.fim_entry_mutex);
     if (fim_db_get_path_range(syscheck.database, type, start, top, &file, syscheck.database_store) != FIMDB_OK) {
         merror(FIM_DB_ERROR_SYNC_DB);
         if (file != NULL) {
@@ -337,7 +329,7 @@ void fim_sync_send_list(const char *start, const char *top) {
         }
         return;
     }
-    w_mutex_unlock(mutex);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (file == NULL) {
         return;
@@ -353,9 +345,9 @@ void fim_sync_send_list(const char *start, const char *top) {
         cJSON *file_data;
         char *plain;
 
-        w_mutex_lock(mutex);
+        w_mutex_lock(&syscheck.fim_entry_mutex);
         entry = fim_db_get_entry_from_sync_msg(syscheck.database, type, line);
-        w_mutex_unlock(mutex);
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
 
         if (entry == NULL) {
             merror(FIM_DB_ERROR_GET_PATH, line);

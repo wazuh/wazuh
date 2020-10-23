@@ -94,13 +94,8 @@ void fim_scan() {
 #endif
     if (syscheck.file_limit_enabled) {
         w_mutex_lock(&syscheck.fim_entry_mutex);
-        nodes_count = fim_db_get_count_file_entry(syscheck.database);
+        nodes_count = fim_db_get_count_entries(syscheck.database);
         w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-#ifdef WIN32
-        nodes_count += fim_db_get_count_registry_key(syscheck.database) +
-                       fim_db_get_count_registry_data(syscheck.database);
-#endif
     }
 
     check_deleted_files();
@@ -491,12 +486,8 @@ void fim_check_db_state() {
     char alert_msg[OS_SIZE_256] = {'\0'};
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
-    nodes_count = fim_db_get_count_file_entry(syscheck.database);
+    nodes_count = fim_db_get_count_entries(syscheck.database);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-#ifdef WIN32
-    nodes_count += fim_db_get_count_registry_key(syscheck.database) + fim_db_get_count_registry_data(syscheck.database);
-#endif
 
     switch (_db_state) {
     case FIM_STATE_DB_FULL:

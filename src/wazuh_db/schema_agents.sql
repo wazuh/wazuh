@@ -9,7 +9,7 @@
 CREATE TABLE IF NOT EXISTS fim_entry (
     full_path TEXT NOT NULL PRIMARY KEY,
     file TEXT,
-    type TEXT NOT NULL CHECK (type IN ('file', 'registry')),
+    type TEXT NOT NULL CHECK (type IN ('file', 'registry_key', 'registry_value')),
     date INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
     changes INTEGER NOT NULL DEFAULT 1,
     arch TEXT CHECK (arch IN (NULL, '[x64]', '[x32]')),
