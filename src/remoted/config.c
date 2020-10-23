@@ -115,7 +115,6 @@ cJSON *getRemoteConfig(void) {
     return root;
 }
 
-
 cJSON *getRemoteInternalConfig(void) {
 
     cJSON *root = cJSON_CreateObject();
@@ -147,6 +146,22 @@ cJSON *getRemoteInternalConfig(void) {
 
     cJSON_AddItemToObject(internals,"remoted",remoted);
     cJSON_AddItemToObject(root,"internal",internals);
+
+    return root;
+
+}
+
+cJSON *getRemoteGlobalConfig(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *global = cJSON_CreateObject();
+    cJSON *remoted = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(remoted,"alert_agent_disconnection_time",Config.alert_agent_disconnection_time);
+    cJSON_AddNumberToObject(remoted,"agents_disconnection_time",Config.agents_disconnection_time);
+
+    cJSON_AddItemToObject(global,"remoted",remoted);
+    cJSON_AddItemToObject(root,"global",global);
 
     return root;
 
