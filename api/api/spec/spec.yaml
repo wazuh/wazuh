@@ -5736,8 +5736,8 @@ paths:
   /agents/upgrade:
     put:
       tags:
-        - agents
-      summary: "Upgrade agents using online repository"
+        - Agents
+      summary: "Upgrade agents"
       description: "Upgrade agents using a WPK file from online repository"
       operationId: api.controllers.agents_controller.put_upgrade_agents
       x-rbac-actions:
@@ -5772,8 +5772,8 @@ paths:
   /agents/upgrade_custom:
     put:
       tags:
-        - agents
-      summary: "Upgrade agents using a custom file"
+        - Agents
+      summary: "Upgrade agents custom"
       description: "Upgrade the agents using a local WPK file"
       operationId: api.controllers.agents_controller.put_upgrade_custom_agents
       x-rbac-actions:
@@ -5806,8 +5806,8 @@ paths:
   /agents/upgrade_result:
     get:
       tags:
-        - agents
-      summary: "Get upgrade results from agents"
+        - Agents
+      summary: "Get agents upgrade results"
       description: "Return the upgrade results after updating agents"
       operationId: api.controllers.agents_controller.get_agent_upgrade
       x-rbac-actions:
