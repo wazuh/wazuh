@@ -95,7 +95,10 @@ nlohmann::json SysInfo::getPackages() const
     const auto apps{Utils::enumerateDir(MAC_APPS_PATH)};
     for(const auto& app : apps)
     {
-        std::cout << app << std::endl;
+        if (Utils::endsWith(app, ".app"))
+        {
+            std::cout << app << std::endl;
+        }
     }
     return ret;
 }

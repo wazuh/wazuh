@@ -117,6 +117,17 @@ namespace Utils
         }
         return false;
     }
+
+    static bool endsWith(const std::string& str, const std::string& ending)
+    {
+        if (!str.empty() && str.length() >= ending.length())
+        {
+            const auto endLength{ ending.length()};
+            const auto token{ str.substr(str.length() - endLength, endLength) };
+            return token == ending;
+        }
+        return false;
+    }
 }
 
 #pragma GCC diagnostic pop
