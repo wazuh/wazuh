@@ -49,6 +49,11 @@
 #define WDB_MAX_COMMAND_SIZE    512
 #define WDB_MAX_RESPONSE_SIZE   OS_MAXSTR-WDB_MAX_COMMAND_SIZE
 
+#define AGENT_CS_NEVER_CONNECTED "never_connected"
+#define AGENT_CS_PENDING         "pending"
+#define AGENT_CS_ACTIVE          "active"
+#define AGENT_CS_DISCONNECTED    "disconnected"
+
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
     WDB_STMT_FIM_FIND_ENTRY,
@@ -262,6 +267,7 @@ typedef struct agent_info_data {
     char *node_name;
     char *agent_ip;
     char *labels;
+    char *connection_status;
     char *sync_status;
 } agent_info_data;
 
@@ -458,11 +464,12 @@ int wdb_update_agent_data(agent_info_data *agent_data, int *sock);
  * @brief Update agent's last keepalive and modifies the cluster synchronization status.
  *
  * @param[in] id Id of the agent for whom the keepalive must be updated.
+ * @param[in] connection_status String with the connection status to be set.
  * @param[in] sync_status String with the cluster synchronization status to be set.
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_update_agent_keepalive(int id, const char *sync_status, int *sock);
+int wdb_update_agent_keepalive(int id, const char *connection_status, const char *sync_status, int *sock);
 
 /**
  * @brief Update agent's connection status.
@@ -1464,6 +1471,7 @@ int wdb_global_update_agent_name(wdb_t *wdb, int id, char* name);
  * @param [in] manager_host The agent's manager host name.
  * @param [in] node_name The agent's manager node name.
  * @param [in] agent_ip The agent's IP address.
+ * @param [in] connection_status The agent's connection status.
  * @param [in] sync_status The agent's synchronization status in cluster.
  * @return Returns 0 on success or -1 on error.
  */
@@ -1484,6 +1492,7 @@ int wdb_global_update_agent_version(wdb_t *wdb,
                                     const char *manager_host,
                                     const char *node_name,
                                     const char *agent_ip,
+                                    const char *connection_status,
                                     const char *sync_status);
 
 /**
@@ -1520,10 +1529,11 @@ int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value);
  *
  * @param [in] wdb The Global struct database.
  * @param [in] id The agent ID
+ * @param [in] connection_status The agent's connection status.
  * @param [in] status The value of sync_status
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *sync_status);
+int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection_status, const char *sync_status);
 
 /**
  * @brief Function to update an agent connection status.
