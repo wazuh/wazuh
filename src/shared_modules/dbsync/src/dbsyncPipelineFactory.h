@@ -35,11 +35,11 @@ namespace DbSync
     public:
         static PipelineFactory& instance() noexcept;
         void release() noexcept;
-        PipelineCtxHandle create(const DBSYNC_HANDLE handle,
-                                 const char* tables,
-                                 const unsigned int threadNumber,
-                                 const unsigned int maxQueueSize,
-                                 const ResultCallback callback);
+        PipelineCtxHandle create(const DBSYNC_HANDLE    handle,
+                                 const nlohmann::json&  tables,
+                                 const unsigned int     threadNumber,
+                                 const unsigned int     maxQueueSize,
+                                 const ResultCallback   callback);
         const std::shared_ptr<IPipeline>& pipeline(const PipelineCtxHandle handle);
         void destroy(const PipelineCtxHandle handle);
     private:

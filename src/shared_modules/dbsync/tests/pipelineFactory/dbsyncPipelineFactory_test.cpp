@@ -50,7 +50,7 @@ TEST_F(DBSyncPipelineFactoryTest, CreatePipelineOk)
     const auto pipeHandle
     {
         m_pipelineFactory.create(m_dbHandle,
-                                 json[0]["tables"].dump().c_str(),
+                                 json[0]["tables"],
                                  threadNumber,
                                  maxQueueSize,
                                  [](ReturnTypeCallback, const nlohmann::json&){})
@@ -67,7 +67,7 @@ TEST_F(DBSyncPipelineFactoryTest, CreatePipelineInvalidHandle)
     EXPECT_THROW
     (
         m_pipelineFactory.create(handle,
-                                 json[0]["tables"].dump().c_str(),
+                                 json[0]["tables"],
                                  threadNumber,
                                  maxQueueSize,
                                  [](ReturnTypeCallback, const nlohmann::json&){}),
@@ -83,7 +83,7 @@ TEST_F(DBSyncPipelineFactoryTest, CreatePipelineInvalidTxnContext)
     EXPECT_THROW
     (
         m_pipelineFactory.create(m_dbHandle,
-                                 json[0]["tables"].dump().c_str(),
+                                 json[0]["tables"],
                                  threadNumber,
                                  maxQueueSize,
                                  [](ReturnTypeCallback, const nlohmann::json&){}),
@@ -99,7 +99,7 @@ TEST_F(DBSyncPipelineFactoryTest, CreatePipelineInvalidCallback)
     EXPECT_THROW
     (
         m_pipelineFactory.create(m_dbHandle,
-                                 json[0]["tables"].dump().c_str(),
+                                 json[0]["tables"],
                                  threadNumber,
                                  maxQueueSize,
                                  nullptr),
@@ -134,7 +134,7 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRowInvalidData)
     const auto pipeHandle
     {
         m_pipelineFactory.create(m_dbHandle,
-                                 json[0]["tables"].dump().c_str(),
+                                 json[0]["tables"],
                                  threadNumber,
                                  maxQueueSize,
                                  resultFnc)
@@ -168,7 +168,7 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRow)
     const auto pipeHandle
     {
         m_pipelineFactory.create(m_dbHandle,
-                                 json[0]["tables"].dump().c_str(),
+                                 json[0]["tables"],
                                  threadNumber,
                                  maxQueueSize,
                                  resultFnc)
@@ -205,7 +205,7 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRowMaxQueueSize)
     const auto pipeHandle
     {
         m_pipelineFactory.create(m_dbHandle,
-                                 json[0]["tables"].dump().c_str(),
+                                 json[0]["tables"],
                                  threadNumber,
                                  maxQueueSize,
                                  resultFnc)
@@ -235,14 +235,14 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRowAndGetDeleted)
     EXPECT_CALL(wrapper, callback(INSERTED, nlohmann::json::parse(R"([{"pid":6,"name":"System2","tid":105}])"))).Times(1);
     EXPECT_CALL(wrapper, callback(DELETED, nlohmann::json::parse(R"({"pid":5,"name":"System1","tid":101})"))).Times(1);
     EXPECT_CALL(wrapper, callback(DELETED, nlohmann::json::parse(R"({"pid":7,"name":"System7","tid":101})"))).Times(1);
-    DBSyncImplementation::instance().syncRowData(m_dbHandle, jsonInputNoTxn, nullptr);
+    DBSyncImplementation::instance().syncRowData(m_dbHandle, nlohmann::json::parse(jsonInputNoTxn), nullptr);
     const auto json{ nlohmann::json::parse(R"({"tables": ["processes"]})") };
     const int threadNumber{ 1 };
     const int maxQueueSize{ 1000 };
     const auto pipeHandle
     {
         m_pipelineFactory.create(m_dbHandle,
-                                 json[0]["tables"].dump().c_str(),
+                                 json[0]["tables"],
                                  threadNumber,
                                  maxQueueSize,
                                  resultFnc)
@@ -272,14 +272,14 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRowAndGetDeletedSameData)
     EXPECT_CALL(wrapper, callback(MODIFIED, nlohmann::json::parse(R"({"pid":4,"tid":101})"))).Times(1);
     EXPECT_CALL(wrapper, callback(INSERTED, nlohmann::json::parse(R"([{"pid":6,"name":"System2","tid":105}])"))).Times(1);
     EXPECT_CALL(wrapper, callback(DELETED, nlohmann::json::parse(R"({"pid":7,"name":"System7","tid":101})"))).Times(1);
-    DBSyncImplementation::instance().syncRowData(m_dbHandle, jsonInputNoTxn, nullptr);
+    DBSyncImplementation::instance().syncRowData(m_dbHandle, nlohmann::json::parse(jsonInputNoTxn), nullptr);
     const auto json{ nlohmann::json::parse(R"({"tables": ["processes"]})") };
     const int threadNumber{ 1 };
     const int maxQueueSize{ 1000 };
     const auto pipeHandle
     {
         m_pipelineFactory.create(m_dbHandle,
-                                 json[0]["tables"].dump().c_str(),
+                                 json[0]["tables"],
                                  threadNumber,
                                  maxQueueSize,
                                  resultFnc)

@@ -12,6 +12,7 @@
 #include <map>
 #include <mutex>
 #include "dbsync.h"
+#include "dbsync.hpp"
 #include "dbsync_implementation.h"
 #include "dbsyncPipelineFactory.h"
 
@@ -117,7 +118,7 @@ TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
                 }
             };
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(tables)};
-            txn = PipelineFactory::instance().create(handle, spJsonBytes.get(), thread_number, max_queue_size, callbackWrapper);
+            txn = PipelineFactory::instance().create(handle, nlohmann::json::parse(spJsonBytes.get()), thread_number, max_queue_size, callbackWrapper);
         }
         catch(const DbSync::dbsync_error& ex)
         {
@@ -212,7 +213,7 @@ int dbsync_add_table_relationship(const DBSYNC_HANDLE handle,
         try
         {
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(js_input)};
-            DBSyncImplementation::instance().addTableRelationship(handle, spJsonBytes.get());
+            DBSyncImplementation::instance().addTableRelationship(handle, nlohmann::json::parse(spJsonBytes.get()));
             retVal = 0;
         }
         catch(const nlohmann::detail::exception& ex)
@@ -249,7 +250,7 @@ int dbsync_insert_data(const DBSYNC_HANDLE handle,
         try
         {
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(js_insert)};
-            DBSyncImplementation::instance().insertBulkData(handle, spJsonBytes.get());
+            DBSyncImplementation::instance().insertBulkData(handle, nlohmann::json::parse(spJsonBytes.get()));
             retVal = 0;
         }
         catch(const nlohmann::detail::exception& ex)
@@ -336,7 +337,7 @@ int dbsync_sync_row(const DBSYNC_HANDLE handle,
                 }
             };
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(js_input) };
-            DBSyncImplementation::instance().syncRowData(handle, spJsonBytes.get(), callbackWrapper);
+            DBSyncImplementation::instance().syncRowData(handle, nlohmann::json::parse(spJsonBytes.get()), callbackWrapper);
             retVal = 0;
         }
         catch(const nlohmann::detail::exception& ex)
@@ -383,7 +384,7 @@ int dbsync_select_rows(const DBSYNC_HANDLE handle,
                 }
             };
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(js_data_input) };
-            DBSyncImplementation::instance().selectData(handle, spJsonBytes.get(), callbackWrapper);
+            DBSyncImplementation::instance().selectData(handle, nlohmann::json::parse(spJsonBytes.get()), callbackWrapper);
             retVal = 0;
         }
         catch(const nlohmann::detail::exception& ex)
@@ -421,7 +422,7 @@ int dbsync_delete_rows(const DBSYNC_HANDLE handle,
         try
         {
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(js_key_values) };
-            DBSyncImplementation::instance().deleteRowsData(handle, spJsonBytes.get());
+            DBSyncImplementation::instance().deleteRowsData(handle, nlohmann::json::parse(spJsonBytes.get()));
             retVal = 0;
         }
         catch(const nlohmann::detail::exception& ex)
@@ -507,15 +508,17 @@ int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
                 {
                     static std::map<ReturnTypeCallback, std::string> s_opMap
                     {
+                        // LCOV_EXCL_START
                         { MODIFIED , "modified" },
                         { DELETED  ,  "deleted" },
                         { INSERTED , "inserted" }
+                        // LCOV_EXCL_STOP
                     };
                     result[s_opMap.at(resultType)].push_back(jsonResult);
                 }
             };
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(js_snapshot)};
-            DBSyncImplementation::instance().updateSnapshotData(handle, spJsonBytes.get(), callbackWrapper);
+            DBSyncImplementation::instance().updateSnapshotData(handle, nlohmann::json::parse(spJsonBytes.get()), callbackWrapper);
             *js_result = cJSON_Parse(result.dump().c_str());
             retVal = 0;
         }
@@ -568,7 +571,7 @@ int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
                 }
             };
             const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(js_snapshot)};
-            DBSyncImplementation::instance().updateSnapshotData(handle, spJsonBytes.get(), callbackWrapper);
+            DBSyncImplementation::instance().updateSnapshotData(handle, nlohmann::json::parse(spJsonBytes.get()), callbackWrapper);
             retVal = 0;
         }
         catch(const nlohmann::detail::exception& ex)
@@ -603,3 +606,158 @@ void dbsync_free_result(cJSON** js_data)
 #ifdef __cplusplus
 }
 #endif
+
+
+DBSync::DBSync(const HostType     hostType,
+               const DbEngineType dbType,
+               const std::string& path,
+               const std::string& sqlStatement)
+: m_dbsyncHandle { DBSyncImplementation::instance().initialize(hostType, dbType, path, sqlStatement) }
+, m_shouldBeRemoved{ true }
+{ }
+
+DBSync::DBSync(const DBSYNC_HANDLE dbsyncHandle)
+: m_dbsyncHandle { dbsyncHandle }
+, m_shouldBeRemoved{ false }
+{ }
+
+DBSync::~DBSync()
+{
+    if (m_shouldBeRemoved)
+    {
+        DBSyncImplementation::instance().releaseContext(m_dbsyncHandle);
+    }
+}
+
+
+void DBSync::teardown()
+{
+    PipelineFactory::instance().release();
+    DBSyncImplementation::instance().release();    
+}
+
+void DBSync::addTableRelationship(const nlohmann::json& jsInput)
+{
+    DBSyncImplementation::instance().addTableRelationship(m_dbsyncHandle, jsInput);
+}
+
+void DBSync::insertData(const nlohmann::json& jsInsert)
+{
+    DBSyncImplementation::instance().insertBulkData(m_dbsyncHandle, jsInsert);
+}
+
+void DBSync::setTableMaxRow(const std::string&       table,
+                            const unsigned long long maxRows)
+{
+    DBSyncImplementation::instance().setMaxRows(m_dbsyncHandle, table, maxRows);
+}
+
+void DBSync::syncRow(const nlohmann::json& jsInput,
+                     ResultCallbackData    callbackData)
+{
+    const auto callbackWrapper
+    {
+        [callbackData](ReturnTypeCallback result, const nlohmann::json& jsonResult)
+        {
+            callbackData(result, jsonResult);
+        }
+    };
+    DBSyncImplementation::instance().syncRowData(m_dbsyncHandle, jsInput, callbackWrapper);
+}
+
+void DBSync::selectRows(const nlohmann::json& jsInput,
+                        ResultCallbackData    callbackData)
+{
+    const auto callbackWrapper
+    {
+        [callbackData](ReturnTypeCallback result, const nlohmann::json& jsonResult)
+        {
+            callbackData(result, jsonResult);
+        }
+    };
+    DBSyncImplementation::instance().selectData(m_dbsyncHandle, jsInput, callbackWrapper);
+}
+
+void DBSync::deleteRows(const nlohmann::json& jsInput)
+{
+    DBSyncImplementation::instance().deleteRowsData(m_dbsyncHandle, jsInput);
+}
+
+void DBSync::updateWithSnapshot(const nlohmann::json& jsInput,
+                                nlohmann::json&       jsResult)
+{
+    const auto callbackWrapper
+    {
+        [&jsResult](ReturnTypeCallback resultType, const nlohmann::json& jsonResult)
+        {
+            static std::map<ReturnTypeCallback, std::string> s_opMap
+            {
+                // LCOV_EXCL_START
+                { MODIFIED , "modified" },
+                { DELETED  ,  "deleted" },
+                { INSERTED , "inserted" }
+                // LCOV_EXCL_STOP
+            };
+            jsResult[s_opMap.at(resultType)].push_back(jsonResult);
+        }
+    };
+    DBSyncImplementation::instance().updateSnapshotData(m_dbsyncHandle, jsInput, callbackWrapper);
+}
+
+void DBSync::updateWithSnapshot(const nlohmann::json&     jsInput,
+                                ResultCallbackData        callbackData)
+{
+    const auto callbackWrapper
+    {
+        [callbackData](ReturnTypeCallback result, const nlohmann::json& jsonResult)
+        {
+            callbackData(result, jsonResult);
+        }
+    };
+    DBSyncImplementation::instance().updateSnapshotData(m_dbsyncHandle, jsInput, callbackWrapper);
+}
+
+
+DBSyncTxn::DBSyncTxn(const DBSYNC_HANDLE   handle,
+                     const nlohmann::json& tables,
+                     const unsigned int    threadNumber,
+                     const unsigned int    maxQueueSize,
+                     ResultCallbackData    callbackData)
+: m_shouldBeRemoved { true }
+{
+    const auto callbackWrapper
+    {
+        [callbackData](ReturnTypeCallback result, const nlohmann::json& jsonResult)
+        {
+            callbackData(result, jsonResult);
+        }
+    };
+    m_txn = PipelineFactory::instance().create(handle, tables, threadNumber, maxQueueSize, callbackWrapper);
+}
+
+DBSyncTxn::DBSyncTxn(const TXN_HANDLE handle)
+: m_txn { handle }
+, m_shouldBeRemoved { false }
+{ }
+
+DBSyncTxn::~DBSyncTxn()
+{
+    PipelineFactory::instance().destroy(m_txn);
+}
+
+void DBSyncTxn::syncTxnRow(const nlohmann::json& jsInput)
+{
+    PipelineFactory::instance().pipeline(m_txn)->syncRow(jsInput);
+}
+
+void DBSyncTxn::getDeletedRows(ResultCallbackData  callbackData)
+{
+    const auto callbackWrapper
+    {
+        [&callbackData](ReturnTypeCallback result, const nlohmann::json& jsonResult)
+        {
+            callbackData(result, jsonResult);
+        }
+    };
+    PipelineFactory::instance().pipeline(m_txn)->getDeleted(callbackWrapper);
+}
