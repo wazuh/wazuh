@@ -81,6 +81,7 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_GET_REG_FIRST_PATH] = "SELECT path FROM registry_view ORDER BY path ASC LIMIT 1;",
     [FIMDB_STMT_GET_REG_ALL_CHECKSUMS] = "SELECT checksum FROM registry_view ORDER BY path ASC;",
     [FIMDB_STMT_GET_REG_COUNT_RANGE] = "SELECT count(*) FROM registry_view WHERE path BETWEEN ? AND ? ORDER BY path;",
+    [FIMDB_STMT_COUNT_DB_ENTRIES] = "SELECT (SELECT count(*) FROM file_entry) + (SELECT count(*) FROM registry_key) + (SELECT count(*) FROM registry_data);",
 };
 
 fdb_t *fim_db_init(int storage) {
@@ -544,10 +545,12 @@ void fim_db_callback_calculate_checksum(__attribute__((unused)) fdb_t *fim_sql, 
 int fim_db_get_count(fdb_t *fim_sql, int index) {
 
 #ifndef WIN32
-    if (index == FIMDB_STMT_GET_COUNT_PATH || index == FIMDB_STMT_GET_COUNT_DATA) {
+    if (index == FIMDB_STMT_GET_COUNT_PATH || index == FIMDB_STMT_GET_COUNT_DATA ||
+        index == FIMDB_STMT_COUNT_DB_ENTRIES) {
 #else
     if (index == FIMDB_STMT_GET_COUNT_REG_KEY || index == FIMDB_STMT_GET_COUNT_REG_DATA ||
-        index == FIMDB_STMT_GET_COUNT_PATH    || index == FIMDB_STMT_GET_COUNT_DATA) {
+        index == FIMDB_STMT_GET_COUNT_PATH || index == FIMDB_STMT_GET_COUNT_DATA ||
+        index == FIMDB_STMT_COUNT_DB_ENTRIES) {
 #endif
         fim_db_clean_stmt(fim_sql, index);
 
@@ -884,3 +887,18 @@ int fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **b
     }
     return 0;
 }
+
+#ifndef WIN32
+inline int fim_db_get_count_entries(fdb_t * fim_sql) {
+    return fim_db_get_count_file_entry(fim_sql);
+}
+#else
+int fim_db_get_count_entries(fdb_t * fim_sql) {
+    int res = fim_db_get_count(fim_sql, FIMDB_STMT_COUNT_DB_ENTRIES);
+
+    if(res == FIMDB_ERR) {
+        merror("Step error getting count entry path: %s", sqlite3_errmsg(fim_sql->db));
+    }
+    return res;
+}
+#endif

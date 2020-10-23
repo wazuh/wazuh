@@ -73,6 +73,7 @@ typedef enum fdb_stmt {
     FIMDB_STMT_GET_REG_FIRST_PATH,
     FIMDB_STMT_GET_REG_ALL_CHECKSUMS,
     FIMDB_STMT_GET_REG_COUNT_RANGE,
+    FIMDB_STMT_COUNT_DB_ENTRIES,
     FIMDB_STMT_SIZE
 } fdb_stmt;
 
@@ -404,7 +405,6 @@ typedef struct _config {
     pthread_mutex_t fim_entry_mutex;
     pthread_mutex_t fim_scan_mutex;
     pthread_mutex_t fim_realtime_mutex;
-    pthread_mutex_t fim_registry_mutex;
 
     rtfim *realtime;
     fdb_t *database;

@@ -113,6 +113,10 @@ typedef enum fim_fields {
     FIM_PROC_ID,
     FIM_TAG,
     FIM_SYM_PATH,
+    FIM_REGISTRY_ARCH,
+    FIM_REGISTRY_VALUE_NAME,
+    FIM_REGISTRY_VALUE_TYPE,
+    FIM_ENTRY_TYPE,
     FIM_NFIELDS
 } fim_fields;
 

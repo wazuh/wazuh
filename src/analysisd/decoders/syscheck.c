@@ -105,9 +105,25 @@ static void fim_adjust_checksum(sk_sum_t *newsum, char **checksum);
 // Mutexes
 static pthread_mutex_t control_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static int decode_event_add;
-static int decode_event_delete;
-static int decode_event_modify;
+typedef struct _fim_decoders_t {
+    int add_id;
+    char *add_name;
+    int modify_id;
+    char *modify_name;
+    int delete_id;
+    char *delete_name;
+} fim_decoders_t;
+
+typedef enum DECODER_TYPE { FILE_DECODER, REGISTRY_KEY_DECODER, REGISTRY_VALUE_DECODER } DECODER_TYPE;
+
+static fim_decoders_t file_decoders;
+static fim_decoders_t registry_key_decoders;
+static fim_decoders_t registry_value_decoders;
+static fim_decoders_t *fim_decoders[] = {
+    [FILE_DECODER] = &file_decoders,
+    [REGISTRY_KEY_DECODER] = &registry_key_decoders,
+    [REGISTRY_VALUE_DECODER] = &registry_value_decoders,
+};
 OSHash *fim_agentinfo;
 
 // Initialize the necessary information to process the syscheck information
@@ -115,9 +131,24 @@ OSHash *fim_agentinfo;
 int fim_init(void) {
     //Create hash table for agent information
     fim_agentinfo = OSHash_Create();
-    decode_event_add = getDecoderfromlist(SYSCHECK_NEW);
-    decode_event_modify = getDecoderfromlist(SYSCHECK_MOD);
-    decode_event_delete = getDecoderfromlist(SYSCHECK_DEL);
+    fim_decoders[FILE_DECODER]->add_id = getDecoderfromlist(FIM_NEW);
+    fim_decoders[FILE_DECODER]->add_name = FIM_NEW;
+    fim_decoders[FILE_DECODER]->modify_id = getDecoderfromlist(FIM_MOD);
+    fim_decoders[FILE_DECODER]->modify_name = FIM_MOD;
+    fim_decoders[FILE_DECODER]->delete_id = getDecoderfromlist(FIM_DEL);
+    fim_decoders[FILE_DECODER]->delete_name = FIM_DEL;
+    fim_decoders[REGISTRY_KEY_DECODER]->add_id = getDecoderfromlist(FIM_REG_KEY_NEW);
+    fim_decoders[REGISTRY_KEY_DECODER]->add_name = FIM_REG_KEY_NEW;
+    fim_decoders[REGISTRY_KEY_DECODER]->modify_id = getDecoderfromlist(FIM_REG_KEY_MOD);
+    fim_decoders[REGISTRY_KEY_DECODER]->modify_name = FIM_REG_KEY_MOD;
+    fim_decoders[REGISTRY_KEY_DECODER]->delete_id = getDecoderfromlist(FIM_REG_KEY_DEL);
+    fim_decoders[REGISTRY_KEY_DECODER]->delete_name = FIM_REG_KEY_DEL;
+    fim_decoders[REGISTRY_VALUE_DECODER]->add_id = getDecoderfromlist(FIM_REG_VAL_NEW);
+    fim_decoders[REGISTRY_VALUE_DECODER]->add_name = FIM_REG_VAL_NEW;
+    fim_decoders[REGISTRY_VALUE_DECODER]->modify_id = getDecoderfromlist(FIM_REG_VAL_MOD);
+    fim_decoders[REGISTRY_VALUE_DECODER]->modify_name = FIM_REG_VAL_MOD;
+    fim_decoders[REGISTRY_VALUE_DECODER]->delete_id = getDecoderfromlist(FIM_REG_VAL_DEL);
+    fim_decoders[REGISTRY_VALUE_DECODER]->delete_name = FIM_REG_VAL_DEL;
     if (fim_agentinfo == NULL) return 0;
     return 1;
 }
@@ -130,8 +161,8 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     sdb_clean(localsdb);
 
     // Create decoder
-    fim_decoder->id = getDecoderfromlist(SYSCHECK_MOD);
-    fim_decoder->name = SYSCHECK_MOD;
+    fim_decoder->id = getDecoderfromlist(FIM_MOD);
+    fim_decoder->name = FIM_MOD;
     fim_decoder->type = OSSEC_RL;
     fim_decoder->fts = 0;
 
@@ -170,6 +201,11 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     fim_decoder->fields[FIM_EFFECTIVE_NAME] = "effective_name";
     fim_decoder->fields[FIM_PPID] = "ppid";
     fim_decoder->fields[FIM_PROC_ID] = "process_id";
+
+    fim_decoder->fields[FIM_REGISTRY_ARCH] = "arch";
+    fim_decoder->fields[FIM_REGISTRY_VALUE_NAME] = "value_name";
+    fim_decoder->fields[FIM_REGISTRY_VALUE_TYPE] = "value_type";
+    fim_decoder->fields[FIM_ENTRY_TYPE] = "entry_type";
 }
 
 // Initialize the necessary information to process the syscheck information
@@ -503,23 +539,23 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
     switch (lf->event_type) {
         case FIM_DELETED:
             snprintf(msg_type, sizeof(msg_type), "was deleted.");
-            lf->decoder_info->id = decode_event_delete;
+            lf->decoder_info->id = fim_decoders[FILE_DECODER]->delete_id;
             lf->decoder_syscheck_id = lf->decoder_info->id;
-            lf->decoder_info->name = SYSCHECK_MOD;
+            lf->decoder_info->name = fim_decoders[FILE_DECODER]->delete_name;
             changes=1;
             break;
         case FIM_ADDED:
             snprintf(msg_type, sizeof(msg_type), "was added.");
-            lf->decoder_info->id = decode_event_add;
+            lf->decoder_info->id = fim_decoders[FILE_DECODER]->add_id;
             lf->decoder_syscheck_id = lf->decoder_info->id;
-            lf->decoder_info->name = SYSCHECK_NEW;
+            lf->decoder_info->name = fim_decoders[FILE_DECODER]->add_name;
             changes=1;
             break;
         case FIM_MODIFIED:
             snprintf(msg_type, sizeof(msg_type), "checksum changed.");
-            lf->decoder_info->id = decode_event_modify;
+            lf->decoder_info->id = fim_decoders[FILE_DECODER]->modify_id;
             lf->decoder_syscheck_id = lf->decoder_info->id;
-            lf->decoder_info->name = SYSCHECK_MOD;
+            lf->decoder_info->name = fim_decoders[FILE_DECODER]->modify_name;
             if (oldsum->size && newsum->size) {
                 if (strcmp(oldsum->size, newsum->size) == 0) {
                     localsdb->size[0] = '\0';
@@ -1206,6 +1242,8 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
     cJSON *audit = NULL;
     cJSON *object = NULL;
     char *event_type = NULL;
+    char *entry_type = NULL;
+    fim_decoders_t *decoder = NULL;
 
     cJSON_ArrayForEach(object, event) {
         if (object->string == NULL) {
@@ -1228,6 +1266,12 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
                 os_strdup(object->valuestring, lf->sk_tag);
             } else if (strcmp(object->string, "content_changes") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_DIFF].value);
+            } else if (strcmp(object->string, "arch") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_REGISTRY_ARCH].value);
+            } else if (strcmp(object->string, "value_name") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_REGISTRY_VALUE_NAME].value);
+            } else if (strcmp(object->string, "value_type") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_REGISTRY_VALUE_TYPE].value);
             }
 
             break;
@@ -1263,18 +1307,36 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
         return -1;
     }
 
+    entry_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type"));
+    if (entry_type == NULL) {
+        mdebug1("No member 'type' in Syscheck attributes JSON payload");
+        return -1;
+    }
+
+    if (strcmp("file", entry_type) == 0 || strcmp("registry", entry_type) == 0) {
+        decoder = fim_decoders[FILE_DECODER];
+    } else if (strcmp("registry_key", entry_type) == 0) {
+        decoder = fim_decoders[REGISTRY_KEY_DECODER];
+    } else if (strcmp("registry_value", entry_type) == 0) {
+        decoder = fim_decoders[REGISTRY_VALUE_DECODER];
+    } else {
+        mdebug1("Invalid member 'type' in Syscheck attributes JSON payload");
+        return -1;
+    }
+    os_strdup(entry_type, lf->fields[FIM_ENTRY_TYPE].value);
+
     if (strcmp("added", event_type) == 0) {
         lf->event_type = FIM_ADDED;
-        lf->decoder_info->name = SYSCHECK_NEW;
-        lf->decoder_info->id = decode_event_add;
+        lf->decoder_info->name = decoder->add_name;
+        lf->decoder_info->id = decoder->add_id;
     } else if (strcmp("modified", event_type) == 0) {
         lf->event_type = FIM_MODIFIED;
-        lf->decoder_info->name = SYSCHECK_MOD;
-        lf->decoder_info->id = decode_event_modify;
+        lf->decoder_info->name = decoder->modify_name;
+        lf->decoder_info->id = decoder->modify_id;
     } else if (strcmp("deleted", event_type) == 0) {
         lf->event_type = FIM_DELETED;
-        lf->decoder_info->name = SYSCHECK_DEL;
-        lf->decoder_info->id = decode_event_delete;
+        lf->decoder_info->name = decoder->delete_name;
+        lf->decoder_info->id =  decoder->delete_id;
     } else {
         mdebug1("Invalid 'type' value '%s' in JSON payload.", event_type);
         return -1;
@@ -1369,6 +1431,9 @@ end:
 
 
 static int fim_generate_alert(Eventinfo *lf, char *event_type, cJSON *attributes, cJSON *old_attributes, cJSON *audit) {
+    static const char *ENTRY_TYPE_FILE = "File";
+    static const char *ENTRY_TYPE_REGISTRY_KEY = "Registry Key";
+    static const char *ENTRY_TYPE_REGISTRY_VALUE = "Registry Value";
 
     cJSON *object = NULL;
     char change_size[OS_FLSIZE + 1] = {'\0'};
@@ -1383,7 +1448,11 @@ static int fim_generate_alert(Eventinfo *lf, char *event_type, cJSON *attributes
     char change_mtime[OS_FLSIZE + 1] = {'\0'};
     char change_inode[OS_FLSIZE + 1] = {'\0'};
     char change_win_attributes[OS_SIZE_256 + 1] = {'\0'};
+    const char *entry_type = NULL;
     int it;
+    int path_len = 0;
+    char path_buffer[757];
+    char *path;
 
     /* Dynamic Fields */
     lf->nfields = FIM_NFIELDS;
@@ -1484,25 +1553,53 @@ static int fim_generate_alert(Eventinfo *lf, char *event_type, cJSON *attributes
         os_free(hard_links_tmp);
     }
 
-    // When full_log field is too long (max 756), it is fixed to show the last part of the path (more relevant)
-    char path_splitted[757];
-    int path_log_len = 0;
+    if (strcmp("file", lf->fields[FIM_ENTRY_TYPE].value) == 0 ||
+        strcmp("registry", lf->fields[FIM_ENTRY_TYPE].value) == 0) {
+        entry_type = ENTRY_TYPE_FILE;
+        path_len = strlen(lf->fields[FIM_FILE].value);
 
-    if(lf->fields[FIM_FILE].value != NULL) {
-        path_log_len = strlen(lf->fields[FIM_FILE].value);
-        if (path_log_len > 756){
-            char * aux = lf->fields[FIM_FILE].value + path_log_len - 30;
-            snprintf(path_splitted, 757, "%.719s [...] %s", lf->fields[FIM_FILE].value, aux);
+        if (path_len > 756) {
+            char *aux = lf->fields[FIM_FILE].value + path_len - 30;
+            snprintf(path_buffer, 757, "%.719s [...] %s", lf->fields[FIM_FILE].value, aux);
+            path = path_buffer;
+        } else {
+            path = lf->fields[FIM_FILE].value;
+        }
+    } else if (strcmp("registry_key", lf->fields[FIM_ENTRY_TYPE].value) == 0) {
+        entry_type = ENTRY_TYPE_REGISTRY_KEY;
+        path = path_buffer;
+
+        path_len = 6 + strlen(lf->fields[FIM_FILE].value);
+        if (path_len > 756) {
+            char *aux = lf->fields[FIM_FILE].value + path_len - 30;
+            snprintf(path_buffer, 757, "%s %.713s [...] %s", lf->fields[FIM_REGISTRY_ARCH].value,
+                     lf->fields[FIM_FILE].value, aux);
+        } else {
+            snprintf(path_buffer, 757, "%s %s", lf->fields[FIM_REGISTRY_ARCH].value, lf->fields[FIM_FILE].value);
+        }
+    } else if (strcmp("registry_value", lf->fields[FIM_ENTRY_TYPE].value) == 0) {
+        int value_len = strlen(lf->fields[FIM_REGISTRY_VALUE_NAME].value);
+        entry_type = ENTRY_TYPE_REGISTRY_VALUE;
+        path = path_buffer;
+
+        path_len = 6 + strlen(lf->fields[FIM_FILE].value) + value_len;
+        if (path_len > 756) {
+            snprintf(path_buffer, 757, "%s %.*s [...] \\%s", lf->fields[FIM_REGISTRY_ARCH].value,
+                     751 - value_len < 0 ? 0 : 751 - value_len, lf->fields[FIM_FILE].value,
+                     lf->fields[FIM_REGISTRY_VALUE_NAME].value);
+        } else {
+            snprintf(path_buffer, 757, "%s %s\\%s", lf->fields[FIM_REGISTRY_ARCH].value, lf->fields[FIM_FILE].value,
+                     lf->fields[FIM_REGISTRY_VALUE_NAME].value);
         }
     }
 
     snprintf(lf->full_log, OS_MAXSTR,
-            "File '%s' %s\n"
+            "%s '%s' %s\n"
             "%s"
             "Mode: %s\n"
             "%s"
             "%s%s%s%s%s%s%s%s%s%s%s%s",
-            path_log_len > 756 ? path_splitted : lf->fields[FIM_FILE].value, event_type,
+            entry_type, path, event_type,
             lf->fields[FIM_HARD_LINKS].value ? hard_links : "",
             lf->fields[FIM_MODE].value,
             lf->fields[FIM_CHFIELDS].value ? changed_attributes : "",

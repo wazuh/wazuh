@@ -612,26 +612,26 @@ void fim_registry_process_unscanned_entries() {
     fim_event_mode event_mode = FIM_SCHEDULED;
     int result;
 
-    w_mutex_lock(&syscheck.fim_registry_mutex);
+    w_mutex_lock(&syscheck.fim_entry_mutex);
     result = fim_db_get_registry_keys_not_scanned(syscheck.database, &file, syscheck.database_store);
-    w_mutex_unlock(&syscheck.fim_registry_mutex);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (result != FIMDB_OK) {
         mwarn(FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
     } else if (file && file->elements) {
-        fim_db_process_read_file(syscheck.database, file, FIM_TYPE_REGISTRY, &syscheck.fim_registry_mutex,
+        fim_db_process_read_file(syscheck.database, file, FIM_TYPE_REGISTRY, &syscheck.fim_entry_mutex,
                                  fim_registry_process_key_delete_event, syscheck.database_store, &_base_line,
                                  &event_mode, NULL);
     }
 
-    w_mutex_lock(&syscheck.fim_registry_mutex);
+    w_mutex_lock(&syscheck.fim_entry_mutex);
     result = fim_db_get_registry_data_not_scanned(syscheck.database, &file, syscheck.database_store);
-    w_mutex_unlock(&syscheck.fim_registry_mutex);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (result != FIMDB_OK) {
         mwarn(FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
     } else if (file && file->elements) {
-        fim_db_process_read_registry_data_file(syscheck.database, file, &syscheck.fim_registry_mutex,
+        fim_db_process_read_registry_data_file(syscheck.database, file, &syscheck.fim_entry_mutex,
                                                fim_registry_process_value_delete_event, syscheck.database_store,
                                                &_base_line, &event_mode, NULL);
     }
@@ -682,11 +682,17 @@ void fim_registry_process_value_event(fim_entry *new,
     json_event = fim_registry_event(new, saved, configuration, mode,
                                     saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFICATION, NULL, diff);
 
+    os_free(diff);
+
     if (json_event) {
-        if (fim_db_insert_registry_data(syscheck.database, new->registry_entry.value, new->registry_entry.key->id) !=
-            FIMDB_OK) {
-            mwarn(FIM_REGISTRY_FAIL_TO_INSERT_VALUE, new->registry_entry.key->arch == ARCH_32BIT ? "[x32]" : "[x64]",
-                  new->registry_entry.key->path, new->registry_entry.value->name);
+        if (fim_db_insert_registry_data(syscheck.database, new->registry_entry.value, new->registry_entry.key->id,
+                                        saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFICATION) != FIMDB_OK) {
+            // Something went wrong or the DB is full, either way we need to stop.
+            mdebug2(FIM_REGISTRY_FAIL_TO_INSERT_VALUE, new->registry_entry.key->arch == ARCH_32BIT ? "[x32]" : "[x64]",
+                    new->registry_entry.key->path, new->registry_entry.value->name);
+            cJSON_Delete(json_event);
+            fim_registry_free_value_data(saved->registry_entry.value);
+            return;
         }
 
         if (_base_line) {
@@ -700,7 +706,6 @@ void fim_registry_process_value_event(fim_entry *new,
     fim_db_set_registry_data_scanned(syscheck.database, new->registry_entry.value->name, new->registry_entry.key->id);
 
     fim_registry_free_value_data(saved->registry_entry.value);
-    os_free(diff);
 }
 
 /**
@@ -853,7 +858,7 @@ void fim_open_key(HKEY root_key_handle,
         return;
     }
 
-    w_mutex_lock(&syscheck.fim_registry_mutex);
+    w_mutex_lock(&syscheck.fim_entry_mutex);
 
     saved.type = FIM_TYPE_REGISTRY;
     saved.registry_entry.key = fim_db_get_registry_key(syscheck.database, full_key, arch);
@@ -871,7 +876,13 @@ void fim_open_key(HKEY root_key_handle,
         if (json_event) {
             if (fim_db_insert_registry_key(syscheck.database, new.registry_entry.key, new.registry_entry.key->id) !=
                 FIMDB_OK) {
-                mwarn("Couldn't insert into DB");
+                // Something went wrong or the DB is full, either way we need to stop scanning.
+                w_mutex_unlock(&syscheck.fim_entry_mutex);
+                cJSON_Delete(json_event);
+                fim_registry_free_key(new.registry_entry.key);
+                fim_registry_free_key(saved.registry_entry.key);
+                RegCloseKey(current_key_handle);
+                return;
             }
 
             if (_base_line) {
@@ -890,7 +901,7 @@ void fim_open_key(HKEY root_key_handle,
         }
     }
 
-    w_mutex_unlock(&syscheck.fim_registry_mutex);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     fim_registry_free_key(new.registry_entry.key);
     fim_registry_free_key(saved.registry_entry.key);

@@ -229,6 +229,18 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
             cJSON_AddStringToObject(file_diff, "symbolic_path", lf->sym_path);
         }
 
+        if (lf->fields[FIM_REGISTRY_ARCH].value) {
+            cJSON_AddStringToObject(file_diff, "arch", lf->fields[FIM_REGISTRY_ARCH].value);
+        }
+
+        if (lf->fields[FIM_REGISTRY_VALUE_NAME].value) {
+            cJSON_AddStringToObject(file_diff, "value_name", lf->fields[FIM_REGISTRY_VALUE_NAME].value);
+        }
+
+        if (lf->fields[FIM_REGISTRY_VALUE_TYPE].value) {
+            cJSON_AddStringToObject(file_diff, "value_type", lf->fields[FIM_REGISTRY_VALUE_TYPE].value);
+        }
+
         if (print_before_field(lf->size_before, lf->fields[FIM_SIZE].value)) {
             cJSON_AddStringToObject(file_diff, "size_before", lf->size_before);
         }
