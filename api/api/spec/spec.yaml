@@ -331,6 +331,14 @@ x-rbac-catalog:
         actions: ['lists:read']
         resources: ['list:path:etc/lists/audit-keys']
         effect: "deny"
+    'logtest:run':
+      description: "Run logtest tool or end a logtest session"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'logtest:run' ]
+        resources: [ '*:*:*' ]
+        effect: "allow"
     'rules:read':
       description: "Read rules files"
       resources:
@@ -1606,6 +1614,27 @@ components:
       enum:
       - stopped
       - running
+
+    # Logtest models
+    LogtestRequest:
+      type: object
+      required:
+        - event
+        - log_format
+        - location
+      properties:
+        token:
+          type: string
+          description: "Token for the logtest session"
+        log_format:
+          type: string
+          description: "Allowed values: syslog, json, snort-full, squid, eventlog, eventchannel, audit, mysql_log, postgresql_log, nmapg, iis, command, full_command, djb-multilog, multi-line"
+        location:
+          type: string
+          description: "Path string"
+        event:
+          type: string
+          description: "Event to look for"
 
     # Security models
     Role_id:
@@ -4217,6 +4246,14 @@ components:
       schema:
         type: string
         format: alphanumeric_symbols
+    logtest_token:
+      in: path
+      name: token
+      description: "Token of the logtest saved session"
+      required: true
+      schema:
+        type: string
+        format: alphanumeric
     type_agents:
       in: query
       name: type
@@ -5041,6 +5078,8 @@ tags:
     description: "Group of agents and centralized configurations"
   - name: Lists
     description: "CDB lists management"
+  - name: Logtest
+    description: "Logtest: testing and verification tool for rules and decoders"
   - name: Manager
     description: "Wazuh manager management"
   - name: Mitre
@@ -8984,6 +9023,118 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /logtest:
+    put:
+      tags:
+        - Logtest
+      summary: "Run logtest"
+      description: "Run logtest tool to check if a specified log raises any alert among other information"
+      operationId: api.controllers.logtest_controller.run_logtest_tool
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/logtest:run'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        description: "Run logtest with the parameters below"
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogtestRequest'
+      responses:
+        '200':
+          description: "Successfully run the logtest tool"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                token:  bd83b45f
+                message: ["INFO: (7202): Session initialized with token 'bd83b45f'"]
+                output:
+                  timestamp: 2020-06-24T11:28:09.308+0200
+                  rule:
+                    description: "Systemd rules"
+                    id: 40700
+                    firedtimes: 1
+                    mail: false
+                    groups: ["local", "systemd"]
+                  agent:
+                    id: 000
+                    name: wazuh-master
+                  manager:
+                    name: wazuh-master
+                  id: "1598517414.1892559"
+                  cluster:
+                    name: wazuh
+                    node: master-node
+                  full_log: "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."
+                  predecoder:
+                    program_name: systemd
+                    timestamp: "Jun 24 11:54:19"
+                    hostname: Master
+                  decoder:
+                    name: systemd
+                  location: "master->/var/log/syslog"
+                alert: false
+                codemsg: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /logtest/sessions/{token}:
+    delete:
+      tags:
+        - Logtest
+      summary: "End session"
+      description: "Delete the saved logtest session corresponding to {token}"
+      operationId: api.controllers.logtest_controller.end_logtest_session
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/logtest:run'
+      parameters:
+        - $ref: '#/components/parameters/logtest_token'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Successfully deleted the saved session or no session found"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                error: 0
+                data:
+                  messages: ["INFO: (7206): The session '573ed2ca' was closed successfully"]
+                  codemsg: 0
+
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 

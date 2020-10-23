@@ -91,6 +91,7 @@ INSERT INTO policies VALUES(24,'cluster_read_resourceless','{"actions": ["cluste
 INSERT INTO policies VALUES(25,'cluster_read_files','{"actions": ["manager:read", "manager:read_api_config"], "resources": ["file:path:*"], "effect": "allow"}','2020-06-16 14:34:31.896095');
 INSERT INTO policies VALUES(26,'cluster_read_nodes','{"actions": ["cluster:read_api_config", "cluster:read", "cluster:read_api_config"], "resources": ["node:id:*"], "effect": "allow"}','2020-06-16 14:34:31.911005');
 INSERT INTO policies VALUES(27,'cluster_read_combination','{"actions": ["cluster:read_file"], "resources": ["node:id:*&file:path:*"], "effect": "allow"}','2020-06-16 14:34:31.925851');
+INSERT INTO policies VALUES(28,'logtest_all_logtest','{"actions": ["logtest:run"], "resources": ["*:*:*"], "effect": "allow"}','2020-06-16 14:34:31.925851');
 
 /* Testing */
 INSERT INTO policies VALUES(100,'wazuhPolicy','{"actions": ["*:*"], "resources": ["*:*"], "effect": "allow"}','1970-01-01 00:00:00');

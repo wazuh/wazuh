@@ -351,6 +351,13 @@ This API call expects a full valid XML file with the shared configuration tags/s
 * Added **filename** parameter in query used to filter by filename.
 * added **relative_dirname** parameter in query used to filter by relative directory name.
 
+## Logtest
+### PUT        /logtest
+* New endpoint. Run logtest: check if a specified log raises any alert among other information.
+
+### DELETE     /logtest/sessions/{token}
+* New endpoint. Delete the saved logtest session corresponding to {token}.
+
 ## Manager
 ### DELETE ​/manager/api/config
 * New endpoint. Replaces API configuration with the original one.
