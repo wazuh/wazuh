@@ -142,6 +142,7 @@ int wdb_global_update_agent_version(wdb_t *wdb,
                                     const char *manager_host,
                                     const char *node_name,
                                     const char *agent_ip,
+                                    const char *connection_status,
                                     const char *sync_status)
 {
     sqlite3_stmt *stmt = NULL;
@@ -220,6 +221,10 @@ int wdb_global_update_agent_version(wdb_t *wdb,
             merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
             return OS_INVALID;
         }
+    }
+    if (sqlite3_bind_text(stmt, index++, connection_status, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
     }
     if (sqlite3_bind_text(stmt, index++, sync_status, -1, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
@@ -341,7 +346,7 @@ int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value) {
     }
 }
 
-int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char* sync_status) {
+int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection_status, const char* sync_status) {
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
@@ -356,11 +361,15 @@ int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char* sync_statu
 
     stmt = wdb->stmt[WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE];
 
-    if (sqlite3_bind_text(stmt, 1, sync_status, -1, NULL) != SQLITE_OK) {
+    if (sqlite3_bind_text(stmt, 1, connection_status, -1, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
-    if (sqlite3_bind_int(stmt, 2, id) != SQLITE_OK) {
+    if (sqlite3_bind_text(stmt, 2, sync_status, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+    if (sqlite3_bind_int(stmt, 3, id) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
