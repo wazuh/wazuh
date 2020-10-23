@@ -4238,6 +4238,7 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
     cJSON *j_manager_host = NULL;
     cJSON *j_node_name = NULL;
     cJSON *j_agent_ip = NULL;
+    cJSON *j_connection_status = NULL;
     cJSON *j_sync_status = NULL;
     cJSON *j_labels = NULL;
 
@@ -4264,6 +4265,7 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
         j_manager_host = cJSON_GetObjectItem(agent_data, "manager_host");
         j_node_name = cJSON_GetObjectItem(agent_data, "node_name");
         j_agent_ip = cJSON_GetObjectItem(agent_data, "agent_ip");
+        j_connection_status = cJSON_GetObjectItem(agent_data, "connection_status");
         j_sync_status = cJSON_GetObjectItem(agent_data, "sync_status");
         j_labels = cJSON_GetObjectItem(agent_data, "labels");
 
@@ -4285,12 +4287,13 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
             char *manager_host = cJSON_IsString(j_manager_host) ? j_manager_host->valuestring : NULL;
             char *node_name = cJSON_IsString(j_node_name) ? j_node_name->valuestring : NULL;
             char *agent_ip = cJSON_IsString(j_agent_ip) ? j_agent_ip->valuestring : NULL;
+            char *connection_status = cJSON_IsString(j_connection_status) ? j_connection_status->valuestring : NULL;
             char *sync_status = cJSON_IsString(j_sync_status) ? j_sync_status->valuestring : "synced";
             char *labels = cJSON_IsString(j_labels) ? j_labels->valuestring : NULL;
 
             if (OS_SUCCESS != wdb_global_update_agent_version(wdb, id, os_name, os_version, os_major, os_minor, os_codename,
                                                               os_platform, os_build, os_uname, os_arch, version, config_sum,
-                                                              merged_sum, manager_host, node_name, agent_ip, sync_status)) {
+                                                              merged_sum, manager_host, node_name, agent_ip, connection_status, sync_status)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
@@ -4401,6 +4404,7 @@ int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * ou
     cJSON *agent_data = NULL;
     const char *error = NULL;
     cJSON *j_id = NULL;
+    cJSON *j_connection_status = NULL;
     cJSON *j_sync_status = NULL;
 
     agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
@@ -4411,14 +4415,16 @@ int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * ou
         return OS_INVALID;
     } else {
         j_id = cJSON_GetObjectItem(agent_data, "id");
+        j_connection_status = cJSON_GetObjectItem(agent_data, "connection_status");
         j_sync_status = cJSON_GetObjectItem(agent_data, "sync_status");
 
-        if (cJSON_IsNumber(j_id) && cJSON_IsString(j_sync_status)) {
+        if (cJSON_IsNumber(j_id) && cJSON_IsString(j_connection_status) && cJSON_IsString(j_sync_status)) {
             // Getting each field
             int id = j_id->valueint;
+            char *connection_status = j_connection_status->valuestring;
             char *sync_status = j_sync_status->valuestring;
 
-            if (OS_SUCCESS != wdb_global_update_agent_keepalive(wdb, id, sync_status)) {
+            if (OS_SUCCESS != wdb_global_update_agent_keepalive(wdb, id, connection_status, sync_status)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
