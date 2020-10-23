@@ -153,7 +153,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
         agent_id = atoi(key->id);
 
-        result = wdb_update_agent_keepalive(agent_id, logr.worker_node?"syncreq":"synced", wdb_sock);
+        result = wdb_update_agent_keepalive(agent_id, AGENT_CS_ACTIVE, logr.worker_node?"syncreq":"synced", wdb_sock);
 
         if (OS_SUCCESS != result)
             mwarn("Unable to save agent last keepalive in global.db");
@@ -178,7 +178,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             w_mutex_unlock(&lastmsg_mutex);
             agent_id = atoi(key->id);
 
-            if (OS_SUCCESS != wdb_update_agent_keepalive(agent_id, logr.worker_node?"syncreq":"synced", wdb_sock)) {
+            if (OS_SUCCESS != wdb_update_agent_keepalive(agent_id, AGENT_CS_PENDING, logr.worker_node?"syncreq":"synced", wdb_sock)) {
                 mwarn("Unable to set last keepalive as pending");
             }
         } else {
@@ -237,6 +237,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             }
 
             agent_data->id = atoi(key->id);
+            os_strdup(AGENT_CS_ACTIVE, agent_data->connection_status);
             os_strdup(logr.worker_node ? "syncreq" : "synced", agent_data->sync_status);
 
             // Updating version and keepalive in global.db
