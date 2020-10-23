@@ -160,6 +160,7 @@ void rem_inc_dequeued();
 size_t rem_getconfig(const char * section, char ** output);
 cJSON *getRemoteConfig(void);
 cJSON *getRemoteInternalConfig(void);
+cJSON *getRemoteGlobalConfig(void);
 
 /* Network buffer */
 
