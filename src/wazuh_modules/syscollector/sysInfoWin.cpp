@@ -20,6 +20,7 @@
 
 constexpr auto BASEBOARD_INFORMATION_TYPE{2};
 constexpr auto CENTRAL_PROCESSOR_REGISTRY{"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
+const std::string UNINSTALL_REGISTRY{"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"};
 
 typedef struct RawSMBIOSData
 {
@@ -168,4 +169,70 @@ void SysInfo::getMemory(nlohmann::json& info) const
             "Error calling GlobalMemoryStatusEx"
         };
     }
+}
+
+static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohmann::json& data, const REGSAM access = 0)
+{
+    try
+    {
+        Utils::Registry root{key, subKey, access | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
+        const auto packages{root.enumerate()};
+        for (const auto& package : packages)
+        {
+            std::string value;
+            nlohmann::json packageJson;
+            Utils::Registry packageReg{key, subKey + "\\" + package, access | KEY_READ};
+            if (packageReg.string("DisplayName", value))
+            {
+                packageJson["name"] = value;
+            }
+            if (packageReg.string("DisplayVersion", value))
+            {
+                packageJson["version"] = value;
+            }
+            if (packageReg.string("Publisher", value))
+            {
+                packageJson["vendor"] = value;
+            }
+            if (packageReg.string("InstallDate", value))
+            {
+                packageJson["install_time"] = value;
+            }
+            if (packageReg.string("InstallLocation", value))
+            {
+                packageJson["location"] = value;
+            }
+            if (!packageJson.empty())
+            {
+                if (access & KEY_WOW64_32KEY)
+                {
+                    packageJson["architecture"] = "i686";
+                }
+                else if (access & KEY_WOW64_64KEY)
+                {
+                    packageJson["architecture"] = "x86_64";
+                }
+                else
+                {
+                    packageJson["architecture"] = "unknown";
+                }
+                data.push_back(packageJson);
+            }
+        }
+    }
+    catch(...)
+    {
+    }
+}
+
+nlohmann::json SysInfo::getPackages() const
+{
+    nlohmann::json ret;
+    getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, ret, KEY_WOW64_64KEY);
+    getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, ret, KEY_WOW64_32KEY);
+    for (const auto& user : Utils::Registry{HKEY_USERS, "", KEY_READ | KEY_ENUMERATE_SUB_KEYS}.enumerate())
+    {
+        getPackagesFromReg(HKEY_USERS, user + "\\" + UNINSTALL_REGISTRY, ret);
+    }
+    return ret;
 }
