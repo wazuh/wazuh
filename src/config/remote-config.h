@@ -34,6 +34,7 @@ typedef struct _remoted {
     socklen_t peer_size;
     long queue_size;
     bool worker_node;
+    int rids_closing_time;
 } remoted;
 
 #endif /* CLOGREMOTE_H */

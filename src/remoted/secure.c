@@ -12,6 +12,13 @@
 #include "os_net/os_net.h"
 #include "remoted.h"
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 /* Global variables */
 int sender_pool;
 
@@ -30,6 +37,8 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
+
+STATIC void * close_fp_main(void * args);
 
 /* Status of keypolling wodle */
 static char key_request_available = 0;
@@ -131,6 +140,9 @@ void HandleSecure()
 
     // Key reloader thread
     w_create_thread(rem_keyupdate_main, NULL);
+
+    // fp closer thread
+    w_create_thread(close_fp_main, &keys);
 
     /* Set up peer size */
     logr.peer_size = sizeof(peer_info);
@@ -270,6 +282,53 @@ void * rem_keyupdate_main(__attribute__((unused)) void * args) {
         check_keyupdate();
         sleep(seconds);
     }
+}
+
+// Closer rids thread
+STATIC void * close_fp_main(void * args) {
+    keystore * keys = (keystore *)args;
+    int seconds;
+    int flag;
+
+    mdebug1("Rids closer thread started.");
+    seconds = logr.rids_closing_time;
+
+    while (1) {
+        sleep(seconds);
+        key_lock_read();
+        flag = 1;
+        while (flag) {
+            w_linked_queue_node_t * first_node = keys->opened_fp_queue->first;
+            mdebug2("Opened rids queue size: %d", keys->opened_fp_queue->elements);
+            if (first_node) {
+                int now = time(0);
+                keyentry * first_node_key = (keyentry *)first_node->data;
+                mdebug2("Checking rids_node of agent %s.", first_node_key->id);
+                if ((now - seconds) > first_node_key->updating_time) {
+                    first_node_key = (keyentry *)linked_queue_pop_ex(keys->opened_fp_queue);
+                    w_mutex_lock(&first_node_key->mutex);
+                    mdebug2("Pop rids_node of agent %s.", first_node_key->id);
+                    if (first_node_key->fp != NULL) {
+                        mdebug2("Closing rids for agent %s.", first_node_key->id);
+                        fclose(first_node_key->fp);
+                        first_node_key->fp = NULL;
+                    }
+                    first_node_key->updating_time = 0;
+                    first_node_key->rids_node = NULL;
+                    w_mutex_unlock(&first_node_key->mutex);
+                } else {
+                    flag = 0;
+                }
+            } else {
+                flag = 0;
+            }
+        }
+        key_unlock();
+    #ifdef WAZUH_UNIT_TESTING
+        break;
+    #endif
+    }
+    return NULL;
 }
 
 static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock) {
