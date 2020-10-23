@@ -3859,9 +3859,9 @@ components:
         type: array
         items:
           type: string
-    list_tasks:
+    tasks_list:
       in: query
-      name: list_tasks
+      name: tasks_list
       description: "List of task IDs (separated by comma)"
       required: true
       schema:
@@ -14950,7 +14950,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_tasks'
+        - $ref: '#/components/parameters/tasks_list'
       responses:
         '200':
           description: "Tasks's status"

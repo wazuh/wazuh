@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Added new endpoint to check status of tasks. ([#6029](https://github.com/wazuh/wazuh/issues/6029))
+
 ### Changed
 
 - Agent upgrade module refactored. ([#5387](https://github.com/wazuh/wazuh/issues/5387))

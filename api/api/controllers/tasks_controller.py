@@ -14,13 +14,13 @@ from wazuh.tasks import get_task_status
 logger = logging.getLogger('wazuh')
 
 
-async def get_tasks_status(request, list_tasks=None, pretty=False, wait_for_complete=False):
+async def get_tasks_status(request, tasks_list=None, pretty=False, wait_for_complete=False):
     """Check the status of the specified tasks
 
     Parameters
     ----------
     request
-    list_tasks : list
+    tasks_list : list
         List of task's IDs
     pretty : bool, optional
         Show results in human-readable format
@@ -31,7 +31,7 @@ async def get_tasks_status(request, list_tasks=None, pretty=False, wait_for_comp
     -------
     Tasks's status
     """
-    f_kwargs = {'task_list': list_tasks}
+    f_kwargs = {'task_list': tasks_list}
 
     dapi = DistributedAPI(f=get_task_status,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

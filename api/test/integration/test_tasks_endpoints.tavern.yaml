@@ -14,7 +14,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: 001,002
+        agents_list: 001,002
         wpk_repo: packages.wazuh.com/wpk/
         version: 3.13.1
         force: true
@@ -44,7 +44,7 @@ stages:
       verify: False
       <<: *get_status
       params:
-        list_tasks: 99,100
+        tasks_list: 99,100
     response:
       status_code: 200
       json:
@@ -68,7 +68,7 @@ stages:
       verify: False
       <<: *get_status
       params:
-        list_tasks: 1,2
+        tasks_list: 1,2
     response:
       status_code: 200
       json:
