@@ -11,6 +11,7 @@
 #include "sysInfo.hpp"
 #include <memory>
 #include <list>
+#include <set>
 #include <system_error>
 #include "cmdHelper.h"
 #include "stringHelper.h"
@@ -21,6 +22,8 @@
 constexpr auto BASEBOARD_INFORMATION_TYPE{2};
 constexpr auto CENTRAL_PROCESSOR_REGISTRY{"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
 const std::string UNINSTALL_REGISTRY{"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"};
+constexpr auto WIN_REG_HOTFIX{"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Component Based Servicing\\Packages"};
+constexpr auto VISTA_REG_HOTFIX{"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\HotFix"};
 
 typedef struct RawSMBIOSData
 {
@@ -97,10 +100,45 @@ static std::string parseRawSmbios(const BYTE* rawData, const DWORD rawDataSize)
     return serialNumber;
 }
 
+typedef UINT (WINAPI *GetSystemFirmwareTable_t)(DWORD, DWORD, PVOID, DWORD);
+static GetSystemFirmwareTable_t getSystemFirmwareTableFunctionAddress()
+{
+    GetSystemFirmwareTable_t ret{nullptr};
+    auto hKernel32{LoadLibrary("kernel32.dll")};
+    if (hKernel32)
+    {
+        ret = reinterpret_cast<GetSystemFirmwareTable_t>(GetProcAddress(hKernel32, "GetSystemFirmwareTable"));
+        FreeLibrary(hKernel32);
+    }
+    return ret;
+}
+
 std::string SysInfo::getSerialNumber() const
 {
     std::string ret;
     if (isVistaOrLater())
+    {
+        static auto pfnGetSystemFirmwareTable{getSystemFirmwareTableFunctionAddress()};
+        if (pfnGetSystemFirmwareTable)
+        {
+            const auto size {pfnGetSystemFirmwareTable('RSMB', 0, nullptr, 0)};
+            if (size)
+            {
+                const auto spBuff{std::make_unique<unsigned char[]>(size)};
+                if (spBuff)
+                {
+                    /* Get raw SMBIOS firmware table */
+                    if (pfnGetSystemFirmwareTable('RSMB', 0, spBuff.get(), size) == size)
+                    {
+                        PRawSMBIOSData smbios{reinterpret_cast<PRawSMBIOSData>(spBuff.get())};
+                        /* Parse SMBIOS structures */
+                        ret = parseRawSmbios(smbios->SMBIOSTableData, size);
+                    }
+                }
+            }
+        }
+    }
+    else
     {
         const auto rawData{Utils::exec("wmic baseboard get SerialNumber")};
         const auto pos{rawData.find("\r\n")};
@@ -111,24 +149,6 @@ std::string SysInfo::getSerialNumber() const
         else
         {
             ret = "unknown";
-        }
-    }
-    else
-    {
-        const auto size {GetSystemFirmwareTable('RSMB', 0, nullptr, 0)};
-        if (size)
-        {
-            const auto spBuff{std::make_unique<unsigned char[]>(size)};
-            if (spBuff)
-            {
-                /* Get raw SMBIOS firmware table */
-                if (GetSystemFirmwareTable('RSMB', 0, spBuff.get(), size) == size)
-                {
-                    PRawSMBIOSData smbios{reinterpret_cast<PRawSMBIOSData>(spBuff.get())};
-                    /* Parse SMBIOS structures */
-                    ret = parseRawSmbios(smbios->SMBIOSTableData, size);
-                }
-            }
         }
     }
     return ret;
@@ -225,6 +245,71 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
     }
 }
 
+static void getHotFixFromReg(const HKEY key, const std::string& subKey, nlohmann::json& data)
+{
+    try
+    {
+        std::set<std::string> hotfixes;
+        Utils::Registry root{key, subKey, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
+        const auto packages{root.enumerate()};
+        for (const auto& package : packages)
+        {
+            if (Utils::startsWith(package, "Package_"))
+            {
+                std::string value;
+                Utils::Registry packageReg{key, subKey + "\\" + package, KEY_WOW64_64KEY | KEY_READ};
+                if (packageReg.string("InstallLocation", value))
+                {
+                    value = Utils::toUpperCase(value);
+                    const auto start{value.find("KB")};
+                    if (start != std::string::npos)
+                    {
+                        value = value.substr(start);
+                        const auto end{value.find("-")};
+                        value = value.substr(0, end);
+                        hotfixes.insert(value);
+                    }
+                }
+            }
+        }
+        for (const auto& hotfix : hotfixes)
+        {
+            data.push_back({{"hotfix", hotfix}});
+        }
+    }
+    catch(...)
+    {
+    }
+}
+
+static void getHotFixFromRegNT(const HKEY key, const std::string& subKey, nlohmann::json& data)
+{
+    static const std::string KB_PREFIX{"KB"};
+    try
+    {
+        std::set<std::string> hotfixes;
+        Utils::Registry root{key, subKey, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
+        const auto packages{root.enumerate()};
+        for (const auto& package : packages)
+        {
+            auto value{Utils::toUpperCase(package)};
+            if (Utils::startsWith(value, KB_PREFIX))
+            {
+                value = value.substr(KB_PREFIX.size());
+                value = Utils::trim(value.substr(0, value.find_first_not_of("1234567890")));
+                hotfixes.insert(KB_PREFIX + value);
+            }
+        }
+        for (const auto& hotfix : hotfixes)
+        {
+            data.push_back({{"hotfix", hotfix}});
+        }
+    }
+    catch(...)
+    {
+    }
+}
+
 nlohmann::json SysInfo::getPackages() const
 {
     nlohmann::json ret;
@@ -234,5 +319,7 @@ nlohmann::json SysInfo::getPackages() const
     {
         getPackagesFromReg(HKEY_USERS, user + "\\" + UNINSTALL_REGISTRY, ret);
     }
+    getHotFixFromReg(HKEY_LOCAL_MACHINE, WIN_REG_HOTFIX, ret);
+    getHotFixFromRegNT(HKEY_LOCAL_MACHINE, VISTA_REG_HOTFIX, ret);
     return ret;
 }
