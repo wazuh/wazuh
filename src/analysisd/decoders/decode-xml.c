@@ -787,15 +787,15 @@ int SetDecodeXML()
 {
     /* Add rootcheck decoder to list */
     addDecoder2list(ROOTCHECK_MOD);
-    addDecoder2list(SYSCHECK_MOD);
-    addDecoder2list(SYSCHECK_NEW);
-    addDecoder2list(SYSCHECK_DEL);
-    addDecoder2list(SYSCHECK_REG_KEY_MOD);
-    addDecoder2list(SYSCHECK_REG_KEY_NEW);
-    addDecoder2list(SYSCHECK_REG_KEY_DEL);
-    addDecoder2list(SYSCHECK_REG_VAL_MOD);
-    addDecoder2list(SYSCHECK_REG_VAL_NEW);
-    addDecoder2list(SYSCHECK_REG_VAL_DEL);
+    addDecoder2list(FIM_MOD);
+    addDecoder2list(FIM_NEW);
+    addDecoder2list(FIM_DEL);
+    addDecoder2list(FIM_REG_KEY_MOD);
+    addDecoder2list(FIM_REG_KEY_NEW);
+    addDecoder2list(FIM_REG_KEY_DEL);
+    addDecoder2list(FIM_REG_VAL_MOD);
+    addDecoder2list(FIM_REG_VAL_NEW);
+    addDecoder2list(FIM_REG_VAL_DEL);
     addDecoder2list(HOSTINFO_NEW);
     addDecoder2list(HOSTINFO_MOD);
     addDecoder2list(SYSCOLLECTOR_MOD);

@@ -105,21 +105,21 @@ static void fim_adjust_checksum(sk_sum_t *newsum, char **checksum);
 // Mutexes
 static pthread_mutex_t control_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-typedef struct _syscheck_decoders_t {
+typedef struct _fim_decoders_t {
     int add_id;
     char *add_name;
     int modify_id;
     char *modify_name;
     int delete_id;
     char *delete_name;
-} syscheck_decoders_t;
+} fim_decoders_t;
 
 typedef enum DECODER_TYPE { FILE_DECODER, REGISTRY_KEY_DECODER, REGISTRY_VALUE_DECODER } DECODER_TYPE;
 
-static syscheck_decoders_t file_decoders;
-static syscheck_decoders_t registry_key_decoders;
-static syscheck_decoders_t registry_value_decoders;
-static syscheck_decoders_t *syscheck_decoders[] = {
+static fim_decoders_t file_decoders;
+static fim_decoders_t registry_key_decoders;
+static fim_decoders_t registry_value_decoders;
+static fim_decoders_t *fim_decoders[] = {
     [FILE_DECODER] = &file_decoders,
     [REGISTRY_KEY_DECODER] = &registry_key_decoders,
     [REGISTRY_VALUE_DECODER] = &registry_value_decoders,
@@ -131,24 +131,24 @@ OSHash *fim_agentinfo;
 int fim_init(void) {
     //Create hash table for agent information
     fim_agentinfo = OSHash_Create();
-    syscheck_decoders[FILE_DECODER]->add_id = getDecoderfromlist(SYSCHECK_NEW);
-    syscheck_decoders[FILE_DECODER]->add_name = SYSCHECK_NEW;
-    syscheck_decoders[FILE_DECODER]->modify_id = getDecoderfromlist(SYSCHECK_MOD);
-    syscheck_decoders[FILE_DECODER]->modify_name = SYSCHECK_MOD;
-    syscheck_decoders[FILE_DECODER]->delete_id = getDecoderfromlist(SYSCHECK_DEL);
-    syscheck_decoders[FILE_DECODER]->delete_name = SYSCHECK_DEL;
-    syscheck_decoders[REGISTRY_KEY_DECODER]->add_id = getDecoderfromlist(SYSCHECK_REG_KEY_NEW);
-    syscheck_decoders[REGISTRY_KEY_DECODER]->add_name = SYSCHECK_REG_KEY_NEW;
-    syscheck_decoders[REGISTRY_KEY_DECODER]->modify_id = getDecoderfromlist(SYSCHECK_REG_KEY_MOD);
-    syscheck_decoders[REGISTRY_KEY_DECODER]->modify_name = SYSCHECK_REG_KEY_MOD;
-    syscheck_decoders[REGISTRY_KEY_DECODER]->delete_id = getDecoderfromlist(SYSCHECK_REG_KEY_DEL);
-    syscheck_decoders[REGISTRY_KEY_DECODER]->delete_name = SYSCHECK_REG_KEY_DEL;
-    syscheck_decoders[REGISTRY_VALUE_DECODER]->add_id = getDecoderfromlist(SYSCHECK_REG_VAL_NEW);
-    syscheck_decoders[REGISTRY_VALUE_DECODER]->add_name = SYSCHECK_REG_VAL_NEW;
-    syscheck_decoders[REGISTRY_VALUE_DECODER]->modify_id = getDecoderfromlist(SYSCHECK_REG_VAL_MOD);
-    syscheck_decoders[REGISTRY_VALUE_DECODER]->modify_name = SYSCHECK_REG_VAL_MOD;
-    syscheck_decoders[REGISTRY_VALUE_DECODER]->delete_id = getDecoderfromlist(SYSCHECK_REG_VAL_DEL);
-    syscheck_decoders[REGISTRY_VALUE_DECODER]->delete_name = SYSCHECK_REG_VAL_DEL;
+    fim_decoders[FILE_DECODER]->add_id = getDecoderfromlist(FIM_NEW);
+    fim_decoders[FILE_DECODER]->add_name = FIM_NEW;
+    fim_decoders[FILE_DECODER]->modify_id = getDecoderfromlist(FIM_MOD);
+    fim_decoders[FILE_DECODER]->modify_name = FIM_MOD;
+    fim_decoders[FILE_DECODER]->delete_id = getDecoderfromlist(FIM_DEL);
+    fim_decoders[FILE_DECODER]->delete_name = FIM_DEL;
+    fim_decoders[REGISTRY_KEY_DECODER]->add_id = getDecoderfromlist(FIM_REG_KEY_NEW);
+    fim_decoders[REGISTRY_KEY_DECODER]->add_name = FIM_REG_KEY_NEW;
+    fim_decoders[REGISTRY_KEY_DECODER]->modify_id = getDecoderfromlist(FIM_REG_KEY_MOD);
+    fim_decoders[REGISTRY_KEY_DECODER]->modify_name = FIM_REG_KEY_MOD;
+    fim_decoders[REGISTRY_KEY_DECODER]->delete_id = getDecoderfromlist(FIM_REG_KEY_DEL);
+    fim_decoders[REGISTRY_KEY_DECODER]->delete_name = FIM_REG_KEY_DEL;
+    fim_decoders[REGISTRY_VALUE_DECODER]->add_id = getDecoderfromlist(FIM_REG_VAL_NEW);
+    fim_decoders[REGISTRY_VALUE_DECODER]->add_name = FIM_REG_VAL_NEW;
+    fim_decoders[REGISTRY_VALUE_DECODER]->modify_id = getDecoderfromlist(FIM_REG_VAL_MOD);
+    fim_decoders[REGISTRY_VALUE_DECODER]->modify_name = FIM_REG_VAL_MOD;
+    fim_decoders[REGISTRY_VALUE_DECODER]->delete_id = getDecoderfromlist(FIM_REG_VAL_DEL);
+    fim_decoders[REGISTRY_VALUE_DECODER]->delete_name = FIM_REG_VAL_DEL;
     if (fim_agentinfo == NULL) return 0;
     return 1;
 }
@@ -161,8 +161,8 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     sdb_clean(localsdb);
 
     // Create decoder
-    fim_decoder->id = getDecoderfromlist(SYSCHECK_MOD);
-    fim_decoder->name = SYSCHECK_MOD;
+    fim_decoder->id = getDecoderfromlist(FIM_MOD);
+    fim_decoder->name = FIM_MOD;
     fim_decoder->type = OSSEC_RL;
     fim_decoder->fts = 0;
 
@@ -539,23 +539,23 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
     switch (lf->event_type) {
         case FIM_DELETED:
             snprintf(msg_type, sizeof(msg_type), "was deleted.");
-            lf->decoder_info->id = syscheck_decoders[FILE_DECODER]->delete_id;
+            lf->decoder_info->id = fim_decoders[FILE_DECODER]->delete_id;
             lf->decoder_syscheck_id = lf->decoder_info->id;
-            lf->decoder_info->name = syscheck_decoders[FILE_DECODER]->delete_name;
+            lf->decoder_info->name = fim_decoders[FILE_DECODER]->delete_name;
             changes=1;
             break;
         case FIM_ADDED:
             snprintf(msg_type, sizeof(msg_type), "was added.");
-            lf->decoder_info->id = syscheck_decoders[FILE_DECODER]->add_id;
+            lf->decoder_info->id = fim_decoders[FILE_DECODER]->add_id;
             lf->decoder_syscheck_id = lf->decoder_info->id;
-            lf->decoder_info->name = syscheck_decoders[FILE_DECODER]->add_name;
+            lf->decoder_info->name = fim_decoders[FILE_DECODER]->add_name;
             changes=1;
             break;
         case FIM_MODIFIED:
             snprintf(msg_type, sizeof(msg_type), "checksum changed.");
-            lf->decoder_info->id = syscheck_decoders[FILE_DECODER]->modify_id;
+            lf->decoder_info->id = fim_decoders[FILE_DECODER]->modify_id;
             lf->decoder_syscheck_id = lf->decoder_info->id;
-            lf->decoder_info->name = syscheck_decoders[FILE_DECODER]->modify_name;
+            lf->decoder_info->name = fim_decoders[FILE_DECODER]->modify_name;
             if (oldsum->size && newsum->size) {
                 if (strcmp(oldsum->size, newsum->size) == 0) {
                     localsdb->size[0] = '\0';
@@ -1243,7 +1243,7 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
     cJSON *object = NULL;
     char *event_type = NULL;
     char *entry_type = NULL;
-    syscheck_decoders_t *decoder = NULL;
+    fim_decoders_t *decoder = NULL;
 
     cJSON_ArrayForEach(object, event) {
         if (object->string == NULL) {
@@ -1314,11 +1314,11 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
     }
 
     if (strcmp("file", entry_type) == 0 || strcmp("registry", entry_type) == 0) {
-        decoder = syscheck_decoders[FILE_DECODER];
+        decoder = fim_decoders[FILE_DECODER];
     } else if (strcmp("registry_key", entry_type) == 0) {
-        decoder = syscheck_decoders[REGISTRY_KEY_DECODER];
+        decoder = fim_decoders[REGISTRY_KEY_DECODER];
     } else if (strcmp("registry_value", entry_type) == 0) {
-        decoder = syscheck_decoders[REGISTRY_VALUE_DECODER];
+        decoder = fim_decoders[REGISTRY_VALUE_DECODER];
     } else {
         mdebug1("Invalid member 'type' in Syscheck attributes JSON payload");
         return -1;
