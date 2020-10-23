@@ -19,7 +19,7 @@
 /**
  * @brief Determine the types of expression allowed
  */
-typedef enum { 
+typedef enum {
     EXP_TYPE_INVALID = -1,
     EXP_TYPE_OSREGEX,
     EXP_TYPE_OSMATCH,
@@ -28,12 +28,14 @@ typedef enum {
     EXP_TYPE_PCRE2
 } w_exp_type_t;
 
+/**
+ * @brief Store information regarding to PCRE2 regex.
+ * Only for internal use in expression.c
+ */
 typedef struct {
-
    pcre2_code * code;
    char * raw_pattern;
-
-} _w_pcre2_code;
+} w_pcre2_code_t;
 
 /**
  * @brief Represent the expressions used in rules and decoders.
@@ -41,7 +43,6 @@ typedef struct {
  * It can be OSRegex, OSMatch, string or array of os_ip.
  */
 typedef struct {
-
     w_exp_type_t exp_type;  ///< Determine the type of expression
 
     union {                 ///< The expression which analysisd works
@@ -49,7 +50,7 @@ typedef struct {
         OSMatch * match;
         char * string;
         os_ip ** ips;
-        _w_pcre2_code * pcre2;
+        w_pcre2_code_t * pcre2;
     };
 
     bool negate;            ///< Determine if the expression is afirmative or negative
@@ -57,7 +58,7 @@ typedef struct {
 
 
 /**
- * @brief Alloc memory for a w_expression_t variable
+ * @brief Allocate zero-initialized memory for a w_expression_t variable
  * @param var variable to initialize
  * @param type type of expression.
  */
@@ -78,7 +79,7 @@ void w_free_expression_t(w_expression_t ** var);
 bool w_expression_add_osip(w_expression_t ** var, char * ip);
 
 /**
- * @brief Compile an expression to used later
+ * @brief Compile an expression
  * @param expression Expression to compile
  * @param pattern Regular expression pattern
  * @param flags Compilation flags (dependent on expression type)
@@ -90,41 +91,35 @@ bool w_expression_compile(w_expression_t * expression, char * pattern, int flags
  * @brief Test match a compiled pattern to string
  * @param expression expression with compiled pattern
  * @param str_test string to test
- * @return true on match. false otherwise
+ * @param regex_match Structure to manage pattern matches. NULL is accepted
+ * @param end_match if match, returns end of matched (Only PCRE2 & OSRegex). NULL is accepted
+ * @return true if match. false otherwise
  */
-bool w_expression_test(w_expression_t * expression, const char * str_test);
-
-/**
- * @brief Execute a compiled pattern to string (only OSRegex & PCRE2)
- * @param expression expression with compiled pattern
- * @param str_test string to test
- * @param regex_match Structure to manage pattern matches
- * @return Returns end of matched str on success. NULL otherwise
- */
-const char * w_expression_execute(w_expression_t * expression, const char * str_test, regex_matching * regex_match);
+bool w_expression_match(w_expression_t * expression, const char * str_test, const char ** end_match,
+                        regex_matching * regex_match);
 
 /**
  * @brief Fill a match_data with PCRE2 result
- * @param rc number of matches of PCRE2 execute
+ * @param captured_groups number of matches of PCRE2 execute
  * @param str_test string to test
  * @param match_data PCRE2 block data
- * @param regex_match to fill 
+ * @param regex_match to fill
  */
-void w_expression_PCRE2_fill_regex_match(int rc, const char * str_test, pcre2_match_data * match_data,
+void w_expression_PCRE2_fill_regex_match(int captured_groups, const char * str_test, pcre2_match_data * match_data,
                                          regex_matching * regex_match);
 
 /**
  * @brief Get regex pattern of the expression
  * @param expression expression with compiled pattern
- * @return Returns a copy of the raw regex pattern
+ * @return Returns raw regex pattern
  */
-char * w_expression_get_regex_pattern(w_expression_t * expression);
+const char * w_expression_get_regex_pattern(w_expression_t * expression);
 
 /**
  * @brief Get regex type of the expression (string format)
  * @param expression expression with compiled pattern
  * @return Returns type of the expression
  */
-char * w_expression_get_regex_type(w_expression_t * expression);
+const char * w_expression_get_regex_type(w_expression_t * expression);
 
 #endif
