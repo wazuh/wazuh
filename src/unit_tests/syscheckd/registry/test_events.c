@@ -142,7 +142,7 @@ static void test_fim_registry_event_added_key_event(void **state) {
 
     attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry_key");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "uid")), "100");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "gid")), "200");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_name")), "user_name");
@@ -180,7 +180,7 @@ static void test_fim_registry_event_added_key_event_attributes_disabled(void **s
 
     attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry_key");
     assert_null(cJSON_GetObjectItem(attributes, "uid"));
     assert_null(cJSON_GetObjectItem(attributes, "gid"));
     assert_null(cJSON_GetObjectItem(attributes, "user_name"));
@@ -230,7 +230,7 @@ static void test_fim_registry_event_modified_key_event(void **state) {
 
     attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry_key");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "uid")), "100");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "gid")), "200");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_name")), "user_name");
@@ -241,7 +241,7 @@ static void test_fim_registry_event_modified_key_event(void **state) {
 
     old_attributes = cJSON_GetObjectItem(data, "old_attributes");
     assert_non_null(old_attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes, "type")), "registry");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes, "type")), "registry_key");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes, "uid")), "110");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes, "gid")), "220");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes, "user_name")), "user_old_name");
@@ -303,7 +303,7 @@ static void test_fim_registry_event_deleted_key_event(void **state) {
 
     attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry_key");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "uid")), "100");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "gid")), "200");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_name")), "user_name");
@@ -341,7 +341,7 @@ static void test_fim_registry_event_deleted_key_event_attributes_disabled(void *
 
     attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry_key");
     assert_null(cJSON_GetObjectItem(attributes, "uid"));
     assert_null(cJSON_GetObjectItem(attributes, "gid"));
     assert_null(cJSON_GetObjectItem(attributes, "user_name"));
@@ -393,7 +393,7 @@ static void test_fim_registry_event_added_value_event(void **state) {
     attributes = cJSON_GetObjectItem(data, "attributes");
 
     assert_non_null(attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry_value");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "value_type")), "REG_SZ");
     assert_int_equal(cJSON_GetObjectItem(attributes, "size")->valueint, 50);
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "hash_md5")),
@@ -447,7 +447,7 @@ static void test_fim_registry_event_added_value_event_attributes_disabled(void *
 
     attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry_value");
     assert_null(cJSON_GetObjectItem(attributes, "value_type"));
     assert_null(cJSON_GetObjectItem(attributes, "size"));
     assert_null(cJSON_GetObjectItem(attributes, "hash_md5"));
@@ -521,7 +521,7 @@ static void test_fim_registry_event_modified_value_event(void **state) {
 
     attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry_value");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "value_type")), "REG_SZ");
     assert_int_equal(cJSON_GetObjectItem(attributes, "size")->valueint, 50);
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "hash_md5")),
@@ -535,7 +535,7 @@ static void test_fim_registry_event_modified_value_event(void **state) {
 
     old_attributes = cJSON_GetObjectItem(data, "old_attributes");
     assert_non_null(old_attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes, "type")), "registry");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes, "type")), "registry_value");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes, "value_type")), "REG_SZ");
     assert_int_equal(cJSON_GetObjectItem(old_attributes, "size")->valueint, 500);
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes, "hash_md5")),
@@ -637,7 +637,7 @@ static void test_fim_registry_event_deleted_value_event(void **state) {
 
     attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry_value");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "value_type")), "REG_SZ");
     assert_int_equal(cJSON_GetObjectItem(attributes, "size")->valueint, 50);
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "hash_md5")),
@@ -691,7 +691,7 @@ static void test_fim_registry_event_deleted_value_event_attributes_disabled(void
 
     attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type")), "registry_value");
     assert_null(cJSON_GetObjectItem(attributes, "value_type"));
     assert_null(cJSON_GetObjectItem(attributes, "size"));
     assert_null(cJSON_GetObjectItem(attributes, "hash_md5"));
