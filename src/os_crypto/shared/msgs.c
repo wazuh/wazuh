@@ -137,7 +137,7 @@ void OS_StartCounter(keystore *keys)
             fclose(keys->keyentries[i]->fp);
             keys->keyentries[i]->fp = NULL;
         }
-        
+
         keys->keyentries[i]->inode = File_Inode(rids_file);
     }
 
