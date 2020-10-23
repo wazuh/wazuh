@@ -436,7 +436,7 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
         s_ftype = "file";
         break;
     case WDB_FILE_TYPE_REGISTRY:
-        s_ftype = "registry";
+        s_ftype = "registry_key";
         break;
     default:
         merror("DB(%s) Invalid file type '%d'", wdb->id, ftype);
