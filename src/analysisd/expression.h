@@ -28,6 +28,12 @@ typedef enum {
     EXP_TYPE_PCRE2
 } w_exp_type_t;
 
+typedef struct {
+
+   pcre2_code * code;
+   char * raw_pattern;
+
+} _w_pcre2_code;
 
 /**
  * @brief Represent the expressions used in rules and decoders.
@@ -43,7 +49,7 @@ typedef struct {
         OSMatch * match;
         char * string;
         os_ip ** ips;
-        pcre2_code * pcre2;
+        _w_pcre2_code * pcre2;
     };
 
     bool negate;            ///< Determine if the expression is afirmative or negative
@@ -106,5 +112,19 @@ const char * w_expression_execute(w_expression_t * expression, const char * str_
  */
 void w_expression_PCRE2_fill_regex_match(int rc, const char * str_test, pcre2_match_data * match_data,
                                          regex_matching * regex_match);
+
+/**
+ * @brief Get regex pattern of the expression
+ * @param expression expression with compiled pattern
+ * @return Returns a copy of the raw regex pattern
+ */
+char * w_expression_get_regex_pattern(w_expression_t * expression);
+
+/**
+ * @brief Get regex type of the expression (string format)
+ * @param expression expression with compiled pattern
+ * @return Returns type of the expression
+ */
+char * w_expression_get_regex_type(w_expression_t * expression);
 
 #endif

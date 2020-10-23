@@ -25,6 +25,9 @@ void w_calloc_expression_t(w_expression_t ** var, w_exp_type_t type) {
             os_calloc(1, sizeof(OSRegex), (*var)->regex);
             break;
 
+        case EXP_TYPE_PCRE2:
+            os_calloc(1, sizeof(_w_pcre2_code), (*var)->pcre2);
+
         default:
             break;
     }
@@ -65,8 +68,10 @@ void w_free_expression_t(w_expression_t ** var) {
             break;
 
         case EXP_TYPE_PCRE2:
-             pcre2_code_free((*var)->pcre2);
-             break;
+            pcre2_code_free((*var)->pcre2->code);
+            os_free((*var)->pcre2->raw_pattern);
+            os_free((*var)->pcre2);
+            break;
 
         default:
             break;
@@ -122,10 +127,11 @@ bool w_expression_compile(w_expression_t * expression, char * pattern, int flags
             break;
 
         case EXP_TYPE_PCRE2:
-            expression->pcre2 = pcre2_compile((PCRE2_SPTR) pattern, PCRE2_ZERO_TERMINATED,
+            expression->pcre2->code = pcre2_compile((PCRE2_SPTR) pattern, PCRE2_ZERO_TERMINATED,
                                                0, &errornumber, &erroroffset, NULL);
 
-            if (!expression->pcre2) {
+            os_strdup(pattern, expression->pcre2->raw_pattern);
+            if (!expression->pcre2->code) {
                 PCRE2_UCHAR error_message[OS_SIZE_256];
                 pcre2_get_error_message(errornumber, error_message, OS_SIZE_256);
                 merror(REGEX_PCRE2_COMPILE, (int)erroroffset, error_message);
@@ -158,7 +164,7 @@ bool w_expression_test(w_expression_t * expression, const char * str_test) {
     switch (expression->exp_type) {
 
         case EXP_TYPE_OSMATCH:
-            retval = (OSMatch_Execute(str_test, sizeof(str_test), expression->match) == 0) ? false : true;
+            retval = (OSMatch_Execute(str_test, strlen(str_test), expression->match) == 0) ? false : true;
             break;
 
         case EXP_TYPE_OSREGEX:
@@ -175,8 +181,8 @@ bool w_expression_test(w_expression_t * expression, const char * str_test) {
             break;
 
         case EXP_TYPE_PCRE2:
-            match_data = pcre2_match_data_create_from_pattern(expression->pcre2, NULL);
-            rc = pcre2_match(expression->pcre2, (PCRE2_SPTR) str_test, sizeof(str_test), 0, 0, match_data, NULL);
+            match_data = pcre2_match_data_create_from_pattern(expression->pcre2->code, NULL);
+            rc = pcre2_match(expression->pcre2->code, (PCRE2_SPTR) str_test, strlen(str_test), 0, 0, match_data, NULL);
             pcre2_match_data_free(match_data);
             retval = (rc > 0) ? true : false;
             break;
@@ -207,8 +213,8 @@ const char * w_expression_execute(w_expression_t * expression, const char * str_
             break;
 
         case EXP_TYPE_PCRE2:
-            match_data = pcre2_match_data_create_from_pattern(expression->pcre2, NULL);
-            rc = pcre2_match(expression->pcre2, (PCRE2_SPTR) str_test, strlen(str_test), 0, 0, match_data, NULL);
+            match_data = pcre2_match_data_create_from_pattern(expression->pcre2->code, NULL);
+            rc = pcre2_match(expression->pcre2->code, (PCRE2_SPTR) str_test, strlen(str_test), 0, 0, match_data, NULL);
 
             if (rc > 0) {
                 ovector = pcre2_get_ovector_pointer(match_data);
@@ -251,4 +257,62 @@ void w_expression_PCRE2_fill_regex_match(int rc, const char * str_test, pcre2_ma
         regex_match->sub_strings[i - 1] = strndup(str_test + ovector[2 * i], substring_length);
     }
     regex_match->sub_strings[rc - 1] = NULL;
+}
+
+char * w_expression_get_regex_pattern(w_expression_t * expression) {
+
+    char * retval = NULL;
+
+    if (!expression) {
+        return retval;
+    }
+
+    switch (expression->exp_type) {
+
+        case EXP_TYPE_OSREGEX:
+            os_strdup(expression->regex->raw, retval);
+            break;
+
+        case EXP_TYPE_OSMATCH:
+            os_strdup(expression->match->raw, retval);
+            break;
+
+        case EXP_TYPE_PCRE2:
+            os_strdup(expression->pcre2->raw_pattern, retval);
+            break;
+
+        default:
+            break;
+    }
+
+    return retval;
+}
+
+char * w_expression_get_regex_type(w_expression_t * expression) {
+
+    char * retval = NULL;
+
+    if (!expression) {
+        return retval;
+    }
+
+    switch (expression->exp_type) {
+
+        case EXP_TYPE_OSREGEX:
+            os_strdup("osregex", retval);
+            break;
+
+        case EXP_TYPE_OSMATCH:
+            os_strdup("osmatch", retval);
+            break;
+
+        case EXP_TYPE_PCRE2:
+            os_strdup("pcre2", retval);
+            break;
+
+        default:
+            break;
+    }
+
+    return retval;
 }
