@@ -666,7 +666,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 Config->agents_disconnection_time = atoi(node[i]->content);
 
                 if (Config->agents_disconnection_time < 20) {
-                    merror("Invalid value for option '<%s>'", xml_agents_disconnection_time);
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return OS_INVALID;
                 }
 
@@ -679,8 +679,8 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 }
                 Config->alert_agent_disconnection_time = atoi(node[i]->content);
 
-                if (Config->agents_disconnection_time < 2) {
-                    merror("Invalid value for option '<%s>'", xml_alert_agent_disconnection_time);
+                if (Config->alert_agent_disconnection_time < 2) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return OS_INVALID;
                 }
 
