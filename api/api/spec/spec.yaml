@@ -331,6 +331,22 @@ x-rbac-catalog:
         actions: ['lists:read']
         resources: ['list:path:etc/lists/audit-keys']
         effect: "deny"
+    'rootcheck:read':
+      description: "Access information from agents rootcheck database"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+      example:
+        actions: [ 'rootcheck:read' ]
+        resources: [ 'agent:id:011' ]
+        effect: "allow"
+    'rootcheck:clear':
+      description: "Clear the agents rootcheck database"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+      example:
+        actions: [ 'rootcheck:clear' ]
+        resources: [ 'agent:id:*' ]
+        effect: "deny"
     'rules:read':
       description: "Read rules files"
       resources:
@@ -4510,6 +4526,13 @@ components:
       schema:
         type: string
         format: alphanumeric
+    cis:
+      in: query
+      name: cis
+      description: "Filter by CIS requirement"
+      schema:
+        type: string
+        format: alphanumeric
     filetype:
       in: query
       name: type
@@ -5047,6 +5070,8 @@ tags:
     description: "Attacks information from MITRE database"
   - name: Overview
     description: "Overview of Wazuh"
+  - name: Rootcheck
+    description: "Rootcheck management"
   - name: Rules
     description: "Rules management"
   - name: SCA
@@ -10312,6 +10337,207 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
+  /rootcheck:
+    delete:
+      tags:
+      - Rootcheck
+      summary: "Clear results"
+      description: "Clear rootcheck database for all agents or a list of them"
+      operationId: api.controllers.rootcheck_controller.delete_rootcheck
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rootcheck:clear'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agents_list'
+      responses:
+        '200':
+          description: "Clear rootcheck database for all agents or a list of them"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - 002
+                      003
+                  total_affected_items: 2
+                  failed_items: []
+                  total_failed_items: 0
+                message: "Rootcheck database was cleared on returned agents"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    put:
+      tags:
+        - Rootcheck
+      summary: "Run scan"
+      description: "Run rootcheck scan in all agents or a list of them"
+      operationId: api.controllers.rootcheck_controller.put_rootcheck
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscheck:run'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agents_list'
+      responses:
+        '200':
+          description: "Run rootcheck scan in all agents or a list of them"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - 000
+                      001
+                      002
+                      003
+                  total_affected_items: 4
+                  failed_items: []
+                  total_failed_items: 0
+                message: "Syscheck and rootcheck scans were restarted on returned agents"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /rootcheck/{agent_id}:
+    get:
+      tags:
+      - Rootcheck
+      summary: "Get results"
+      description: "Return the rootcheck database of an agent"
+      operationId: api.controllers.rootcheck_controller.get_rootcheck_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rootcheck:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
+        - $ref: '#/components/parameters/status'
+        - $ref: '#/components/parameters/pci_dss'
+        - $ref: '#/components/parameters/cis'
+      responses:
+        '200':
+          description: "Return the rootcheck database of an agent"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - date_first: "2020-10-23 10:34:09"
+                      log: "Ending CIS-CAT scan. File: /var/ossec/wodles/ciscat/benchmarks/CIS_Ubuntu_Linux_16.04_LTS_Benchmark_v1.0.0-xccdf.xml."
+                      date_last: "2020-10-23 10:34:09"
+                      status: "outstanding"
+                    - date_first: "2020-10-23 10:33:43"
+                      log: "Starting CIS-CAT scan. File: /var/ossec/wodles/ciscat/benchmarks/CIS_Ubuntu_Linux_16.04_LTS_Benchmark_v1.0.0-xccdf.xml."
+                      date_last: "2020-10-23 10:33:49"
+                      status: "outstanding"
+                  total_affected_items: 2
+                  failed_items: []
+                  total_failed_items: 0
+                message: "All selected rootcheck information was returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /rootcheck/{agent_id}/last_scan:
+    get:
+      tags:
+      - Rootcheck
+      summary: "Get last scan datetime"
+      description: "Return the timestamp of the last rootcheck scan of an agent."
+      operationId: api.controllers.rootcheck_controller.get_last_scan_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rootcheck:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: "Return the timestamp of the last rootcheck scan of an agent."
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - end: "2020-10-23 11:53:47"
+                      start: "2020-10-23 11:53:39"
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
+                message: "Last rootcheck scan of the agent was returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
   /rules:
     get:
       tags:
@@ -10875,7 +11101,7 @@ paths:
                   failed_items: []
                   total_affected_items: 4
                   total_failed_items: 0
-                message: "Syscheck scan was restarted on returned agents"
+                message: "Syscheck and rootcheck scans were restarted on returned agents"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
