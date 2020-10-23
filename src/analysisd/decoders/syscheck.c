@@ -1572,10 +1572,9 @@ static int fim_generate_alert(Eventinfo *lf, char *event_type, cJSON *attributes
         path_len = 6 + strlen(lf->fields[FIM_FILE].value);
         if (path_len > 756) {
             char *aux = lf->fields[FIM_FILE].value + path_len - 30;
-            path_len = snprintf(path_buffer, 757, "%s %.713s [...] %s", lf->fields[FIM_REGISTRY_ARCH].value,
-                                lf->fields[FIM_FILE].value, aux);
+            snprintf(path_buffer, 757, "%s %.713s [...] %s", lf->fields[FIM_REGISTRY_ARCH].value,
+                     lf->fields[FIM_FILE].value, aux);
         } else {
-            path_len =
             snprintf(path_buffer, 757, "%s %s", lf->fields[FIM_REGISTRY_ARCH].value, lf->fields[FIM_FILE].value);
         }
     } else if (strcmp("registry_value", lf->fields[FIM_ENTRY_TYPE].value) == 0) {
@@ -1585,12 +1584,12 @@ static int fim_generate_alert(Eventinfo *lf, char *event_type, cJSON *attributes
 
         path_len = 6 + strlen(lf->fields[FIM_FILE].value) + value_len;
         if (path_len > 756) {
-            path_len = snprintf(path_buffer, 757, "%s %.*s [...] \\%s", lf->fields[FIM_REGISTRY_ARCH].value,
-                                751 - value_len < 0 ? 0 : 751 - value_len, lf->fields[FIM_FILE].value,
-                                lf->fields[FIM_REGISTRY_VALUE_NAME].value);
+            snprintf(path_buffer, 757, "%s %.*s [...] \\%s", lf->fields[FIM_REGISTRY_ARCH].value,
+                     751 - value_len < 0 ? 0 : 751 - value_len, lf->fields[FIM_FILE].value,
+                     lf->fields[FIM_REGISTRY_VALUE_NAME].value);
         } else {
-            path_len = snprintf(path_buffer, 757, "%s %s\\%s", lf->fields[FIM_REGISTRY_ARCH].value,
-                                lf->fields[FIM_FILE].value, lf->fields[FIM_REGISTRY_VALUE_NAME].value);
+            snprintf(path_buffer, 757, "%s %s\\%s", lf->fields[FIM_REGISTRY_ARCH].value, lf->fields[FIM_FILE].value,
+                     lf->fields[FIM_REGISTRY_VALUE_NAME].value);
         }
     }
 

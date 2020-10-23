@@ -682,11 +682,17 @@ void fim_registry_process_value_event(fim_entry *new,
     json_event = fim_registry_event(new, saved, configuration, mode,
                                     saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFICATION, NULL, diff);
 
+    os_free(diff);
+
     if (json_event) {
         if (fim_db_insert_registry_data(syscheck.database, new->registry_entry.value, new->registry_entry.key->id,
                                         saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFICATION) != FIMDB_OK) {
-            mwarn(FIM_REGISTRY_FAIL_TO_INSERT_VALUE, new->registry_entry.key->arch == ARCH_32BIT ? "[x32]" : "[x64]",
-                  new->registry_entry.key->path, new->registry_entry.value->name);
+            // Something went wrong or the DB is full, either way we need to stop.
+            mdebug2(FIM_REGISTRY_FAIL_TO_INSERT_VALUE, new->registry_entry.key->arch == ARCH_32BIT ? "[x32]" : "[x64]",
+                    new->registry_entry.key->path, new->registry_entry.value->name);
+            cJSON_Delete(json_event);
+            fim_registry_free_value_data(saved->registry_entry.value);
+            return;
         }
 
         if (_base_line) {
@@ -700,7 +706,6 @@ void fim_registry_process_value_event(fim_entry *new,
     fim_db_set_registry_data_scanned(syscheck.database, new->registry_entry.value->name, new->registry_entry.key->id);
 
     fim_registry_free_value_data(saved->registry_entry.value);
-    os_free(diff);
 }
 
 /**
