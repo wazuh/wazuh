@@ -66,7 +66,6 @@ else()
 	    dl
 	    pthread
 		proc
-		gcov
 	)
 
 	if(SOLARIS)
