@@ -13,8 +13,10 @@
 #include "stringHelper.h"
 #include "filesystemHelper.h"
 #include <sys/sysctl.h>
+#include <fstream>
 
 constexpr auto MAC_APPS_PATH{"/Applications"};
+constexpr auto APP_INFO_PATH{"Contents/Info.plist"};
 
 void SysInfo::getMemory(nlohmann::json& info) const
 {
@@ -89,6 +91,26 @@ std::string SysInfo::getSerialNumber() const
     return Utils::trim(rawData.substr(rawData.find(":")), " :\t\r\n");
 }
 
+static nlohmann::json parseAppInfo(const std::string& path)
+{
+    nlohmann::json ret;
+    std::fstream file{path, std::ios_base::in};
+    if (file.is_open())
+    {
+        while(file.good())
+        {
+            std::string line;
+            std::vector<std::string> data;
+            while(std::getline(file, line))
+            {
+                data.push_back(line + "\n");
+                std::cout << line << std::endl
+            }
+        }
+    }
+    return ret;
+}
+
 nlohmann::json SysInfo::getPackages() const
 {
     nlohmann::json ret;
@@ -97,7 +119,9 @@ nlohmann::json SysInfo::getPackages() const
     {
         if (Utils::endsWith(app, ".app"))
         {
-            std::cout << app << std::endl;
+            const auto path{app + "\\" + APP_INFO_PATH};
+            std::cout << path << std::endl;
+            parseAppInfo(path);
         }
     }
     return ret;
