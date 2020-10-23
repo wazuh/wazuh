@@ -401,7 +401,7 @@ void test_wdb_parse_global_update_agent_data_query_error(void **state)
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_codename\":\"test_codename\",\"os_platform\":\"test_platform\",\
     \"os_build\":\"test_build\",\"os_uname\":\"test_uname\",\"os_arch\":\"test_arch\",\"version\":\"test_version\",\"config_sum\":\
     \"test_config\",\"merged_sum\":\"test_merged\",\"manager_host\":\"test_manager\",\"node_name\":\"test_node\",\"agent_ip\":\"test_ip\",\
-    \"sync_status\":\"syncreq\"}";
+    \"connection_status\":\"active\",\"sync_status\":\"syncreq\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg,
@@ -409,7 +409,7 @@ void test_wdb_parse_global_update_agent_data_query_error(void **state)
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_codename\":\"test_codename\",\"os_platform\":\"test_platform\",\
     \"os_build\":\"test_build\",\"os_uname\":\"test_uname\",\"os_arch\":\"test_arch\",\"version\":\"test_version\",\"config_sum\":\
     \"test_config\",\"merged_sum\":\"test_merged\",\"manager_host\":\"test_manager\",\"node_name\":\"test_node\",\"agent_ip\":\"test_ip\",\
-    \"sync_status\":\"syncreq\"}");
+    \"connection_status\":\"active\",\"sync_status\":\"syncreq\"}");
 
     expect_value(__wrap_wdb_global_update_agent_version, id, 1);
     expect_string(__wrap_wdb_global_update_agent_version, os_name, "test_name");
@@ -427,6 +427,7 @@ void test_wdb_parse_global_update_agent_data_query_error(void **state)
     expect_string(__wrap_wdb_global_update_agent_version, manager_host, "test_manager");
     expect_string(__wrap_wdb_global_update_agent_version, node_name, "test_node");
     expect_string(__wrap_wdb_global_update_agent_version, agent_ip, "test_ip");
+    expect_string(__wrap_wdb_global_update_agent_version, connection_status, "active");
     expect_string(__wrap_wdb_global_update_agent_version, sync_status, "syncreq");
 
     will_return(__wrap_wdb_global_update_agent_version, OS_INVALID);
@@ -448,7 +449,7 @@ void test_wdb_parse_global_update_agent_data_invalid_data(void **state)
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_codename\":\"test_codename\",\"os_platform\":\"test_platform\",\
     \"os_build\":\"test_build\",\"os_uname\":\"test_uname\",\"os_arch\":\"test_arch\",\"version\":\"test_version\",\"config_sum\":\
     \"test_config\",\"merged_sum\":\"test_merged\",\"manager_host\":\"test_manager\",\"node_name\":\"test_node\",\"agent_ip\":\"test_ip\",\
-    \"sync_status\":\"syncreq\"}";
+    \"connection_status\":\"active\",\"sync_status\":\"syncreq\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg,
@@ -456,7 +457,7 @@ void test_wdb_parse_global_update_agent_data_invalid_data(void **state)
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_codename\":\"test_codename\",\"os_platform\":\"test_platform\",\
     \"os_build\":\"test_build\",\"os_uname\":\"test_uname\",\"os_arch\":\"test_arch\",\"version\":\"test_version\",\"config_sum\":\
     \"test_config\",\"merged_sum\":\"test_merged\",\"manager_host\":\"test_manager\",\"node_name\":\"test_node\",\"agent_ip\":\"test_ip\",\
-    \"sync_status\":\"syncreq\"}");
+    \"connection_status\":\"active\",\"sync_status\":\"syncreq\"}");
 
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when updating agent version.");
 
@@ -474,7 +475,7 @@ void test_wdb_parse_global_update_agent_data_success(void **state)
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_codename\":\"test_codename\",\"os_platform\":\"test_platform\",\
     \"os_build\":\"test_build\",\"os_uname\":\"test_uname\",\"os_arch\":\"test_arch\",\"version\":\"test_version\",\"config_sum\":\
     \"test_config\",\"merged_sum\":\"test_merged\",\"manager_host\":\"test_manager\",\"node_name\":\"test_node\",\"agent_ip\":\"test_ip\",\
-    \"sync_status\":\"syncreq\"}";
+    \"connection_status\":\"active\",\"sync_status\":\"syncreq\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg,
@@ -482,7 +483,7 @@ void test_wdb_parse_global_update_agent_data_success(void **state)
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_codename\":\"test_codename\",\"os_platform\":\"test_platform\",\
     \"os_build\":\"test_build\",\"os_uname\":\"test_uname\",\"os_arch\":\"test_arch\",\"version\":\"test_version\",\"config_sum\":\
     \"test_config\",\"merged_sum\":\"test_merged\",\"manager_host\":\"test_manager\",\"node_name\":\"test_node\",\"agent_ip\":\"test_ip\",\
-    \"sync_status\":\"syncreq\"}");
+    \"connection_status\":\"active\",\"sync_status\":\"syncreq\"}");
 
     expect_value(__wrap_wdb_global_update_agent_version, id, 1);
     expect_string(__wrap_wdb_global_update_agent_version, os_name, "test_name");
@@ -500,6 +501,7 @@ void test_wdb_parse_global_update_agent_data_success(void **state)
     expect_string(__wrap_wdb_global_update_agent_version, manager_host, "test_manager");
     expect_string(__wrap_wdb_global_update_agent_version, node_name, "test_node");
     expect_string(__wrap_wdb_global_update_agent_version, agent_ip, "test_ip");
+    expect_string(__wrap_wdb_global_update_agent_version, connection_status, "active");
     expect_string(__wrap_wdb_global_update_agent_version, sync_status, "syncreq");
     will_return(__wrap_wdb_global_update_agent_version, OS_SUCCESS);
 
@@ -743,15 +745,15 @@ void test_wdb_parse_global_update_agent_keepalive_invalid_data(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global update-keepalive {\"id\":1,\"sync_status\":null}";
+    char query[OS_BUFFER_SIZE] = "global update-keepalive {\"id\":1,\"connection_status\":\"active\",\"sync_status\":null}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-keepalive {\"id\":1,\"sync_status\":null}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-keepalive {\"id\":1,\"connection_status\":\"active\",\"sync_status\":null}");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when updating agent keepalive.");
 
     ret = wdb_parse(query, data->output);
 
-    assert_string_equal(data->output, "err Invalid JSON data, near '{\"id\":1,\"sync_status\":null}'");
+    assert_string_equal(data->output, "err Invalid JSON data, near '{\"id\":1,\"connection_status\":\"act'");
     assert_int_equal(ret, OS_INVALID);
 }
 
@@ -759,14 +761,15 @@ void test_wdb_parse_global_update_agent_keepalive_query_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global update-keepalive {\"id\":1,\"sync_status\":\"syncreq\"}";
+    char query[OS_BUFFER_SIZE] = "global update-keepalive {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_value(__wrap_wdb_global_update_agent_keepalive, id, 1);
+    expect_string(__wrap_wdb_global_update_agent_keepalive, connection_status, "active");
     expect_string(__wrap_wdb_global_update_agent_keepalive, status, "syncreq");
     will_return(__wrap_wdb_global_update_agent_keepalive, OS_INVALID);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-keepalive {\"id\":1,\"sync_status\":\"syncreq\"}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-keepalive {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}");
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
 
@@ -780,14 +783,15 @@ void test_wdb_parse_global_update_agent_keepalive_success(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global update-keepalive {\"id\":1,\"sync_status\":\"syncreq\"}";
+    char query[OS_BUFFER_SIZE] = "global update-keepalive {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_value(__wrap_wdb_global_update_agent_keepalive, id, 1);
+    expect_string(__wrap_wdb_global_update_agent_keepalive, connection_status, "active");
     expect_string(__wrap_wdb_global_update_agent_keepalive, status, "syncreq");
     will_return(__wrap_wdb_global_update_agent_keepalive, OS_SUCCESS);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-keepalive {\"id\":1,\"sync_status\":\"syncreq\"}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-keepalive {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}");
 
     ret = wdb_parse(query, data->output);
 
