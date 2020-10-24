@@ -42,6 +42,5 @@ void * moncom_main(__attribute__((unused)) void * arg);
 
 /* Global variables */
 extern monitor_config mond;
-extern _Config Config;
 
 #endif /* MONITORD_H */

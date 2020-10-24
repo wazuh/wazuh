@@ -156,16 +156,14 @@ int main(int argc, char **argv)
     mond.emailfrom = NULL;
     mond.emailidsname = NULL;
 
+    /* Setting default agent's global configuration */
+    mond.global.agents_disconnection_time = 20;
+    mond.global.agents_disconnection_alert_time = 120;
+
     c = 0;
     c |= CREPORTS;
+    c |= CGLOBAL;
     if (ReadConfig(c, cfg, &mond, NULL) < 0) {
-        merror_exit(CONFIG_ERROR, cfg);
-    }
-
-    /* Setting default values and reading global configuration */
-    Config.agents_disconnection_time = 20;
-    Config.alert_agent_disconnection_time = 2;
-    if (ReadConfig(CGLOBAL, cfg, &Config, NULL) < 0) {
         merror_exit(CONFIG_ERROR, cfg);
     }
 

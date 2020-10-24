@@ -24,7 +24,6 @@ rlim_t nofile;
 int tcp_keepidle;
 int tcp_keepintvl;
 int tcp_keepcnt;
-_Config Config;
 
 /* Handle remote connections */
 void HandleRemote(int uid)

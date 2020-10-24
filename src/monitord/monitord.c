@@ -13,7 +13,6 @@
 
 /* Global variables */
 monitor_config mond;
-_Config Config;
 
 void Monitord()
 {
@@ -161,8 +160,8 @@ cJSON *getMonitorGlobalOptions(void) {
     cJSON *root = cJSON_CreateObject();
     cJSON *monconf = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(monconf,"agents_disconnection_time",Config.agents_disconnection_time);
-    cJSON_AddNumberToObject(monconf,"alert_agent_disconnection_time",Config.alert_agent_disconnection_time);
+    cJSON_AddNumberToObject(monconf,"agents_disconnection_time",mond.global.agents_disconnection_time);
+    cJSON_AddNumberToObject(monconf,"agents_disconnection_alert_time",mond.global.agents_disconnection_alert_time);
 
     cJSON_AddItemToObject(root,"monitord",monconf);
 
