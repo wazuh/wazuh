@@ -151,7 +151,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     const char *xml_rotate_interval = "rotate_interval";
     const char *xml_max_output_size = "max_output_size";
     const char *xml_agents_disconnection_time = "agents_disconnection_time";
-    const char *xml_alert_agent_disconnection_time = "alert_agent_disconnection_time";
+    const char *xml_agents_disconnection_alert_time = "agents_disconnection_alert_time";
 
 
     const char *xml_emailto = "email_to";
@@ -657,33 +657,83 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 }
 
             }
-        } else if (strcmp(node[i]->element, xml_agents_disconnection_time) == 0) {
+        }
+        /*Agent's disconnection time parameters */
+        else if (strcmp(node[i]->element, xml_agents_disconnection_time) == 0) {
             if (Config) {
-                if (!OS_StrIsNum(node[i]->content)) {
+                char c;
+
+                switch (sscanf(node[i]->content, "%d%c", &Config->agents_disconnection_time, &c)) {
+                case 1:
+                    break;
+
+                case 2:
+                    switch (c) {
+                    case 'd':
+                        Config->agents_disconnection_time *= 86400;
+                        break;
+                    case 'h':
+                        Config->agents_disconnection_time *= 3600;
+                        break;
+                    case 'm':
+                        Config->agents_disconnection_time *= 60;
+                        break;
+                    case 's':
+                        break;
+                    default:
+                        merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                        return (OS_INVALID);
+                    }
+
+                    break;
+
+                default:
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
                 }
-                Config->agents_disconnection_time = atoi(node[i]->content);
 
                 if (Config->agents_disconnection_time < 20) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                    return OS_INVALID;
+                    return (OS_INVALID);
                 }
-
             }
-        } else if (strcmp(node[i]->element, xml_alert_agent_disconnection_time) == 0) {
+        } else if (strcmp(node[i]->element, xml_agents_disconnection_alert_time) == 0) {
             if (Config) {
-                if (!OS_StrIsNum(node[i]->content)) {
+                char c;
+
+                switch (sscanf(node[i]->content, "%d%c", &Config->agents_disconnection_alert_time, &c)) {
+                case 1:
+                    break;
+
+                case 2:
+                    switch (c) {
+                    case 'd':
+                        Config->agents_disconnection_alert_time *= 86400;
+                        break;
+                    case 'h':
+                        Config->agents_disconnection_alert_time *= 3600;
+                        break;
+                    case 'm':
+                        Config->agents_disconnection_alert_time *= 60;
+                        break;
+                    case 's':
+                        break;
+                    default:
+                        merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                        return (OS_INVALID);
+                    }
+
+                    break;
+
+                default:
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
                 }
-                Config->alert_agent_disconnection_time = atoi(node[i]->content);
 
-                if (Config->alert_agent_disconnection_time < 2) {
+                if (Config->rotate_interval < 120) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                    return OS_INVALID;
+                    return (OS_INVALID);
                 }
-
             }
         } else {
             merror(XML_INVELEM, node[i]->element);
