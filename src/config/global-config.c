@@ -666,7 +666,6 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 switch (sscanf(node[i]->content, "%d%c", &Config->agents_disconnection_time, &c)) {
                 case 1:
                     break;
-
                 case 2:
                     switch (c) {
                     case 'd':
@@ -684,7 +683,6 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                         merror(XML_VALUEERR, node[i]->element, node[i]->content);
                         return (OS_INVALID);
                     }
-
                     break;
 
                 default:
@@ -704,7 +702,6 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 switch (sscanf(node[i]->content, "%d%c", &Config->agents_disconnection_alert_time, &c)) {
                 case 1:
                     break;
-
                 case 2:
                     switch (c) {
                     case 'd':
@@ -722,7 +719,6 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                         merror(XML_VALUEERR, node[i]->element, node[i]->content);
                         return (OS_INVALID);
                     }
-
                     break;
 
                 default:
