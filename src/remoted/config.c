@@ -28,6 +28,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     int modules = 0;
 
     modules |= CREMOTE;
+    modules |= CGLOBAL;
 
     cfg->port = NULL;
     cfg->conn = NULL;
@@ -38,6 +39,10 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
 
     receive_chunk = (unsigned)getDefine_Int("remoted", "receive_chunk", 1024, 16384);
     buffer_relax = getDefine_Int("remoted", "buffer_relax", 0, 2);
+
+    /* Setting default values for global parameters */
+    cfg->global.agents_disconnection_time = 20;
+    cfg->global.agents_disconnection_alert_time = 120;
 
     if (ReadConfig(modules, cfgfile, cfg, NULL) < 0) {
         return (OS_INVALID);
@@ -157,8 +162,8 @@ cJSON *getRemoteGlobalConfig(void) {
     cJSON *global = cJSON_CreateObject();
     cJSON *remoted = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(remoted,"alert_agent_disconnection_time",Config.alert_agent_disconnection_time);
-    cJSON_AddNumberToObject(remoted,"agents_disconnection_time",Config.agents_disconnection_time);
+    cJSON_AddNumberToObject(remoted,"agents_disconnection_alert_time",logr.global.agents_disconnection_alert_time);
+    cJSON_AddNumberToObject(remoted,"agents_disconnection_time",logr.global.agents_disconnection_time);
 
     cJSON_AddItemToObject(global,"remoted",remoted);
     cJSON_AddItemToObject(root,"global",global);
