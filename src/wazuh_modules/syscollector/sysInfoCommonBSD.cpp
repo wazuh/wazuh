@@ -67,3 +67,7 @@ std::string SysInfo::getCpuName() const
     return std::string{reinterpret_cast<const char*>(spBuff.get())};
 }
 
+nlohmann::json SysInfo::getPackages() const
+{
+    return {};
+}
