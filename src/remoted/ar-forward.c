@@ -126,7 +126,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
                 key_lock_read();
 
                 for (i = 0; i < keys.keysize; i++) {
-                    if (keys.keyentries[i]->rcvd >= (time(0) - Config.agents_disconnection_time)) {
+                    if (keys.keyentries[i]->rcvd >= (time(0) - logr.global.agents_disconnection_time)) {
                         strncpy(agent_id, keys.keyentries[i]->id, KEYSIZE);
                         key_unlock();
                         send_msg(agent_id, msg_to_send, -1);

@@ -30,6 +30,10 @@ typedef struct __Config {
     u_int8_t logfw;
     int decoder_order_size;
 
+    /* Agent's disconnection global parameters */
+    unsigned int agents_disconnection_time;
+    unsigned int agents_disconnection_alert_time;
+
     /* Prelude support */
     u_int8_t prelude;
     /* which min. level the alert must be sent to prelude */
@@ -111,9 +115,6 @@ typedef struct __Config {
     int min_rotate_interval;
     ssize_t max_output_size;
     long queue_size;
-
-    int agents_disconnection_time;
-    int alert_agent_disconnection_time;
 } _Config;
 
 

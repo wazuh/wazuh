@@ -125,13 +125,6 @@ int main(int argc, char **argv)
         merror_exit(CONFIG_ERROR, cfg);
     }
 
-    /* Setting default values and reading global configuration */
-    Config.agents_disconnection_time = 20;
-    Config.alert_agent_disconnection_time = 2;
-    if (ReadConfig(CGLOBAL, cfg, &Config, NULL) < 0) {
-        merror_exit(CONFIG_ERROR, cfg);
-    }
-
     logr.nocmerged = nocmerged ? 1 : !getDefine_Int("remoted", "merge_shared", 0, 1);
 
     // Read the cluster status and the node type from the configuration file

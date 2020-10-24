@@ -198,6 +198,5 @@ extern int tcp_keepidle;
 extern int tcp_keepintvl;
 extern int tcp_keepcnt;
 extern size_t global_counter;
-extern _Config Config;
 
 #endif /* LOGREMOTE_H */
