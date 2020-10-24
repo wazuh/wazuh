@@ -95,16 +95,32 @@ static nlohmann::json parseAppInfo(const std::string& path)
 {
     nlohmann::json ret;
     std::fstream file{path, std::ios_base::in};
+    static const auto getValueFnc{[](const std::string& val){return Utils::rightTrim(Utils::rightTrim(val, "<"), ">");}};
     if (file.is_open())
     {
-        while(file.good())
+        std::string line;
+        while(std::getline(file, line))
         {
-            std::string line;
-            std::vector<std::string> data;
-            while(std::getline(file, line))
+            line = Utils::trim(line);
+            if (line == "<key>CFBundleName</key>" &&
+                std::getline(file, line))
             {
-                data.push_back(line + "\n");
-                std::cout << line << std::endl
+                ret["name"] = getValueFnc(line);
+            }
+            else if (line == "<key>CFBundleShortVersionString</key>" &&
+                std::getline(file, line))
+            {
+                ret["version"] = getValueFnc(line);
+            }
+            else if (line == "<key>LSApplicationCategoryType</key>" &&
+                std::getline(file, line))
+            {
+                ret["group"] = getValueFnc(line);
+            }
+            else if (line == "<key>CFBundleIdentifier</key>" &&
+                std::getline(file, line))
+            {
+                ret["description"] = getValueFnc(line);
             }
         }
     }
