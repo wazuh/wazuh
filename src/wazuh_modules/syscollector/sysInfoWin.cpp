@@ -55,8 +55,8 @@ public:
           m_kernelModeTime{},
           m_userModeTime{}
     {
-        m_spProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, m_pId);
-        if (m_spProcess)
+        m_hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, m_pId);
+        if (m_hProcess)
         {
             setProcessTimes();
             setProcessMemInfo();
@@ -67,29 +67,28 @@ public:
             {
                 static_cast<int>(GetLastError()),
                 std::system_category(),
-                "Unable to open process with PID %lu" + m_pId
+                "Unable to open process with PID %lu" + std::to_string(m_pId)
             };
         }
     }
 
     ~SysInfoProcess()
     {
-        CloseHandle(m_spProcess);
+        CloseHandle(m_hProcess);
     }
 
     std::string cmd()
     {
         std::string ret { "unknown" };
-        char readBuffer[OS_MAXSTR] = {};
-        //std::unique_ptr<char*, CharDeleter> path { nullptr };
+        const auto spReadBuff { std::make_unique<char[]>(OS_MAXSTR) };
         char* path { nullptr };
         // Get full Windows kernel path for the process
-        if (GetProcessImageFileName(m_spProcess, readBuffer, OS_MAXSTR))
+        if (spReadBuff && GetProcessImageFileName(m_hProcess, spReadBuff.get(), OS_MAXSTR))
         {
             // Convert Windows kernel path to a valid Win32 filepath
             // E.g.: "\Device\HarddiskVolume1\Windows\system32\notepad.exe" -> "C:\Windows\system32\notepad.exe"
             // This requires hotfix KB931305 in order to work under XP/Server 2003, so the conversion will be skipped if we're not running under Vista or greater
-            if (!isVistaOrLater() || !ntPath2Win32Path(readBuffer, &path))
+            if (!isVistaOrLater() || !ntPath2Win32Path(spReadBuff.get(), &path))
             {
                 // If there were any errors, the readBuffer array will remain intact
                 // In that case, let's just use the Windows kernel path. It's better than nothing
@@ -102,7 +101,7 @@ public:
             {
                 static_cast<int>(GetLastError()),
                 std::system_category(),
-                "Unable to retrieve executable path from process with PID %lu" + m_pId
+                "Unable to retrieve executable path from process with PID %lu" + std::to_string(m_pId)
             };
         }
         return ret;
@@ -137,7 +136,7 @@ public:
             {
                 static_cast<int>(GetLastError()),
                 std::system_category(),
-                "Unable to retrieve session ID from process with PID %lu" + m_pId
+                "Unable to retrieve session ID from process with PID %lu" + std::to_string(m_pId)
             };
         }
         return ret;
@@ -146,21 +145,22 @@ public:
 private:
     void setProcessTimes()
     {
+        static const auto s_toSecondsValue { 10000000ULL };
         FILETIME lpCreationTime{};
         FILETIME lpExitTime{};
         FILETIME lpKernelTime{};
         FILETIME lpUserTime{};
-        if (GetProcessTimes(m_spProcess, &lpCreationTime, &lpExitTime, &lpKernelTime, &lpUserTime))
+        if (GetProcessTimes(m_hProcess, &lpCreationTime, &lpExitTime, &lpKernelTime, &lpUserTime))
         {
             // Copy the kernel mode filetime high and low parts and convert it to seconds
             m_kernelModeTime.LowPart = lpKernelTime.dwLowDateTime;
             m_kernelModeTime.HighPart = lpKernelTime.dwHighDateTime;
-            m_kernelModeTime.QuadPart /= 10000000ULL;
+            m_kernelModeTime.QuadPart /= s_toSecondsValue;
 
             // Copy the user mode filetime high and low parts and convert it to seconds
             m_userModeTime.LowPart = lpUserTime.dwLowDateTime;
             m_userModeTime.HighPart = lpUserTime.dwHighDateTime;
-            m_userModeTime.QuadPart /= 10000000ULL;
+            m_userModeTime.QuadPart /= s_toSecondsValue;
         }
         else
         {
@@ -168,17 +168,17 @@ private:
             {
                 static_cast<int>(GetLastError()),
                 std::system_category(),
-                "Unable to retrieve kernel mode and user mode times from process with PID %lu" + m_pId
+                "Unable to retrieve kernel mode and user mode times from process with PID %lu" + std::to_string(m_pId)
             };          
         }
     }
 
     void setProcessMemInfo()
     {
-        PROCESS_MEMORY_COUNTERS pMemCounters;
+        PROCESS_MEMORY_COUNTERS pMemCounters{};
         // Get page file usage and virtual size
         // Reference: https://stackoverflow.com/a/1986486
-        if (GetProcessMemoryInfo(m_spProcess, &pMemCounters, sizeof(pMemCounters)))
+        if (GetProcessMemoryInfo(m_hProcess, &pMemCounters, sizeof(pMemCounters)))
         {
             m_pageFileUsage = pMemCounters.PagefileUsage;
             m_virtualSize   = pMemCounters.WorkingSetSize + pMemCounters.PagefileUsage;
@@ -189,12 +189,12 @@ private:
             {
                 static_cast<int>(GetLastError()),
                 std::system_category(),
-                "Unable to retrieve page file usage from process with PID %lu" + m_pId
+                "Unable to retrieve page file usage from process with PID %lu" + std::to_string(m_pId)
             };
         }
     }
 
-    int ntPath2Win32Path(char* ntpath, char** outbuf)
+    bool ntPath2Win32Path(char* ntpath, char** outbuf)
     {
         int success { 0 };
 
@@ -276,7 +276,7 @@ private:
     }
 
     const DWORD     m_pId;
-    HANDLE          m_spProcess;
+    HANDLE          m_hProcess;
     ULARGE_INTEGER  m_kernelModeTime;
     ULARGE_INTEGER  m_userModeTime;
     DWORD           m_pageFileUsage;
@@ -349,15 +349,18 @@ static std::string parseRawSmbios(const BYTE* rawData, const DWORD rawDataSize)
     return serialNumber;
 }
 
-static std::string processName(PROCESSENTRY32 processEntry,
-                               std::string& execPath)
+static bool isSystemProcess(const DWORD pid)
+{
+    return pid == 0 || pid == 4;
+}
+
+static std::string processName(const PROCESSENTRY32& processEntry)
 {
     std::string ret;
     const DWORD pId { processEntry.th32ProcessID };
-    if (pId == 0 || pId == 4)
+    if (isSystemProcess(pId))
     {
         ret = (pId == 0) ? SYSTEM_IDLE_PROCESS_NAME : SYSTEM_PROCESS_NAME;
-        execPath = "none";
     }
     else
     {
@@ -371,11 +374,10 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
     nlohmann::json jsProcessInfo{};
     const DWORD pId { processEntry.th32ProcessID };
     SysInfoProcess process(pId);
-    std::string execName;
 
     // Current process information
-    jsProcessInfo["name"]       = processName(processEntry, execName);
-    jsProcessInfo["cmd"]        = (execName.compare("none") == 0) ? execName : process.cmd();
+    jsProcessInfo["name"]       = processName(processEntry);
+    jsProcessInfo["cmd"]        = (isSystemProcess(pId)) ? "none" : process.cmd();
     jsProcessInfo["stime"]      = process.kernelModeTime();
     jsProcessInfo["size"]       = process.pageFileUsage();
     jsProcessInfo["ppid"]       = processEntry.th32ParentProcessID;
@@ -473,21 +475,22 @@ nlohmann::json SysInfo::getPackages() const
 nlohmann::json SysInfo::getProcessesInfo() const
 {
     nlohmann::json jsProcessesList{};
-    PROCESSENTRY32 processEntry {};
+    PROCESSENTRY32 processEntry{};
     processEntry.dwSize = sizeof(PROCESSENTRY32);
     // Create a snapshot of all current processes
-    const auto spProcessSnapshot { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
-    if (INVALID_HANDLE_VALUE != spProcessSnapshot)
+    const auto processesSnapshot { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
+    if (INVALID_HANDLE_VALUE != processesSnapshot)
     {
-        if (Process32First(spProcessSnapshot, &processEntry))
+        if (Process32First(processesSnapshot, &processEntry))
         {
             do
             {
-                jsProcessesList += getProcessInfo(processEntry);
-            } while (Process32Next(spProcessSnapshot, &processEntry));
+                jsProcessesList.push_back(getProcessInfo(processEntry));
+            } while (Process32Next(processesSnapshot, &processEntry));
         }
         else
         {
+            CloseHandle(processesSnapshot);
             throw std::system_error
             {
                 static_cast<int>(GetLastError()),
@@ -495,7 +498,8 @@ nlohmann::json SysInfo::getProcessesInfo() const
                 "Unable to retrieve process information from the snapshot"
             };
         }
-        CloseHandle(spProcessSnapshot);
+        CloseHandle(processesSnapshot);
+
     }
     else
     {

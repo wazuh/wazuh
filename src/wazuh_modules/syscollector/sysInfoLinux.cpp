@@ -376,7 +376,7 @@ nlohmann::json SysInfo::getProcessesInfo() const
     while (nullptr != spProcInfo)
     {
         // Append the current json process object to the list of processes
-        jsProcessesList += getProcessInfo(spProcInfo);
+        jsProcessesList.push_back(getProcessInfo(spProcInfo));
         spProcInfo.reset(readproc(spProcTable.get(), nullptr));
     }
     return jsProcessesList;

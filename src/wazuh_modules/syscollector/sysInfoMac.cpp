@@ -36,7 +36,9 @@ static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_
     jsProcessInfo["name"]       = taskInfo.pbsd.pbi_name;
 
     const auto procState { s_mapTaskInfoState.find(taskInfo.pbsd.pbi_status) };
-    jsProcessInfo["state"]      = (procState != s_mapTaskInfoState.end()) ? procState->second : "E";
+    jsProcessInfo["state"]      = (procState != s_mapTaskInfoState.end())
+                                    ? procState->second
+                                    : "E";   // Internal error
     jsProcessInfo["ppid"]       = taskInfo.pbsd.pbi_ppid;
 
     const auto eUser { getpwuid(taskInfo.pbsd.pbi_uid) };
@@ -140,7 +142,7 @@ nlohmann::json SysInfo::getProcessesInfo() const
 {
     nlohmann::json jsProcessesList{};
 
-    int32_t maxProc;
+    int32_t maxProc{};
     size_t len { sizeof(maxProc) };
     const auto ret { sysctlbyname("kern.maxproc", &maxProc, &len, NULL, 0) };
     if(ret)
@@ -167,7 +169,7 @@ nlohmann::json SysInfo::getProcessesInfo() const
 
         if(PROC_PIDTASKALLINFO_SIZE == sizeTask)
         {
-            jsProcessesList += getProcessInfo(taskInfo, pid);
+            jsProcessesList.push_back(getProcessInfo(taskInfo, pid));
         }
     }
 
