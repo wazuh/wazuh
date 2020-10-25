@@ -92,10 +92,10 @@ nlohmann::json SysInfo::getPackages() const
     const auto query{Utils::exec(R"(pkg query -a "%n|%m|%v|%q|%c")")};
     if (!query.empty())
     {
-        const auto lines{Utils::split(query, "\n")};
+        const auto lines{Utils::split(query, '\n')};
         for (const auto& line : lines)
         {
-            const auto data{Utils::split(line, "|")};
+            const auto data{Utils::split(line, '|')};
             nlohmann::json package;
             package["name"] = data[0];
             package["vendor"] = data[1];
