@@ -32,8 +32,8 @@ void Syscollector::start()
 {
     while(m_running)
     {
-        const auto hw{m_info.hardware()};
-        const auto packages{m_info.packages()};
+        const auto& hw{m_info.hardware()};
+        const auto& packages{m_info.packages()};
         std::cout << packages.dump() << std::endl;
         std::cout << hw.dump() << std::endl;
         std::this_thread::sleep_for(m_timeout);

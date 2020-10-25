@@ -85,3 +85,25 @@ std::string SysInfo::getSerialNumber() const
 {
     return "unknown";
 }
+
+nlohmann::json SysInfo::getPackages() const
+{
+    nlohmann::json ret;
+    const auto query{Utils::exec(R"(pkg query -a "%n|%m|%v|%q|%c")")};
+    if (!query.empty())
+    {
+        const auto lines{Utils::split(query, "\n")};
+        for (const auto& line : lines)
+        {
+            const auto data{Utils::split(line, "|")};
+            nlohmann::json package;
+            package["name"] = data[0];
+            package["vendor"] = data[1];
+            package["version"] = data[2];
+            package["architecture"] = data[3];
+            package["description"] = data[4];
+            ret.push_back(package);
+        }
+    }
+    return ret;
+}
