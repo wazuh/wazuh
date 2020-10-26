@@ -331,6 +331,10 @@ cJSON* sys_parse_pkg(const char * app_folder) {
                         char ** parts = OS_StrBreak('>', read_buff, 4);
                         char ** _parts = OS_StrBreak('<', parts[3], 2);
 
+                        if (strstr(_parts[0], " (") != NULL) {
+                            strtok(_parts[0], " (");
+                        }
+                        
                         cJSON_AddStringToObject(package, "version", _parts[0]);
 
                         for (i = 0; _parts[i]; i++) {
@@ -346,6 +350,10 @@ cJSON* sys_parse_pkg(const char * app_folder) {
                     else if ((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
                         char ** parts = OS_StrBreak('>', read_buff, 2);
                         char ** _parts = OS_StrBreak('<', parts[1], 2);
+
+                        if (strstr(_parts[0], " (") != NULL) {
+                            strtok(_parts[0], " (");
+                        }
 
                         cJSON_AddStringToObject(package, "version", _parts[0]);
 
