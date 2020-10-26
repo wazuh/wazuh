@@ -214,6 +214,7 @@
 /* Regex errors */
 #define REGEX_COMPILE   "(1450): Syntax error on regex: '%s': %d."
 #define REGEX_SUBS      "(1451): Missing sub_strings on regex: '%s'."
+#define REGEX_SYNTAX    "(1452): Syntax error on regex: '%s'"
 
 /* Mail errors */
 #define INVALID_SMTP    "(1501): Invalid SMTP Server: %s"
@@ -234,6 +235,8 @@
 
 #define INV_OFFSET      "(2120): Invalid offset value: '%s'"
 #define INV_ATTR        "(2121): Invalid decoder attribute: '%s'"
+#define INV_VAL         "(2122): Invalid value for attribute: '%s'"
+#define INV_VAL_ATTR    "(2123): Invalid value '%s' for attribute: '%s'"
 
 /* os_zlib */
 #define COMPRESS_ERR    "(2201): Error compressing string: '%s'."
