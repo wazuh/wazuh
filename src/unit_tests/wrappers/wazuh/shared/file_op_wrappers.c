@@ -116,3 +116,9 @@ float __wrap_DirSize(const char *path) {
 
     return mock();
 }
+
+int __wrap_w_ref_parent_folder(const char * path) {
+    check_expected(path);
+
+    return mock();
+}

@@ -71,6 +71,9 @@ else()
     list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mterror_exit -Wl,--wrap,_mtdebug1 -Wl,--wrap,wm_sendmsg -Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose -Wl,--wrap,StartMQ -Wl,--wrap,sleep -Wl,--wrap,close \
                                -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,getpid")
 
+    list(APPEND upgrade_names "test_wm_agent_upgrade_com")
+    list(APPEND upgrade_flags "-Wl,--wrap,w_ref_parent_folder")
+
 endif()
 
 # Compiling tests

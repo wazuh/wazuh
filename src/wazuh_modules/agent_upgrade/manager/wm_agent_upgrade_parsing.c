@@ -445,8 +445,8 @@ int wm_agent_upgrade_parse_agent_upgrade_command_response(const char* agent_resp
 
     cJSON *json_response = cJSON_Parse(agent_response);
     if (json_response) {
-        cJSON *error_obj = cJSON_GetObjectItem(json_response, "error");
-        cJSON *data_obj = cJSON_GetObjectItem(json_response, "data");
+        cJSON *error_obj = cJSON_GetObjectItem(json_response, task_manager_json_keys[WM_TASK_ERROR]);
+        cJSON *data_obj = cJSON_GetObjectItem(json_response, task_manager_json_keys[WM_TASK_ERROR_MESSAGE]);
         if (error_obj && (error_obj->type == cJSON_Number)) {
             error_code = error_obj->valueint;
         } else {
@@ -458,7 +458,7 @@ int wm_agent_upgrade_parse_agent_upgrade_command_response(const char* agent_resp
                 os_strdup(data_obj->valuestring, *data);
             }
             os_strdup(data_obj->valuestring, error);
-        } 
+        }
     } else {
         error_code = OS_INVALID;
     }

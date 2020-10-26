@@ -76,12 +76,12 @@ int wm_agent_upgrade_read(const OS_XML *xml, xml_node **nodes, wmodule *module) 
         } else if (!strcmp(nodes[i]->element, XML_WAIT_START)) {
             char *endptr;
             data->agent_config.upgrade_wait_start = strtol(nodes[i]->content,  &endptr, 0);
-            
+
             if (data->agent_config.upgrade_wait_start == 0 || data->agent_config.upgrade_wait_start == INT_MAX) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_WAIT_START, WM_AGENT_UPGRADE_CONTEXT.name);
                 return OS_INVALID;
             }
-            
+
             switch (*endptr) {
             case 'h':
                 data->agent_config.upgrade_wait_start *= 3600;
@@ -96,7 +96,6 @@ int wm_agent_upgrade_read(const OS_XML *xml, xml_node **nodes, wmodule *module) 
                 merror("Invalid %s at module '%s'", XML_WAIT_START, WM_AGENT_UPGRADE_CONTEXT.name);
                 return OS_INVALID;
             }
-            
         } else if (!strcmp(nodes[i]->element, XML_WAIT_MAX)) {
             char *endptr;
             data->agent_config.upgrade_wait_max = strtol(nodes[i]->content, &endptr, 0);
@@ -119,7 +118,6 @@ int wm_agent_upgrade_read(const OS_XML *xml, xml_node **nodes, wmodule *module) 
                 merror("Invalid content for tag '%s' at module '%s'", XML_WAIT_MAX, WM_AGENT_UPGRADE_CONTEXT.name);
                 return OS_INVALID;
             }
-            
         } else if (!strcmp(nodes[i]->element, XML_WAIT_FACTOR)) {
             float wait_factor = strtol(nodes[i]->content, NULL, 10);
             if (wait_factor > 1.0) {

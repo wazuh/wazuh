@@ -8,6 +8,13 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#ifdef WAZUH_UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #include <shared.h>
 #include "external/zlib/zlib.h"
 #include "os_crypto/sha1/sha1_op.h"
@@ -18,7 +25,7 @@
 /**
  * Static struct to track opened file
  * */
-static struct {
+STATIC struct {
     char path[PATH_MAX + 1];
     FILE * fp;
 } file = {"\0", NULL};
@@ -26,6 +33,7 @@ static struct {
 typedef enum _command_error_codes {
     ERROR_OK = 0,
     ERROR_UNKNOWN_COMMAND,
+    ERROR_PARAMETERS_NOT_FOUND,
     ERROR_UNSOPPORTED_MODE,
     ERROR_INVALID_FILE_NAME,
     ERROR_FILE_OPEN,
@@ -44,9 +52,10 @@ typedef enum _command_error_codes {
     ERROR_CLEAR_UPGRADE_FILE
 } command_error_codes;
 
-static const char * error_messages[] = {
+STATIC const char * error_messages[] = {
     [ERROR_OK] = "ok",
     [ERROR_UNKNOWN_COMMAND] = "Command not found",
+    [ERROR_PARAMETERS_NOT_FOUND] = "Required parameters were not found",
     [ERROR_UNSOPPORTED_MODE] = "Unsupported file mode",
     [ERROR_INVALID_FILE_NAME] = "Invalid File name",
     [ERROR_FILE_OPEN] = "File Open Error: %s",
@@ -73,43 +82,41 @@ static const char * error_messages[] = {
  * Response format:
  * {
  *  "error": {error_code},
- *  "data": {message},
+ *  "message": {message},
+ *  "data": []
  * }
  * */
-static char* wm_agent_upgrade_command_ack(int error_code, const char* message);
+STATIC char* wm_agent_upgrade_command_ack(int error_code, const char* message);
 
 /**
  * Process a command that opens a file
- * @param json_obj expected json format
+ * @param json_obj expected json format parameters
  * {
- *  "command": "open",
- *  "file":    "file_path",
- *  "mode":    "wb|w"
+ *      "file":    "file_path",
+ *      "mode":    "wb|w"
  * }
  * */
-static char* wm_agent_upgrade_com_open(const cJSON* json_object);
+STATIC char* wm_agent_upgrade_com_open(const cJSON* json_object) __attribute__((nonnull));
 
 /**
  * Process a command that writes on an already opened file
  * @param json_obj expected json format
  * {
- *  "command": "write",
  *  "file":    "file_path",
  *  "buffer" : "{binary_data}",
  *  "length" : "{data_length}"
  * }
  * */
-static char * wm_agent_upgrade_com_write(const cJSON* json_object);
+STATIC char * wm_agent_upgrade_com_write(const cJSON* json_object) __attribute__((nonnull));
 
 /**
  * Process a command the close an already opened file
  * @param json_obj expected json format
  * {
- *  "command": "close",
  *  "file" : "file_path",
  * }
  * */
-static char * wm_agent_upgrade_com_close(const cJSON* json_object);
+STATIC char * wm_agent_upgrade_com_close(const cJSON* json_object) __attribute__((nonnull));
 
 /**
  * Process a command that calculates the sha1 already opened file
@@ -119,7 +126,7 @@ static char * wm_agent_upgrade_com_close(const cJSON* json_object);
  *  "file" : "file_path",
  * }
  * */
-static char * wm_agent_upgrade_com_sha1(const cJSON* json_object);
+STATIC char * wm_agent_upgrade_com_sha1(const cJSON* json_object) __attribute__((nonnull));
 
 /**
  * Process a command that executes an upgrade script
@@ -130,37 +137,43 @@ static char * wm_agent_upgrade_com_sha1(const cJSON* json_object);
  *  "installer" : "installer_path",
  * }
  * */
-static char * wm_agent_upgrade_com_upgrade(const cJSON* json_object);
+STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) __attribute__((nonnull));
 
 /**
  * Process a command that clears the upgrade_result file
  * */
-static char * wm_agent_upgrade_com_clear_result();
+STATIC char * wm_agent_upgrade_com_clear_result();
 
 /* Helpers methods */
-static int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename);
-static int _unsign(const char * source, char dest[PATH_MAX + 1]);
-static int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1]);
+STATIC int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename);
+STATIC int _unsign(const char * source, char dest[PATH_MAX + 1]);
+STATIC int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1]);
 
 char *wm_agent_upgrade_process_command(const char* buffer) {
     cJSON *buffer_obj = cJSON_Parse(buffer);
     if (buffer_obj) {
         cJSON *command_obj = cJSON_GetObjectItem(buffer_obj, "command");
-
         if (command_obj && (command_obj->type == cJSON_String)) {
             const char* command = command_obj->valuestring;
-            if (strcmp(command, "open") == 0) {
-                return wm_agent_upgrade_com_open(buffer_obj);
-            } else if(strcmp(command, "write") == 0) { 
-                return wm_agent_upgrade_com_write(buffer_obj);
-            } else if(strcmp(command, "close") == 0) { 
-                return wm_agent_upgrade_com_close(buffer_obj);
-            } else if(strcmp(command, "sha1") == 0) {
-                return wm_agent_upgrade_com_sha1(buffer_obj);
-            } else if(strcmp(command, "upgrade") == 0) {
-                return wm_agent_upgrade_com_upgrade(buffer_obj);
-            } else if (strcmp(command, "clear_upgrade_result") == 0) {
+
+            if (strcmp(command, "clear_upgrade_result") == 0) {
                 return wm_agent_upgrade_com_clear_result();
+            } else {
+                const cJSON *parameters = cJSON_GetObjectItem(buffer_obj, "parameters");
+                if (!parameters) {
+                    mterror(WM_AGENT_UPGRADE_LOGTAG, "At open: required parameters not found");
+                    return wm_agent_upgrade_command_ack(ERROR_PARAMETERS_NOT_FOUND, error_messages[ERROR_PARAMETERS_NOT_FOUND]);
+                } else if (strcmp(command, "open") == 0) {
+                    return wm_agent_upgrade_com_open(parameters);
+                } else if(strcmp(command, "write") == 0) {
+                    return wm_agent_upgrade_com_write(parameters);
+                } else if(strcmp(command, "close") == 0) {
+                    return wm_agent_upgrade_com_close(parameters);
+                } else if(strcmp(command, "sha1") == 0) {
+                    return wm_agent_upgrade_com_sha1(parameters);
+                } else if(strcmp(command, "upgrade") == 0) {
+                    return wm_agent_upgrade_com_upgrade(parameters);
+                }
             }
         }
         cJSON_Delete(buffer_obj);
@@ -168,16 +181,17 @@ char *wm_agent_upgrade_process_command(const char* buffer) {
     return wm_agent_upgrade_command_ack(ERROR_UNKNOWN_COMMAND, error_messages[ERROR_UNKNOWN_COMMAND]);
 }
 
-static char* wm_agent_upgrade_command_ack(int error_code, const char* message) {
+STATIC char* wm_agent_upgrade_command_ack(int error_code, const char* message) {
     cJSON* root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, task_manager_json_keys[WM_TASK_ERROR], error_code);
-    cJSON_AddStringToObject(root, task_manager_json_keys[WM_TASK_DATA], strdup(message));
+    cJSON_AddStringToObject(root, task_manager_json_keys[WM_TASK_ERROR_MESSAGE], strdup(message));
+    cJSON_AddItemToObject(root, task_manager_json_keys[WM_TASK_DATA], cJSON_CreateArray());
     char *msg_string = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
     return msg_string;
 }
 
-static char * wm_agent_upgrade_com_open(const cJSON* json_object) {
+STATIC char * wm_agent_upgrade_com_open(const cJSON* json_object) {
     char final_path[PATH_MAX + 1];
     const cJSON *mode_obj = cJSON_GetObjectItem(json_object, "mode");
     const cJSON *file_path_obj = cJSON_GetObjectItem(json_object, "file");
@@ -212,7 +226,7 @@ static char * wm_agent_upgrade_com_open(const cJSON* json_object) {
     }
 }
 
-static char * wm_agent_upgrade_com_write(const cJSON* json_object) {
+STATIC char * wm_agent_upgrade_com_write(const cJSON* json_object) {
     const cJSON *file_path_obj = cJSON_GetObjectItem(json_object, "file");
     const cJSON *buffer_obj = cJSON_GetObjectItem(json_object, "buffer");
     const cJSON *value_obj = cJSON_GetObjectItem(json_object, "length");
@@ -246,7 +260,7 @@ static char * wm_agent_upgrade_com_write(const cJSON* json_object) {
     }
 }
 
-static char * wm_agent_upgrade_com_close(const cJSON* json_object) {
+STATIC char * wm_agent_upgrade_com_close(const cJSON* json_object) {
     const cJSON *file_path_obj = cJSON_GetObjectItem(json_object, "file");
     char final_path[PATH_MAX + 1];
 
@@ -254,7 +268,7 @@ static char * wm_agent_upgrade_com_close(const cJSON* json_object) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, "At close: No file is opened.");
         return wm_agent_upgrade_command_ack(ERROR_FILE_NOT_OPENED2, error_messages[ERROR_FILE_NOT_OPENED2]);
     }
-    
+
     if (!file_path_obj || (file_path_obj->type != cJSON_String) || _jailfile(final_path, INCOMING_DIR, file_path_obj->valuestring) < 0) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, "At close: Invalid file name");
         return wm_agent_upgrade_command_ack(ERROR_INVALID_FILE_NAME, error_messages[ERROR_INVALID_FILE_NAME]);
@@ -264,7 +278,7 @@ static char * wm_agent_upgrade_com_close(const cJSON* json_object) {
        mterror(WM_AGENT_UPGRADE_LOGTAG, "At close: The target file doesn't match the opened file (%s).", file.path);
         return wm_agent_upgrade_command_ack(ERROR_TARGET_FILE_NOT_MATCH, error_messages[ERROR_TARGET_FILE_NOT_MATCH]);
     }
-     
+
     *file.path = '\0';
 
     if (fclose(file.fp)) {
@@ -275,7 +289,7 @@ static char * wm_agent_upgrade_com_close(const cJSON* json_object) {
     return wm_agent_upgrade_command_ack(ERROR_OK, error_messages[ERROR_OK]);
 }
 
-static char * wm_agent_upgrade_com_sha1(const cJSON* json_object) {
+STATIC char * wm_agent_upgrade_com_sha1(const cJSON* json_object) {
     const cJSON *file_path_obj = cJSON_GetObjectItem(json_object, "file");
     char final_path[PATH_MAX + 1];
     os_sha1 sha1;
@@ -293,7 +307,7 @@ static char * wm_agent_upgrade_com_sha1(const cJSON* json_object) {
     return wm_agent_upgrade_command_ack(ERROR_OK, sha1);
 }
 
-static char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
+STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
     char compressed[PATH_MAX + 1];
     char merged[PATH_MAX + 1];
     char installer_j[PATH_MAX + 1];
@@ -366,7 +380,7 @@ static char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
     }
 }
 
-static char * wm_agent_upgrade_com_clear_result() {
+STATIC char * wm_agent_upgrade_com_clear_result() {
 #ifndef WIN32
     const char * PATH = isChroot() ? UPGRADE_DIR "/upgrade_result" : DEFAULTDIR UPGRADE_DIR "/upgrade_result";
 #else
@@ -380,7 +394,7 @@ static char * wm_agent_upgrade_com_clear_result() {
     }
 }
 
-static int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename) {
+STATIC int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename) {
 
     if (w_ref_parent_folder(filename)) {
         return -1;
@@ -393,7 +407,7 @@ static int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const c
 #endif
 }
 
-static int _unsign(const char * source, char dest[PATH_MAX + 1]) {
+STATIC int _unsign(const char * source, char dest[PATH_MAX + 1]) {
     const char TEMPLATE[] = ".gz.XXXXXX";
     char source_j[PATH_MAX + 1];
     size_t length;
@@ -445,7 +459,7 @@ static int _unsign(const char * source, char dest[PATH_MAX + 1]) {
     return output;
 }
 
-static int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1]) {
+STATIC int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1]) {
     const char TEMPLATE[] = ".mg.XXXXXX";
     char buffer[4096];
     gzFile fsource;

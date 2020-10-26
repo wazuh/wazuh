@@ -66,7 +66,7 @@ void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs)
 
     while (1) {
         // listen - wait connection
-        fd_set fdset;    
+        fd_set fdset;
         FD_ZERO(&fdset);
         FD_SET(sock, &fdset);
 
