@@ -29,8 +29,10 @@ extern time_t time_mock_value;
 #define time(x) wrap_time(x)
 #endif
 
+#ifndef __MACH__
 #ifndef expect_any_always
 #define expect_any_always(function, parameter) expect_any_count(function, parameter, -1)
+#endif
 #endif
 
 #endif /* COMMON_H */

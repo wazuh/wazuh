@@ -31,6 +31,7 @@
 #include "unit_tests/wrappers/macos/libc/stdio_wrappers.h"
 #include "unit_tests/wrappers/macos/libplist_wrappers.h"
 #include "unit_tests/wrappers/macos/libwazuh_wrappers.h"
+#include "unit_tests/wrappers/macos/posix/dirent_wrappers.h"
 #else
 #define STATIC static
 #endif
@@ -128,7 +129,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION) {
 
     // Homebrew packages
     for (i = 0; homebrew_directories[i]; i++) {
-        mtdebug2(WM_SYS_LOGTAG, "Collecting brew installed applications from '%s'", homebrew_directories[i]);
+        mtdebug1(WM_SYS_LOGTAG, "Collecting brew installed applications from '%s'", homebrew_directories[i]);
         if (sys_read_homebrew_apps(homebrew_directories[i], timestamp, random_id, queue_fd, LOCATION)) {
             mtdebug1(WM_SYS_LOGTAG, "Unable to read installed applications from '%s'", homebrew_directories[i]);
         }
@@ -435,11 +436,14 @@ cJSON* sys_parse_pkg(const char * app_folder) {
     cJSON_AddStringToObject(package, "location", app_folder);
 
     if (!read_name) {
-        char * program_name;
-        char * end;
+        char * folder_cpy = NULL;
+        char * program_name = NULL;
+        char * end = NULL;
+
+        os_strdup(app_folder, folder_cpy);
 
         // Extract program name from the path
-        program_name = strrchr(app_folder, '/');
+        program_name = strrchr(folder_cpy, '/');
         program_name++;
         end = strchr(program_name, '.');
         *end = '\0';
@@ -454,6 +458,7 @@ cJSON* sys_parse_pkg(const char * app_folder) {
         } else {
             cJSON_AddStringToObject(package, "name", program_name);
         }
+        os_free(folder_cpy);
     }
 
     fclose(fp);
@@ -540,10 +545,8 @@ int sys_read_homebrew_apps(const char * app_folder, const char * timestamp, int 
                 FILE *fp;
 
                 if (fp = fopen(path, "r"), fp) {
-                    int found = 0;
-                    while(fgets(read_buff, OS_MAXSTR - 1, fp) != NULL && !found){
+                    while(fgets(read_buff, OS_MAXSTR - 1, fp) != NULL){
                         if (strstr(read_buff, "desc \"") != NULL) {
-                            found = 1;
                             char ** parts = OS_StrBreak('"', read_buff, 3);
                             cJSON_AddStringToObject(package, "description", parts[1]);
                             int i;
@@ -551,6 +554,7 @@ int sys_read_homebrew_apps(const char * app_folder, const char * timestamp, int 
                                 free(parts[i]);
                             }
                             free(parts);
+                            break;
                         }
                     }
                     fclose(fp);
