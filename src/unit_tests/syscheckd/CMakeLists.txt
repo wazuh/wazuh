@@ -78,8 +78,9 @@ if(${TARGET} STREQUAL "winagent")
   target_link_libraries(SYSCHECK_EVENT_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
   add_subdirectory(registry)
-  add_subdirectory(db)
 endif()
+
+add_subdirectory(db)
 
 # Generate Syscheckd tests
 list(APPEND syscheckd_tests_names "test_syscom")
@@ -209,29 +210,6 @@ elseif(${TARGET} STREQUAL "winagent")
                                                                     -Wl,--wrap=audit_restore")
 else()
   list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=sleep,--wrap,time")
-endif()
-
-set(FIM_DB_BASE_FLAGS "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_v2,--wrap=sqlite3_exec,--wrap=_merror \
-                       -Wl,--wrap=sqlite3_prepare_v2,--wrap=sqlite3_step,--wrap=sqlite3_finalize \
-                       -Wl,--wrap=sqlite3_close_v2 -Wl,--wrap=chmod,--wrap=sqlite3_free,--wrap=sqlite3_reset \
-                       -Wl,--wrap=sqlite3_clear_bindings -Wl,--wrap=sqlite3_errmsg,--wrap=sqlite3_bind_int \
-                       -Wl,--wrap=sqlite3_bind_text,--wrap=sqlite3_column_int -Wl,--wrap=sqlite3_column_text \
-                       -Wl,--wrap=fim_send_sync_msg,--wrap=dbsync_state_msg -Wl,--wrap=fim_entry_json \
-                       -Wl,--wrap=sqlite3_last_insert_rowid,--wrap=EVP_DigestUpdate \
-                       -Wl,--wrap=fim_configuration_directory,--wrap=fim_json_event,--wrap=send_syscheck_msg \
-                       -Wl,--wrap=delete_target_file,--wrap=_minfo,--wrap=_mdebug1,--wrap=_mdebug2 -Wl,--wrap=fseek \
-                       -Wl,--wrap=fclose,--wrap=fopen,--wrap=getpid,--wrap=fflush -Wl,--wrap=wstr_escape_json \
-                       -Wl,--wrap=sqlite3_bind_int64,--wrap=sqlite3_column_int64 -Wl,--wrap=fread,--wrap=fwrite \
-                       -Wl,--wrap=fprintf,--wrap=fgets,--wrap=stat,--wrap=wstr_split,--wrap=os_random \
-                       -Wl,--wrap=DirSize,--wrap=IsDir")
-
-list(APPEND syscheckd_tests_names "test_fim_db")
-if(${TARGET} STREQUAL "agent")
-  list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS} -Wl,--wrap=isChroot -Wl,--wrap=usleep,--wrap=time")
-elseif(${TARGET} STREQUAL "winagent")
-  list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS}")
-else()
-list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS} -Wl,--wrap=usleep,--wrap=time")
 endif()
 
 # Compiling tests

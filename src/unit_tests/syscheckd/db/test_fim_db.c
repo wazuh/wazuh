@@ -14,24 +14,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../wrappers/common.h"
-#include "../wrappers/externals/openssl/digest_wrappers.h"
-#include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
-#include "../wrappers/libc/stdio_wrappers.h"
-#include "../wrappers/posix/stat_wrappers.h"
-#include "../wrappers/posix/unistd_wrappers.h"
-#include "../wrappers/wazuh/shared/file_op_wrappers.h"
-#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
-#include "../wrappers/wazuh/shared/os_utils_wrappers.h"
-#include "../wrappers/wazuh/shared/string_op_wrappers.h"
-#include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
-#include "../wrappers/wazuh/shared/integrity_op_wrappers.h"
-#include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
-#include "../wrappers/wazuh/syscheckd/run_check_wrappers.h"
-#include "../wrappers/wazuh/syscheckd/fim_diff_changes_wrappers.h"
+#include "wrappers/common.h"
+#include "wrappers/externals/openssl/digest_wrappers.h"
+#include "wrappers/externals/sqlite/sqlite3_wrappers.h"
+#include "wrappers/libc/stdio_wrappers.h"
+#include "wrappers/posix/stat_wrappers.h"
+#include "wrappers/posix/unistd_wrappers.h"
+#include "wrappers/wazuh/shared/file_op_wrappers.h"
+#include "wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "wrappers/wazuh/shared/os_utils_wrappers.h"
+#include "wrappers/wazuh/shared/string_op_wrappers.h"
+#include "wrappers/wazuh/shared/syscheck_op_wrappers.h"
+#include "wrappers/wazuh/shared/integrity_op_wrappers.h"
+#include "wrappers/wazuh/syscheckd/create_db_wrappers.h"
+#include "wrappers/wazuh/syscheckd/run_check_wrappers.h"
+#include "wrappers/wazuh/syscheckd/seechanges_wrappers.h"
 
-#include "../../syscheckd/db/fim_db.h"
-#include "../../config/syscheck-config.h"
+#include "db/fim_db.h"
+#include "config/syscheck-config.h"
 
 #ifdef TEST_WINAGENT
 #define __mode_t int
@@ -212,7 +212,7 @@ static int setup_group(void **state) {
     will_return_always(__wrap_isChroot, 1);
 #endif
 
-    Read_Syscheck_Config("test_syscheck2.conf");
+    Read_Syscheck_Config("../test_syscheck2.conf");
 
     syscheck.database_store = 0;    // disk
     w_mutex_init(&syscheck.fim_entry_mutex, NULL);
