@@ -726,7 +726,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                     return (OS_INVALID);
                 }
 
-                if (Config->rotate_interval < 120) {
+                if (Config->agents_disconnection_alert_time < 120) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
                 }
