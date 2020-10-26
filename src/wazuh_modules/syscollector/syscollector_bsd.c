@@ -1765,9 +1765,17 @@ int normalize_mac_package_name(const char * source_package, char ** vendor_name,
     int i;
     char * next = NULL;
     char * package_cpy = NULL;
+    char * package = NULL;
     char * vendor_in_package[] = {
         "Microsoft",
-        "VMware"
+        "VMware",
+        "Sophos",
+        "Symantec",
+        "Kasperky",
+        "McAfee",
+        "QuickHeal",
+        "Quick",
+        "K7"
     };
     char * version_in_package[] = {
         "1Password"
@@ -1778,11 +1786,34 @@ int normalize_mac_package_name(const char * source_package, char ** vendor_name,
     if (!source_package) {
         return 0;
     }
-    os_strdup(source_package, package_cpy);
+    w_strdup(source_package, package_cpy);
 
     if (next = wstr_chr(package_cpy, ' '), !next) {
-        if (!strcmp(package_cpy, "zoom.us")) {
-            os_strdup("zoom", *package_name);
+        package = package_cpy;
+        package = w_remove_substr(package, "formac");
+        if (!strcmp(package, "zoom.us")) {
+            w_strdup("zoom", *package_name);
+        } else if (strstr(package, "TotalDefense")) {
+            w_strdup("TotalDefense", *vendor_name);
+            package = w_remove_substr(package, "TotalDefense");
+            package = w_remove_substr(package, "forMac");
+            if (!strcmp(package, "Antivirus")) {
+                w_strdup("Anti-Virus", *package_name);
+            } else {
+                w_strdup(package, *package_name);
+            }
+        } else if (strstr(package, "AVG")) {
+            w_strdup("AVG", *vendor_name);
+            package = w_remove_substr(package, "AVG");
+            package = w_remove_substr(package, "forMac");
+            if (!strcmp(package, "Antivirus")) {
+                w_strdup("Anti-Virus", *package_name);
+            } else {
+                w_strdup(package, *package_name);
+            }
+        } else if (!strcmp(package, "AntivirusforMac")) {
+            package = w_remove_substr(package, "forMac");
+            w_strdup(package, *package_name);
         } else {
             result = 0;
         }
@@ -1790,15 +1821,28 @@ int normalize_mac_package_name(const char * source_package, char ** vendor_name,
         *next++ = '\0';
         for (i = 0; i < array_size_vendor; i++) {
             if (!strcmp(package_cpy, vendor_in_package[i])) {
-                os_strdup(package_cpy, *vendor_name);
-                os_strdup(next, *package_name);
+                next = w_remove_substr(next, " for mac");
+                next = w_remove_substr(next, " for Mac");
+                if (!strcmp(package_cpy, "Quick")) {
+                    package = next;
+                    next = wstr_chr(package, ' ');
+                    *next++ = '\0';
+                    w_strdup("Quick Heal", *vendor_name);
+                    w_strdup(next, *package_name);
+                } else if (!strcmp(package_cpy, "K7")) {
+                    w_strdup("K7Computing", *vendor_name);
+                    w_strdup(next, *package_name);
+                } else if (package_cpy) {
+                    w_strdup(package_cpy, *vendor_name);
+                    w_strdup(next, *package_name);
+                }
                 os_free(package_cpy);
                 return 1;
             }
         }
         for (i = 0; i < array_size_version; i++) {
             if (!strcmp(package_cpy, version_in_package[i])) {
-                os_strdup(package_cpy, *package_name);
+                w_strdup(package_cpy, *package_name);
                 os_free(package_cpy);
                 return 1;
             }

@@ -212,20 +212,30 @@ static void test_normalize_mac_package_name(void **state) {
     int i;
     char * vendor = NULL;
     char * package = NULL;
-    char * source_package[8][3] = {
+    char * source_package[18][3] = {
         {"Microsoft Word", "Microsoft", "Word"},
         {"Microsoft Excel", "Microsoft", "Excel"},
         {"VMware Fusion", "VMware", "Fusion"},
         {"VMware Horizon Client", "VMware", "Horizon Client"},
         {"1Password 7", NULL, "1Password"},
         {"zoom.us", NULL, "zoom"},
+        {"TotalDefenseAntivirusforMac", "TotalDefense", "Anti-Virus"},
+        {"AVGAntivirus", "AVG", "Anti-Virus"},
+        {"AntivirusforMac", NULL, "Antivirus"},
+        {"Sophos Anti-Virus", "Sophos", "Anti-Virus"},
+        {"Kasperky Anti-Virus for mac", "Kasperky", "Anti-Virus"},
+        {"Symantec Endpoint Protection", "Symantec", "Endpoint Protection"},
+        {"McAfee Endpoint Security for Mac", "McAfee", "Endpoint Security"},
+        {"Quick Heal Total Security", "Quick Heal", "Total Security"},
+        {"QuickHeal Total Security", "QuickHeal", "Total Security"},
+        {"K7 AntiVirus", "K7Computing", "AntiVirus"},
         {"Foxit Reader", NULL, NULL},
         {NULL, NULL, NULL},
     };
 
-    for (i = 0; i < 8; i++) {
+    for (i = 0; i < 18; i++) {
         ret = normalize_mac_package_name(source_package[i][0], &vendor, &package);
-        if (i < 6) {
+        if (i < 16) {
             assert_int_equal(ret, 1);
             if (source_package[i][1]) {
                 assert_string_equal(vendor, source_package[i][1]);

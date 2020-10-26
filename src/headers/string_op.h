@@ -213,4 +213,13 @@ char *encode_base64(int size, const char *src);
  */
 int os_snprintf(char *str, size_t size, const char *format, ...);
 
+/**
+ * @brief Remove a substring from a string.
+ * 
+ * @param str Original string.
+ * @param sub Substring to remove from the string.
+ * @return char* String after removing the substring.
+ */
+char * w_remove_substr(char *str, const char *sub);
+
 #endif
