@@ -64,6 +64,22 @@ namespace Utils
         return tokens;
     }
 
+    static std::vector<std::string> splitNullTerminatedStrings(const char* buffer)
+    {
+        constexpr auto NULL_TERMINATED_DELIMITER {'\0'};
+        std::vector<std::string> ret;
+        while(buffer[0] != NULL_TERMINATED_DELIMITER)
+        {
+            const std::string token(buffer);
+            if (!token.empty())
+            {
+                ret.push_back(token);
+            }
+            buffer += token.size() + 1;
+        }
+        return ret;
+    }
+
     static std::string asciiToHex(const std::vector<unsigned char>& asciiData)
     {
         std::stringstream ss;

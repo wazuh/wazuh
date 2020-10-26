@@ -11,7 +11,59 @@
 #include "sysInfo.hpp"
 #include "cmdHelper.h"
 #include "stringHelper.h"
+#include <libproc.h>
+#include <pwd.h>
+#include <grp.h>
+#include <sys/proc.h>
+#include <sys/proc_info.h>
 #include <sys/sysctl.h>
+
+using ProcessTaskInfo = struct proc_taskallinfo;
+
+static const std::map<int, std::string> s_mapTaskInfoState =
+{
+    { 1, "I"},  // Idle
+    { 2, "R"},  // Running
+    { 3, "S"},  // Sleep
+    { 4, "T"},  // Stopped
+    { 5, "Z"}   // Zombie
+};
+
+static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_t pid)
+{
+    nlohmann::json jsProcessInfo{};
+    jsProcessInfo["pid"]        = pid;
+    jsProcessInfo["name"]       = taskInfo.pbsd.pbi_name;
+
+    const auto procState { s_mapTaskInfoState.find(taskInfo.pbsd.pbi_status) };
+    jsProcessInfo["state"]      = (procState != s_mapTaskInfoState.end())
+                                    ? procState->second
+                                    : "E";   // Internal error
+    jsProcessInfo["ppid"]       = taskInfo.pbsd.pbi_ppid;
+
+    const auto eUser { getpwuid(taskInfo.pbsd.pbi_uid) };
+    if (eUser)
+    {
+        jsProcessInfo["euser"]  = eUser->pw_name;
+    }
+
+    const auto rUser { getpwuid(taskInfo.pbsd.pbi_ruid) };
+    if (rUser)
+    {
+        jsProcessInfo["ruser"]  = rUser->pw_name;
+    }
+
+    const auto rGroup { getgrgid(taskInfo.pbsd.pbi_rgid) };
+    if (rGroup)
+    {
+        jsProcessInfo["rgroup"] = rGroup->gr_name;
+    }
+
+    jsProcessInfo["priority"]   = taskInfo.ptinfo.pti_priority;
+    jsProcessInfo["nice"]       = taskInfo.pbsd.pbi_nice;
+    jsProcessInfo["vm_size"]    = taskInfo.ptinfo.pti_virtual_size / KByte;
+    return jsProcessInfo;
+}
 
 void SysInfo::getMemory(nlohmann::json& info) const
 {
@@ -84,4 +136,42 @@ std::string SysInfo::getSerialNumber() const
 {
     const auto rawData{Utils::exec("system_profiler SPHardwareDataType | grep Serial")};
     return Utils::trim(rawData.substr(rawData.find(":")), " :\t\r\n");
+}
+
+nlohmann::json SysInfo::getProcessesInfo() const
+{
+    nlohmann::json jsProcessesList{};
+
+    int32_t maxProc{};
+    size_t len { sizeof(maxProc) };
+    const auto ret { sysctlbyname("kern.maxproc", &maxProc, &len, NULL, 0) };
+    if(ret)
+    {
+        throw std::system_error
+        {
+            ret,
+            std::system_category(),
+            "Error reading kernel max processes."
+        };
+    }
+
+    const auto spPids         { std::make_unique<pid_t[]>(maxProc) };
+    const auto processesCount { proc_listallpids(spPids.get(), maxProc) };
+
+    for(int index = 0; index < processesCount; ++index)
+    {
+        ProcessTaskInfo taskInfo{};
+        const auto pid { spPids.get()[index] };
+        const auto sizeTask
+        {
+            proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0, &taskInfo, PROC_PIDTASKALLINFO_SIZE)
+        };
+
+        if(PROC_PIDTASKALLINFO_SIZE == sizeTask)
+        {
+            jsProcessesList.push_back(getProcessInfo(taskInfo, pid));
+        }
+    }
+
+    return jsProcessesList;
 }

@@ -51,11 +51,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         LINK_FLAGS "-Wl,--add-stdcall-alias -static-libgcc -static-libstdc++"
         POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
         # MinGW generates position-independent-code for DLL by default
-  )
-else()
+    )
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set_target_properties(dbsync PROPERTIES
-        LINK_FLAGS "-static-libgcc -static-libstdc++"
-  )
+        LINK_FLAGS "-static-libgcc -static-libstdc++")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")

@@ -8,22 +8,230 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#include "sysInfo.hpp"
+
+#include <winsock2.h>
+#include <windows.h>
+#include <psapi.h>
+#include <tlhelp32.h>
 #include <memory>
 #include <list>
 #include <set>
 #include <system_error>
+#include <versionhelpers.h>
+#include "sysinfoapi.h"
+#include "sysInfo.hpp"
 #include "cmdHelper.h"
 #include "stringHelper.h"
 #include "registryHelper.h"
-#include "sysinfoapi.h"
-#include <versionhelpers.h>
+#include "defs.h"
+#include "debug_op.h"
 
 constexpr auto BASEBOARD_INFORMATION_TYPE{2};
 constexpr auto CENTRAL_PROCESSOR_REGISTRY{"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
 const std::string UNINSTALL_REGISTRY{"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"};
 constexpr auto WIN_REG_HOTFIX{"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Component Based Servicing\\Packages"};
 constexpr auto VISTA_REG_HOTFIX{"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\HotFix"};
+constexpr auto SYSTEM_IDLE_PROCESS_NAME{"System Idle Process"};
+constexpr auto SYSTEM_PROCESS_NAME{"System"};
+
+struct CharDeleter
+{
+    void operator()(char* buffer)
+    {
+        free(buffer);
+    }
+};
+
+static bool isVistaOrLater()
+{
+    static const bool ret
+    {
+        IsWindowsVistaOrGreater()
+    };
+    return ret;
+}
+
+class SysInfoProcess final
+{
+public:
+    SysInfoProcess(const DWORD pId)
+        : m_pId{ pId },
+          m_hProcess{ OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, m_pId) },
+          m_kernelModeTime{},
+          m_userModeTime{}
+    {
+        if (m_hProcess)
+        {
+            setProcessTimes();
+            setProcessMemInfo();
+        }
+        // else: Unable to open current process
+    }
+
+    ~SysInfoProcess()
+    {
+        CloseHandle(m_hProcess);
+    }
+
+    std::string cmd()
+    {
+        std::string ret { "unknown" };
+        std::string path;
+        const auto spReadBuff { std::make_unique<char[]>(OS_MAXSTR) };
+        // Get full Windows kernel path for the process
+        if (spReadBuff && GetProcessImageFileName(m_hProcess, spReadBuff.get(), OS_MAXSTR))
+        {
+            // Convert Windows kernel path to a valid Win32 filepath
+            // E.g.: "\Device\HarddiskVolume1\Windows\system32\notepad.exe" -> "C:\Windows\system32\notepad.exe"
+            ntPath2Win32Path(spReadBuff.get(), ret);
+        }
+        // else: Unable to retrieve executable path from current process.
+        return ret;
+    }
+
+    ULONGLONG kernelModeTime() const
+    {
+        return m_kernelModeTime.QuadPart;
+    }
+
+    ULONGLONG userModeTime() const
+    {
+        return m_userModeTime.QuadPart;
+    }
+
+    DWORD pageFileUsage() const
+    {
+        return m_pageFileUsage;
+    }
+
+    DWORD virtualSize() const
+    {
+        return m_virtualSize;
+    }
+
+    DWORD sessionId() const
+    {
+        DWORD ret{};
+        if (!ProcessIdToSessionId(m_pId, &ret))
+        {
+            // Unable to retrieve session ID from current process.
+        }
+        return ret;
+    }
+
+private:
+    using SystemDrivesMap  = std::map<std::string, std::string>;
+
+    void setProcessTimes()
+    {
+        constexpr auto TO_SECONDS_VALUE { 10000000ULL };
+        FILETIME lpCreationTime{};
+        FILETIME lpExitTime{};
+        FILETIME lpKernelTime{};
+        FILETIME lpUserTime{};
+        if (GetProcessTimes(m_hProcess, &lpCreationTime, &lpExitTime, &lpKernelTime, &lpUserTime))
+        {
+            // Copy the kernel mode filetime high and low parts and convert it to seconds
+            m_kernelModeTime.LowPart = lpKernelTime.dwLowDateTime;
+            m_kernelModeTime.HighPart = lpKernelTime.dwHighDateTime;
+            m_kernelModeTime.QuadPart /= TO_SECONDS_VALUE;
+
+            // Copy the user mode filetime high and low parts and convert it to seconds
+            m_userModeTime.LowPart = lpUserTime.dwLowDateTime;
+            m_userModeTime.HighPart = lpUserTime.dwHighDateTime;
+            m_userModeTime.QuadPart /= TO_SECONDS_VALUE;
+        }
+        // else: Unable to retrieve kernel mode and user mode times from current process.
+    }
+
+    void setProcessMemInfo()
+    {
+        PROCESS_MEMORY_COUNTERS pMemCounters{};
+        // Get page file usage and virtual size
+        // Reference: https://stackoverflow.com/a/1986486
+        if (GetProcessMemoryInfo(m_hProcess, &pMemCounters, sizeof(pMemCounters)))
+        {
+            m_pageFileUsage = pMemCounters.PagefileUsage;
+            m_virtualSize   = pMemCounters.WorkingSetSize + pMemCounters.PagefileUsage;
+        }
+        // else: Unable to retrieve page file usage from current process
+    }
+
+    static SystemDrivesMap getNtWin32DrivesMap()
+    {
+        SystemDrivesMap ret;
+
+        // Get the total amount of available logical drives
+        // The input size must not include the NULL terminator
+        auto spLogicalDrives { std::make_unique<char[]>(OS_MAXSTR) };
+        auto res { GetLogicalDriveStrings(OS_MAXSTR - 1, spLogicalDrives.get()) };
+        if (res <= 0 || res > OS_MAXSTR)
+        {
+            throw std::system_error
+            {
+                static_cast<int>(GetLastError()),
+                std::system_category(),
+                "Unable to parse logical drive strings."
+            };
+        }
+
+        const auto logicalDrives { Utils::splitNullTerminatedStrings(spLogicalDrives.get()) };
+        for(const auto& logicalDrive : logicalDrives)
+        {
+            const auto spDosDevice { std::make_unique<char[]>(OS_MAXSTR) };
+            res = QueryDosDevice(logicalDrive.c_str(), spDosDevice.get(), OS_MAXSTR);
+            if (res)
+            {
+                // Make the NT Path <-> DOS Path mapping
+                ret[spDosDevice.get()] = logicalDrive;
+            }
+        }
+        return ret;
+    }
+
+    bool fillOutput(const SystemDrivesMap& drivesMap, const std::string& ntPath, std::string& outbuf)
+    {
+        const auto it
+        {
+            std::find_if(drivesMap.begin(), drivesMap.end(),
+                [&ntPath](const auto& key) -> bool
+                {
+                    return Utils::startsWith(ntPath, key.first);
+                })
+        };
+
+        const bool ret { it != drivesMap.end() };
+
+        if (ret)
+        {
+            outbuf = it->second + ntPath.substr(it->first.size()+1);
+        }
+
+        return ret;
+    }
+
+    void ntPath2Win32Path(const std::string& ntPath, std::string& outbuf)
+    {
+        static SystemDrivesMap s_drivesMap { getNtWin32DrivesMap() };
+        if (!fillOutput(s_drivesMap, ntPath, outbuf))
+        {
+            s_drivesMap = getNtWin32DrivesMap();
+            if(!fillOutput(s_drivesMap, ntPath, outbuf))
+            {
+                // If after re-fill the drives map DOS drive is not found, NTPath path will
+                // be returned.
+                outbuf = ntPath;
+            }
+        }
+    }
+
+    const DWORD     m_pId;
+    HANDLE          m_hProcess;
+    ULARGE_INTEGER  m_kernelModeTime;
+    ULARGE_INTEGER  m_userModeTime;
+    DWORD           m_pageFileUsage;
+    DWORD           m_virtualSize;
+};
 
 typedef struct RawSMBIOSData
 {
@@ -52,15 +260,6 @@ typedef struct SMBIOSBasboardInfoStructure
     BYTE Version;
     BYTE SerialNumber;
 } SMBIOSBasboardInfoStructure;
-
-static bool isVistaOrLater()
-{
-    static const bool ret
-    {
-        IsWindowsVistaOrGreater()
-    };
-    return ret;
-}
 
 /* Reference: https://www.dmtf.org/sites/default/files/standards/documents/DSP0134_2.6.0.pdf */
 static std::string parseRawSmbios(const BYTE* rawData, const DWORD rawDataSize)
@@ -100,6 +299,26 @@ static std::string parseRawSmbios(const BYTE* rawData, const DWORD rawDataSize)
     return serialNumber;
 }
 
+static bool isSystemProcess(const DWORD pid)
+{
+    return pid == 0 || pid == 4;
+}
+
+static std::string processName(const PROCESSENTRY32& processEntry)
+{
+    std::string ret;
+    const DWORD pId { processEntry.th32ProcessID };
+    if (isSystemProcess(pId))
+    {
+        ret = (pId == 0) ? SYSTEM_IDLE_PROCESS_NAME : SYSTEM_PROCESS_NAME;
+    }
+    else
+    {
+        ret = processEntry.szExeFile;
+    }
+    return ret;
+}
+
 typedef UINT (WINAPI *GetSystemFirmwareTable_t)(DWORD, DWORD, PVOID, DWORD);
 static GetSystemFirmwareTable_t getSystemFirmwareTableFunctionAddress()
 {
@@ -113,82 +332,25 @@ static GetSystemFirmwareTable_t getSystemFirmwareTableFunctionAddress()
     return ret;
 }
 
-std::string SysInfo::getSerialNumber() const
+static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
 {
-    std::string ret;
-    if (isVistaOrLater())
-    {
-        static auto pfnGetSystemFirmwareTable{getSystemFirmwareTableFunctionAddress()};
-        if (pfnGetSystemFirmwareTable)
-        {
-            const auto size {pfnGetSystemFirmwareTable('RSMB', 0, nullptr, 0)};
-            if (size)
-            {
-                const auto spBuff{std::make_unique<unsigned char[]>(size)};
-                if (spBuff)
-                {
-                    /* Get raw SMBIOS firmware table */
-                    if (pfnGetSystemFirmwareTable('RSMB', 0, spBuff.get(), size) == size)
-                    {
-                        PRawSMBIOSData smbios{reinterpret_cast<PRawSMBIOSData>(spBuff.get())};
-                        /* Parse SMBIOS structures */
-                        ret = parseRawSmbios(smbios->SMBIOSTableData, size);
-                    }
-                }
-            }
-        }
-    }
-    else
-    {
-        const auto rawData{Utils::exec("wmic baseboard get SerialNumber")};
-        const auto pos{rawData.find("\r\n")};
-        if (pos != std::string::npos)
-        {
-            ret = Utils::trim(rawData.substr(pos), " \t\r\n");
-        }
-        else
-        {
-            ret = "unknown";
-        }
-    }
-    return ret;
-}
+    nlohmann::json jsProcessInfo{};
+    const DWORD pId { processEntry.th32ProcessID };
+    SysInfoProcess process(pId);
 
-std::string SysInfo::getCpuName() const
-{
-    Utils::Registry reg(HKEY_LOCAL_MACHINE, CENTRAL_PROCESSOR_REGISTRY);
-    return reg.string("ProcessorNameString");
-}
-int SysInfo::getCpuMHz() const
-{
-    Utils::Registry reg(HKEY_LOCAL_MACHINE, CENTRAL_PROCESSOR_REGISTRY);
-    return reg.dword("~MHz");
-}
-int SysInfo::getCpuCores() const
-{
-    SYSTEM_INFO siSysInfo{};
-    GetSystemInfo(&siSysInfo);
-    return siSysInfo.dwNumberOfProcessors;
-}
-void SysInfo::getMemory(nlohmann::json& info) const
-{
-    MEMORYSTATUSEX statex;
-    statex.dwLength = sizeof(statex);
-    if (GlobalMemoryStatusEx(&statex))
-    {
-        info["ram_total"] = statex.ullTotalPhys/KByte;
-        info["ram_free"] = statex.ullAvailPhys/KByte;
-        info["ram_usage"] = statex.dwMemoryLoad;
-    }
-    else
-    {
-        throw std::system_error
-        {
-            static_cast<int>(GetLastError()),
-            std::system_category(),
-            "Error calling GlobalMemoryStatusEx"
-        };
-    }
+    // Current process information
+    jsProcessInfo["name"]       = processName(processEntry);
+    jsProcessInfo["cmd"]        = (isSystemProcess(pId)) ? "none" : process.cmd();
+    jsProcessInfo["stime"]      = process.kernelModeTime();
+    jsProcessInfo["size"]       = process.pageFileUsage();
+    jsProcessInfo["ppid"]       = processEntry.th32ParentProcessID;
+    jsProcessInfo["priority"]   = processEntry.pcPriClassBase;
+    jsProcessInfo["pid"]        = pId;
+    jsProcessInfo["session"]    = process.sessionId();
+    jsProcessInfo["nlwp"]       = processEntry.cntThreads;
+    jsProcessInfo["utime"]      = process.userModeTime();
+    jsProcessInfo["vm_size"]    = process.virtualSize();
+    return jsProcessInfo;
 }
 
 static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohmann::json& data, const REGSAM access = 0)
@@ -309,6 +471,128 @@ static void getHotFixFromRegNT(const HKEY key, const std::string& subKey, nlohma
     catch(...)
     {
     }
+}
+
+std::string SysInfo::getSerialNumber() const
+{
+    std::string ret;
+    if (isVistaOrLater())
+    {
+        static auto pfnGetSystemFirmwareTable{getSystemFirmwareTableFunctionAddress()};
+        if (pfnGetSystemFirmwareTable)
+        {
+            const auto size {pfnGetSystemFirmwareTable('RSMB', 0, nullptr, 0)};
+            if (size)
+            {
+                const auto spBuff{std::make_unique<unsigned char[]>(size)};
+                if (spBuff)
+                {
+                    /* Get raw SMBIOS firmware table */
+                    if (pfnGetSystemFirmwareTable('RSMB', 0, spBuff.get(), size) == size)
+                    {
+                        PRawSMBIOSData smbios{reinterpret_cast<PRawSMBIOSData>(spBuff.get())};
+                        /* Parse SMBIOS structures */
+                        ret = parseRawSmbios(smbios->SMBIOSTableData, size);
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        const auto rawData{Utils::exec("wmic baseboard get SerialNumber")};
+        const auto pos{rawData.find("\r\n")};
+        if (pos != std::string::npos)
+        {
+            ret = Utils::trim(rawData.substr(pos), " \t\r\n");
+        }
+        else
+        {
+            ret = "unknown";
+        }
+    }
+    return ret;
+}
+
+std::string SysInfo::getCpuName() const
+{
+    Utils::Registry reg(HKEY_LOCAL_MACHINE, CENTRAL_PROCESSOR_REGISTRY);
+    return reg.string("ProcessorNameString");
+}
+
+int SysInfo::getCpuMHz() const
+{
+    Utils::Registry reg(HKEY_LOCAL_MACHINE, CENTRAL_PROCESSOR_REGISTRY);
+    return reg.dword("~MHz");
+}
+
+int SysInfo::getCpuCores() const
+{
+    SYSTEM_INFO siSysInfo{};
+    GetSystemInfo(&siSysInfo);
+    return siSysInfo.dwNumberOfProcessors;
+}
+
+void SysInfo::getMemory(nlohmann::json& info) const
+{
+    MEMORYSTATUSEX statex;
+    statex.dwLength = sizeof(statex);
+    if (GlobalMemoryStatusEx(&statex))
+    {
+        info["ram_total"] = statex.ullTotalPhys/KByte;
+        info["ram_free"] = statex.ullAvailPhys/KByte;
+        info["ram_usage"] = statex.dwMemoryLoad;
+    }
+    else
+    {
+        throw std::system_error
+        {
+            static_cast<int>(GetLastError()),
+            std::system_category(),
+            "Error calling GlobalMemoryStatusEx"
+        };
+    }
+}
+
+nlohmann::json SysInfo::getProcessesInfo() const
+{
+    nlohmann::json jsProcessesList{};
+    PROCESSENTRY32 processEntry{};
+    processEntry.dwSize = sizeof(PROCESSENTRY32);
+    // Create a snapshot of all current processes
+    const auto processesSnapshot { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
+    if (INVALID_HANDLE_VALUE != processesSnapshot)
+    {
+        if (Process32First(processesSnapshot, &processEntry))
+        {
+            do
+            {
+                jsProcessesList.push_back(getProcessInfo(processEntry));
+            } while (Process32Next(processesSnapshot, &processEntry));
+        }
+        else
+        {
+            CloseHandle(processesSnapshot);
+            throw std::system_error
+            {
+                static_cast<int>(GetLastError()),
+                std::system_category(),
+                "Unable to retrieve process information from the snapshot."
+            };
+        }
+        CloseHandle(processesSnapshot);
+
+    }
+    else
+    {
+        throw std::system_error
+        {
+            static_cast<int>(GetLastError()),
+            std::system_category(),
+            "Unable to create process snapshot."
+        };      
+    }
+    return jsProcessesList;
 }
 
 nlohmann::json SysInfo::getPackages() const

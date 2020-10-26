@@ -19,9 +19,9 @@ add_definitions(-DENABLE_SYSC=1)
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-	file(GLOB SYSCOLLECTOR_TESTTOOL_SRC
-		"${CMAKE_SOURCE_DIR}/*Win.cpp")
-	add_definitions(-DWIN32=1)
+    file(GLOB SYSCOLLECTOR_TESTTOOL_SRC
+        "${CMAKE_SOURCE_DIR}/*Win.cpp")
+    add_definitions(-DWIN32=1)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   file(GLOB SYSCOLLECTOR_TESTTOOL_SRC
       "${CMAKE_SOURCE_DIR}/*Linux.cpp")
@@ -48,28 +48,30 @@ add_executable(syscollector_test_tool
                "${CMAKE_SOURCE_DIR}/sysInfo.cpp")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-	target_link_libraries(syscollector_test_tool
-	    rsync
-	    dbsync
-	    -static-libgcc -static-libstdc++
-	)
+    target_link_libraries(syscollector_test_tool
+        rsync
+        dbsync
+        psapi
+        -static-libgcc -static-libstdc++
+    )
 elseif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
-	target_link_libraries(syscollector_test_tool
-	    rsync
-	    dbsync
-	    pthread)
+    target_link_libraries(syscollector_test_tool
+        rsync
+        dbsync
+        pthread)
 else()
-	target_link_libraries(syscollector_test_tool
-	    rsync
-	    dbsync
-	    dl
-	    pthread
-	)
+    target_link_libraries(syscollector_test_tool
+        rsync
+        dbsync
+        dl
+        pthread
+        proc
+    )
 
-	if(SOLARIS)
-		target_link_libraries(syscollector_test_tool
-			nsl
-			socket
-		)
-	endif(SOLARIS)
+    if(SOLARIS)
+        target_link_libraries(syscollector_test_tool
+            nsl
+            socket
+        )
+    endif(SOLARIS)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")

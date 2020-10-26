@@ -8,13 +8,15 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#include "sysInfo.hpp"
 #include <fstream>
 #include <iostream>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "stringHelper.h"
 #include "cmdHelper.h"
+#include "sysInfo.hpp"
+#include "shared.h"
+#include "readproc.h"
 
 constexpr auto WM_SYS_HW_DIR{"/sys/class/dmi/id/board_serial"};
 constexpr auto WM_SYS_CPU_DIR{"/proc/cpuinfo"};
@@ -27,6 +29,21 @@ static bool existDir(const std::string& path)
     struct stat info{};
     return !stat(path.c_str(), &info) && (info.st_mode & S_IFDIR);
 }
+
+struct ProcTableDeleter
+{
+    void operator()(PROCTAB* proc)
+    {
+        closeproc(proc);
+    }
+    void operator()(proc_t* proc)
+    {
+        freeproc(proc);
+    }
+};
+
+using SysInfoProcessesTable = std::unique_ptr<PROCTAB, ProcTableDeleter>;
+using SysInfoProcess        = std::unique_ptr<proc_t, ProcTableDeleter>;
 
 static void parseLineAndFillMap(const std::string& line, const std::string& separator, std::map<std::string, std::string>& systemInfo)
 {
@@ -54,6 +71,58 @@ static bool getSystemInfo(const std::string& fileName, const std::string& separa
         }
     }
     return ret;
+}
+
+static nlohmann::json getProcessInfo(const SysInfoProcess& process)
+{
+    nlohmann::json jsProcessInfo{};
+    // Current process information
+    jsProcessInfo["pid"]        = process->tid;
+    jsProcessInfo["name"]       = process->cmd;
+    jsProcessInfo["state"]      = &process->state;
+    jsProcessInfo["ppid"]       = process->ppid;
+    jsProcessInfo["utime"]      = process->utime;
+    jsProcessInfo["stime"]      = process->stime;
+
+    if (process->cmdline && process->cmdline[0])
+    {
+        nlohmann::json jsCmdlineArgs{};
+        jsProcessInfo["cmd"]    = process->cmdline[0];
+        for (int idx = 1; process->cmdline[idx]; ++idx)
+        {
+            const auto cmdlineArgSize { sizeof(process->cmdline[idx]) };
+            if(strnlen(process->cmdline[idx], cmdlineArgSize) != 0)
+            {
+                jsCmdlineArgs += process->cmdline[idx];
+            }
+        }
+        if (!jsCmdlineArgs.empty())
+        {
+            jsProcessInfo["argvs"]  = jsCmdlineArgs;
+        }
+    }
+
+    jsProcessInfo["euser"]      = process->euser;
+    jsProcessInfo["ruser"]      = process->ruser;
+    jsProcessInfo["suser"]      = process->suser;
+    jsProcessInfo["egroup"]     = process->egroup;
+    jsProcessInfo["rgroup"]     = process->rgroup;
+    jsProcessInfo["sgroup"]     = process->sgroup;
+    jsProcessInfo["fgroup"]     = process->fgroup;
+    jsProcessInfo["priority"]   = process->priority;
+    jsProcessInfo["nice"]       = process->nice;
+    jsProcessInfo["size"]       = process->size;
+    jsProcessInfo["vm_size"]    = process->vm_size;
+    jsProcessInfo["resident"]   = process->resident;
+    jsProcessInfo["share"]      = process->share;
+    jsProcessInfo["start_time"] = process->start_time;
+    jsProcessInfo["pgrp"]       = process->pgrp;
+    jsProcessInfo["session"]    = process->session;
+    jsProcessInfo["tgid"]       = process->tgid;
+    jsProcessInfo["tty"]        = process->tty;
+    jsProcessInfo["processor"]  = process->processor;
+    jsProcessInfo["nlwp"]       = process->nlwp;
+    return jsProcessInfo;
 }
 
 static nlohmann::json parsePackage(const std::vector<std::string>& entries)
@@ -292,4 +361,23 @@ nlohmann::json SysInfo::getPackages() const
         packages.push_back(getRpmInfo());
     }
     return packages[0];
+}
+
+nlohmann::json SysInfo::getProcessesInfo() const
+{
+    nlohmann::json jsProcessesList{};
+
+    const SysInfoProcessesTable spProcTable
+    {
+        openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV) 
+    };
+
+    SysInfoProcess spProcInfo { readproc(spProcTable.get(), nullptr) };
+    while (nullptr != spProcInfo)
+    {
+        // Append the current json process object to the list of processes
+        jsProcessesList.push_back(getProcessInfo(spProcInfo));
+        spProcInfo.reset(readproc(spProcTable.get(), nullptr));
+    }
+    return jsProcessesList;
 }
