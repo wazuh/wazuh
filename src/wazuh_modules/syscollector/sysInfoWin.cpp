@@ -124,7 +124,7 @@ private:
 
     void setProcessTimes()
     {
-        constexpr auto s_toSecondsValue { 10000000ULL };
+        constexpr auto TO_SECONDS_VALUE { 10000000ULL };
         FILETIME lpCreationTime{};
         FILETIME lpExitTime{};
         FILETIME lpKernelTime{};
@@ -134,12 +134,12 @@ private:
             // Copy the kernel mode filetime high and low parts and convert it to seconds
             m_kernelModeTime.LowPart = lpKernelTime.dwLowDateTime;
             m_kernelModeTime.HighPart = lpKernelTime.dwHighDateTime;
-            m_kernelModeTime.QuadPart /= s_toSecondsValue;
+            m_kernelModeTime.QuadPart /= TO_SECONDS_VALUE;
 
             // Copy the user mode filetime high and low parts and convert it to seconds
             m_userModeTime.LowPart = lpUserTime.dwLowDateTime;
             m_userModeTime.HighPart = lpUserTime.dwHighDateTime;
-            m_userModeTime.QuadPart /= s_toSecondsValue;
+            m_userModeTime.QuadPart /= TO_SECONDS_VALUE;
         }
         // else: Unable to retrieve kernel mode and user mode times from current process.
     }
@@ -191,7 +191,6 @@ private:
 
     bool fillOutput(const SystemDrivesMap& drivesMap, const std::string& ntPath, std::string& outbuf)
     {
-        bool ret { false };
         const auto it
         {
             std::find_if(drivesMap.begin(), drivesMap.end(),
@@ -201,10 +200,11 @@ private:
                 })
         };
 
-        if (it != drivesMap.end())
+        const bool ret { it != drivesMap.end() };
+
+        if (ret)
         {
             outbuf = it->second + ntPath.substr(it->first.size()+1);
-            ret = true;
         }
 
         return ret;
