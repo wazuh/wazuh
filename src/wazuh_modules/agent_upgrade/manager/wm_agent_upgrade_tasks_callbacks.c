@@ -116,14 +116,14 @@ cJSON* wm_agent_upgrade_update_status_success_callback(int *error, cJSON* input_
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         snprintf(buffer, OS_MAXSTR, "%03d com clear_upgrade_result -1", agent_id);
 
-        char *agent_response = wm_agent_upgrade_send_command_to_agent(buffer, strlen(buffer)); 
+        char *agent_response = wm_agent_upgrade_send_command_to_agent(buffer, strlen(buffer));
 
         if (*error = wm_agent_upgrade_parse_agent_response(agent_response, NULL), (*error == OS_SUCCESS)) {
             mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UPGRADE_FILE_AGENT);
         }
 
         os_free(buffer);
-        os_free(agent_response);   
+        os_free(agent_response);
     } else {
         *error = OS_INVALID;
     }

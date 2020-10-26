@@ -29,8 +29,6 @@
  * @param agent_id id of the agent
  * @param agent_task structure where the information of the agent will be stored
  * @param error_code variable to modify in case of failure
- * @param manager_configs manager configuration parameters
- * @param manager_configs manager configuration parameters
  * @return return_code
  * @retval WM_UPGRADE_SUCCESS
  * @retval WM_UPGRADE_GLOBAL_DB_FAILURE
@@ -45,12 +43,11 @@
  * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER
  * @retval WM_UPGRADE_UNKNOWN_ERROR
  * */
-STATIC int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task, const wm_manager_configs* manager_configs) __attribute__((nonnull));
+STATIC int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task) __attribute__((nonnull));
 
 /**
  * Validate the information of the agent and the task
  * @param agent_task structure with the information to be validated
- * @param manager_configs manager configuration parameters
  * @return return_code
  * @retval WM_UPGRADE_SUCCESS
  * @retval WM_UPGRADE_GLOBAL_DB_FAILURE
@@ -65,7 +62,7 @@ STATIC int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_tas
  * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER
  * @retval WM_UPGRADE_UNKNOWN_ERROR
  * */
-STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task, const wm_manager_configs* manager_configs) __attribute__((nonnull));
+STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task) __attribute__((nonnull));
 
 void wm_agent_upgrade_cancel_pending_upgrades() {
     cJSON *cancel_request = NULL;
@@ -80,7 +77,7 @@ void wm_agent_upgrade_cancel_pending_upgrades() {
     cJSON_Delete(cancel_response);
 }
 
-char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task, const wm_manager_configs* manager_configs) {
+char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task) {
     char* response = NULL;
     int agent = 0;
     int agent_id = 0;
@@ -107,7 +104,7 @@ char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_
         agent_task->task_info->command = WM_UPGRADE_UPGRADE;
         agent_task->task_info->task = upgrade_task;
 
-        if (error_code = wm_agent_upgrade_analyze_agent(agent_id, agent_task, manager_configs), error_code == WM_UPGRADE_SUCCESS) {
+        if (error_code = wm_agent_upgrade_analyze_agent(agent_id, agent_task), error_code == WM_UPGRADE_SUCCESS) {
             cJSON_AddItemToArray(agents_array, cJSON_CreateNumber(agent_id));
         } else {
             cJSON *error_message = wm_agent_upgrade_parse_data_response(error_code, upgrade_error_codes[error_code], &agent_id);
@@ -139,7 +136,7 @@ char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_
     return response;
 }
 
-char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task, const wm_manager_configs* manager_configs) {
+char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task) {
     char* response = NULL;
     int agent = 0;
     int agent_id = 0;
@@ -164,7 +161,7 @@ char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_u
         agent_task->task_info->command = WM_UPGRADE_UPGRADE_CUSTOM;
         agent_task->task_info->task = upgrade_custom_task;
 
-        if (error_code = wm_agent_upgrade_analyze_agent(agent_id, agent_task, manager_configs), error_code == WM_UPGRADE_SUCCESS) {
+        if (error_code = wm_agent_upgrade_analyze_agent(agent_id, agent_task), error_code == WM_UPGRADE_SUCCESS) {
             cJSON_AddItemToArray(agents_array, cJSON_CreateNumber(agent_id));
         } else {
             cJSON *error_message = wm_agent_upgrade_parse_data_response(error_code, upgrade_error_codes[error_code], &agent_id);
@@ -231,7 +228,7 @@ char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, const 
     return response;
 }
 
-STATIC int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task, const wm_manager_configs* manager_configs) {
+STATIC int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task) {
     int validate_result = WM_UPGRADE_SUCCESS;
     cJSON *agent_info = NULL;
     cJSON *value = NULL;
@@ -281,7 +278,7 @@ STATIC int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_tas
         }
 
         // Validate agent and task information
-        validate_result = wm_agent_upgrade_validate_agent_task(agent_task, manager_configs);
+        validate_result = wm_agent_upgrade_validate_agent_task(agent_task);
 
         if (validate_result == WM_UPGRADE_SUCCESS) {
             // Save task entry for agent
@@ -303,7 +300,7 @@ STATIC int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_tas
     return validate_result;
 }
 
-STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task, const wm_manager_configs* manager_configs) {
+STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task) {
     int validate_result = WM_UPGRADE_SUCCESS;
     cJSON *status_request = NULL;
     cJSON *status_response = NULL;
@@ -323,8 +320,15 @@ STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task,
         return validate_result;
     }
 
+    // Validate system information
+    validate_result = wm_agent_upgrade_validate_system(agent_task->agent_info->platform, agent_task->agent_info->major_version, agent_task->agent_info->minor_version, agent_task->agent_info->architecture);
+
+    if (validate_result != WM_UPGRADE_SUCCESS) {
+        return validate_result;
+    }
+
     // Validate Wazuh version to upgrade
-    validate_result = wm_agent_upgrade_validate_version(agent_task->agent_info, agent_task->task_info->task, agent_task->task_info->command, manager_configs);
+    validate_result = wm_agent_upgrade_validate_version(agent_task->agent_info->wazuh_version, agent_task->task_info->command, agent_task->task_info->task);
 
     if (validate_result != WM_UPGRADE_SUCCESS) {
         return validate_result;

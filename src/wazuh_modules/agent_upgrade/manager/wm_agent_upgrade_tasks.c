@@ -75,6 +75,7 @@ void wm_agent_upgrade_free_upgrade_task(wm_upgrade_task* upgrade_task) {
     if (upgrade_task) {
         os_free(upgrade_task->custom_version);
         os_free(upgrade_task->wpk_repository);
+        os_free(upgrade_task->wpk_version);
         os_free(upgrade_task->wpk_file);
         os_free(upgrade_task->wpk_sha1);
         os_free(upgrade_task);
@@ -236,5 +237,5 @@ STATIC cJSON *wm_agent_send_task_information_worker(const cJSON *message_object)
     os_free(message);
     cJSON_Delete(payload);
 
-    return cJSON_Parse(response);   
+    return cJSON_Parse(response);
 }
