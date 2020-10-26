@@ -700,6 +700,7 @@ stages:
     response: &resource_not_found
       status_code: 200
       json:
+        error: 2
         data:
           affected_items: [ ]
           total_affected_items: 0

@@ -3993,6 +3993,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: 2
         data:
           affected_items: []
           failed_items:
@@ -4015,6 +4016,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: 2
         data:
           affected_items: []
           failed_items:
@@ -4040,7 +4042,7 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Upgrade an agent
+  - name: Upgrade agents
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -4055,6 +4057,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: 1
         data:
           affected_items:
             - agent: !anystr
@@ -4072,7 +4075,7 @@ stages:
                 - '000'
         message: !anystr
 
-  - name: Get agent upgrade result
+  - name: Get agents upgrade results
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
@@ -4084,19 +4087,20 @@ stages:
     response:
       status_code: 200
       json:
+        error: 1
         data:
           affected_items:
             - message: Success
-              agent: !anystr
-              task_id: !anyint
+              agent: 001
+              task_id: 1
               module: upgrade_module
               command: upgrade
               status: !anystr
               create_time: !anystr
               update_time: !anystr
             - message: Success
-              agent: !anystr
-              task_id: !anyint
+              agent: 002
+              task_id: 2
               module: upgrade_module
               command: upgrade
               status: !anystr
