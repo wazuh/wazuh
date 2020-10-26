@@ -8,8 +8,10 @@
  * Foundation
  */
 
+#include "os_err.h"
 #include "shared.h"
 #include "monitord.h"
+#include "config/config.h"
 
 /* Global variables */
 monitor_config mond;
@@ -199,4 +201,37 @@ cJSON *getReportsOptions(void) {
     }
 
     return root;
+}
+
+int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short day_wait) {
+    int modules = 0;
+
+    /* Get config options */
+    mond->day_wait = day_wait >= 0 ? day_wait : (short)getDefine_Int("monitord", "day_wait", 0, MAX_DAY_WAIT);
+    mond->compress = (unsigned int) getDefine_Int("monitord", "compress", 0, 1);
+    mond->sign = (unsigned int) getDefine_Int("monitord", "sign", 0, 1);
+    mond->monitor_agents = no_agents ? 0 : (unsigned int) getDefine_Int("monitord", "monitor_agents", 0, 1);
+    mond->rotate_log = (unsigned int)getDefine_Int("monitord", "rotate_log", 0, 1);
+    mond->keep_log_days = getDefine_Int("monitord", "keep_log_days", 0, 500);
+    mond->size_rotate = (unsigned long) getDefine_Int("monitord", "size_rotate", 0, 4096) * 1024 * 1024;
+    mond->daily_rotations = getDefine_Int("monitord", "daily_rotations", 1, 256);
+    mond->delete_old_agents = (unsigned int)getDefine_Int("monitord", "delete_old_agents", 0, 9600);
+
+    mond->agents = NULL;
+    mond->smtpserver = NULL;
+    mond->emailfrom = NULL;
+    mond->emailidsname = NULL;
+
+    /* Setting default agent's global configuration */
+    mond->global.agents_disconnection_time = 20;
+    mond->global.agents_disconnection_alert_time = 120;
+
+    modules |= CREPORTS;
+
+    if (ReadConfig(modules, cfg, mond, NULL) < 0 ||
+        ReadConfig(CGLOBAL, cfg, &mond->global, NULL) < 0) {
+        merror_exit(CONFIG_ERROR, cfg);
+    }
+
+    return OS_SUCCESS;
 }
