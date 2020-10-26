@@ -104,6 +104,10 @@ void HandleSecure()
         }
     }
 
+    // Reset all the agents' connection status in Wazuh DB
+    if (OS_SUCCESS != wdb_reset_agents_connection(NULL))
+        mwarn("Unable to reset the agents' connection status. Possible incorrect statuses until the agents get connected to the manager.");
+
     // Create message handler thread pool
     {
         int worker_pool = getDefine_Int("remoted", "worker_pool", 1, 16);
@@ -242,10 +246,6 @@ void * rem_handler_main(__attribute__((unused)) void * args) {
     char buffer[OS_MAXSTR + 1] = "";
     int wdb_sock = -1;
     mdebug1("Message handler thread started.");
-
-    // Reset all the agents' connection status in Wazuh DB
-    if (OS_SUCCESS != wdb_reset_agents_connection(&wdb_sock))
-        mwarn("Unable to reset the agents' connection status. Possible incorrect statuses until the agents get connected to the manager.");
 
     while (1) {
         message = rem_msgpop();
