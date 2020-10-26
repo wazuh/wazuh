@@ -17,6 +17,7 @@
 
 #include "config/config.h"
 #include "config/remote-config.h"
+#include "config/global-config.h"
 #include "sec.h"
 
 #define FD_LIST_INIT_VALUE 1024
@@ -159,6 +160,7 @@ void rem_inc_dequeued();
 size_t rem_getconfig(const char * section, char ** output);
 cJSON *getRemoteConfig(void);
 cJSON *getRemoteInternalConfig(void);
+cJSON *getRemoteGlobalConfig(void);
 
 /* Network buffer */
 

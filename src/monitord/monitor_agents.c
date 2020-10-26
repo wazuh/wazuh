@@ -20,7 +20,7 @@ void monitor_agents()
     char **cr_agents;
     char **av_agents;
 
-    av_agents = get_agents_by_last_keepalive(GA_ACTIVE, mond.delete_old_agents > 0 ? mond.delete_old_agents * 60 : DISCON_TIME);
+    av_agents = get_agents_by_last_keepalive(GA_ACTIVE, mond.delete_old_agents > 0 ? mond.delete_old_agents * 60 : mond.global.agents_disconnection_time + mond.global.agents_disconnection_alert_time);
 
     /* No agent saved */
     if (!mond.agents) {
