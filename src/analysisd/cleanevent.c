@@ -79,31 +79,50 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     /* Check for the syslog date format
      * ( ex: Dec 29 10:00:01
      *   or  2015 Dec 29 10:00:01
+     *   or  Jun  5 08:48:47 2019
      *   or  2007-06-14T15:48:55-04:00 for syslog-ng isodate
      *   or  2009-05-22T09:36:46.214994-07:00 for rsyslog )
      *   or  2015-04-16 21:51:02,805 (proftpd 1.3.5)
+     *   or  2003-10-11T22:14:15.003Z
+     *   or  1985-04-12T23:20:50.52Z
      */
     if (
+        (
+            (loglen > 21) &&
+            (pieces[3] == ' ') &&
+            (pieces[6] == ' ') &&
+            (pieces[9] == ':') &&
+            (pieces[12] == ':') &&
+            (pieces[15] == ' ') &&
+            (pieces[20] == ' ') &&
+            (isdigit(pieces[16])) &&
+            (isdigit(pieces[17])) &&
+            (isdigit(pieces[18])) &&
+            (isdigit(pieces[19])) &&
+            (lf->log += 21)
+        )
+        ||
         (
             (loglen > 17) &&
             (pieces[3] == ' ') &&
             (pieces[6] == ' ') &&
             (pieces[9] == ':') &&
             (pieces[12] == ':') &&
-            (pieces[15] == ' ') && (lf->log += 16)
+            (pieces[15] == ' ') &&
+            (lf->log += 16)
         )
         ||
-	(
-	    (loglen > 24) &&
-	    (pieces[4] == '-') &&
-	    (pieces[7] == '-') &&
-	    (pieces[10] == ' ') &&
-	    (pieces[13] == ':') &&
-	    (pieces[16] == ':') &&
-	    (pieces[19] == ',') &&
-	    (lf->log += 23)
-	)
-	||
+        (
+            (loglen > 24) &&
+            (pieces[4] == '-') &&
+            (pieces[7] == '-') &&
+            (pieces[10] == ' ') &&
+            (pieces[13] == ':') &&
+            (pieces[16] == ':') &&
+            (pieces[19] == ',') &&
+            (lf->log += 23)
+        )
+        ||
         (
             (loglen > 33) &&
             (pieces[4] == '-') &&
@@ -119,7 +138,11 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
                 ((pieces[19] == '.') &&
                  (pieces[29] == ':') && (lf->log += 33))  ||
 
-                ((pieces[19] == '.') && (lf->log += 32))
+                ((pieces[19] == '.') &&
+                 (pieces[23] == 'Z') && (lf->log += 25)) ||
+
+                ((pieces[19] == '.') &&
+                 (pieces[22] == 'Z') && (lf->log += 24))
             )
         )
      ||
@@ -394,6 +417,24 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         lf->log[-2] = '\0';
     }
 
+    /*
+     * Check for new apache log format: [Fri Sep 09 10:42:29.902022 2011] [core:error]
+     */
+    else if ( (loglen > 34) &&
+              (pieces[0] == '[') &&
+              (pieces[4] == ' ') &&
+              (pieces[8] == ' ') &&
+              (pieces[11] == ' ') &&
+              (pieces[14] == ':') &&
+              (pieces[17] == ':') &&
+              (pieces[20] == '.') &&
+              (pieces[27] == ' ') &&
+              (pieces[32] == ']') ){
+        lf->log += 34;
+        lf->dec_timestamp = lf->full_log + loglen + 1;
+        lf->log[-2] = '\0';
+    }
+
     /* Check for the osx asl log format.
      * Examples:
      * [Time 2006.12.28 15:53:55 UTC] [Facility auth] [Sender sshd] [PID 483] [Message error: PAM: Authentication failure for username from 192.168.0.2] [Level 3] [UID -2] [GID -2] [Host Hostname]
@@ -401,19 +442,21 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
      [Message refused connect from 59.124.44.34] [Level 4] [UID -2] [GID -2]
      [Host robert-wyatts-emac]
      */
-    else if ((loglen > 26) &&
+    else if ((loglen > 30) &&
              (pieces[0] == '[')  &&
              (pieces[1] == 'T')  &&
              (pieces[5] == ' ')  &&
              (pieces[10] == '.') &&
              (pieces[13] == '.') &&
              (pieces[16] == ' ') &&
-             (pieces[19] == ':')) {
+             (pieces[19] == ':') &&
+             (pieces[22] == ':') &&
+             (pieces[25] == ' ') &&
+             (pieces[29] == ']')){
         /* Do not read more than 1 message entry -> log tampering */
         short unsigned int done_message = 0;
 
-        /* Remove the date */
-        lf->log += 25;
+        lf->log += 30;
 
         /* Get the desired values */
         pieces = strchr(lf->log, '[');
