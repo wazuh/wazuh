@@ -9,6 +9,9 @@
 
 #include "expression.h"
 
+#ifdef WAZUH_UNIT_TESTING
+#include "unit_tests/wrappers/externals/pcre2/pcre2_wrappers.h"
+#endif
 
 void w_calloc_expression_t(w_expression_t ** var, w_exp_type_t type) {
 

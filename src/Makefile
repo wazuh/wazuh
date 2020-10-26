@@ -1003,6 +1003,9 @@ wrappers_externals_procpc_o := $(wrappers_externals_procpc_c:.c=.o)
 wrappers_externals_sqlite_c := $(wildcard unit_tests/wrappers/externals/sqlite/*.c)
 wrappers_externals_sqlite_o := $(wrappers_externals_sqlite_c:.c=.o)
 
+wrappers_externals_pcre2_c := $(wildcard unit_tests/wrappers/externals/pcre2/*.c)
+wrappers_externals_pcre2_o := $(wrappers_externals_pcre2_c:.c=.o)
+
 wrappers_libc_c := $(wildcard unit_tests/wrappers/libc/*.c)
 wrappers_libc_o := $(wrappers_libc_c:.c=.o)
 
@@ -1067,6 +1070,7 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_cJSON_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_openssl_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_sqlite_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_externals_pcre2_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_libc_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_posix_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_o}
@@ -1985,6 +1989,7 @@ clean-unit-tests:
 	rm -f ${wrappers_externals_openssl_o}
 	rm -f ${wrappers_externals_procpc_o}
 	rm -f ${wrappers_externals_sqlite_o}
+	rm -f ${wrappers_externals_pcre2_o}
 	rm -f ${wrappers_libc_o}
 	rm -f ${wrappers_linux_o}
 	rm -f ${wrappers_posix_o}
