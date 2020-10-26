@@ -162,8 +162,9 @@ int main(int argc, char **argv)
 
     c = 0;
     c |= CREPORTS;
-    c |= CGLOBAL;
-    if (ReadConfig(c, cfg, &mond, NULL) < 0) {
+
+    if (ReadConfig(c, cfg, &mond, NULL) < 0 ||
+        ReadConfig(CGLOBAL, cfg, &mond.global, NULL) < 0) {
         merror_exit(CONFIG_ERROR, cfg);
     }
 

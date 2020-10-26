@@ -10,8 +10,6 @@
 
 /* Unified function to read the configuration */
 
-#include "config/remote-config.h"
-#include "config/reports-config.h"
 #include "shared.h"
 #include "os_xml/os_xml.h"
 #include "config.h"
@@ -123,9 +121,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CREMOTE) && (Read_Remote(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
-            if ((modules & CGLOBAL) && d1 && (Read_Global(chld_node, &(((remoted*)d1)->global), d2) < 0)) {
-                goto fail;
-            }
         } else if (chld_node && (strcmp(node[i]->element, osclient) == 0)) {
             if ((modules & CCLIENT) && (Read_Client(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
@@ -144,9 +139,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (chld_node && (strcmp(node[i]->element, osreports) == 0)) {
             if ((modules & CREPORTS) && (Read_CReports(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-            if ((modules & CGLOBAL) && d1 && (Read_Global(chld_node, &(((monitor_config*)d1)->global), d2) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, oswmodule) == 0) {

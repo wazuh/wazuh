@@ -28,7 +28,6 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     int modules = 0;
 
     modules |= CREMOTE;
-    modules |= CGLOBAL;
 
     cfg->port = NULL;
     cfg->conn = NULL;
@@ -44,7 +43,8 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     cfg->global.agents_disconnection_time = 20;
     cfg->global.agents_disconnection_alert_time = 120;
 
-    if (ReadConfig(modules, cfgfile, cfg, NULL) < 0) {
+    if (ReadConfig(modules, cfgfile, cfg, NULL) < 0 ||
+        ReadConfig(CGLOBAL, cfgfile, &cfg->global, NULL) < 0 ) {
         return (OS_INVALID);
     }
 
