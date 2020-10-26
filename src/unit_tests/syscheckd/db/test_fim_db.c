@@ -49,7 +49,25 @@ fim_tmp_file *fim_db_create_temp_file(int storage);
 void fim_db_clean_file(fim_tmp_file **file, int storage);
 
 
-/*--------------WRAPS-----------------------*/
+/**********************************************************************************************************************\
+ * Auxiliar structs used in tests
+\**********************************************************************************************************************/
+
+typedef struct _test_fim_db_insert_data {
+    fdb_t *fim_sql;
+    fim_entry *entry;
+    fim_tmp_file *tmp_file;
+    fim_file_data *saved;
+} test_fim_db_insert_data;
+
+typedef struct _test_fim_db_ctx_s {
+    test_fim_db_insert_data *test_data;
+    EVP_MD_CTX *ctx;
+} test_fim_db_ctx_t;
+
+/**********************************************************************************************************************\
+ * Local wrappers
+\**********************************************************************************************************************/
 
 #ifndef TEST_WINAGENT
 extern unsigned long __real_time();
@@ -61,7 +79,9 @@ unsigned long __wrap_time() {
 }
 #endif
 
-/*-----------------------------------------*/
+/**********************************************************************************************************************\
+ * Auxiliar expect functions
+\**********************************************************************************************************************/
 
 /**
  * Successfully wrappes a fim_db_clean() call
@@ -96,6 +116,19 @@ static void expect_fim_db_create_file_success() {
     expect_string(__wrap_chmod, path, "queue/fim/db/fim.db");
 #endif
     will_return(__wrap_chmod, 0);
+}
+
+void expect_fim_db_clean_stmt() {
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+}
+
+void expect_fim_db_bind_range(const char* start, const char* top, int retval) {
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, start);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, top);
+    will_return_count(__wrap_sqlite3_bind_text, 0, 2);
 }
 
 /**
@@ -202,7 +235,21 @@ static void wraps_fim_db_insert_path_success() {
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 }
 #endif
-/*---------------SETUP/TEARDOWN------------------*/
+
+void expect_fim_db_decode_string_array(int column_count, const char **array) {
+    int it;
+
+    will_return(__wrap_sqlite3_column_count, column_count);
+
+    for (it = 0; it < column_count && array[it]; it++) {
+        expect_value(__wrap_sqlite3_column_text, iCol, it);
+        will_return(__wrap_sqlite3_column_text, array[it]);
+    }
+}
+
+/**********************************************************************************************************************\
+ * Setup and teardown functions
+\**********************************************************************************************************************/
 static int setup_group(void **state) {
     (void) state;
 
@@ -231,18 +278,6 @@ static int teardown_group(void **state) {
     test_mode = 0;
     return 0;
 }
-
-typedef struct _test_fim_db_insert_data {
-    fdb_t *fim_sql;
-    fim_entry *entry;
-    fim_tmp_file *tmp_file;
-    fim_file_data *saved;
-} test_fim_db_insert_data;
-
-typedef struct __test_fim_db_ctx_s {
-    test_fim_db_insert_data *test_data;
-    EVP_MD_CTX *ctx;
-} test_fim_db_ctx_t;
 
 static int test_fim_db_setup(void **state) {
     test_fim_db_insert_data *test_data;
@@ -401,8 +436,9 @@ static int teardown_fim_db_with_ctx(void **state) {
     return 0;
 }
 
-/*-----------------------------------------*/
-/*----------fim_db_exec_simple_wquery()----------*/
+/**********************************************************************************************************************\
+ * fim_db_exec_simple_wquery() tests
+\**********************************************************************************************************************/
 void test_fim_db_exec_simple_wquery_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
     expect_string(__wrap_sqlite3_exec, sql, "BEGIN;");
@@ -424,8 +460,9 @@ void test_fim_db_exec_simple_wquery_success(void **state) {
     assert_int_equal(ret, FIMDB_OK);
 }
 
-/*-----------------------------------------*/
-/*---------------fim_db_init()---------------*/
+/**********************************************************************************************************************\
+ * fim_db_init() tests
+\**********************************************************************************************************************/
 static int test_teardown_fim_db_init(void **state) {
     fdb_t *fim_db = (fdb_t *) *state;
     free(fim_db);
@@ -638,8 +675,10 @@ void test_fim_db_init_success(void **state) {
     assert_non_null(fim_db);
     *state = fim_db;
 }
-/*-----------------------------------------*/
-/*---------------fim_db_clean()----------------*/
+
+/**********************************************************************************************************************\
+ * fim_db_clean() tests
+\**********************************************************************************************************************/
 void test_fim_db_clean_no_db_file(void **state) {
     expect_string(__wrap_w_is_file, file, FIM_DB_DISK_PATH);
     will_return(__wrap_w_is_file, 0);
@@ -677,9 +716,10 @@ void test_fim_db_clean_success(void **state) {
     wraps_fim_db_clean();
     fim_db_clean();
 }
-/*-----------------------------------------*/
-/*----------fim_db_get_data_checksum()------------------*/
 
+/**********************************************************************************************************************\
+ * fim_db_get_path_range() tests
+\**********************************************************************************************************************/
 void test_fim_db_get_path_range_failed(void **state) {
 
     test_fim_db_insert_data *test_data = *state;
@@ -742,9 +782,9 @@ void test_fim_db_get_path_range_success(void **state) {
     assert_int_equal(ret, FIMDB_OK);
 }
 
-/*----------------------------------------------*/
-
-/*----------fim_db_get_data_checksum()------------------*/
+/**********************************************************************************************************************\
+ * fim_db_get_data_checksum() tests
+\**********************************************************************************************************************/
 void test_fim_db_get_data_checksum_failed(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
@@ -772,8 +812,10 @@ void test_fim_db_get_data_checksum_success(void **state) {
     int ret = fim_db_get_data_checksum(test_data->fim_sql, FIM_TYPE_FILE, NULL);
     assert_int_equal(ret, FIMDB_OK);
 }
-/*----------------------------------------------*/
-/*----------fim_db_check_transaction()------------------*/
+
+/**********************************************************************************************************************\
+ * fim_db_check_transaction() tests
+\**********************************************************************************************************************/
 void test_fim_db_check_transaction_last_commit_is_0(void **state) {
     test_fim_db_insert_data *test_data = *state;
     test_data->fim_sql->transaction.last_commit = 0;
@@ -799,8 +841,10 @@ void test_fim_db_check_transaction_success(void **state) {
     fim_db_check_transaction(test_data->fim_sql);
     assert_int_not_equal(commit_time, test_data->fim_sql->transaction.last_commit);
 }
-/*----------------------------------------------*/
-/*----------fim_db_cache()------------------*/
+
+/**********************************************************************************************************************\
+ * fim_db_cache() tests
+\**********************************************************************************************************************/
 void test_fim_db_cache_failed(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
@@ -820,8 +864,10 @@ void test_fim_db_cache_success(void **state) {
     int ret = fim_db_cache(test_data->fim_sql);
     assert_int_equal(ret, FIMDB_OK);
 }
-/*----------------------------------------------*/
-/*----------fim_db_close()------------------*/
+
+/**********************************************************************************************************************\
+ * fim_db_close() tests
+\**********************************************************************************************************************/
 void test_fim_db_close_failed(void **state) {
     test_fim_db_insert_data *test_data = *state;
     wraps_fim_db_check_transaction();
@@ -847,8 +893,10 @@ void test_fim_db_close_success(void **state) {
     will_return(__wrap_sqlite3_close_v2, SQLITE_OK);
     fim_db_close(test_data->fim_sql);
 }
-/*----------------------------------------------*/
-/*----------fim_db_finalize_stmt()------------------*/
+
+/**********************************************************************************************************************\
+ * fim_db_finalize_stmt() tests
+\**********************************************************************************************************************/
 void test_fim_db_finalize_stmt_failed(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
@@ -878,8 +926,10 @@ void test_fim_db_finalize_stmt_success(void **state) {
     int ret = fim_db_finalize_stmt(test_data->fim_sql);
     assert_int_equal(ret, FIMDB_OK);
 }
-/*----------------------------------------------*/
-/*----------fim_db_force_commit()------------------*/
+
+/**********************************************************************************************************************\
+ * fim_db_force_commit() tests
+\**********************************************************************************************************************/
 void test_fim_db_force_commit_failed(void **state){
     test_fim_db_insert_data *test_data = *state;
     expect_string(__wrap_sqlite3_exec, sql, "END;");
@@ -898,8 +948,10 @@ void test_fim_db_force_commit_success(void **state){
     // If commit succeded last_comit time should be updated
     assert_int_not_equal(1, test_data->fim_sql->transaction.last_commit);
 }
-/*----------------------------------------------*/
-/*----------fim_db_clean_stmt()------------------*/
+
+/**********************************************************************************************************************\
+ * fim_db_clean_stmt() tests
+\**********************************************************************************************************************/
 void test_fim_db_clean_stmt_reset_failed(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return(__wrap_sqlite3_reset, SQLITE_ERROR);
@@ -931,109 +983,217 @@ void test_fim_db_clean_stmt_success(void **state) {
     int ret = fim_db_clean_stmt(test_data->fim_sql, 0);
     assert_int_equal(ret, FIMDB_OK);
 }
-/*----------------------------------------------*/
 
-/*----------fim_db_get_checksum_range()------------------*/
-void test_fim_db_data_checksum_range_first_half_failed(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-    will_return(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    expect_any_always(__wrap_sqlite3_bind_text, pos);
-    expect_any_always(__wrap_sqlite3_bind_text, buffer);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
+/**********************************************************************************************************************\
+ * fim_db_get_checksum_range() tests
+\**********************************************************************************************************************/
+static void fim_db_get_checksum_range_null_ctx_left(void **state) {
+    fdb_t fim_sql;
+    const char *start = "start";
+    const char *top = "top";
+    EVP_MD_CTX *ctx_right = (EVP_MD_CTX *)234567;
+    char *lower_half_path, *higher_half_path;
+    int retval;
+
+    retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 1, NULL, ctx_right, &lower_half_path,
+                                       &higher_half_path);
+
+    assert_int_equal(retval, FIMDB_ERR);
+}
+
+static void fim_db_get_checksum_range_null_ctx_right(void **state) {
+    fdb_t fim_sql;
+    const char *start = "start";
+    const char *top = "top";
+    EVP_MD_CTX *ctx_left = (EVP_MD_CTX *)123456;
+    char *lower_half_path, *higher_half_path;
+    int retval;
+
+    retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 1, ctx_left, NULL, &lower_half_path,
+                                       &higher_half_path);
+
+    assert_int_equal(retval, FIMDB_ERR);
+}
+
+static void fim_db_get_checksum_range_null_path_lower_half(void **state) {
+    fdb_t fim_sql;
+    const char *start = "start";
+    const char *top = "top";
+    EVP_MD_CTX *ctx_left = (EVP_MD_CTX *)123456, *ctx_right = (EVP_MD_CTX *)234567;
+    char *higher_half_path = NULL;
+    int retval;
+
+    retval =
+    fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 1, ctx_left, ctx_right, NULL, &higher_half_path);
+
+    assert_int_equal(retval, FIMDB_ERR);
+}
+
+static void fim_db_get_checksum_range_null_path_upper_half(void **state) {
+    fdb_t fim_sql;
+    const char *start = "start";
+    const char *top = "top";
+    EVP_MD_CTX *ctx_left = (EVP_MD_CTX *)123456, *ctx_right = (EVP_MD_CTX *)234567;
+    char *lower_half_path = NULL;
+    int retval;
+
+    retval =
+    fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 1, ctx_left, ctx_right, &lower_half_path, NULL);
+
+    assert_int_equal(retval, FIMDB_ERR);
+}
+
+static void fim_db_get_checksum_range_fail_step_on_first_half(void **state) {
+    fdb_t fim_sql;
+    const char *start = "start";
+    const char *top = "top";
+    EVP_MD_CTX *ctx_left = (EVP_MD_CTX *)123456, *ctx_right = (EVP_MD_CTX *)234567;
+    char *lower_half_path = NULL, *higher_half_path = NULL;
+    int retval;
+
+    expect_fim_db_clean_stmt();
+    expect_fim_db_bind_range(start, top, 0);
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "Step error getting path range, first half 'start init' 'top end' (i:0): ERROR MESSAGE");
-    int ret;
-    ret = fim_db_get_checksum_range(test_data->fim_sql, FIM_TYPE_FILE, "init", "end", 1, 5, &syscheck.fim_entry_mutex);
-    assert_int_equal(ret, FIMDB_ERR);
+    expect_string(__wrap__merror, formatted_msg,
+                  "Step error getting path range, first half 'start start' 'top top' (i:0): ERROR MESSAGE");
+
+    retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 2, ctx_left, ctx_right, &lower_half_path,
+                                       &higher_half_path);
+    assert_int_equal(retval, FIMDB_ERR);
 }
 
-void test_fim_db_data_checksum_range_second_half_failed(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-    will_return(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    expect_any_always(__wrap_sqlite3_bind_text, pos);
-    expect_any_always(__wrap_sqlite3_bind_text, buffer);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
+static void fim_db_get_checksum_range_fail_to_decode_string_array_on_first_half(void **state) {
+    fdb_t fim_sql;
+    const char *start = "start";
+    const char *top = "top";
+    EVP_MD_CTX *ctx_left = (EVP_MD_CTX *)123456, *ctx_right = (EVP_MD_CTX *)234567;
+    char *lower_half_path = NULL, *higher_half_path = NULL;
+    int retval;
 
-    // First half
+    expect_fim_db_clean_stmt();
+    expect_fim_db_bind_range(start, top, 0);
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    wraps_fim_db_decode_full_row();
-    expect_string(__wrap_EVP_DigestUpdate, data, "checksum");
-    expect_value(__wrap_EVP_DigestUpdate, count, 8);
+
+    expect_fim_db_decode_string_array(-1, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "Failed to decode checksum range query");
+
+    retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 2, ctx_left, ctx_right, &lower_half_path,
+                                       &higher_half_path);
+    assert_int_equal(retval, FIMDB_ERR);
+}
+
+static void fim_db_get_checksum_range_fail_step_on_second_half(void **state) {
+    fdb_t fim_sql;
+    const char *start = "start";
+    const char *top = "top";
+    EVP_MD_CTX *ctx_left = (EVP_MD_CTX *)123456, *ctx_right = (EVP_MD_CTX *)234567;
+    char *lower_half_path = NULL, *higher_half_path = NULL;
+    const char *array[] = { "/some/path", "0123456789ABCDEF0123456789ABCDEF01234567", NULL };
+    int retval;
+
+    expect_fim_db_clean_stmt();
+    expect_fim_db_bind_range(start, top, 0);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_fim_db_decode_string_array(2, array);
+
+    expect_string(__wrap_EVP_DigestUpdate, data, "0123456789ABCDEF0123456789ABCDEF01234567");
+    expect_value(__wrap_EVP_DigestUpdate, count, 40);
     will_return(__wrap_EVP_DigestUpdate, 0);
 
-    // Second half
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "Step error getting path range, second half 'start init' 'top end' (i:1): ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Step error getting path range, second half 'start start' 'top top' (i:1): ERROR MESSAGE");
 
-    int ret;
-    ret = fim_db_get_checksum_range(test_data->fim_sql, FIM_TYPE_FILE, "init", "end", 1, 2, &syscheck.fim_entry_mutex);
-    assert_int_equal(ret, FIMDB_ERR);
+    retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 2, ctx_left, ctx_right, &lower_half_path,
+                                       &higher_half_path);
+    assert_int_equal(retval, FIMDB_ERR);
 }
 
-void test_fim_db_data_checksum_range_null_path(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-    will_return(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    expect_any_always(__wrap_sqlite3_bind_text, pos);
-    expect_any_always(__wrap_sqlite3_bind_text, buffer);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
+static void fim_db_get_checksum_range_fail_to_decode_string_array_on_second_half(void **state) {
+    fdb_t fim_sql;
+    const char *start = "start";
+    const char *top = "top";
+    EVP_MD_CTX *ctx_left = (EVP_MD_CTX *)123456, *ctx_right = (EVP_MD_CTX *)234567;
+    char *lower_half_path = NULL, *higher_half_path = NULL;
+    const char *array[] = { "/some/path", "0123456789ABCDEF0123456789ABCDEF01234567", NULL };
+    int retval;
 
-    // Fist half
+    expect_fim_db_clean_stmt();
+    expect_fim_db_bind_range(start, top, 0);
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    wraps_fim_db_decode_full_row();
-    expect_string(__wrap_EVP_DigestUpdate, data, "checksum");
-    expect_value(__wrap_EVP_DigestUpdate, count, 8);
+
+    expect_fim_db_decode_string_array(2, array);
+
+    expect_string(__wrap_EVP_DigestUpdate, data, "0123456789ABCDEF0123456789ABCDEF01234567");
+    expect_value(__wrap_EVP_DigestUpdate, count, 40);
     will_return(__wrap_EVP_DigestUpdate, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "Failed to obtain required paths in order to form message");
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    int ret;
-    ret = fim_db_get_checksum_range(test_data->fim_sql, FIM_TYPE_FILE, "init", "end", 1, 1, &syscheck.fim_entry_mutex);
-    assert_int_equal(ret, FIMDB_ERR);
+    expect_fim_db_decode_string_array(-1, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "Failed to decode checksum range query");
+
+    retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 2, ctx_left, ctx_right, &lower_half_path,
+                                       &higher_half_path);
+    assert_int_equal(retval, FIMDB_ERR);
 }
 
-void test_fim_db_data_checksum_range_success(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-    will_return(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    expect_any_always(__wrap_sqlite3_bind_text, pos);
-    expect_any_always(__wrap_sqlite3_bind_text, buffer);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
+static void fim_db_get_checksum_range_success(void **state) {
+    fdb_t fim_sql;
+    const char *start = "start";
+    const char *top = "top";
+    EVP_MD_CTX *ctx_left = (EVP_MD_CTX *)123456, *ctx_right = (EVP_MD_CTX *)234567;
+    char *lower_half_path = NULL, *higher_half_path = NULL;
+    const char *lower_array[] = { "/some/path", "0123456789ABCDEF0123456789ABCDEF01234567", NULL };
+    const char *higher_array[] = { "/some/other/path", "123456789ABCDEF0123456789ABCDEF012345678", NULL };
+    int retval;
 
-    // Fist half
+    expect_fim_db_clean_stmt();
+    expect_fim_db_bind_range(start, top, 0);
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    wraps_fim_db_decode_full_row();
-    expect_string(__wrap_EVP_DigestUpdate, data, "checksum");
-    expect_value(__wrap_EVP_DigestUpdate, count, 8);
+
+    expect_fim_db_decode_string_array(2, lower_array);
+
+    expect_string(__wrap_EVP_DigestUpdate, data, "0123456789ABCDEF0123456789ABCDEF01234567");
+    expect_value(__wrap_EVP_DigestUpdate, count, 40);
     will_return(__wrap_EVP_DigestUpdate, 0);
 
-    // Second half
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    wraps_fim_db_decode_full_row();
-    expect_string(__wrap_EVP_DigestUpdate, data, "checksum");
-    expect_value(__wrap_EVP_DigestUpdate, count, 8);
+
+    expect_fim_db_decode_string_array(2, higher_array);
+
+    expect_string(__wrap_EVP_DigestUpdate, data, "123456789ABCDEF0123456789ABCDEF012345678");
+    expect_value(__wrap_EVP_DigestUpdate, count, 40);
     will_return(__wrap_EVP_DigestUpdate, 0);
 
-    expect_string(__wrap_fim_send_sync_msg, msg, "{\"component\":\"syscheck\",\"type\":\"integrity_check_left\",\"data\":{\"id\":1,\"begin\":\"init\",\"end\":\"/some/random/path\",\"tail\":\"/some/random/path\",\"checksum\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\"}}");
-    expect_string(__wrap_fim_send_sync_msg, msg, "{\"component\":\"syscheck\",\"type\":\"integrity_check_right\",\"data\":{\"id\":1,\"begin\":\"/some/random/path\",\"end\":\"end\",\"checksum\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\"}}");
-
-    int ret;
-    ret = fim_db_get_checksum_range(test_data->fim_sql, FIM_TYPE_FILE, "init", "end", 1, 2, &syscheck.fim_entry_mutex);
-    assert_int_equal(ret, FIMDB_OK);
+    retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 2, ctx_left, ctx_right, &lower_half_path,
+                                       &higher_half_path);
+    assert_int_equal(retval, FIMDB_OK);
 }
 
-/*----------------------------------------------*/
-/*----------fim_db_get_count_range()------------------*/
+/**********************************************************************************************************************\
+ * fim_db_get_count_range() tests
+\**********************************************************************************************************************/
 void test_fim_db_get_count_range_error_stepping(void **state) {
     test_fim_db_insert_data *test_data = *state;
     int ret, count = -1;
@@ -1084,8 +1244,10 @@ void test_fim_db_get_count_range_success(void **state) {
     assert_int_equal(ret, FIMDB_OK);
     assert_int_equal(count, 15);
 }
-/*----------------------------------------------*/
-/*----------fim_db_process_get_query()------------------*/
+
+/**********************************************************************************************************************\
+ * fim_db_process_get_query() tests
+\**********************************************************************************************************************/
 void auxiliar_callback(fdb_t *fim_sql, fim_entry *entry, void *arg) {
     // unused
 }
@@ -1122,8 +1284,9 @@ void test_fim_db_process_get_query_error(void **state) {
     assert_int_equal(ret, FIMDB_ERR);
 }
 
-/*----------------------------------------------*/
-/*----------fim_db_delete_not_scanned()------------------*/
+/**********************************************************************************************************************\
+ * fim_db_delete_not_scanned() tests
+\**********************************************************************************************************************/
 void test_fim_db_delete_not_scanned(void **state) {
     test_fim_db_insert_data *test_data = *state;
     test_data->tmp_file->fd = (FILE*)2345;
@@ -1163,8 +1326,9 @@ void test_fim_db_delete_not_scanned(void **state) {
     assert_int_equal(ret, FIMDB_OK);
 }
 
-/*----------------------------------------------*/
-/*----------fim_db_process_missing_entry()------------------*/
+/**********************************************************************************************************************\
+ * fim_db_process_missing_entry() tests
+\**********************************************************************************************************************/
 void test_fim_db_process_missing_entry(void **state) {
     test_fim_db_insert_data *test_data = *state;
     test_data->tmp_file->fd = (FILE*)2345;
@@ -1204,8 +1368,9 @@ void test_fim_db_process_missing_entry(void **state) {
     assert_int_equal(ret, FIMDB_OK);
 }
 
-/*----------------------------------------------*/
-/*----------fim_db_callback_save_path()------------------*/
+/**********************************************************************************************************************\
+ * fim_db_callback_save_path() tests
+\**********************************************************************************************************************/
 void test_fim_db_callback_save_path_null(void **state) {
     test_fim_db_insert_data *test_data = *state;
 
@@ -1256,7 +1421,7 @@ void test_fim_db_callback_save_path_disk_error(void **state) {
 
     errno = 0;
 
-    expect_string(__wrap__merror, formatted_msg, "/test/path - Success");
+    expect_string(__wrap__merror, formatted_msg, "Can't save entry: /test/path - Success");
 
     fim_db_callback_save_path(test_data->fim_sql, test_data->entry, syscheck.database_store, test_data->tmp_file);
     assert_int_equal(test_data->tmp_file->elements, 0);
@@ -1276,8 +1441,9 @@ void test_fim_db_callback_save_path_memory(void **state) {
     assert_int_equal(test_data->tmp_file->list->used, 2);
 }
 
-/*----------------------------------------------*/
-/*----------fim_db_callback_calculate_checksum()------------------*/
+/**********************************************************************************************************************\
+ * fim_db_callback_calculate_checksum() tests
+\**********************************************************************************************************************/
 void test_fim_db_callback_calculate_checksum(void **state) {
     test_fim_db_ctx_t *data = *state;
 
@@ -1311,8 +1477,9 @@ void test_fim_db_callback_calculate_checksum(void **state) {
     assert_string_equal(data->test_data->entry->file_entry.data->checksum, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
 }
 
-/*----------------------------------------------*/
-/*---------------fim_db_create_temp_file()----------------*/
+/**********************************************************************************************************************\
+ * fim_db_create_temp_file() tests
+\**********************************************************************************************************************/
 void test_fim_db_create_temp_file_disk(void **state) {
 
     will_return(__wrap_os_random, 2345);
@@ -1370,8 +1537,9 @@ void test_fim_db_create_temp_file_memory(void **state) {
     assert_null(ret->path);
 }
 
-/*----------------------------------------------------*/
-/*---------------fim_db_clean_file()----------------*/
+/**********************************************************************************************************************\
+ * fim_db_clean_file() tests
+\**********************************************************************************************************************/
 void test_fim_db_clean_file_disk() {
     fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
     file->path = calloc(PATH_MAX, sizeof(char));
@@ -1416,7 +1584,9 @@ void test_fim_db_clean_file_memory() {
     assert_null(file);
 }
 
-/*-----------------------------------------*/
+/**********************************************************************************************************************\
+ * main()
+\**********************************************************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
 
@@ -1465,10 +1635,15 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_clean_stmt_reset_and_prepare_failed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_clean_stmt_success, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_get_checksum_range
-        cmocka_unit_test_setup_teardown(test_fim_db_data_checksum_range_first_half_failed, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_data_checksum_range_second_half_failed, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_data_checksum_range_null_path, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_data_checksum_range_success, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test(fim_db_get_checksum_range_null_ctx_left),
+        cmocka_unit_test(fim_db_get_checksum_range_null_ctx_right),
+        cmocka_unit_test(fim_db_get_checksum_range_null_path_lower_half),
+        cmocka_unit_test(fim_db_get_checksum_range_null_path_upper_half),
+        cmocka_unit_test(fim_db_get_checksum_range_fail_step_on_first_half),
+        cmocka_unit_test(fim_db_get_checksum_range_fail_to_decode_string_array_on_first_half),
+        cmocka_unit_test(fim_db_get_checksum_range_fail_step_on_second_half),
+        cmocka_unit_test(fim_db_get_checksum_range_fail_to_decode_string_array_on_second_half),
+        cmocka_unit_test(fim_db_get_checksum_range_success),
         // fim_db_get_count_range
         cmocka_unit_test_setup_teardown(test_fim_db_get_count_range_error_stepping, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_get_count_range_success, test_fim_db_setup, test_fim_db_teardown),
