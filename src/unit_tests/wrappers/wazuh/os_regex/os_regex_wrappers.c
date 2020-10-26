@@ -53,7 +53,7 @@ int __wrap_OS_StrIsNum(const char *str) {
 }
 
 extern int __real_OSMatch_Execute(const char *str, size_t str_len, OSMatch *reg);
-int __wrap_OSMatch_Execute(const char *str, size_t str_len, OSMatch *reg){
+int __wrap_OSMatch_Execute(const char *str, size_t str_len, OSMatch *reg) {
     if (test_mode) {
         if (str) {
             check_expected(str);
