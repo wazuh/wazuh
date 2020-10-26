@@ -33,7 +33,40 @@
 #include "db/fim_db_files.h"
 #include "config/syscheck-config.h"
 
-/*---------------SETUP/TEARDOWN------------------*/
+/**********************************************************************************************************************\
+ * Auxiliar expect functions
+\**********************************************************************************************************************/
+static void expect_fim_db_insert_path_success() {
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_count(__wrap_sqlite3_bind_int, 0, 6);
+    will_return_count(__wrap_sqlite3_bind_text, 0, 2);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+}
+
+static void expect_fim_db_insert_data_success(int row_id) {
+    if (row_id == 0) {
+        expect_any(__wrap_sqlite3_bind_int64, index);
+        expect_any(__wrap_sqlite3_bind_int64, value);
+        will_return(__wrap_sqlite3_bind_int64, 0);
+    }
+
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_count(__wrap_sqlite3_bind_int, 0, 3);
+    will_return_count(__wrap_sqlite3_bind_text, 0, 9);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    if (row_id == 0) {
+        will_return(__wrap_sqlite3_last_insert_rowid, 1);
+    }
+}
+
+/**********************************************************************************************************************\
+ * Setup and teardown functions
+\**********************************************************************************************************************/
 static int setup_group(void **state) {
     expect_any_always(__wrap__mdebug1, formatted_msg);
 
@@ -57,6 +90,45 @@ static int teardown_group(void **state) {
     Free_Syscheck(&syscheck);
     w_mutex_destroy(&syscheck.fim_entry_mutex);
     test_mode = 0;
+    return 0;
+}
+
+static int teardown_fim_db(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    free(test_data->entry->file_entry.path);
+    free(test_data->entry->file_entry.data->perm);
+    free(test_data->entry->file_entry.data->attributes);
+    free(test_data->entry->file_entry.data->uid);
+    free(test_data->entry->file_entry.data->gid);
+    free(test_data->entry->file_entry.data->user_name);
+    free(test_data->entry->file_entry.data->group_name);
+    free(test_data->entry->file_entry.data);
+    free(test_data->entry);
+    free(test_data->fim_sql);
+    free(test_data->saved);
+    free(test_data);
+    return 0;
+}
+
+static int teardown_fim_db_entry(void **state) {
+    teardown_fim_db(state);
+    fim_entry *entry = state[1];
+    if (entry) {
+        free_entry(entry);
+    }
+    return 0;
+}
+
+static int test_fim_db_paths_teardown(void **state) {
+    teardown_fim_db(state);
+    char **paths = state[1];
+    if (paths) {
+        int i;
+        for(i = 0; paths[i]; i++) {
+            free(paths[i]);
+        }
+        free(paths);
+    }
     return 0;
 }
 
@@ -310,8 +382,8 @@ void test_fim_db_insert_inode_id_nonull(void **state) {
 
     // Wrap functions for fim_db_insert_data() & fim_db_insert_path()
     int inode_id = 1;
-    wraps_fim_db_insert_data_success(inode_id);
-    wraps_fim_db_insert_path_success();
+    expect_fim_db_insert_data_success(inode_id);
+    expect_fim_db_insert_path_success();
 
     wraps_fim_db_check_transaction();
 
@@ -386,8 +458,8 @@ void test_fim_db_insert_inode_id_null(void **state) {
 
     // Wrap functions for fim_db_insert_data() & fim_db_insert_path()
     int inode_id = 0;
-    wraps_fim_db_insert_data_success(inode_id);
-    wraps_fim_db_insert_path_success();
+    expect_fim_db_insert_data_success(inode_id);
+    expect_fim_db_insert_path_success();
 
     wraps_fim_db_check_transaction();
 
@@ -1390,8 +1462,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_remove_path_no_entry_realtime_file, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_remove_path_no_entry_scheduled_file, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_get_path
-        cmocka_unit_test_setup_teardown(test_fim_db_get_path_inexistent, test_fim_db_setup, test_fim_db_entry_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_get_path_existent, test_fim_db_setup, test_fim_db_entry_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_get_path_inexistent, test_fim_db_setup, teardown_fim_db_entry),
+        cmocka_unit_test_setup_teardown(test_fim_db_get_path_existent, test_fim_db_setup, teardown_fim_db_entry),
         // fim_db_set_all_unscanned
         cmocka_unit_test_setup_teardown(test_fim_db_set_all_unscanned_failed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_set_all_unscanned_success, test_fim_db_setup, test_fim_db_teardown),

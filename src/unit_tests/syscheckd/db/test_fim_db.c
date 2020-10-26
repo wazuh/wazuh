@@ -52,7 +52,6 @@ void fim_db_clean_file(fim_tmp_file **file, int storage);
 /**********************************************************************************************************************\
  * Auxiliar structs used in tests
 \**********************************************************************************************************************/
-
 typedef struct _test_fim_db_insert_data {
     fdb_t *fim_sql;
     fim_entry *entry;
@@ -200,42 +199,6 @@ static void wraps_fim_db_decode_full_row() {
     will_return(__wrap_sqlite3_column_int, 12345678); // mtime
 }
 
-#ifndef TEST_WINAGENT
-/**
- * Successfully wrappes a wraps_fim_db_insert_data() call
- * */
-static void wraps_fim_db_insert_data_success(int row_id) {
-    if (row_id == 0) {
-        expect_any(__wrap_sqlite3_bind_int64, index);
-        expect_any(__wrap_sqlite3_bind_int64, value);
-        will_return(__wrap_sqlite3_bind_int64, 0);
-    }
-
-    will_return(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    will_return_count(__wrap_sqlite3_bind_int, 0, 3);
-    will_return_count(__wrap_sqlite3_bind_text, 0, 9);
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-    if (row_id == 0) {
-        will_return(__wrap_sqlite3_last_insert_rowid, 1);
-    }
-}
-
-/**
- * Successfully wrappes a wraps_fim_db_insert_data() call
- * */
-static void wraps_fim_db_insert_path_success() {
-    will_return(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    will_return_count(__wrap_sqlite3_bind_int, 0, 6);
-    will_return_count(__wrap_sqlite3_bind_text, 0, 2);
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-}
-#endif
-
 void expect_fim_db_decode_string_array(int column_count, const char **array) {
     int it;
 
@@ -358,37 +321,6 @@ static int test_fim_tmp_file_teardown_memory(void **state) {
     return test_fim_db_teardown((void**)&test_data);
 }
 
-static int test_fim_db_paths_teardown(void **state) {
-    test_fim_db_teardown(state);
-    char **paths = state[1];
-    if (paths) {
-        int i;
-        for(i = 0; paths[i]; i++) {
-            free(paths[i]);
-        }
-        free(paths);
-    }
-    return 0;
-}
-
-static int test_fim_db_json_teardown(void **state) {
-    test_fim_db_teardown(state);
-    cJSON *json = state[1];
-    if (json) {
-        cJSON_Delete(json);
-    }
-    return 0;
-}
-
-static int test_fim_db_entry_teardown(void **state) {
-    test_fim_db_teardown(state);
-    fim_entry *entry = state[1];
-    if (entry) {
-        free_entry(entry);
-    }
-    return 0;
-}
-
 static int teardown_fim_tmp_file_disk(void **state) {
     fim_tmp_file *file = state[1];
 
@@ -404,35 +336,6 @@ static int teardown_fim_tmp_file_disk(void **state) {
 static int teardown_fim_tmp_file_memory(void **state) {
     fim_tmp_file *file = state[1];
     fim_db_clean_file(&file, FIM_DB_MEMORY);
-    return 0;
-}
-
-static int setup_fim_db_with_ctx(void **state) {
-    test_fim_db_ctx_t *data = calloc(1, sizeof(test_fim_db_ctx_t));
-
-    if(data == NULL)
-        return -1;
-
-    if(test_fim_db_setup((void**)&data->test_data) != 0)
-        return -1;
-
-    data->ctx = EVP_MD_CTX_create();
-    EVP_DigestInit(data->ctx, EVP_sha1());
-
-    *state = data;
-
-    return 0;
-}
-
-static int teardown_fim_db_with_ctx(void **state) {
-    test_fim_db_ctx_t *data = *state;
-
-    test_fim_db_teardown((void**)&data->test_data);
-
-    EVP_MD_CTX_destroy(data->ctx);
-
-    free(data);
-
     return 0;
 }
 
@@ -1248,7 +1151,7 @@ void test_fim_db_get_count_range_success(void **state) {
 /**********************************************************************************************************************\
  * fim_db_process_get_query() tests
 \**********************************************************************************************************************/
-void auxiliar_callback(fdb_t *fim_sql, fim_entry *entry, void *arg) {
+void auxiliar_callback(fdb_t *fim_sql, fim_entry *entry, int storage, void *arg) {
     // unused
 }
 
@@ -1265,7 +1168,7 @@ void test_fim_db_process_get_query_success(void **state) {
 
     wraps_fim_db_check_transaction();
 
-    ret = fim_db_process_get_query(test_data->fim_sql, 0, 0, auxiliar_callback, NULL, NULL);
+    ret = fim_db_process_get_query(test_data->fim_sql, 0, 0, auxiliar_callback, FIM_DB_DISK, NULL);
 
     assert_int_equal(ret, FIMDB_OK);
 }
@@ -1279,7 +1182,7 @@ void test_fim_db_process_get_query_error(void **state) {
 
     wraps_fim_db_check_transaction();
 
-    ret = fim_db_process_get_query(test_data->fim_sql, 0, 0, auxiliar_callback, NULL, NULL);
+    ret = fim_db_process_get_query(test_data->fim_sql, 0, 0, auxiliar_callback, FIM_DB_DISK, NULL);
 
     assert_int_equal(ret, FIMDB_ERR);
 }
@@ -1421,7 +1324,7 @@ void test_fim_db_callback_save_path_disk_error(void **state) {
 
     errno = 0;
 
-    expect_string(__wrap__merror, formatted_msg, "Can't save entry: /test/path - Success");
+    expect_string(__wrap__merror, formatted_msg, "Can't save entry: /test/path Success");
 
     fim_db_callback_save_path(test_data->fim_sql, test_data->entry, syscheck.database_store, test_data->tmp_file);
     assert_int_equal(test_data->tmp_file->elements, 0);
@@ -1445,36 +1348,15 @@ void test_fim_db_callback_save_path_memory(void **state) {
  * fim_db_callback_calculate_checksum() tests
 \**********************************************************************************************************************/
 void test_fim_db_callback_calculate_checksum(void **state) {
-    test_fim_db_ctx_t *data = *state;
-
-    // Fill up a mock fim_entry
-    data->test_data->entry->file_entry.data->mode = 1;
-    data->test_data->entry->file_entry.data->last_event = 1234;
-    data->test_data->entry->file_entry.data->scanned = 2345;
-    data->test_data->entry->file_entry.data->options = 3456;
-    strcpy(data->test_data->entry->file_entry.data->checksum, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    data->test_data->entry->file_entry.data->dev = 4567;
-    data->test_data->entry->file_entry.data->inode = 5678;
-    data->test_data->entry->file_entry.data->size = 4096;
-    data->test_data->entry->file_entry.data->perm = strdup("perm");
-    data->test_data->entry->file_entry.data->attributes = strdup("attributes");
-    data->test_data->entry->file_entry.data->uid = strdup("uid");
-    data->test_data->entry->file_entry.data->gid = strdup("gid");
-    data->test_data->entry->file_entry.data->user_name = strdup("user_name");
-    data->test_data->entry->file_entry.data->group_name = strdup("group_name");
-    strcpy(data->test_data->entry->file_entry.data->hash_md5, "3691689a513ace7e508297b583d7050d");
-    strcpy(data->test_data->entry->file_entry.data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    strcpy(data->test_data->entry->file_entry.data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
-    data->test_data->entry->file_entry.data->mtime = 6789;
+    fdb_t fim_sql;
+    EVP_MD_CTX *ctx = (EVP_MD_CTX *)123456;
 
     // Mock EVP_DigestUpdate()
     expect_string(__wrap_EVP_DigestUpdate, data, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
     expect_value(__wrap_EVP_DigestUpdate, count, 40);
     will_return(__wrap_EVP_DigestUpdate, 0);
 
-    fim_db_callback_calculate_checksum(data->test_data->fim_sql, data->test_data->entry, syscheck.database_store, data->ctx);
-
-    assert_string_equal(data->test_data->entry->file_entry.data->checksum, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    fim_db_callback_calculate_checksum(&fim_sql, "07f05add1049244e7e71ad0f54f24d8094cd8f8b", FIM_DB_DISK, ctx);
 }
 
 /**********************************************************************************************************************\
@@ -1487,7 +1369,7 @@ void test_fim_db_create_temp_file_disk(void **state) {
 #ifdef TEST_WINAGENT
     expect_string(__wrap_fopen, path, "tmp/tmp_19283746523452345");
 #else
-    expect_string(__wrap_fopen, path, "/var/ossec/tmp/tmp_19283746523452345");
+    expect_string(__wrap_fopen, path, "./tmp_19283746523452345");
 #endif
 
     expect_string(__wrap_fopen, mode, "w+");
@@ -1498,7 +1380,7 @@ void test_fim_db_create_temp_file_disk(void **state) {
 
     assert_non_null(ret);
     assert_non_null(ret->fd);
-    assert_string_equal(ret->path, FIM_DB_TMPDIR"tmp_19283746523452345");
+    assert_string_equal(ret->path, "./tmp_19283746523452345");
 }
 
 void test_fim_db_create_temp_file_disk_error(void **state) {
@@ -1508,7 +1390,7 @@ void test_fim_db_create_temp_file_disk_error(void **state) {
 #ifdef TEST_WINAGENT
     expect_string(__wrap_fopen, path, "tmp/tmp_19283746523452345");
 #else
-    expect_string(__wrap_fopen, path, "/var/ossec/tmp/tmp_19283746523452345");
+    expect_string(__wrap_fopen, path, "./tmp_19283746523452345");
 #endif
 
     expect_string(__wrap_fopen, mode, "w+");
@@ -1517,7 +1399,7 @@ void test_fim_db_create_temp_file_disk_error(void **state) {
 #ifdef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage 'tmp/tmp_19283746523452345': Success (0)");
 #else
-    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage '/var/ossec/tmp/tmp_19283746523452345': Success (0)");
+    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage './tmp_19283746523452345': Success (0)");
 #endif
 
 
@@ -1656,7 +1538,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_callback_save_path_disk_error, test_fim_tmp_file_setup_disk, test_fim_tmp_file_teardown_disk),
         cmocka_unit_test_setup_teardown(test_fim_db_callback_save_path_memory, test_fim_tmp_file_setup_memory, test_fim_tmp_file_teardown_memory),
         // fim_db_callback_calculate_checksum
-        cmocka_unit_test_setup_teardown(test_fim_db_callback_calculate_checksum, setup_fim_db_with_ctx, teardown_fim_db_with_ctx),
+        cmocka_unit_test(test_fim_db_callback_calculate_checksum),
         // fim_db_create_temp_file
         cmocka_unit_test_teardown(test_fim_db_create_temp_file_disk, teardown_fim_tmp_file_disk),
         cmocka_unit_test(test_fim_db_create_temp_file_disk_error),

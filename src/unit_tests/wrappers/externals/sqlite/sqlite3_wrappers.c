@@ -143,3 +143,7 @@ int __wrap_sqlite3_step(__attribute__((unused)) sqlite3_stmt * stmt){
     else
         return mock();
 }
+
+int __wrap_sqlite3_column_count(__attribute__((unused)) sqlite3_stmt *stmt) {
+    return mock();
+}
