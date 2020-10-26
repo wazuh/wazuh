@@ -1788,19 +1788,14 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
 cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id);
 
 /*
- * @brief Gets every agent ID based on the keepalive.
- *        Response is prepared in one chunk,
- *        if the size of the chunk exceeds WDB_MAX_RESPONSE_SIZE parsing stops and reports the amount of agents obtained.
- *        Multiple calls to this function can be required to fully obtain all agents.
+ * @brief Gets all the agents' ID that satisfy the keepalive condition.
  *
  * @param [in] wdb The Global struct database.
- * @param [in] last_agent_id ID where to start querying.
  * @param [in] condition The symbol '<' or '>' condition used to compare keepalive.
  * @param [in] keep_alive The value of keepalive to search for agents.
- * @param [out] output A buffer where the response is written. Must be de-allocated by the caller.
- * @return wdbc_result to represent if all agents has being obtained or any error occurred.
+ * @return A pointer to a JSON with all the agents that satisfy the keepalive condition. Must be de-allocated by the caller.
  */
-wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, char condition, int keep_alive, char **output);
+cJSON* wdb_global_get_agents_by_keepalive(wdb_t *wdb, char condition, int keep_alive);
 
 /**
  * @brief Gets every agent ID.
