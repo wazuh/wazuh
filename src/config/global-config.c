@@ -13,6 +13,7 @@
 #include "global-config.h"
 #include "mail-config.h"
 #include "config.h"
+#include "string_op.h"
 
 
 int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
@@ -661,76 +662,26 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         /* Agent's disconnection time parameter */
         else if (strcmp(node[i]->element, xml_agents_disconnection_time) == 0) {
             if (Config) {
-                char c;
+                long time = w_parse_time(node[i]->content);
 
-                switch (sscanf(node[i]->content, "%d%c", &Config->agents_disconnection_time, &c)) {
-                case 1:
-                    break;
-                case 2:
-                    switch (c) {
-                    case 'd':
-                        Config->agents_disconnection_time *= 86400;
-                        break;
-                    case 'h':
-                        Config->agents_disconnection_time *= 3600;
-                        break;
-                    case 'm':
-                        Config->agents_disconnection_time *= 60;
-                        break;
-                    case 's':
-                        break;
-                    default:
-                        merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                        return (OS_INVALID);
-                    }
-                    break;
-
-                default:
+                if (time < 20) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
-                }
-
-                if (Config->agents_disconnection_time < 20) {
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                    return (OS_INVALID);
+                } else {
+                    Config->agents_disconnection_time = time;
                 }
             }
         }
         /* Agent's disconnection alert time parameter */
         else if (strcmp(node[i]->element, xml_agents_disconnection_alert_time) == 0) {
             if (Config) {
-                char c;
+                long time = w_parse_time(node[i]->content);
 
-                switch (sscanf(node[i]->content, "%d%c", &Config->agents_disconnection_alert_time, &c)) {
-                case 1:
-                    break;
-                case 2:
-                    switch (c) {
-                    case 'd':
-                        Config->agents_disconnection_alert_time *= 86400;
-                        break;
-                    case 'h':
-                        Config->agents_disconnection_alert_time *= 3600;
-                        break;
-                    case 'm':
-                        Config->agents_disconnection_alert_time *= 60;
-                        break;
-                    case 's':
-                        break;
-                    default:
-                        merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                        return (OS_INVALID);
-                    }
-                    break;
-
-                default:
+                if (time < 120) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
-                }
-
-                if (Config->agents_disconnection_alert_time < 120) {
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                    return (OS_INVALID);
+                } else {
+                    Config->agents_disconnection_alert_time = time;
                 }
             }
         } else {
