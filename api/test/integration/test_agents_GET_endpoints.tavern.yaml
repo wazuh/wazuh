@@ -4091,7 +4091,7 @@ stages:
         data:
           affected_items:
             - message: Success
-              agent: 001
+              agent: '001'
               task_id: 1
               module: upgrade_module
               command: upgrade
@@ -4099,7 +4099,7 @@ stages:
               create_time: !anystr
               update_time: !anystr
             - message: Success
-              agent: 002
+              agent: '002'
               task_id: 2
               module: upgrade_module
               command: upgrade
