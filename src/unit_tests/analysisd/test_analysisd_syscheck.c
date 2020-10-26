@@ -1957,7 +1957,7 @@ static void test_fim_process_alert_added_success(void **state) {
 
     /* Assert actual output */
     assert_int_equal(input->lf->event_type, FIM_ADDED);
-    assert_string_equal(input->lf->decoder_info->name, SYSCHECK_NEW);
+    assert_string_equal(input->lf->decoder_info->name, FIM_NEW);
     assert_int_equal(input->lf->decoder_info->id, 0);
 }
 
@@ -2072,7 +2072,7 @@ static void test_fim_process_alert_modified_success(void **state) {
 
     /* Assert actual output */
     assert_int_equal(input->lf->event_type, FIM_MODIFIED);
-    assert_string_equal(input->lf->decoder_info->name, SYSCHECK_MOD);
+    assert_string_equal(input->lf->decoder_info->name, FIM_MOD);
     assert_int_equal(input->lf->decoder_info->id, 0);
 }
 
@@ -2155,7 +2155,7 @@ static void test_fim_process_alert_deleted_success(void **state) {
 
     /* Assert actual output */
     assert_int_equal(input->lf->event_type, FIM_DELETED);
-    assert_string_equal(input->lf->decoder_info->name, SYSCHECK_DEL);
+    assert_string_equal(input->lf->decoder_info->name, FIM_DEL);
     assert_int_equal(input->lf->decoder_info->id, 0);
 }
 
@@ -2316,7 +2316,7 @@ static void test_fim_process_alert_no_path(void **state) {
 
     /* Assert actual output */
     assert_int_equal(input->lf->event_type, FIM_ADDED);
-    assert_string_equal(input->lf->decoder_info->name, SYSCHECK_NEW);
+    assert_string_equal(input->lf->decoder_info->name, FIM_NEW);
     assert_int_equal(input->lf->decoder_info->id, 0);
 }
 
@@ -2414,7 +2414,7 @@ static void test_fim_process_alert_no_hard_links(void **state) {
 
     /* Assert actual output */
     assert_int_equal(input->lf->event_type, FIM_ADDED);
-    assert_string_equal(input->lf->decoder_info->name, SYSCHECK_NEW);
+    assert_string_equal(input->lf->decoder_info->name, FIM_NEW);
     assert_int_equal(input->lf->decoder_info->id, 0);
 }
 
@@ -2515,7 +2515,7 @@ static void test_fim_process_alert_no_mode(void **state) {
 
     /* Assert actual output */
     assert_int_equal(input->lf->event_type, FIM_ADDED);
-    assert_string_equal(input->lf->decoder_info->name, SYSCHECK_NEW);
+    assert_string_equal(input->lf->decoder_info->name, FIM_NEW);
     assert_int_equal(input->lf->decoder_info->id, 0);
 }
 
@@ -2614,7 +2614,7 @@ static void test_fim_process_alert_no_tags(void **state) {
 
     /* Assert actual output */
     assert_int_equal(input->lf->event_type, FIM_ADDED);
-    assert_string_equal(input->lf->decoder_info->name, SYSCHECK_NEW);
+    assert_string_equal(input->lf->decoder_info->name, FIM_NEW);
     assert_int_equal(input->lf->decoder_info->id, 0);
     assert_null(input->lf->sk_tag);
     assert_null(input->lf->fields[FIM_TAG].value);
@@ -2715,7 +2715,7 @@ static void test_fim_process_alert_no_content_changes(void **state) {
 
     /* Assert actual output */
     assert_int_equal(input->lf->event_type, FIM_ADDED);
-    assert_string_equal(input->lf->decoder_info->name, SYSCHECK_NEW);
+    assert_string_equal(input->lf->decoder_info->name, FIM_NEW);
     assert_int_equal(input->lf->decoder_info->id, 0);
     assert_null(input->lf->fields[FIM_DIFF].value);
 }
@@ -2814,7 +2814,7 @@ static void test_fim_process_alert_no_changed_attributes(void **state) {
 
     /* Assert actual output */
     assert_int_equal(input->lf->event_type, FIM_ADDED);
-    assert_string_equal(input->lf->decoder_info->name, SYSCHECK_NEW);
+    assert_string_equal(input->lf->decoder_info->name, FIM_NEW);
     assert_int_equal(input->lf->decoder_info->id, 0);
     assert_null(input->lf->fields[FIM_CHFIELDS].value);
 }
@@ -2914,7 +2914,7 @@ static void test_fim_process_alert_no_attributes(void **state) {
 
     /* Assert actual output */
     assert_int_equal(input->lf->event_type, FIM_MODIFIED);
-    assert_string_equal(input->lf->decoder_info->name, SYSCHECK_MOD);
+    assert_string_equal(input->lf->decoder_info->name, FIM_MOD);
     assert_int_equal(input->lf->decoder_info->id, 0);
 }
 
@@ -3029,7 +3029,7 @@ static void test_fim_process_alert_no_old_attributes(void **state) {
 
     /* Assert actual output */
     assert_int_equal(input->lf->event_type, FIM_MODIFIED);
-    assert_string_equal(input->lf->decoder_info->name, SYSCHECK_MOD);
+    assert_string_equal(input->lf->decoder_info->name, FIM_MOD);
     assert_int_equal(input->lf->decoder_info->id, 0);
 }
 
@@ -3128,7 +3128,7 @@ static void test_fim_process_alert_no_audit(void **state) {
 
     /* Assert actual output */
     assert_int_equal(input->lf->event_type, FIM_ADDED);
-    assert_string_equal(input->lf->decoder_info->name, SYSCHECK_NEW);
+    assert_string_equal(input->lf->decoder_info->name, FIM_NEW);
     assert_int_equal(input->lf->decoder_info->id, 0);
 }
 
@@ -3242,7 +3242,7 @@ static void test_decode_fim_event_type_event(void **state) {
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n");
 
     assert_int_equal(lf->event_type, FIM_ADDED);
-    assert_string_equal(lf->decoder_info->name, SYSCHECK_NEW);
+    assert_string_equal(lf->decoder_info->name, FIM_NEW);
     assert_int_equal(lf->decoder_info->id, 0);
 
 }
