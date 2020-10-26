@@ -28,13 +28,14 @@ namespace Utils
     class Registry final
     {
     public:
-        Registry(const HKEY key, const std::string& subKey)
-        : m_registryKey{openRegistry(key, subKey)}
+        Registry(const HKEY key, const std::string& subKey = "", const REGSAM access = KEY_READ)
+        : m_registryKey{openRegistry(key, subKey, access)}
         {}
         ~Registry()
         {
             RegCloseKey(m_registryKey);
         }
+
         DWORD dword(const std::string& valueName) const
         {
             DWORD ret{};
@@ -51,6 +52,61 @@ namespace Utils
                     std::system_category(),
                     "Error reading DWORD value of: " + valueName
                 };
+            }
+            return ret;
+        }
+
+        bool dword(const std::string& valueName, DWORD& value) const
+        {
+            bool ret{true};
+            try
+            {
+                value = this->dword(valueName);
+            }
+            catch(...)
+            {
+                ret = false;
+            }
+            return ret;
+        }
+
+        std::vector<std::string> enumerate() const
+        {
+            std::vector<std::string> ret;
+            constexpr auto MAX_KEY_NAME_SIZE{255};//https://docs.microsoft.com/en-us/windows/win32/sysinfo/registry-element-size-limits
+            char buff[MAX_KEY_NAME_SIZE]{};
+            DWORD size{MAX_KEY_NAME_SIZE};
+            DWORD index{0};
+            auto result{RegEnumKeyEx(m_registryKey, index, buff, &size, nullptr, nullptr, nullptr, nullptr)};
+            while(result == ERROR_SUCCESS)
+            {
+                ret.push_back(buff);
+                size = MAX_KEY_NAME_SIZE;
+                ++index;
+                result = RegEnumKeyEx(m_registryKey, index, buff, &size, nullptr, nullptr, nullptr, nullptr);
+            }
+            if (result != ERROR_NO_MORE_ITEMS)
+            {
+                throw std::system_error
+                {
+                    result,
+                    std::system_category(),
+                    "Error enumerating registry."
+                };
+            }
+            return ret;
+        }
+
+        bool enumerate(std::vector<std::string>& values) const
+        {
+            bool ret{true};
+            try
+            {
+                values = this->enumerate();
+            }
+            catch(...)
+            {
+                ret = false;
             }
             return ret;
         }
@@ -92,13 +148,27 @@ namespace Utils
             return std::string{reinterpret_cast<const char*>(spBuff.get())};
         }
 
+        bool string(const std::string& valueName, std::string& value) const
+        {
+            bool ret{true};
+            try
+            {
+                value = this->string(valueName);
+            }
+            catch(...)
+            {
+                ret = false;
+            }
+            return ret;
+        }
+
         private:
-        static HKEY openRegistry(const HKEY key, const std::string& subKey)
+        static HKEY openRegistry(const HKEY key, const std::string& subKey, const REGSAM access)
         {
             HKEY ret{nullptr};
             const auto result
             {
-                RegOpenKeyEx(key, subKey.c_str(), 0, KEY_READ, &ret)
+                RegOpenKeyEx(key, subKey.c_str(), 0, access, &ret)
             };
             if (result != ERROR_SUCCESS)
             {

@@ -16,6 +16,7 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <algorithm>
 	
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -96,6 +97,25 @@ namespace Utils
     static std::string trim(const std::string& str, const std::string& args = " ")
     {
         return leftTrim(rightTrim(str, args), args);
+    }
+
+    static std::string toUpperCase(const std::string& str)
+    {
+        std::string temp{ str };
+        std::transform(std::begin(temp),
+                       std::end(temp),
+                       std::begin(temp),
+                       [](std::string::value_type character) { return std::toupper(character); });
+        return temp;
+    }
+
+    static bool startsWith(const std::string& str, const std::string& start)
+    {
+        if (!str.empty() && str.length() >= start.length())
+        {
+            return str.compare(0, start.length(), start) == 0;
+        }
+        return false;
     }
 }
 
