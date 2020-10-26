@@ -76,9 +76,9 @@ static void wraps_fim_db_clean() {
 /**
  * Successfully wrappes a fim_db_create_file() call
  * */
-static void wraps_fim_db_create_file() {
+static void expect_fim_db_create_file_success() {
 #ifndef TEST_WINAGENT
-    expect_string(__wrap_sqlite3_open_v2, filename, "/var/ossec/queue/fim/db/fim.db");
+    expect_string(__wrap_sqlite3_open_v2, filename, "./fim.db");
 #else
     expect_string(__wrap_sqlite3_open_v2, filename, "queue/fim/db/fim.db");
 #endif
@@ -91,7 +91,7 @@ static void wraps_fim_db_create_file() {
     will_return(__wrap_sqlite3_finalize, 0);
     will_return(__wrap_sqlite3_close_v2,0);
 #ifndef TEST_WINAGENT
-    expect_string(__wrap_chmod, path, "/var/ossec/queue/fim/db/fim.db");
+    expect_string(__wrap_chmod, path, "./fim.db");
 #else
     expect_string(__wrap_chmod, path, "queue/fim/db/fim.db");
 #endif
@@ -442,7 +442,7 @@ void test_fim_db_init_failed_file_creation(void **state) {
 #ifdef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg, "Couldn't create SQLite database 'queue/fim/db/fim.db': ERROR MESSAGE");
 #else
-    expect_string(__wrap__merror, formatted_msg, "Couldn't create SQLite database '/var/ossec/queue/fim/db/fim.db': ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Couldn't create SQLite database './fim.db': ERROR MESSAGE");
 #endif
     will_return(__wrap_sqlite3_close_v2, 0);
     fdb_t* fim_db;
@@ -452,14 +452,18 @@ void test_fim_db_init_failed_file_creation(void **state) {
 
 void test_fim_db_init_failed_file_creation_prepare(void **state) {
     wraps_fim_db_clean();
+
     expect_string(__wrap_sqlite3_open_v2, filename, FIM_DB_DISK_PATH);
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
     will_return(__wrap_sqlite3_open_v2, NULL);
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "Error preparing statement '/* * SQL Schema for FIM database * Copyright (C) 2015-2020, Wazuh Inc. * * This program is a free software, you can redistribute it * and/or modify it under the terms of GPLv2. */CREATE TABLE IF NOT EXISTS file_entry (    path TEXT NOT NULL,    inode_id INTEGER,    mode INTEGER,    last_event INTEGER,    scanned INTEGER,    options INTEGER,    checksum TEXT NOT NULL,    PRIMARY KEY(path));CREATE INDEX IF NOT EXISTS path_index ON file_entry (path);CREATE INDEX IF NOT EXISTS inode_index ON file_entry (inode_id);CREATE TABLE IF NOT EXISTS file_data (    dev INTEGER,    inode INTEGER,    size INTEGER,    perm TEXT,    attributes TEXT,    uid INTEGER,    gid INTEGER,    user_name TEXT,    group_name TEXT,    hash_md5 TEXT,    hash_sha1 TEXT,    hash_sha256 TEXT,    mtime INTEGER,    PRIMARY KEY(dev, inode));CREATE INDEX IF NOT EXISTS dev_inode_index ON file_data (dev, inode);': ERROR MESSAGE");
+    expect_any(__wrap__merror, formatted_msg);
+
     will_return(__wrap_sqlite3_close_v2, 0);
+
     fdb_t* fim_db;
     fim_db = fim_db_init(syscheck.database_store);
     assert_null(fim_db);
@@ -475,7 +479,7 @@ void test_fim_db_init_failed_file_creation_step(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "Error stepping statement '/* * SQL Schema for FIM database * Copyright (C) 2015-2020, Wazuh Inc. * * This program is a free software, you can redistribute it * and/or modify it under the terms of GPLv2. */CREATE TABLE IF NOT EXISTS file_entry (    path TEXT NOT NULL,    inode_id INTEGER,    mode INTEGER,    last_event INTEGER,    scanned INTEGER,    options INTEGER,    checksum TEXT NOT NULL,    PRIMARY KEY(path));CREATE INDEX IF NOT EXISTS path_index ON file_entry (path);CREATE INDEX IF NOT EXISTS inode_index ON file_entry (inode_id);CREATE TABLE IF NOT EXISTS file_data (    dev INTEGER,    inode INTEGER,    size INTEGER,    perm TEXT,    attributes TEXT,    uid INTEGER,    gid INTEGER,    user_name TEXT,    group_name TEXT,    hash_md5 TEXT,    hash_sha1 TEXT,    hash_sha256 TEXT,    mtime INTEGER,    PRIMARY KEY(dev, inode));CREATE INDEX IF NOT EXISTS dev_inode_index ON file_data (dev, inode);': ERROR MESSAGE");
+    expect_any(__wrap__merror, formatted_msg);
     will_return(__wrap_sqlite3_finalize, 0);
     will_return(__wrap_sqlite3_close_v2, 0);
     fdb_t* fim_db;
@@ -497,13 +501,13 @@ void test_fim_db_init_failed_file_creation_chmod(void **state) {
     will_return(__wrap_sqlite3_finalize, 0);
     will_return(__wrap_sqlite3_close_v2, 0);
 #ifndef TEST_WINAGENT
-    expect_string(__wrap_chmod, path, "/var/ossec/queue/fim/db/fim.db");
+    expect_string(__wrap_chmod, path, "./fim.db");
 #else
     expect_string(__wrap_chmod, path, "queue/fim/db/fim.db");
 #endif
     will_return(__wrap_chmod, -1);
 #ifndef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object '/var/ossec/queue/fim/db/fim.db' due to [(0)-(Success)].");
+    expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object './fim.db' due to [(0)-(Success)].");
 #else
     expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object 'queue/fim/db/fim.db' due to [(0)-(Success)].");
 #endif
@@ -514,9 +518,9 @@ void test_fim_db_init_failed_file_creation_chmod(void **state) {
 
 void test_fim_db_init_failed_open_db(void **state) {
     wraps_fim_db_clean();
-    wraps_fim_db_create_file();
+    expect_fim_db_create_file_success();
 #ifndef TEST_WINAGENT
-    expect_string(__wrap_sqlite3_open_v2, filename, "/var/ossec/queue/fim/db/fim.db");
+    expect_string(__wrap_sqlite3_open_v2, filename, "./fim.db");
 #else
     expect_string(__wrap_sqlite3_open_v2, filename, "queue/fim/db/fim.db");
 #endif
@@ -530,7 +534,7 @@ void test_fim_db_init_failed_open_db(void **state) {
 
 void test_fim_db_init_failed_cache(void **state) {
     wraps_fim_db_clean();
-    wraps_fim_db_create_file();
+    expect_fim_db_create_file_success();
     expect_string(__wrap_sqlite3_open_v2, filename, FIM_DB_DISK_PATH);
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
     will_return(__wrap_sqlite3_open_v2, NULL);
@@ -573,13 +577,13 @@ void test_fim_db_init_failed_cache_memory(void **state) {
 
 void test_fim_db_init_failed_execution(void **state) {
     wraps_fim_db_clean();
-    wraps_fim_db_create_file();
+    expect_fim_db_create_file_success();
     expect_string(__wrap_sqlite3_open_v2, filename, FIM_DB_DISK_PATH);
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
     will_return(__wrap_sqlite3_open_v2, NULL);
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
     wraps_fim_db_cache();
-    expect_string(__wrap_sqlite3_exec, sql, "PRAGMA synchronous = OFF");
+    expect_string(__wrap_sqlite3_exec, sql, "PRAGMA synchronous = OFF; PRAGMA foreign_keys = ON;");
     will_return(__wrap_sqlite3_exec, "ERROR_MESSAGE");
     will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
     expect_string(__wrap__merror, formatted_msg, "SQL error turning off synchronous mode: ERROR_MESSAGE");
@@ -594,13 +598,13 @@ void test_fim_db_init_failed_execution(void **state) {
 
 void test_fim_db_init_failed_simple_query(void **state) {
     wraps_fim_db_clean();
-    wraps_fim_db_create_file();
+    expect_fim_db_create_file_success();
     expect_string(__wrap_sqlite3_open_v2, filename, FIM_DB_DISK_PATH);
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
     will_return(__wrap_sqlite3_open_v2, NULL);
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
     wraps_fim_db_cache();
-    expect_string(__wrap_sqlite3_exec, sql, "PRAGMA synchronous = OFF");
+    expect_string(__wrap_sqlite3_exec, sql, "PRAGMA synchronous = OFF; PRAGMA foreign_keys = ON;");
     will_return(__wrap_sqlite3_exec, NULL);
     will_return(__wrap_sqlite3_exec, SQLITE_OK);
     // Simple query fails
@@ -619,13 +623,13 @@ void test_fim_db_init_failed_simple_query(void **state) {
 
 void test_fim_db_init_success(void **state) {
     wraps_fim_db_clean();
-    wraps_fim_db_create_file();
+    expect_fim_db_create_file_success();
     expect_string(__wrap_sqlite3_open_v2, filename, FIM_DB_DISK_PATH);
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
     will_return(__wrap_sqlite3_open_v2, NULL);
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
     wraps_fim_db_cache();
-    expect_string(__wrap_sqlite3_exec, sql, "PRAGMA synchronous = OFF");
+    expect_string(__wrap_sqlite3_exec, sql, "PRAGMA synchronous = OFF; PRAGMA foreign_keys = ON;");
     will_return(__wrap_sqlite3_exec, NULL);
     will_return(__wrap_sqlite3_exec, SQLITE_OK);
     wraps_fim_db_exec_simple_wquery("BEGIN;");
@@ -2892,16 +2896,16 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_exec_simple_wquery_error, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_exec_simple_wquery_success, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_init
-        // cmocka_unit_test(test_fim_db_init_failed_file_creation),
-        // cmocka_unit_test(test_fim_db_init_failed_file_creation_prepare),
-        // cmocka_unit_test(test_fim_db_init_failed_file_creation_step),
-        // cmocka_unit_test(test_fim_db_init_failed_file_creation_chmod),
-        // cmocka_unit_test(test_fim_db_init_failed_open_db),
-        // cmocka_unit_test(test_fim_db_init_failed_cache),
-        // cmocka_unit_test(test_fim_db_init_failed_cache_memory),
-        // cmocka_unit_test(test_fim_db_init_failed_execution),
-        // cmocka_unit_test(test_fim_db_init_failed_simple_query),
-        // cmocka_unit_test_teardown(test_fim_db_init_success, test_teardown_fim_db_init),
+        cmocka_unit_test(test_fim_db_init_failed_file_creation),
+        cmocka_unit_test(test_fim_db_init_failed_file_creation_prepare),
+        cmocka_unit_test(test_fim_db_init_failed_file_creation_step),
+        cmocka_unit_test(test_fim_db_init_failed_file_creation_chmod),
+        cmocka_unit_test(test_fim_db_init_failed_open_db),
+        cmocka_unit_test(test_fim_db_init_failed_cache),
+        cmocka_unit_test(test_fim_db_init_failed_cache_memory),
+        cmocka_unit_test(test_fim_db_init_failed_execution),
+        cmocka_unit_test(test_fim_db_init_failed_simple_query),
+        cmocka_unit_test_teardown(test_fim_db_init_success, test_teardown_fim_db_init),
         // fim_db_clean
         cmocka_unit_test_setup_teardown(test_fim_db_clean_no_db_file, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_clean_file_not_removed, test_fim_db_setup, test_fim_db_teardown),
