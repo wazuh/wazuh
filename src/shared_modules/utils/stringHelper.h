@@ -16,6 +16,7 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <algorithm>
 	
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -63,6 +64,22 @@ namespace Utils
         return tokens;
     }
 
+    static std::vector<std::string> splitNullTerminatedStrings(const char* buffer)
+    {
+        constexpr auto NULL_TERMINATED_DELIMITER {'\0'};
+        std::vector<std::string> ret;
+        while(buffer[0] != NULL_TERMINATED_DELIMITER)
+        {
+            const std::string token(buffer);
+            if (!token.empty())
+            {
+                ret.push_back(token);
+            }
+            buffer += token.size() + 1;
+        }
+        return ret;
+    }
+
     static std::string asciiToHex(const std::vector<unsigned char>& asciiData)
     {
         std::stringstream ss;
@@ -96,6 +113,25 @@ namespace Utils
     static std::string trim(const std::string& str, const std::string& args = " ")
     {
         return leftTrim(rightTrim(str, args), args);
+    }
+
+    static std::string toUpperCase(const std::string& str)
+    {
+        std::string temp{ str };
+        std::transform(std::begin(temp),
+                       std::end(temp),
+                       std::begin(temp),
+                       [](std::string::value_type character) { return std::toupper(character); });
+        return temp;
+    }
+
+    static bool startsWith(const std::string& str, const std::string& start)
+    {
+        if (!str.empty() && str.length() >= start.length())
+        {
+            return str.compare(0, start.length(), start) == 0;
+        }
+        return false;
     }
 }
 

@@ -106,3 +106,33 @@ TEST_F(StringUtilsTest, Trim)
     EXPECT_EQ("Hello", Utils::trim(" \tHello\t ", " \t"));
     EXPECT_EQ("Hello", Utils::trim(" \t\nHello\t\n ", " \t\n"));
 }
+
+TEST_F(StringUtilsTest, ToUpper)
+{
+    EXPECT_EQ("", Utils::toUpperCase(""));
+    EXPECT_EQ("HELLO WORLD", Utils::toUpperCase("HeLlO WoRlD"));
+    EXPECT_EQ("123", Utils::toUpperCase("123"));
+}
+
+TEST_F(StringUtilsTest, StartsWith)
+{
+    const std::string start{"Package_"};
+    const std::string item1{"Package_6_for_KB4565554~31bf3856ad364e35~amd64~~18362.957.1.3"};
+    const std::string item2{"Package_5_for_KB4569073~31bf3856ad364e35~amd64~~18362.1012.1.1"};
+    const std::string item3{"Microsoft-Windows-IIS-WebServer-AddOn-Package~31bf3856ad364e35~amd64~~10.0.18362.815"};
+    const std::string item4{"Microsoft-Windows-HyperV-OptionalFeature-VirtualMachinePlatform-Package_31bf3856ad364e35~amd64~~10.0.18362.1139.mum"};
+    EXPECT_TRUE(Utils::startsWith(start, start));
+    EXPECT_TRUE(Utils::startsWith(item1, start));
+    EXPECT_TRUE(Utils::startsWith(item2, start));
+    EXPECT_FALSE(Utils::startsWith(item3, start));
+    EXPECT_FALSE(Utils::startsWith(item4, start));
+}
+
+TEST_F(StringUtilsTest, SplitDelimiterNullTerminated)
+{
+    const char buffer[]{'h','e','l','l','o','\0','w','o','r','l','d','\0','\0'};
+    const auto tokens{Utils::splitNullTerminatedStrings(buffer)};
+    EXPECT_EQ(2ull, tokens.size());
+    EXPECT_EQ(tokens[0], "hello");
+    EXPECT_EQ(tokens[1], "world");
+}
