@@ -89,7 +89,7 @@ wdbc_result __wrap_wdb_global_sync_agent_info_get(wdb_t *wdb, int* last_agent_id
 
 int __wrap_wdb_global_sync_agent_info_set(wdb_t *wdb,cJSON * json_agent);
 
-wdbc_result __wrap_wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, char comparator, int keep_alive, char **output);
+cJSON* __wrap_wdb_global_get_agents_by_keepalive(wdb_t *wdb, char comparator, int keep_alive);
 
 wdbc_result __wrap_wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **output);
 
