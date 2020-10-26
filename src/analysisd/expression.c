@@ -54,6 +54,12 @@ void w_free_expression_t(w_expression_t ** var) {
             os_free((*var)->regex);
             break;
 
+        case EXP_TYPE_PCRE2:
+            pcre2_code_free((*var)->pcre2->code);
+            os_free((*var)->pcre2->raw_pattern);
+            os_free((*var)->pcre2);
+            break;
+
         case EXP_TYPE_STRING:
             os_free((*var)->string);
             break;
@@ -68,12 +74,6 @@ void w_free_expression_t(w_expression_t ** var) {
                 w_free_os_ip((*var)->ips[i]);
             }
             os_free((*var)->ips);
-            break;
-
-        case EXP_TYPE_PCRE2:
-            pcre2_code_free((*var)->pcre2->code);
-            os_free((*var)->pcre2->raw_pattern);
-            os_free((*var)->pcre2);
             break;
 
         default:
@@ -115,14 +115,14 @@ bool w_expression_compile(w_expression_t * expression, char * pattern, int flags
 
     switch (expression->exp_type) {
 
-        case EXP_TYPE_OSREGEX:
-            if (!OSRegex_Compile(pattern, expression->regex, flags)) {
+        case EXP_TYPE_OSMATCH:
+            if (!OSMatch_Compile(pattern, expression->match, flags)) {
                 retval = false;
             }
             break;
 
-        case EXP_TYPE_OSMATCH:
-            if (!OSMatch_Compile(pattern, expression->match, flags)) {
+        case EXP_TYPE_OSREGEX:
+            if (!OSRegex_Compile(pattern, expression->regex, flags)) {
                 retval = false;
             }
             break;
@@ -180,14 +180,6 @@ bool w_expression_match(w_expression_t * expression, const char * str_test, cons
             }
             break;
 
-        case EXP_TYPE_STRING:
-            retval = (strcmp(expression->string, str_test) != 0) ? false : true;
-            break;
-
-        case EXP_TYPE_OSIP_ARRAY:
-            retval = OS_IPFoundList(str_test, expression->ips) ? true: false;
-            break;
-
         case EXP_TYPE_PCRE2:
 
             if (match_data = pcre2_match_data_create_from_pattern(expression->pcre2->code, NULL), !match_data) {
@@ -207,6 +199,14 @@ bool w_expression_match(w_expression_t * expression, const char * str_test, cons
                 }
             }
             pcre2_match_data_free(match_data);
+            break;
+
+        case EXP_TYPE_STRING:
+            retval = (strcmp(expression->string, str_test) != 0) ? false : true;
+            break;
+
+        case EXP_TYPE_OSIP_ARRAY:
+            retval = OS_IPFoundList(str_test, expression->ips) ? true: false;
             break;
 
         default:
@@ -287,16 +287,16 @@ const char * w_expression_get_regex_type(w_expression_t * expression) {
 
     switch (expression->exp_type) {
 
-        case EXP_TYPE_OSREGEX:
-            retval = "osregex";
+        case EXP_TYPE_OSMATCH:
+            retval = OSMATCH_STR;
             break;
 
-        case EXP_TYPE_OSMATCH:
-            retval = "osmatch";
+        case EXP_TYPE_OSREGEX:
+            retval = OSREGEX_STR;
             break;
 
         case EXP_TYPE_PCRE2:
-            retval = "pcre2";
+            retval = PCRE2_STR;
             break;
 
         default:

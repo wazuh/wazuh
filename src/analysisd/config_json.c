@@ -91,15 +91,32 @@ void _getDecodersListJSON(OSDecoderNode *list, cJSON *array) {
 
         if (node->osdecoder->accumulate) cJSON_AddStringToObject(decoder,"accumulate","yes"); else cJSON_AddStringToObject(decoder,"accumulate","no");
 
-        if (node->osdecoder->prematch) cJSON_AddStringToObject(decoder,"prematch",node->osdecoder->prematch->raw);
+        if (node->osdecoder->prematch) {
+            cJSON * prematch = cJSON_CreateObject();
+            cJSON_AddStringToObject(prematch, "pattern", w_expression_get_regex_pattern(node->osdecoder->prematch));
+            cJSON_AddStringToObject(prematch, "type", w_expression_get_regex_type(node->osdecoder->prematch));
+            cJSON_AddItemToObject(decoder, "prematch", prematch);
+        }
+
         if (node->osdecoder->prematch_offset & AFTER_PARENT) cJSON_AddStringToObject(decoder,"prematch_offset","after_parent");
 
-        if (node->osdecoder->regex) cJSON_AddStringToObject(decoder,"regex",node->osdecoder->regex->raw);
+        if (node->osdecoder->regex) {
+            cJSON * regex = cJSON_CreateObject();
+            cJSON_AddStringToObject(regex, "pattern", w_expression_get_regex_pattern(node->osdecoder->regex));
+            cJSON_AddStringToObject(regex, "type", w_expression_get_regex_type(node->osdecoder->regex));
+            cJSON_AddItemToObject(decoder, "regex", regex);
+        }
+
         if (node->osdecoder->regex_offset & AFTER_PARENT) cJSON_AddStringToObject(decoder,"regex_offset","after_parent");
         else if (node->osdecoder->regex_offset & AFTER_PREVREGEX) cJSON_AddStringToObject(decoder,"regex_offset","after_regex");
         else if (node->osdecoder->regex_offset & AFTER_PREMATCH) cJSON_AddStringToObject(decoder,"regex_offset","after_prematch");
 
-        if (node->osdecoder->program_name) cJSON_AddStringToObject(decoder,"program_name",node->osdecoder->program_name->raw);
+        if (node->osdecoder->program_name) {
+            cJSON * program_name = cJSON_CreateObject();
+            cJSON_AddStringToObject(program_name, "pattern", w_expression_get_regex_pattern(node->osdecoder->program_name));
+            cJSON_AddStringToObject(program_name, "type", w_expression_get_regex_type(node->osdecoder->program_name));
+            cJSON_AddItemToObject(decoder, "program_name", program_name);
+        }
 
         if (node->osdecoder->fts) {
             cJSON *_list = cJSON_CreateArray();

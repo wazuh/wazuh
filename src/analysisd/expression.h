@@ -15,6 +15,9 @@
 #include "external/libpcre2/include/pcre2.h"
 #include "shared.h"
 
+#define OSMATCH_STR  "osmatch"
+#define OSREGEX_STR  "osregex"
+#define PCRE2_STR    "pcre2"
 
 /**
  * @brief Determine the types of expression allowed
