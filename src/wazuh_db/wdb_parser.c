@@ -238,7 +238,8 @@ int wdb_parse(char * input, char * output) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid Rootcheck query syntax, near '%.32s'", query);
                 result = -1;
             } else {
-                result = wdb_parse_rootcheck(wdb, next, output);
+                cJSON * response = wdb_parse_rootcheck(wdb, next);
+                snprintf(output,  OS_MAXSTR + 1, cJSON_PrintUnformatted(response));
             }
         } else if (strcmp(query, "sql") == 0) {
             if (!next) {
@@ -4065,34 +4066,37 @@ int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output) {
     }
 }
 
-int wdb_parse_rootcheck(wdb_t * wdb, char * input, char * output) {
+cJSON* wdb_parse_rootcheck(wdb_t * wdb, char * input) {
     char * curr;
-    char * next;
+    char *message;
+    char * next = wstr_chr(input, ' ');
+    cJSON *response = cJSON_CreateObject();
+    cJSON *data = cJSON_CreateArray();
+    os_malloc(OS_MAXSTR + 1, message);
     int result = 0;
-    next = wstr_chr(input, ' ');
-    
+
     if (next) {
         *next++ = '\0';
     }
 
     curr = input;
-    
+
 
     if (strcmp(curr, "delete") == 0) {
         result = wdb_rootcheck_delete(wdb);
         if (result >= 0) {
-            snprintf(output, OS_MAXSTR + 1, "ok 0");
-            return 0;
+            result = 0;
+            sprintf(message, "ok");
         } else {
-            snprintf(output, OS_MAXSTR + 1, "err Error deleting rootcheck PM tuple");
-            return -1;
+            result = -1;
+            sprintf(message, "Error deleting rootcheck PM tuple");
         }
     } else if (strcmp(curr, "save") == 0) {
         rk_event_t event;
-        
+
         if (!next) {
             mdebug2("DB(%s) Invalid rootcheck query syntax: %s", wdb->id, input);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid rootcheck query syntax, near '%.32s'", input);
+            snprintf(message, OS_MAXSTR + 1, "Invalid rootcheck query syntax, near '%.32s'", input);
             return -1;
         }
 
@@ -4105,35 +4109,42 @@ int wdb_parse_rootcheck(wdb_t * wdb, char * input, char * output) {
 
         if (event.date_last == LONG_MAX || event.date_last < 0) {
             mdebug2("DB(%s) Invalid rootcheck date timestamp: %li", wdb->id, event.date_last);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid rootcheck query syntax, near '%.32s'", input);
-            return -1;
-        }
-
-        switch (wdb_rootcheck_update(wdb, &event)) {
+            snprintf(message, OS_MAXSTR + 1, "Invalid rootcheck query syntax, near '%.32s'", input);
+            result = -1;
+        } else {
+            switch (wdb_rootcheck_update(wdb, &event)) {
             case -1:
                 merror("DB(%s) Error updating rootcheck PM tuple on SQLite database", wdb->id);
-                snprintf(output, OS_MAXSTR + 1, "err Error updating rootcheck PM tuple");
+                snprintf(message, OS_MAXSTR + 1, "Error updating rootcheck PM tuple");
                 result = -1;
                 break;
             case 0:
                 if (wdb_rootcheck_insert(wdb, &event) < 0) {
                     merror("DB(%s) Error inserting rootcheck PM tuple on SQLite database for agent", wdb->id);
-                    snprintf(output, OS_MAXSTR + 1, "err Error updating rootcheck PM tuple");
+                    snprintf(message, OS_MAXSTR + 1, "Error updating rootcheck PM tuple");
                     result = -1;
                 } else {
-                    snprintf(output, OS_MAXSTR + 1, "ok 2");
+                    snprintf(message, OS_MAXSTR + 1, "ok 2");
                 }
                 break;
-            default: 
-                snprintf(output, OS_MAXSTR + 1, "ok 1");
+            default:
+                snprintf(message, OS_MAXSTR + 1, "ok 1");
                 break;
+            }
         }
+    } else if (strcmp(curr, "get") == 0) {
+        result = wdb_rootcheck_select(wdb, data);
     } else {
         mdebug2("DB(%s) Invalid rootcheck query syntax: %s", wdb->id, input);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid rootcheck query syntax, near '%.32s'", input);
+        os_malloc(OS_MAXSTR + 1, message);
+        sprintf(message,  "Invalid rootcheck query syntax, near '%.32s'", input);
         result = -1;
     }
-    return result;
+
+    cJSON_AddNumberToObject(response, "error", result);
+    cJSON_AddStringToObject(response, "message", message);
+    cJSON_AddItemToObject(response, "data", data);
+    return response;
 }
 
 

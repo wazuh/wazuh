@@ -55,32 +55,39 @@ int DecodeRootcheck(Eventinfo *lf)
     int return_value = 0;
 
     db_result = send_rootcheck_log(lf->agent_id, (long int)lf->time.tv_sec, lf->log, response);
+    cJSON *json_information = cJSON_Parse(response);
 
-
-    switch (db_result) {
-    case -2:
-        // Fallthrough
-    case -1:
+    if (!json_information) {
         merror("Rootcheck decoder unexpected result: '%s'", response);
-        break;
-    default:
-        return_value = 1;
-        mdebug1("Rootcheck decoder response: '%s'", response);
+    } else {
+        cJSON *json_message = cJSON_GetObjectItem(json_information, "message");
+        switch (db_result) {
+        case -2:
+            // Fallthrough
+        case -1:
+            merror("Rootcheck decoder unexpected result: '%s'", response);
+            break;
+        default:
+            mdebug1("Rootcheck decoder response: '%s'", response);
+            if (json_message && cJSON_IsString(json_message)) {
+                return_value = 1;
+                lf->decoder_info = rootcheck_dec;
+                char *op_code = wstr_chr(json_message->valuestring, ' ');
+                if (strtol(++op_code, NULL, 10) == 2) {
+                    // Entry was inserted
+                    lf->rootcheck_fts = FTS_DONE;
+                }
 
-        lf->decoder_info = rootcheck_dec;
-        char *op_code = wstr_chr(response, ' ');
-        if (strtol(++op_code, NULL, 10) == 2) {
-            // Entry was inserted
-            lf->rootcheck_fts = FTS_DONE;
+                lf->nfields = RK_NFIELDS;
+                os_strdup(rootcheck_dec->fields[RK_TITLE], lf->fields[RK_TITLE].key);
+                lf->fields[RK_TITLE].value = rk_get_title(lf->log);
+                os_strdup(rootcheck_dec->fields[RK_FILE], lf->fields[RK_FILE].key);
+                lf->fields[RK_FILE].value = rk_get_file(lf->log);
+
+            }
+
+            break;
         }
-        
-        lf->nfields = RK_NFIELDS;
-        os_strdup(rootcheck_dec->fields[RK_TITLE], lf->fields[RK_TITLE].key);
-        lf->fields[RK_TITLE].value = rk_get_title(lf->log);
-        os_strdup(rootcheck_dec->fields[RK_FILE], lf->fields[RK_FILE].key);
-        lf->fields[RK_FILE].value = rk_get_file(lf->log);
-
-        break;
     }
 
     return return_value;

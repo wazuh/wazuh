@@ -68,16 +68,29 @@ void test_rootcheck_db_failure(void **state) {
     assert_int_equal(ret, 0);
 }
 
-void test_rootcheck_success(void **state) { 
+void test_rootcheck_wrong_format(void **state) {
     Eventinfo *lf = *state;
     expect_string(__wrap_send_rootcheck_log, agent_id, TEST_AGENT_ID);
     expect_value(__wrap_send_rootcheck_log, date, TEST_TIME);
     expect_string(__wrap_send_rootcheck_log, log, TEST_LOG_STRING);
-    will_return(__wrap_send_rootcheck_log, "ok 2");
+    will_return(__wrap_send_rootcheck_log, "Not a JSON");
     will_return(__wrap_send_rootcheck_log, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Rootcheck decoder response: 'ok 2'");
-    
+    expect_string(__wrap__merror, formatted_msg, "Rootcheck decoder unexpected result: 'Not a JSON'");
+
+    int ret = DecodeRootcheck(lf);
+    assert_int_equal(ret, 0);
+}
+
+void test_rootcheck_success(void **state) {
+    Eventinfo *lf = *state;
+    expect_string(__wrap_send_rootcheck_log, agent_id, TEST_AGENT_ID);
+    expect_value(__wrap_send_rootcheck_log, date, TEST_TIME);
+    expect_string(__wrap_send_rootcheck_log, log, TEST_LOG_STRING);
+    will_return(__wrap_send_rootcheck_log, "{\"error\": 0, \"message\": \"ok 2\"}");
+    will_return(__wrap_send_rootcheck_log, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Rootcheck decoder response: '{\"error\": 0, \"message\": \"ok 2\"}'");
 
     int ret = DecodeRootcheck(lf);
     assert_int_equal(ret, 1);
@@ -90,6 +103,7 @@ void test_rootcheck_success(void **state) {
 int main() {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_rootcheck_db_failure, test_setup, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_rootcheck_wrong_format, test_setup, test_cleanup),
         cmocka_unit_test_setup_teardown(test_rootcheck_success, test_setup, test_cleanup),
     };
     return cmocka_run_group_tests(tests, test_setup_global, NULL);

@@ -19,6 +19,37 @@ static char* get_pci_dss(const char *string);
 /* Get CIS requirement from log string */
 char* get_cis(const char *string);
 
+int wdb_rootcheck_select(wdb_t * wdb, cJSON * entry_array) {
+    int result;
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_ROOTCHECK_SELECT_PM)) {
+        merror("DB(%s) Cannot cache statement", wdb->id);
+        return -1;
+    }
+    stmt = wdb->stmt[WDB_STMT_ROOTCHECK_SELECT_PM];
+    while(result = wdb_step(stmt), result != SQLITE_DONE) {
+        cJSON * row = cJSON_CreateObject();
+        switch (result) {
+            case SQLITE_ROW:
+                cJSON_AddNumberToObject(row, "id", (long double) sqlite3_column_int64(stmt, 0));
+                cJSON_AddNumberToObject(row, "date_first", (long double) sqlite3_column_int64(stmt, 1));
+                cJSON_AddNumberToObject(row, "date_last", (long double) sqlite3_column_int64(stmt, 2));
+                cJSON_AddStringToObject(row, "log", (const char *) sqlite3_column_text(stmt, 3));
+                cJSON_AddStringToObject(row, "pci_dss", (const char *) sqlite3_column_text(stmt, 4));
+                cJSON_AddStringToObject(row, "cis", (const char *) sqlite3_column_text(stmt, 5));
+                cJSON_AddItemToArray(entry_array, row);
+                break;
+            default:
+                merror("DB(%s) Could not retrieve rootcheck information", wdb->id);
+                cJSON_Delete(row);
+                return -1;
+        }
+    }
+
+    return 0;
+}
+
 /* Insert configuration assessment entry. Returns ID on success or -1 on error. */
 int wdb_rootcheck_insert(wdb_t * wdb, const rk_event_t *event) {
     sqlite3_stmt *stmt = NULL;

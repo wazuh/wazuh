@@ -124,6 +124,7 @@ typedef enum wdb_stmt {
     WDB_STMT_SYNC_UPDATE_ATTEMPT,
     WDB_STMT_SYNC_UPDATE_COMPLETION,
     WDB_STMT_MITRE_NAME_GET,
+    WDB_STMT_ROOTCHECK_SELECT_PM,
     WDB_STMT_ROOTCHECK_INSERT_PM,
     WDB_STMT_ROOTCHECK_UPDATE_PM,
     WDB_STMT_ROOTCHECK_DELETE_PM,
@@ -315,6 +316,9 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data);
 int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum);
 
 int wdb_fim_delete(wdb_t * wdb, const char * file);
+
+/* Select all given rootcheck entrances */
+int wdb_rootcheck_select(wdb_t * wdb, cJSON * entry_array);
 
 /* Insert configuration assessment entry. Returns ID on success or -1 on error. */
 int wdb_rootcheck_insert(wdb_t * wdb, const rk_event_t *event);
@@ -934,7 +938,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output);
  *        "ok 1" -> If entry was updated
  *        "ok 2" -> If entry was inserted
  * */
-int wdb_parse_rootcheck(wdb_t * wdb, char * input , char * output) __attribute__((nonnull)); 
+cJSON* wdb_parse_rootcheck(wdb_t * wdb, char * input) __attribute__((nonnull));
 
 int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output);
 

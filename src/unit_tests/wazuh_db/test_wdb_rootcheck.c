@@ -124,6 +124,62 @@ void test_wdb_rootcheck_delete_success(void **state) {
     int ret = wdb_rootcheck_delete(wdb);
     assert_int_equal(ret, 10);
 }
+
+void test_wdb_rootcheck_select_cache_error(void **state) {
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__merror, formatted_msg, "DB(000) Cannot cache statement");
+
+    wdb_t *wdb  = (wdb_t *)*state;
+    cJSON *array = cJSON_CreateArray();
+    int ret = wdb_rootcheck_select(wdb, array);
+    cJSON_Delete(array);
+    assert_int_equal(ret, -1);
+}
+
+void test_wdb_rootcheck_select_query_error(void **state) {
+    wdb_t *wdb  = (wdb_t *)*state;
+    cJSON *array = cJSON_CreateArray();
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_step, SQLITE_ERROR);
+    expect_string(__wrap__merror, formatted_msg, "DB(000) Could not retrieve rootcheck information");
+
+    int ret = wdb_rootcheck_select(wdb, array);
+    cJSON_Delete(array);
+    assert_int_equal(ret, -1);
+}
+
+void test_wdb_rootcheck_select_query_success(void **state) {
+    wdb_t *wdb  = (wdb_t *)*state;
+    cJSON *array = cJSON_CreateArray();
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_int64, iCol, 0);
+    will_return(__wrap_sqlite3_column_int64, 1);
+    expect_value(__wrap_sqlite3_column_int64, iCol, 1);
+    will_return(__wrap_sqlite3_column_int64, 1000);
+    expect_value(__wrap_sqlite3_column_int64, iCol, 2);
+    will_return(__wrap_sqlite3_column_int64, 1001);
+    expect_value(__wrap_sqlite3_column_text, iCol, 3);
+    will_return(__wrap_sqlite3_column_text, "Test log");
+    expect_value(__wrap_sqlite3_column_text, iCol, 4);
+    will_return(__wrap_sqlite3_column_text, "Test pci_dss");
+    expect_value(__wrap_sqlite3_column_text, iCol, 5);
+    will_return(__wrap_sqlite3_column_text, "Test cis");
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+
+    int ret = wdb_rootcheck_select(wdb, array);
+    assert_int_equal(ret, 0);
+    cJSON *item = cJSON_GetArrayItem(array, 0);
+    assert_int_equal(cJSON_GetObjectItem(item, "id")->valueint, 1);
+    assert_int_equal(cJSON_GetObjectItem(item, "date_first")->valueint, 1000);
+    assert_int_equal(cJSON_GetObjectItem(item, "date_last")->valueint, 1001);
+    assert_string_equal(cJSON_GetObjectItem(item, "log")->valuestring, "Test log");
+    assert_string_equal(cJSON_GetObjectItem(item, "pci_dss")->valuestring, "Test pci_dss");
+    assert_string_equal(cJSON_GetObjectItem(item, "cis")->valuestring, "Test cis");
+    cJSON_Delete(array);
+}
 /***********************************************/
 
 int main()
@@ -134,7 +190,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_rootcheck_update_cache_error, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_rootcheck_update_succcess, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_rootcheck_delete_cache_error, setup_wdb, teardown_wdb),
-        cmocka_unit_test_setup_teardown(test_wdb_rootcheck_delete_success, setup_wdb, teardown_wdb)
+        cmocka_unit_test_setup_teardown(test_wdb_rootcheck_delete_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_rootcheck_select_cache_error, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_rootcheck_select_query_error, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_rootcheck_select_query_success, setup_wdb, teardown_wdb),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
