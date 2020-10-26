@@ -3993,7 +3993,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: 2
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -4016,7 +4016,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: 2
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -4057,7 +4057,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: 1
+        error: 2
         data:
           affected_items:
             - agent: !anystr
@@ -4087,7 +4087,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: 1
+        error: 2
         data:
           affected_items:
             - message: Success
