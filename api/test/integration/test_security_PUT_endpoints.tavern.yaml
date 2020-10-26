@@ -71,7 +71,7 @@ stages:
             - error:
                 code: 4005
               id:
-                - '103'
+                - 103
           total_affected_items: 0
           total_failed_items: 1
 
@@ -95,7 +95,7 @@ stages:
             - error:
                 code: 4002
               id:
-                - '999'
+                - 999
           total_affected_items: 0
           total_failed_items: 1
 ---
@@ -233,7 +233,7 @@ stages:
             - error:
                 code: 4007
               id:
-                - '999'
+                - 999
           total_affected_items: 0
           total_failed_items: 1
 
@@ -333,7 +333,7 @@ stages:
             - error:
                 code: 4005
               id:
-                - '103'
+                - 103
           total_affected_items: 0
           total_failed_items: 1
 
@@ -389,7 +389,7 @@ stages:
             - error:
                 code: 4022
               id:
-                - '999'
+                - 999
           total_affected_items: 0
           total_failed_items: 1
 
@@ -497,7 +497,7 @@ stages:
             - error:
                 code: 5001
               id:
-                - '200'
+                - 200
           total_affected_items: 0
           total_failed_items: 1
 

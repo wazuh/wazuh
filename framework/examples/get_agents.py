@@ -11,39 +11,13 @@
 ###
 
 # Instructions:
-#  - Configure the framework_path variable.
-#  Optional:
-#  - Configure the python path. Example for python27 package in Centos6
-#    - export PATH=$PATH:/opt/rh/python27/root/usr/bin
-#    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rh/python27/root/usr/lib64
-#  - Use the wazuh sqlite lib
-#    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/var/ossec/framework/lib
+#  - Use the embedded interpreter to run the script: {wazuh_path}/framework/python/bin/python3 get_agents.py
 
-from sys import path, exit
 import json
-# cwd = /var/ossec/api/framework/examples
-#framework_path = '{0}'.format(path[0][:-9])
-# cwd = /var/ossec/api
-#framework_path = '{0}/framework'.format(path[0])
-# Default path
-framework_path = '/var/ossec/api/framework'
-path.append(framework_path)
 
-try:
-    from wazuh import Wazuh
-    from wazuh.core.agent import Agent
-except Exception as e:
-    print("No module 'wazuh' found.")
-    exit()
+import wazuh.agent as agent
 
 if __name__ == "__main__":
 
-    # Creating wazuh object
-    # It is possible to specify the ossec path (path argument) or get /etc/ossec-init.conf (get_init argument)
-    print("\nWazuh:")
-    myWazuh = Wazuh()
-    print(myWazuh)
-
-    print("\nAgents:")
-    agents = Agent.get_agents_overview()
-    print(json.dumps(agents, indent=4, sort_keys=True))
+    result = agent.get_agents()
+    print(json.dumps(result.render(), indent=4, sort_keys=True, default=str))
