@@ -658,7 +658,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
 
             }
         }
-        /*Agent's disconnection time parameters */
+        /* Agent's disconnection time parameter */
         else if (strcmp(node[i]->element, xml_agents_disconnection_time) == 0) {
             if (Config) {
                 char c;
@@ -695,7 +695,9 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                     return (OS_INVALID);
                 }
             }
-        } else if (strcmp(node[i]->element, xml_agents_disconnection_alert_time) == 0) {
+        }
+        /* Agent's disconnection alert time parameter */
+        else if (strcmp(node[i]->element, xml_agents_disconnection_alert_time) == 0) {
             if (Config) {
                 char c;
 
