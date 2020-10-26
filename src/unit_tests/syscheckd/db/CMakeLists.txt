@@ -33,6 +33,23 @@ endif()
 
 add_test(NAME test_fim_db COMMAND test_fim_db)
 
+# fim_db_files.c tests
+add_executable(test_fim_db_files test_fim_db_files.c)
+
+target_compile_options(test_fim_db_files PRIVATE "-Wall")
+
+target_link_libraries(test_fim_db_files SYSCHECK_O ${TEST_DEPS})
+if(${TARGET} STREQUAL "agent")
+    list(APPEND syscheckd_tests_flags "")
+    target_link_libraries(test_fim_db_files "${FIM_DB_BASE_FLAGS} -Wl,--wrap=isChroot -Wl,--wrap=usleep,--wrap=time")
+elseif(${TARGET} STREQUAL "winagent")
+    target_link_libraries(test_fim_db_files "${FIM_DB_BASE_FLAGS}")
+else()
+    target_link_libraries(test_fim_db_files "${FIM_DB_BASE_FLAGS} -Wl,--wrap=usleep,--wrap=time")
+endif()
+
+add_test(NAME test_fim_db_files COMMAND test_fim_db_files)
+
 # fim_db_registries.c tests
 if(${TARGET} STREQUAL "winagent")
     add_executable(test_fim_db_registries test_fim_db_registries.c)
