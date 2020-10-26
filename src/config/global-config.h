@@ -31,8 +31,8 @@ typedef struct __Config {
     int decoder_order_size;
 
     /* Agent's disconnection global parameters */
-    unsigned int agents_disconnection_time;
-    unsigned int agents_disconnection_alert_time;
+    long agents_disconnection_time;
+    long agents_disconnection_alert_time;
 
     /* Prelude support */
     u_int8_t prelude;
