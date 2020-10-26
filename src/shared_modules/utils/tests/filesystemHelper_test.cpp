@@ -23,7 +23,7 @@ TEST_F(FilesystemUtilsTest, FilesystemExistsDir)
 
 TEST_F(FilesystemUtilsTest, FilesystemEnumerateDir)
 {
-	const auto items {Utils::enumerateDir(R"(C:\)")};
+    const auto items {Utils::enumerateDir(R"(C:\)")};
     EXPECT_FALSE(items.empty());
 }
 
@@ -35,7 +35,7 @@ TEST_F(FilesystemUtilsTest, FilesystemExistsDir)
 
 TEST_F(FilesystemUtilsTest, FilesystemEnumerateDir)
 {
-	const auto items {Utils::enumerateDir(R"(/usr)")};
+    const auto items {Utils::enumerateDir(R"(/usr)")};
     EXPECT_FALSE(items.empty());
 }
 #endif
