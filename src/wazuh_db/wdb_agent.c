@@ -260,8 +260,8 @@ int wdb_update_agent_data(agent_info_data *agent_data, int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *wdbquery = NULL;
+    char *wdboutput = NULL;
     char *payload = NULL;
     int aux_sock = -1;
 
@@ -285,6 +285,7 @@ int wdb_update_agent_data(agent_info_data *agent_data, int *sock) {
     cJSON_AddStringToObject(data_in, "node_name", agent_data->node_name);
     cJSON_AddStringToObject(data_in, "agent_ip", agent_data->agent_ip);
     cJSON_AddStringToObject(data_in, "labels", agent_data->labels);
+    cJSON_AddStringToObject(data_in, "connection_status", agent_data->connection_status);
     cJSON_AddStringToObject(data_in, "sync_status", agent_data->sync_status);
 
     if (agent_data->osd) {
@@ -300,15 +301,12 @@ int wdb_update_agent_data(agent_info_data *agent_data, int *sock) {
     }
 
     data_in_str = cJSON_PrintUnformatted(data_in);
-    cJSON_Delete(data_in);
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_DATA], data_in_str);
-    os_free(data_in_str);
 
-    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    os_malloc(WDBQUERY_SIZE, wdbquery);
+    snprintf(wdbquery, WDBQUERY_SIZE, global_db_commands[WDB_UPDATE_AGENT_DATA], data_in_str);
 
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
+    os_malloc(WDBOUTPUT_SIZE, wdboutput);
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
 
     switch (result) {
         case OS_SUCCESS:
@@ -327,15 +325,24 @@ int wdb_update_agent_data(agent_info_data *agent_data, int *sock) {
             result = OS_INVALID;
     }
 
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    cJSON_Delete(data_in);
+    os_free(data_in_str);
+    os_free(wdbquery);
+    os_free(wdboutput);
+
     return result;
 }
 
-int wdb_update_agent_keepalive(int id, const char *sync_status, int *sock) {
+int wdb_update_agent_keepalive(int id, const char *connection_status, const char *sync_status, int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *wdbquery = NULL;
+    char *wdboutput = NULL;
     char *payload = NULL;
     int aux_sock = -1;
 
@@ -347,18 +354,15 @@ int wdb_update_agent_keepalive(int id, const char *sync_status, int *sock) {
     }
 
     cJSON_AddNumberToObject(data_in, "id", id);
+    cJSON_AddStringToObject(data_in, "connection_status", connection_status);
     cJSON_AddStringToObject(data_in, "sync_status", sync_status);
-
     data_in_str = cJSON_PrintUnformatted(data_in);
-    cJSON_Delete(data_in);
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_KEEPALIVE], data_in_str);
-    os_free(data_in_str);
 
-    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    os_malloc(WDBQUERY_SIZE, wdbquery);
+    snprintf(wdbquery, WDBQUERY_SIZE, global_db_commands[WDB_UPDATE_AGENT_KEEPALIVE], data_in_str);
 
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
+    os_malloc(WDBOUTPUT_SIZE, wdboutput);
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
 
     switch (result) {
         case OS_SUCCESS:
@@ -376,6 +380,15 @@ int wdb_update_agent_keepalive(int id, const char *sync_status, int *sock) {
             mdebug2("Global DB SQL query: %s", wdbquery);
             result = OS_INVALID;
     }
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    cJSON_Delete(data_in);
+    os_free(data_in_str);
+    os_free(wdbquery);
+    os_free(wdboutput);
 
     return result;
 }

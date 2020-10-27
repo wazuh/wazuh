@@ -58,6 +58,7 @@ int __wrap_wdb_global_update_agent_version( __attribute__((unused)) wdb_t *wdb,
                                             const char *manager_host,
                                             const char *node_name,
                                             const char *agent_ip,
+                                            const char *connection_status,
                                             const char *sync_status) {
     check_expected(id);
     check_expected(os_name);
@@ -75,6 +76,7 @@ int __wrap_wdb_global_update_agent_version( __attribute__((unused)) wdb_t *wdb,
     check_expected(manager_host);
     check_expected(node_name);
     check_expected(agent_ip);
+    check_expected(connection_status);
     check_expected(sync_status);
 
     return mock();
@@ -104,8 +106,10 @@ int __wrap_wdb_global_set_agent_label(  __attribute__((unused)) wdb_t *wdb,
 
 int __wrap_wdb_global_update_agent_keepalive(__attribute__((unused)) wdb_t *wdb,
                                             int id,
+                                            char* connection_status,
                                             char* status) {
     check_expected(id);
+    check_expected(connection_status);
     check_expected(status);
     return mock();
 }
