@@ -8,12 +8,13 @@
  */
 
 
-#ifndef STRING_WRAPPERS_H
-#define STRING_WRAPPERS_H
+#ifndef SIGNATURE_WRAPPERS_H
+#define SIGNATURE_WRAPPERS_H
 
+#include "headers/shared.h"
 #include <string.h>
 
-char *__wrap_strerror (int __errnum);
+int __wrap_w_wpk_unsign(const char * source, const char * target, const char ** ca_store);
 
-size_t __wrap_strlen(const char *s);
+
 #endif
