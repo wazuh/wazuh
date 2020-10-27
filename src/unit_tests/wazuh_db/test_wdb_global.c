@@ -5253,56 +5253,39 @@ void test_wdb_global_get_agent_info_success(void **state)
     assert_ptr_equal(output, (cJSON*)1);
 }
 
-/* Tests wdb_global_get_agents_by_keepalive */
+/* Tests wdb_global_get_agents_to_disconnect */
 
-void test_wdb_global_get_agents_by_keepalive_comparator_fail(void **state)
+void test_wdb_global_get_agents_to_disconnect_transaction_fail(void **state)
 {
     cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
-    char comparator = 'W';
-    int keep_alive = 100;
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Invalid keepalive comparator");
-
-    result = wdb_global_get_agents_by_keepalive(data->wdb, comparator, keep_alive);
-
-    assert_null(result);
-}
-
-void test_wdb_global_get_agents_by_keepalive_transaction_fail(void **state)
-{
-    cJSON *result = NULL;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char comparator = '<';
     int keep_alive = 100;
 
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_get_agents_by_keepalive(data->wdb, comparator, keep_alive);
+    result = wdb_global_get_agents_to_disconnect(data->wdb, keep_alive);
     assert_null(result);
 }
 
-void test_wdb_global_get_agents_by_keepalive_cache_fail(void **state)
+void test_wdb_global_get_agents_to_disconnect_cache_fail(void **state)
 {
     cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
-    char comparator = '<';
     int keep_alive = 100;
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_get_agents_by_keepalive(data->wdb, comparator, keep_alive);
+    result = wdb_global_get_agents_to_disconnect(data->wdb, keep_alive);
     assert_null(result);
 }
 
-void test_wdb_global_get_agents_by_keepalive_bind_fail(void **state)
+void test_wdb_global_get_agents_to_disconnect_bind_fail(void **state)
 {
     cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
-    char comparator = '<';
     int keep_alive = 100;
 
     will_return(__wrap_wdb_begin2, 1);
@@ -5313,15 +5296,14 @@ void test_wdb_global_get_agents_by_keepalive_bind_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_get_agents_by_keepalive(data->wdb, comparator, keep_alive);
+    result = wdb_global_get_agents_to_disconnect(data->wdb, keep_alive);
     assert_null(result);
 }
 
-void test_wdb_global_get_agents_by_keepalive_exec_fail(void **state)
+void test_wdb_global_get_agents_to_disconnect_exec_fail(void **state)
 {
     cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
-    char comparator = '<';
     int keep_alive = 100;
 
     will_return(__wrap_wdb_begin2, 1);
@@ -5333,15 +5315,14 @@ void test_wdb_global_get_agents_by_keepalive_exec_fail(void **state)
     will_return(__wrap_wdb_exec_stmt, NULL);
     expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
 
-    result = wdb_global_get_agents_by_keepalive(data->wdb, comparator, keep_alive);
+    result = wdb_global_get_agents_to_disconnect(data->wdb, keep_alive);
     assert_null(result);
 }
 
-void test_wdb_global_get_agents_by_keepalive_success_lt(void **state)
+void test_wdb_global_get_agents_to_disconnect_success(void **state)
 {
     cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
-    char comparator = '<';
     int keep_alive = 100;
 
     will_return(__wrap_wdb_begin2, 1);
@@ -5351,25 +5332,7 @@ void test_wdb_global_get_agents_by_keepalive_success_lt(void **state)
     will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, (cJSON*)1);
 
-    result = wdb_global_get_agents_by_keepalive(data->wdb, comparator, keep_alive);
-    assert_ptr_equal(result, (cJSON*)1);
-}
-
-void test_wdb_global_get_agents_by_keepalive_success_gt(void **state)
-{
-    cJSON *result = NULL;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char comparator = '>';
-    int keep_alive = 100;
-
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_any_always(__wrap_sqlite3_bind_int, index);
-    expect_any_always(__wrap_sqlite3_bind_int, value);
-    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt, (cJSON*)1);
-
-    result = wdb_global_get_agents_by_keepalive(data->wdb, comparator, keep_alive);
+    result = wdb_global_get_agents_to_disconnect(data->wdb, keep_alive);
     assert_ptr_equal(result, (cJSON*)1);
 }
 
@@ -5939,14 +5902,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_info_bind_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_info_exec_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_info_success, test_setup, test_teardown),
-        /* Tests wdb_global_get_agents_by_keepalive */
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_keepalive_comparator_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_keepalive_transaction_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_keepalive_cache_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_keepalive_bind_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_keepalive_exec_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_keepalive_success_lt, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_keepalive_success_gt, test_setup, test_teardown),
+        /* Tests wdb_global_get_agents_to_disconnect */
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_to_disconnect_transaction_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_to_disconnect_cache_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_to_disconnect_bind_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_to_disconnect_exec_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_to_disconnect_success, test_setup, test_teardown),
         /* Tests wdb_global_get_all_agents */
         cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_cache_fail, test_setup, test_teardown),
