@@ -21,16 +21,20 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-
+include_directories(${SRC_FOLDER}/)
+include_directories(${SRC_FOLDER}/headers/)
 include_directories(${SRC_FOLDER}/external/sqlite/)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/external/cJSON/)
-include_directories(${SRC_FOLDER}/headers/)
+include_directories(${SRC_FOLDER}/external/procps/)
+include_directories(${SRC_FOLDER}/external/bzip2/)
 include_directories(${SRC_FOLDER}/shared_modules/utils)
 include_directories(${CMAKE_SOURCE_DIR}/)
 
 link_directories(${SRC_FOLDER}/external/sqlite/)
 link_directories(${SRC_FOLDER}/external/cJSON/)
+link_directories(${SRC_FOLDER}/external/procps/)
+link_directories(${SRC_FOLDER}/external/bzip2/)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   file(GLOB SYSCOLLECTOR_SRC
@@ -62,14 +66,15 @@ add_library(syscollector OBJECT
     "${CMAKE_SOURCE_DIR}/sysInfo.cpp" )
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  target_link_libraries(syscollector sqlite3 cjson gcov)
+  target_link_libraries(syscollector sqlite3 cjson gcov proc)
   if(UNIT_TEST)
     include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
     include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
     link_directories(${SRC_FOLDER}/external/googletest/lib/)
   endif(UNIT_TEST)
 else()
-    target_link_libraries(syscollector sqlite3 cjson)
+    target_link_libraries(syscollector sqlite3 cjson proc)
+    add_subdirectory(testtool)
 endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
  add_custom_target(copy-files ALL
@@ -79,7 +84,6 @@ endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
     DEPENDS syscollector
     )
 
-add_subdirectory(testtool)
 if(UNIT_TEST)
 add_subdirectory(tests)
 endif(UNIT_TEST)

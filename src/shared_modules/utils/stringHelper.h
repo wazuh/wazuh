@@ -64,6 +64,22 @@ namespace Utils
         return tokens;
     }
 
+    static std::vector<std::string> splitNullTerminatedStrings(const char* buffer)
+    {
+        constexpr auto NULL_TERMINATED_DELIMITER {'\0'};
+        std::vector<std::string> ret;
+        while(buffer[0] != NULL_TERMINATED_DELIMITER)
+        {
+            const std::string token(buffer);
+            if (!token.empty())
+            {
+                ret.push_back(token);
+            }
+            buffer += token.size() + 1;
+        }
+        return ret;
+    }
+
     static std::string asciiToHex(const std::vector<unsigned char>& asciiData)
     {
         std::stringstream ss;
@@ -111,9 +127,9 @@ namespace Utils
 
     static bool startsWith(const std::string& str, const std::string& start)
     {
-        if (str.empty() == false && str.length() >= start.length())
+        if (!str.empty() && str.length() >= start.length())
         {
-          return str.compare(0, start.length(), start) == 0;
+            return str.compare(0, start.length(), start) == 0;
         }
         return false;
     }

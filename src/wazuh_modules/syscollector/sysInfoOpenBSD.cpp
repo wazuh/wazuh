@@ -87,3 +87,9 @@ std::string SysInfo::getSerialNumber() const
     spBuff.get()[len] = 0;
     return std::string{reinterpret_cast<const char*>(spBuff.get())};
 }
+
+nlohmann::json SysInfo::getProcessesInfo() const
+{
+    // Currently not supported for this OS
+    return {};
+}

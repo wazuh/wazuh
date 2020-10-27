@@ -107,3 +107,9 @@ nlohmann::json SysInfo::getPackages() const
     }
     return ret;
 }
+
+nlohmann::json SysInfo::getProcessesInfo() const
+{
+    // Currently not supported for this OS
+    return {};
+}
