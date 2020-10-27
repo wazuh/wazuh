@@ -194,13 +194,13 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
 
 End If
 
-    Set WshShell = CreateObject("WScript.Shell")
+Set WshShell = CreateObject("WScript.Shell")
 
-    setPermsInherit = "icacls """ & home_dir & "." & """ /inheritancelevel:d"
-    WshShell.run setPerms
+setPermsInherit = "icacls """ & home_dir & "." & """ /inheritancelevel:d"
+WshShell.run setPermsInherit
 
-    setUsersPerms = "icacls """ & home_dir & "." & """ /remove *S-1-5-32-545"
-    WshShell.run setPerms
+setUsersPerms = "icacls """ & home_dir & "." & """ /remove *S-1-5-32-545"
+WshShell.run setPermsInherit
 
 config = 0
 
