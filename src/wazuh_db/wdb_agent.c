@@ -50,7 +50,8 @@ static const char *global_db_commands[] = {
     [WDB_DELETE_GROUP] = "global delete-group %s",
     [WDB_DELETE_AGENT_BELONG] = "global delete-agent-belong %d",
     [WDB_DELETE_GROUP_BELONG] = "global delete-group-belong %s",
-    [WDB_RESET_AGENTS_CONNECTION] = "global reset-agents-connection"
+    [WDB_RESET_AGENTS_CONNECTION] = "global reset-agents-connection",
+    [WDB_GET_AGENTS_BY_CONNECTION_STATUS] = "global get-agents-by-connection-status %s"
 };
 
 int wdb_insert_agent(int id,
@@ -1334,6 +1335,123 @@ int wdb_reset_agents_connection(int *sock) {
     os_free(wdboutput);
 
     return result;
+}
+
+
+
+
+
+
+
+    int result = 0;
+    cJSON *data_in = NULL;
+    char *data_in_str = NULL;
+    char *wdbquery = NULL;
+    char *wdboutput = NULL;
+    char *payload = NULL;
+    int aux_sock = -1;
+
+    data_in = cJSON_CreateObject();
+
+    if (!data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddNumberToObject(data_in, "id", id);
+    cJSON_AddStringToObject(data_in, "connection_status", connection_status);
+    data_in_str = cJSON_PrintUnformatted(data_in);
+
+    os_malloc(WDBQUERY_SIZE, wdbquery);
+    snprintf(wdbquery, WDBQUERY_SIZE, global_db_commands[WDB_UPDATE_AGENT_CONNECTION_STATUS], data_in_str);
+
+    os_malloc(WDBOUTPUT_SIZE, wdboutput);
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
+
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Global DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            break;
+        default:
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            result = OS_INVALID;
+    }
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    cJSON_Delete(data_in);
+    os_free(data_in_str);
+
+    os_free(wdboutput);
+
+
+int* wdb_get_agents_by_connection_status(const char status, int *sock) {
+    char *wdbquery = NULL;
+    char *wdboutput = NULL;
+    char *payload = NULL;
+    int *array = NULL;
+    int len = 0;
+    wdbc_result status = WDBC_DUE;
+    int aux_sock = -1;
+
+    while (status == WDBC_DUE) {
+        os_malloc(WDBQUERY_SIZE, wdbquery);
+        snprintf(wdbquery, WDBQUERY_SIZE, global_db_commands[WDB_GET_AGENTS_BY_CONNECTION_STATUS], status);
+
+        os_malloc(WDBOUTPUT_SIZE, wdboutput);
+        result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
+
+    os_free(wdbquery);
+
+    while (status == WDBC_DUE) {
+        // Query WazuhDB
+        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_ALL_AGENTS], last_id);
+        if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
+            // Parse result
+            char* payload = NULL;
+            status = wdbc_parse_result(wdboutput, &payload);
+            if (status == WDBC_OK || status == WDBC_DUE) {
+                const char delim = ',';
+                const char sdelim[] = { delim, '\0' };
+                //Realloc new size
+                int new_len = os_strcnt(payload, delim)+1;
+                os_realloc(array, sizeof(int)*(len+new_len+1), array);
+                //Append IDs to array
+                char* agent_id = NULL;
+                char *savedptr = NULL;
+                for (agent_id = strtok_r(payload, sdelim, &savedptr); agent_id; agent_id = strtok_r(NULL, sdelim, &savedptr)) {
+                    array[len] = atoi(agent_id);
+                    last_id = array[len];
+                    len++;
+                }
+            }
+        }
+        else {
+            status = WDBC_ERROR;
+        }
+    }
+    if (status == WDBC_OK) {
+        array[len] = -1;
+    }
+    else {
+        os_free(array);
+    }
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    return array;
 }
 
 int wdb_create_agent_db(int id, const char *name) {
