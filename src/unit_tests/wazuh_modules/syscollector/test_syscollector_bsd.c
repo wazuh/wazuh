@@ -32,7 +32,7 @@
 int extern test_mode;
 
 bool sys_convert_bin_plist(FILE **fp, char *magic_bytes, char *filepath);
-int sys_read_apps(const char * app_folder, const char * timestamp, int random_id, int queue_fd, const char* LOCATION, int recursive);
+int sys_read_apps(const char * app_folder, const char * timestamp, int random_id, int queue_fd, const char* LOCATION);
 int sys_read_homebrew_apps(const char * app_folder, const char * timestamp, int random_id, int queue_fd, const char* LOCATION);
 cJSON* sys_parse_pkg(const char * app_folder);
 
@@ -733,11 +733,11 @@ void test_sys_read_apps_dir_null(void **state) {
     expect_string(wrap_mterror, tag, "wazuh-modulesd:syscollector");
     expect_string(wrap_mterror, formatted_msg, "Unable to open '/Applications' directory due to 'No such process'");
 
-    ret = sys_read_apps(app_folder, NULL, 0, 0, NULL, 0);
+    ret = sys_read_apps(app_folder, NULL, 0, 0, NULL);
     assert_int_equal(ret, 1);
 }
 
-void test_sys_read_apps_dir_skip_file(void **state) {
+void test_sys_read_apps_skip_file(void **state) {
 
     const char * app_folder = "/Applications";
     int ret;
@@ -759,11 +759,11 @@ void test_sys_read_apps_dir_skip_file(void **state) {
     expect_value(wrap_closedir, dirp, 1);
     will_return(wrap_closedir, 0);
 
-    ret = sys_read_apps(app_folder, NULL, 0, 0, NULL, 0);
+    ret = sys_read_apps(app_folder, NULL, 0, 0, NULL);
     assert_int_equal(ret, 0);
 }
 
-void test_sys_read_apps_dir_no_object(void **state) {
+void test_sys_read_apps_no_object(void **state) {
 
     const char * app_folder = "/Applications";
     int ret;
@@ -798,11 +798,59 @@ void test_sys_read_apps_dir_no_object(void **state) {
     expect_value(wrap_closedir, dirp, 1);
     will_return(wrap_closedir, 0);
 
-    ret = sys_read_apps(app_folder, NULL, 0, 0, NULL, 0);
+    ret = sys_read_apps(app_folder, NULL, 0, 0, NULL);
     assert_int_equal(ret, 0);
 }
 
-void test_sys_read_apps_dir_success(void **state) {
+void test_sys_read_apps_skip_package(void **state) {
+
+    const char * app_folder = "/Applications";
+    int ret;
+
+    struct dirent *de = NULL;
+    os_calloc(1, sizeof(struct dirent), de);
+    strncpy(de->d_name, "Test.app", 12);
+
+    expect_string(wrap_opendir, filename, "/Applications");
+    will_return(wrap_opendir, 1);
+
+    will_return(wrap_readdir, de);
+
+    expect_string(wrap_snprintf, s, "/Applications/Test.app");
+    will_return(wrap_snprintf, 22);
+
+    // sys_parse_pkg
+
+    cJSON * object = NULL;
+    expect_string(wrap_snprintf, s, "/Applications/Test.app/Contents/Info.plist");
+    will_return(wrap_snprintf, 42);
+    expect_string(wrap_fopen, path, "/Applications/Test.app/Contents/Info.plist");
+    expect_string(wrap_fopen, mode, "rb");
+    will_return(wrap_fopen, 1);
+    expect_value(wrap_fgets, __stream, (FILE *)1);
+    will_return(wrap_fgets, "<?xml");
+    expect_value(wrap_fgets, __stream, (FILE *)1);
+    will_return(wrap_fgets, "<key>CFBundleName</key>");
+    expect_value(wrap_fgets, __stream, (FILE *)1);
+    will_return(wrap_fgets, "<string>icloud</string>");
+    expect_value(wrap_fgets, __stream, (FILE *)1);
+    will_return(wrap_fgets, NULL);
+    expect_value(wrap_fclose, fp, (void *)1);
+    will_return(wrap_fclose, 0);
+
+    expect_string(wrap_mtdebug2, tag, "wazuh-modulesd:syscollector");
+    expect_string(wrap_mtdebug2, formatted_msg, "Skipping package 'icloud' since it belongs the OS.");
+
+    will_return(wrap_readdir, NULL);
+
+    expect_value(wrap_closedir, dirp, 1);
+    will_return(wrap_closedir, 0);
+
+    ret = sys_read_apps(app_folder, NULL, 0, 0, NULL);
+    assert_int_equal(ret, 0);
+}
+
+void test_sys_read_apps_success(void **state) {
 
     const char * app_folder = "/Applications";
     const char * timestamp = "2020/10/21 18:00:00";
@@ -851,7 +899,7 @@ void test_sys_read_apps_dir_success(void **state) {
     expect_value(wrap_closedir, dirp, 1);
     will_return(wrap_closedir, 0);
 
-    ret = sys_read_apps(app_folder, timestamp, random_id, queue_fd, LOCATION, 0);
+    ret = sys_read_apps(app_folder, timestamp, random_id, queue_fd, LOCATION);
     assert_int_equal(ret, 0);
 }
 
@@ -872,7 +920,7 @@ void test_sys_read_homebrew_apps_dir_null(void **state) {
     assert_int_equal(ret, 1);
 }
 
-void test_sys_read_homebrew_apps_dir_skip_file(void **state) {
+void test_sys_read_homebrew_apps_skip_file(void **state) {
 
     const char * app_folder = "/usr/local/Cellar";
     int ret;
@@ -895,7 +943,7 @@ void test_sys_read_homebrew_apps_dir_skip_file(void **state) {
     assert_int_equal(ret, 0);
 }
 
-void test_sys_read_homebrew_apps_dir_skip_version(void **state) {
+void test_sys_read_homebrew_apps_skip_version(void **state) {
 
     const char * app_folder = "/usr/local/Cellar";
     const char * timestamp = "2020/10/21 18:00:00";
@@ -1023,12 +1071,13 @@ int main(void) {
         cmocka_unit_test(test_sys_parse_pkg_description_same_line),
         cmocka_unit_test(test_sys_parse_pkg_description),
         cmocka_unit_test_setup(test_sys_read_apps_dir_null, setup_max_eps),
-        cmocka_unit_test_setup(test_sys_read_apps_dir_skip_file, setup_max_eps),
-        cmocka_unit_test_setup(test_sys_read_apps_dir_no_object, setup_max_eps),
-        cmocka_unit_test_setup(test_sys_read_apps_dir_success, setup_max_eps),
+        cmocka_unit_test_setup(test_sys_read_apps_skip_file, setup_max_eps),
+        cmocka_unit_test_setup(test_sys_read_apps_no_object, setup_max_eps),
+        cmocka_unit_test_setup(test_sys_read_apps_skip_package, setup_max_eps),
+        cmocka_unit_test_setup(test_sys_read_apps_success, setup_max_eps),
         cmocka_unit_test_setup(test_sys_read_homebrew_apps_dir_null, setup_max_eps),
-        cmocka_unit_test_setup(test_sys_read_homebrew_apps_dir_skip_file, setup_max_eps),
-        cmocka_unit_test_setup(test_sys_read_homebrew_apps_dir_skip_version, setup_max_eps),
+        cmocka_unit_test_setup(test_sys_read_homebrew_apps_skip_file, setup_max_eps),
+        cmocka_unit_test_setup(test_sys_read_homebrew_apps_skip_version, setup_max_eps),
         cmocka_unit_test_setup(test_sys_read_homebrew_apps_success, setup_max_eps),
     };
     return cmocka_run_group_tests(tests, setup_wrappers, teardown_wrappers);

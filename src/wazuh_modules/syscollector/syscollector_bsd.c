@@ -71,10 +71,6 @@ const char * package_directories [] = {
     "/Applications/Utilities",
     "/System/Applications",
     "/System/Applications/Utilities",
-    NULL
-};
-
-const char * recursive_package_directories [] = {
     "/System/Library/CoreServices",
     NULL
 };
@@ -84,7 +80,14 @@ const char * homebrew_directories [] = {
     NULL
 };
 
-STATIC int sys_read_apps(const char * app_folder, const char * timestamp, int random_id, int queue_fd, const char* LOCATION, int recursive);
+// Black-list to discard packages that are part of the OS itself
+const char * discarded_packages [] = {
+    "Siri",
+    "iCloud",
+    NULL
+};
+
+STATIC int sys_read_apps(const char * app_folder, const char * timestamp, int random_id, int queue_fd, const char* LOCATION);
 STATIC int sys_read_homebrew_apps(const char * app_folder, const char * timestamp, int random_id, int queue_fd, const char* LOCATION);
 STATIC cJSON* sys_parse_pkg(const char * app_folder);
 STATIC bool sys_convert_bin_plist(FILE **fp, char *magic_bytes, char *filepath);
@@ -111,19 +114,11 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION) {
         random_id = -random_id;
     }
 
-    // Non-recursive search
+    // Standard apps search
     for (i = 0; package_directories[i]; i++) {
         mtdebug1(WM_SYS_LOGTAG, "Collecting installed applications from '%s'", package_directories[i]);
-        if (sys_read_apps(package_directories[i], timestamp, random_id, queue_fd, LOCATION, 0)) {
+        if (sys_read_apps(package_directories[i], timestamp, random_id, queue_fd, LOCATION)) {
             mtdebug1(WM_SYS_LOGTAG, "Unable to read installed applications from '%s'", package_directories[i]);
-        }
-    }
-
-    // Recursive search
-    for (i = 0; recursive_package_directories[i]; i++) {
-        mtdebug1(WM_SYS_LOGTAG, "Collecting installed applications from '%s' recursively.", package_directories[i]);
-        if (sys_read_apps(recursive_package_directories[i], timestamp, random_id, queue_fd, LOCATION, 1)) {
-            mtdebug1(WM_SYS_LOGTAG, "Unable to read installed applications from '%s'", recursive_package_directories[i]);
         }
     }
 
@@ -140,13 +135,13 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION) {
     cJSON_AddNumberToObject(object, "ID", random_id);
     cJSON_AddStringToObject(object, "timestamp", timestamp);
 
-    char *string;
+    char *string = NULL;
     string = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "Sending '%s'", string);
     wm_sendmsg(0, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
-    free(string);
-    free(timestamp);
+    os_free(string);
+    os_free(timestamp);
 }
 
 /**
@@ -157,14 +152,13 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION) {
  * @param random_id Id of the scan, to be attached to the events.
  * @param queue_fd File descriptor of the queue to send events.
  * @param LOCATION Identifier of the component to attach it to the events.
- * @param recursive Scan the directory recursively.
  * @return 0 on success, 1 otherwise.
  **/
-int sys_read_apps(const char * app_folder, const char * timestamp, int random_id, int queue_fd, const char* LOCATION, int recursive) {
+int sys_read_apps(const char * app_folder, const char * timestamp, int random_id, int queue_fd, const char* LOCATION) {
 
-    struct dirent *de;
-    DIR *dr;
-    char path[PATH_LENGTH];
+    struct dirent *de = NULL;
+    DIR *dr = NULL;
+    char path[PATH_LENGTH] = {0};
 
     // Define time to sleep between sent messages
     int usec = 1000000 / wm_max_eps;
@@ -199,6 +193,24 @@ int sys_read_apps(const char * app_folder, const char * timestamp, int random_id
                 continue;
             }
 
+            // Discard undesired packages
+            cJSON * package = cJSON_GetObjectItem(object, "program");
+            cJSON * name = cJSON_GetObjectItem(package, "name");
+            int found = 0;
+            if (name) {
+                for (int i = 0; discarded_packages[i]; i++) {
+                    if (!strcasecmp(name->valuestring, discarded_packages[i])) {
+                        found = 1;
+                        break;
+                    }
+                }
+                if (found) {
+                    mtdebug2(WM_SYS_LOGTAG, "Skipping package '%s' since it belongs the OS.", name->valuestring);
+                    cJSON_Delete(object);
+                    continue;
+                }
+            }
+
             cJSON_AddNumberToObject(object, "ID", random_id);
             cJSON_AddStringToObject(object, "timestamp", timestamp);
             char * string;
@@ -209,18 +221,6 @@ int sys_read_apps(const char * app_folder, const char * timestamp, int random_id
             wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
 
             os_free(string);
-
-        }
-
-        if (recursive) {
-
-            // Check if directory
-            struct stat sb;
-            if (stat(path, &sb) == 0 && S_ISDIR(sb.st_mode)) {
-
-                // Look for more .app directories inside
-                sys_read_apps(path, timestamp, random_id, queue_fd, LOCATION, 1);
-            }
 
         }
     }
@@ -238,16 +238,15 @@ int sys_read_apps(const char * app_folder, const char * timestamp, int random_id
  **/
 cJSON* sys_parse_pkg(const char * app_folder) {
 
-    char read_buff[OS_MAXSTR];
-    char filepath[PATH_LENGTH];
-    FILE *fp;
+    char read_buff[OS_MAXSTR] = {0};
+    char filepath[PATH_LENGTH] = {0};
+    FILE *fp = NULL;
     int i = 0;
     int read_name = 0;
     char * vendor_name = NULL;
     char * package_name = NULL;
 
     snprintf(filepath, PATH_LENGTH - 1, "%s/%s", app_folder, INFO_FILE);
-    memset(read_buff, 0, OS_MAXSTR);
 
     if (fp = fopen(filepath, "rb"), !fp) {
         mtdebug1(WM_SYS_LOGTAG, "Unable to open '%s' due to '%s'", filepath, strerror(errno));
@@ -478,14 +477,13 @@ cJSON* sys_parse_pkg(const char * app_folder) {
  **/
 int sys_read_homebrew_apps(const char * app_folder, const char * timestamp, int random_id, int queue_fd, const char* LOCATION) {
 
-    DIR *dr;
-    char path[PATH_LENGTH];
-    struct dirent *de;
+    DIR *dr = NULL;
+    char path[PATH_LENGTH] = {0};
+    struct dirent *de = NULL;
     struct dirent *version = NULL;
 
     // Define time to sleep between sent messages
     int usec = 1000000 / wm_max_eps;
-
 
     dr = opendir(app_folder);
 
@@ -522,7 +520,7 @@ int sys_read_homebrew_apps(const char * app_folder, const char * timestamp, int 
         snprintf(path, PATH_LENGTH - 1, "%s/%s", app_folder, de->d_name);
         cJSON_AddStringToObject(package, "location", path);
 
-        DIR *dir;
+        DIR *dir = NULL;
         dir = opendir(path);
         if (dir != NULL) {
             while ((version = readdir(dir)) != NULL) {
@@ -564,7 +562,7 @@ int sys_read_homebrew_apps(const char * app_folder, const char * timestamp, int 
         }
 
         /* Send package information */
-        char *string;
+        char *string = NULL;
         string = cJSON_PrintUnformatted(object);
         mtdebug2(WM_SYS_LOGTAG, "Sending '%s'", string);
         wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
