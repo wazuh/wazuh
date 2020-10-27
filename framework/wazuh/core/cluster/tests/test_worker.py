@@ -4,7 +4,6 @@
 import asyncio
 import logging
 import os
-import subprocess
 import sys
 from unittest.mock import patch, mock_open, MagicMock, call
 
@@ -136,9 +135,16 @@ def test_remove_bulk_agents(isdir_mock, connection_mock, agents_mock, glob_mock,
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 loop = asyncio.new_event_loop()
-current_path_logger = os.path.join(os.path.dirname(__file__), 'testing.log')
-logging.basicConfig(filename=current_path_logger, level=logging.DEBUG)
-logger = logging.getLogger('test')
+logger = None
+
+
+@pytest.fixture(scope='module')
+def create_log(request):
+    current_path_logger = os.path.join(os.path.dirname(__file__), 'testing.log')
+    logging.basicConfig(filename=current_path_logger, level=logging.DEBUG)
+    setattr(request.module, 'logger', logging.getLogger('test'))
+    yield
+    os.path.exists(current_path_logger) and os.remove(current_path_logger)
 
 
 def get_worker_handler():
@@ -166,7 +172,7 @@ def test_ReceiveIntegrityTask():
 
 
 @pytest.mark.asyncio
-async def test_SyncWorker(caplog):
+async def test_SyncWorker(create_log, caplog):
     async def check_message(mock, expected_message):
         with patch('wazuh.core.cluster.common.Handler.send_request', new=AsyncMock(return_value=mock)):
             with caplog.at_level(logging.DEBUG):
