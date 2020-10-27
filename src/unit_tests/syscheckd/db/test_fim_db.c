@@ -355,6 +355,34 @@ static int teardown_fim_tmp_file_memory(void **state) {
     return 0;
 }
 
+static int teardown_string(void **state) {
+    if (*state) {
+        free(*state);
+    }
+
+    return 0;
+}
+
+static int setup_vector(void **state) {
+    W_Vector *vector = W_Vector_init(1);
+
+    if (vector == NULL) {
+        return -1;
+    }
+
+    *state = vector;
+
+    return 0;
+}
+
+static int teardown_vector(void **state) {
+    W_Vector *vector = *state;
+
+    W_Vector_free(vector);
+
+    return 0;
+}
+
 /**********************************************************************************************************************\
  * fim_db_exec_simple_wquery() tests
 \**********************************************************************************************************************/
@@ -1588,6 +1616,97 @@ static void test_fim_db_multiple_row_query_success(void **state) {
 }
 
 /**********************************************************************************************************************\
+ * fim_db_callback_save_string()
+\**********************************************************************************************************************/
+
+static void test_fim_db_callback_save_string_null_input_string(void **state) {
+    fdb_t fim_sql;
+    fim_tmp_file file;
+
+    fim_db_callback_save_string(&fim_sql, NULL, FIM_DB_DISK, &file);
+}
+
+static void test_fim_db_callback_save_string_fail_to_escape_string(void **state) {
+    fdb_t fim_sql;
+    fim_tmp_file file;
+    char *str = "test string";
+
+    will_return(__wrap_wstr_escape_json, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "Error escaping 'test string'");
+
+    fim_db_callback_save_string(&fim_sql, str, FIM_DB_DISK, &file);
+}
+
+static void test_fim_db_callback_save_string_disk_fail_to_print(void **state) {
+    fdb_t fim_sql;
+    fim_tmp_file file = { .fd = (FILE *)1234 };
+    char *str = "test string";
+    char *escaped_string = strdup("test string");
+
+    if (escaped_string == NULL) {
+        fail_msg("%s:%d - %s: Failed to duplicate string", __FILE__, __LINE__, __func__);
+    }
+
+    *state = escaped_string;
+
+    will_return(__wrap_wstr_escape_json, escaped_string);
+
+    expect_value(__wrap_fprintf, __stream, 1234);
+    expect_string(__wrap_fprintf, formatted_msg, "test string\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "Can't save entry: test string Success");
+
+    fim_db_callback_save_string(&fim_sql, str, FIM_DB_DISK, &file);
+
+    *state = NULL;
+}
+
+static void test_fim_db_callback_save_string_disk_success(void **state) {
+    fdb_t fim_sql;
+    fim_tmp_file file = { .fd = (FILE *)1234, .elements = 0 };
+    char *str = "test string";
+    char *escaped_string = strdup("test string");
+
+    if (escaped_string == NULL) {
+        fail_msg("%s:%d - %s: Failed to duplicate string", __FILE__, __LINE__, __func__);
+    }
+
+    *state = escaped_string;
+
+    will_return(__wrap_wstr_escape_json, escaped_string);
+
+    expect_value(__wrap_fprintf, __stream, 1234);
+    expect_string(__wrap_fprintf, formatted_msg, "test string\n");
+    will_return(__wrap_fprintf, 12);
+
+    fim_db_callback_save_string(&fim_sql, str, FIM_DB_DISK, &file);
+
+    *state = NULL;
+
+    assert_int_equal(file.elements, 1);
+}
+
+static void test_fim_db_callback_save_string_memory(void **state) {
+    fdb_t fim_sql;
+    fim_tmp_file file = { .list = *state, .elements = 0 };
+    char *str = "test string";
+    char *escaped_string = strdup("test string");
+
+    if (escaped_string == NULL) {
+        fail_msg("%s:%d - %s: Failed to duplicate string", __FILE__, __LINE__, __func__);
+    }
+
+    will_return(__wrap_wstr_escape_json, escaped_string);
+
+    fim_db_callback_save_string(&fim_sql, str, FIM_DB_MEMORY, &file);
+
+    assert_int_equal(file.elements, 1);
+    assert_string_equal(W_Vector_get(file.list, 0), "test string");
+}
+
+/**********************************************************************************************************************\
  * main()
 \**********************************************************************************************************************/
 int main(void) {
@@ -1676,6 +1795,12 @@ int main(void) {
         cmocka_unit_test(test_fim_db_multiple_row_query_no_data_returned),
         cmocka_unit_test(test_fim_db_multiple_row_query_fail_to_decode),
         cmocka_unit_test(test_fim_db_multiple_row_query_success),
+        // fim_db_callback_save_string
+        cmocka_unit_test(test_fim_db_callback_save_string_null_input_string),
+        cmocka_unit_test(test_fim_db_callback_save_string_fail_to_escape_string),
+        cmocka_unit_test_teardown(test_fim_db_callback_save_string_disk_fail_to_print, teardown_string),
+        cmocka_unit_test_teardown(test_fim_db_callback_save_string_disk_success, teardown_string),
+        cmocka_unit_test_setup_teardown(test_fim_db_callback_save_string_memory, setup_vector, teardown_vector),
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
