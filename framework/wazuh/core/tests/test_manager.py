@@ -4,17 +4,14 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
-import sys
-from unittest.mock import patch, mock_open, MagicMock, ANY
+from unittest.mock import patch, mock_open, ANY
 
 import pytest
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        sys.modules['api'] = MagicMock()
         from wazuh.core.manager import *
         from wazuh.core.exception import WazuhException
-        del sys.modules['api']
 
 ossec_cdb_list = "172.16.19.:\n172.16.19.:\n192.168.:"
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'manager')

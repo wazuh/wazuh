@@ -13,10 +13,8 @@ import pytest
 with patch('wazuh.common.getgrnam'):
     with patch('wazuh.common.getpwnam'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
-        sys.modules['api'] = MagicMock()
         import wazuh.rbac.decorators
         del sys.modules['wazuh.rbac.orm']
-        del sys.modules['api']
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 

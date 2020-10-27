@@ -3,8 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
@@ -12,11 +11,8 @@ from wazuh.tests.util import InitWDBSocketMock
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        sys.modules['api'] = MagicMock()
         from wazuh.core.syscollector import *
         from wazuh.core import common
-
-        del sys.modules['api']
 
 
 # Tests

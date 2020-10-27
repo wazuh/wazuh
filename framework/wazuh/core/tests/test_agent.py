@@ -12,12 +12,11 @@ from unittest.mock import ANY, patch, mock_open, call, Mock
 import pytest
 from freezegun import freeze_time
 
-from api.util import remove_nones_to_dict
-
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         from wazuh.core.agent import *
         from wazuh.core.exception import WazuhException
+        from api.util import remove_nones_to_dict
 
 from pwd import getpwnam
 from grp import getgrnam

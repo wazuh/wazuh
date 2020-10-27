@@ -5,17 +5,14 @@
 
 import os
 import stat
-import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        sys.modules['api'] = MagicMock()
         from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException
         from wazuh.core import decoder
-        del sys.modules['api']
 
 
 # Variables

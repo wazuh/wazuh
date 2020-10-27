@@ -4,17 +4,14 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
-import sys
 from unittest.mock import patch, MagicMock
 
 import pytest
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        sys.modules['api'] = MagicMock()
         from wazuh.core.exception import WazuhError
         from wazuh.core import active_response
-        del sys.modules['api']
 
 
 # Variables

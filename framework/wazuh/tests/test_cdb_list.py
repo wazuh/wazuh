@@ -13,18 +13,16 @@ DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "t
 
 with patch('wazuh.common.getgrnam'):
     with patch('wazuh.common.getpwnam'):
-        with patch('wazuh.common.lists_path', DATA_PATH):
-            sys.modules['wazuh.rbac.orm'] = MagicMock()
-            sys.modules['api'] = MagicMock()
-            import wazuh.rbac.decorators
-            del sys.modules['wazuh.rbac.orm']
-            del sys.modules['api']
-            from wazuh.tests.util import RBAC_bypasser
-            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+        sys.modules['wazuh.rbac.orm'] = MagicMock()
+        import wazuh.rbac.decorators
+        from wazuh.tests.util import RBAC_bypasser
 
-            from wazuh.cdb_list import get_lists, get_path_lists, iterate_lists
-            from wazuh.core import common
-            from wazuh.core.results import AffectedItemsWazuhResult
+        del sys.modules['wazuh.rbac.orm']
+        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+
+        from wazuh.cdb_list import get_lists, get_path_lists, iterate_lists
+        from wazuh.core import common
+        from wazuh.core.results import AffectedItemsWazuhResult
 
 RELATIVE_PATH = os.path.join("framework", "wazuh", "tests", "data", "test_cdb_list")
 NAME_FILE_1 = "test_lists_1"

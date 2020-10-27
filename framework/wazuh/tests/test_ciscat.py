@@ -9,18 +9,15 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from wazuh.tests.util import InitWDBSocketMock
-
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        sys.modules['api'] = MagicMock()
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         del sys.modules['wazuh.rbac.orm']
-        del sys.modules['api']
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
+        from wazuh.tests.util import InitWDBSocketMock
         from wazuh.ciscat import get_ciscat_results
         from wazuh.core.results import AffectedItemsWazuhResult
 

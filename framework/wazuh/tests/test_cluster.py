@@ -3,21 +3,18 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from wazuh.core import common
-
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
-        sys.modules['api'] = MagicMock()
         import wazuh.rbac.decorators
 
         del sys.modules['wazuh.rbac.orm']
-        del sys.modules['api']
 
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh import cluster
+        from wazuh.core import common
         from wazuh.core.exception import WazuhError, WazuhResourceNotFound
         from wazuh.core.cluster.local_client import LocalClient
         from wazuh.core.results import WazuhResult

@@ -10,20 +10,18 @@ import json
 
 import pytest
 
-from wazuh.core.tests.test_manager import get_logs
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
-        sys.modules['api'] = MagicMock()
         import wazuh.rbac.decorators
-        del sys.modules['wazuh.rbac.orm']
-
         from wazuh.tests.util import RBAC_bypasser
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh.manager import *
-        del sys.modules['api']
 
+        del sys.modules['wazuh.rbac.orm']
+        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+
+        from wazuh.manager import *
+        from wazuh.core.tests.test_manager import get_logs
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 

@@ -9,20 +9,18 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from wazuh.core.tests.test_active_response import agent_config, agent_info
-from wazuh.core.exception import WazuhError
-
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
-        sys.modules['api'] = MagicMock()
         import wazuh.rbac.decorators
-        del sys.modules['wazuh.rbac.orm']
-        del sys.modules['api']
         from wazuh.tests.util import RBAC_bypasser
+
+        del sys.modules['wazuh.rbac.orm']
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh.active_response import run_command
+        from wazuh.core.tests.test_active_response import agent_config, agent_info
+        from wazuh.core.exception import WazuhError
 
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')

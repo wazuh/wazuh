@@ -12,21 +12,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from api.util import remove_nones_to_dict
-from wazuh.core.exception import WazuhResourceNotFound
-
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..'))
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        sys.modules['api'] = MagicMock()
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         from wazuh.tests.util import RBAC_bypasser
 
         del sys.modules['wazuh.rbac.orm']
-        del sys.modules['api']
-
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh.agent import add_agent, assign_agents_to_group, create_group, delete_agents, delete_groups, \
@@ -39,6 +33,8 @@ with patch('wazuh.common.ossec_uid'):
         from wazuh import WazuhError, WazuhException, WazuhInternalError
         from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
         from wazuh.core.tests.test_agent import InitAgent
+        from api.util import remove_nones_to_dict
+        from wazuh.core.exception import WazuhResourceNotFound
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_agent_path = os.path.join(test_data_path, 'agent')
