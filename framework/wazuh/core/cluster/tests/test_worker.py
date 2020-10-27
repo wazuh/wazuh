@@ -140,11 +140,11 @@ logger = None
 
 @pytest.fixture(scope='module')
 def create_log(request):
-    current_path_logger = os.path.join(os.path.dirname(__file__), 'testing.log')
-    logging.basicConfig(filename=current_path_logger, level=logging.DEBUG)
+    current_logger_path = os.path.join(os.path.dirname(__file__), 'testing.log')
+    logging.basicConfig(filename=current_logger_path, level=logging.DEBUG)
     setattr(request.module, 'logger', logging.getLogger('test'))
     yield
-    os.path.exists(current_path_logger) and os.remove(current_path_logger)
+    os.path.exists(current_logger_path) and os.remove(current_logger_path)
 
 
 def get_worker_handler():
