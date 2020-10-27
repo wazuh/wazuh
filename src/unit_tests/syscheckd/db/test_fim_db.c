@@ -231,6 +231,58 @@ void expect_fim_db_decode_string(const char *str) {
     will_return(__wrap_sqlite3_column_text, str);
 }
 
+void expect_fim_db_callback_save_string(const FILE *fd, const char *str, int storage) {
+    char *escaped_string = strdup(str);
+    char expected_str[OS_MAXSTR];
+
+    if (escaped_string == NULL) {
+        fail_msg("%s:%d - %s: Failed to duplicate string", __FILE__, __LINE__, __func__);
+    }
+
+    will_return(__wrap_wstr_escape_json, escaped_string);
+
+    if (storage == FIM_DB_DISK) {
+        snprintf(expected_str, OS_MAXSTR, "%s\n", escaped_string);
+        expect_value(__wrap_fprintf, __stream, fd);
+        expect_string(__wrap_fprintf, formatted_msg, expected_str);
+        will_return(__wrap_fprintf, strlen(expected_str));
+    }
+}
+
+void expect_fim_db_create_temp_file_fail(int storage) {
+    if (storage != FIM_DB_DISK) {
+        fail_msg("'fim_db_create_temp_file' can only fail when using disk storage");
+    }
+
+    will_return(__wrap_os_random, 2345);
+
+    expect_string(__wrap_fopen, path, "./tmp_19283746523452345");
+    expect_string(__wrap_fopen, mode, "w+");
+    will_return(__wrap_fopen, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage './tmp_19283746523452345': Success (0)");
+}
+
+void expect_fim_db_create_temp_file_success(int storage) {
+    if (storage == FIM_DB_DISK) {
+        will_return(__wrap_os_random, 2345);
+
+        expect_string(__wrap_fopen, path, "./tmp_19283746523452345");
+        expect_string(__wrap_fopen, mode, "w+");
+        will_return(__wrap_fopen, 1);
+    }
+}
+
+void expect_fim_db_clean_file(const FILE *fd, const char *path, int storage) {
+    if (storage == FIM_DB_DISK) {
+        expect_value(__wrap_fclose, _File, fd);
+        will_return(__wrap_fclose, 1);
+
+        expect_string(__wrap_remove, filename, path);
+        will_return(__wrap_remove, 1);
+    }
+}
+
 /**********************************************************************************************************************\
  * Setup and teardown functions
 \**********************************************************************************************************************/
@@ -343,7 +395,7 @@ static int test_fim_tmp_file_teardown_memory(void **state) {
 }
 
 static int teardown_fim_tmp_file_disk(void **state) {
-    fim_tmp_file *file = state[1];
+    fim_tmp_file *file = *state;
 
     expect_value(__wrap_fclose, _File, file->fd);
     will_return(__wrap_fclose, 1);
@@ -355,7 +407,7 @@ static int teardown_fim_tmp_file_disk(void **state) {
 }
 
 static int teardown_fim_tmp_file_memory(void **state) {
-    fim_tmp_file *file = state[1];
+    fim_tmp_file *file = *state;
     fim_db_clean_file(&file, FIM_DB_MEMORY);
     return 0;
 }
@@ -672,66 +724,82 @@ void test_fim_db_clean_success(void **state) {
 /**********************************************************************************************************************\
  * fim_db_get_path_range() tests
 \**********************************************************************************************************************/
-void test_fim_db_get_path_range_failed(void **state) {
-
-    test_fim_db_insert_data *test_data = *state;
+void test_fim_db_get_path_range_fail_to_create_temporary_file(void **state) {
+    fdb_t fim_sql;
     fim_tmp_file *file = NULL;
 
-    expect_string(__wrap_fopen, mode, "w+");
-    will_return(__wrap_fopen, 0);
+    expect_fim_db_create_temp_file_fail(FIM_DB_DISK);
 
-    will_return(__wrap_os_random, 2345);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_fopen, path, "/var/ossec/tmp/tmp_19283746523452345");
-    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage '/var/ossec/tmp/tmp_19283746523452345': Success (0)");
-#else
-    expect_string(__wrap_fopen, path, "tmp/tmp_19283746523452345");
-    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage 'tmp/tmp_19283746523452345': Success (0)");
-#endif
-
-    int ret = fim_db_get_path_range(test_data->fim_sql, FIM_TYPE_FILE, "start", "stop", &file, syscheck.database_store);
+    int ret = fim_db_get_path_range(&fim_sql, FIM_TYPE_FILE, "start", "stop", &file, FIM_DB_DISK);
     assert_int_equal(ret, FIMDB_ERR);
 }
 
-void test_fim_db_get_path_range_success(void **state) {
-
-    test_fim_db_insert_data *test_data = *state;
+void test_fim_db_get_path_range_query_failed(void **state) {
+    fdb_t fim_sql;
     fim_tmp_file *file = NULL;
+    const char *start = "start", *top = "top";
 
-    will_return(__wrap_os_random, 2345);
+    expect_fim_db_create_temp_file_success(FIM_DB_DISK);
 
-#ifdef TEST_WINAGENT
-    expect_string(__wrap_fopen, path, "tmp/tmp_19283746523452345");
-#else
-    expect_string(__wrap_fopen, path, "/var/ossec/tmp/tmp_19283746523452345");
-#endif
+    expect_fim_db_clean_stmt();
+    expect_fim_db_bind_range(start, top, 0);
 
-    expect_string(__wrap_fopen, mode, "w+");
-    will_return(__wrap_fopen, 1);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 
-    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    expect_any_always(__wrap_sqlite3_bind_text, pos);
-    expect_any_always(__wrap_sqlite3_bind_text, buffer);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
+    expect_fim_db_clean_file((FILE *)1, "./tmp_19283746523452345", FIM_DB_DISK);
+
+    int ret = fim_db_get_path_range(&fim_sql, FIM_TYPE_FILE, start, top, &file, FIM_DB_DISK);
+
+    assert_int_equal(ret, FIMDB_ERR);
+}
+
+void test_fim_db_get_path_range_no_elements_in_range(void **state) {
+    fdb_t fim_sql;
+    fim_tmp_file *file = NULL;
+    const char *start = "start", *top = "top";
+
+    expect_fim_db_create_temp_file_success(FIM_DB_DISK);
+
+    expect_fim_db_clean_stmt();
+    expect_fim_db_bind_range(start, top, 0);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
-    wraps_fim_db_check_transaction();
 
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_remove, filename, "/var/ossec/tmp/tmp_19283746523452345");
-#else
-    expect_string(__wrap_remove, filename, "tmp/tmp_19283746523452345");
-#endif
+    expect_fim_db_clean_file((FILE *)1, "./tmp_19283746523452345", FIM_DB_DISK);
 
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-    will_return(__wrap_remove, 0);
+    int ret = fim_db_get_path_range(&fim_sql, FIM_TYPE_FILE, start, top, &file, FIM_DB_DISK);
 
-    int ret = fim_db_get_path_range(test_data->fim_sql, FIM_TYPE_FILE, "start", "stop", &file, syscheck.database_store);
     assert_int_equal(ret, FIMDB_OK);
+}
+
+void test_fim_db_get_path_range_success(void **state) {
+    fdb_t fim_sql;
+    fim_tmp_file *file = NULL;
+    const char *start = "start", *top = "top", *path = "/some/random/path";
+
+    expect_fim_db_create_temp_file_success(FIM_DB_DISK);
+
+    expect_fim_db_clean_stmt();
+    expect_fim_db_bind_range(start, top, 0);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_fim_db_decode_string(path);
+    expect_fim_db_callback_save_string((FILE *)1, path, FIM_DB_DISK);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    int ret = fim_db_get_path_range(&fim_sql, FIM_TYPE_FILE, start, top, &file, FIM_DB_DISK);
+
+    *state = file;
+
+    assert_int_equal(ret, FIMDB_OK);
+    assert_non_null(file);
+    assert_int_equal(file->elements, 1);
 }
 
 /**********************************************************************************************************************\
@@ -1434,7 +1502,7 @@ void test_fim_db_create_temp_file_disk(void **state) {
     will_return(__wrap_fopen, 1);
 
     fim_tmp_file *ret = fim_db_create_temp_file(FIM_DB_DISK);
-    state[1] = ret;
+    *state = ret;
 
     assert_non_null(ret);
     assert_non_null(ret->fd);
@@ -1468,7 +1536,7 @@ void test_fim_db_create_temp_file_disk_error(void **state) {
 
 void test_fim_db_create_temp_file_memory(void **state) {
     fim_tmp_file *ret = fim_db_create_temp_file(FIM_DB_MEMORY);
-    state[1] = ret;
+    *state = ret;
 
     assert_non_null(ret);
     assert_non_null(ret->list);
@@ -1850,8 +1918,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_clean_file_not_removed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_clean_success, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_get_path_range
-        // cmocka_unit_test_setup_teardown(test_fim_db_get_path_range_failed, test_fim_db_setup, test_fim_db_teardown),
-        // cmocka_unit_test_setup_teardown(test_fim_db_get_path_range_success, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test(test_fim_db_get_path_range_fail_to_create_temporary_file),
+        cmocka_unit_test(test_fim_db_get_path_range_query_failed),
+        cmocka_unit_test(test_fim_db_get_path_range_no_elements_in_range),
+        cmocka_unit_test_teardown(test_fim_db_get_path_range_success, teardown_fim_tmp_file_disk),
         // fim_db_get_data_checksum
         cmocka_unit_test_setup_teardown(test_fim_db_get_data_checksum_failed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_get_data_checksum_success, test_fim_db_setup, test_fim_db_teardown),
