@@ -154,6 +154,7 @@ int OS_BindUnixDomain(const char *path, int type, int max_msg_size)
         return (OS_SOCKTERR);
     }
 
+    #ifndef DISABLE_UNIX_BINDINGS
     if (bind(ossock, (struct sockaddr *)&n_us, SUN_LEN(&n_us)) < 0) {
         OS_CloseSocket(ossock);
         return (OS_SOCKTERR);
@@ -164,6 +165,9 @@ int OS_BindUnixDomain(const char *path, int type, int max_msg_size)
         OS_CloseSocket(ossock);
         return (OS_SOCKTERR);
     }
+
+    #endif
+
 
     if (type == SOCK_STREAM && listen(ossock, 128) < 0) {
         OS_CloseSocket(ossock);
