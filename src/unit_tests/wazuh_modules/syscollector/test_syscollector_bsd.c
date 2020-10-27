@@ -513,7 +513,7 @@ void test_sys_parse_pkg_version_same_line(void **state) {
     // now it doesn't go through sys_convert_bin_plist
 
     expect_value(wrap_fgets, __stream, (FILE *)1);
-    will_return(wrap_fgets, "<key>CFBundleShortVersionString</key><string>4.5.1</string>");
+    will_return(wrap_fgets, "<key>CFBundleShortVersionString</key><string>4.5.1 (78615.2064)</string>");
 
     expect_value(wrap_fgets, __stream, (FILE *)1);
     will_return(wrap_fgets, NULL);
