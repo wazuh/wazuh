@@ -14,7 +14,7 @@
 #include "os_net/os_net.h"
 
 /// Enumeration of communication with Wazuh DB status.
-typedef enum wdbc_result { 
+typedef enum wdbc_result {
         WDBC_OK,        ///< Command processed successfully
         WDBC_DUE,       ///< Command processed successfully with pending data
         WDBC_ERROR,     ///< An error occurred
@@ -28,7 +28,9 @@ int wdbc_connect();
 int wdbc_query(const int sock, const char *query, char *response, const int len);
 int wdbc_query_ex(int *sock, const char *query, char *response, const int len);
 int wdbc_parse_result(char *result, char **payload);
+wdbc_result wdbc_parse_result_s(const char* buffer, char** payload);
 cJSON * wdbc_query_parse_json(int *sock, const char *query, char *response, const int len);
+wdbc_result wdbc_query_parse(int *sock, const char *query, char *response, const int len, char** payload);
 
 /**
  * @brief Closes a socket connection if exists
