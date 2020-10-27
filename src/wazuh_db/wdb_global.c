@@ -1466,7 +1466,7 @@ int wdb_global_check_manager_keepalive(wdb_t *wdb) {
     }
 }
 
-cJSON* wdb_global_get_agents_by_connection_status(wdb_t *wdb, const char status) {
+cJSON* wdb_global_get_agents_by_connection_status(wdb_t* wdb, const char* status) {
     sqlite3_stmt *stmt = NULL;
     cJSON * result = NULL;
 
@@ -1484,7 +1484,7 @@ cJSON* wdb_global_get_agents_by_connection_status(wdb_t *wdb, const char status)
 
     if (sqlite3_bind_text(stmt, 1, status, -1, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
+        return NULL;
     }
 
     result = wdb_exec_stmt(stmt);

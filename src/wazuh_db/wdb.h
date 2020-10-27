@@ -674,7 +674,7 @@ int wdb_delete_agent_belongs(int id, int *sock);
 int wdb_remove_group_from_belongs_db(const char *name, int *sock);
 
 /**
- * @brief Resets the connection_status column of every agent (excluding the manager).
+ * @brief Reset the connection_status column of every agent (excluding the manager).
  *        If connection_status is pending or connected it will be changed to disconnected.
  *        If connection_status is disconnected or never_connected it will not be changed.
  *
@@ -682,6 +682,15 @@ int wdb_remove_group_from_belongs_db(const char *name, int *sock);
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
 int wdb_reset_agents_connection(int *sock);
+
+/**
+ * @brief Get every agent (excluding the manager) that match the specified connection status.
+ *
+ * @param[in] status The connection status.
+ * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @return Pointer to the array, on success. NULL on errors.
+ */
+int* wdb_get_agents_by_connection_status(const char* status, int *sock);
 
 /**
  * @brief Create database for agent from profile.
@@ -1330,7 +1339,7 @@ int wdb_parse_reset_agents_connection(wdb_t * wdb, char * output);
  * @retval 0 Success: Response contains the value.
  * @retval -1 On error: Response contains details of the error.
  */
-int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, char* output) {
+int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, char* output);
 
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);
 
@@ -1814,7 +1823,7 @@ int wdb_global_reset_agents_connection(wdb_t *wdb);
  * @retval JSON with every agent ID on success.
  * @retval NULL on error.
  */
-cJSON* wdb_global_get_agents_by_connection_status(wdb_t *wdb, const char status);
+cJSON* wdb_global_get_agents_by_connection_status(wdb_t *wdb, const char* status);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }

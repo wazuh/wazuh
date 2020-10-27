@@ -5218,13 +5218,10 @@ int wdb_parse_reset_agents_connection(wdb_t * wdb, char * output) {
 }
 
 int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, char* output) {
-    int agent_id = 0;
     cJSON *agents = NULL;
     char *out = NULL;
 
-    agent_id = atoi(input);
-
-    if (agents = wdb_global_get_agents_by_connection_status(wdb, agent_id), !agents) {
+    if (agents = wdb_global_get_agents_by_connection_status(wdb, input), !agents) {
         mdebug1("Error getting agent information from global.db.");
         snprintf(output, OS_MAXSTR + 1, "err Error getting agent information from global.db.");
         return OS_INVALID;
