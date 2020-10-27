@@ -656,6 +656,10 @@ setEnv()
                 ;;
         esac
     fi
+
+    if [ "X$DISABLE_UNIX_BINDINGS" = "X" ]; then
+       CEXTRA="$CEXTRA -DDISABLE_UNIX_BINDINGS"
+    fi
 }
 
 ##########
