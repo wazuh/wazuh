@@ -117,6 +117,10 @@ OSHashNode* __wrap_wm_agent_upgrade_get_next_node(unsigned int *index, OSHashNod
     }
 }
 
+cJSON* __wrap_wm_agent_upgrade_get_agent_ids() {
+    return mock_type(cJSON*);
+}
+
 int __wrap_wm_agent_upgrade_compare_versions(const char *version1, const char *version2) {
     check_expected(version1);
     check_expected(version2);
@@ -144,14 +148,22 @@ int __wrap_wm_agent_upgrade_validate_status(int last_keep_alive) {
     return mock();
 }
 
-int __wrap_wm_agent_upgrade_validate_version(__attribute__((unused)) const wm_agent_info *agent_info, void *task, wm_upgrade_command command, const wm_manager_configs* manager_configs) {
+int __wrap_wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch) {
+    check_expected(platform);
+    check_expected(os_major);
+    check_expected(os_minor);
+    check_expected(arch);
+
+    return mock();
+}
+
+int __wrap_wm_agent_upgrade_validate_version(const char *wazuh_version, wm_upgrade_command command, void *task) {
+    check_expected(wazuh_version);
     check_expected(command);
-    check_expected(manager_configs);
 
     if (command == WM_UPGRADE_UPGRADE) {
         wm_upgrade_task *upgrade_task = (wm_upgrade_task *)task;
-        os_strdup(mock_type(char*), upgrade_task->wpk_file);
-        os_strdup(mock_type(char*), upgrade_task->wpk_sha1);
+        os_strdup(mock_type(char*), upgrade_task->wpk_version);
     }
 
     return mock();
