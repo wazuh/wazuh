@@ -40,9 +40,12 @@
 extern const char *SQL_STMT[];
 
 
-int fim_db_process_get_query(fdb_t *fim_sql, int type, int index,
+int fim_db_process_get_query(fdb_t *fim_sql,
+                             int type,
+                             int index,
                              void (*callback)(fdb_t *, fim_entry *, int, void *),
-                             int storage, void * arg);
+                             int storage,
+                             void *arg);
 int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query);
 fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt);
 fim_tmp_file *fim_db_create_temp_file(int storage);
@@ -69,6 +72,11 @@ typedef struct _test_fim_db_ctx_s {
 \**********************************************************************************************************************/
 static void callback(fdb_t *fim_sql, fim_entry *entry, int storage, void *arg) {
     function_called();
+}
+
+
+static void
+read_file_callback(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex, void *alert, void *mode, void *w_evt) {
 }
 
 static void *decode(sqlite3_stmt *stmt) {
@@ -115,7 +123,7 @@ static void expect_fim_db_create_file_success() {
 #ifndef TEST_WINAGENT
     expect_string(__wrap_sqlite3_open_v2, filename, "./fim.db");
 #else
-    expect_string(__wrap_sqlite3_open_v2, filename, "queue/fim/db/fim.db");
+    expect_string(__wrap_sqlite3_open_v2, filename, ".\\fim.db");
 #endif
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
     will_return(__wrap_sqlite3_open_v2, 1);
@@ -124,11 +132,11 @@ static void expect_fim_db_create_file_success() {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     will_return(__wrap_sqlite3_finalize, 0);
-    will_return(__wrap_sqlite3_close_v2,0);
+    will_return(__wrap_sqlite3_close_v2, 0);
 #ifndef TEST_WINAGENT
     expect_string(__wrap_chmod, path, "./fim.db");
 #else
-    expect_string(__wrap_chmod, path, "queue/fim/db/fim.db");
+    expect_string(__wrap_chmod, path, ".\\fim.db");
 #endif
     will_return(__wrap_chmod, 0);
 }
@@ -138,7 +146,7 @@ void expect_fim_db_clean_stmt() {
     will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
 }
 
-void expect_fim_db_bind_range(const char* start, const char* top, int retval) {
+void expect_fim_db_bind_range(const char *start, const char *top, int retval) {
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, start);
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
@@ -194,7 +202,7 @@ static void wraps_fim_db_decode_full_row() {
     expect_value(__wrap_sqlite3_column_int, iCol, 9);
     will_return(__wrap_sqlite3_column_int, 4096); // size
     expect_value_count(__wrap_sqlite3_column_text, iCol, 10, 2);
-    will_return_count(__wrap_sqlite3_column_text, "perm",2); // perm
+    will_return_count(__wrap_sqlite3_column_text, "perm", 2); // perm
     expect_value_count(__wrap_sqlite3_column_text, iCol, 11, 2);
     will_return_count(__wrap_sqlite3_column_text, "attributes", 2); // attributes
     expect_value_count(__wrap_sqlite3_column_text, iCol, 12, 2);
@@ -241,9 +249,15 @@ void expect_fim_db_callback_save_string(const FILE *fd, const char *str, const c
     will_return(__wrap_wstr_escape_json, escaped_string);
 
     if (storage == FIM_DB_DISK) {
+#ifndef TEST_WINAGENT
         expect_value(__wrap_fprintf, __stream, fd);
         expect_string(__wrap_fprintf, formatted_msg, formatted_str);
         will_return(__wrap_fprintf, strlen(formatted_str));
+#else
+        expect_value(wrap_fprintf, __stream, fd);
+        expect_string(wrap_fprintf, formatted_msg, formatted_str);
+        will_return(wrap_fprintf, strlen(formatted_str));
+#endif
     }
 }
 
@@ -254,18 +268,32 @@ void expect_fim_db_create_temp_file_fail(int storage) {
 
     will_return(__wrap_os_random, 2345);
 
+#ifndef TEST_WINAGENT
     expect_string(__wrap_fopen, path, "./tmp_19283746523452345");
+#else
+    expect_string(__wrap_fopen, path, ".\\tmp_19283746523452345");
+#endif
     expect_string(__wrap_fopen, mode, "w+");
     will_return(__wrap_fopen, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage './tmp_19283746523452345': Success (0)");
+#ifndef TEST_WINAGENT
+    expect_string(__wrap__merror, formatted_msg,
+                  "Failed to create temporal storage './tmp_19283746523452345': Success (0)");
+#else
+    expect_string(__wrap__merror, formatted_msg,
+                  "Failed to create temporal storage '.\\tmp_19283746523452345': Success (0)");
+#endif
 }
 
 void expect_fim_db_create_temp_file_success(int storage) {
     if (storage == FIM_DB_DISK) {
         will_return(__wrap_os_random, 2345);
 
+#ifndef TEST_WINAGENT
         expect_string(__wrap_fopen, path, "./tmp_19283746523452345");
+#else
+        expect_string(__wrap_fopen, path, ".\\tmp_19283746523452345");
+#endif
         expect_string(__wrap_fopen, mode, "w+");
         will_return(__wrap_fopen, 1);
     }
@@ -281,11 +309,22 @@ void expect_fim_db_clean_file(const FILE *fd, const char *path, int storage) {
     }
 }
 
+void expect_fim_db_read_line_from_file(FILE *fd, int storage, int it, const char *str) {
+    if (storage == FIM_DB_DISK) {
+        if (it == 0) {
+            will_return(__wrap_fseek, 0);
+        }
+
+        expect_value(__wrap_fgets, __stream, fd);
+        will_return(__wrap_fgets, str);
+    }
+}
+
 /**********************************************************************************************************************\
  * Setup and teardown functions
 \**********************************************************************************************************************/
 static int setup_group(void **state) {
-    (void) state;
+    (void)state;
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
 
@@ -293,9 +332,13 @@ static int setup_group(void **state) {
     will_return_always(__wrap_isChroot, 1);
 #endif
 
+#ifndef TEST_SERVER
+    will_return_always(__wrap_getDefine_Int, 0);
+#endif
+
     Read_Syscheck_Config("../test_syscheck2.conf");
 
-    syscheck.database_store = 0;    // disk
+    syscheck.database_store = 0; // disk
     w_mutex_init(&syscheck.fim_entry_mutex, NULL);
     test_mode = 1;
 
@@ -306,7 +349,6 @@ static int setup_group(void **state) {
 }
 
 static int teardown_group(void **state) {
-    (void) state;
     Free_Syscheck(&syscheck);
     w_mutex_destroy(&syscheck.fim_entry_mutex);
     test_mode = 0;
@@ -318,7 +360,7 @@ static int test_fim_db_setup(void **state) {
     test_data = calloc(1, sizeof(test_fim_db_insert_data));
 
     test_data->fim_sql = calloc(1, sizeof(fdb_t));
-    test_data->fim_sql->transaction.last_commit = 1; //Set a time diferent than 0
+    test_data->fim_sql->transaction.last_commit = 1; // Set a time diferent than 0
 
     test_data->entry = calloc(1, sizeof(fim_entry));
     test_data->entry->type = FIM_TYPE_FILE;
@@ -326,7 +368,7 @@ static int test_fim_db_setup(void **state) {
     test_data->entry->file_entry.data = calloc(1, sizeof(fim_file_data));
     test_data->entry->file_entry.data->inode = 200;
     test_data->entry->file_entry.data->dev = 100;
-    test_data->entry->file_entry.path =  strdup("/test/path");
+    test_data->entry->file_entry.path = strdup("/test/path");
 
 
     test_data->saved = calloc(1, sizeof(fim_file_data));
@@ -356,7 +398,7 @@ static int test_fim_db_teardown(void **state) {
 
 static int test_fim_tmp_file_setup_disk(void **state) {
     test_fim_db_insert_data *test_data;
-    if (test_fim_db_setup((void**)&test_data) != 0) {
+    if (test_fim_db_setup((void **)&test_data) != 0) {
         return -1;
     }
     test_data->tmp_file = calloc(1, sizeof(fim_tmp_file));
@@ -369,12 +411,12 @@ static int test_fim_tmp_file_teardown_disk(void **state) {
     test_fim_db_insert_data *test_data = *state;
     free(test_data->tmp_file->path);
     free(test_data->tmp_file);
-    return test_fim_db_teardown((void**)&test_data);
+    return test_fim_db_teardown((void **)&test_data);
 }
 
 static int test_fim_tmp_file_setup_memory(void **state) {
     test_fim_db_insert_data *test_data;
-    if (test_fim_db_setup((void**)&test_data) != 0) {
+    if (test_fim_db_setup((void **)&test_data) != 0) {
         return -1;
     }
     test_data->tmp_file = calloc(1, sizeof(fim_tmp_file));
@@ -389,7 +431,7 @@ static int test_fim_tmp_file_teardown_memory(void **state) {
     test_fim_db_insert_data *test_data = *state;
     W_Vector_free(test_data->tmp_file->list);
     free(test_data->tmp_file);
-    return test_fim_db_teardown((void**)&test_data);
+    return test_fim_db_teardown((void **)&test_data);
 }
 
 static int teardown_fim_tmp_file_disk(void **state) {
@@ -472,30 +514,38 @@ void test_fim_db_exec_simple_wquery_success(void **state) {
  * fim_db_init() tests
 \**********************************************************************************************************************/
 static int test_teardown_fim_db_init(void **state) {
-    fdb_t *fim_db = (fdb_t *) *state;
+    fdb_t *fim_db = (fdb_t *)*state;
     free(fim_db);
     return 0;
 }
 
 void test_fim_db_init_failed_file_creation(void **state) {
+    fdb_t *fim_db;
+
     wraps_fim_db_clean();
+
     expect_string(__wrap_sqlite3_open_v2, filename, FIM_DB_DISK_PATH);
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
     will_return(__wrap_sqlite3_open_v2, NULL);
     will_return(__wrap_sqlite3_open_v2, SQLITE_ERROR);
+
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
 #ifdef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "Couldn't create SQLite database 'queue/fim/db/fim.db': ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Couldn't create SQLite database '.\\fim.db': ERROR MESSAGE");
 #else
     expect_string(__wrap__merror, formatted_msg, "Couldn't create SQLite database './fim.db': ERROR MESSAGE");
 #endif
+
     will_return(__wrap_sqlite3_close_v2, 0);
-    fdb_t* fim_db;
+
     fim_db = fim_db_init(syscheck.database_store);
+
     assert_null(fim_db);
 }
 
 void test_fim_db_init_failed_file_creation_prepare(void **state) {
+    fdb_t *fim_db;
     wraps_fim_db_clean();
 
     expect_string(__wrap_sqlite3_open_v2, filename, FIM_DB_DISK_PATH);
@@ -509,12 +559,12 @@ void test_fim_db_init_failed_file_creation_prepare(void **state) {
 
     will_return(__wrap_sqlite3_close_v2, 0);
 
-    fdb_t* fim_db;
     fim_db = fim_db_init(syscheck.database_store);
     assert_null(fim_db);
 }
 
 void test_fim_db_init_failed_file_creation_step(void **state) {
+    fdb_t *fim_db;
     wraps_fim_db_clean();
     expect_string(__wrap_sqlite3_open_v2, filename, FIM_DB_DISK_PATH);
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
@@ -527,12 +577,12 @@ void test_fim_db_init_failed_file_creation_step(void **state) {
     expect_any(__wrap__merror, formatted_msg);
     will_return(__wrap_sqlite3_finalize, 0);
     will_return(__wrap_sqlite3_close_v2, 0);
-    fdb_t* fim_db;
     fim_db = fim_db_init(syscheck.database_store);
     assert_null(fim_db);
 }
 
 void test_fim_db_init_failed_file_creation_chmod(void **state) {
+    fdb_t *fim_db;
     errno = 0;
 
     wraps_fim_db_clean();
@@ -548,15 +598,14 @@ void test_fim_db_init_failed_file_creation_chmod(void **state) {
 #ifndef TEST_WINAGENT
     expect_string(__wrap_chmod, path, "./fim.db");
 #else
-    expect_string(__wrap_chmod, path, "queue/fim/db/fim.db");
+    expect_string(__wrap_chmod, path, ".\\fim.db");
 #endif
     will_return(__wrap_chmod, -1);
 #ifndef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object './fim.db' due to [(0)-(Success)].");
 #else
-    expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object 'queue/fim/db/fim.db' due to [(0)-(Success)].");
+    expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object '.\\fim.db' due to [(0)-(Success)].");
 #endif
-    fdb_t* fim_db;
     fim_db = fim_db_init(syscheck.database_store);
     assert_null(fim_db);
 }
@@ -567,12 +616,12 @@ void test_fim_db_init_failed_open_db(void **state) {
 #ifndef TEST_WINAGENT
     expect_string(__wrap_sqlite3_open_v2, filename, "./fim.db");
 #else
-    expect_string(__wrap_sqlite3_open_v2, filename, "queue/fim/db/fim.db");
+    expect_string(__wrap_sqlite3_open_v2, filename, ".\\fim.db");
 #endif
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
     will_return(__wrap_sqlite3_open_v2, NULL);
     will_return(__wrap_sqlite3_open_v2, SQLITE_ERROR);
-    fdb_t* fim_db;
+    fdb_t *fim_db;
     fim_db = fim_db_init(syscheck.database_store);
     assert_null(fim_db);
 }
@@ -587,11 +636,17 @@ void test_fim_db_init_failed_cache(void **state) {
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
 #ifndef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
+                  "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "
+                  "?, ?, ?, ?);': REASON GOES HERE");
 #else
-    expect_string(__wrap__merror, formatted_msg, "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
+                  "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, "
+                  "?, ?, ?, ?, ?, ?);': REASON GOES HERE");
 #endif
-    fdb_t* fim_db;
+    fdb_t *fim_db;
     fim_db = fim_db_init(syscheck.database_store);
     assert_null(fim_db);
 }
@@ -608,12 +663,18 @@ void test_fim_db_init_failed_cache_memory(void **state) {
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
 #ifndef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
+                  "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "
+                  "?, ?, ?, ?);': REASON GOES HERE");
 #else
-    expect_string(__wrap__merror, formatted_msg, "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
+                  "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, "
+                  "?, ?, ?, ?, ?, ?);': REASON GOES HERE");
 #endif
     will_return(__wrap_sqlite3_close_v2, 0);
-    fdb_t* fim_db;
+    fdb_t *fim_db;
     syscheck.database_store = 1;
     fim_db = fim_db_init(syscheck.database_store);
     syscheck.database_store = 0;
@@ -621,6 +682,7 @@ void test_fim_db_init_failed_cache_memory(void **state) {
 }
 
 void test_fim_db_init_failed_execution(void **state) {
+    fdb_t *fim_db;
     wraps_fim_db_clean();
     expect_fim_db_create_file_success();
     expect_string(__wrap_sqlite3_open_v2, filename, FIM_DB_DISK_PATH);
@@ -636,7 +698,6 @@ void test_fim_db_init_failed_execution(void **state) {
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_always(__wrap_sqlite3_finalize, SQLITE_OK);
-    fdb_t* fim_db;
     fim_db = fim_db_init(syscheck.database_store);
     assert_null(fim_db);
 }
@@ -661,12 +722,13 @@ void test_fim_db_init_failed_simple_query(void **state) {
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_always(__wrap_sqlite3_finalize, SQLITE_OK);
-    fdb_t* fim_db;
+    fdb_t *fim_db;
     fim_db = fim_db_init(syscheck.database_store);
     assert_null(fim_db);
 }
 
 void test_fim_db_init_success(void **state) {
+    fdb_t *fim_db;
     wraps_fim_db_clean();
     expect_fim_db_create_file_success();
     expect_string(__wrap_sqlite3_open_v2, filename, FIM_DB_DISK_PATH);
@@ -678,7 +740,6 @@ void test_fim_db_init_success(void **state) {
     will_return(__wrap_sqlite3_exec, NULL);
     will_return(__wrap_sqlite3_exec, SQLITE_OK);
     wraps_fim_db_exec_simple_wquery("BEGIN;");
-    fdb_t* fim_db;
     fim_db = fim_db_init(syscheck.database_store);
     assert_non_null(fim_db);
     *state = fim_db;
@@ -699,12 +760,12 @@ void test_fim_db_clean_file_not_removed(void **state) {
     will_return(__wrap_w_is_file, 1);
 
 #ifndef TEST_WINAGENT
-    for(i = 1; i <= FIMDB_RM_MAX_LOOP; i++) {
+    for (i = 1; i <= FIMDB_RM_MAX_LOOP; i++) {
         expect_any(__wrap__mdebug2, formatted_msg);
         expect_function_call(__wrap_usleep);
     }
 #else
-    for(i = 1; i <= FIMDB_RM_MAX_LOOP; i++) {
+    for (i = 1; i <= FIMDB_RM_MAX_LOOP; i++) {
         expect_any(__wrap__mdebug2, formatted_msg);
         expect_value(wrap_Sleep, dwMilliseconds, FIMDB_RM_DEFAULT_TIME * i);
     }
@@ -751,7 +812,11 @@ void test_fim_db_get_path_range_query_failed(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 
+#ifndef TEST_WINAGENT
     expect_fim_db_clean_file((FILE *)1, "./tmp_19283746523452345", FIM_DB_DISK);
+#else
+    expect_fim_db_clean_file((FILE *)1, ".\\tmp_19283746523452345", FIM_DB_DISK);
+#endif
 
     int ret = fim_db_get_path_range(&fim_sql, FIM_TYPE_FILE, start, top, &file, FIM_DB_DISK);
 
@@ -771,7 +836,11 @@ void test_fim_db_get_path_range_no_elements_in_range(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
+#ifndef TEST_WINAGENT
     expect_fim_db_clean_file((FILE *)1, "./tmp_19283746523452345", FIM_DB_DISK);
+#else
+    expect_fim_db_clean_file((FILE *)1, ".\\tmp_19283746523452345", FIM_DB_DISK);
+#endif
 
     int ret = fim_db_get_path_range(&fim_sql, FIM_TYPE_FILE, start, top, &file, FIM_DB_DISK);
 
@@ -781,8 +850,14 @@ void test_fim_db_get_path_range_no_elements_in_range(void **state) {
 void test_fim_db_get_path_range_success(void **state) {
     fdb_t fim_sql = { .transaction.last_commit = 192837465, .transaction.interval = 20 };
     fim_tmp_file *file = NULL;
-    const char *start = "start", *top = "top", *path = "/some/random/path";
+    const char *start = "start", *top = "top";
+#ifndef TEST_WINAGENT
+    const char *path = "/some/random/path";
     char *expected_str = "/some/random/path\n";
+#else
+    const char *path = "c:\\some\\random\\path";
+    char *expected_str = "c:\\some\\random\\path\n";
+#endif
 
     expect_fim_db_create_temp_file_success(FIM_DB_DISK);
 
@@ -840,7 +915,7 @@ void test_fim_db_get_data_checksum_success(void **state) {
     will_return(__wrap_EVP_DigestUpdate, 0);
 
     will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);  // Ending the loop at fim_db_process_get_query()
+    will_return(__wrap_sqlite3_step, SQLITE_DONE); // Ending the loop at fim_db_process_get_query()
 
     wraps_fim_db_check_transaction();
 
@@ -886,9 +961,15 @@ void test_fim_db_cache_failed(void **state) {
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
 #ifndef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
+                  "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "
+                  "?, ?, ?, ?);': REASON GOES HERE");
 #else
-    expect_string(__wrap__merror, formatted_msg, "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
+                  "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, "
+                  "?, ?, ?, ?, ?, ?);': REASON GOES HERE");
 #endif
     int ret = fim_db_cache(test_data->fim_sql);
     assert_int_equal(ret, FIMDB_ERR);
@@ -912,9 +993,15 @@ void test_fim_db_close_failed(void **state) {
     will_return(__wrap_sqlite3_finalize, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
 #ifndef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "Error finalizing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Error finalizing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
+                  "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "
+                  "?, ?, ?, ?);': REASON GOES HERE");
 #else
-    expect_string(__wrap__merror, formatted_msg, "Error finalizing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Error finalizing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
+                  "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, "
+                  "?, ?, ?, ?, ?, ?);': REASON GOES HERE");
 #endif
     will_return(__wrap_sqlite3_close_v2, SQLITE_BUSY);
     fim_db_close(test_data->fim_sql);
@@ -940,7 +1027,7 @@ void test_fim_db_finalize_stmt_failed(void **state) {
     int index;
     for (index = 0; index < FIMDB_STMT_SIZE; index++) {
         // Test failure in every index
-        if ( index > 0) {
+        if (index > 0) {
             will_return_count(__wrap_sqlite3_finalize, SQLITE_OK, index);
         }
         // Index of failure  SQL_SQMT[index]
@@ -966,7 +1053,7 @@ void test_fim_db_finalize_stmt_success(void **state) {
 /**********************************************************************************************************************\
  * fim_db_force_commit() tests
 \**********************************************************************************************************************/
-void test_fim_db_force_commit_failed(void **state){
+void test_fim_db_force_commit_failed(void **state) {
     test_fim_db_insert_data *test_data = *state;
     expect_string(__wrap_sqlite3_exec, sql, "END;");
     will_return(__wrap_sqlite3_exec, "ERROR_MESSAGE");
@@ -977,7 +1064,7 @@ void test_fim_db_force_commit_failed(void **state){
     assert_int_equal(1, test_data->fim_sql->transaction.last_commit);
 }
 
-void test_fim_db_force_commit_success(void **state){
+void test_fim_db_force_commit_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
     wraps_fim_db_check_transaction();
     fim_db_force_commit(test_data->fim_sql);
@@ -1003,11 +1090,17 @@ void test_fim_db_clean_stmt_reset_and_prepare_failed(void **state) {
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
-    #ifndef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': ERROR");
-    #else
-    expect_string(__wrap__merror, formatted_msg, "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': ERROR");
-    #endif
+#ifndef TEST_WINAGENT
+    expect_string(__wrap__merror, formatted_msg,
+                  "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
+                  "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "
+                  "?, ?, ?, ?);': ERROR");
+#else
+    expect_string(__wrap__merror, formatted_msg,
+                  "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
+                  "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, "
+                  "?, ?, ?, ?, ?, ?);': ERROR");
+#endif
     int ret = fim_db_clean_stmt(test_data->fim_sql, 0);
     assert_int_equal(ret, FIMDB_ERR);
 }
@@ -1261,7 +1354,8 @@ void test_fim_db_get_count_range_error_stepping(void **state) {
 
     will_return(__wrap_sqlite3_errmsg, "Some SQLite error");
 
-    expect_string(__wrap__merror, formatted_msg, "Step error getting count range 'start begin' 'top top': Some SQLite error");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Step error getting count range 'start begin' 'top top': Some SQLite error");
 
     ret = fim_db_get_count_range(test_data->fim_sql, FIM_TYPE_FILE, "begin", "top", &count);
 
@@ -1336,15 +1430,15 @@ void test_fim_db_process_get_query_error(void **state) {
 \**********************************************************************************************************************/
 void test_fim_db_delete_not_scanned(void **state) {
     test_fim_db_insert_data *test_data = *state;
-    test_data->tmp_file->fd = (FILE*)2345;
+    test_data->tmp_file->fd = (FILE *)2345;
     int ret;
 
     will_return(__wrap_fseek, 0);
 #ifdef WIN32
-    expect_value(wrap_fgets, __stream, (FILE*)2345);
+    expect_value(wrap_fgets, __stream, (FILE *)2345);
     will_return(wrap_fgets, "/tmp/file\n");
 #else
-    expect_value(__wrap_fgets, __stream, (FILE*)2345);
+    expect_value(__wrap_fgets, __stream, (FILE *)2345);
     will_return(__wrap_fgets, "/tmp/file\n");
 #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
@@ -1362,13 +1456,14 @@ void test_fim_db_delete_not_scanned(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     wraps_fim_db_check_transaction();
 
-    expect_value(__wrap_fclose, _File, (FILE*)2345);
+    expect_value(__wrap_fclose, _File, (FILE *)2345);
     will_return(__wrap_fclose, 1);
 
     expect_string(__wrap_remove, filename, "/tmp/file");
     will_return(__wrap_remove, 0);
 
-    ret = fim_db_delete_not_scanned(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex, syscheck.database_store);
+    ret = fim_db_delete_not_scanned(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex,
+                                    syscheck.database_store);
 
     assert_int_equal(ret, FIMDB_OK);
 }
@@ -1378,15 +1473,15 @@ void test_fim_db_delete_not_scanned(void **state) {
 \**********************************************************************************************************************/
 void test_fim_db_process_missing_entry(void **state) {
     test_fim_db_insert_data *test_data = *state;
-    test_data->tmp_file->fd = (FILE*)2345;
+    test_data->tmp_file->fd = (FILE *)2345;
     int ret;
 
     will_return(__wrap_fseek, 0);
 #ifdef WIN32
-    expect_value(wrap_fgets, __stream, (FILE*)2345);
+    expect_value(wrap_fgets, __stream, (FILE *)2345);
     will_return(wrap_fgets, "/tmp/file\n");
 #else
-    expect_value(__wrap_fgets, __stream, (FILE*)2345);
+    expect_value(__wrap_fgets, __stream, (FILE *)2345);
     will_return(__wrap_fgets, "/tmp/file\n");
 #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
@@ -1404,13 +1499,14 @@ void test_fim_db_process_missing_entry(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     wraps_fim_db_check_transaction();
 
-    expect_value(__wrap_fclose, _File, (FILE*)2345);
+    expect_value(__wrap_fclose, _File, (FILE *)2345);
     will_return(__wrap_fclose, 1);
 
     expect_string(__wrap_remove, filename, "/tmp/file");
     will_return(__wrap_remove, 0);
 
-    ret = fim_db_process_missing_entry(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex, syscheck.database_store, FIM_REALTIME, NULL);
+    ret = fim_db_process_missing_entry(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex,
+                                       syscheck.database_store, FIM_REALTIME, NULL);
 
     assert_int_equal(ret, FIMDB_OK);
 }
@@ -1432,7 +1528,7 @@ void test_fim_db_callback_save_path_null(void **state) {
 
 void test_fim_db_callback_save_path_disk(void **state) {
     test_fim_db_insert_data *test_data = *state;
-    test_data->tmp_file->fd = (FILE*)2345;
+    test_data->tmp_file->fd = (FILE *)2345;
 
     will_return(__wrap_wstr_escape_json, strdup("/test/path"));
 
@@ -1452,7 +1548,7 @@ void test_fim_db_callback_save_path_disk(void **state) {
 
 void test_fim_db_callback_save_path_disk_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
-    test_data->tmp_file->fd = (FILE*)2345;
+    test_data->tmp_file->fd = (FILE *)2345;
 
     will_return(__wrap_wstr_escape_json, strdup("/test/path"));
 
@@ -1511,7 +1607,7 @@ void test_fim_db_create_temp_file_disk(void **state) {
     will_return(__wrap_os_random, 2345);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_fopen, path, "tmp/tmp_19283746523452345");
+    expect_string(__wrap_fopen, path, ".\\tmp_19283746523452345");
 #else
     expect_string(__wrap_fopen, path, "./tmp_19283746523452345");
 #endif
@@ -1524,7 +1620,11 @@ void test_fim_db_create_temp_file_disk(void **state) {
 
     assert_non_null(ret);
     assert_non_null(ret->fd);
+#ifndef TEST_WINAGENT
     assert_string_equal(ret->path, "./tmp_19283746523452345");
+#else
+    assert_string_equal(ret->path, ".\\tmp_19283746523452345");
+#endif
 }
 
 void test_fim_db_create_temp_file_disk_error(void **state) {
@@ -1532,7 +1632,7 @@ void test_fim_db_create_temp_file_disk_error(void **state) {
     will_return(__wrap_os_random, 2345);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_fopen, path, "tmp/tmp_19283746523452345");
+    expect_string(__wrap_fopen, path, ".\\tmp_19283746523452345");
 #else
     expect_string(__wrap_fopen, path, "./tmp_19283746523452345");
 #endif
@@ -1541,11 +1641,12 @@ void test_fim_db_create_temp_file_disk_error(void **state) {
     will_return(__wrap_fopen, 0);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage 'tmp/tmp_19283746523452345': Success (0)");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Failed to create temporal storage '.\\tmp_19283746523452345': Success (0)");
 #else
-    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage './tmp_19283746523452345': Success (0)");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Failed to create temporal storage './tmp_19283746523452345': Success (0)");
 #endif
-
 
     fim_tmp_file *ret = fim_db_create_temp_file(FIM_DB_DISK);
 
@@ -1754,9 +1855,15 @@ static void test_fim_db_callback_save_string_disk_fail_to_print(void **state) {
 
     will_return(__wrap_wstr_escape_json, escaped_string);
 
+#ifndef TEST_WINAGENT
     expect_value(__wrap_fprintf, __stream, 1234);
     expect_string(__wrap_fprintf, formatted_msg, "test string\n");
     will_return(__wrap_fprintf, 0);
+#else
+    expect_value(wrap_fprintf, __stream, 1234);
+    expect_string(wrap_fprintf, formatted_msg, "test string\n");
+    will_return(wrap_fprintf, 0);
+#endif
 
     expect_string(__wrap__merror, formatted_msg, "Can't save entry: test string Success");
 
@@ -1779,9 +1886,15 @@ static void test_fim_db_callback_save_string_disk_success(void **state) {
 
     will_return(__wrap_wstr_escape_json, escaped_string);
 
+#ifndef TEST_WINAGENT
     expect_value(__wrap_fprintf, __stream, 1234);
     expect_string(__wrap_fprintf, formatted_msg, "test string\n");
     will_return(__wrap_fprintf, 12);
+#else
+    expect_value(wrap_fprintf, __stream, 1234);
+    expect_string(wrap_fprintf, formatted_msg, "test string\n");
+    will_return(wrap_fprintf, 12);
+#endif
 
     fim_db_callback_save_string(&fim_sql, str, FIM_DB_DISK, &file);
 
@@ -1947,8 +2060,13 @@ static void test_fim_db_read_line_from_file_disk_fail_to_read_line(void **state)
 
     will_return(__wrap_fseek, 0);
 
+#ifndef TEST_WINAGENT
     expect_value(__wrap_fgets, __stream, (FILE *)2345);
     will_return(__wrap_fgets, NULL);
+#else
+    expect_value(wrap_fgets, __stream, (FILE *)2345);
+    will_return(wrap_fgets, NULL);
+#endif
 
     retval = fim_db_read_line_from_file(&file, FIM_DB_DISK, 0, &line);
 
@@ -1963,8 +2081,13 @@ static void test_fim_db_read_line_from_file_disk_read_corrupt_line(void **state)
 
     will_return(__wrap_fseek, 0);
 
+#ifndef TEST_WINAGENT
     expect_value(__wrap_fgets, __stream, (FILE *)2345);
     will_return(__wrap_fgets, "/corrupt/path");
+#else
+    expect_value(wrap_fgets, __stream, (FILE *)2345);
+    will_return(wrap_fgets, "/corrupt/path");
+#endif
 
     expect_string(__wrap__merror, formatted_msg,
                   "Temporary path file '/some/random/path' is corrupt: missing line end.");
@@ -1980,8 +2103,13 @@ static void test_fim_db_read_line_from_file_disk_line_read(void **state) {
     char *line = NULL;
     int retval;
 
+#ifndef TEST_WINAGENT
     expect_value(__wrap_fgets, __stream, (FILE *)2345);
     will_return(__wrap_fgets, "/read/path\n");
+#else
+    expect_value(wrap_fgets, __stream, (FILE *)2345);
+    will_return(wrap_fgets, "/read/path\n");
+#endif
 
     retval = fim_db_read_line_from_file(&file, FIM_DB_DISK, 1, &line);
 
@@ -2026,7 +2154,8 @@ int main(void) {
 
         // fim_db_exec_simple_wquery
         cmocka_unit_test_setup_teardown(test_fim_db_exec_simple_wquery_error, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_exec_simple_wquery_success, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_exec_simple_wquery_success, test_fim_db_setup,
+                                        test_fim_db_teardown),
         // fim_db_init
         cmocka_unit_test(test_fim_db_init_failed_file_creation),
         cmocka_unit_test(test_fim_db_init_failed_file_creation_prepare),
@@ -2051,7 +2180,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_get_data_checksum_failed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_get_data_checksum_success, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_check_transaction
-        cmocka_unit_test_setup_teardown(test_fim_db_check_transaction_last_commit_is_0, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_check_transaction_last_commit_is_0, test_fim_db_setup,
+                                        test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_check_transaction_failed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_check_transaction_success, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_cache
@@ -2068,7 +2198,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_force_commit_success, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_clean_stmt
         cmocka_unit_test_setup_teardown(test_fim_db_clean_stmt_reset_failed, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_clean_stmt_reset_and_prepare_failed, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_clean_stmt_reset_and_prepare_failed, test_fim_db_setup,
+                                        test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_clean_stmt_success, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_get_checksum_range
         cmocka_unit_test(fim_db_get_checksum_range_null_ctx_left),
@@ -2081,16 +2212,21 @@ int main(void) {
         cmocka_unit_test(fim_db_get_checksum_range_fail_to_decode_string_array_on_second_half),
         cmocka_unit_test_teardown(fim_db_get_checksum_range_success, teardown_string_array),
         // fim_db_get_count_range
-        cmocka_unit_test_setup_teardown(test_fim_db_get_count_range_error_stepping, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_get_count_range_error_stepping, test_fim_db_setup,
+                                        test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_get_count_range_success, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_process_get_query
         cmocka_unit_test_setup_teardown(test_fim_db_process_get_query_success, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_process_get_query_error, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_callback_save_path
-        cmocka_unit_test_setup_teardown(test_fim_db_callback_save_path_null, test_fim_tmp_file_setup_disk, test_fim_tmp_file_teardown_disk),
-        cmocka_unit_test_setup_teardown(test_fim_db_callback_save_path_disk, test_fim_tmp_file_setup_disk, test_fim_tmp_file_teardown_disk),
-        cmocka_unit_test_setup_teardown(test_fim_db_callback_save_path_disk_error, test_fim_tmp_file_setup_disk, test_fim_tmp_file_teardown_disk),
-        cmocka_unit_test_setup_teardown(test_fim_db_callback_save_path_memory, test_fim_tmp_file_setup_memory, test_fim_tmp_file_teardown_memory),
+        cmocka_unit_test_setup_teardown(test_fim_db_callback_save_path_null, test_fim_tmp_file_setup_disk,
+                                        test_fim_tmp_file_teardown_disk),
+        cmocka_unit_test_setup_teardown(test_fim_db_callback_save_path_disk, test_fim_tmp_file_setup_disk,
+                                        test_fim_tmp_file_teardown_disk),
+        cmocka_unit_test_setup_teardown(test_fim_db_callback_save_path_disk_error, test_fim_tmp_file_setup_disk,
+                                        test_fim_tmp_file_teardown_disk),
+        cmocka_unit_test_setup_teardown(test_fim_db_callback_save_path_memory, test_fim_tmp_file_setup_memory,
+                                        test_fim_tmp_file_teardown_memory),
         // fim_db_callback_calculate_checksum
         cmocka_unit_test(test_fim_db_callback_calculate_checksum),
         // fim_db_create_temp_file
