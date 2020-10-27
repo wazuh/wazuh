@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file.
 
 # [v4.1.0]
 
+### Fixed
+- Fixed an error with `/groups/{group_id}/config` Wazuh API endpoints (GET and PUT) when using complex `localfile` configurations. ([#6276](https://github.com/wazuh/wazuh/pull/6383))
+
 ## [v4.0.0] -
 
 ### Added
