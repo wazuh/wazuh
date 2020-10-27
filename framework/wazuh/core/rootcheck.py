@@ -6,7 +6,7 @@ from datetime import datetime
 
 from wazuh.core.agent import Agent
 from wazuh.core.exception import WazuhException
-from wazuh.core.utils import WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBBackend
+from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend
 from wazuh.core.wdb import WazuhDBConnection
 
 fields = {
@@ -16,7 +16,7 @@ fields = {
 
 
 class WazuhDBQueryRootcheck(WazuhDBQuery):
-    def __init__(self, agent_id, offset, limit, sort, search, select, query, count, get_data,
+    def __init__(self, agent_id, offset, limit, sort, search, select, query, count, get_data, distinct,
                  default_sort_field='date_last', filters=None, fields=fields):
 
         if filters is None:
@@ -27,12 +27,18 @@ class WazuhDBQueryRootcheck(WazuhDBQuery):
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='pm_event', sort=sort, search=search,
                               select=select, fields=fields, default_sort_field=default_sort_field,
                               default_sort_order='DESC', filters=filters, query=query, backend=backend,
-                              min_select_fields=set(), count=count, get_data=get_data,
+                              min_select_fields=set(), count=count, get_data=get_data, distinct=distinct,
                               date_fields={'date_first', 'date_last'})
 
+    def _default_query(self):
+        return "SELECT {0} FROM " if not self.distinct else "SELECT DISTINCT {0} FROM "
+
     def _parse_filters(self):
-        WazuhDBQuery._parse_filters(self)
-        # status filter can only appear once in the filter list
+        if self.legacy_filters:
+            self._parse_legacy_filters()
+        if self.q:
+            self._parse_query()
+        # Status filter can only appear once in the filter list
         statuses = list(filter(lambda x: x['field'].startswith('status'), self.query_filters))
         if statuses:
             for status in statuses:
@@ -45,20 +51,15 @@ class WazuhDBQueryRootcheck(WazuhDBQuery):
     def _filter_status(self, filter_status):
         partial = "SELECT {0} AS status, date_first, date_last, log, pci_dss, cis FROM pm_event AS t WHERE " \
                   "date_last {1} (SELECT date_last-86400 FROM pm_event WHERE log = 'Ending rootcheck scan.')"
+        log_not_in = ") WHERE log NOT IN ('Starting rootcheck scan.', 'Ending rootcheck scan.', " \
+                     "'Starting syscheck scan.', 'Ending syscheck scan.'"
 
         if filter_status['value'] == 'all':
-            self.query = "SELECT {0} FROM (" + partial.format("'outstanding'", '>') + " UNION " + \
-                         partial.format("'solved'", '<=') + \
-                    ") WHERE log NOT IN ('Starting rootcheck scan.', 'Ending rootcheck scan.', " \
-                    "'Starting syscheck scan.', 'Ending syscheck scan.'"
+            self.query += partial.format("'outstanding'", '>') + " UNION " + partial.format("'solved'", '<=') + log_not_in
         elif filter_status['value'] == 'outstanding':
-            self.query = "SELECT {0} FROM (" + partial.format("'outstanding'", '>') + \
-                    ") WHERE log NOT IN ('Starting rootcheck scan.', 'Ending rootcheck scan.', " \
-                    "'Starting syscheck scan.', 'Ending syscheck scan.'"
+            self.query += partial.format("'outstanding'", '>') + log_not_in
         elif filter_status['value'] == 'solved':
-            self.query = "SELECT {0} FROM (" + partial.format("'solved'", '<=') + \
-                    ") WHERE log NOT IN ('Starting rootcheck scan.', 'Ending rootcheck scan.', " \
-                    "'Starting syscheck scan.', 'Ending syscheck scan.'"
+            self.query += partial.format("'solved'", '<=') + log_not_in
         else:
             raise WazuhException(1603, filter_status['value'])
 
@@ -76,10 +77,6 @@ class WazuhDBQueryRootcheck(WazuhDBQuery):
     @staticmethod
     def _pass_filter(db_filter):
         return False
-
-
-class WazuhDBQueryRootcheckDistinct(WazuhDBQueryDistinct, WazuhDBQueryRootcheck):
-    pass
 
 
 def last_scan(agent_id):

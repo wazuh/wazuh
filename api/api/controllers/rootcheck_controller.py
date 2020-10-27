@@ -10,6 +10,7 @@ from api.encoder import dumps, prettify
 from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh import rootcheck, syscheck
+from wazuh.core.exception import WazuhException
 
 logger = logging.getLogger('wazuh')
 
@@ -61,7 +62,8 @@ async def delete_rootcheck(request, pretty=False, wait_for_complete=False, agent
 
 
 async def get_rootcheck_agent(request, pretty=False, wait_for_complete=False, agent_id=None, offset=0, limit=None,
-                              sort=None, search=None, select=None, q='', status='all', pci_dss=None, cis=None):
+                              sort=None, search=None, select=None, q='', distinct=None, status='all', pci_dss=None,
+                              cis=None):
     """Returns a list of events from the rootcheck database.
 
     :param pretty: Show results in human-readable format
@@ -74,6 +76,7 @@ async def get_rootcheck_agent(request, pretty=False, wait_for_complete=False, ag
     :param search: Looks for elements with the specified string
     :param select: Select which fields to return (separated by comma)
     :param q: Query to filter results by.
+    :param distinct: Look for distinct values
     :param status: Filter by scan status.
     :param pci_dss: Filters by PCI requirement.
     :param cis: Filters by CIS requirement.
@@ -85,9 +88,10 @@ async def get_rootcheck_agent(request, pretty=False, wait_for_complete=False, ag
                 'search': parse_api_param(search, 'search'),
                 'select': select,
                 'q': q,
+                'distinct': distinct,
                 'filters': {
                     'status': status,
-                    'pci': pci_dss,
+                    'pci_dss': pci_dss,
                     'cis': cis
                     },
                 }

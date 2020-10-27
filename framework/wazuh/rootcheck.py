@@ -57,7 +57,7 @@ def get_last_scan(agent_list):
 
 @expose_resources(actions=["rootcheck:read"], resources=["agent:id:{agent_list}"])
 def get_rootcheck_agent(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
-                        filters=None, q=''):
+                        filters=None, q='', distinct=None):
     """Returns a list of events from the rootcheck database.
 
     :param agent_id: Agent ID.
@@ -69,6 +69,7 @@ def get_rootcheck_agent(agent_list=None, offset=0, limit=common.database_limit, 
     :param select: Selects which fields to return.
     :param search: Looks for items with the specified string.
     :param q: Defines query to filter in DB.
+    :param distinct: Look for distinct values
     :return: AffectedItemsWazuhResult
     """
     if filters is None:
@@ -79,7 +80,8 @@ def get_rootcheck_agent(agent_list=None, offset=0, limit=common.database_limit, 
                                       )
 
     db_query = WazuhDBQueryRootcheck(agent_id=agent_list[0], offset=offset, limit=limit, sort=sort, search=search,
-                                     select=select, count=True, get_data=True, query=q, filters=filters)
+                                     select=select, count=True, get_data=True, query=q, filters=filters,
+                                     distinct=distinct)
     data = db_query.run()
     result.affected_items.extend(data['items'])
     result.total_affected_items = data['totalItems']
