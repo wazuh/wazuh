@@ -11,12 +11,18 @@
 #include "sysInfo.hpp"
 #include "cmdHelper.h"
 #include "stringHelper.h"
+#include "filesystemHelper.h"
 #include <libproc.h>
 #include <pwd.h>
 #include <grp.h>
 #include <sys/proc.h>
 #include <sys/proc_info.h>
 #include <sys/sysctl.h>
+#include <fstream>
+
+const std::string MAC_APPS_PATH{"/Applications"};
+const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};
+const std::string APP_INFO_PATH{"Contents/Info.plist"};
 
 using ProcessTaskInfo = struct proc_taskallinfo;
 
@@ -136,6 +142,77 @@ std::string SysInfo::getSerialNumber() const
 {
     const auto rawData{Utils::exec("system_profiler SPHardwareDataType | grep Serial")};
     return Utils::trim(rawData.substr(rawData.find(":")), " :\t\r\n");
+}
+
+static void parseAppInfo(const std::string& path, nlohmann::json& data)
+{
+    std::fstream file{path, std::ios_base::in};
+    static const auto getValueFnc
+    {
+        [](const std::string& val)
+        {
+            const auto start{val.find(">")};
+            const auto end{val.rfind("<")};
+            return val.substr(start+1, end - start -1);
+        }
+    };
+    if (file.is_open())
+    {
+        std::string line;
+        nlohmann::json package;
+        while(std::getline(file, line))
+        {
+            line = Utils::trim(line," \t");
+            if (line == "<key>CFBundleName</key>" &&
+                std::getline(file, line))
+            {
+                package["name"] = getValueFnc(line);
+            }
+            else if (line == "<key>CFBundleShortVersionString</key>" &&
+                std::getline(file, line))
+            {
+                package["version"] = getValueFnc(line);
+            }
+            else if (line == "<key>LSApplicationCategoryType</key>" &&
+                std::getline(file, line))
+            {
+                package["group"] = getValueFnc(line);
+            }
+            else if (line == "<key>CFBundleIdentifier</key>" &&
+                std::getline(file, line))
+            {
+                package["description"] = getValueFnc(line);
+            }
+        }
+        if(!package.empty())
+        {
+            data.push_back(package);
+        }
+    }
+}
+
+nlohmann::json SysInfo::getPackages() const
+{
+    nlohmann::json ret;
+    const auto apps{Utils::enumerateDir(MAC_APPS_PATH)};
+    for(const auto& app : apps)
+    {
+        if (Utils::endsWith(app, ".app"))
+        {
+            const auto path{MAC_APPS_PATH + "/" + app + "/" + APP_INFO_PATH};
+            parseAppInfo(path, ret);
+        }
+    }
+    const auto utilities{Utils::enumerateDir(MAC_UTILITIES_PATH)};
+    for(const auto& utility : utilities)
+    {
+        if (Utils::endsWith(utility, ".app"))
+        {
+            const auto path{MAC_UTILITIES_PATH + "/" + utility + "/" + APP_INFO_PATH};
+            parseAppInfo(path, ret);
+        }
+    }
+    return ret;
 }
 
 nlohmann::json SysInfo::getProcessesInfo() const
