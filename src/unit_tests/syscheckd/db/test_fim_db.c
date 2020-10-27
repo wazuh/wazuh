@@ -231,9 +231,8 @@ void expect_fim_db_decode_string(const char *str) {
     will_return(__wrap_sqlite3_column_text, str);
 }
 
-void expect_fim_db_callback_save_string(const FILE *fd, const char *str, int storage) {
+void expect_fim_db_callback_save_string(const FILE *fd, const char *str, const char *formatted_str, int storage) {
     char *escaped_string = strdup(str);
-    char expected_str[OS_MAXSTR];
 
     if (escaped_string == NULL) {
         fail_msg("%s:%d - %s: Failed to duplicate string", __FILE__, __LINE__, __func__);
@@ -242,10 +241,9 @@ void expect_fim_db_callback_save_string(const FILE *fd, const char *str, int sto
     will_return(__wrap_wstr_escape_json, escaped_string);
 
     if (storage == FIM_DB_DISK) {
-        snprintf(expected_str, OS_MAXSTR, "%s\n", escaped_string);
         expect_value(__wrap_fprintf, __stream, fd);
-        expect_string(__wrap_fprintf, formatted_msg, expected_str);
-        will_return(__wrap_fprintf, strlen(expected_str));
+        expect_string(__wrap_fprintf, formatted_msg, formatted_str);
+        will_return(__wrap_fprintf, strlen(formatted_str));
     }
 }
 
@@ -416,6 +414,12 @@ static int teardown_string(void **state) {
     if (*state) {
         free(*state);
     }
+
+    return 0;
+}
+
+static int teardown_string_array(void **state) {
+    free_strarray(*state);
 
     return 0;
 }
@@ -735,7 +739,7 @@ void test_fim_db_get_path_range_fail_to_create_temporary_file(void **state) {
 }
 
 void test_fim_db_get_path_range_query_failed(void **state) {
-    fdb_t fim_sql;
+    fdb_t fim_sql = { .transaction.last_commit = 192837465, .transaction.interval = 20 };
     fim_tmp_file *file = NULL;
     const char *start = "start", *top = "top";
 
@@ -755,7 +759,7 @@ void test_fim_db_get_path_range_query_failed(void **state) {
 }
 
 void test_fim_db_get_path_range_no_elements_in_range(void **state) {
-    fdb_t fim_sql;
+    fdb_t fim_sql = { .transaction.last_commit = 192837465, .transaction.interval = 20 };
     fim_tmp_file *file = NULL;
     const char *start = "start", *top = "top";
 
@@ -775,9 +779,10 @@ void test_fim_db_get_path_range_no_elements_in_range(void **state) {
 }
 
 void test_fim_db_get_path_range_success(void **state) {
-    fdb_t fim_sql;
+    fdb_t fim_sql = { .transaction.last_commit = 192837465, .transaction.interval = 20 };
     fim_tmp_file *file = NULL;
     const char *start = "start", *top = "top", *path = "/some/random/path";
+    char *expected_str = "/some/random/path\n";
 
     expect_fim_db_create_temp_file_success(FIM_DB_DISK);
 
@@ -788,7 +793,7 @@ void test_fim_db_get_path_range_success(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
     expect_fim_db_decode_string(path);
-    expect_fim_db_callback_save_string((FILE *)1, path, FIM_DB_DISK);
+    expect_fim_db_callback_save_string((FILE *)1, path, expected_str, FIM_DB_DISK);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -1195,6 +1200,15 @@ static void fim_db_get_checksum_range_success(void **state) {
     const char *lower_array[] = { "/some/path", "0123456789ABCDEF0123456789ABCDEF01234567", NULL };
     const char *higher_array[] = { "/some/other/path", "123456789ABCDEF0123456789ABCDEF012345678", NULL };
     int retval;
+    char **strarray;
+
+    strarray = calloc(3, sizeof(char *));
+
+    if (strarray == NULL) {
+        fail();
+    }
+
+    *state = strarray;
 
     expect_fim_db_clean_stmt();
     expect_fim_db_bind_range(start, top, 0);
@@ -1219,6 +1233,10 @@ static void fim_db_get_checksum_range_success(void **state) {
 
     retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 2, ctx_left, ctx_right, &lower_half_path,
                                        &higher_half_path);
+
+    strarray[0] = lower_half_path;
+    strarray[1] = higher_half_path;
+
     assert_int_equal(retval, FIMDB_OK);
 }
 
@@ -1894,6 +1912,113 @@ static void test_fim_db_get_last_path_success(void **state) {
 }
 
 /**********************************************************************************************************************\
+ * fim_db_read_line_from_file()
+\**********************************************************************************************************************/
+static void test_fim_db_read_line_from_file_already_done_reading(void **state) {
+    fim_tmp_file file = { .elements = 3 };
+    char *line = NULL;
+    int retval;
+
+    retval = fim_db_read_line_from_file(&file, FIM_DB_DISK, 3, &line);
+
+    assert_int_equal(retval, 1);
+    assert_null(line);
+}
+
+static void test_fim_db_read_line_from_file_disk_fail_to_fseek(void **state) {
+    fim_tmp_file file = { .elements = 3, .path = "/some/random/path" };
+    char *line = NULL;
+    int retval;
+
+    will_return(__wrap_fseek, -1);
+
+    expect_string(__wrap__merror, formatted_msg, "Failed fseek in /some/random/path");
+
+    retval = fim_db_read_line_from_file(&file, FIM_DB_DISK, 0, &line);
+
+    assert_int_equal(retval, -1);
+    assert_null(line);
+}
+
+static void test_fim_db_read_line_from_file_disk_fail_to_read_line(void **state) {
+    fim_tmp_file file = { .elements = 3, .path = "/some/random/path", .fd = (FILE *)2345 };
+    char *line = NULL;
+    int retval;
+
+    will_return(__wrap_fseek, 0);
+
+    expect_value(__wrap_fgets, __stream, (FILE *)2345);
+    will_return(__wrap_fgets, NULL);
+
+    retval = fim_db_read_line_from_file(&file, FIM_DB_DISK, 0, &line);
+
+    assert_int_equal(retval, 0);
+    assert_null(line);
+}
+
+static void test_fim_db_read_line_from_file_disk_read_corrupt_line(void **state) {
+    fim_tmp_file file = { .elements = 3, .path = "/some/random/path", .fd = (FILE *)2345 };
+    char *line = NULL;
+    int retval;
+
+    will_return(__wrap_fseek, 0);
+
+    expect_value(__wrap_fgets, __stream, (FILE *)2345);
+    will_return(__wrap_fgets, "/corrupt/path");
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Temporary path file '/some/random/path' is corrupt: missing line end.");
+
+    retval = fim_db_read_line_from_file(&file, FIM_DB_DISK, 0, &line);
+
+    assert_int_equal(retval, 0);
+    assert_null(line);
+}
+
+static void test_fim_db_read_line_from_file_disk_line_read(void **state) {
+    fim_tmp_file file = { .elements = 3, .path = "/some/random/path", .fd = (FILE *)2345 };
+    char *line = NULL;
+    int retval;
+
+    expect_value(__wrap_fgets, __stream, (FILE *)2345);
+    will_return(__wrap_fgets, "/read/path\n");
+
+    retval = fim_db_read_line_from_file(&file, FIM_DB_DISK, 1, &line);
+
+    *state = line;
+
+    assert_int_equal(retval, 0);
+    assert_string_equal(line, "/read/path");
+}
+
+static void test_fim_db_read_line_from_file_memory_attempt_to_read_out_of_bounds(void **state) {
+    W_Vector list = { .size = 3 };
+    fim_tmp_file file = { .elements = 3, .list = &list };
+    char *line = NULL;
+    int retval;
+
+    expect_string(__wrap__merror, formatted_msg, "Attempted to retrieve an out of bounds line.");
+
+    retval = fim_db_read_line_from_file(&file, FIM_DB_MEMORY, 4, &line);
+
+    assert_int_equal(retval, 1);
+    assert_null(line);
+}
+
+static void test_fim_db_read_line_from_file_memory_line_read(void **state) {
+    char *vector[] = { "/some/random/path", NULL };
+    W_Vector list = { .size = 10, .vector = vector, .used = 1 };
+    fim_tmp_file file = { .elements = 1, .list = &list };
+    char *line = NULL;
+    int retval;
+
+    retval = fim_db_read_line_from_file(&file, FIM_DB_MEMORY, 0, &line);
+
+    assert_int_equal(retval, 0);
+    assert_string_equal(line, "/some/random/path");
+}
+
+/**********************************************************************************************************************\
  * main()
 \**********************************************************************************************************************/
 int main(void) {
@@ -1954,7 +2079,7 @@ int main(void) {
         cmocka_unit_test(fim_db_get_checksum_range_fail_to_decode_string_array_on_first_half),
         cmocka_unit_test(fim_db_get_checksum_range_fail_step_on_second_half),
         cmocka_unit_test(fim_db_get_checksum_range_fail_to_decode_string_array_on_second_half),
-        cmocka_unit_test(fim_db_get_checksum_range_success),
+        cmocka_unit_test_teardown(fim_db_get_checksum_range_success, teardown_string_array),
         // fim_db_get_count_range
         cmocka_unit_test_setup_teardown(test_fim_db_get_count_range_error_stepping, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_get_count_range_success, test_fim_db_setup, test_fim_db_teardown),
@@ -1998,6 +2123,14 @@ int main(void) {
         cmocka_unit_test(test_fim_db_get_last_path_fail_to_step_query),
         cmocka_unit_test(test_fim_db_get_last_path_query_returns_no_string),
         cmocka_unit_test_teardown(test_fim_db_get_last_path_success, teardown_string),
+        // fim_db_read_line_from_file
+        cmocka_unit_test(test_fim_db_read_line_from_file_already_done_reading),
+        cmocka_unit_test(test_fim_db_read_line_from_file_disk_fail_to_fseek),
+        cmocka_unit_test(test_fim_db_read_line_from_file_disk_fail_to_read_line),
+        cmocka_unit_test(test_fim_db_read_line_from_file_disk_read_corrupt_line),
+        cmocka_unit_test_teardown(test_fim_db_read_line_from_file_disk_line_read, teardown_string),
+        cmocka_unit_test(test_fim_db_read_line_from_file_memory_attempt_to_read_out_of_bounds),
+        cmocka_unit_test(test_fim_db_read_line_from_file_memory_line_read),
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
