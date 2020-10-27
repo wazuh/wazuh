@@ -59,7 +59,7 @@ def collect_non_excluded_tests():
     return collected_tests
 
 
-def run_tests(collected_tests, n_iterations=1, html_report=False):
+def run_tests(collected_tests, n_iterations=1):
     os.chdir(TESTS_PATH)
     for test in collected_tests:
         for i in range(1, n_iterations + 1):
@@ -67,8 +67,7 @@ def run_tests(collected_tests, n_iterations=1, html_report=False):
             test_name = f'{test.rsplit(".")[0]}{i if i != 1 else ""}'
             print(f'{test} {iteration_info}')
             f = open(os.path.join(RESULTS_PATH, test_name), 'w')
-            html_params = [f"--html={RESULTS_PATH}/html_reports/{test_name}.html", '--self-contained-html'] \
-                if html_report else []
+            html_params = [f"--html={RESULTS_PATH}/html_reports/{test_name}.html", '--self-contained-html']
             subprocess.call(PYTEST_COMMAND.split(' ') + html_params + [test], stdout=f)
             f.close()
             get_results(filename=os.path.join(RESULTS_PATH, test_name))
@@ -103,8 +102,6 @@ def get_script_arguments():
                              '"both".', action='store')
     parser.add_argument('-i', '--iterations', dest='iterations', default=1, type=int,
                         help='Specify how many times will every test be run. Default 1.', action='store')
-    parser.add_argument('-html', '--html_report', dest='html', default=False,
-                        help='Specify if an HTML report should be generated. Default None.', action='store_true')
 
     return parser.parse_args()
 
@@ -119,10 +116,9 @@ if __name__ == '__main__':
     results = options.results
     rbac_arg = options.rbac
     iterations = options.iterations
-    html = options.html
 
     if results:
         get_results()
     else:
         tests = collect_non_excluded_tests() if exclude else collect_tests(test_list=tl, keyword=key, rbac=rbac_arg)
-        run_tests(collected_tests=tests, n_iterations=iterations, html_report=html)
+        run_tests(collected_tests=tests, n_iterations=iterations)
