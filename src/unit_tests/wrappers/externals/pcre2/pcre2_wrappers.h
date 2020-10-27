@@ -32,4 +32,9 @@ int pcre2_match(pcre2_code_8 * code_match_data, const PCRE2_UCHAR8 * str_test,
 
 void wrap_pcre2_match_data_free(pcre2_match_data_8 * match_data);
 
+#undef pcre2_get_ovector_pointer
+#define pcre2_get_ovector_pointer wrap_pcre2_get_ovector_pointer
+
+size_t* wrap_pcre2_get_ovector_pointer(pcre2_match_data_8 * match_data);
+
 #endif
