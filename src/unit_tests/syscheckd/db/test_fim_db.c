@@ -65,6 +65,22 @@ typedef struct _test_fim_db_ctx_s {
 } test_fim_db_ctx_t;
 
 /**********************************************************************************************************************\
+ * Auxiliar callback functions
+\**********************************************************************************************************************/
+static void callback(fdb_t *fim_sql, fim_entry *entry, int storage, void *arg) {
+    function_called();
+}
+
+static void *decode(sqlite3_stmt *stmt) {
+    function_called();
+    return mock_type(void *);
+}
+
+static void free_row(void *row) {
+    function_called();
+}
+
+/**********************************************************************************************************************\
  * Local wrappers
 \**********************************************************************************************************************/
 
@@ -1151,10 +1167,6 @@ void test_fim_db_get_count_range_success(void **state) {
 /**********************************************************************************************************************\
  * fim_db_process_get_query() tests
 \**********************************************************************************************************************/
-void auxiliar_callback(fdb_t *fim_sql, fim_entry *entry, int storage, void *arg) {
-    // unused
-}
-
 void test_fim_db_process_get_query_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
     int ret;
@@ -1166,9 +1178,11 @@ void test_fim_db_process_get_query_success(void **state) {
 
     wraps_fim_db_decode_full_row();
 
+    expect_function_call(callback);
+
     wraps_fim_db_check_transaction();
 
-    ret = fim_db_process_get_query(test_data->fim_sql, 0, 0, auxiliar_callback, FIM_DB_DISK, NULL);
+    ret = fim_db_process_get_query(test_data->fim_sql, 0, 0, callback, FIM_DB_DISK, NULL);
 
     assert_int_equal(ret, FIMDB_OK);
 }
@@ -1182,7 +1196,7 @@ void test_fim_db_process_get_query_error(void **state) {
 
     wraps_fim_db_check_transaction();
 
-    ret = fim_db_process_get_query(test_data->fim_sql, 0, 0, auxiliar_callback, FIM_DB_DISK, NULL);
+    ret = fim_db_process_get_query(test_data->fim_sql, 0, 0, callback, FIM_DB_DISK, NULL);
 
     assert_int_equal(ret, FIMDB_ERR);
 }
@@ -1467,6 +1481,113 @@ void test_fim_db_clean_file_memory() {
 }
 
 /**********************************************************************************************************************\
+ * fim_db_multiple_row_query()
+\**********************************************************************************************************************/
+static void test_fim_db_multiple_row_query_null_decode_function(void **state) {
+    fdb_t fim_sql;
+    int retval;
+
+    retval = fim_db_multiple_row_query(&fim_sql, 1, NULL, free_row, FIM_DB_CALLBACK_TYPE(callback), FIM_DB_DISK, NULL);
+
+    assert_int_equal(retval, FIMDB_ERR);
+}
+
+static void test_fim_db_multiple_row_query_null_callback_function(void **state) {
+    fdb_t fim_sql;
+    int retval;
+
+    retval = fim_db_multiple_row_query(&fim_sql, 1, decode, free_row, NULL, FIM_DB_DISK, NULL);
+
+    assert_int_equal(retval, FIMDB_ERR);
+}
+
+static void test_fim_db_multiple_row_query_null_free_function(void **state) {
+    fdb_t fim_sql;
+    int retval;
+
+    retval = fim_db_multiple_row_query(&fim_sql, 1, decode, NULL, FIM_DB_CALLBACK_TYPE(callback), FIM_DB_DISK, NULL);
+
+    assert_int_equal(retval, FIMDB_ERR);
+}
+
+static void test_fim_db_multiple_row_query_fail_to_step(void **state) {
+    fdb_t fim_sql = { .transaction.last_commit = 192837445, .transaction.interval = 20 };
+    int retval;
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
+    wraps_fim_db_check_transaction();
+
+    retval =
+    fim_db_multiple_row_query(&fim_sql, 1, decode, free_row, FIM_DB_CALLBACK_TYPE(callback), FIM_DB_DISK, NULL);
+
+    assert_int_equal(retval, FIMDB_ERR);
+}
+
+static void test_fim_db_multiple_row_query_no_data_returned(void **state) {
+    fdb_t fim_sql = { .transaction.last_commit = 192837445, .transaction.interval = 20 };
+    int retval;
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    wraps_fim_db_check_transaction();
+
+    retval =
+    fim_db_multiple_row_query(&fim_sql, 1, decode, free_row, FIM_DB_CALLBACK_TYPE(callback), FIM_DB_DISK, NULL);
+
+    assert_int_equal(retval, FIMDB_OK);
+}
+
+static void test_fim_db_multiple_row_query_fail_to_decode(void **state) {
+    fdb_t fim_sql = { .transaction.last_commit = 192837445, .transaction.interval = 20 };
+    int retval;
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_function_call(decode);
+    will_return(decode, NULL);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    wraps_fim_db_check_transaction();
+
+    retval =
+    fim_db_multiple_row_query(&fim_sql, 1, decode, free_row, FIM_DB_CALLBACK_TYPE(callback), FIM_DB_DISK, NULL);
+
+    assert_int_equal(retval, FIMDB_OK);
+}
+
+static void test_fim_db_multiple_row_query_success(void **state) {
+    fdb_t fim_sql = { .transaction.last_commit = 192837445, .transaction.interval = 20 };
+    int data;
+    int retval;
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_function_call(decode);
+    will_return(decode, &data);
+
+    expect_function_call(callback);
+
+    expect_function_call(free_row);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    wraps_fim_db_check_transaction();
+
+    retval =
+    fim_db_multiple_row_query(&fim_sql, 1, decode, free_row, FIM_DB_CALLBACK_TYPE(callback), FIM_DB_DISK, NULL);
+
+    assert_int_equal(retval, FIMDB_OK);
+}
+
+/**********************************************************************************************************************\
  * main()
 \**********************************************************************************************************************/
 int main(void) {
@@ -1547,6 +1668,14 @@ int main(void) {
         cmocka_unit_test(test_fim_db_clean_file_disk),
         // cmocka_unit_test(test_fim_db_clean_file_disk_error),
         cmocka_unit_test(test_fim_db_clean_file_memory),
+        // fim_db_multiple_row_query
+        cmocka_unit_test(test_fim_db_multiple_row_query_null_decode_function),
+        cmocka_unit_test(test_fim_db_multiple_row_query_null_callback_function),
+        cmocka_unit_test(test_fim_db_multiple_row_query_null_free_function),
+        cmocka_unit_test(test_fim_db_multiple_row_query_fail_to_step),
+        cmocka_unit_test(test_fim_db_multiple_row_query_no_data_returned),
+        cmocka_unit_test(test_fim_db_multiple_row_query_fail_to_decode),
+        cmocka_unit_test(test_fim_db_multiple_row_query_success),
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

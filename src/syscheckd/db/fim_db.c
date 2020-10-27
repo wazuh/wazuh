@@ -283,11 +283,13 @@ void fim_db_clean_file(fim_tmp_file **file, int storage) {
 }
 
 #ifndef WIN32
+// LCOV_EXCL_START
 fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql,
                                           __attribute__((unused)) fim_type type,
                                           const char *path) {
     return fim_db_get_path(fim_sql, path);
 }
+// LCOV_EXCL_STOP
 #else
 fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const char *path) {
     char *full_path, *key_path, *value_name;
