@@ -4,6 +4,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
+import stat
 import sys
 from unittest.mock import patch, MagicMock
 
@@ -151,10 +152,12 @@ def test_get_file_exceptions():
             # UUT 2nd call forcing en error opening decoder file
             decoder.get_file(filename='test1_decoders.xml')
     with pytest.raises(WazuhError, match=r'.* 1502 .*'):
+        filename = 'test2_decoders.xml'
+        old_permissions = stat.S_IMODE(os.lstat(os.path.join(
+            test_data_path, 'core/tests/data/decoders', filename)).st_mode)
         try:
-            filename = 'test2_decoders.xml'
             os.chmod(os.path.join(test_data_path, 'core/tests/data/decoders', filename), 000)
             # UUT 3rd call forcing a permissions error opening decoder file
             decoder.get_file(filename=filename)
         finally:
-            os.chmod(os.path.join(test_data_path, 'core/tests/data/decoders', filename), 777)
+            os.chmod(os.path.join(test_data_path, 'core/tests/data/decoders', filename), old_permissions)

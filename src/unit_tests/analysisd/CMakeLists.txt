@@ -43,6 +43,12 @@ list(APPEND analysisd_flags "-Wl,--wrap,wdb_get_agent_labels")
 list(APPEND analysisd_names "test_mitre")
 list(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,_merror -Wl,--wrap,wdbc_query_parse_json")
 
+list(APPEND analysisd_names "test_expression")
+list(APPEND analysisd_flags "-Wl,--wrap,OS_IsValidIP")
+
+list(APPEND analysisd_names "test_rules")
+LIST(APPEND analysisd_flags "-Wl,--wrap,_mwarn -Wl,--wrap,_merror")
+
 LIST(APPEND analysisd_names "test_same_different_loop")
 LIST(APPEND analysisd_flags "-W")
 

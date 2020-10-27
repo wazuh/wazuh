@@ -15,8 +15,8 @@
 #define FIM_DAEMON_STARTED                  "(6000): Starting daemon..."
 #define FIM_DISABLED                        "(6001): File integrity monitoring disabled."
 #define FIM_MONITORING_REGISTRY             "(6002): Monitoring registry entry: '%s%s'."
-#define FIM_MONITORING_DIRECTORY            "(6003): Monitoring directory/file: '%s', with options '%s'."
-#define FIM_MONITORING_LDIRECTORY           "(6003): Monitoring directory: '%s' (%s), with options '%s'."
+#define FIM_MONITORING_DIRECTORY            "(6003): Monitoring path: '%s', with options '%s'."
+#define FIM_MONITORING_LDIRECTORY           "(6003): Monitoring path: '%s' (%s), with options '%s'."
 #define FIM_NO_DIFF                         "(6004): No diff for file: '%s'"
 #define FIM_WAITING_QUEUE                   "(6005): Cannot connect to queue '%s' (%d)'%s'. Waiting %d seconds to reconnect."
 #define FIM_PRINT_IGNORE_ENTRY              "(6206): Ignore '%s' entry '%s'"
@@ -47,14 +47,14 @@
 #define FIM_WINREGISTRY_START               "(6031): Registry integrity monitoring scan started"
 #define FIM_WINREGISTRY_ENDED               "(6032): Registry integrity monitoring scan ended"
 #define FIM_LINKCHECK_START                 "(6033): Starting symbolic link updater. Interval '%d'."
-#define FIM_LINKCHECK_CHANGED               "(6034): Updating the symbolic link from '%s': '%s' to '%s'."
+#define FIM_LINKCHECK_CHANGED               "(6034): Updating symbolic link '%s': from '%s' to '%s'."
 #define FIM_WHODATA_VOLUMES                 "(6036): Analyzing Windows volumes"
 
 #define FIM_DB_NORMAL_ALERT                 "(6038): Sending DB back to normal alert."
 #define FIM_DB_80_PERCENTAGE_ALERT          "(6039): Sending DB 80%% full alert."
 #define FIM_DB_90_PERCENTAGE_ALERT          "(6039): Sending DB 90%% full alert."
-#define FIM_DIFF_FILE_SIZE_LIMIT            "(6040): Maximum file size limit to generate diff information configured to '%d KB' for '%s'."
-#define FIM_DISK_QUOTA_LIMIT                "(6041): Maximum disk quota size limit configured to '%d KB'."
+
+
 #define FIM_FILE_SIZE_LIMIT_DISABLED        "(6042): File size limit disabled."
 #define FIM_DISK_QUOTA_LIMIT_DISABLED       "(6043): Disk quota limit disabled."
 
