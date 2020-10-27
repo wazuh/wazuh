@@ -22,7 +22,7 @@ with patch('wazuh.common.getgrnam'):
             from wazuh.tests.util import RBAC_bypasser
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-            from wazuh.cdb_list import get_lists, get_path_lists
+            from wazuh.cdb_list import get_lists, get_path_lists, iterate_lists
             from wazuh.core import common
             from wazuh.core.results import AffectedItemsWazuhResult
 
@@ -56,6 +56,13 @@ RESULTS_GET_LIST = RESULT_GET_LIST_FILE_1 + RESULT_GET_LIST_FILE_2
 RESULTS_GET_PATH_LIST = RESULT_GET_PATH_LIST_FILE_1 + RESULT_GET_PATH_LIST_FILE_2
 
 TOTAL_LISTS = len(PATHS_FILES)
+
+
+def lists_path_mock(**kwargs):
+    """Mock iterate_lists to avoid the default parameter."""
+    kwargs['absolute_path'] = DATA_PATH
+    return iterate_lists(**kwargs)
+
 
 # Tests
 
@@ -169,7 +176,8 @@ def test_get_lists_sort():
     assert result_b.affected_items == RESULT_GET_LIST_FILE_2 + RESULT_GET_LIST_FILE_1
 
 
-def test_get_path_lists():
+@patch('wazuh.cdb_list.iterate_lists', side_effect=lists_path_mock)
+def test_get_path_lists(iterate_mock):
     """Test `get_path_lists` functionality without any other parameter aside from `path`.
 
     `get_path_lists` works different than `get_lists` as it will read every CDB file from the default path (mocked to
@@ -184,7 +192,8 @@ def test_get_path_lists():
 
 
 @pytest.mark.parametrize("limit", [1, 2])
-def test_get_path_lists_limit(limit):
+@patch('wazuh.cdb_list.iterate_lists', side_effect=lists_path_mock)
+def test_get_path_lists_limit(iterate_mock, limit):
     """Test `get_path_lists` functionality when using the `limit` parameter.
 
     Parameters
@@ -201,7 +210,8 @@ def test_get_path_lists_limit(limit):
 
 
 @pytest.mark.parametrize("offset", [0, 1])
-def test_get_path_lists_offset(offset):
+@patch('wazuh.cdb_list.iterate_lists', side_effect=lists_path_mock)
+def test_get_path_lists_offset(iterate_mock, offset):
     """Test `get__path_lists` functionality when using the `offset` parameter.
 
     Parameters
@@ -234,7 +244,8 @@ def test_get_path_lists_offset(offset):
     ("lists_2", True, "filename", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_1),
     ("invalid", True, "filename", PATHS_FILES, RESULTS_GET_PATH_LIST)
 ])
-def test_get_path_lists_search(search_text, complementary_search, search_in_fields, paths, expected_result):
+@patch('wazuh.cdb_list.iterate_lists', side_effect=lists_path_mock)
+def test_get_path_lists_search(iterate_mock, search_text, complementary_search, search_in_fields, paths, expected_result):
     """Test `get_path_lists` functionality when using the `search` parameter.
 
     Parameters
@@ -259,7 +270,8 @@ def test_get_path_lists_search(search_text, complementary_search, search_in_fiel
     assert result.affected_items == expected_result
 
 
-def test_get_path_lists_sort():
+@patch('wazuh.cdb_list.iterate_lists', side_effect=lists_path_mock)
+def test_get_path_lists_sort(iterate_mock):
     """Test `get_path_lists` functionality when using the `sort` parameter."""
     result_a = get_path_lists(path=PATHS_FILES, sort_by=['filename'], sort_ascending=True)
     result_b = get_path_lists(path=PATHS_FILES, sort_by=['filename'], sort_ascending=False)
