@@ -4,6 +4,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
+import stat
 import sys
 from unittest.mock import patch, MagicMock
 
@@ -64,6 +65,10 @@ def test_check_status(status, expected_result):
 def test_load_decoders_from_file(filename, relative_dirname, status, permissions, exception):
     full_file_path = os.path.join(test_data_path, relative_dirname, filename)
     try:
+        old_permissions = stat.S_IMODE(os.lstat(full_file_path).st_mode)
+    except FileNotFoundError:
+        old_permissions = None
+    try:
         # Set file permissions if the file exists
         os.path.exists(full_file_path) and os.chmod(full_file_path, permissions)
         # UUT call
@@ -79,4 +84,4 @@ def test_load_decoders_from_file(filename, relative_dirname, status, permissions
         assert e.code == exception.code
     finally:
         # Set file permissions back to 777 after test if the file exists
-        os.path.exists(full_file_path) and os.chmod(full_file_path, 777)
+        os.path.exists(full_file_path) and os.chmod(full_file_path, old_permissions)
