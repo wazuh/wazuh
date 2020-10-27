@@ -1707,6 +1707,49 @@ static void test_fim_db_callback_save_string_memory(void **state) {
 }
 
 /**********************************************************************************************************************\
+ * fim_db_get_count()
+\**********************************************************************************************************************/
+static void test_fim_db_get_count_invalid_index(void **state) {
+    fdb_t fim_sql;
+    int retval;
+
+    retval = fim_db_get_count(&fim_sql, -1);
+
+    assert_int_equal(retval, FIMDB_ERR);
+}
+
+static void test_fim_db_get_count_fail_to_query_count(void **state) {
+    fdb_t fim_sql;
+    int retval;
+
+    expect_fim_db_clean_stmt();
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
+    retval = fim_db_get_count(&fim_sql, FIMDB_STMT_GET_COUNT_PATH);
+
+    assert_int_equal(retval, FIMDB_ERR);
+}
+
+static void test_fim_db_get_count_success(void **state) {
+    fdb_t fim_sql;
+    int retval;
+
+    expect_fim_db_clean_stmt();
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 1);
+
+    retval = fim_db_get_count(&fim_sql, FIMDB_STMT_GET_COUNT_PATH);
+
+    assert_int_equal(retval, 1);
+}
+
+/**********************************************************************************************************************\
  * main()
 \**********************************************************************************************************************/
 int main(void) {
@@ -1801,6 +1844,10 @@ int main(void) {
         cmocka_unit_test_teardown(test_fim_db_callback_save_string_disk_fail_to_print, teardown_string),
         cmocka_unit_test_teardown(test_fim_db_callback_save_string_disk_success, teardown_string),
         cmocka_unit_test_setup_teardown(test_fim_db_callback_save_string_memory, setup_vector, teardown_vector),
+        // fim_db_get_count
+        cmocka_unit_test(test_fim_db_get_count_invalid_index),
+        cmocka_unit_test(test_fim_db_get_count_fail_to_query_count),
+        cmocka_unit_test(test_fim_db_get_count_success),
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
