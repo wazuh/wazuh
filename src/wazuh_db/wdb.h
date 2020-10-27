@@ -161,6 +161,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GET_AGENTS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_GREATER_KEEPALIVE,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_LESS_KEEPALIVE,
+    WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
@@ -193,7 +194,8 @@ typedef enum global_db_access {
     WDB_DELETE_GROUP,
     WDB_DELETE_AGENT_BELONG,
     WDB_DELETE_GROUP_BELONG,
-    WDB_RESET_AGENTS_CONNECTION
+    WDB_RESET_AGENTS_CONNECTION,
+    WDB_GET_AGENTS_BY_CONNECTION_STATUS
 } global_db_access;
 
 typedef struct wdb_t {
@@ -1271,6 +1273,18 @@ int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output);
  */
 int wdb_parse_reset_agents_connection(wdb_t * wdb, char * output);
 
+/**
+ * @brief Function to parse the get agents by connection status request.
+ *
+ * @param wdb The global struct database.
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with 'connection_status'.
+ * @param [out] output Response of the query in JSON format.
+ * @retval 0 Success: Response contains the value.
+ * @retval -1 On error: Response contains details of the error.
+ */
+int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, char* output) {
+
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);
 
 int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail);
@@ -1709,6 +1723,16 @@ wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **out
  * @return 0 On success. -1 On error.
  */
 int wdb_global_reset_agents_connection(wdb_t *wdb);
+
+/**
+ * @brief Function to get the id of every agent with a specific connection_status.
+ *
+ * @param wdb The Global struct database.
+ * @param status Connection status of the agents requested.
+ * @retval JSON with every agent ID on success.
+ * @retval NULL on error.
+ */
+cJSON* wdb_global_get_agents_by_connection_status(wdb_t *wdb, const char status);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
