@@ -21,7 +21,10 @@
 void w_calloc_expression_t(w_expression_t ** var, w_exp_type_t type);
 bool w_expression_add_osip(w_expression_t ** var, char * ip);
 void w_free_expression_t(w_expression_t ** var);
-bool w_expression_test(w_expression_t * expression, const char * str_test);
+bool w_expression_match(w_expression_t * expression, const char * str_test, const char ** end_match,
+                        regex_matching * regex_match);
+void w_expression_PCRE2_fill_regex_match(int captured_groups, const char * str_test, pcre2_match_data * match_data,
+                                         regex_matching * regex_match);
 
 /* setup/teardown */
     
@@ -507,7 +510,7 @@ void w_expression_match_end_match_NULL(void ** state)
     char * str_test = NULL;
     os_strdup("test", str_test);
 
-    char * aux[2]   ;
+    char * aux[2];
     aux[0] = str_test;
     aux[1] = str_test+1;
 
@@ -525,6 +528,99 @@ void w_expression_match_end_match_NULL(void ** state)
     os_free(pattern);
     os_free(regex_match);
     w_free_expression_t(&expression);
+}
+
+void w_expression_PCRE2_fill_regex_match_no_capture_groups(void ** state)
+{
+    int captured_groups = 0;
+
+    const char * str_test = "test";
+
+    pcre2_match_data * match_data = (pcre2_match_data*)1;
+
+    regex_matching * regex_match;
+    os_calloc(1, sizeof(regex_matching), regex_match);
+
+    w_expression_PCRE2_fill_regex_match(captured_groups, str_test, match_data, regex_match);
+
+    os_free(regex_match);
+}
+
+void w_expression_PCRE2_fill_regex_match_str_test_NULL(void ** state)
+{
+    int captured_groups = 2;
+
+    const char * str_test = NULL;
+
+    pcre2_match_data * match_data = (pcre2_match_data*)1;
+
+    regex_matching * regex_match;
+    os_calloc(1, sizeof(regex_matching), regex_match);
+
+    w_expression_PCRE2_fill_regex_match(captured_groups, str_test, match_data, regex_match);
+
+    os_free(regex_match);
+}
+
+void w_expression_PCRE2_fill_regex_match_match_data_NULL(void ** state)
+{
+    int captured_groups = 2;
+
+    const char * str_test = "test";
+
+    pcre2_match_data * match_data = NULL;
+
+    regex_matching * regex_match;
+    os_calloc(1, sizeof(regex_matching), regex_match);
+
+    w_expression_PCRE2_fill_regex_match(captured_groups, str_test, match_data, regex_match);
+
+    os_free(regex_match);
+}
+
+void w_expression_PCRE2_fill_regex_match_regex_match_NULL(void ** state)
+{
+    int captured_groups = 2;
+
+    const char * str_test = "test";
+
+    pcre2_match_data * match_data = (pcre2_match_data*)1;
+
+    regex_matching * regex_match = NULL;
+
+    w_expression_PCRE2_fill_regex_match(captured_groups, str_test, match_data, regex_match);
+
+    os_free(regex_match);
+}
+
+void w_expression_PCRE2_fill_regex_match_done(void ** state)
+{
+    int captured_groups = 2;
+
+    const char * str_test = "test";
+
+    pcre2_match_data * match_data = (pcre2_match_data*)1;
+
+    regex_matching * regex_match;
+    os_calloc(1, sizeof(regex_matching), regex_match);
+
+    char * str_aux = NULL;
+    os_strdup("test_regex_match", str_aux);
+
+    char * aux[4];
+    aux[0] = (char*)0;
+    aux[1] = (char*)1;
+    aux[2] = (char*)2;
+    aux[3] = (char*)3;
+
+    will_return(wrap_pcre2_get_ovector_pointer, aux);
+
+    w_expression_PCRE2_fill_regex_match(captured_groups, str_test, match_data, regex_match);
+
+    os_free(str_aux);
+    os_free(regex_match->sub_strings[0]);
+    os_free(regex_match->sub_strings);
+    os_free(regex_match);
 }
 
 int main(void)
@@ -562,7 +658,14 @@ int main(void)
         cmocka_unit_test(w_expression_match_pcre2_match_captured_groups),
         cmocka_unit_test(w_expression_match_pcre2_match_regex_matching),
         cmocka_unit_test(w_expression_test_default),
-        cmocka_unit_test(w_expression_match_end_match_NULL)
+        cmocka_unit_test(w_expression_match_end_match_NULL),
+
+        //Test w_expression_PCRE2_fill_regex_match
+        cmocka_unit_test(w_expression_PCRE2_fill_regex_match_no_capture_groups),
+        cmocka_unit_test(w_expression_PCRE2_fill_regex_match_str_test_NULL),
+        cmocka_unit_test(w_expression_PCRE2_fill_regex_match_match_data_NULL),
+        cmocka_unit_test(w_expression_PCRE2_fill_regex_match_regex_match_NULL),
+        cmocka_unit_test(w_expression_PCRE2_fill_regex_match_done)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
