@@ -85,9 +85,10 @@ x-rbac-catalog:
       description: "Execute active response commands in the agents"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['active-response:command']
-        resources: ['agent:id:001']
+        resources: ['agent:id:001', 'agent:group:atlantic']
         effect: "allow"
     'agent:create':
       description: "Create new agents"
@@ -101,6 +102,7 @@ x-rbac-catalog:
       description: "Access agents information (id, name, group, last keep alive, etc)"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['agent:read']
         resources: ['agent:id:*']
@@ -109,17 +111,19 @@ x-rbac-catalog:
       description: "Delete agents"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['agent:delete']
-        resources: ['agent:id:010']
+        resources: ['agent:id:010', 'agent:group:pacific']
         effect: "allow"
     'agent:modify_group':
       description: "Change the group of agents"
       resources:
        - $ref: '#/x-rbac-catalog/resources/agent:id'
+       - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['agent:modify_group']
-        resources: ['agent:id:*']
+        resources: ['agent:id:004', 'agent:group:us-east']
         effect: "allow"
     'group:modify_assignments':
       description: "Change the agents assigned to the group"
@@ -133,14 +137,16 @@ x-rbac-catalog:
       description: "Upgrade the version of the agents"
       resources:
        - $ref: '#/x-rbac-catalog/resources/agent:id'
+       - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['agent:upgrade']
-        resources: ['agent:id:*']
+        resources: ['agent:id:001', 'agent:group:mediterranean']
         effect: "allow"
     'agent:restart':
       description: "Restart agents"
       resources:
        - $ref: '#/x-rbac-catalog/resources/agent:id'
+       - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['agent:restart']
         resources: ['agent:id:050', 'agent:id:049']
@@ -181,9 +187,10 @@ x-rbac-catalog:
       description: "Access CIS-CAT results for agents"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['ciscat:read']
-        resources: ['agent:id:001', 'agent:id:003']
+        resources: ['agent:id:001', 'agent:id:003', 'agent:group:default']
         effect: "deny"
     'cluster:read':
       description: "Read Wazuh's cluster nodes configuration"
@@ -343,6 +350,7 @@ x-rbac-catalog:
       description: "Access agents security configuration assessment"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['sca:read']
         resources: ['agent:id:*']
@@ -416,14 +424,16 @@ x-rbac-catalog:
       description: "Access information from agents syscheck database"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['syscheck:read']
-        resources: ['agent:id:011']
+        resources: ['agent:id:011', 'agent:group:us-west']
         effect: "allow"
     'syscheck:clear':
       description: "Clear the agents syscheck database"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['syscheck:clear']
         resources: ['agent:id:*']
@@ -432,6 +442,7 @@ x-rbac-catalog:
       description: "Run agents syscheck scan"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['syscheck:run']
         resources: ['agent:id:*']
@@ -440,6 +451,7 @@ x-rbac-catalog:
       description: "Access agents syscollector information"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['syscollector:read']
         resources: ['agent:id:*']
