@@ -182,6 +182,7 @@ cJSON* wm_agent_upgrade_get_agent_ids() {
     }
     if (!cJSON_GetArraySize(agents_array)) {
         cJSON_Delete(agents_array);
+        return NULL;
     }
 
     return agents_array;
