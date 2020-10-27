@@ -692,6 +692,7 @@ int fim_db_get_last_path(fdb_t * fim_sql, int type, char **path) {
     return fim_db_get_string(fim_sql, LAST_PATH_QUERY[type], path);
 }
 
+// LCOV_EXCL_START
 int fim_db_get_first_path(fdb_t * fim_sql, int type, char **path) {
     static const int FIRST_PATH_QUERY[] = {
         [FIM_TYPE_FILE] = FIMDB_STMT_GET_FIRST_PATH,
@@ -700,6 +701,7 @@ int fim_db_get_first_path(fdb_t * fim_sql, int type, char **path) {
 
     return fim_db_get_string(fim_sql, FIRST_PATH_QUERY[type], path);
 }
+// LCOV_EXCL_STOP
 
 int fim_db_get_data_checksum(fdb_t *fim_sql, fim_type type, void *arg) {
     static const int CHECKSUM_QUERY[] = {

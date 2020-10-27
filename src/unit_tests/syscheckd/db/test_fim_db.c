@@ -1766,6 +1766,66 @@ static void test_fim_db_get_count_success(void **state) {
 }
 
 /**********************************************************************************************************************\
+ * fim_db_get_last_path()
+\**********************************************************************************************************************/
+static void test_fim_db_get_last_path_fail_to_step_query(void **state) {
+    fdb_t fim_sql;
+    char *path = NULL;
+    int retval;
+
+    expect_fim_db_clean_stmt();
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
+    will_return(__wrap_sqlite3_errmsg, "SQLITE error");
+
+    expect_string(__wrap__merror, formatted_msg, "Step error getting row string: SQLITE error");
+
+    retval = fim_db_get_last_path(&fim_sql, FIM_TYPE_FILE, &path);
+
+    assert_int_equal(retval, FIMDB_ERR);
+    assert_null(path);
+}
+
+static void test_fim_db_get_last_path_query_returns_no_string(void **state) {
+    fdb_t fim_sql;
+    char *path = NULL;
+    int retval;
+
+    expect_fim_db_clean_stmt();
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    retval = fim_db_get_last_path(&fim_sql, FIM_TYPE_FILE, &path);
+
+    assert_int_equal(retval, FIMDB_OK);
+    assert_null(path);
+}
+
+static void test_fim_db_get_last_path_success(void **state) {
+    fdb_t fim_sql;
+    char *path = NULL;
+    int retval;
+
+    expect_fim_db_clean_stmt();
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "/some/random/path");
+
+    retval = fim_db_get_last_path(&fim_sql, FIM_TYPE_FILE, &path);
+
+    *state = path;
+
+    assert_int_equal(retval, FIMDB_OK);
+    assert_string_equal(path, "/some/random/path");
+}
+
+/**********************************************************************************************************************\
  * main()
 \**********************************************************************************************************************/
 int main(void) {
@@ -1864,6 +1924,10 @@ int main(void) {
         cmocka_unit_test(test_fim_db_get_count_invalid_index),
         cmocka_unit_test(test_fim_db_get_count_fail_to_query_count),
         cmocka_unit_test(test_fim_db_get_count_success),
+        // fim_db_get_last_path
+        cmocka_unit_test(test_fim_db_get_last_path_fail_to_step_query),
+        cmocka_unit_test(test_fim_db_get_last_path_query_returns_no_string),
+        cmocka_unit_test_teardown(test_fim_db_get_last_path_success, teardown_string),
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
