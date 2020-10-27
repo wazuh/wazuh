@@ -196,11 +196,18 @@ End If
 
 Set WshShell = CreateObject("WScript.Shell")
 
-setPermsInherit = "icacls """ & home_dir & "." & """ /inheritancelevel:d"
+' Remove last backslash from home_dir
+install_dir = Left(home_dir, Len(home_dir) - 1)
+
+setPermsInherit = "icacls """ & install_dir & """ /inheritancelevel:d"
 WshShell.run setPermsInherit
 
-setUsersPerms = "icacls """ & home_dir & "." & """ /remove *S-1-5-32-545"
-WshShell.run setPermsInherit
+remUserPerm = "icacls """ & install_dir & """ /remove *S-1-5-32-545"
+WshShell.run remUserPerm
+
+' Remove Everyone group for ossec.conf
+remEveryonePerms = "icacls """ & home_dir & "ossec.conf" & """ /remove *S-1-1-0"
+WshShell.run remEveryonePerms
 
 config = 0
 
