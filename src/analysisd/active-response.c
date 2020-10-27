@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -48,18 +48,17 @@ int AR_ReadConfig(const char *cfgfile)
         merror(FOPEN_ERROR, DEFAULTARPATH, errno, strerror(errno));
         return (OS_INVALID);
     }
-    fprintf(fp, "restart-ossec0 - restart-ossec.sh - 0\n");
-    fprintf(fp, "restart-ossec0 - restart-ossec.cmd - 0\n");
+    fprintf(fp, "restart-ossec0 - restart-ossec.sh - 0\nrestart-ossec0 - restart-ossec.cmd - 0\n");
     fclose(fp);
 
 #ifndef WIN32
-    struct group *os_group;
-    if ((os_group = getgrnam(USER)) == NULL) {
+    gid_t gr_gid;
+    if (gr_gid = Privsep_GetGroup(USER), gr_gid == (uid_t) -1) {
         merror("Could not get ossec gid.");
         return (OS_INVALID);
     }
 
-    if ((chown(DEFAULTARPATH, (uid_t) - 1, os_group->gr_gid)) == -1) {
+    if ((chown(DEFAULTARPATH, (uid_t) - 1, gr_gid)) == -1) {
         merror("Could not change the group to ossec: %d", errno);
         return (OS_INVALID);
     }

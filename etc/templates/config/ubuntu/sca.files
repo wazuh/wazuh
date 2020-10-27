@@ -1,4 +1,2 @@
-debian/cis_debian_linux_rcl.yml
-generic/system_audit_rcl.yml
-generic/system_audit_ssh.yml
-generic/system_audit_pw.yml
+debian/cis_debian9_L1.yml
+debian/cis_debian9_L2.yml

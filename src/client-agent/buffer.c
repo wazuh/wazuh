@@ -1,9 +1,9 @@
 /*
  * Anti-flooding mechanism
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * July 4, 2017
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -25,7 +25,6 @@ static volatile int state = NORMAL;
 int warn_level;
 int normal_level;
 int tolerance;
-int ms_slept;
 
 struct{
   unsigned int full:1;
@@ -35,12 +34,19 @@ struct{
 } buff;
 
 static char ** buffer;
-static pthread_mutex_t mutex_lock = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t cond_no_empty = PTHREAD_COND_INITIALIZER;
+static pthread_mutex_t mutex_lock;
+static pthread_cond_t cond_no_empty;
 
 static time_t start, end;
 
-static void delay(unsigned int ms);
+/**
+ * @brief Sleep according to max_eps parameter
+ *
+ * Sleep (1 / max_eps) - ts_loop
+ *
+ * @param ts_loop Loop time.
+ */
+static void delay(struct timespec * ts_loop);
 
 /* Create agent buffer */
 void buffer_init(){
@@ -52,6 +58,9 @@ void buffer_init(){
     warn_level = getDefine_Int("agent", "warn_level", 1, 100);
     normal_level = getDefine_Int("agent", "normal_level", 0, warn_level-1);
     tolerance = getDefine_Int("agent", "tolerance", 0, 600);
+
+    w_mutex_init(&mutex_lock, NULL);
+    w_cond_init(&cond_no_empty, NULL);
 
     if (tolerance == 0)
         mwarn(TOLERANCE_TIME);
@@ -128,13 +137,15 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
     char normal_msg[OS_MAXSTR];
 
     char warn_str[OS_SIZE_2048];
-    int wait_ms = 1000 / agt->events_persec;
+    struct timespec ts0;
+    struct timespec ts1;
 
     while(1){
+        gettime(&ts0);
+
         w_mutex_lock(&mutex_lock);
 
         while(empty(i, j)){
-            mdebug2("Agent buffer empty.");
             w_cond_wait(&cond_no_empty, &mutex_lock);
         }
         /* Check if buffer usage reaches any lower level */
@@ -181,7 +192,6 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
             mwarn(WARN_BUFFER, warn_level);
             snprintf(warn_str, OS_SIZE_2048, OS_WARN_BUFFER, warn_level);
             snprintf(warn_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "ossec-agent", warn_str);
-            delay(wait_ms);
             send_msg(warn_msg, -1);
         }
 
@@ -190,7 +200,6 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
             buff.full = 0;
             mwarn(FULL_BUFFER);
             snprintf(full_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "ossec-agent", OS_FULL_BUFFER);
-            delay(wait_ms);
             send_msg(full_msg, -1);
         }
 
@@ -199,7 +208,6 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
             buff.flood = 0;
             mwarn(FLOODED_BUFFER);
             snprintf(flood_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "ossec-agent", OS_FLOOD_BUFFER);
-            delay(wait_ms);
             send_msg(flood_msg, -1);
         }
 
@@ -208,24 +216,26 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
             buff.normal = 0;
             minfo(NORMAL_BUFFER, normal_level);
             snprintf(normal_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "ossec-agent", OS_NORMAL_BUFFER);
-            delay(wait_ms);
             send_msg(normal_msg, -1);
         }
 
-        delay(wait_ms);
         os_wait();
         send_msg(msg_output, -1);
         free(msg_output);
+
+        gettime(&ts1);
+        time_sub(&ts1, &ts0);
+        delay(&ts1);
     }
 }
 
-void delay(unsigned int ms) {
-#ifdef WIN32
-    Sleep(ms);
-#else
-    struct timeval timeout = { 0, ms * 1000 };
-    select(0 , NULL, NULL, NULL, &timeout);
-#endif
+void delay(struct timespec * ts_loop) {
+    long interval_ns = 1000000000 / agt->events_persec;
+    struct timespec ts_timeout = { interval_ns / 1000000000, interval_ns % 1000000000 };
+    time_sub(&ts_timeout, ts_loop);
 
-    ms_slept += ms;
+    if (ts_timeout.tv_sec >= 0 && ts_timeout.tv_nsec >= 0) {
+        struct timeval timeout = { ts_timeout.tv_sec, ts_timeout.tv_nsec / 1000 };
+        select(0 , NULL, NULL, NULL, &timeout);
+    }
 }

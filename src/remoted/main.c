@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -13,8 +13,7 @@
 #include "shared_download.h"
 #include <unistd.h>
 
-/* Global variables */
-int pass_empty_keyfile;
+
 
 /* Prototypes */
 static void help_remoted(void) __attribute__((noreturn));
@@ -130,16 +129,14 @@ int main(int argc, char **argv)
 
     logr.nocmerged = nocmerged ? 1 : !getDefine_Int("remoted", "merge_shared", 0, 1);
 
-    // Don`t create the merged file in worker nodes of the cluster
-
     // Read the cluster status and the node type from the configuration file
-    int is_worker = w_is_worker();
-
-    switch (is_worker){
+    switch (w_is_worker()){
         case 0:
-            mdebug1("This is not a worker");
+            logr.worker_node = false;
+            mdebug1("This is not a worker");            
             break;
         case 1:
+            logr.worker_node = true;
             mdebug1("Cluster worker node: Disabling the merged.mg creation");
             logr.nocmerged = 1;
             break;
@@ -166,14 +163,11 @@ int main(int argc, char **argv)
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, user, group);
+        merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
 
     /* Setup random */
     srandom_init();
-
-    /* pid before going daemon */
-    i = getpid();
 
     if (!run_foreground) {
         nowDaemon();

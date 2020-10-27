@@ -1,0 +1,12 @@
+module_version: 0.1
+
+var:
+  - name: paths
+    default:
+      - /var/ossec/logs/archives/archives.json
+  - name: index_prefix
+    default: wazuh-archives-4.x-
+
+input: config/archives.yml
+
+ingest_pipeline: ingest/pipeline.json

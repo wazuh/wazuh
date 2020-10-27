@@ -1,567 +1,414 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import json
-import random
 import re
-import socket
-import subprocess
-import time
-from collections import OrderedDict
-from datetime import datetime
-from glob import glob
-from os import remove, chmod
+from os import remove
 from os.path import exists, join
-from shutil import move, Error, copyfile
-from xml.dom.minidom import parseString
-from xml.parsers.expat import ExpatError
-from typing import Dict
-import fcntl
 
-from wazuh import common
-from wazuh.exception import WazuhException
-from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml
-from wazuh import configuration
+from wazuh import Wazuh
+from wazuh.core import common, configuration
+from wazuh.core.cluster.cluster import get_node
+from wazuh.core.cluster.utils import manager_restart, read_cluster_config
+from wazuh.core.configuration import get_ossec_conf
+from wazuh.core.exception import WazuhError, WazuhInternalError
+from wazuh.core.manager import status, upload_xml, upload_list, validate_xml, validate_cdb_list, \
+    get_api_conf, update_api_conf, get_ossec_logs, get_logs_summary, validate_ossec_conf
+from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
+from wazuh.core.utils import process_array
+from wazuh.rbac.decorators import expose_resources
 
-_re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
-execq_lockfile = join(common.ossec_path, "var/run/.api_execq_lock")
+allowed_api_fields = {'behind_proxy_server', 'logs', 'cache', 'cors', 'use_only_authd', 'experimental_features'}
+cluster_enabled = not read_cluster_config()['disabled']
+node_id = get_node().get('node') if cluster_enabled else 'manager'
 
 
-def status() -> Dict:
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+def get_status():
+    """Wrapper for status().
+
+    :return: AffectedItemsWazuhResult
     """
-    Returns the Manager processes that are running.
-    :return: Dictionary (keys: status, daemon).
-    """
+    result = AffectedItemsWazuhResult(all_msg=f"Processes status was successfully read"
+                                              f"{' in specified node' if node_id != 'manager' else ''}",
+                                      some_msg='Could not read basic information in some nodes',
+                                      none_msg=f"Could not read processes status"
+                                               f"{' in specified node' if node_id != 'manager' else ''}"
+                                      )
 
-    processes = ['ossec-agentlessd', 'ossec-analysisd', 'ossec-authd', 'ossec-csyslogd', 'ossec-dbd', 'ossec-monitord',
-                 'ossec-execd', 'ossec-integratord', 'ossec-logcollector', 'ossec-maild', 'ossec-remoted',
-                 'ossec-reportd', 'ossec-syscheckd', 'wazuh-clusterd', 'wazuh-modulesd', 'wazuh-db']
+    result.affected_items.append(status())
+    result.total_affected_items = len(result.affected_items)
 
-    data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), join(common.ossec_path, 'var/run')
-    for process in processes:
-        pidfile = glob(join(run_dir, f"{process}-*.pid"))
-        if exists(join(run_dir, f'{process}.failed')):
-            data[process] = 'failed'
-        elif exists(join(run_dir, f'.restart')):
-            data[process] = 'restarting'
-        elif exists(join(run_dir, f'{process}.start')):
-            data[process] = 'starting'
-        elif pidfile:
-            process_pid = pidfile_regex.match(pidfile[0]).group(1)
-            # if a pidfile exists but the process is not running, it means the process crashed and
-            # wasn't able to remove its own pidfile.
-            data[process] = 'running' if exists(join('/proc', process_pid)) else 'failed'
-        else:
-            data[process] = 'stopped'
-
-    return data
+    return result
 
 
-def __get_ossec_log_fields(log):
-    regex_category = re.compile(r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+)(?:\[.*)?:\s(DEBUG|INFO|CRITICAL|ERROR|WARNING):(.*)$")
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+def ossec_log(level=None, tag=None, offset=0, limit=common.database_limit, sort_by=None,
+              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None, q=''):
+    """Gets logs from ossec.log.
 
-    match = re.search(regex_category, log)
-
-    if match:
-        date = match.group(1)
-        category = match.group(2)
-        type_log = match.group(3)
-        description = match.group(4)
-
-        if "rootcheck" in category:  # Unify rootcheck category
-            category = "ossec-rootcheck"
-
-    else:
-        return None
-
-    return datetime.strptime(date, '%Y/%m/%d %H:%M:%S'), category, type_log.lower(), description
-
-
-def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.database_limit, sort=None, search=None):
-    """
-    Gets logs from ossec.log.
-
-    :param type_log: Filters by log type: all, error or info.
-    :param category: Filters by log category (i.e. ossec-remoted).
-    :param months: Returns logs of the last n months. By default is 3 months.
+    :param level: Filters by log level: all, error or info.
+    :param tag: Filters by log category/tag (i.e. ossec-remoted).
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
-    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    :param search: Looks for items with the specified string.
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    :param sort_by: Fields to sort the items by
+    :param sort_ascending: Sort in ascending (true) or descending (false) order
+    :param search_text: Text to search
+    :param complementary_search: Find items without the text to search
+    :param search_in_fields: Fields to search in
+    :param q: Defines query to filter.
+    :return: AffectedItemsWazuhResult
     """
-    logs = []
+    result = AffectedItemsWazuhResult(all_msg=f"Logs were successfully read"
+                                              f"{' in specified node' if node_id != 'manager' else ''}",
+                                      some_msg='Could not read logs in some nodes',
+                                      none_msg=f"Could not read logs"
+                                               f"{' in specified node' if node_id != 'manager' else ''}"
+                                      )
+    logs = get_ossec_logs()
 
-    first_date = previous_month(months)
-    statfs_error = "ERROR: statfs('******') produced error: No such file or directory"
+    query = []
+    level and query.append(f'level={level}')
+    tag and query.append(f'tag={tag}')
+    q and query.append(q)
+    query = ';'.join(query)
 
-    for line in tail(common.ossec_log, 2000):
-        log_fields = __get_ossec_log_fields(line)
-        if log_fields:
-            log_date, log_category, level, description = log_fields
+    data = process_array(logs, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by,
+                         sort_ascending=sort_ascending, offset=offset, limit=limit, q=query)
+    result.affected_items.extend(data['items'])
+    result.total_affected_items = data['totalItems']
 
-            if log_date < first_date:
-                continue
-
-            if category != 'all':
-                if log_category:
-                    if log_category != category:
-                        continue
-                else:
-                    continue
-
-            log_line = {'timestamp': str(log_date), 'tag': log_category, 'level': level, 'description': description}
-            if type_log == 'all':
-                logs.append(log_line)
-            elif type_log.lower() == level.lower():
-                if "ERROR: statfs(" in line:
-                    if statfs_error in logs:
-                        continue
-                    else:
-                        logs.append(statfs_error)
-                else:
-                    logs.append(log_line)
-            else:
-                continue
-        else:
-            if logs and line and log_category == logs[-1]['tag'] and level == logs[-1]['level']:
-                logs[-1]['description'] += "\n" + line
-
-    if search:
-        logs = search_array(logs, search['value'], search['negation'])
-
-    if sort:
-        if sort['fields']:
-            logs = sort_array(logs, order=sort['order'], sort_by=sort['fields'])
-        else:
-            logs = sort_array(logs, order=sort['order'], sort_by=['timestamp'])
-    else:
-        logs = sort_array(logs, order='desc', sort_by=['timestamp'])
-
-    return {'items': cut_array(logs, offset, limit), 'totalItems': len(logs)}
+    return result
 
 
-def ossec_log_summary(months=3):
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+def ossec_log_summary():
+    """Summary of ossec.log.
+
+    :return: AffectedItemsWazuhResult
     """
-    Summary of ossec.log.
+    result = AffectedItemsWazuhResult(all_msg=f"Log was successfully summarized"
+                                              f"{' in specified node' if node_id != 'manager' else ''}",
+                                      some_msg='Could not summarize the log in some nodes',
+                                      none_msg=f"Could not summarize the log"
+                                               f"{' in specified node' if node_id != 'manager' else ''}"
+                                      )
 
-    :param months: Check logs of the last n months. By default is 3 months.
-    :return: Dictionary by categories.
-    """
-    categories = {}
+    logs_summary = get_logs_summary()
 
-    first_date = previous_month(months)
+    for k, v in logs_summary.items():
+        result.affected_items.append({k: v})
+    result.affected_items = sorted(result.affected_items, key=lambda i: list(i.keys())[0])
+    result.total_affected_items = len(result.affected_items)
 
-    with open(common.ossec_log) as f:
-        lines_count = 0
-        for line in f:
-            if lines_count > 50000:
-                break
-            lines_count = lines_count + 1
-
-            line = __get_ossec_log_fields(line)
-
-            # multine logs
-            if line is None:
-                continue
-
-            log_date, category, log_type, _, = line
-
-            if log_date < first_date:
-                break
-
-            if category:
-                if category in categories:
-                    categories[category]['all'] += 1
-                else:
-                    categories[category] = {'all': 1, 'info': 0, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 0}
-                categories[category][log_type] += 1
-            else:
-                continue
-    return categories
+    return result
 
 
-def upload_file(tmp_file, path, content_type, overwrite=False):
-    """
-    Updates a group file
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:upload_file"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+def upload_file(path=None, content=None, overwrite=False):
+    """Upload a new file
 
-    :param tmp_file: Relative path of file name from origin
     :param path: Path of destination of the new file
-    :param content_type: Content type of file from origin
+    :param content: Content of file to be uploaded
     :param overwrite: True for updating existing files, False otherwise
-    :return: Confirmation message in string
+    :return: AffectedItemsWazuhResult
     """
+    result = AffectedItemsWazuhResult(all_msg='File was successfully uploaded',
+                                      none_msg='Could not upload file'
+                                      )
     try:
-        # if file already exists and overwrite is False, raise exception
+        if len(content) == 0:
+            raise WazuhError(1112)
+
+        # If file already exists and overwrite is False, raise exception
         if not overwrite and exists(join(common.ossec_path, path)):
-            raise WazuhException(1905)
+            raise WazuhError(1905)
+        elif overwrite and exists(join(common.ossec_path, path)):
+            delete_file(path=path)
 
-        try:
-            with open(join(common.ossec_path, tmp_file)) as f:
-                file_data = f.read()
-        except IOError:
-            raise WazuhException(1005)
-        except Exception:
-            raise WazuhException(1000)
-
-        if len(file_data) == 0:
-            raise WazuhException(1112)
-
-        if content_type == 'application/xml':
-            return upload_xml(file_data, path)
-        elif content_type == 'application/octet-stream':
-            return upload_list(file_data, path)
+        # For CDB lists
+        if re.match(r'^etc/lists', path):
+            upload_list(content, path)
         else:
-            raise WazuhException(1016)
-    finally:
-        # delete temporary file from API
-        try:
-            remove(join(common.ossec_path, tmp_file))
-        except OSError:
-            raise WazuhException(1903)
+            upload_xml(content, path)
+        result.affected_items.append(path)
+    except WazuhError as e:
+        result.add_failed_item(id_=path, error=e)
+    result.total_affected_items = len(result.affected_items)
+
+    return result
 
 
-def upload_xml(xml_file, path):
-    """
-    Updates XML files (rules and decoders)
-    :param xml_file: content of the XML file
-    :param path: Destination of the new XML file
-    :return: Confirmation message
-    """
-    # path of temporary files for parsing xml input
-    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_file"],
+                  resources=[f'node:id:{node_id}&file:path:{{path}}'] if cluster_enabled else ['file:path:{path}'],
+                  post_proc_func=None)
+def get_file(path, validate=False):
+    """Returns the content of a file.
 
-    # create temporary file for parsing xml input
-    try:
-        with open(tmp_file_path, 'w') as tmp_file:
-            # beauty xml file
-            xml = parseString('<root>' + xml_file + '</root>')
-            # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
-            indent = '  '  # indent parameter for toprettyxml function
-            pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent=indent).split('\n')[2:-2])) + '\n'
-            # revert xml.dom replacings
-            # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
-            pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
-                .replace("&gt;", ">").replace('&apos;', "'")
-            # delete two first spaces of each line
-            final_xml = re.sub(fr'^{indent}', '', pretty_xml, flags=re.MULTILINE)
-            tmp_file.write(final_xml)
-        chmod(tmp_file_path, 0o640)
-    except IOError:
-        raise WazuhException(1005)
-    except ExpatError:
-        raise WazuhException(1113)
-    except Exception as e:
-        raise WazuhException(1000, str(e))
-
-    try:
-        # check xml format
-        try:
-            load_wazuh_xml(tmp_file_path)
-        except Exception as e:
-            raise WazuhException(1113, str(e))
-
-        # move temporary file to group folder
-        try:
-            new_conf_path = join(common.ossec_path, path)
-            move(tmp_file_path, new_conf_path, copy_function=copyfile)
-        except Error:
-            raise WazuhException(1016)
-        except Exception:
-            raise WazuhException(1000)
-
-        return 'File updated successfully'
-
-    except Exception as e:
-        # remove created temporary file if an exception happens
-        remove(tmp_file_path)
-        raise e
-
-
-def upload_list(list_file, path):
-    """
-    Updates CDB lists
-    :param list_file: content of the list
-    :param path: Destination of the new list file
-    :return: Confirmation message.
-    """
-    # path of temporary file
-    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.txt'.format(common.ossec_path, time.time(), random.randint(0, 1000))
-
-    try:
-        # create temporary file
-        with open(tmp_file_path, 'w') as tmp_file:
-            # write json in tmp_file_path
-            for element in list_file.splitlines():
-                # skip empty lines
-                if not element:
-                    continue
-                tmp_file.write(element.strip() + '\n')
-        chmod(tmp_file_path, 0o640)
-    except IOError:
-        raise WazuhException(1005)
-    except Exception:
-        raise WazuhException(1000)
-
-    # move temporary file to group folder
-    try:
-        new_conf_path = join(common.ossec_path, path)
-        move(tmp_file_path, new_conf_path, copy_function=copyfile)
-    except Error:
-        raise WazuhException(1016)
-    except Exception:
-        raise WazuhException(1000)
-
-    return 'File updated successfully'
-
-
-def get_file(path, validation=False):
-    """
-    Returns the content of a file.
     :param path: Relative path of file from origin
-    :return: Content file.
+    :param validate: Whether to validate file content or not
+    :return: WazuhResult
     """
+    full_path = join(common.ossec_path, path[0])
 
-    full_path = join(common.ossec_path, path)
+    # check if file exists
+    if not exists(full_path):
+        raise WazuhError(1906)
 
     # validate CDB lists files
-    if validation and re.match(r'^etc/lists', path) and not validate_cdb_list(path):
-        raise WazuhException(1800, {'path': path})
+    if validate and re.match(r'^etc/lists', path[0]) and not validate_cdb_list(path[0]):
+        raise WazuhError(1800, {'path': path[0]})
 
     # validate XML files
-    if validation and not validate_xml(path):
-        raise WazuhException(1113)
+    if validate and not validate_xml(path[0]):
+        raise WazuhError(1113)
 
     try:
         with open(full_path) as f:
             output = f.read()
     except IOError:
-        raise WazuhException(1005)
+        raise WazuhInternalError(1005)
 
-    return output
-
-def validate_xml(path):
-    """
-    Validates a XML file
-    :param path: Relative path of file from origin
-    :return: True if XML is OK, False otherwise
-    """
-    full_path = join(common.ossec_path, path)
-    try:
-        with open(full_path) as f:
-            parseString('<root>' + f.read() + '</root>')
-    except IOError:
-        raise WazuhException(1005)
-    except ExpatError:
-        return False
-
-    return True
-
-def validate_cdb_list(path):
-    """
-    Validates a CDB list
-    :param path: Relative path of file from origin
-    :return: True if CDB list is OK, False otherwise
-    """
-    full_path = join(common.ossec_path, path)
-    regex_cdb = re.compile(r'^[^:]+:[^:]*$')
-    try:
-        with open(full_path) as f:
-            for line in f:
-                # skip empty lines
-                if not line.strip():
-                    continue
-                if not re.match(regex_cdb, line):
-                    return False
-    except IOError:
-        raise WazuhException(1005)
-
-    return True
+    return WazuhResult({'contents': output})
 
 
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:delete_file"],
+                  resources=[f'node:id:{node_id}&file:path:{{path}}'] if cluster_enabled else ['file:path:{path}'])
 def delete_file(path):
-    """
-    Deletes a file.
+    """Deletes a file.
 
-    Returns a confirmation message if success, otherwise it raises
-    a WazuhException
     :param path: Relative path of the file to be deleted
-    :return: string Confirmation message
+    :return: AffectedItemsWazuhResult
     """
-    full_path = join(common.ossec_path, path)
+    result = AffectedItemsWazuhResult(all_msg='File was successfully deleted',
+                                      none_msg='Could not delete file'
+                                      )
 
-    if exists(full_path):
-        try:
-            remove(full_path)
-        except IOError:
-            raise WazuhException(1907)
-    else:
-        raise WazuhException(1906)
+    full_path = join(common.ossec_path, path[0])
 
-    return 'File was deleted'
+    try:
+        if exists(full_path):
+            try:
+                remove(full_path)
+                result.affected_items.append(path[0])
+            except IOError:
+                raise WazuhError(1907)
+        else:
+            raise WazuhError(1906)
+    except WazuhError as e:
+        result.add_failed_item(id_=path[0], error=e)
+    result.total_affected_items = len(result.affected_items)
+
+    return result
 
 
+_get_config_default_result_kwargs = {
+    'all_msg': f"API configuration was successfully read{' in all specified nodes' if node_id != 'manager' else '' }",
+    'some_msg': 'Not all API configurations could be read',
+    'none_msg': f"Could not read API configuration{' in any node' if node_id != 'manager' else ''}",
+    'sort_casting': ['str']
+}
+
+
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_api_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
+                  post_proc_kwargs={'default_result_kwargs': _get_config_default_result_kwargs})
+def get_api_config():
+    """Returns current API configuration.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Current API configuration of the manager.
+    """
+    result = AffectedItemsWazuhResult(**_get_config_default_result_kwargs)
+
+    try:
+        api_config = {'node_name': node_id,
+                      'node_api_config': get_api_conf()}
+        result.affected_items.append(api_config)
+    except WazuhError as e:
+        result.add_failed_item(id_=node_id, error=e)
+    result.total_affected_items = len(result.affected_items)
+
+    return result
+
+
+_update_config_default_result_kwargs = {
+    'all_msg': f"API configuration was successfully updated{' in all specified nodes' if node_id != 'manager' else '' }. "
+               f"Settings require restarting the API to be applied.",
+    'some_msg': 'Not all API configuration could be updated.',
+    'none_msg': f"API configuration could not be updated{' in any node' if node_id != 'manager' else ''}.",
+    'sort_casting': ['str']
+}
+
+
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:update_api_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
+                  post_proc_kwargs={'default_result_kwargs': _update_config_default_result_kwargs})
+def update_api_config(updated_config=None):
+    """Update or restore current API configuration.
+
+    Update the shared configuration object "api_conf"  wih
+    "updated_config" and then overwrite the content of api.yaml.
+
+    Parameters
+    ----------
+    updated_config : dict
+        Dictionary with the new configuration.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Confirmation/Error message.
+    """
+    result = AffectedItemsWazuhResult(**_update_config_default_result_kwargs)
+
+    try:
+        update_api_conf(updated_config)
+        result.affected_items.append(node_id)
+    except WazuhError as e:
+        result.add_failed_item(id_=node_id, error=e)
+    result.total_affected_items = len(result.affected_items)
+
+    return result
+
+
+_restart_default_result_kwargs = {
+    'all_msg': f"Restart request sent to {' all specified nodes' if node_id != ' manager' else ''}",
+    'some_msg': "Could not send restart request to some specified nodes",
+    'none_msg': "Could not send restart request to any node",
+    'sort_casting': ['str']
+}
+
+
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:restart"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
+                  post_proc_kwargs={'default_result_kwargs': _restart_default_result_kwargs})
 def restart():
-    """
-    Restart Wazuh manager.
-
-    :return: Confirmation message.
-    """
-    lock_file = open(execq_lockfile, 'a+')
-    fcntl.lockf(lock_file, fcntl.LOCK_EX)
+    """Wrapper for 'restart_manager' function due to interdependence with cluster module and permission access. """
+    result = AffectedItemsWazuhResult(**_restart_default_result_kwargs)
     try:
-        # execq socket path
-        socket_path = common.EXECQ
-        # msg for restarting Wazuh manager
-        msg = 'restart-wazuh '
-        # initialize socket
-        if exists(socket_path):
-            try:
-                conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-                conn.connect(socket_path)
-            except socket.error:
-                raise WazuhException(1902)
-        else:
-            raise WazuhException(1901)
+        manager_restart()
+        result.affected_items.append(node_id)
+    except WazuhError as e:
+        result.add_failed_item(id_=node_id, error=e)
+    result.total_affected_items = len(result.affected_items)
 
-        try:
-            conn.send(msg.encode())
-            conn.close()
-        except socket.error as e:
-            raise WazuhException(1014, str(e))
-    finally:
-        fcntl.lockf(lock_file, fcntl.LOCK_UN)
-        lock_file.close()
-
-    return "Restart request sent"
+    return result
 
 
-def _check_wazuh_xml(files):
-    """
-    Check Wazuh XML format from a list of files.
-
-    :param files: List of files to check.
-    :return: None
-    """
-    for f in files:
-        try:
-            subprocess.check_output(['{}/bin/verify-agent-conf'.format(common.ossec_path), '-f', f],
-                                    stderr=subprocess.STDOUT)
-        except subprocess.CalledProcessError as e:
-            # extract error message from output. Example of raw output 2019/01/08 14:51:09 verify-agent-conf: ERROR:
-            # (1230): Invalid element in the configuration: 'agent_conf'.\n2019/01/08 14:51:09 verify-agent-conf:
-            # ERROR: (1207): Syscheck remote configuration in
-            # '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.\n\n Example of desired output:
-            # Invalid element in the configuration: 'agent_conf'. Syscheck remote configuration in
-            # '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
-            output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
-                                              r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
-            raise WazuhException(1114, ' '.join(output_regex))
-        except Exception as e:
-            raise WazuhException(1743, str(e))
+_validation_default_result_kwargs = {
+    'all_msg': f"Validation was successfully checked{' in all nodes' if node_id != 'manager' else ''}",
+    'some_msg': 'Could not check validation in some nodes',
+    'none_msg': f"Could not check validation{' in any node' if node_id != 'manager' else ''}",
+    'sort_fields': ['name'],
+    'sort_casting': ['str'],
+}
 
 
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
+                  post_proc_kwargs={'default_result_kwargs': _validation_default_result_kwargs})
 def validation():
-    """
-    Check if Wazuh configuration is OK.
+    """Check if Wazuh configuration is OK.
 
-    :return: Confirmation message.
+    :return: AffectedItemsWazuhResult.
     """
-    lock_file = open(execq_lockfile, 'a+')
-    fcntl.lockf(lock_file, fcntl.LOCK_EX)
+    result = AffectedItemsWazuhResult(**_validation_default_result_kwargs)
+
     try:
-        # sockets path
-        api_socket_path = join(common.ossec_path, 'queue/alerts/execa')
-        execq_socket_path = common.EXECQ
-        # msg for checking Wazuh configuration
-        execq_msg = 'check-manager-configuration '
+        response = validate_ossec_conf()
+        result.affected_items.append({'name': node_id, **response})
+        result.total_affected_items += 1
+    except WazuhError as e:
+        result.add_failed_item(id_=node_id, error=e)
 
-        # remove api_socket if exists
-        try:
-            remove(api_socket_path)
-        except OSError as e:
-            if exists(api_socket_path):
-                raise WazuhException(1014, str(e))
-
-        # up API socket
-        try:
-            api_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-            api_socket.bind(api_socket_path)
-            # timeout
-            api_socket.settimeout(5)
-        except socket.error:
-            raise WazuhException(1013)
-
-        # connect to execq socket
-        if exists(execq_socket_path):
-            try:
-                execq_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-                execq_socket.connect(execq_socket_path)
-            except socket.error:
-                raise WazuhException(1013)
-        else:
-            raise WazuhException(1901)
-
-        # send msg to execq socket
-        try:
-            execq_socket.send(execq_msg.encode())
-            execq_socket.close()
-        except socket.error as e:
-            raise WazuhException(1014, str(e))
-        finally:
-            execq_socket.close()
-
-        # if api_socket receives a message, configuration is OK
-        try:
-            buffer = bytearray()
-            # receive data
-            datagram = api_socket.recv(4096)
-            buffer.extend(datagram)
-        except socket.timeout as e:
-            raise WazuhException(1014, str(e))
-        finally:
-            api_socket.close()
-            # remove api_socket
-            if exists(api_socket_path):
-                remove(api_socket_path)
-
-        try:
-            response = _parse_execd_output(buffer.decode('utf-8').rstrip('\0'))
-        except (KeyError, json.decoder.JSONDecodeError) as e:
-            raise WazuhException(1904, str(e))
-    finally:
-        fcntl.lockf(lock_file, fcntl.LOCK_UN)
-        lock_file.close()
-
-    return response
+    return result
 
 
-def _parse_execd_output(output: str) -> Dict:
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+def get_config(component=None, config=None):
+    """ Wrapper for get_active_configuration
+
+    :param component: Selected component.
+    :param config: Configuration to get, written on disk.
+    :return: AffectedItemsWazuhResult.
     """
-    Parses output from execd socket to fetch log message and remove log date, log daemon, log level, etc.
-    :param output: Raw output from execd
-    :return: Cleaned log message in a dictionary structure
-    """
-    json_output = json.loads(output)
-    error_flag = json_output['error']
-    if error_flag != 0:
-        errors = []
-        log_lines = json_output['message'].splitlines(keepends=False)
-        for line in log_lines:
-            match = _re_logtest.match(line)
-            if match:
-                errors.append(match.group(1))
-        errors = list(OrderedDict.fromkeys(errors))
-        response = {'status': 'KO', 'details': errors}
-    else:
-        response = {'status': 'OK'}
+    result = AffectedItemsWazuhResult(all_msg=f"Active configuration was successfully read"
+                                              f"{' in specified node' if node_id != 'manager' else ''}",
+                                      some_msg='Could not read active configuration in some nodes',
+                                      none_msg=f"Could not read active configuration"
+                                               f"{' in specified node' if node_id != 'manager' else ''}"
+                                      )
 
-    return response
+    try:
+        data = configuration.get_active_configuration(agent_id='000', component=component, configuration=config)
+        len(data.keys()) > 0 and result.affected_items.append(data)
+    except WazuhError as e:
+        result.add_failed_item(id_=node_id, error=e)
+    result.total_affected_items = len(result.affected_items)
+
+    return result
 
 
-def get_config(component, config):
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+def read_ossec_conf(section=None, field=None):
+    """ Wrapper for get_ossec_conf
+
+    :param section: Filters by section (i.e. rules).
+    :param field: Filters by field in section (i.e. included).
+    :return: AffectedItemsWazuhResult.
     """
-    Returns active configuration loaded in manager
+    result = AffectedItemsWazuhResult(all_msg=f"Configuration was successfully read"
+                                              f"{' in specified node' if node_id != 'manager' else ''}",
+                                      some_msg='Could not read configuration in some nodes',
+                                      none_msg=f"Could not read configuration"
+                                               f"{' in specified node' if node_id != 'manager' else ''}"
+                                      )
+
+    try:
+        result.affected_items.append(get_ossec_conf(section=section, field=field))
+    except WazuhError as e:
+        result.add_failed_item(id_=node_id, error=e)
+    result.total_affected_items = len(result.affected_items)
+
+    return result
+
+
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+def get_basic_info():
+    """ Wrapper for Wazuh().to_dict
+
+    :return: AffectedItemsWazuhResult.
     """
-    return configuration.get_active_configuration(agent_id='000', component=component, configuration=config)
+    result = AffectedItemsWazuhResult(all_msg=f"Basic information was successfully read"
+                                              f"{' in specified node' if node_id != 'manager' else ''}",
+                                      some_msg='Could not read basic information in some nodes',
+                                      none_msg=f"Could not read basic information"
+                                               f"{' in specified node' if node_id != 'manager' else ''}"
+                                      )
+
+    try:
+        result.affected_items.append(Wazuh().to_dict())
+    except WazuhError as e:
+        result.add_failed_item(id_=node_id, error=e)
+    result.total_affected_items = len(result.affected_items)
+
+    return result

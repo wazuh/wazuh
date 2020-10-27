@@ -16,6 +16,7 @@ etc/ossec.mc
 src/Config.OS
 src/selinux/*.mod
 src/selinux/*.pp
+framework/wazuh/core/wazuh.json
 
 # Compiled programs
 src/agent-auth
@@ -87,14 +88,23 @@ src/win32/REVISION
 *.gcda
 src/coverage-report/
 src/ossec.test
-src/tap_os_crypto
-src/tap_os_net
-src/tap_os_regex
-src/tap_os_xml
-src/tap_os_zlib
-src/test_shared
-src/tap_shared
+src/tap_*
 etc/preloaded-vars.conf
+
+# unit tests
+src/unit_tests/build/*
+
+# api tests
+api/test/integration/_test_results
 
 # Old firewall-drop.sh (moved to default-firewall-drop.sh)
 active-response/firewall-drop.sh
+
+# Databases commits
+framework/wazuh/rbac/migrations/versions/*
+
+# Documentation folder
+documentation/
+
+# MSU for Vulnerability Detector
+src/wazuh_modules/vulnerability_detector/msu.json.gz

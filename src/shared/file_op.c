@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -15,6 +15,12 @@
 #include "version_op.h"
 
 #include "../external/zlib/zlib.h"
+
+#ifdef WAZUH_UNIT_TESTING
+#ifdef WIN32
+#include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
+#endif
+#endif
 
 #ifndef WIN32
 #include <regex.h>
@@ -388,6 +394,7 @@ void OS_SetName(const char *name)
     return;
 }
 
+
 time_t File_DateofChange(const char *file)
 {
     struct stat file_status;
@@ -399,11 +406,13 @@ time_t File_DateofChange(const char *file)
     return (file_status.st_mtime);
 }
 
+
 ino_t File_Inode(const char *file)
 {
     struct stat buffer;
     return stat(file, &buffer) ? 0 : buffer.st_ino;
 }
+
 
 int IsDir(const char *file)
 {
@@ -417,7 +426,7 @@ int IsDir(const char *file)
     return (-1);
 }
 
-/* Return 1 if it is a file, 2 if it is a directory, 0 otherwise */
+
 int check_path_type(const char *dir)
 {
     DIR *dp;
@@ -434,6 +443,7 @@ int check_path_type(const char *dir)
     return retval;
 }
 
+
 int IsFile(const char *file)
 {
     struct stat buf;
@@ -447,6 +457,7 @@ int IsSocket(const char * file) {
 	return (!stat(file, &buf) && S_ISSOCK(buf.st_mode)) ? 0 : -1;
 }
 
+
 int IsLink(const char * file) {
     struct stat buf;
 	return (!lstat(file, &buf) && S_ISLNK(buf.st_mode)) ? 0 : -1;
@@ -454,10 +465,69 @@ int IsLink(const char * file) {
 
 #endif // WIN32
 
+
 off_t FileSize(const char * path) {
     struct stat buf;
     return stat(path, &buf) ? -1 : buf.st_size;
 }
+
+
+#ifndef WIN32
+
+float DirSize(const char *path) {
+    struct dirent *dir;
+    struct stat buf;
+    DIR *directory;
+    float folder_size = 0.0;
+    float file_size = 0.0;
+    char *entry;
+
+    if (directory = opendir(path), directory == NULL) {
+        mdebug2("Couldn't open directory '%s'.", path);
+        return -1;
+    }
+
+    while ((dir = readdir(directory)) != NULL) {
+        // Ignore . and ..
+        if (strcmp(dir->d_name, ".") == 0 || strcmp(dir->d_name, "..") == 0) {
+            continue;
+        }
+
+        os_malloc(strlen(path) + strlen(dir->d_name) + 2, entry);
+        snprintf(entry, strlen(path) + 2 + strlen(dir->d_name), "%s/%s", path, dir->d_name);
+
+        if (stat(entry, &buf) == -1) {
+            os_free(entry);
+            closedir(directory);
+            return 0;
+        }
+
+        // Recursion if the path points to a directory
+        switch (buf.st_mode & S_IFMT) {
+        case S_IFDIR:
+            folder_size += DirSize(entry);
+            break;
+
+        case S_IFREG:
+            if (file_size = FileSize(entry), file_size != -1) {
+                folder_size += file_size;
+            }
+
+            break;
+
+        default:
+            break;
+        }
+
+        os_free(entry);
+    }
+
+    closedir(directory);
+
+    return folder_size;
+}
+
+#endif
 
 int CreatePID(const char *name, int pid)
 {
@@ -491,6 +561,7 @@ int CreatePID(const char *name, int pid)
     return (0);
 }
 
+
 char *GetRandomNoise()
 {
     FILE *fp;
@@ -515,6 +586,7 @@ char *GetRandomNoise()
     }
 }
 
+
 int DeletePID(const char *name)
 {
     char file[256];
@@ -532,10 +604,12 @@ int DeletePID(const char *name)
 
     if (unlink(file)) {
         mferror(DELETE_ERROR, file, errno, strerror(errno));
+        return (-1);
     }
 
     return (0);
 }
+
 
 void DeleteState() {
     char path[PATH_MAX + 1];
@@ -551,6 +625,7 @@ void DeleteState() {
         merror("At DeleteState(): __local_name is unset.");
     }
 }
+
 
 int UnmergeFiles(const char *finalpath, const char *optdir, int mode)
 {
@@ -675,7 +750,7 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode)
 int TestUnmergeFiles(const char *finalpath, int mode)
 {
     int ret = 1;
-    size_t i = 0, n = 0, files_size = 0, readed_bytes = 0,data_size = 0;
+    size_t i = 0, n = 0, files_size = 0, read_bytes = 0,data_size = 0;
     char *files;
     char buf[2048 + 1];
     FILE *finalfp;
@@ -693,7 +768,7 @@ int TestUnmergeFiles(const char *finalpath, int mode)
         }
 
         /* Initiator */
-        switch(buf[0]){
+        switch(buf[0]) {
             case '#':
                 continue;
             case '!':
@@ -721,11 +796,10 @@ parse:
         files++;
 
         /* Check for file name */
-		if(*files == '\0')
-		{
-			ret = 0;
+        if(*files == '\0') {
+            ret = 0;
             goto end;
-		}
+        }
 
         if (files_size < sizeof(buf) - 1) {
             i = files_size;
@@ -735,10 +809,10 @@ parse:
             files_size -= sizeof(buf) - 1;
         }
 
-        readed_bytes = 0;
+        read_bytes = 0;
         while ((n = fread(buf, 1, i, finalfp)) > 0) {
             buf[n] = '\0';
-            readed_bytes += n;
+            read_bytes += n;
 
             if (files_size == 0) {
                 break;
@@ -753,7 +827,7 @@ parse:
             }
         }
 
-        if(readed_bytes != data_size){
+        if(read_bytes != data_size){
             ret = 0;
             goto end;
         }
@@ -764,6 +838,7 @@ end:
     return (ret);
 }
 
+
 int MergeAppendFile(const char *finalpath, const char *files, const char *tag, int path_offset)
 {
     size_t n = 0;
@@ -773,7 +848,7 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
     FILE *finalfp;
     char newpath[PATH_MAX];
     DIR *dir;
-    struct dirent *ent;
+    struct dirent *ent = NULL;
 
     /* Create a new entry */
 
@@ -790,7 +865,7 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
 
         fclose(finalfp);
 
-        if (chmod(finalpath, 0640) < 0) {
+        if (chmod(finalpath, 0660) < 0) {
             merror(CHMOD_ERROR, finalpath, errno, strerror(errno));
             return 0;
         }
@@ -866,7 +941,8 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
     return (1);
 }
 
-int checkBinaryFile(const char *f_name){
+
+int checkBinaryFile(const char *f_name) {
     FILE *fp;
     char str[OS_MAXSTR + 1];
     fpos_t fp_pos;
@@ -875,7 +951,7 @@ int checkBinaryFile(const char *f_name){
 
     str[OS_MAXSTR] = '\0';
 
-    fp = fopen(f_name,"r");
+    fp = fopen(f_name, "r");
 
      if (!fp) {
         merror("Unable to open file '%s' due to [(%d)-(%s)].", f_name, errno, strerror(errno));
@@ -909,6 +985,7 @@ int checkBinaryFile(const char *f_name){
     fclose(fp);
     return 0;
 }
+
 
 int MergeFiles(const char *finalpath, char **files, const char *tag)
 {
@@ -1025,22 +1102,22 @@ const char *getuname()
 {
     struct utsname uts_buf;
     static char muname[512] = "";
-    os_info *readed_version;
+    os_info *read_version;
 
     if (!muname[0]){
-        if (readed_version = get_unix_version(), readed_version){
+        if (read_version = get_unix_version(), read_version){
             snprintf(muname, 512, "%s |%s |%s |%s |%s [%s|%s: %s] - %s %s",
-                    readed_version->sysname,
-                    readed_version->nodename,
-                    readed_version->release,
-                    readed_version->version,
-                    readed_version->machine,
-                    readed_version->os_name,
-                    readed_version->os_platform,
-                    readed_version->os_version,
+                    read_version->sysname,
+                    read_version->nodename,
+                    read_version->release,
+                    read_version->version,
+                    read_version->machine,
+                    read_version->os_name,
+                    read_version->os_platform,
+                    read_version->os_version,
                     __ossec_name, __ossec_version);
 
-            free_osinfo(readed_version);
+            free_osinfo(read_version);
         }
         else if (uname(&uts_buf) >= 0) {
             snprintf(muname, 512, "%s %s %s %s %s - %s %s",
@@ -1051,7 +1128,7 @@ const char *getuname()
                      uts_buf.machine,
                      __ossec_name, __ossec_version);
         } else {
-            snprintf(muname, 512, "No system info available -  %s %s",
+            snprintf(muname, 512, "No system info available - %s %s",
                      __ossec_name, __ossec_version);
         }
     }
@@ -1152,13 +1229,10 @@ int checkVista()
     /* Check if the system is Vista (must be called during the startup) */
     isVista = 0;
 
-    OSVERSIONINFOEX osvi;
+    OSVERSIONINFOEX osvi = { .dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX) };
     BOOL bOsVersionInfoEx;
 
-    ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
-    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-
-    if (!(bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi))) {
+    if (bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi), !bOsVersionInfoEx) {
         osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
         if (!GetVersionEx((OSVERSIONINFO *)&osvi)) {
             merror("Cannot get Windows version number.");
@@ -1172,6 +1246,7 @@ int checkVista()
 
     return (isVista);
 }
+
 
 int get_creation_date(char *dir, SYSTEMTIME *utc) {
     HANDLE hdle;
@@ -1193,13 +1268,13 @@ end:
     return retval;
 }
 
-/* Get basename of path */
+
 char *basename_ex(char *path)
 {
     return (PathFindFileNameA(path));
 }
 
-/* Rename file or directory */
+
 int rename_ex(const char *source, const char *destination)
 {
     if (!MoveFileEx(source, destination, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
@@ -1211,7 +1286,7 @@ int rename_ex(const char *source, const char *destination)
     return (0);
 }
 
-/* Create a temporary file */
+
 int mkstemp_ex(char *tmp_path)
 {
     DWORD dwResult;
@@ -1228,21 +1303,11 @@ int mkstemp_ex(char *tmp_path)
     PSID pSystemGroupSID = NULL;
     SID_IDENTIFIER_AUTHORITY SIDAuthNT = {SECURITY_NT_AUTHORITY};
 
-#if defined(_MSC_VER) && _MSC_VER >= 1500
-    result = _mktemp_s(tmp_path, strlen(tmp_path) + 1);
 
-    if (result != 0) {
-        mferror("Could not create temporary file (%s) which returned (%d)", tmp_path, result);
-
+    if (result = _mktemp_s(tmp_path, strlen(tmp_path) + 1), result) {
+        mferror("Could not create temporary file (%s) which returned %d [(%d)-(%s)].", tmp_path, result, errno, strerror(errno));
         return (-1);
     }
-#else
-    if (_mktemp(tmp_path) == NULL) {
-        mferror("Could not create temporary file (%s) which returned [(%d)-(%s)]", tmp_path, errno, strerror(errno));
-
-        return (-1);
-    }
-#endif
 
     /* Create SID for the BUILTIN\Administrators group */
     result = AllocateAndInitializeSid(
@@ -1392,7 +1457,7 @@ cleanup:
     return (status);
 }
 
-/* Get uname for Windows */
+
 const char *getuname()
 {
     int ret_size = OS_SIZE_1024 - 2;
@@ -1405,7 +1470,7 @@ const char *getuname()
 
     /* See http://msdn.microsoft.com/en-us/library/windows/desktop/ms724429%28v=vs.85%29.aspx */
     OSVERSIONINFOEX osvi;
-    SYSTEM_INFO si;
+    SYSTEM_INFO si = {0};
     PGNSI pGNSI;
     PGPI pGPI;
     BOOL bOsVersionInfoEx;
@@ -1602,11 +1667,13 @@ const char *getuname()
                 }
                 ret_size -= strlen(ret) + 1;
             } else if (osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 2) {
-                pGNSI = (PGNSI) GetProcAddress(
+                pGNSI = (PGNSI)(LPSYSTEM_INFO)GetProcAddress(
                             GetModuleHandle("kernel32.dll"),
                             "GetNativeSystemInfo");
                 if (NULL != pGNSI) {
                     pGNSI(&si);
+                } else {
+                    mwarn("It was not possible to retrieve GetNativeSystemInfo from kernek32.dll");
                 }
 
                 if ( GetSystemMetrics(89) )
@@ -1902,7 +1969,6 @@ const char *getuname()
     return (ret);
 }
 
-// Move to the directory where this executable lives in
 
 void w_ch_exec_dir() {
     TCHAR path[2048] = { 0 };
@@ -1943,7 +2009,6 @@ void w_ch_exec_dir() {
 
 #endif /* WIN32 */
 
-// Delete directory recursively
 
 int rmdir_ex(const char *name) {
     if (rmdir(name) == 0) {
@@ -1958,6 +2023,9 @@ int rmdir_ex(const char *name) {
 #endif
         return unlink(name);
 
+#if EEXIST != ENOTEMPTY
+    case EEXIST:
+#endif
     case ENOTEMPTY: // Directory not empty
         // Erase content and try to erase again
         return cldir_ex(name) || rmdir(name) ? -1 : 0;
@@ -1967,17 +2035,15 @@ int rmdir_ex(const char *name) {
     }
 }
 
-// Delete directory content
 
 int cldir_ex(const char *name) {
     return cldir_ex_ignore(name, NULL);
 }
 
-// Delete directory content with exception list
 
 int cldir_ex_ignore(const char * name, const char ** ignore) {
     DIR *dir;
-    struct dirent *dirent;
+    struct dirent *dirent = NULL;
     char path[PATH_MAX + 1];
 
     // Erase content
@@ -2008,6 +2074,7 @@ int cldir_ex_ignore(const char * name, const char ** ignore) {
     return closedir(dir);
 }
 
+
 int TempFile(File *file, const char *source, int copy) {
     FILE *fp_src;
     int fd;
@@ -2024,11 +2091,16 @@ int TempFile(File *file, const char *source, int copy) {
         return -1;
     }
 
+    fp_src = fopen(source,"r");
+
 #ifndef WIN32
     struct stat buf;
 
     if (stat(source, &buf) == 0) {
         if (fchmod(fd, buf.st_mode) < 0) {
+            if (fp_src) {
+                fclose(fp_src);
+            }
             close(fd);
             unlink(template);
             return -1;
@@ -2039,9 +2111,10 @@ int TempFile(File *file, const char *source, int copy) {
 
 #endif
 
-    file->fp = fdopen(fd, "w");
-
-    if (!file->fp) {
+    if (file->fp = fdopen(fd, "w"), !file->fp) {
+        if (fp_src) {
+            fclose(fp_src);
+        }
         close(fd);
         unlink(template);
         return -1;
@@ -2052,7 +2125,7 @@ int TempFile(File *file, const char *source, int copy) {
         size_t count_w;
         char buffer[4096];
 
-        if (fp_src = fopen(source, "r"), fp_src) {
+        if (fp_src) {
             while (!feof(fp_src)) {
                 count_r = fread(buffer, 1, 4096, fp_src);
 
@@ -2072,14 +2145,17 @@ int TempFile(File *file, const char *source, int copy) {
                     return -1;
                 }
             }
-
-            fclose(fp_src);
         }
+    }
+
+    if (fp_src) {
+        fclose(fp_src);
     }
 
     file->name = strdup(template);
     return 0;
 }
+
 
 int OS_MoveFile(const char *src, const char *dst) {
     FILE *fp_src;
@@ -2134,7 +2210,8 @@ int OS_MoveFile(const char *src, const char *dst) {
     return status ? status : unlink(src);
 }
 
-int w_copy_file(const char *src, const char *dst,char mode,char * message,int silent) {
+
+int w_copy_file(const char *src, const char *dst, char mode, char * message, int silent) {
     FILE *fp_src;
     FILE *fp_dst;
     size_t count_r;
@@ -2152,7 +2229,7 @@ int w_copy_file(const char *src, const char *dst,char mode,char * message,int si
     }
 
     /* Append to file */
-    if(mode == 'a'){
+    if (mode == 'a') {
         fp_dst = fopen(dst, "a");
     }
     else {
@@ -2161,7 +2238,7 @@ int w_copy_file(const char *src, const char *dst,char mode,char * message,int si
 
 
     if (!fp_dst) {
-        if(!silent) {
+        if (!silent) {
             merror("At w_copy_file(): Couldn't open file '%s'", dst);
         }
         fclose(fp_src);
@@ -2169,12 +2246,12 @@ int w_copy_file(const char *src, const char *dst,char mode,char * message,int si
     }
 
     /* Write message to the destination file */
-    if(message){
+    if (message) {
         count_r = strlen(message);
         count_w = fwrite(message, 1, count_r, fp_dst);
 
         if (count_w != count_r || ferror(fp_dst)) {
-            if(!silent) {
+            if (!silent) {
                 merror("Couldn't write file '%s'", dst);
             }
             status = -1;
@@ -2188,7 +2265,7 @@ int w_copy_file(const char *src, const char *dst,char mode,char * message,int si
         count_r = fread(buffer, 1, 4096, fp_src);
 
         if (ferror(fp_src)) {
-            if(!silent) {
+            if (!silent) {
                 merror("Couldn't read file '%s'", src);
             }
             status = -1;
@@ -2198,7 +2275,7 @@ int w_copy_file(const char *src, const char *dst,char mode,char * message,int si
         count_w = fwrite(buffer, 1, count_r, fp_dst);
 
         if (count_w != count_r || ferror(fp_dst)) {
-            if(!silent) {
+            if (!silent) {
                 merror("Couldn't write file '%s'", dst);
             }
             status = -1;
@@ -2211,7 +2288,7 @@ int w_copy_file(const char *src, const char *dst,char mode,char * message,int si
     return status;
 }
 
-// Make directory recursively
+
 int mkdir_ex(const char * path) {
     char sep;
     char * temp = strdup(path);
@@ -2275,6 +2352,7 @@ int mkdir_ex(const char * path) {
     return 0;
 }
 
+
 int w_ref_parent_folder(const char * path) {
     const char * str;
     char * ptr;
@@ -2320,7 +2398,7 @@ int w_ref_parent_folder(const char * path) {
 cJSON* getunameJSON()
 {
     os_info *read_info;
-    cJSON* root=cJSON_CreateObject();
+    cJSON* root = cJSON_CreateObject();
 
 #ifndef WIN32
     if (read_info = get_unix_version(), read_info) {
@@ -2363,6 +2441,9 @@ cJSON* getunameJSON()
         if (read_info->machine && (strcmp(read_info->machine, "unknown") != 0)){
             cJSON_AddStringToObject(root, "architecture", read_info->machine);
         }
+        if (read_info->os_release){
+            cJSON_AddStringToObject(root, "os_release", read_info->os_release);
+        }
 
         free_osinfo(read_info);
         return root;
@@ -2370,6 +2451,7 @@ cJSON* getunameJSON()
     else
         return NULL;
 }
+
 
 wino_t get_fp_inode(FILE * fp) {
 #ifdef WIN32
@@ -2394,6 +2476,7 @@ wino_t get_fp_inode(FILE * fp) {
     return fd = fileno(fp), fd < 0 ? (wino_t)-1 : fstat(fd, &buf) ? (wino_t)-1 : buf.st_ino;
 #endif
 }
+
 
 long get_fp_size(FILE * fp) {
     long offset;
@@ -2430,10 +2513,10 @@ static int qsort_strcmp(const void *s1, const void *s2) {
     return strcmp(*(const char **)s1, *(const char **)s2);
 }
 
-// Read directory and return an array of contained files, sorted alphabetically.
+
 char ** wreaddir(const char * name) {
     DIR * dir;
-    struct dirent * dirent;
+    struct dirent * dirent = NULL;
     char ** files;
     unsigned int i = 0;
 
@@ -2441,7 +2524,7 @@ char ** wreaddir(const char * name) {
         return NULL;
     }
 
-    files = malloc(sizeof(char *));
+    os_malloc(sizeof(char *), files);
 
     while (dirent = readdir(dir), dirent) {
         // Skip "." and ".."
@@ -2449,7 +2532,7 @@ char ** wreaddir(const char * name) {
             continue;
         }
 
-        files = realloc(files, (i + 2) * sizeof(char *));
+        os_realloc(files, (i + 2) * sizeof(char *), files);
         if(!files){
            merror_exit(MEM_ERROR, errno, strerror(errno));
         }
@@ -2462,7 +2545,6 @@ char ** wreaddir(const char * name) {
     return files;
 }
 
-// Open file normally in Linux, allow read/write/delete in Windows
 
 FILE * wfopen(const char * pathname, const char * mode) {
 #ifdef WIN32
@@ -2532,7 +2614,8 @@ FILE * wfopen(const char * pathname, const char * mode) {
 #endif
 }
 
-int w_remove_line_from_file(char *file,int line){
+
+int w_remove_line_from_file(char *file, int line){
     FILE *fp_src;
     FILE *fp_dst;
     size_t count_w;
@@ -2546,7 +2629,7 @@ int w_remove_line_from_file(char *file,int line){
         return -1;
     }
 
-    snprintf(destination,PATH_MAX,"%s.back",file);
+    snprintf(destination, PATH_MAX, "%s.back", file);
 
     /* Write to file */
     fp_dst = fopen(destination, "w");
@@ -2575,11 +2658,10 @@ int w_remove_line_from_file(char *file,int line){
     fclose(fp_src);
     fclose(fp_dst);
 
-    return w_copy_file(destination,file,'w',NULL,0);
+    return w_copy_file(destination, file, 'w', NULL, 0);
 }
 
 
-/* file to gzip */
 int w_compress_gzfile(const char *filesrc, const char *filedst) {
     FILE *fd;
     gzFile gz_fd;
@@ -2591,7 +2673,7 @@ int w_compress_gzfile(const char *filesrc, const char *filedst) {
     umask(0027);
 
     /* Read file */
-    fd = fopen(filesrc, "rb");
+    fd = wfopen(filesrc, "rb");
     if (!fd) {
         merror("in w_compress_gzfile(): fopen error %s (%d):'%s'",
                 filesrc,
@@ -2634,7 +2716,7 @@ int w_compress_gzfile(const char *filesrc, const char *filedst) {
     return 0;
 }
 
-/* gzip to file */
+
 int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
     FILE *fd;
     gzFile gz_fd;
@@ -2668,24 +2750,34 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
     /* Open compressed file */
     gz_fd = gzopen(gzfilesrc, "rb");
     if (!gz_fd) {
-        merror("in w_uncompress_gzfile(): gzopen error '%s'",
-                gzerror(gz_fd, &err));
+        merror("in w_uncompress_gzfile(): gzopen error %s (%d):'%s'",
+                gzfilesrc,
+                errno,
+                strerror(errno));
         fclose(fd);
         return -1;
     }
 
     os_calloc(OS_SIZE_8192, sizeof(char), buf);
     do {
-        if (len = gzread(gz_fd, buf, OS_SIZE_8192), len == Z_BUF_ERROR) {
-            merror("in w_uncompress_gzfile(): gzfread error: '%s'",
-                    gzerror(gz_fd, &err));
+        len = gzread(gz_fd, buf, OS_SIZE_8192);
+
+        if (len > 0) {
+            fwrite(buf, 1, len, fd);
+            buf[0] = '\0';
+        }
+    } while (len == OS_SIZE_8192);
+
+    if (!gzeof(gz_fd)) {
+        const char * gzerr = gzerror(gz_fd, &err);
+        if (err) {
+            merror("in w_uncompress_gzfile(): gzread error: '%s'", gzerr);
             fclose(fd);
             gzclose(gz_fd);
+            os_free(buf);
             return -1;
         }
-        fwrite(buf, 1, len, fd);
-        buf[0] = '\0';
-    } while (len != Z_OK);
+    }
 
     os_free(buf);
     fclose(fd);
@@ -2694,17 +2786,17 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
     return 0;
 }
 
-/* Check if the file is ASCII or UTF-8 encoded */
-int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int max_chars_utf8) {
+
+int is_ascii_utf8(const char * file, unsigned int max_lines_ascii, unsigned int max_chars_utf8) {
     int is_ascii = 1;
     int retval = 0;
     char *buffer = NULL;
-    unsigned int lines_readed_ascii = 0;
-    unsigned int chars_readed_utf8 = 0;
-    fpos_t begin; 
+    unsigned int lines_read_ascii = 0;
+    unsigned int chars_read_utf8 = 0;
+    fpos_t begin;
     FILE *fp;
 
-    fp = fopen(file,"r");
+    fp = fopen(file, "r");
 
     if (!fp) {
         mdebug1(OPEN_UNABLE, file);
@@ -2712,20 +2804,20 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
         goto end;
     }
 
-    fgetpos(fp,&begin);
+    fgetpos(fp, &begin);
 
-    os_calloc(OS_MAXSTR + 1,sizeof(char),buffer);
+    os_calloc(OS_MAXSTR + 1, sizeof(char), buffer);
 
     /* ASCII */
     while (fgets(buffer, OS_MAXSTR, fp)) {
         int i;
         unsigned char *c = (unsigned char *)buffer;
 
-        if (lines_readed_ascii >= max_lines_ascii) {
+        if (lines_read_ascii >= max_lines_ascii) {
             break;
         }
 
-        lines_readed_ascii++;
+        lines_read_ascii++;
 
         for (i = 0; i < OS_MAXSTR; i++) {
             if( c[i] >= 0x80 ) {
@@ -2748,17 +2840,17 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
     unsigned char b[4] = {0};
     size_t nbytes = 0;
 
-    while (nbytes = fread(b,sizeof(char),4,fp), nbytes) {
+    while (nbytes = fread(b, sizeof(char), 4, fp), nbytes) {
 
-        if (chars_readed_utf8 >= max_chars_utf8) {
+        if (chars_read_utf8 >= max_chars_utf8) {
             break;
         }
 
-        chars_readed_utf8++;
+        chars_read_utf8++;
 
         /* Check for UTF-8 BOM */
         if (b[0] == 0xEF && b[1] == 0xBB && b[2] == 0xBF) {
-            if (fseek(fp,-1,SEEK_CUR) < 0) {
+            if (fseek(fp, -1, SEEK_CUR) < 0) {
                 merror(FSEEK_ERROR, file, errno, strerror(errno));
             }
             goto next;
@@ -2766,7 +2858,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
 
         /* Valid ASCII */
         if (b[0] == 0x09 || b[0] == 0x0A || b[0] == 0x0D || (0x20 <= b[0] && b[0] <= 0x7E)) {
-            if (fseek(fp,-nbytes + 1,SEEK_CUR) < 0) {
+            if (fseek(fp, -nbytes + 1, SEEK_CUR) < 0) {
                 merror(FSEEK_ERROR, file, errno, strerror(errno));
             }
             goto next;
@@ -2775,18 +2867,18 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
         /* Two bytes UTF-8 */
         if (b[0] >= 0xC2 && b[0] <= 0xDF) {
             if (b[1] >= 0x80 && b[1] <= 0xBF) {
-                if (fseek(fp,-2,SEEK_CUR) < 0) {
+                if (fseek(fp, -2, SEEK_CUR) < 0) {
                     merror(FSEEK_ERROR, file, errno, strerror(errno));
                 }
                 goto next;
             }
-        } 
+        }
 
         /* Exclude overlongs */
         if ( b[0] == 0xE0 ) {
             if ( b[1] >= 0xA0 && b[1] <= 0xBF) {
                 if ( b[2] >= 0x80 && b[2] <= 0xBF ) {
-                    if (fseek(fp,-1,SEEK_CUR) < 0 ) {
+                    if (fseek(fp, -1, SEEK_CUR) < 0 ) {
                         merror(FSEEK_ERROR, file, errno, strerror(errno));
                     }
                     goto next;
@@ -2798,19 +2890,19 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
         if ((b[0] >= 0xE1 && b[0] <= 0xEC) || b[0] == 0xEE || b[0] == 0xEF) {
             if (b[1] >= 0x80 && b[1] <= 0xBF) {
                 if (b[2] >= 0x80 && b[2] <= 0xBF) {
-                    if (fseek(fp,-1,SEEK_CUR) < 0 ) {
+                    if (fseek(fp, -1, SEEK_CUR) < 0 ) {
                         merror(FSEEK_ERROR, file, errno, strerror(errno));
                     }
                     goto next;
                 }
-            } 
-        } 
+            }
+        }
 
         /* Exclude surrogates */
         if (b[0] == 0xED) {
             if ( b[1] >= 0x80 && b[1] <= 0x9F) {
                 if ( b[2] >= 0x80 && b[2] <= 0xBF) {
-                    if (fseek(fp,-1,SEEK_CUR) < 0 ) {
+                    if (fseek(fp, -1, SEEK_CUR) < 0 ) {
                         merror(FSEEK_ERROR, file, errno, strerror(errno));
                     }
                     goto next;
@@ -2855,7 +2947,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
         goto end;
 
 next:
-        memset(b,0,4);
+        memset(b, 0, 4);
         continue;
     }
 
@@ -2868,11 +2960,12 @@ end:
     return retval;
 }
 
+
 int is_usc2(const char * file) {
     int retval = 0;
     FILE *fp;
 
-    fp = fopen(file,"r");
+    fp = fopen(file, "r");
 
     if (!fp) {
         mdebug1(OPEN_UNABLE, file);
@@ -2884,8 +2977,8 @@ int is_usc2(const char * file) {
     unsigned char b[2] = {0};
     size_t nbytes = 0;
 
-    while (nbytes = fread(b,sizeof(char),2,fp), nbytes) {
-        
+    while (nbytes = fread(b, sizeof(char), 2, fp), nbytes) {
+
         /* Check for UCS-2 LE BOM */
         if (b[0] == 0xFF && b[1] == 0xFE) {
             retval = UCS2_LE;
@@ -2930,20 +3023,267 @@ DWORD FileSizeWin(const char * file) {
 
     return -1;
 }
+
+float DirSize(const char *path) {
+    WIN32_FIND_DATA fdFile;
+    HANDLE hFind = NULL;
+    float folder_size = 0.0;
+    float file_size = 0.0;
+
+    char sPath[2048];
+
+    // Specify a file mask. *.* = We want everything!
+    sprintf(sPath, "%s\\*.*", path);
+
+    if ((hFind = FindFirstFile(sPath, &fdFile)) == INVALID_HANDLE_VALUE) {
+        merror(FILE_ERROR, path);
+        return 0;
+    }
+
+    do {
+        if (strcmp(fdFile.cFileName, ".") != 0 && strcmp(fdFile.cFileName, "..") != 0) {
+            // Build up our file path using the passed in
+            //  [path] and the file/foldername we just found:
+            sprintf(sPath, "%s\\%s", path, fdFile.cFileName);
+
+            if (fdFile.dwFileAttributes &FILE_ATTRIBUTE_DIRECTORY) {
+                folder_size += DirSize(sPath);
+            }
+            else {
+                if (file_size = FileSizeWin(sPath), file_size != -1) {
+                    folder_size += file_size;
+                }
+            }
+        }
+    } while (FindNextFile(hFind, &fdFile));
+
+    FindClose(hFind);
+
+    return folder_size;
+}
+
 #endif
+
 
 int64_t w_ftell (FILE *x) {
 
 #ifndef WIN32
-    int64_t z = ftell(x); 
+    int64_t z = ftell(x);
 #else
-    int64_t z = _ftelli64(x); 
+    int64_t z = _ftelli64(x);
 #endif
 
-    if (z < 0)  { 
-        merror("Ftell function failed due to [(%d)-(%s)]", errno, strerror(errno)); 
+    if (z < 0)  {
+        merror("Ftell function failed due to [(%d)-(%s)]", errno, strerror(errno));
         return -1;
-    } else {  
-        return z; 
+    } else {
+        return z;
     }
 }
+
+/* Prevent children processes from inheriting a file pointer */
+void w_file_cloexec(__attribute__((unused)) FILE * fp) {
+#ifndef WIN32
+    w_descriptor_cloexec(fileno(fp));
+#endif
+}
+
+/* Prevent children processes from inheriting a file descriptor */
+void w_descriptor_cloexec(__attribute__((unused)) int fd){
+#ifndef WIN32
+    if (fcntl(fd, F_SETFD, FD_CLOEXEC) < 0) {
+        mwarn("Cannot set close-on-exec flag to the descriptor: %s (%d)", strerror(errno), errno);
+    }
+#endif
+}
+
+// Add a trailing separator to a path string
+int trail_path_separator(char * dest, const char * src, size_t n) {
+    const char STR_SEPARATOR[] = { PATH_SEP, '\0' };
+    if (strlen(src) == 0) return 0;
+    return snprintf(dest, n, "%s%s", src, src[strlen(src) - 1] == PATH_SEP ? "" : STR_SEPARATOR);
+}
+
+// Check if a path is absolute
+bool isabspath(const char * path) {
+#ifdef WIN32
+    return strlen(path) >= 3 && isalpha(path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/');
+#else
+    return path[0] == '/';
+#endif
+}
+
+// Unify path separators (slashes) for Windows paths
+
+void win_path_backslash(char * path) {
+    for (char * c = strchr(path, '/'); c != NULL; c = strchr(c + 1, '/')) {
+        *c = '\\';
+    }
+}
+
+// Get an absolute path
+char * abspath(const char * path, char * buffer, size_t size) {
+    // If the path is already absolute, copy and return
+    if (isabspath(path)) {
+        strncpy(buffer, path, size);
+        buffer[size - 1] = '\0';
+#ifdef WIN32
+        buffer[0] = tolower(buffer[0]);
+#endif
+        return buffer;
+    }
+
+    char cwd[PATH_MAX];
+
+    if (getcwd(cwd, sizeof(cwd)) == NULL) {
+        return NULL;
+    }
+
+#ifdef WIN32
+    size_t len;
+
+    switch (path[0]) {
+    case '/':
+    case '\\':
+        // Starts with \: current drive's root
+        if (snprintf(buffer, size, "%c:%s", cwd[0], path) >= (int)size) {
+            return NULL;
+        }
+
+        break;
+
+    default:
+        // Remove root's backslash: "C:\" must be "C:"
+        len = strlen(cwd);
+        cwd[len - 1] = cwd[len - 1] == '\\' ? '\0' : cwd[len - 1];
+
+        if (snprintf(buffer, size, "%s\\%s", cwd, path) >= (int)size) {
+            return NULL;
+        }
+    }
+
+    win_path_backslash(buffer);
+#else
+    if (snprintf(buffer, size, "%s/%s", strcmp(cwd, "/") == 0 ? "" : cwd, path) >= (int)size) {
+        return NULL;
+    }
+#endif
+
+    return buffer;
+}
+
+/* Return the content of a file from a given path */
+char * w_get_file_content(const char * path, int max_size) {
+    FILE * fp = NULL;
+    char * buffer = NULL;
+    long size;
+    size_t read;
+
+    // Check if path is NULL
+    if (path == NULL) {
+        mdebug1("Cannot open NULL path");
+        goto end;
+    }
+
+    // Load file
+    if (fp = fopen(path, "r"), !fp) {
+        mdebug1(FOPEN_ERROR, path, errno, strerror(errno));
+        goto end;
+    }
+
+    // Get file size
+    if (size = get_fp_size(fp), size < 0) {
+        mdebug1(FSEEK_ERROR, path, errno, strerror(errno));
+        goto end;
+    }
+
+    // Check file size limit
+    if (size > max_size) {
+        mdebug1("Cannot load file '%s': it exceeds %i MiB", path, (max_size / (1024 * 1024)));
+        goto end;
+    }
+
+    // Allocate memory
+    os_malloc(size + 1, buffer);
+
+    // Get file content
+    if (read = fread(buffer, 1, size, fp), read != (size_t)size && !feof(fp)) {
+        mdebug1(FREAD_ERROR, path, errno, strerror(errno));
+        os_free(buffer);
+        goto end;
+    }
+
+    buffer[size] = '\0';
+
+end:
+    if (fp) {
+        fclose(fp);
+    }
+
+    return buffer;
+}
+
+/* Check if a file is gzip compressed. */
+int w_is_compressed_gz_file(const char * path) {
+    unsigned char buf[2];
+    int retval = 0;
+    FILE *fp;
+
+    fp = fopen(path, "rb");
+
+    /* Magic number: 1f 8b */
+    if (fp && fread(buf, 1, 2, fp) == 2) {
+        if (buf[0] == 0x1f && buf[1] == 0x8b) {
+            retval = 1;
+        }
+    }
+
+    if (fp) {
+        fclose(fp);
+    }
+
+    return retval;
+}
+
+/* Check if a file is bzip2 compressed. */
+int w_is_compressed_bz2_file(const char * path) {
+    unsigned char buf[3];
+    int retval = 0;
+    FILE *fp;
+
+    fp = fopen(path, "rb");
+
+    /* Magic number: 42 5a 68 */
+    if (fp && fread(buf, 1, 3, fp) == 3) {
+        if (buf[0] == 0x42 && buf[1] == 0x5a && buf[2] == 0x68) {
+            retval = 1;
+        }
+    }
+
+    if (fp) {
+        fclose(fp);
+    }
+
+    return retval;
+}
+
+#ifndef CLIENT
+
+int w_uncompress_bz2_gz_file(const char * path, const char * dest) {
+    int result = 1;
+
+    if (w_is_compressed_bz2_file(path)) {
+        result = bzip2_uncompress(path, dest);
+    }
+
+    if (w_is_compressed_gz_file(path)) {
+        result = w_uncompress_gzfile(path, dest);
+    }
+
+    if (!result) {
+        mdebug1("The file '%s' was successfully uncompressed into '%s'", path, dest);
+    }
+
+    return result;
+}
+#endif

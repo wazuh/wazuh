@@ -1,19 +1,7 @@
 #!/bin/sh
-# Copyright (C) 2015-2019, Wazuh Inc.
-# Installation script for the OSSEC
+# Copyright (C) 2015-2020, Wazuh Inc.
+# Installation script for Wazuh
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
-
-# Changelog 19/03/2006 - Rafael M. Capovilla <under@underlinux.com.br>
-# New function AddWhite to allow users to add more Ips in the white_list
-# Minor *echos* modifications to better look
-# Bug fix - When email address is blank
-# Bug fix - delete INSTALLDIR - Default is yes but if the user just press enter the script wasn't deleting it as it should
-# Changelog 15/07/2006 - Rafael M. Capovilla <under@underlinux.com.br>
-# New function AddTable to add support for OpenBSD pf rules in firewall-drop active response
-
-# Changelog 29 March 2012 - Adding hybrid mode (standalone + agent)
-# Changelog 25 November 2016 - Added OpenSCAP, new file generating functions using templates.
-
 
 ### Looking up for the execution directory
 cd `dirname $0`
@@ -25,6 +13,8 @@ hs=`echo -n "a"`
 if [ ! "X$hs" = "Xa" ]; then
     if [ -x /usr/ucb/echo ]; then
         ECHO="/usr/ucb/echo -n"
+    elif [ -x /bin/echo ]; then
+        ECHO="/bin/echo -n"
     else
         ECHO=echo
     fi
@@ -99,12 +89,12 @@ Install()
         AUDIT_FLAG="USE_AUDIT=no"
         MSGPACK_FLAG="USE_MSGPACK_OPT=no"
         if [ ${DIST_VER} -lt 5 ]; then
-            SYSC_FLAG="DISABLE_SYSC=true"
+            SYSC_FLAG="DISABLE_SYSC=yes"
         fi
     fi
 
     if [ "X${OS_VERSION_FOR_SYSC}" = "XAIX" ]; then
-        SYSC_FLAG="DISABLE_SYSC=true"
+        SYSC_FLAG="DISABLE_SYSC=yes"
     fi
 
     # Build SQLite library for CentOS 6
@@ -231,31 +221,6 @@ UseRootcheck()
         *)
             ROOTCHECK="yes"
             echo "   - ${yesrootcheck}."
-            ;;
-    esac
-}
-
-##########
-# UseOpenSCAP()
-##########
-UseOpenSCAP()
-{
-    # OpenSCAP config
-    echo ""
-    $ECHO "  3.4- ${runopenscap} ($yes/$no) [$yes]: "
-    if [ "X${USER_ENABLE_OPENSCAP}" = "X" ]; then
-        read AS
-    else
-        AS=${USER_ENABLE_OPENSCAP}
-    fi
-    echo ""
-    case $AS in
-        $nomatch)
-            echo "   - ${norunopenscap}."
-            ;;
-        *)
-            OPENSCAP="yes"
-            echo "   - ${yesrunopenscap}."
             ;;
     esac
 }
@@ -407,9 +372,6 @@ ConfigureClient()
     # Rootcheck?
     UseRootcheck
 
-    # OpenSCAP?
-    UseOpenSCAP
-
     UseSyscollector
 
     UseSecurityConfigurationAssessment
@@ -541,9 +503,6 @@ ConfigureServer()
 
     # Checking if rootcheck should run
     UseRootcheck
-
-    # Checking if OpenSCAP should run
-    UseOpenSCAP
 
     UseSyscollector
 
@@ -1100,19 +1059,14 @@ main()
     if [ "X$INSTYPE" = "Xserver" ]; then
         echo ""
         echo " - ${addserveragent}"
-        echo "   ${runma}:"
-        echo ""
-        echo "   $INSTALLDIR/bin/manage_agents"
         echo ""
         echo "   ${moreinfo}"
         echo "   https://documentation.wazuh.com/"
         echo ""
 
-    elif [ "X$INSTYPE" = "Xagent" ]; then
-        catMsg "0x104-client"
-        echo "   $INSTALLDIR/bin/manage_agents"
-        echo ""
-        echo "   ${moreinfo}"
+    elif [ "X$INSTYPE" = "Xagent" ]; then  
+        echo ""      
+        echo " - ${moreinfo}"
         echo "   https://documentation.wazuh.com/"
         echo ""
     fi
@@ -1149,8 +1103,6 @@ if [ "x$HYBID" = "xgo" ]; then
     echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_ENABLE_OPENSCAP="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf

@@ -1,0 +1,247 @@
+---
+test_name: PUT /active-response/{:agent_id}
+
+marks:
+  - base_tests
+
+stages:
+
+  - name: Runs an Active Response command on a specified agent
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        command: "restart-ossec0"
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+      params:
+        agents_list: '001'
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - '001'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Send a message to an agent (Status=Active)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        command: "restart-ossec0"
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+      params:
+        agents_list: '002'
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - '002'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+    delay_after: !float "{restart_delay}"
+
+  - name: Send a message to a list of agents (Status=Active)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        command: "restart-ossec0"
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+      params:
+        agents_list: 002,004,005,007,010
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: !anything
+          failed_items:
+            - error:
+                code: 1651
+              id:
+                - '010'
+          total_affected_items: 4
+          total_failed_items: 1
+    delay_after: !float "{restart_delay}"
+
+  - name: Try to send a message to an agent (status=disconnected/never_connected)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        command: "restart-ossec0"
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+      params:
+        agents_list: '009'
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1651
+              id:
+                - 009
+          total_affected_items: 0
+          total_failed_items: 1
+
+  - name: Try to send a message to an unexisting agent
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        command: "restart-ossec0"
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+      params:
+        agents_list: '251'
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - '251'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  - name: Try to send a message to an agent, without body
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '004'
+    response:
+      status_code: 400
+
+  - name: Try to send a message to an agent, malformed body
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        comMmand: "restart-ossec0"
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+      params:
+        agents_list: '005'
+    response:
+      status_code: 400
+
+  - name: Send a message to one agent (Active response disabled)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        command: "restart-ossec0"
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+      params:
+        agents_list: '003'
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1750
+              id:
+                - '003'
+          total_affected_items: 0
+          total_failed_items: 1
+
+---
+test_name: PUT /active-response
+
+stages:
+
+    # PUT /active-response
+  - name: Runs an Active Response command on all agents
+    delay_before: !float "{active_reponse_delay}"
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        command: "restart-ossec0"
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: !anything
+          failed_items:
+            - error:
+                code: 1651
+              id:
+                - '009'
+                - '010'
+                - '011'
+                - '012'
+            - error:
+                code: 1750
+              id:
+                - '003'
+          total_affected_items: 8
+          total_failed_items: 5
+
+    # PUT /active-response
+  - name: Try to send a message to all agents, malformed body
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        comMmand: "restart-ossec0"
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+    response:
+      status_code: 400

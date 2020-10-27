@@ -1,11 +1,11 @@
 <!--
   -  Security Configuration Assessment ruleset
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-<group name="sca,gdpr_IV_35.7.d">
+<group name="sca,gdpr_IV_35.7.d,pci_dss_2.2,nist_800_53_CM.1,tsc_CC7.1,tsc_CC7.2,">
 
   <rule id="19000" level="0">
     <category>ossec</category>

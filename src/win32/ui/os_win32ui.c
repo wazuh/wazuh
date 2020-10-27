@@ -1,17 +1,16 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
 
 #include <process.h>
-
+#include "../../src/headers/string_op.h"
 #include "os_win32ui.h"
-#include <process.h>
 #include "../os_win.h"
 
 
@@ -296,8 +295,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
                 case UI_MENU_MANAGE_START:
 
                     /* Start OSSEC  -- must have a valid config before */
-                    if ((strcmp(config_inst.key, FL_NOKEY) != 0) &&
-                            (strcmp(config_inst.server, FL_NOSERVER) != 0)) {
+                    if (strcmp(config_inst.server, FL_NOSERVER) != 0) {
                         ret_code = os_start_service();
                     } else {
                         ret_code = 0;
@@ -347,8 +345,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
                     break;
                 case UI_MENU_MANAGE_RESTART:
 
-                    if ((strcmp(config_inst.key, FL_NOKEY) == 0) ||
-                            (strcmp(config_inst.server, FL_NOSERVER) == 0)) {
+                    if (strcmp(config_inst.server, FL_NOSERVER) == 0) {
                         MessageBox(hwnd, "Unable to restart agent (check config)",
                                    "Error -- Unable to Restart Agent", MB_OK);
                         break;

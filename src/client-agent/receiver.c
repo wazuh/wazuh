@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -16,6 +16,7 @@
 #include "os_net/os_net.h"
 #include "wazuh_modules/wmodules.h"
 #include "wazuh_modules/wm_sca.h"
+#include "syscheck_op.h"
 #include "agentd.h"
 
 /* Global variables */
@@ -42,7 +43,7 @@ int receive_msg()
 
     /* Read until no more messages are available */
     while (1) {
-        if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
+        if (agt->server[agt->rip_id].protocol == IPPROTO_TCP) {
             /* Only one read per call */
             if (reads++) {
                 break;
@@ -124,9 +125,9 @@ int receive_msg()
                 continue;
             }
 
-            /* Restart syscheck */
-            else if (strcmp(tmp_msg, HC_SK_RESTART) == 0) {
-                os_set_restart_syscheck();
+            /* Syscheck */
+            else if (strncmp(tmp_msg, HC_SK, strlen(HC_SK)) == 0) {
+                ag_send_syscheck(tmp_msg + strlen(HC_SK));
                 continue;
             }
 
@@ -150,7 +151,7 @@ int receive_msg()
                         merror("Error communicating with Security configuration assessment");
                         close(agt->cfgadq);
 
-                        if ((agt->cfgadq = StartMQ(CFGAQUEUE, WRITE)) < 0) {
+                        if ((agt->cfgadq = StartMQ(CFGASSESSMENTQUEUEPATH, WRITE, 1)) < 0) {
                             merror("Unable to connect to the Security configuration assessment "
                                     "queue (disabled).");
                             agt->cfgadq = -1;
@@ -161,7 +162,7 @@ int receive_msg()
                         }
                     }
                 } else {
-                    if ((agt->cfgadq = StartMQ(CFGAQUEUE, WRITE)) < 0) {
+                    if ((agt->cfgadq = StartMQ(CFGASSESSMENTQUEUEPATH, WRITE, 1)) < 0) {
                         merror("Unable to connect to the Security configuration assessment "
                             "queue (disabled).");
                         agt->cfgadq = -1;
@@ -220,7 +221,7 @@ int receive_msg()
                 }
 
                 snprintf(file, OS_SIZE_1024, "%s/%s",
-                         SHAREDCFG_DIR,
+                         SHAREDCFG_DIRPATH,
                          tmp_msg);
 
                 fp = fopen(file, "w");
@@ -260,11 +261,11 @@ int receive_msg()
                         final_file = strrchr(file, '/');
                         if (final_file) {
                             if (strcmp(final_file + 1, SHAREDCFG_FILENAME) == 0) {
-                                if (cldir_ex_ignore(SHAREDCFG_DIR, IGNORE_LIST)) {
+                                if (cldir_ex_ignore(SHAREDCFG_DIRPATH, IGNORE_LIST)) {
                                     mwarn("Could not clean up shared directory.");
                                 }
 
-                                if(!UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT)){
+                                if(!UnmergeFiles(file, SHAREDCFG_DIRPATH, OS_TEXT)){
                                     char msg_output[OS_MAXSTR];
 
                                     snprintf(msg_output, OS_MAXSTR, "%c:%s:%s",  LOCALFILE_MQ, "ossec-agent", AG_IN_UNMERGE);

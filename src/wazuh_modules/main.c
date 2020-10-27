@@ -1,9 +1,9 @@
 /*
  * Wazuh Module Manager
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * April 22, 2016.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -17,7 +17,6 @@ static void wm_cleanup();               // Cleanup function, called on exiting.
 static void wm_handler(int signum);     // Action on signal.
 
 static int flag_foreground = 0;         // Running in foreground.
-int wm_debug_level;
 
 // Main function
 
@@ -72,7 +71,7 @@ int main(int argc, char **argv)
     /* Check if the group given is valid */
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, "", group);
+        merror_exit(USER_ERROR, "", group, strerror(errno), errno);
     }
 
     /* Privilege separation */
@@ -149,7 +148,7 @@ void wm_setup()
     // Set group
 
     if (gid = Privsep_GetGroup(GROUPGLOBAL), gid == (gid_t) -1) {
-        merror_exit(USER_ERROR, "", GROUPGLOBAL);
+        merror_exit(USER_ERROR, "", GROUPGLOBAL, strerror(errno), errno);
     }
 
     if (Privsep_SetGroup(gid) < 0) {
@@ -183,19 +182,23 @@ void wm_setup()
 
     if (CreatePID(ARGV0, getpid()) < 0)
         merror_exit("Couldn't create PID file: (%s)", strerror(errno));
+
+    // Initialize children pool
+    wm_children_pool_init();
 }
 
 // Cleanup function, called on exiting.
 
 void wm_cleanup()
 {
-    // Delete PID file
-
-    if (DeletePID(ARGV0) < 0)
-        merror("Couldn't delete PID file.");
-
     // Kill active child processes
     wm_kill_children();
+
+    // Delete PID file
+
+    if (DeletePID(ARGV0) < 0) {
+        merror("Couldn't delete PID file.");
+    }
 }
 
 // Action on signal

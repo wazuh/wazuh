@@ -1,9 +1,9 @@
 /*
  * Wazuh Module for System inventory for Windows
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * Aug, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -29,6 +29,9 @@ typedef struct _SYSTEM_PROCESS_IMAGE_NAME_INFORMATION
 
 typedef NTSTATUS(WINAPI *tNTQSI)(ULONG SystemInformationClass, PVOID SystemInformation, ULONG SystemInformationLength, PULONG ReturnLength);
 
+static bool found_hotfix_error(HKEY hKey);
+static bool valid_hotfix_status(HKEY hKey);
+static char * parse_Rollup_hotfix(HKEY hKey, char *value);
 hw_info *get_system_windows();
 int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 
@@ -36,14 +39,14 @@ int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 char* get_process_name(DWORD pid){
     char read_buff[OS_MAXSTR];
     char *string = NULL, *ptr = NULL;
-    
+
     /* Check if we are dealing with a system process */
     if (pid == 0 || pid == 4)
     {
         string = strdup(pid == 0 ? "System Idle Process" : "System");
         return string;
     }
-    
+
     /* Get process handle */
     HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
     if (hProcess == NULL && checkVista())
@@ -51,7 +54,7 @@ char* get_process_name(DWORD pid){
         /* Try to open the process using PROCESS_QUERY_LIMITED_INFORMATION */
         hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
     }
-    
+
     if (hProcess != NULL)
     {
         /* Get full Windows kernel path for the process */
@@ -65,13 +68,13 @@ char* get_process_name(DWORD pid){
                 memcpy(read_buff, &(read_buff[ptr - read_buff + 1]), len);
                 read_buff[len] = '\0';
             }
-            
+
             /* Duplicate string */
             string = strdup(read_buff);
         } else {
-            mtwarn(WM_SYS_LOGTAG, "At get_process_name(): Unable to retrieve name for process with PID %lu (%lu).", pid, GetLastError());
+            mtwarn(WM_SYS_LOGTAG, "Unable to retrieve name for process with PID %lu (%lu).", pid, GetLastError());
         }
-        
+
         /* Close process handle */
         CloseHandle(hProcess);
     } else {
@@ -90,36 +93,36 @@ char* get_process_name(DWORD pid){
                 DWORD error = GetLastError();
                 LPSTR messageBuffer = NULL;
                 LPSTR end;
-                
+
                 FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error, 0, (LPTSTR) &messageBuffer, 0, NULL);
-                
+
                 if (end = strchr(messageBuffer, '\r'), end) *end = '\0';
-                
-                mterror(WM_SYS_LOGTAG, "At get_process_name(): Unable to load ntdll.dll: %s (%lu).", messageBuffer, error);
+
+                mterror(WM_SYS_LOGTAG, "Unable to load ntdll.dll: %s (%lu).", messageBuffer, error);
                 LocalFree(messageBuffer);
             } else {
                 fpQSI = (tNTQSI)GetProcAddress(ntdll, "NtQuerySystemInformation");
-                if (fpQSI == NULL) mterror(WM_SYS_LOGTAG, "At get_process_name(): Unable to access 'NtQuerySystemInformation' on ntdll.dll.");
+                if (fpQSI == NULL) mterror(WM_SYS_LOGTAG, "Unable to access 'NtQuerySystemInformation' on ntdll.dll.");
             }
-            
+
             if (ntdll != NULL && fpQSI != NULL)
             {
                 NTSTATUS Status;
                 PVOID pBuffer;
                 SYSTEM_PROCESS_IMAGE_NAME_INFORMATION procInfo;
-                
+
                 pBuffer = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, 0x100);
                 if (pBuffer == NULL)
                 {
-                    mterror(WM_SYS_LOGTAG, "At get_process_name(): Unable to allocate memory for 'NtQuerySystemInformation'.");
+                    mterror(WM_SYS_LOGTAG, "Unable to allocate memory for 'NtQuerySystemInformation'.");
                 } else {
                     procInfo.ProcessId = &pid;
                     procInfo.ImageName.Length = 0;
                     procInfo.ImageName.MaximumLength = (USHORT)0x100;
                     procInfo.ImageName.Buffer = pBuffer;
-                    
+
                     Status = fpQSI(88, &procInfo, sizeof(procInfo), NULL);
-                    
+
                     if (Status == STATUS_INFO_LENGTH_MISMATCH)
                     {
                         /* Our buffer was too small. The required buffer length is stored in MaximumLength */
@@ -127,35 +130,30 @@ char* get_process_name(DWORD pid){
                         pBuffer = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, procInfo.ImageName.MaximumLength);
                         if (pBuffer == NULL)
                         {
-                            mterror(WM_SYS_LOGTAG, "At get_process_name(): Unable to allocate memory for 'NtQuerySystemInformation'.");
+                            mterror(WM_SYS_LOGTAG, "Unable to allocate memory for 'NtQuerySystemInformation'.");
                         } else {
                             procInfo.ImageName.Buffer = pBuffer;
                             Status = fpQSI(88, &procInfo, sizeof(procInfo), NULL);
                         }
                     }
-                    
+
                     if (NT_SUCCESS(Status))
                     {
                         int size_needed = WideCharToMultiByte(CP_UTF8, 0, procInfo.ImageName.Buffer, procInfo.ImageName.Length / 2, NULL, 0, NULL, NULL);
                         if (!size_needed)
                         {
-                            mterror(WM_SYS_LOGTAG, "At get_process_name(): 'WideCharToMultiByte' failed (%lu).", GetLastError());
+                            mterror(WM_SYS_LOGTAG, "'WideCharToMultiByte' failed (%lu).", GetLastError());
                         } else {
-                            string = (char*)malloc(size_needed + 1);
-                            if (string == NULL)
+                            os_malloc(size_needed + 1, string);
+                            if (WideCharToMultiByte(CP_UTF8, 0, procInfo.ImageName.Buffer, procInfo.ImageName.Length / 2, string, size_needed, NULL, NULL) != size_needed)
                             {
-                                mterror(WM_SYS_LOGTAG, "At get_process_name(): Unable to allocate memory for UTF-16 -> UTF-8 conversion.");
-                            } else {
-                                if (WideCharToMultiByte(CP_UTF8, 0, procInfo.ImageName.Buffer, procInfo.ImageName.Length / 2, string, size_needed, NULL, NULL) != size_needed)
-                                {
-                                    mterror(WM_SYS_LOGTAG, "At get_process_name(): 'WideCharToMultiByte' failed (%lu).", GetLastError());
-                                    free(string);
-                                    string = NULL;
-                                }
+                                mterror(WM_SYS_LOGTAG, "'WideCharToMultiByte' failed (%lu).", GetLastError());
+                                free(string);
+                                string = NULL;
                             }
                         }
                     }
-                    
+
                     if (pBuffer != NULL) HeapFree(hHeap, 0, pBuffer);
                 }
             }
@@ -163,10 +161,10 @@ char* get_process_name(DWORD pid){
                 FreeLibrary(ntdll);
             }
         } else {
-            mtwarn(WM_SYS_LOGTAG, "At get_process_name(): Unable to retrieve handle for process with PID %lu (%lu).", pid, GetLastError());
+            mtwarn(WM_SYS_LOGTAG, "Unable to retrieve handle for process with PID %lu (%lu).", pid, GetLastError());
         }
     }
-    
+
     if (string == NULL) string = strdup("unknown");
     return string;
 }
@@ -284,34 +282,15 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
     // Set random ID for each scan
 
-    unsigned int ID1 = os_random();
-    unsigned int ID2 = os_random();
-
-    char random_id[SERIAL_LENGTH];
-    snprintf(random_id, SERIAL_LENGTH - 1, "%u%u", ID1, ID2);
-
-    int ID = atoi(random_id);
-    if (ID < 0)
-        ID = -ID;
+    int ID = wm_sys_get_random_id();
 
     // Set timestamp
 
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    char *timestamp = w_get_timestamp(time(NULL));
 
 	HANDLE hdle;
 	int privilege_enabled = 0;
-	
+
 	/* Enable debug privilege */
 	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hdle))
 	{
@@ -324,7 +303,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 	} else {
 		mtwarn(WM_SYS_LOGTAG, "Unable to retrieve current process token (%lu).", GetLastError());
 	}
-    
+
     /* Initialize the Winsock DLL */
     WSADATA wsd;
     int wsa_enabled = 0;
@@ -333,7 +312,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         goto end;
     }
     wsa_enabled = 1;
-	
+
 	char local_addr[NI_MAXHOST];
     char rem_addr[NI_MAXHOST];
     struct in_addr ipaddress;
@@ -356,7 +335,8 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     dwSize = sizeof(MIB_TCPTABLE_OWNER_PID);
 
     /* Initial call to the function to get the necessary size into the dwSize variable */
-    if ((dwRetVal = GetExtendedTcpTable(pTcpTable, &dwSize, bOrder, AF_INET, TableClass, 0)) == ERROR_INSUFFICIENT_BUFFER){
+    if (dwRetVal = GetExtendedTcpTable(pTcpTable, &dwSize, bOrder, AF_INET, TableClass, 0),
+        dwRetVal == ERROR_INSUFFICIENT_BUFFER) {
         win_free(pTcpTable);
         pTcpTable = (MIB_TCPTABLE_OWNER_PID *) win_alloc(dwSize);
         if (pTcpTable == NULL){
@@ -449,7 +429,8 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     dwSize = sizeof(MIB_TCP6TABLE_OWNER_PID);
 
     /* Initial call to the function to get the necessary size into the dwSize variable */
-    if ((dwRetVal = GetExtendedTcpTable(pTcp6Table, &dwSize, bOrder, AF_INET6, TableClass, 0)) == ERROR_INSUFFICIENT_BUFFER){
+    if (dwRetVal = GetExtendedTcpTable(pTcp6Table, &dwSize, bOrder, AF_INET6, TableClass, 0),
+        dwRetVal == ERROR_INSUFFICIENT_BUFFER) {
         win_free(pTcp6Table);
         pTcp6Table = (MIB_TCP6TABLE_OWNER_PID *) win_alloc(dwSize);
         if (pTcp6Table == NULL){
@@ -457,7 +438,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             goto end;
         }
     }
-    
+
     /* Second call with the right size of the returned table */
     if ((dwRetVal = GetExtendedTcpTable(pTcp6Table, &dwSize, bOrder, AF_INET6, TableClass, 0)) == NO_ERROR){
 
@@ -548,7 +529,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
                 mtwarn(WM_SYS_LOGTAG, "TCP/IPv6 is not installed in any network interface. Unable to retrieve TCP/IPv6 port data.");
                 break;
             case ERROR_NO_DATA:
-                mtinfo(WM_SYS_LOGTAG, "No TCP/IPv6 network sockets open.");
+                mtdebug1(WM_SYS_LOGTAG, "No TCP/IPv6 network sockets open.");
                 break;
             default:
                 mterror(WM_SYS_LOGTAG, "Call to GetExtendedTcpTable failed with error: %lu", dwRetVal);
@@ -571,7 +552,8 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     dwSize = sizeof(MIB_UDPTABLE_OWNER_PID);
 
     /* Initial call to the function to get the necessary size into the dwSize variable */
-    if ((dwRetVal = GetExtendedUdpTable(pUdpTable, &dwSize, bOrder, AF_INET, TableClassUdp, 0)) == ERROR_INSUFFICIENT_BUFFER){
+    if (dwRetVal = GetExtendedUdpTable(pUdpTable, &dwSize, bOrder, AF_INET, TableClassUdp, 0),
+        dwRetVal == ERROR_INSUFFICIENT_BUFFER) {
         win_free(pUdpTable);
         pUdpTable = (MIB_UDPTABLE_OWNER_PID *) win_alloc(dwSize);
         if (pUdpTable == NULL){
@@ -641,7 +623,8 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     dwSize = sizeof(MIB_UDP6TABLE_OWNER_PID);
 
     /* Initial call to the function to get the necessary size into the dwSize variable */
-    if ((dwRetVal = GetExtendedUdpTable(pUdp6Table, &dwSize, bOrder, AF_INET6, TableClassUdp, 0)) == ERROR_INSUFFICIENT_BUFFER){
+    if (dwRetVal = GetExtendedUdpTable(pUdp6Table, &dwSize, bOrder, AF_INET6, TableClassUdp, 0),
+        dwRetVal == ERROR_INSUFFICIENT_BUFFER) {
         win_free(pUdp6Table);
         pUdp6Table = (MIB_UDP6TABLE_OWNER_PID *) win_alloc(dwSize);
         if (pUdp6Table == NULL){
@@ -705,7 +688,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     } else {
         switch(dwRetVal) {
             case ERROR_NO_DATA:
-                mtinfo(WM_SYS_LOGTAG, "No UDP/IPv6 network sockets open.");
+                mtdebug1(WM_SYS_LOGTAG, "No UDP/IPv6 network sockets open.");
                 break;
             default:
                 mterror(WM_SYS_LOGTAG, "Call to GetExtendedUdpTable failed with error: %lu", dwRetVal);
@@ -713,18 +696,18 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         }
         goto end;
     }
-	
+
 end:
 	/* Disable debug privilege */
 	if (privilege_enabled)
 	{
 		if (set_token_privilege(hdle, SE_DEBUG_NAME, FALSE)) mtwarn(WM_SYS_LOGTAG, "Unable to unset debug privilege on current process (%lu).", GetLastError());
 	}
-	
+
 	if (hdle) CloseHandle(hdle);
-    
+
     if (wsa_enabled) WSACleanup();
-    
+
     if (pTcpTable != NULL) win_free(pTcpTable);
     if (pTcp6Table != NULL) win_free(pTcp6Table);
     if (pUdpTable != NULL) win_free(pUdpTable);
@@ -752,31 +735,11 @@ void sys_programs_windows(const char* LOCATION){
     int usec = 1000000 / wm_max_eps;
 
     // Set timestamp
-
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    char *timestamp = w_get_timestamp(time(NULL));
 
     // Set random ID for each scan
 
-    unsigned int ID1 = os_random();
-    unsigned int ID2 = os_random();
-
-    char random_id[SERIAL_LENGTH];
-    snprintf(random_id, SERIAL_LENGTH - 1, "%u%u", ID1, ID2);
-
-    int ID = atoi(random_id);
-    if (ID < 0)
-        ID = -ID;
+    int ID = wm_sys_get_random_id();
 
     mtdebug1(WM_SYS_LOGTAG, "Starting installed programs inventory.");
 
@@ -850,6 +813,44 @@ void sys_programs_windows(const char* LOCATION){
 
 }
 
+// Get installed hotfixes inventory
+
+void sys_hotfixes(const char* LOCATION){
+    int usec = 1000000 / wm_max_eps;
+    char *timestamp = w_get_timestamp(time(NULL));
+    int ID = wm_sys_get_random_id();
+    HKEY main_key;
+    long unsigned int result;
+    const char *HOTFIXES_REG;
+    cJSON *end_evt;
+    char *end_evt_str;
+
+    HOTFIXES_REG = isVista ? WIN_REG_HOTFIX : VISTA_REG_HOTFIX;
+
+    mtdebug1(WM_SYS_LOGTAG, "Starting installed hotfixes inventory.");
+
+    if(result = RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT(HOTFIXES_REG), 0, KEY_READ | KEY_WOW64_64KEY, &main_key), result == ERROR_SUCCESS) {
+        mtdebug2(WM_SYS_LOGTAG, "Reading hotfixes from the registry.");
+        list_hotfixes(main_key,usec, timestamp, ID, LOCATION);
+    } else {
+        mterror(WM_SYS_LOGTAG, "Could not open the registry '%s'. Error: %lu.", HOTFIXES_REG, result);
+    }
+
+    end_evt = cJSON_CreateObject();
+    cJSON_AddStringToObject(end_evt, "type", "hotfix_end");
+    cJSON_AddNumberToObject(end_evt, "ID", ID);
+    cJSON_AddStringToObject(end_evt, "timestamp", timestamp);
+
+    end_evt_str = cJSON_PrintUnformatted(end_evt);
+    mtdebug2(WM_SYS_LOGTAG, "sys_hotfixes() sending '%s'", end_evt_str);
+    wm_sendmsg(usec, 0, end_evt_str, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON_Delete(end_evt);
+
+    free(end_evt_str);
+    free(timestamp);
+    RegCloseKey(main_key);
+}
+
 // List installed programs from the registry
 void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const char * timestamp, int ID, const char * LOCATION) {
 
@@ -869,7 +870,7 @@ void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const c
     DWORD i, retCode;
 
     // Get the class name and the value count
-    retCode = RegQueryInfoKey(
+    RegQueryInfoKey(
         hKey,                    // key handle
         achClass,                // buffer for class name
         &cchClassName,           // size of class string
@@ -917,6 +918,198 @@ void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const c
     }
 }
 
+void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const char *LOCATION) {
+    static OSRegex *hotfix_regex = NULL;
+    HKEY subKey;
+    // This table is used to discard already reported hotfixes (same key and same timestamp)
+    // It does not need to be released between iterations (static variable)
+    static OSHash *hotfixes_table;
+    char achKey[KEY_LENGTH];   // buffer for subkey name
+    long unsigned int cbName;                   // size of name string
+    char achClass[MAX_PATH] = TEXT("");  // buffer for class name
+    long unsigned int cchClassName = MAX_PATH;  // size of class string
+    long unsigned int cSubKeys=0;               // number of subkeys
+    long unsigned int cbMaxSubKey;              // longest subkey size
+    long unsigned int cchMaxClass;              // longest class string
+    long unsigned int cValues;              // number of values for key
+    long unsigned int cchMaxValue;          // longest value name
+    long unsigned int cbMaxValueData;       // longest value data
+    long unsigned int cbSecurityDescriptor; // size of security descriptor
+    FILETIME ftLastWriteTime;      // last write time
+    long unsigned int i, result;
+
+    result = RegQueryInfoKey(
+        hKey,                    // key handle
+        achClass,                // buffer for class name
+        &cchClassName,           // size of class string
+        NULL,                    // reserved
+        &cSubKeys,               // number of subkeys
+        &cbMaxSubKey,            // longest subkey size
+        &cchMaxClass,            // longest class string
+        &cValues,                // number of values for this key
+        &cchMaxValue,            // longest value name
+        &cbMaxValueData,         // longest value data
+        &cbSecurityDescriptor,   // security descriptor
+        &ftLastWriteTime);       // last write time
+
+    // Exit if the number of subkeys is 0 or if not success
+    if (cSubKeys == 0 || result != ERROR_SUCCESS) {
+        return;
+    }
+
+    char prev_hotfix[50 + 1] = "x";
+
+    if (!hotfix_regex) {
+        const char *hotfix_pattern = "Package_\\d*\\w*for_(\\w+)~";
+
+        os_calloc(1, sizeof(OSRegex), hotfix_regex);
+        if (!OSRegex_Compile(hotfix_pattern, hotfix_regex, OS_RETURN_SUBSTRING)) {
+            merror(REGEX_COMPILE, hotfix_pattern, hotfix_regex->error);
+            os_free(hotfix_regex);
+            return;
+        }
+
+        if (hotfixes_table = OSHash_Create(), !hotfixes_table) {
+            merror_exit(MEM_ERROR, errno, strerror(errno));
+        }
+    }
+
+    for (i = 0; i < cSubKeys; i++) {
+        cbName = KEY_LENGTH;
+        if (result = RegEnumKeyEx(hKey, i, achKey, &cbName, NULL, NULL, NULL, &ftLastWriteTime), result == ERROR_SUCCESS) {
+            if (isVista) {
+                //  Open the hotfix key
+                result = RegOpenKeyEx(hKey, achKey, 0, KEY_READ, &subKey);
+                if (result != ERROR_SUCCESS) {
+                    mterror(WM_SYS_LOGTAG, "Error opening Windows registry.");
+                    continue;
+                }
+
+                // Check basic stats
+                if (!OSRegex_Execute(achKey, hotfix_regex) ||
+                    found_hotfix_error(subKey) ||
+                    !valid_hotfix_status(subKey)) {
+                    RegCloseKey(subKey);
+                    continue;
+                }
+
+                char *hotfix = *hotfix_regex->d_sub_strings;
+                char *extension;
+
+                // Parse hotfix
+                if (strstr(hotfix, "RollupFix")) {
+                    char value[MAXSTR + 1] = {0};
+                    if (hotfix = parse_Rollup_hotfix(subKey, value), hotfix == NULL) {
+                        RegCloseKey(subKey);
+                        continue;
+                    }
+                
+                } else if (extension = strchr(hotfix, '_'), extension) {
+                    *extension = '\0';
+                }
+
+                RegCloseKey(subKey);
+
+                // Ignore the hotfix if it is the same as the previous one
+                if (!strcmp(hotfix, prev_hotfix)) {
+                    continue;
+                }
+                snprintf(prev_hotfix, 50, hotfix);
+
+                char *saved_timestamp;
+                if (saved_timestamp = OSHash_Get(hotfixes_table, hotfix), !saved_timestamp) {
+                    os_strdup(timestamp, saved_timestamp);
+                    if (OSHash_Add(hotfixes_table, hotfix, saved_timestamp) != 2) {
+                        free(saved_timestamp);
+                        mterror(WM_SYS_LOGTAG, "Could not add '%s' to the hotfixes hash table.", hotfix);
+                        return;
+                    }
+                } else {
+                    if (!strcmp(timestamp, saved_timestamp)) {
+                        // It has been reported with this timestamp
+                        continue;
+                    } else {
+                        free(saved_timestamp);
+                        os_strdup(timestamp, saved_timestamp);
+                        OSHash_Update(hotfixes_table, hotfix, (char *) saved_timestamp);
+                    }
+                }
+
+                send_hotfix(hotfix, usec, timestamp, ID, LOCATION);
+            } else {
+                // Ignore the hotfix if it is the same as the previous one
+                if (!strcmp(achKey, prev_hotfix)) {
+                    continue;
+                }
+                snprintf(prev_hotfix, KEY_LENGTH, achKey);
+                send_hotfix(achKey, usec, timestamp, ID, LOCATION);
+            }
+        } else {
+            mterror(WM_SYS_LOGTAG, "Error reading key '%s'. Error code: %lu", achKey, result);
+            // Avoid infinite loops
+            break;
+
+        }
+    }
+}
+
+// Retrieve the respective KB for those hotfixes which come as Rollup.
+// ex -> Package_for_RollupFix~31bf3856ad364e35~amd64~~18362.959.1.9
+char * parse_Rollup_hotfix(HKEY hKey, char *value) {
+    DWORD dataSize = MAXSTR;
+    LONG result;
+    
+    result = RegQueryValueEx(hKey, "InstallLocation", NULL, NULL, (LPBYTE)value, &dataSize);  
+    if (result != ERROR_SUCCESS ) {
+        mterror(WM_SYS_LOGTAG, "Error reading 'InstallLocation' from Windows registry. (Error %u)",(unsigned int)result);
+        return NULL;
+    }
+
+    char *hotfix = NULL;
+    char *start = NULL;
+    char *end = NULL;
+
+    // Parse the 'InstallLocation' field -> "Windows10.0-KB4565483-x64.cab"
+    if ((start = strstr(value, "KB")) != NULL && (end = strstr(start, "-")) != NULL) {
+        *end = '\0';
+        hotfix = start;
+    }
+
+    return hotfix;
+}
+
+// Check if any error ocurred at installation time.
+bool found_hotfix_error(HKEY hKey) {
+    LONG result;
+    
+    // The Value only exists when an arror occurred.
+    result = RegQueryValueEx(hKey, "LastError", NULL, NULL, 0, 0);  
+
+    return (result != ERROR_SUCCESS)? false : true;
+}
+
+// Check that the hotfix is installed correctly.
+bool valid_hotfix_status(HKEY hKey) {
+    DWORD dataSize = sizeof(DWORD);
+    DWORD value;
+    LONG result;
+    
+    result = RegQueryValueEx(hKey, "CurrentState", NULL, NULL, (LPBYTE)&value, &dataSize);  
+    if (result != ERROR_SUCCESS ) {
+        mterror(WM_SYS_LOGTAG, "Error reading 'CurrentState' from Windows registry. (Error %u)",(unsigned int)result);
+        return false;
+    }
+
+    if (value != HOTFIX_INSTALLED && 
+        value != HOTFIX_SUPERSEDED && 
+        value != HOTFIX_STAGED) {
+        mtdebug2(WM_SYS_LOGTAG, "Invalid hotfix status: %ld", value);
+        return false;
+    }
+
+    return true;  
+}
+
 // List Windows users from the registry
 void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char * LOCATION) {
 
@@ -937,7 +1130,7 @@ void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char 
     DWORD i, retCode;
 
     // Get the class name and the value count
-    retCode = RegQueryInfoKey(
+    RegQueryInfoKey(
         hKey,                    // key handle
         achClass,                // buffer for class name
         &cchClassName,           // size of class string
@@ -1021,7 +1214,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
 
         // Get name of program
 
-        program_name = (char *)malloc(TOTALBYTES);
+        os_calloc(TOTALBYTES, 1, program_name);
         cbData = buffer_size;
 
         ret = RegQueryValueEx(program_key, "DisplayName", NULL, NULL, (LPBYTE)program_name, &cbData);
@@ -1056,7 +1249,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
 
             // Get version
 
-            version = (char *)malloc(TOTALBYTES);
+            os_calloc(TOTALBYTES, 1, version);
             cbData = buffer_size;
 
             ret = RegQueryValueEx(program_key, "DisplayVersion", NULL, NULL, (LPBYTE)version, &cbData);
@@ -1078,7 +1271,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
 
             // Get vendor
 
-            vendor = (char *)malloc(TOTALBYTES);
+            os_calloc(TOTALBYTES, 1, vendor);
             cbData = buffer_size;
 
             ret = RegQueryValueEx(program_key, "Publisher", NULL, NULL, (LPBYTE)vendor, &cbData);
@@ -1100,7 +1293,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
 
             // Get install date
 
-            date = (char *)malloc(TOTALBYTES);
+            os_calloc(TOTALBYTES, 1, date);
             cbData = buffer_size;
 
             ret = RegQueryValueEx(program_key, "InstallDate", NULL, NULL, (LPBYTE)date, &cbData);
@@ -1122,7 +1315,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
 
             // Get install location
 
-            location = (char *)malloc(TOTALBYTES);
+            os_calloc(TOTALBYTES, 1, location);
             cbData = buffer_size;
 
             ret = RegQueryValueEx(program_key, "InstallLocation", NULL, NULL, (LPBYTE)location, &cbData);
@@ -1153,39 +1346,41 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
             free(program_name);
 
     } else {
-        mterror(WM_SYS_LOGTAG, "At read_win_program(): Unable to read key: (Error code %lu)", ret);
+        mterror(WM_SYS_LOGTAG, "Unable to read key: (Error code %lu)", ret);
     }
 
     RegCloseKey(program_key);
 }
 
+void send_hotfix(const char *hotfix, int usec, const char *timestamp, int ID, const char *LOCATION) {
+    if (!strcmp(hotfix, "RollupFix")) {
+        return;
+    }
+
+    cJSON *event;
+    if (event = cJSON_CreateObject(), !event) {
+        mterror(WM_SYS_LOGTAG, "Could not create the hotfix event.");
+        return;
+    }
+    cJSON_AddStringToObject(event, "type", "hotfix");
+    cJSON_AddNumberToObject(event, "ID", ID);
+    cJSON_AddStringToObject(event, "timestamp", timestamp);
+    cJSON_AddStringToObject(event, "hotfix", hotfix);
+
+    char *str_event = cJSON_PrintUnformatted(event);
+    mtdebug2(WM_SYS_LOGTAG, "sys_hotfixes() sending '%s'", str_event);
+    wm_sendmsg(usec, 0, str_event, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON_Delete(event);
+    free(str_event);
+}
+
 void sys_hw_windows(const char* LOCATION){
     // Set timestamp
-
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    char *timestamp = w_get_timestamp(time(NULL));
 
     // Set random ID for each scan
 
-    unsigned int ID1 = os_random();
-    unsigned int ID2 = os_random();
-
-    char random_id[SERIAL_LENGTH];
-    snprintf(random_id, SERIAL_LENGTH - 1, "%u%u", ID1, ID2);
-
-    int ID = atoi(random_id);
-    if (ID < 0)
-        ID = -ID;
+    int ID = wm_sys_get_random_id();
 
     mtdebug1(WM_SYS_LOGTAG, "Starting hardware inventory.");
 
@@ -1198,7 +1393,7 @@ void sys_hw_windows(const char* LOCATION){
 
     /* Call get_baseboard_serial function through syscollector DLL */
     char *serial = NULL;
-    
+
     if(checkVista()) {
 
         CallFunc1 _get_baseboard_serial;
@@ -1208,33 +1403,33 @@ void sys_hw_windows(const char* LOCATION){
             DWORD error = GetLastError();
             LPSTR messageBuffer = NULL;
             LPSTR end;
-            
+
             FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error, 0, (LPTSTR) &messageBuffer, 0, NULL);
-            
+
             if (end = strchr(messageBuffer, '\r'), end) *end = '\0';
-            
-            mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to load syscollector_win_ext.dll: %s (%lu).", messageBuffer, error);
+
+            mterror(WM_SYS_LOGTAG, "Unable to load syscollector_win_ext.dll: %s (%lu).", messageBuffer, error);
             LocalFree(messageBuffer);
-            
+
         } else {
             _get_baseboard_serial = (CallFunc1)GetProcAddress(sys_library, "get_baseboard_serial");
             if (!_get_baseboard_serial) {
-                mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to access 'get_baseboard_serial' on syscollector_win_ext.dll.");
+                mterror(WM_SYS_LOGTAG, "Unable to access 'get_baseboard_serial' on syscollector_win_ext.dll.");
             } else {
                 int ret = _get_baseboard_serial(&serial);
                 switch(ret)
                 {
                     case 1:
-                        mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to get raw SMBIOS firmware table size.");
+                        mtwarn(WM_SYS_LOGTAG, "Unable to get raw SMBIOS firmware table size.");
                         break;
                     case 2:
-                        mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to allocate memory for the SMBIOS firmware table.");
+                        mtwarn(WM_SYS_LOGTAG, "Unable to allocate memory for the SMBIOS firmware table.");
                         break;
                     case 3:
-                        mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to get the SMBIOS firmware table.");
+                        mtwarn(WM_SYS_LOGTAG, "Unable to get the SMBIOS firmware table.");
                         break;
                     case 4:
-                        mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Serial Number not available in SMBIOS firmware table.");
+                        mtdebug1(WM_SYS_LOGTAG, "Serial Number not available in SMBIOS firmware table.");
                         break;
                     default:
                         break;
@@ -1245,7 +1440,7 @@ void sys_hw_windows(const char* LOCATION){
             FreeLibrary(sys_library);
         }
     } else {
-        
+
         char *command;
         char *end;
         FILE *output;
@@ -1283,11 +1478,10 @@ void sys_hw_windows(const char* LOCATION){
         }
     }
 
-    if (!serial)
-        os_strdup("unknown", serial);
-
-    cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
-    free(serial);
+    if (serial) {
+        cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
+        free(serial);
+    }
 
     /* Get CPU and memory information */
     hw_info *sys_info;
@@ -1305,7 +1499,7 @@ void sys_hw_windows(const char* LOCATION){
         if (sys_info->ram_usage)
             cJSON_AddNumberToObject(hw_inventory, "ram_usage", sys_info->ram_usage);
 
-        free(sys_info->cpu_name);
+        os_free(sys_info->cpu_name);
         free(sys_info);
     }
 
@@ -1326,30 +1520,11 @@ void sys_os_windows(const char* LOCATION){
 
     // Set timestamp
 
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    char *timestamp = w_get_timestamp(time(NULL));
 
     // Set random ID for each scan
 
-    unsigned int ID1 = os_random();
-    unsigned int ID2 = os_random();
-
-    char random_id[SERIAL_LENGTH];
-    snprintf(random_id, SERIAL_LENGTH - 1, "%u%u", ID1, ID2);
-
-    int ID = atoi(random_id);
-    if (ID < 0)
-        ID = -ID;
+    int ID = wm_sys_get_random_id();
 
     mtdebug1(WM_SYS_LOGTAG, "Starting Operating System inventory.");
 
@@ -1381,13 +1556,13 @@ char* get_broadcast_addr_xp(char* ip, char* netmask) {
 
     socksize = sizeof(host);
     if (WSAStringToAddressA(ip, AF_INET, NULL, (LPSOCKADDR)&host, &socksize) == SOCKET_ERROR) {
-        mterror(WM_SYS_LOGTAG, "At get_broadcast_addr_xp(): WSAStringToAddressA() failed with IPv4 address (%d).", WSAGetLastError());
+        mterror(WM_SYS_LOGTAG, "WSAStringToAddressA() failed with IPv4 address (%d).", WSAGetLastError());
         return NULL;
     }
 
     socksize = sizeof(mask);
     if (WSAStringToAddressA(netmask, AF_INET, NULL, (LPSOCKADDR)&mask, &socksize) == SOCKET_ERROR) {
-        mterror(WM_SYS_LOGTAG, "At get_broadcast_addr_xp(): WSAStringToAddressA() failed with IPv4 netmask (%d).", WSAGetLastError());
+        mterror(WM_SYS_LOGTAG, "WSAStringToAddressA() failed with IPv4 netmask (%d).", WSAGetLastError());
         return NULL;
     }
 
@@ -1397,12 +1572,12 @@ char* get_broadcast_addr_xp(char* ip, char* netmask) {
 
     char* broadcast_addr = calloc(addresslen, sizeof(char));
     if (!broadcast_addr) {
-        mterror(WM_SYS_LOGTAG, "At get_broadcast_addr_xp(): Cannot allocate memory for address conversion.");
+        mterror(WM_SYS_LOGTAG, "Cannot allocate memory for address conversion.");
         return NULL;
     }
 
     if (WSAAddressToStringA((LPSOCKADDR)&broadcast, socksize, NULL, broadcast_addr, &addresslen) == SOCKET_ERROR) {
-        mterror(WM_SYS_LOGTAG, "At get_broadcast_addr_xp(): Cannot allocate memory for address conversion.");
+        mterror(WM_SYS_LOGTAG, "Cannot allocate memory for address conversion.");
         sprintf(broadcast_addr, "unknown");
     } else {
         /* Remove port from output address */
@@ -1740,7 +1915,7 @@ void sys_network_windows(const char* LOCATION){
     if (checkVista()) {
         sys_library = LoadLibrary("syscollector_win_ext.dll");
         if (sys_library != NULL){
-            _get_network_vista = (CallFunc)GetProcAddress(sys_library, "get_network_vista");
+            _get_network_vista = (CallFunc)(void *)GetProcAddress(sys_library, "get_network_vista");
             if (!_get_network_vista){
                 dwRetVal = GetLastError();
                 mterror(WM_SYS_LOGTAG, "Unable to access 'get_network_vista' on syscollector_win_ext.dll.");
@@ -1769,28 +1944,9 @@ void sys_network_windows(const char* LOCATION){
 
     // Set random ID and timestamp
 
-    unsigned int ID1 = os_random();
-    unsigned int ID2 = os_random();
+    int ID = wm_sys_get_random_id();
 
-    char random_id[SERIAL_LENGTH];
-    snprintf(random_id, SERIAL_LENGTH - 1, "%u%u", ID1, ID2);
-
-    int ID = atoi(random_id);
-    if (ID < 0)
-        ID = -ID;
-
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    char *timestamp = w_get_timestamp(time(NULL));
 
     /* Set the flags to pass to GetAdaptersAddresses() */
     ULONG flags = (checkVista() ? (GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_GATEWAYS) : 0);
@@ -1853,13 +2009,13 @@ void sys_network_windows(const char* LOCATION){
             } while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (Iterations < MAX_TRIES));
 
             if (dwRetVal != NO_ERROR) {
-                mterror(WM_SYS_LOGTAG, "GetAdaptersInfo() failed (%lu).", dwRetVal);
+                mterror(WM_SYS_LOGTAG, "Extracting network adapter information (%lu).", dwRetVal);
                 if (FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
                         FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                         NULL, dwRetVal, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                         // Default language
                         (LPTSTR) & lpMsgBuf, 0, NULL)) {
-                    mterror(WM_SYS_LOGTAG, "Error: %s", (char *)lpMsgBuf);
+                    mterror(WM_SYS_LOGTAG, "%s", (char *)lpMsgBuf);
                     LocalFree(lpMsgBuf);
                 }
             }
@@ -1904,7 +2060,7 @@ void sys_network_windows(const char* LOCATION){
             }
         }
     } else {
-        mterror(WM_SYS_LOGTAG, "GetAdaptersAddresses() failed (%lu).", dwRetVal);
+        mterror(WM_SYS_LOGTAG, "Extraction of network adresses failed (%lu).", dwRetVal);
         if (dwRetVal == ERROR_NO_DATA) {
             mterror(WM_SYS_LOGTAG, "No addresses were found for the requested parameters.");
         } else {
@@ -1952,6 +2108,7 @@ hw_info *get_system_windows(){
     DWORD dwCount = MAX_VALUE_NAME;
 
     os_calloc(1,sizeof(hw_info),info);
+    init_hw_info(info);
 
     // Get CPU name and frequency
 
@@ -1964,13 +2121,13 @@ hw_info *get_system_windows(){
         retVal = RegQueryValueEx(RegistryKey, TEXT("ProcessorNameString"), NULL, NULL, (LPBYTE)&name, &dwCount);
         if (retVal != ERROR_SUCCESS) {
             info->cpu_name = strdup("unknown");
-            mterror(WM_SYS_LOGTAG, "Error reading 'CPU name' from Windows registry. (Error %u)",(unsigned int)retVal);
+            mterror(WM_SYS_LOGTAG, "Reading 'CPU name' from Windows registry. (Error %u)",(unsigned int)retVal);
         } else {
             info->cpu_name = strdup(name);
         }
         retVal = RegQueryValueEx(RegistryKey, TEXT("~MHz"), NULL, NULL, (LPBYTE)&frequency, &dwCount);
         if (retVal != ERROR_SUCCESS) {
-            mterror(WM_SYS_LOGTAG, "Error reading 'CPU frequency' from Windows registry. (Error %u)",(unsigned int)retVal);
+            mterror(WM_SYS_LOGTAG, "Reading 'CPU frequency' from Windows registry. (Error %u)",(unsigned int)retVal);
         } else {
             info->cpu_MHz = (unsigned int)frequency;
         }
@@ -2017,25 +2174,25 @@ int ntpath_to_win32path(char *ntpath, char **outbuf)
 	DWORD res = 0, len = 0;
 	char *SingleDrive = NULL;
 	char LogicalDrives[OS_MAXSTR] = {0}, read_buff[OS_MAXSTR] = {0}, msdos_drive[3] = { '\0', ':', '\0' };
-	
+
 	if (ntpath == NULL) return success;
-	
+
 	/* Get the total amount of available logical drives */
 	/* The input size must not include the NULL terminator */
 	res = GetLogicalDriveStrings(OS_MAXSTR - 1, LogicalDrives);
 	if (res <= 0 || res > OS_MAXSTR)
 	{
-		mtwarn(WM_SYS_LOGTAG, "At ntpath_to_win32path(): Unable to parse logical drive strings. Error '%lu'.", GetLastError());
+		mtwarn(WM_SYS_LOGTAG, "Unable to parse logical drive strings. Error '%lu'.", GetLastError());
 		return success;
 	}
-	
+
 	/* Perform a loop of the retrieved drive list */
 	SingleDrive = LogicalDrives;
 	while(*SingleDrive)
 	{
 		/* Get the MS-DOS drive letter */
 		*msdos_drive = *SingleDrive;
-		
+
 		/* Retrieve the Windows kernel path for this drive */
 		res = QueryDosDevice(msdos_drive, read_buff, OS_MAXSTR);
 		if (res)
@@ -2045,30 +2202,26 @@ int ntpath_to_win32path(char *ntpath, char **outbuf)
 			{
 				/* Calculate new string length (making sure there's space left for the NULL terminator) */
 				len = (strlen(ntpath) - strlen(read_buff) + 3);
-				
+
 				/* Allocate memory */
-				*outbuf = (char*)malloc(len);
-				if (*outbuf)
-				{
-					/* Copy the new filepath */
-					snprintf(*outbuf, len, "%s%s", msdos_drive, ntpath + strlen(read_buff));
-					success = 1;
-				} else {
-					mtwarn(WM_SYS_LOGTAG, "At ntpath_to_win32path(): Unable to allocate %lu bytes to hold the full Win32 converted filepath.", len);
-				}
-				
+                os_calloc(len, 1, *outbuf);
+
+                /* Copy the new filepath */
+                snprintf(*outbuf, len, "%s%s", msdos_drive, ntpath + strlen(read_buff));
+                success = 1;
+
 				break;
 			}
 		} else {
-			mtwarn(WM_SYS_LOGTAG, "At ntpath_to_win32path(): Unable to retrieve Windows kernel path for drive '%s\\'. Error '%lu'.", msdos_drive, GetLastError());
+			mtwarn(WM_SYS_LOGTAG, "Unable to retrieve Windows kernel path for drive '%s\\'. Error '%lu'", msdos_drive, GetLastError());
 		}
-		
+
 		/* Get the next drive */
 		SingleDrive += (strlen(SingleDrive) + 1);
 	}
-	
-	if (!success) mtwarn(WM_SYS_LOGTAG, "At ntpath_to_win32path(): Unable to find a matching Windows kernel drive path for '%s'.", ntpath);
-	
+
+	if (!success) mtwarn(WM_SYS_LOGTAG, "Unable to find a matching Windows kernel drive path for '%s'", ntpath);
+
 	return success;
 }
 
@@ -2080,51 +2233,32 @@ void sys_proc_windows(const char* LOCATION) {
 
     // Set timestamp
 
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    char *timestamp = w_get_timestamp(time(NULL));
 
     // Set random ID for each scan
 
-    unsigned int ID1 = os_random();
-    unsigned int ID2 = os_random();
-
-    char random_id[SERIAL_LENGTH];
-    snprintf(random_id, SERIAL_LENGTH - 1, "%u%u", ID1, ID2);
-
-    int ID = atoi(random_id);
-    if (ID < 0)
-        ID = -ID;
+    int ID = wm_sys_get_random_id();
 
     cJSON *item;
     cJSON *proc_array = cJSON_CreateArray();
 
     mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
-	
+
 	PROCESSENTRY32 pe = { 0 };
 	pe.dwSize = sizeof(PROCESSENTRY32);
-	
+
 	HANDLE hSnapshot, hProcess;
 	FILETIME lpCreationTime, lpExitTime, lpKernelTime, lpUserTime;
 	PROCESS_MEMORY_COUNTERS ppsmemCounters;
-	
+
 	LONG priority;
 	char *exec_path, *name;
 	ULARGE_INTEGER kernel_mode_time, user_mode_time;
 	DWORD pid, parent_pid, session_id, thread_count, page_file_usage, virtual_size;
-	
+
 	HANDLE hdle;
 	int privilege_enabled = 0;
-	
+
 	/* Enable debug privilege */
 	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hdle))
 	{
@@ -2132,12 +2266,12 @@ void sys_proc_windows(const char* LOCATION) {
 		{
 			privilege_enabled = 1;
 		} else {
-			mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to set debug privilege on current process (%lu).", GetLastError());
+			mtwarn(WM_SYS_LOGTAG, "Unable to set debug privilege on current process (%lu).", GetLastError());
 		}
 	} else {
-		mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve current process token (%lu).", GetLastError());
+		mtwarn(WM_SYS_LOGTAG, "Unable to retrieve current process token (%lu).", GetLastError());
 	}
-	
+
 	/* Create a snapshot of all current processes */
 	hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 	if (hSnapshot != INVALID_HANDLE_VALUE)
@@ -2147,21 +2281,21 @@ void sys_proc_windows(const char* LOCATION) {
 			do {
 				/* Get process ID */
 				pid = pe.th32ProcessID;
-				
+
 				/* Get thread count */
 				thread_count = pe.cntThreads;
-				
+
 				/* Get parent process ID */
 				parent_pid = pe.th32ParentProcessID;
-				
+
 				/* Get process base priority */
 				priority = pe.pcPriClassBase;
-				
+
 				/* Initialize variables */
 				name = exec_path = NULL;
 				kernel_mode_time.QuadPart = user_mode_time.QuadPart = 0;
 				session_id = page_file_usage = virtual_size = 0;
-				
+
 				/* Check if we are dealing with a system process */
 				if (pid == 0 || pid == 4)
 				{
@@ -2170,7 +2304,7 @@ void sys_proc_windows(const char* LOCATION) {
 				} else {
 					/* Get process name */
 					name = strdup(pe.szExeFile);
-					
+
 					/* Get process handle */
 					hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
 					if (hProcess != NULL)
@@ -2188,10 +2322,10 @@ void sys_proc_windows(const char* LOCATION) {
 								exec_path = strdup(read_buff);
 							}
 						} else {
-							mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve executable path from process with PID %lu (%lu).", pid, GetLastError());
+							mtwarn(WM_SYS_LOGTAG, "Unable to retrieve executable path from process with PID %lu (%lu).", pid, GetLastError());
 							exec_path = strdup("unknown");
 						}
-						
+
 						/* Get kernel mode and user mode times */
 						if (GetProcessTimes(hProcess, &lpCreationTime, &lpExitTime, &lpKernelTime, &lpUserTime))
 						{
@@ -2199,15 +2333,15 @@ void sys_proc_windows(const char* LOCATION) {
 							kernel_mode_time.LowPart = lpKernelTime.dwLowDateTime;
 							kernel_mode_time.HighPart = lpKernelTime.dwHighDateTime;
 							kernel_mode_time.QuadPart /= 10000000ULL;
-							
+
 							/* Copy the user mode filetime high and low parts and convert it to seconds */
 							user_mode_time.LowPart = lpUserTime.dwLowDateTime;
 							user_mode_time.HighPart = lpUserTime.dwHighDateTime;
 							user_mode_time.QuadPart /= 10000000ULL;
 						} else {
-							mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve kernel mode and user mode times from process with PID %lu (%lu).", pid, GetLastError());
+							mtwarn(WM_SYS_LOGTAG, "Unable to retrieve kernel mode and user mode times from process with PID %lu (%lu).", pid, GetLastError());
 						}
-						
+
 						/* Get page file usage and virtual size */
 						/* Reference: https://stackoverflow.com/a/1986486 */
 						if (GetProcessMemoryInfo(hProcess, &ppsmemCounters, sizeof(ppsmemCounters)))
@@ -2215,12 +2349,12 @@ void sys_proc_windows(const char* LOCATION) {
 							page_file_usage = ppsmemCounters.PagefileUsage;
 							virtual_size = (ppsmemCounters.WorkingSetSize + ppsmemCounters.PagefileUsage);
 						} else {
-							mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve page file usage from process with PID %lu (%lu).", pid, GetLastError());
+							mtwarn(WM_SYS_LOGTAG, "Unable to retrieve page file usage from process with PID %lu (%lu).", pid, GetLastError());
 						}
-						
+
 						/* Get session ID */
-						if (!ProcessIdToSessionId(pid, &session_id)) mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve session ID from process with PID %lu (%lu).", pid, GetLastError());
-						
+						if (!ProcessIdToSessionId(pid, &session_id)) mtwarn(WM_SYS_LOGTAG, "Unable to retrieve session ID from process with PID %lu (%lu).", pid, GetLastError());
+
 						/* Close process handle */
 						CloseHandle(hProcess);
 					} else {
@@ -2228,12 +2362,12 @@ void sys_proc_windows(const char* LOCATION) {
                         DWORD lastError = GetLastError();
                         if (!checkVista() || lastError != ERROR_ACCESS_DENIED)
                         {
-                            mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve process handle for PID %lu (%lu).", pid, lastError);
+                            mtwarn(WM_SYS_LOGTAG, "Unable to retrieve process handle for PID %lu (%lu).", pid, lastError);
                             exec_path = strdup("unknown");
                         }
 					}
 				}
-				
+
 				/* Add process information to the JSON document */
 				cJSON *object = cJSON_CreateObject();
 				cJSON *process = cJSON_CreateObject();
@@ -2241,7 +2375,7 @@ void sys_proc_windows(const char* LOCATION) {
 				cJSON_AddNumberToObject(object, "ID", ID);
 				cJSON_AddStringToObject(object, "timestamp", timestamp);
 				cJSON_AddItemToObject(object, "process", process);
-				
+
 				cJSON_AddStringToObject(process, "cmd", exec_path); // CommandLine
 				cJSON_AddNumberToObject(process, "stime", kernel_mode_time.QuadPart); // KernelModeTime
 				cJSON_AddStringToObject(process, "name", name); // Name
@@ -2253,39 +2387,39 @@ void sys_proc_windows(const char* LOCATION) {
 				cJSON_AddNumberToObject(process, "nlwp", thread_count); // ThreadCount
 				cJSON_AddNumberToObject(process, "utime", user_mode_time.QuadPart); // UserModeTime
 				cJSON_AddNumberToObject(process, "vm_size", virtual_size); // VirtualSize
-				
+
 				cJSON_AddItemToArray(proc_array, object);
-				
+
 				free(name);
 				free(exec_path);
 			} while(Process32Next(hSnapshot, &pe));
-			
+
 			cJSON_ArrayForEach(item, proc_array) {
 				char *string = cJSON_PrintUnformatted(item);
 				mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
 				wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
 				free(string);
 			}
-			
+
 			cJSON_Delete(proc_array);
 		} else {
-			mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve process information from the snapshot.");
+			mtwarn(WM_SYS_LOGTAG, "Unable to retrieve process information from the snapshot.");
 		}
-		
+
 		/* Close snapshot handle */
 		CloseHandle(hSnapshot);
 	} else {
-		mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to create process snapshot.");
+		mtwarn(WM_SYS_LOGTAG, "Unable to create process snapshot.");
 	}
-	
+
 	/* Disable debug privilege */
 	if (privilege_enabled)
 	{
-		if (set_token_privilege(hdle, SE_DEBUG_NAME, FALSE)) mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to unset debug privilege on current process (%lu).", GetLastError());
+		if (set_token_privilege(hdle, SE_DEBUG_NAME, FALSE)) mtwarn(WM_SYS_LOGTAG, "Unable to unset debug privilege on current process (%lu).", GetLastError());
 	}
-	
+
 	if (hdle) CloseHandle(hdle);
-	
+
 	cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "process_end");
     cJSON_AddNumberToObject(object, "ID", ID);
@@ -2294,7 +2428,7 @@ void sys_proc_windows(const char* LOCATION) {
     char *string = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
     wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-	
+
     cJSON_Delete(object);
     free(string);
     free(timestamp);
@@ -2312,29 +2446,29 @@ int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable) {
 		merror("Could not find the '%s' privilege. Error: %lu", privilege, GetLastError());
 		return 1;
 	}
-    
+
     // Get current privilege setting
 	tp.PrivilegeCount = 1;
 	tp.Privileges[0].Luid = pr_uid;
     tp.Privileges[0].Attributes = 0;
-    
+
     AdjustTokenPrivileges(hdle, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), &tpPrevious, &cbPrevious);
     errorInfo = GetLastError();
     if (errorInfo != ERROR_SUCCESS) {
 		merror("AdjustTokenPrivileges() failed (first call). Error: '%lu'", errorInfo);
 		return 1;
     }
-    
+
     // Set privilege based on previous setting
     tpPrevious.PrivilegeCount = 1;
     tpPrevious.Privileges[0].Luid = pr_uid;
-    
+
     if (enable) {
         tpPrevious.Privileges[0].Attributes |= (SE_PRIVILEGE_ENABLED);
 	} else {
         tpPrevious.Privileges[0].Attributes ^= (SE_PRIVILEGE_ENABLED & tpPrevious.Privileges[0].Attributes);
 	}
-    
+
     AdjustTokenPrivileges(hdle, FALSE, &tpPrevious, cbPrevious, NULL, NULL);
     errorInfo = GetLastError();
     if (errorInfo != ERROR_SUCCESS) {

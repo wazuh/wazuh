@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # ossec-control        This shell script takes care of starting
 #                      or stopping ossec-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
@@ -20,31 +20,15 @@ if [ $? = 0 ]; then
 . ${PLIST};
 fi
 
-is_rhel_le_5() {
-    RPM_RELEASE="/etc/redhat-release"
-
-    # If SO is not RHEL, return (false)
-    [ -r $RPM_RELEASE ] || return
-
-    DIST_NAME=$(sed -rn 's/^(.*) release ([[:digit:]]+)[. ].*/\1/p' /etc/redhat-release)
-    DIST_VER=$(sed -rn 's/^(.*) release ([[:digit:]]+)[. ].*/\2/p' /etc/redhat-release)
-
-    [[ "$DIST_NAME" =~ ^CentOS ]] || [[ "$DIST_NAME" =~ ^"Red Hat" ]] && [ -n "$DIST_VER" ] && [ $DIST_VER -le 5 ]
-}
-
-
 AUTHOR="Wazuh Inc."
 USE_JSON=false
 INITCONF="/etc/ossec-init.conf"
-DAEMONS="wazuh-modulesd ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ossec-authd ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd"
-
-if ! is_rhel_le_5
-then
-    DAEMONS="wazuh-clusterd $DAEMONS"
-fi
+DAEMONS="wazuh-clusterd wazuh-modulesd ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ossec-authd ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd wazuh-apid"
+OP_DAEMONS="wazuh-clusterd ossec-maild ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
+OP_SDAEMONS=$(echo $OP_DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
 
 [ -f ${INITCONF} ] && . ${INITCONF}  || echo "ERROR: No such file ${INITCONF}"
 
@@ -58,6 +42,7 @@ LOCK_PID="${LOCK}/pid"
 MAX_ITERATION="10"
 
 MAX_KILL_TRIES=600
+
 
 checkpid()
 {
@@ -179,7 +164,7 @@ disable()
         exit 1;
     fi
     daemon=''
-  
+
     if [ "X$2" = "Xdatabase" ]; then
         echo "$DATABASE_MSG"
     elif [ "X$2" = "Xclient-syslog" ]; then
@@ -189,7 +174,7 @@ disable()
     elif [ "X$2" = "Xintegrator" ]; then
         echo "$INTEGRATOR_MSG";
     elif [ "X$2" = "Xdebug" ]; then
-        echo "DEBUG_CLI=\"-d\"" >> ${PLIST};
+        echo "DEBUG_CLI=\"\"" >> ${PLIST};
     else
         echo ""
         echo "Invalid disable option."
@@ -270,7 +255,6 @@ testconfig()
 # Start function
 start()
 {
-    incompatible=false
 
     if [ $USE_JSON = false ]; then
         echo "Starting $NAME $VERSION..."
@@ -285,15 +269,6 @@ start()
         fi
         touch ${DIR}/var/run/ossec-analysisd.failed
         exit 1;
-    fi
-
-    if is_rhel_le_5
-    then
-        if [ $USE_JSON = true ]; then
-            incompatible=true
-        else
-            echo "Cluster daemon is incompatible with CentOS 5 and RHEL 5... Skipping wazuh-clusterd."
-        fi
     fi
 
     checkpid;
@@ -328,6 +303,19 @@ start()
                 continue
              fi
         fi
+        ## If ossec-authd is disabled, don't try to start it.
+        if [ X"$i" = "Xossec-authd" ]; then
+             start_config="$(grep -n "<auth>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
+             end_config="$(grep -n "</auth>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
+             if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
+                sed -n "${start_config},${end_config}p" ${DIR}/etc/ossec.conf | grep "<disabled>yes" >/dev/null 2>&1
+                if [ $? = 0 ]; then
+                    continue
+                fi
+             else
+                continue
+             fi
+        fi
         if [ $USE_JSON = true ] && [ $first = false ]; then
             echo -n ','
         else
@@ -337,6 +325,7 @@ start()
         pstatus ${i};
         if [ $? = 0 ]; then
             ## Create starting flag
+            failed=false
             rm -f ${DIR}/var/run/${i}.failed
             touch ${DIR}/var/run/${i}.start
             if [ $USE_JSON = true ]; then
@@ -345,6 +334,25 @@ start()
                 ${DIR}/bin/${i} ${DEBUG_CLI};
             fi
             if [ $? != 0 ]; then
+                failed=true
+            else
+                is_optional ${i};
+                if [ $? = 0 ]; then
+                    j=0;
+                    while [ $failed = false ]; do
+                        pstatus ${i};
+                        if [ $? = 1 ]; then
+                            break;
+                        fi
+                        sleep 1;
+                        j=`expr $j + 1`;
+                        if [ "$j" -ge "${MAX_ITERATION}" ]; then
+                            failed=true
+                        fi
+                    done
+                fi
+            fi
+            if [ $failed = true ]; then
                 if [ $USE_JSON = true ]; then
                     echo -n '{"daemon":"'${i}'","status":"error"}'
                 else
@@ -370,10 +378,7 @@ start()
             fi
         fi
     done
-    if $incompatible
-    then
-        echo -n '{"daemon":"wazuh-clusterd","status":"incompatible"}'
-    fi
+
     # After we start we give 2 seconds for the daemons
     # to internally create their PID files.
     sleep 2;
@@ -386,6 +391,18 @@ start()
     rm -f ${DIR}/var/run/*.start
 }
 
+is_optional()
+{
+    daemon=$1
+    for op in ${OP_SDAEMONS}; do
+        # If the daemon is optional, don't check if it is running in background.
+        if [ X"$op" = X"$daemon" ]; then
+            return 1;
+        fi
+    done
+    return 0;
+}
+
 pstatus()
 {
     pfile=$1;
@@ -396,17 +413,17 @@ pstatus()
 
     ls ${DIR}/var/run/${pfile}*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
-        for j in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
-            ps -p $j > /dev/null 2>&1
+        for pid in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
+            ps -p ${pid} > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 if [ $USE_JSON = false ]; then
-                    echo "${pfile}: Process $j not used by Wazuh, removing..."
+                    echo "${pfile}: Process ${pid} not used by Wazuh, removing..."
                 fi
-                rm -f ${DIR}/var/run/${pfile}-$j.pid
+                rm -f ${DIR}/var/run/${pfile}-${pid}.pid
                 continue;
             fi
 
-            kill -0 $j > /dev/null 2>&1
+            kill -0 ${pid} > /dev/null 2>&1
             if [ $? = 0 ]; then
                 return 1;
             fi
@@ -469,7 +486,8 @@ stopa()
                 if [ $USE_JSON = true ]; then
                     echo -n '{"daemon":"'${i}'","status":"failed to kill"}'
                 else
-                    echo "Process ${i} couldn't be killed.";
+                    echo "Process ${i} couldn't be terminated. It will be killed.";
+                    kill -9 $pid
                 fi
             fi
         else
@@ -487,11 +505,6 @@ stopa()
     else
         echo "$NAME $VERSION Stopped"
     fi
-}
-
-buildCDB()
-{
-    ${DIR}/bin/ossec-makelists > /dev/null 2>&1
 }
 
 ### MAIN HERE ###
@@ -526,7 +539,6 @@ restart)
     else
         stopa
     fi
-    buildCDB
     start
     rm -f ${DIR}/var/run/.restart
     unlock

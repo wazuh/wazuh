@@ -1,15 +1,15 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef _REPORTSCONFIG_H
-#define _REPORTSCONFIG_H
+#ifndef REPORTSCONFIG_H
+#define REPORTSCONFIG_H
 
 #include "report_op.h"
 
@@ -29,7 +29,7 @@ typedef struct _monitor_config {
     unsigned int sign:1;
     unsigned int monitor_agents:1;
     unsigned int rotate_log:1;
-    unsigned int delete_old_agents:1;
+    unsigned int delete_old_agents;
     int a_queue;
     int keep_log_days;
     unsigned long size_rotate;
@@ -43,4 +43,4 @@ typedef struct _monitor_config {
     report_config **reports;
 } monitor_config;
 
-#endif /* _REPORTSCONFIG_H */
+#endif /* REPORTSCONFIG_H */

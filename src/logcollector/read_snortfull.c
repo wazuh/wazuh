@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -27,7 +27,7 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     str[OS_MAXSTR] = '\0';
     f_msg[OS_MAXSTR] = '\0';
 
-    while (fgets(str, OS_MAXSTR, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
+    while (can_read() && fgets(str, OS_MAXSTR, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
         /* Remove \n at the end of the string */
@@ -84,7 +84,6 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
                 /* Third line has the 01/13-15 (date) */
                 if ((str[2] == '/') && (str[5] == '-') && (q = strchr(str, ' '))) {
                     strncat(f_msg, ++q, f_msg_size);
-                    f_msg_size -= strlen(q) + 1;
                     p = NULL;
 
                     /* Send the message */

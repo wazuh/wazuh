@@ -1,7 +1,7 @@
 #!/bin/sh
 
-# Copyright (C) 2015-2019, Wazuh Inc.
-# Shell script update functions for the OSSEC HIDS
+# Copyright (C) 2015-2020, Wazuh Inc.
+# Shell script update functions for Wazuh
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
 FALSE="false"
@@ -98,8 +98,13 @@ UpdateStopOSSEC()
     then
         . ${OSSEC_INIT}
 
+        MAJOR_VERSION=`echo ${VERSION} | cut -f1 -d'.' | cut -f2 -d'v'`
+
         if [ "X$TYPE" != "Xagent" ]; then
             TYPE="manager"
+            if [ $MAJOR_VERSION -ge 4 ]; then
+              EMBEDDED_API_INSTALLED=1
+            fi
         fi
 
         if [ `stat /proc/1/exe 2> /dev/null | grep "systemd" | wc -l` -ne 0 ]; then
@@ -124,6 +129,11 @@ UpdateStopOSSEC()
     rm -rf $DIRECTORY/framework/* > /dev/null 2>&1
     rm $DIRECTORY/wodles/aws/aws > /dev/null 2>&1 # this script has been renamed
     rm $DIRECTORY/wodles/aws/aws.py > /dev/null 2>&1 # this script has been renamed
+
+    # Deleting plain-text agent information if exists (it was migrated to Wazuh DB in v4.1)
+    if [ -d "$DIRECTORY/queue/agent-info" ]; then
+        rm -rf $DIRECTORY/queue/agent-info > /dev/null 2>&1
+    fi
 }
 
 UpdateOldVersions()

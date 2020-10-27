@@ -20,8 +20,8 @@
 ; general
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
-!define VERSION "3.10.0"
-!define REVISION "31003"
+!define VERSION "4.0.0"
+!define REVISION "40005"
 !define NAME "Wazuh"
 !define SERVICE "OssecSvc"
 
@@ -33,13 +33,13 @@
 Var is_upgrade
 
 Name "${NAME} Windows Agent v${VERSION}"
-BrandingText "Copyright (C) 2015-2019, Wazuh Inc."
+BrandingText "Copyright (C) 2015-2020, Wazuh Inc."
 OutFile "${OutFile}"
 
-VIProductVersion "3.10.0.0"
+VIProductVersion "4.0.0.0"
 VIAddVersionKey ProductName "${NAME}"
 VIAddVersionKey CompanyName "Wazuh Inc."
-VIAddVersionKey LegalCopyright "2019 - Wazuh Inc."
+VIAddVersionKey LegalCopyright "2020 - Wazuh Inc."
 VIAddVersionKey FileDescription "Wazuh Agent installer"
 VIAddVersionKey FileVersion "${VERSION}"
 VIAddVersionKey ProductVersion "${VERSION}"
@@ -171,8 +171,10 @@ Section "Wazuh Agent (required)" MainSec
     CreateDirectory "$INSTDIR\active-response"
     CreateDirectory "$INSTDIR\active-response\bin"
     CreateDirectory "$INSTDIR\tmp"
-	CreateDirectory "$INSTDIR\queue"
-	CreateDirectory "$INSTDIR\queue\diff"
+    CreateDirectory "$INSTDIR\queue"
+    CreateDirectory "$INSTDIR\queue\diff"
+    CreateDirectory "$INSTDIR\queue\fim"
+    CreateDirectory "$INSTDIR\queue\fim\db"
     CreateDirectory "$INSTDIR\incoming"
     CreateDirectory "$INSTDIR\upgrade"
     CreateDirectory "$INSTDIR\wodles"
@@ -194,13 +196,13 @@ Section "Wazuh Agent (required)" MainSec
     File setup-iis.exe
     File doc.html
     File favicon.ico
-    File /oname=shared\rootkit_trojans.txt ../rootcheck/db/rootkit_trojans.txt
-    File /oname=shared\rootkit_files.txt ../rootcheck/db/rootkit_files.txt
+    File /oname=shared\rootkit_trojans.txt ..\rootcheck\db\rootkit_trojans.txt
+    File /oname=shared\rootkit_files.txt ..\rootcheck\db\rootkit_files.txt
     File add-localfile.exe
     File LICENSE.txt
-    File /oname=shared\win_applications_rcl.txt ../rootcheck\db\win_applications_rcl.txt
-    File /oname=shared\win_malware_rcl.txt ../rootcheck\db\win_malware_rcl.txt
-    File /oname=shared\win_audit_rcl.txt ../rootcheck\db\win_audit_rcl.txt
+    File /oname=shared\win_applications_rcl.txt ..\rootcheck\db\win_applications_rcl.txt
+    File /oname=shared\win_malware_rcl.txt ..\rootcheck\db\win_malware_rcl.txt
+    File /oname=shared\win_audit_rcl.txt ..\rootcheck\db\win_audit_rcl.txt
     File /oname=help.txt help_win.txt
     File vista_sec.txt
     File /oname=active-response\bin\route-null.cmd route-null.cmd
@@ -210,10 +212,10 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=active-response\bin\netsh.cmd netsh.cmd
     File /oname=libwinpthread-1.dll libwinpthread-1.dll
     File agent-auth.exe
-    File /oname=wpk_root.pem ../../etc/wpk_root.pem
-    File ../wazuh_modules/syscollector/syscollector_win_ext.dll
-    File /oname=libwazuhext.dll ../libwazuhext.dll
-    File /oname=ruleset\sca\win_audit_rcl.yml ../../etc/sca/windows/win_audit_rcl.yml
+    File /oname=wpk_root.pem ..\..\etc\wpk_root.pem
+    File ../wazuh_modules/syscollector\syscollector_win_ext.dll
+    File /oname=libwazuhext.dll ..\libwazuhext.dll
+    File /oname=ruleset\sca\sca_win_audit.yml ..\..\etc\sca\windows\sca_win_audit.yml
     File VERSION
     File REVISION
 
@@ -408,9 +410,9 @@ Section "Scan and monitor IIS logs (recommended)" IISLogs
     nsExec::ExecToLog '"$INSTDIR\setup-iis.exe" "$INSTDIR"'
 SectionEnd
 
-; add integrity checking
-Section "Enable integrity checking (recommended)" IntChecking
-    nsExec::ExecToLog '"$INSTDIR\setup-syscheck.exe" "$INSTDIR" "enable"'
+; Disable integrity checking
+Section /o "Disable integrity checking (not recommended)" IntChecking
+    nsExec::ExecToLog '"$INSTDIR\setup-syscheck.exe" "$INSTDIR" "disable"'
 SectionEnd
 
 ; uninstall section

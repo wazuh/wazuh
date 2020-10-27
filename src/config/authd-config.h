@@ -1,9 +1,9 @@
 /*
  * Authd settings manager
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * May 29, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -33,4 +33,5 @@ typedef struct authd_config_t {
     char *manager_key;
     long timeout_sec;
     long timeout_usec;
+    bool worker_node;
 } authd_config_t;

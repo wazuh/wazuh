@@ -1,6 +1,6 @@
 #!/bin/sh
 # Add a localfile to ossec.
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # by Daniel B. Cid - dcid ( at ) ossec.net
 
 FILE=$1

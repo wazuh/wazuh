@@ -3,7 +3,7 @@
 # Requirements: System with a passwd that supports -l and -u
 #               or a system with chuser (AIX)
 # Expect: username (can't be "root")
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Authors: Ahmet Ozturk and Daniel B. Cid
 # Last modified: Jan 19, 2005
 
@@ -19,7 +19,7 @@ LOCAL=`dirname $0`;
 cd $LOCAL
 cd ../
 PWD=`pwd`
-echo "`date` $0 $1 $2 $3 $4 $5" >> ${PWD}/../log/active-responses.log
+echo "`date` $0 $1 $2 $3 $4 $5" >> ${PWD}/../logs/active-responses.log
 
 
 if [ "x${USER}" = "x" ]; then

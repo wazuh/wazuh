@@ -1,9 +1,9 @@
 /*
  * Wazuh Database Daemon
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * January 03, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -35,7 +35,7 @@ int main(int argc, char ** argv) {
     int status;
 
     pthread_t thread_dealer;
-    pthread_t * worker_pool;
+    pthread_t * worker_pool = NULL;
     pthread_t thread_gc;
     pthread_t thread_up;
 
@@ -76,10 +76,11 @@ int main(int argc, char ** argv) {
 
     // Read internal options
 
-    config.sock_queue_size = getDefine_Int("wazuh_db", "sock_queue_size", 1, 1024);
-    config.worker_pool_size = getDefine_Int("wazuh_db", "worker_pool_size", 1, 32);
-    config.commit_time = getDefine_Int("wazuh_db", "commit_time", 10, 3600);
-    config.open_db_limit = getDefine_Int("wazuh_db", "open_db_limit", 1, 4096);
+    wconfig.sock_queue_size = getDefine_Int("wazuh_db", "sock_queue_size", 1, 1024);
+    wconfig.worker_pool_size = getDefine_Int("wazuh_db", "worker_pool_size", 1, 32);
+    wconfig.commit_time_min = getDefine_Int("wazuh_db", "commit_time_min", 1, 3600);
+    wconfig.commit_time_max = getDefine_Int("wazuh_db", "commit_time_max", 1, 3600);
+    wconfig.open_db_limit = getDefine_Int("wazuh_db", "open_db_limit", 1, 4096);
     nofile = getDefine_Int("wazuh_db", "rlimit_nofile", 1024, 1048576);
 
     if (!isDebug()) {
@@ -96,7 +97,6 @@ int main(int argc, char ** argv) {
 
     // Initialize variables
 
-    //sock_queue = queue_init(config.sock_queue_size);
     open_dbs = OSHash_Create();
     if (!open_dbs) merror_exit("wazuh_db: OSHash_Create() failed");
 
@@ -128,7 +128,7 @@ int main(int argc, char ** argv) {
         gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
 
         if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-            merror_exit(USER_ERROR, USER, GROUPGLOBAL);
+            merror_exit(USER_ERROR, USER, GROUPGLOBAL, strerror(errno), errno);
         }
 
         if (Privsep_SetGroup(gid) < 0) {
@@ -177,40 +177,43 @@ int main(int argc, char ** argv) {
 
     if (status = pthread_create(&thread_dealer, NULL, run_dealer, NULL), status != 0) {
         merror("Couldn't create thread: %s", strerror(status));
-        return EXIT_FAILURE;
+        goto failure;
     }
 
-    os_malloc(sizeof(pthread_t) * config.worker_pool_size, worker_pool);
+    os_malloc(sizeof(pthread_t) * wconfig.worker_pool_size, worker_pool);
 
-    for (i = 0; i < config.worker_pool_size; i++) {
+    for (i = 0; i < wconfig.worker_pool_size; i++) {
         if (status = pthread_create(worker_pool + i, NULL, run_worker, NULL), status != 0) {
             merror("Couldn't create thread: %s", strerror(status));
-            return EXIT_FAILURE;
+            goto failure;
         }
     }
 
     if (status = pthread_create(&thread_gc, NULL, run_gc, NULL), status != 0) {
         merror("Couldn't create thread: %s", strerror(status));
-        return EXIT_FAILURE;
+        goto failure;
     }
 
     if (status = pthread_create(&thread_up, NULL, run_up, NULL), status != 0) {
         merror("Couldn't create thread: %s", strerror(status));
-        return EXIT_FAILURE;
+        goto failure;
     }
 
     // Join threads
 
     pthread_join(thread_dealer, NULL);
 
-    for (i = 0; i < config.worker_pool_size; i++) {
+    for (i = 0; i < wconfig.worker_pool_size; i++) {
         pthread_join(worker_pool[i], NULL);
     }
 
     wnotify_close(notify_queue);
     free(worker_pool);
+    pthread_join(thread_up, NULL);
     pthread_join(thread_gc, NULL);
     wdb_close_all();
+
+    OSHash_Free(open_dbs);
 
     // Reset template here too, remove queue/db/.template.db again
     // Without the prefix, because chrooted at that point
@@ -219,6 +222,10 @@ int main(int argc, char ** argv) {
     mdebug1("Template file removed again: %s", path_template);
 
     return EXIT_SUCCESS;
+
+failure:
+    free(worker_pool);
+    return EXIT_FAILURE;
 }
 
 void * run_dealer(__attribute__((unused)) void * args) {
@@ -381,7 +388,7 @@ void * run_gc(__attribute__((unused)) void * args) {
 
 void * run_up(__attribute__((unused)) void * args) {
     DIR *fd;
-    struct dirent *db;
+    struct dirent *db = NULL;
     wdb_t * wdb;
     char * db_folder;
     char * name;
@@ -420,7 +427,6 @@ void * run_up(__attribute__((unused)) void * args) {
 
         *(name++) = '\0';
         wdb = wdb_open_agent2(atoi(entry));
-        mdebug2("Upgraded DB for agent '%s' in run_up", wdb->agent_id);
         wdb_leave(wdb);
         free(entry);
     }

@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -90,6 +90,9 @@ int os_get_streams(char *full_path)
         }
     }
 
+    BackupRead(file_h, (LPBYTE)stream_name,
+                       sid.dwStreamNameSize,
+                       &dwRead, TRUE, FALSE, &context);
     CloseHandle(file_h);
     return (0);
 }
@@ -115,7 +118,7 @@ int read_sys_file(char *file_name)
 int read_sys_dir(char *dir_name)
 {
     DIR *dp;
-    struct dirent *entry;
+    struct dirent *entry = NULL;
     struct stat statbuf;
 
     /* Get the number of nodes. The total number on opendir
@@ -176,4 +179,3 @@ int main(int argc, char **argv)
     }
     return (0);
 }
-

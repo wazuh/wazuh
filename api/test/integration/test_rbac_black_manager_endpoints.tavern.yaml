@@ -1,0 +1,346 @@
+---
+test_name: GET /manager/configuration
+
+marks:
+  - rbac_tests
+
+stages:
+
+  - name: Request manager configuration (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response: &permission_allowed
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: !anything
+          total_failed_items: 0
+
+---
+test_name: GET /manager/configuration/validation
+
+stages:
+
+  - name: Request manager configuration validation (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/validation"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_allowed
+
+---
+test_name: GET /manager/configuration/{component}/{configuration}
+
+stages:
+
+  - name: Request manager component configuration (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/analysis/global"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_allowed
+
+---
+test_name: DELETE /manager/files
+
+stages:
+
+  - name: Delete a file (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: 'etc/decoders/local_decoder.xml'
+    response:
+      status_code: 200
+
+  - name: Delete a file (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: 'etc/rules/local_rules.xml'
+    response: &permission_denied
+      status_code: 403
+      json:
+        error: 4000
+
+---
+test_name: GET /manager/files
+
+stages:
+
+  - name: Read a file (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: 'etc/rules/local_rules.xml'
+    response:
+      <<: *permission_denied
+
+---
+test_name: PUT /manager/files
+
+stages:
+
+  - name: Upload a file (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
+      params:
+        path: 'etc/decoders/test_decoders.xml'
+    response:
+      status_code: 200
+
+  - name: Upload a file (Indirectly denied, can't delete while overwriting)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
+      params:
+        path: 'etc/rules/local_rules.xml'
+        overwrite: True
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 1
+          failed_items:
+            - id:
+                - 'etc/rules/local_rules.xml'
+              error:
+                code: 4000
+
+---
+test_name: GET /manager/info
+
+stages:
+
+  - name: Request manager info (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/info"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_allowed
+
+---
+test_name: GET /manager/logs
+
+stages:
+
+  - name: Request manager logs (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_allowed
+
+---
+test_name: GET /manager/logs/summary
+
+stages:
+
+  - name: Request manager logs summary (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/logs/summary"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_allowed
+
+---
+test_name: PUT /manager/restart
+
+stages:
+
+  - name: Restart manager (Allowed) (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_allowed
+    delay_after: !float "{restart_delay}"
+
+---
+test_name: GET /manager/stats
+
+stages:
+
+  - name: Request manager stats (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        error: 1308 # stats file does not exist
+
+---
+test_name: GET /manager/stats/analysisd
+
+stages:
+
+  - name: Request manager analysisd stats (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/analysisd"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+---
+test_name: GET /manager/stats/hourly
+
+stages:
+
+  - name: Request manager hourly stats (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/hourly"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+---
+test_name: GET /manager/stats/remoted
+
+stages:
+
+  - name: Request manager remoted stats (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/remoted"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+---
+test_name: GET /manager/stats/weekly
+
+stages:
+
+  - name: Request manager weekly stats (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/weekly"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+---
+test_name: GET /manager/status
+
+stages:
+
+  - name: Request manager status (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/status"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_allowed
+
+
+---
+test_name: GET /manager/api/config
+
+stages:
+
+  - name: Request API config (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/api/config"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: PUT /manager/api/config
+
+stages:
+
+  - name: Modify API configuration (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/api/config"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        cache:
+          enabled: false
+          time: 1
+    response:
+      <<: *permission_denied
+
+---
+test_name: DELETE /manager/api/config
+
+stages:
+
+  - name: Restore API config (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/api/config"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied

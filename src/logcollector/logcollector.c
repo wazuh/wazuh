@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -21,11 +21,13 @@ static int update_fname(int i, int j);
 static int update_current(logreader **current, int *i, int *j);
 static void set_read(logreader *current, int i, int j);
 static IT_control remove_duplicates(logreader *current, int i, int j);
+static int find_duplicate_inode(logreader * lf);
 static void set_sockets();
 static void files_lock_init(void);
 static void check_text_only();
 static int check_pattern_expand(int do_seek);
 static void check_pattern_expand_excluded();
+static void set_can_read(int value);
 
 /* Global variables */
 int loop_timeout;
@@ -41,44 +43,30 @@ int force_reload;
 int reload_interval;
 int reload_delay;
 int free_excluded_files_interval;
+OSHash * msg_queues_table;
 
 static int _cday = 0;
 int N_INPUT_THREADS = N_MIN_INPUT_THREADS;
 int OUTPUT_QUEUE_SIZE = OUTPUT_MIN_QUEUE_SIZE;
 logsocket default_agent = { .name = "agent" };
+logtarget default_target[2] = { { .log_socket = &default_agent } };
 
 /* Output thread variables */
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t mutex;
 #ifdef WIN32
 static pthread_mutex_t win_el_mutex;
 static pthread_mutexattr_t win_el_mutex_attr;
 #endif
+
+/* can read synchronization */
+static int _can_read = 0;
+static pthread_rwlock_t can_read_rwlock;
 
 /* Multiple readers / one write mutex */
 static pthread_rwlock_t files_update_rwlock;
 
 static OSHash *excluded_files = NULL;
 static OSHash *excluded_binaries = NULL;
-
-static char *rand_keepalive_str(char *dst, int size)
-{
-    static const char text[] = "abcdefghijklmnopqrstuvwxyz"
-                               "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                               "0123456789"
-                               "!@#$%^&*()_+-=;'[],./?";
-    int i;
-    int len;
-    srandom_init();
-    len = os_random() % (size - 10);
-    len = len >= 0 ? len : -len;
-
-    strncpy(dst, "--MARK--: ", 12);
-    for ( i = 10; i < len; ++i ) {
-        dst[i] = text[(unsigned int)os_random() % (sizeof text - 1)];
-    }
-    dst[i] = '\0';
-    return dst;
-}
 
 /* Handle file management */
 void LogCollectorStart()
@@ -88,7 +76,7 @@ void LogCollectorStart()
     int f_reload = 0;
     int f_free_excluded = 0;
     IT_control f_control = 0;
-    char keepalive[1024];
+    IT_control duplicates_removed = 0;
     logreader *current;
 
     /* Create store data */
@@ -110,6 +98,7 @@ void LogCollectorStart()
     check_pattern_expand(1);
     check_pattern_expand_excluded();
 
+    w_mutex_init(&mutex, NULL);
 #ifndef WIN32
     /* To check for inode changes */
     struct stat tmp_stat;
@@ -121,6 +110,7 @@ void LogCollectorStart()
     w_set_file_mutexes();
 #else
     BY_HANDLE_FILE_INFORMATION lpFileInformation;
+    memset(&lpFileInformation, 0, sizeof(BY_HANDLE_FILE_INFORMATION));
     int r;
     const char *m_uname;
 
@@ -158,7 +148,10 @@ void LogCollectorStart()
         }
 
         /* Remove duplicate entries */
-        if (remove_duplicates(current, i, j) == NEXT_IT) {
+        /* Returns NEXT_IT if duplicates were removed, LEAVE_IT if an error occurred
+           or CONTINUE_IT to continue with the current iteration */
+        duplicates_removed = remove_duplicates(current, i, j);
+        if (duplicates_removed == NEXT_IT) {
             i--;
             continue;
         }
@@ -173,6 +166,8 @@ void LogCollectorStart()
 
             /* Mutexes are not previously initialized under Windows*/
             w_mutex_init(&current->mutex, &win_el_mutex_attr);
+#else
+            free(current->file);
 #endif
             current->file = NULL;
             current->command = NULL;
@@ -182,15 +177,19 @@ void LogCollectorStart()
 
 #ifdef EVENTCHANNEL_SUPPORT
             minfo(READING_EVTLOG, current->file);
-            win_start_event_channel(current->file, current->future, current->query);
+            win_start_event_channel(current->file, current->future, current->query, current->reconnect_time);
 #else
             mwarn("eventchannel not available on this version of Windows");
 #endif
 
             /* Mutexes are not previously initialized under Windows*/
             w_mutex_init(&current->mutex, &win_el_mutex_attr);
+#else
+            free(current->file);
 #endif
-
+            current->file = NULL;
+            current->command = NULL;
+            current->fp = NULL;
         } else if (strcmp(current->logformat, "command") == 0) {
             current->file = NULL;
             current->fp = NULL;
@@ -250,7 +249,9 @@ void LogCollectorStart()
 
         else if (j < 0) {
             set_read(current, i, j);
-            minfo(READING_FILE, current->file);
+            if (current->file) {
+                minfo(READING_FILE, current->file);
+            }
             /* More tweaks for Windows. For some reason IIS places
              * some weird characters at the end of the files and getc
              * always returns 0 (even after clearerr).
@@ -266,8 +267,9 @@ void LogCollectorStart()
         } else {
             /* On Windows we need to forward the seek for wildcard files */
 #ifdef WIN32
-            set_read(current, i, j);
-            minfo(READING_FILE, current->file);
+            if (current->file) {
+                minfo(READING_FILE, current->file);
+            }
 
             if (current->fp) {
                 current->read(current, &r, 1);
@@ -286,6 +288,9 @@ void LogCollectorStart()
         }
     }
 
+    // Initialize message queue's log builder
+    mq_log_builder_init();
+
     /* Create the output threads */
     w_create_output_threads();
 
@@ -300,14 +305,15 @@ void LogCollectorStart()
     // Start com request thread
     w_create_thread(lccom_main, NULL);
 #endif
-
+    set_can_read(1);
     /* Daemon loop */
     while (1) {
 
         /* Free hash table content for excluded files */
         if (f_free_excluded >= free_excluded_files_interval) {
+            set_can_read(0); // Stop reading threads
             w_rwlock_wrlock(&files_update_rwlock);
-
+            set_can_read(1); // Clean signal once we have the lock
             mdebug1("Refreshing excluded files list.");
 
             OSHash_Free(excluded_files);
@@ -330,10 +336,14 @@ void LogCollectorStart()
         }
 
         if (f_check >= vcheck_files) {
+            set_can_read(0); // Stop reading threads
             w_rwlock_wrlock(&files_update_rwlock);
+            set_can_read(1); // Clean signal once we have the lock
             int i;
             int j = -1;
             f_reload += f_check;
+
+            mdebug1("Performing file check.");
 
             // Force reload, if enabled
 
@@ -364,7 +374,9 @@ void LogCollectorStart()
                     nanosleep(&delay, NULL);
                 }
 
+                set_can_read(0); // Stop reading threads
                 w_rwlock_wrlock(&files_update_rwlock);
+                set_can_read(1); // Clean signal once we have the lock
 
                 // Open files again, and restore position
 
@@ -436,7 +448,7 @@ void LogCollectorStart()
 
                     /* Variable file name */
                     else if (!current->fp && open_file_attempts - current->ign > 0) {
-                        handle_file(i, j, 0, 1);
+                        handle_file(i, j, 1, 1);
                         continue;
                     }
                 }
@@ -546,8 +558,7 @@ void LogCollectorStart()
                                  current->file);
 
                         /* Send message about log rotated */
-                        SendMSG(logr_queue, msg_alert,
-                                "ossec-logcollector", LOCALFILE_MQ);
+                        w_msg_hash_queues_push(msg_alert, "ossec-logcollector", strlen(msg_alert) + 1, default_target, LOCALFILE_MQ);
 
                         mdebug1("File inode changed. %s",
                                current->file);
@@ -564,7 +575,7 @@ void LogCollectorStart()
                         continue;
                     }
 #ifdef WIN32
-                    else if (current->size > (lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow))
+                    else if ((DWORD)current->size > (lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow))
 #else
                     else if (current->size > tmp_stat.st_size)
 #endif
@@ -577,8 +588,7 @@ void LogCollectorStart()
                                  current->file);
 
                         /* Send message about log rotated */
-                        SendMSG(logr_queue, msg_alert,
-                                "ossec-logcollector", LOCALFILE_MQ);
+                        w_msg_hash_queues_push(msg_alert, "ossec-logcollector", strlen(msg_alert) + 1, default_target, LOCALFILE_MQ);
 
                         mdebug1("File size reduced. %s",
                                 current->file);
@@ -684,14 +694,14 @@ void LogCollectorStart()
                         continue;
                     } else {
                         /* Try for a few times to open the file */
-                        handle_file(i, j, 0, 1);
+                        handle_file(i, j, 1, 1);
                         continue;
                     }
                 }
             }
 
             // Check for new files to be expanded
-            if (check_pattern_expand(0)) {
+            if (check_pattern_expand(1)) {
                 /* Remove duplicate entries */
                 for (i = 0, j = -1;; i++) {
                     if (f_control = update_current(&current, &i, &j), f_control) {
@@ -702,7 +712,8 @@ void LogCollectorStart()
                         }
                     }
 
-                    if (remove_duplicates(current, i, j) == NEXT_IT) {
+                    duplicates_removed = remove_duplicates(current, i, j);
+                    if (duplicates_removed == NEXT_IT) {
                         i--;
                         continue;
                     }
@@ -725,8 +736,10 @@ void LogCollectorStart()
             f_check = 0;
         }
 
-        rand_keepalive_str(keepalive, KEEPALIVE_SIZE);
-        SendMSG(logr_queue, keepalive, "ossec-keepalive", LOCALFILE_MQ);
+        if (mq_log_builder_update() == -1) {
+            mdebug1("Output log pattern data could not be updated.");
+        }
+
         sleep(1);
 
         f_check++;
@@ -736,11 +749,11 @@ void LogCollectorStart()
 
 int update_fname(int i, int j)
 {
-    struct tm *p;
     time_t __ctime = time(0);
     char lfile[OS_FLSIZE + 1];
     size_t ret;
     logreader *lf;
+    struct tm tm_result = { .tm_sec = 0 };
 
     if (j < 0) {
         lf = &logff[i];
@@ -748,15 +761,15 @@ int update_fname(int i, int j)
         lf = &globs[j].gfiles[i];
     }
 
-    p = localtime(&__ctime);
+    localtime_r(&__ctime, &tm_result);
 
     /* Handle file */
-    if (p->tm_mday == _cday) {
+    if (tm_result.tm_mday == _cday) {
         return (0);
     }
 
     lfile[OS_FLSIZE] = '\0';
-    ret = strftime(lfile, OS_FLSIZE, lf->ffile, p);
+    ret = strftime(lfile, OS_FLSIZE, lf->ffile, &tm_result);
     if (ret == 0) {
         merror_exit(PARSE_ERROR, lf->ffile);
     }
@@ -774,7 +787,7 @@ int update_fname(int i, int j)
         return (1);
     }
 
-    _cday = p->tm_mday;
+    _cday = tm_result.tm_mday;
     return (0);
 }
 
@@ -814,9 +827,11 @@ int handle_file(int i, int j, int do_fseek, int do_log)
 
     lf->fd = stat_fd.st_ino;
     lf->size =  stat_fd.st_size;
+    lf->dev =  stat_fd.st_dev;
 
 #else
     BY_HANDLE_FILE_INFORMATION lpFileInformation;
+    memset(&lpFileInformation, 0, sizeof(BY_HANDLE_FILE_INFORMATION));
 
     lf->fp = NULL;
     lf->h = CreateFile(lf->file, GENERIC_READ,
@@ -858,6 +873,12 @@ int handle_file(int i, int j, int do_fseek, int do_log)
     lf->size = (lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow);
 
 #endif
+
+    if (find_duplicate_inode(lf)) {
+        mdebug1(DUP_FILE_INODE, lf->file);
+        close_file(lf);
+        return 0;
+    }
 
     /* Only seek the end of the file if set to */
     if (do_fseek == 1 && S_ISREG(stat_fd.st_mode)) {
@@ -1138,6 +1159,20 @@ int check_pattern_expand(int do_seek) {
                     mwarn(FILE_LIMIT, maximum_files);
                     break;
                 }
+
+                struct stat statbuf;
+                if (lstat(g.gl_pathv[glob_offset], &statbuf) < 0) {
+                    merror("Error on lstat '%s' due to [(%d)-(%s)]", g.gl_pathv[glob_offset], errno, strerror(errno));
+                    glob_offset++;
+                    continue;
+                }
+
+                if ((statbuf.st_mode & S_IFMT) != S_IFREG) {
+                    mdebug1("File %s is not a regular file. Skipping it.", g.gl_pathv[glob_offset]);
+                    glob_offset++;
+                    continue;
+                }
+
                 found = 0;
                 for (i = 0; globs[j].gfiles[i].file; i++) {
                     if (!strcmp(globs[j].gfiles[i].file, g.gl_pathv[glob_offset])) {
@@ -1151,12 +1186,12 @@ int check_pattern_expand(int do_seek) {
                     int added = 0;
 
                     if(!ex_file) {
-                        minfo(NEW_GLOB_FILE, globs[j].gpath, g.gl_pathv[glob_offset]);
+                        mdebug1(NEW_GLOB_FILE, globs[j].gpath, g.gl_pathv[glob_offset]);
 
                         os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
-                        if (i) {
-                            memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
-                        }
+
+                        /* Copy the current item to the end mark as it should be a pattern */
+                        memcpy(globs[j].gfiles + i + 1, globs[j].gfiles + i, sizeof(logreader));
 
                         os_strdup(g.gl_pathv[glob_offset], globs[j].gfiles[i].file);
                         w_mutex_init(&globs[j].gfiles[i].mutex, &attr);
@@ -1167,7 +1202,7 @@ int check_pattern_expand(int do_seek) {
                         current_files++;
                         globs[j].num_files++;
                         mdebug2(CURRENT_FILES, current_files, maximum_files);
-                        if  (!i && !globs[j].gfiles[i].read) {
+                        if  (!globs[j].gfiles[i].read) {
                             set_read(&globs[j].gfiles[i], i, j);
                         } else {
                             handle_file(i, j, do_seek, 1);
@@ -1181,9 +1216,9 @@ int check_pattern_expand(int do_seek) {
                     /* This file could have to non binary file */
                     if (file_excluded_binary && !added) {
                         os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
-                        if (i) {
-                            memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
-                        }
+
+                        /* Copy the current item to the end mark as it should be a pattern */
+                        memcpy(globs[j].gfiles + i + 1, globs[j].gfiles + i, sizeof(logreader));
 
                         os_strdup(g.gl_pathv[glob_offset], globs[j].gfiles[i].file);
                         w_mutex_init(&globs[j].gfiles[i].mutex, &attr);
@@ -1194,7 +1229,7 @@ int check_pattern_expand(int do_seek) {
                         current_files++;
                         globs[j].num_files++;
                         mdebug2(CURRENT_FILES, current_files, maximum_files);
-                        if  (!i && !globs[j].gfiles[i].read) {
+                        if  (!globs[j].gfiles[i].read) {
                             set_read(&globs[j].gfiles[i], i, j);
                         } else {
                             handle_file(i, j, do_seek, 1);
@@ -1297,7 +1332,7 @@ int check_pattern_expand(int do_seek) {
             if ( wildcard ) {
 
                 DIR *dir = NULL;
-                struct dirent *dirent;
+                struct dirent *dirent = NULL;
 
                 *wildcard = '\0';
                 wildcard++;
@@ -1314,7 +1349,7 @@ int check_pattern_expand(int do_seek) {
                     if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
                         continue;
                     }
-                            
+
                     if (current_files >= maximum_files) {
                         mwarn(FILE_LIMIT, maximum_files);
                         break;
@@ -1327,7 +1362,7 @@ int check_pattern_expand(int do_seek) {
                     DIR *is_dir = NULL;
 
                     if (is_dir = opendir(full_path), is_dir) {
-                        mdebug2("File %s is a directory. Skipping it.", full_path);
+                        mdebug1("File %s is a directory. Skipping it.", full_path);
                         closedir(is_dir);
                         continue;
                     }
@@ -1398,9 +1433,9 @@ int check_pattern_expand(int do_seek) {
                             minfo(NEW_GLOB_FILE, globs[j].gpath, full_path);
 
                             os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
-                            if (i) {
-                                memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
-                            }
+
+                            /* Copy the current item to the end mark as it should be a pattern */
+                            memcpy(globs[j].gfiles + i + 1, globs[j].gfiles + i, sizeof(logreader));
 
                             os_strdup(full_path, globs[j].gfiles[i].file);
                             w_mutex_init(&globs[j].gfiles[i].mutex, &win_el_mutex_attr);
@@ -1411,7 +1446,7 @@ int check_pattern_expand(int do_seek) {
                             current_files++;
                             globs[j].num_files++;
                             mdebug2(CURRENT_FILES, current_files, maximum_files);
-                            if  (!i && !globs[j].gfiles[i].read) {
+                            if  (!globs[j].gfiles[i].read) {
                                 set_read(&globs[j].gfiles[i], i, j);
                             } else {
                                 handle_file(i, j, do_seek, 1);
@@ -1425,9 +1460,9 @@ int check_pattern_expand(int do_seek) {
                         /* This file could have to non binary file */
                         if (file_excluded_binary && !added) {
                             os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
-                            if (i) {
-                                memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
-                            }
+
+                            /* Copy the current item to the end mark as it should be a pattern */
+                            memcpy(globs[j].gfiles + i + 1, globs[j].gfiles + i, sizeof(logreader));
 
                             os_strdup(full_path, globs[j].gfiles[i].file);
                             w_mutex_init(&globs[j].gfiles[i].mutex, &win_el_mutex_attr);
@@ -1438,7 +1473,7 @@ int check_pattern_expand(int do_seek) {
                             current_files++;
                             globs[j].num_files++;
                             mdebug2(CURRENT_FILES, current_files, maximum_files);
-                            if  (!i && !globs[j].gfiles[i].read) {
+                            if  (!globs[j].gfiles[i].read) {
                                 set_read(&globs[j].gfiles[i], i, j);
                             } else {
                                 handle_file(i, j, do_seek, 1);
@@ -1476,6 +1511,7 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
             if (current != dup && dup->file && !strcmp(current->file, dup->file)) {
                 mwarn(DUP_FILE, current->file);
                 int result;
+
                 if (j < 0) {
                     result = Remove_Localfile(&logff, i, 0, 1,NULL);
                 } else {
@@ -1495,16 +1531,47 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
     return d_control;
 }
 
+int find_duplicate_inode(logreader * lf) {
+    if (lf->file == NULL && lf->command != NULL) {
+        return 0;
+    }
+
+    int r;
+    int k;
+    logreader * dup;
+    IT_control f_control;
+
+    for (r = 0, k = -1;; r++) {
+        if (f_control = update_current(&dup, &r, &k), f_control) {
+            if (f_control == NEXT_IT) {
+                continue;
+            } else {
+                break;
+            }
+        }
+
+        /* If the entry is different, the file is open,
+         * and both inode and device match,
+         * then the link is a duplicate.
+         */
+
+        if (lf != dup && dup->fp != NULL && lf->fd == dup->fd && lf->dev == dup->dev) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
 
 static void set_sockets() {
     int i, j, k, t;
     logreader *current;
     char *file;
 
-    // List readed sockets
+    // List read sockets
     unsigned int sk;
     for (sk=0; logsk && logsk[sk].name; sk++) {
-        mdebug1("Socket '%s' (%s) added. Location: %s", logsk[sk].name, logsk[sk].mode == UDP_PROTO ? "udp" : "tcp", logsk[sk].location);
+        mdebug1("Socket '%s' (%s) added. Location: %s", logsk[sk].name, logsk[sk].mode == IPPROTO_UDP ? "udp" : "tcp", logsk[sk].location);
     }
 
     for (i = 0, t = -1;; i++) {
@@ -1698,6 +1765,15 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
         w_cond_signal(&msg->available);
     }
 
+    if ((result < 0) && !reported) {
+        #ifndef WIN32
+            mwarn("Target '%s' message queue is full (%zu). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
+        #else
+            mwarn("Target '%s' message queue is full (%u). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
+        #endif
+            reported = 1;
+    }
+
     w_mutex_unlock(&msg->mutex);
 
     if (result < 0) {
@@ -1705,15 +1781,6 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
         free(message->buffer);
         free(message);
         mdebug2("Discarding log line for target '%s'", log_target->log_socket->name);
-
-        if (!reported) {
-#ifndef WIN32
-            mwarn("Target '%s' message queue is full (%zu). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
-#else
-            mwarn("Target '%s' message queue is full (%u). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
-#endif
-            reported = 1;
-        }
     }
 
     return result;
@@ -1731,35 +1798,84 @@ w_message_t * w_msg_queue_pop(w_msg_queue_t * msg){
     return message;
 }
 
+#ifdef WIN32
+DWORD WINAPI w_output_thread(void * args) {
+#else
 void * w_output_thread(void * args){
+#endif
     char *queue_name = args;
     w_message_t *message;
     w_msg_queue_t *msg_queue;
 
     if (msg_queue = OSHash_Get(msg_queues_table, queue_name), !msg_queue) {
         mwarn("Could not found the '%s'.", queue_name);
+    #ifdef WIN32
+        exit(1);
+    #else
         return NULL;
+    #endif
     }
 
     while(1)
     {
+        int sleep_time = 5;
         /* Pop message from the queue */
         message = w_msg_queue_pop(msg_queue);
 
-        if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) < 0) {
-            merror(QUEUE_SEND);
+        if (strcmp(message->log_target->log_socket->name, "agent") == 0) {
+            // When dealing with this type of messages we don't want any of them to be lost
+            // Continuously attempt to reconnect to the queue and send the message.
 
-            if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                merror_exit(QUEUE_FATAL, DEFAULTQPATH);
+            if(SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) != 0) {
+                #ifdef CLIENT
+                merror("Unable to send message to '%s' (ossec-agentd might be down). Attempting to reconnect.", DEFAULTQPATH);
+                #else
+                merror("Unable to send message to '%s' (ossec-analysisd might be down). Attempting to reconnect.", DEFAULTQPATH);
+                #endif
+
+                // Retry to connect infinitely.
+                logr_queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
+
+                minfo("Successfully reconnected to '%s'", DEFAULTQPATH);
+
+                if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) != 0) {
+                    // We reconnected but are still unable to send the message, notify it and go on.
+                    #ifdef CLIENT
+                    merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQPATH);
+                    #else
+                    merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQPATH);
+                    #endif
+                }
+            }
+
+        } else {
+            const int MAX_RETRIES = 3;
+            int retries = 0;
+            while (retries < MAX_RETRIES) {
+                if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) < 0) {
+                    merror(QUEUE_SEND);
+
+                    sleep(sleep_time);
+
+                    // If we failed, we will wait longer before reattempting to connect
+                    sleep_time += 5;
+                    retries++;
+                } else {
+                    break;
+                }
+            }
+            if (retries == MAX_RETRIES) {
+                merror(SEND_ERROR, message->log_target->log_socket->location, message->buffer);
             }
         }
-
         free(message->file);
         free(message->buffer);
         free(message);
     }
 
+#ifndef WIN32
     return NULL;
+#endif
 }
 
 void w_create_output_threads(){
@@ -1775,21 +1891,23 @@ void w_create_output_threads(){
 #ifndef WIN32
                 w_create_thread(w_output_thread, curr_node->key);
 #else
-                if (CreateThread(NULL,
+                w_create_thread(NULL,
                     0,
-                    (LPTHREAD_START_ROUTINE)w_output_thread,
+                    w_output_thread,
                     curr_node->key,
                     0,
-                    NULL) == NULL) {
-                    merror(THREAD_ERROR);
-                }
+                    NULL);
 #endif
             }
         }
     }
 }
 
+#ifdef WIN32
+DWORD WINAPI w_input_thread(__attribute__((unused)) void * t_id) {
+#else
 void * w_input_thread(__attribute__((unused)) void * t_id){
+#endif
     logreader *current;
     int i = 0, r = 0, j = -1;
     IT_control f_control = 0;
@@ -1800,6 +1918,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
     struct stat tmp_stat;
 #else
     BY_HANDLE_FILE_INFORMATION lpFileInformation;
+    memset(&lpFileInformation, 0, sizeof(BY_HANDLE_FILE_INFORMATION));
 #endif
 
     /* Daemon loop */
@@ -2043,7 +2162,9 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
         }
     }
 
+#ifndef WIN32
     return NULL;
+#endif
 }
 
 void w_create_input_threads(){
@@ -2060,14 +2181,12 @@ void w_create_input_threads(){
 #ifndef WIN32
         w_create_thread(w_input_thread,NULL);
 #else
-        if (CreateThread(NULL,
+        w_create_thread(NULL,
                      0,
-                     (LPTHREAD_START_ROUTINE)w_input_thread,
+                     w_input_thread,
                      NULL,
                      0,
-                     NULL) == NULL) {
-        merror(THREAD_ERROR);
-    }
+                     NULL);
 #endif
     }
 }
@@ -2085,6 +2204,7 @@ void files_lock_init()
 #endif
 
     w_rwlock_init(&files_update_rwlock, &attr);
+    w_rwlock_init(&can_read_rwlock, &attr);
     pthread_rwlockattr_destroy(&attr);
 }
 
@@ -2167,7 +2287,7 @@ static void check_pattern_expand_excluded() {
             if (!globs[j].exclude_path) {
                 continue;
             }
-            
+
             char *global_path = NULL;
             char *wildcard = NULL;
             os_strdup(globs[j].exclude_path,global_path);
@@ -2177,7 +2297,7 @@ static void check_pattern_expand_excluded() {
             if (wildcard) {
 
                 DIR *dir = NULL;
-                struct dirent *dirent;
+                struct dirent *dirent = NULL;
 
                 *wildcard = '\0';
                 wildcard++;
@@ -2283,3 +2403,18 @@ static void check_pattern_expand_excluded() {
     }
 }
 #endif
+
+
+static void set_can_read(int value){
+    w_rwlock_wrlock(&can_read_rwlock);
+    _can_read = value;
+    w_rwlock_unlock(&can_read_rwlock);
+}
+
+int can_read() {
+    int ret;
+    w_rwlock_rdlock(&can_read_rwlock);
+    ret = _can_read;
+    w_rwlock_unlock(&can_read_rwlock);
+    return ret;
+}

@@ -1,11 +1,11 @@
 /*
  * Wazuh Module for AWS S3 integration
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * January 08, 2018.
  *
  * Updated by Jeremy Phillips <jeremy@uranusbytes.com>
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -51,14 +51,16 @@ typedef struct wm_aws_service {
     char *aws_account_alias;            // AWS account alias
     char *only_logs_after;              // Date (YYYY-MMM-DD) to only parse logs after
     char *regions;                      // CSV of regions to parse
+    char *aws_log_groups;               // CSV of log groups to parse
+    unsigned int remove_log_streams:1;  // Remove the log stream from the log group
     struct wm_aws_service *next;     // Pointer to next
 } wm_aws_service;
 
 typedef struct wm_aws {
+    sched_scan_config scan_config;
     char *bucket;                       // DEPRECATE
     char *access_key;                   // DEPRECATE
     char *secret_key;                   // DEPRECATE
-    unsigned long interval;
     int queue_fd;
     unsigned int enabled:1;
     unsigned int run_on_start:1;

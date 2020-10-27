@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -142,8 +142,9 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
             }
             cJSON_AddItemToObject(file,"labels",label);
         }
-        if (list[i].ign) cJSON_AddNumberToObject(file,"frequency",list[i].ign);
-        if (list[i].future) cJSON_AddStringToObject(file,"only-future-events","yes");
+        if (list[i].ign && list[i].logformat != NULL && (strcmp(list[i].logformat,"command")==0 || strcmp(list[i].logformat,"full_command")==0)) cJSON_AddNumberToObject(file,"frequency",list[i].ign);
+        if (list[i].future && list[i].logformat != NULL && strcmp(list[i].logformat,"eventchannel")==0) cJSON_AddStringToObject(file,"only-future-events","yes");
+        if (list[i].reconnect_time && list[i].logformat != NULL && strcmp(list[i].logformat,"eventchannel")==0) cJSON_AddNumberToObject(file,"reconnect_time",list[i].reconnect_time);
 
         cJSON_AddItemToArray(array, file);
         i++;
@@ -194,7 +195,7 @@ cJSON *getSocketConfig(void) {
 
         cJSON_AddStringToObject(target,"name",logsk[i].name);
         cJSON_AddStringToObject(target,"location",logsk[i].location);
-        if (logsk[i].mode == UDP_PROTO) {
+        if (logsk[i].mode == IPPROTO_UDP) {
             cJSON_AddStringToObject(target,"mode","udp");
         } else {
             cJSON_AddStringToObject(target,"mode","tcp");

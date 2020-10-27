@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -17,6 +17,8 @@ int sender_pool;
 
 static netbuffer_t netbuffer;
 
+size_t global_counter;
+
 // Message handler thread
 static void * rem_handler_main(__attribute__((unused)) void * args);
 
@@ -24,7 +26,7 @@ static void * rem_handler_main(__attribute__((unused)) void * args);
 void * rem_keyupdate_main(__attribute__((unused)) void * args);
 
 /* Handle each message received */
-static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client);
+static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock);
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
@@ -56,6 +58,7 @@ void HandleSecure()
     char buffer[OS_MAXSTR + 1];
     ssize_t recv_b;
     struct sockaddr_in peer_info;
+    memset(&peer_info, 0, sizeof(struct sockaddr_in));
     wnotify_t * notify = NULL;
 
     /* Initialize manager */
@@ -103,7 +106,9 @@ void HandleSecure()
     // Create message handler thread pool
     {
         int worker_pool = getDefine_Int("remoted", "worker_pool", 1, 16);
-
+        // Initialize FD list and counter.
+        global_counter = 0;
+        rem_initList(FD_LIST_INIT_VALUE);
         while (worker_pool > 0) {
             w_create_thread(rem_handler_main, NULL);
             worker_pool--;
@@ -113,7 +118,7 @@ void HandleSecure()
     /* Connect to the message queue
      * Exit if it fails.
      */
-    if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
+    if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
@@ -133,7 +138,7 @@ void HandleSecure()
     /* Initialize some variables */
     memset(buffer, '\0', OS_MAXSTR + 1);
 
-    if (protocol == TCP_PROTO) {
+    if (protocol == IPPROTO_TCP) {
         if (notify = wnotify_init(MAX_EVENTS), !notify) {
             merror_exit("wnotify_init(): %s (%d)", strerror(errno), errno);
         }
@@ -145,7 +150,7 @@ void HandleSecure()
 
     while (1) {
         /* Receive message  */
-        if (protocol == TCP_PROTO) {
+        if (protocol == IPPROTO_TCP) {
             if (n_events = wnotify_wait(notify, EPOLL_MILLIS), n_events < 0) {
                 if (errno != EINTR) {
                     merror("Waiting for connection: %s (%d)", strerror(errno), errno);
@@ -162,7 +167,15 @@ void HandleSecure()
                 if (fd == logr.sock) {
                     sock_client = accept(logr.sock, (struct sockaddr *)&peer_info, &logr.peer_size);
                     if (sock_client < 0) {
-                        merror_exit(ACCEPT_ERROR);
+                        switch (errno) {
+                        case ECONNABORTED:
+                            mdebug1(ACCEPT_ERROR, strerror(errno), errno);
+                            break;
+                        default:
+                            merror(ACCEPT_ERROR, strerror(errno), errno);
+                        }
+
+                        continue;
                     }
 
                     nb_open(&netbuffer, sock_client, &peer_info);
@@ -198,14 +211,8 @@ void HandleSecure()
                         default:
                             merror("TCP peer [%d] at %s: %s (%d)", sock_client, inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
                         }
-
-                        // Fallthrough
-
+                        fallthrough;
                     case 0:
-                        if (wnotify_delete(notify, sock_client) < 0) {
-                            merror("wnotify_delete(%d): %s (%d)", sock_client, strerror(errno), errno);
-                        }
-
                         _close_sock(&keys, sock_client);
                         continue;
 
@@ -232,12 +239,17 @@ void HandleSecure()
 void * rem_handler_main(__attribute__((unused)) void * args) {
     message_t * message;
     char buffer[OS_MAXSTR + 1] = "";
+    int wdb_sock = -1;
     mdebug1("Message handler thread started.");
 
     while (1) {
         message = rem_msgpop();
-        memcpy(buffer, message->buffer, message->size);
-        HandleSecureMessage(buffer, message->size, &message->addr, message->sock);
+        if (message->sock == -1 || message->counter > rem_getCounter(message->sock)) {
+            memcpy(buffer, message->buffer, message->size);
+            HandleSecureMessage(buffer, message->size, &message->addr, message->sock, &wdb_sock);
+        } else {
+            rem_inc_dequeued();
+        }
         rem_msgfree(message);
     }
 
@@ -258,12 +270,12 @@ void * rem_keyupdate_main(__attribute__((unused)) void * args) {
     }
 }
 
-static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client) {
+static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock) {
     int agentid;
     int protocol = logr.proto[logr.position];
     char cleartext_msg[OS_MAXSTR + 1];
     char srcmsg[OS_FLSIZE + 1];
-    char srcip[IPSIZE + 1];
+    char srcip[IPSIZE + 1] = {0};
     char agname[KEYSIZE + 1];
     char *tmp_msg;
     size_t msg_length;
@@ -271,8 +283,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     int r;
 
     /* Set the source IP */
-    strncpy(srcip, inet_ntoa(peer_info->sin_addr), IPSIZE);
-    srcip[IPSIZE] = '\0';
+    inet_ntop(peer_info->sin_family, &peer_info->sin_addr, srcip, IPSIZE);
 
     /* Initialize some variables */
     memset(cleartext_msg, '\0', OS_MAXSTR + 1);
@@ -330,13 +341,30 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
             return;
         }
+    } else if (strncmp(buffer, "#ping", 5) == 0) {
+            int retval = 0;
+            char *msg = "#pong";
+            ssize_t msg_size = strlen(msg);
+
+            if (protocol == IPPROTO_UDP) {
+                retval = sendto(logr.sock, msg, msg_size, 0, (struct sockaddr *)peer_info, logr.peer_size) == msg_size ? 0 : -1;
+            } else {
+                retval = OS_SendSecureTCP(sock_client, msg_size, msg);
+            }
+
+            if (retval < 0) {
+                mwarn("Ping operation could not be delivered completely (%d)", retval);
+            }
+
+            return;
+
     } else {
         key_lock_read();
         agentid = OS_IsAllowedIP(&keys, srcip);
 
         if (agentid < 0) {
             key_unlock();
-            mwarn(DENYIP_WARN, srcip);
+            mwarn(DENYIP_WARN " Source agent ID is unknown.", srcip);
 
             // Send key request by ip
             push_request(srcip,"ip");
@@ -372,13 +400,12 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
     /* Check if it is a control message */
     if (IsValidHeader(tmp_msg)) {
-        r = 2;
 
         /* We need to save the peerinfo if it is a control msg */
 
         memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
         keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
-        r = (protocol == TCP_PROTO) ? OS_AddSocket(&keys, agentid, sock_client) : 2;
+        r = (protocol == IPPROTO_TCP) ? OS_AddSocket(&keys, agentid, sock_client) : 2;
         keys.keyentries[agentid]->rcvd = time(0);
 
         switch (r) {
@@ -395,7 +422,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         key_unlock();
 
         // The critical section for readers closes within this function
-        save_controlmsg(key, tmp_msg, msg_length - 3);
+        save_controlmsg(key, tmp_msg, msg_length - 3, wdb_sock);
         rem_inc_ctrl_msg();
 
         OS_FreeKey(key);
@@ -416,8 +443,14 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
                 SECURE_MQ) < 0) {
         merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
-        if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
-            merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
+        // Try to reconnect infinitely
+        logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+
+        minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
+
+        if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
+            // Something went wrong sending a message after an immediate reconnection...
+            merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
         }
     } else {
         rem_inc_evt();
@@ -435,6 +468,8 @@ int _close_sock(keystore * keys, int sock) {
     if (nb_close(&netbuffer, sock) == 0) {
         rem_dec_tcp();
     }
+
+    rem_setCounter(sock, global_counter);
 
     mdebug1("TCP peer disconnected [%d]", sock);
 

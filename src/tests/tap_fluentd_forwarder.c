@@ -41,7 +41,7 @@ int test_check_config_no_address(){
     w_assert_int_eq((simple_configuration_no_address = wm_fluent_check_config(fluent)), 0);
     os_free(fluent->address);
     os_free(fluent);
-  
+
     return 1;
 }
 
@@ -192,7 +192,7 @@ int main(void) {
 
     /* Simple configuration, TLS valid */
     TAP_TEST_MSG(test_check_valid_config_tls(), "Test configuration valid configuration");
-    
+
     /* Test connection to Fluentd server, no TLS */
     TAP_TEST_MSG(test_check_default_connection(), "Test connection");
 
@@ -206,7 +206,7 @@ int main(void) {
     TAP_TEST_MSG(test_check_config_dump(), "Test configuration dump");
 
     TAP_PLAN;
-    TAP_SUMMARY;
+    int r = tap_summary();
     printf("\n   ENDING TEST  - FLUENTD FORWARDER MODULE   \n\n");
-    return 0;
+    return r;
 }

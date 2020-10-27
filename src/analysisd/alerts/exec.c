@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -19,7 +19,7 @@
 #include "eventinfo.h"
 
 
-void OS_Exec(int execq, int arq, const Eventinfo *lf, const active_response *ar)
+void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar)
 {
     char exec_msg[OS_SIZE_1024 + 1];
     const char *ip;
@@ -146,13 +146,17 @@ void OS_Exec(int execq, int arq, const Eventinfo *lf, const active_response *ar)
                      extra_args ? extra_args : "-");
         }
 
-        if ((rc = OS_SendUnix(arq, exec_msg, 0)) < 0) {
-            if (rc == OS_SOCKBUSY) {
-                merror("AR socket busy.");
-            } else {
-                merror("AR socket error (shutdown?).");
+        if ((OS_SendUnix(*arq, exec_msg, 0)) < 0) {
+            if ((*arq = StartMQ(ARQUEUE, WRITE, 1)) > 0) {
+                if ((rc = OS_SendUnix(*arq, exec_msg, 0)) < 0){
+                    if (rc == OS_SOCKBUSY) {
+                        merror("AR socket busy.");
+                    } else {
+                        merror("AR socket error (shutdown?).");
+                    }
+                    merror("Error communicating with ar queue (%d).", rc);
+                }
             }
-            merror("Error communicating with ar queue (%d).", rc);
         }
     }
 

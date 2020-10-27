@@ -1,9 +1,9 @@
 /*
  * Wazuh Module for Fluent Forwarder
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * March 26, 2019.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -19,6 +19,7 @@
 typedef struct wm_fluent_t {
     unsigned int enabled:1;
     char * tag;
+    char * object_key;
     char * sock_path;
     char * address;
     unsigned short port;
@@ -31,6 +32,14 @@ typedef struct wm_fluent_t {
     SSL_CTX * ctx;
     SSL * ssl;
     BIO * bio;
+    int poll_interval;
+
+    struct keepalive {
+        bool enabled;
+        int count;
+        int idle;
+        int interval;
+    } keepalive;
 } wm_fluent_t;
 
 typedef struct wm_fluent_helo_t {
@@ -51,7 +60,7 @@ typedef struct wm_fluent_pong_t {
 extern const wm_context WM_FLUENT_CONTEXT;
 
 // Read configuration and return a module (if enabled) or NULL (if disabled)
-int wm_fluent_read(xml_node **nodes, wmodule *module);
+int wm_fluent_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
 
 
 #endif // WM_FLUENT_H
