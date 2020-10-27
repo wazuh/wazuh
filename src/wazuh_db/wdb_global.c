@@ -1248,33 +1248,21 @@ cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id) {
     return result;
 }
 
-cJSON* wdb_global_get_agents_by_keepalive(wdb_t *wdb, char comparator, int keep_alive) {
+cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int keep_alive) {
     cJSON* result = NULL;
-    wdb_stmt stmt_index = -1;
     sqlite3_stmt *stmt = NULL;
-
-    if (comparator == '>') {
-        stmt_index = WDB_STMT_GLOBAL_GET_AGENTS_BY_GREATER_KEEPALIVE;
-    }
-    else if (comparator == '<') {
-        stmt_index = WDB_STMT_GLOBAL_GET_AGENTS_BY_LESS_KEEPALIVE;
-    }
-    else {
-        mdebug1("Invalid keepalive comparator");
-        return NULL;
-    }
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
         return NULL;
     }
 
-    if (wdb_stmt_cache(wdb, stmt_index) < 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT) < 0) {
         mdebug1("Cannot cache statement");
         return NULL;
     }
 
-    stmt = wdb->stmt[stmt_index];
+    stmt = wdb->stmt[WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT];
 
     if (sqlite3_bind_int(stmt, 1, keep_alive) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));

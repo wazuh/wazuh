@@ -167,6 +167,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GET_AGENTS_BY_LESS_KEEPALIVE,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS,
+    WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT,
     WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
     WDB_STMT_SIZE // This must be the last constant
@@ -1307,14 +1308,14 @@ int wdb_parse_global_sync_agent_info_get(wdb_t * wdb, char * input, char * outpu
 int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to parse last_id, condition and keepalive for get-agents-by-keepalive.
+ * @brief Function to parse the disconnect_agents command data.
  *
  * @param [in] wdb The global struct database.
- * @param [in] input String with last_id, condition, and keepalive.
- * @param [out] output Response of the query.
+ * @param [in] input String with the time threshold before which consider an agent as disconnected.
+ * @param [out] output Response of the command in JSON format with the list of agents that were set as disconnected.
  * @return 0 Success: response contains the value. -1 On error: invalid DB query syntax.
  */
-int wdb_parse_global_get_agents_by_keepalive(wdb_t* wdb, char* input, char* output);
+int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output);
 
 /**
  * @brief Function to parse last_id get-all-agents.
@@ -1788,14 +1789,13 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
 cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id);
 
 /*
- * @brief Gets all the agents' ID that satisfy the keepalive condition.
+ * @brief Gets all the agents' ID that satisfy the keepalive condition to be disconnected.
  *
  * @param [in] wdb The Global struct database.
- * @param [in] condition The symbol '<' or '>' condition used to compare keepalive.
- * @param [in] keep_alive The value of keepalive to search for agents.
+ * @param [in] keep_alive The value of keepalive threshold before which consider an agent as disconnected.
  * @return A pointer to a JSON with all the agents that satisfy the keepalive condition. Must be de-allocated by the caller.
  */
-cJSON* wdb_global_get_agents_by_keepalive(wdb_t *wdb, char condition, int keep_alive);
+cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int keep_alive);
 
 /**
  * @brief Gets every agent ID.
