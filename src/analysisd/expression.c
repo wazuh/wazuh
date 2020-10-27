@@ -175,6 +175,17 @@ bool w_expression_match(w_expression_t * expression, const char * str_test, cons
                 retval = true;
             }
 
+            if (status_match.sub_strings != NULL) {
+                OSRegex_free_regex_matching(&status_match);
+            }
+            break;
+
+        case EXP_TYPE_STRING:
+            retval = (strcmp(expression->string, str_test) != 0) ? false : true;
+            break;
+
+        case EXP_TYPE_OSIP_ARRAY:
+            retval = OS_IPFoundList(str_test, expression->ips) ? true: false;
             break;
 
         case EXP_TYPE_PCRE2:
