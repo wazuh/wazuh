@@ -223,7 +223,7 @@ static void test_normalize_mac_package_name(void **state) {
         {"AVGAntivirus", "AVG", "Anti-Virus"},
         {"AntivirusforMac", NULL, "Antivirus"},
         {"Sophos Anti-Virus", "Sophos", "Anti-Virus"},
-        {"Kasperky Anti-Virus for mac", "Kasperky", "Anti-Virus"},
+        {"Kaspersky Anti-Virus for mac", "Kaspersky", "Anti-Virus"},
         {"Symantec Endpoint Protection", "Symantec", "Endpoint Protection"},
         {"McAfee Endpoint Security for Mac", "McAfee", "Endpoint Security"},
         {"Quick Heal Total Security", "Quick Heal", "Total Security"},

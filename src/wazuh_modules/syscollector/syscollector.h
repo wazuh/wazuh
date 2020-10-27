@@ -210,6 +210,14 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION);
  */
 int normalize_mac_package_name(const char * source_package, char ** vendor_name, char ** package_name);
 
+/**
+ * @brief Get the vendor of a mac package from CFBundleIdentifier.
+ * 
+ * @param input CFBundleIdentifier string.
+ * @return char* Returns the vendor or null.
+ */
+char * get_vendor_mac(const char * string);
+
 #endif
 
 #ifdef __MACH__

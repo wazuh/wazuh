@@ -389,6 +389,11 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
                             char ** parts = OS_StrBreak('>', read_buff, 4);
                             char ** _parts = OS_StrBreak('<', parts[3], 2);
 
+                            vendor_name = get_vendor_mac(_parts[0]);
+                            if (vendor_name) {
+                                cJSON_AddStringToObject(package, "vendor", vendor_name);
+                                os_free(vendor_name);
+                            }
                             cJSON_AddStringToObject(package, "description", _parts[0]);
 
                             for (i = 0; _parts[i]; i++) {
@@ -405,6 +410,11 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
                             char ** parts = OS_StrBreak('>', read_buff, 2);
                             char ** _parts = OS_StrBreak('<', parts[1], 2);
 
+                            vendor_name = get_vendor_mac(_parts[0]);
+                            if (vendor_name) {
+                                cJSON_AddStringToObject(package, "vendor", vendor_name);
+                                os_free(vendor_name);
+                            }
                             cJSON_AddStringToObject(package, "description", _parts[0]);
 
                             for (i = 0; _parts[i]; i++) {
@@ -1771,7 +1781,7 @@ int normalize_mac_package_name(const char * source_package, char ** vendor_name,
         "VMware",
         "Sophos",
         "Symantec",
-        "Kasperky",
+        "Kaspersky",
         "McAfee",
         "QuickHeal",
         "Quick",
@@ -1823,6 +1833,7 @@ int normalize_mac_package_name(const char * source_package, char ** vendor_name,
             if (!strcmp(package_cpy, vendor_in_package[i])) {
                 next = w_remove_substr(next, " for mac");
                 next = w_remove_substr(next, " for Mac");
+                next = w_remove_substr(next, " For Mac");
                 if (!strcmp(package_cpy, "Quick")) {
                     package = next;
                     next = wstr_chr(package, ' ');
@@ -1852,6 +1863,56 @@ int normalize_mac_package_name(const char * source_package, char ** vendor_name,
 
     os_free(package_cpy);
     return result;
+}
+
+char * get_vendor_mac(const char * string) {
+    char * vendor = NULL;
+    char* token = NULL;
+    char * string_cpy = NULL;
+    char * vendors[] = {
+        "google",
+        "apple",
+        "microsoft",
+        "adobe",
+        "atlassian",
+        "oracle",
+        "sophos",
+        "symantec",
+        "kaspersky",
+        "mcafee",
+        "bitdefender",
+        "k7computing",
+        "avg",
+        "avast",
+        "simplexsolutionsinc",
+        "liquid",
+        "micPDF",
+        "foxit-software"
+    };
+    int size_vendors = sizeof(vendors) / sizeof(vendors[0]);
+    int i;
+    if (!string) {
+        return NULL;
+    }
+
+    os_strdup(string, string_cpy);
+    token = strtok(string_cpy, ".");
+    if (!strcmp(token, "com") || !strcmp(token, "org") || !strcmp(token,"us") ||
+        !strcmp(token, "net") || !strcmp(token, "c3")) {
+        token = strtok(NULL, ".");
+        for (i = 0; i < size_vendors; i++) {
+            if (!strcmp(token, vendors[i])) {
+                if (!strcmp(token, "foxit-software")) {
+                    w_remove_substr(token, "-");
+                }
+                token[0] = toupper(token[0]);
+                os_strdup(token, vendor);
+            }
+        }
+    }
+
+    os_free(string_cpy);
+    return vendor;
 }
 
 #endif
