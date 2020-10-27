@@ -169,6 +169,24 @@ OSHashNode* wm_agent_upgrade_get_next_node(unsigned int *index, OSHashNode *curr
     return OSHash_Next(task_table_by_agent_id, index, current);
 }
 
+cJSON* wm_agent_upgrade_get_agent_ids() {
+    OSHashNode *hash_node;
+    unsigned int index = 0;
+    cJSON *agents_array = cJSON_CreateArray();
+
+    hash_node = OSHash_Begin(task_table_by_agent_id, &index);
+
+    while(hash_node) {
+        cJSON_AddItemToArray(agents_array, cJSON_CreateNumber(atoi(hash_node->key)));
+        hash_node = OSHash_Next(task_table_by_agent_id, &index, hash_node);
+    }
+    if (!cJSON_GetArraySize(agents_array)) {
+        cJSON_Delete(agents_array);
+    }
+
+    return agents_array;
+}
+
 cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object) {
     if (w_is_worker()) {
         return wm_agent_send_task_information_worker(message_object);

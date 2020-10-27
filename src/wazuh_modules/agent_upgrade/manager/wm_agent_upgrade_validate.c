@@ -120,6 +120,10 @@ int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_up
     char *versions = NULL;
     int return_code = WM_UPGRADE_SUCCESS;
 
+    if (!task->wpk_version) {
+        return WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST;
+    }
+
     os_calloc(OS_SIZE_1024, sizeof(char), repository_url);
     os_calloc(OS_SIZE_2048, sizeof(char), path_url);
     os_calloc(OS_SIZE_2048, sizeof(char), file_url);
