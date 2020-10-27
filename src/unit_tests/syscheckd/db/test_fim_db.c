@@ -2165,6 +2165,46 @@ static void test_fim_db_read_line_from_file_memory_line_read(void **state) {
 }
 
 /**********************************************************************************************************************\
+ * fim_db_get_count_entries()
+\**********************************************************************************************************************/
+#ifdef TEST_WINAGENT
+static void test_fim_db_get_count_entries_query_failed(void **state) {
+    fdb_t fim_sql;
+    int retval;
+
+    expect_fim_db_clean_stmt();
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
+    will_return(__wrap_sqlite3_errmsg, "SQLITE some error");
+
+    expect_string(__wrap__merror, formatted_msg, "Step error getting count entry path: SQLITE some error");
+
+    retval = fim_db_get_count_entries(&fim_sql);
+
+    assert_int_equal(retval, FIMDB_ERR);
+}
+
+static void test_fim_db_get_count_entries_success(void **state) {
+    fdb_t fim_sql;
+    int retval;
+
+    expect_fim_db_clean_stmt();
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 1);
+
+    retval = fim_db_get_count_entries(&fim_sql);
+
+    assert_int_equal(retval, 1);
+}
+#endif
+
+/**********************************************************************************************************************\
  * main()
 \**********************************************************************************************************************/
 int main(void) {
@@ -2288,6 +2328,11 @@ int main(void) {
         cmocka_unit_test_teardown(test_fim_db_read_line_from_file_disk_line_read, teardown_string),
         cmocka_unit_test(test_fim_db_read_line_from_file_memory_attempt_to_read_out_of_bounds),
         cmocka_unit_test(test_fim_db_read_line_from_file_memory_line_read),
+        // fim_db_get_count_entries
+#ifdef TEST_WINAGENT
+        cmocka_unit_test(test_fim_db_get_count_entries_query_failed),
+        cmocka_unit_test(test_fim_db_get_count_entries_success),
+#endif
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

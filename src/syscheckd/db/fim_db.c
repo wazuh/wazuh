@@ -893,9 +893,11 @@ int fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **b
 }
 
 #ifndef WIN32
+// LCOV_EXCL_START
 inline int fim_db_get_count_entries(fdb_t * fim_sql) {
     return fim_db_get_count_file_entry(fim_sql);
 }
+// LCOV_EXCL_STOP
 #else
 int fim_db_get_count_entries(fdb_t * fim_sql) {
     int res = fim_db_get_count(fim_sql, FIMDB_STMT_COUNT_DB_ENTRIES);
