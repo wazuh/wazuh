@@ -264,10 +264,8 @@ int __wrap_wdb_global_sync_agent_info_set(__attribute__((unused)) wdb_t *wdb,
     return mock();
 }
 
-cJSON* __wrap_wdb_global_get_agents_by_keepalive(__attribute__((unused)) wdb_t *wdb,
-                                                 char comparator,
-                                                 int keep_alive) {
-    check_expected(comparator);
+cJSON* __wrap_wdb_global_get_agents_to_disconnect(__attribute__((unused)) wdb_t *wdb,
+                                                  int keep_alive) {
     check_expected(keep_alive);
     return mock();
 }
