@@ -166,7 +166,9 @@ def files(agent_list=None, offset=0, limit=common.database_limit, sort=None, sea
 
     db_query = WazuhDBQuerySyscheck(agent_id=agent_list[0], offset=offset, limit=limit, sort=sort, search=search,
                                     filters=filters, query=q, select=select, table='fim_entry', distinct=distinct,
-                                    fields=summary_parameters if summary else parameters).run()
+                                    fields=summary_parameters if summary else parameters)
+
+    db_query = db_query.run()
 
     result.affected_items = db_query['items']
     result.total_affected_items = db_query['totalItems']
