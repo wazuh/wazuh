@@ -1546,6 +1546,24 @@ void test_fim_db_callback_save_path_disk(void **state) {
     assert_int_equal(test_data->tmp_file->elements, 1);
 }
 
+#ifdef TEST_WINAGENT
+void test_fim_db_callback_save_path_disk_registry(void **state) {
+    fdb_t fim_sql;
+    fim_registry_key key = { .arch = ARCH_64BIT, .path = "HKEY_LOCAL_MACHINE\\some\\random\\key" };
+    fim_entry entry = { .type = FIM_TYPE_REGISTRY, .registry_entry.key = &key };
+    fim_tmp_file file = { .fd = (FILE *)2345, .elements = 0 };
+
+    will_return(__wrap_wstr_escape_json, strdup("HKEY_LOCAL_MACHINE\\\\some\\\\random\\\\key"));
+
+    expect_value(wrap_fprintf, __stream, 2345);
+    expect_string(wrap_fprintf, formatted_msg, "1 HKEY_LOCAL_MACHINE\\\\some\\\\random\\\\key\n");
+    will_return(wrap_fprintf, 40);
+
+    fim_db_callback_save_path(&fim_sql, &entry, FIM_DB_DISK, &file);
+    assert_int_equal(file.elements, 1);
+}
+#endif
+
 void test_fim_db_callback_save_path_disk_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
     test_data->tmp_file->fd = (FILE *)2345;
@@ -2225,6 +2243,9 @@ int main(void) {
                                         test_fim_tmp_file_teardown_disk),
         cmocka_unit_test_setup_teardown(test_fim_db_callback_save_path_disk_error, test_fim_tmp_file_setup_disk,
                                         test_fim_tmp_file_teardown_disk),
+#ifdef TEST_WINAGENT
+        cmocka_unit_test(test_fim_db_callback_save_path_disk_registry),
+#endif
         cmocka_unit_test_setup_teardown(test_fim_db_callback_save_path_memory, test_fim_tmp_file_setup_memory,
                                         test_fim_tmp_file_teardown_memory),
         // fim_db_callback_calculate_checksum
