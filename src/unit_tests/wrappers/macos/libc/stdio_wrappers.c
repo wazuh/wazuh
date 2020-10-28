@@ -18,12 +18,16 @@
 #include "headers/defs.h"
 #include "../../common.h"
 
-char * wrap_fgets(char * __s, int __n, FILE * __stream) {
+char * wrap_fgets (char * __s, int __n, FILE * __stream) {
     if (test_mode) {
+        char *buffer = mock_type(char*);
         check_expected(__stream);
-        return mock_type(char*);
-    }
-    else {
+        if(buffer) {
+            strncpy(__s, buffer, __n);
+            return __s;
+        }
+        return NULL;
+    } else {
         return fgets(__s, __n, __stream);
     }
 }
@@ -71,7 +75,7 @@ int wrap_fstat (int __fd, struct stat *__buf) {
         __buf->st_size = mock_type(int);
         return mock_type(int);
     }
-    
+
     return fstat(__fd, __buf);
 }
 
@@ -127,4 +131,14 @@ FILE * wrap_tmpfile () {
         return mock_type(FILE*);
     }
     return tmpfile();
+}
+
+FILE * wrap_fopen (const char* path, const char* mode) {
+    if(test_mode) {
+        check_expected_ptr(path);
+        check_expected(mode);
+        return mock_ptr_type(FILE*);
+    } else {
+        return fopen(path, mode);
+    }
 }

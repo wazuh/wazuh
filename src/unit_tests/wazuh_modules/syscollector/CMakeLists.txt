@@ -36,7 +36,6 @@ set_target_properties(
 
 target_link_libraries(SYSCOLLECTOR_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
-
 # Compiling tests
 list(LENGTH tests_names count)
 math(EXPR count "${count} - 1")
