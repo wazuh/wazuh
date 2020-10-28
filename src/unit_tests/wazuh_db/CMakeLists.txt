@@ -43,7 +43,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,
 
 list(APPEND wdb_tests_names "test_wdb_agent")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,strerror \
-                             -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_CreateArray -Wl,--wrap,cJSON_CreateString \
+                             -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_CreateArray -Wl,--wrap,cJSON_CreateString -Wl,--wrap,cJSON_Parse \
                              -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,cJSON_AddNumberToObject \
                              -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,cJSON_GetObjectItem \
                              -Wl,--wrap,cJSON_Delete -Wl,--wrap,time -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite \
