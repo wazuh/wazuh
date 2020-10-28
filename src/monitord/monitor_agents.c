@@ -15,6 +15,27 @@
 
 static int mon_send_agent_msg(char *agent, char *msg);
 
+void monitor_agent_disconnection(char *agent) {
+    char str[OS_SIZE_1024 + 1];
+    int error;
+
+    /* Send disconnected message */
+    snprintf(str, OS_SIZE_1024 - 1, AG_DISCON_MSG, agent);
+    if (error = mon_send_agent_msg(agent, str), error) {
+        if (error == 2) {
+            // Agent is no longer in the database
+            snprintf(str, OS_SIZE_1024 - 1, OS_AG_REMOVED, agent);
+            if (SendMSG(mond.a_queue, str, ARGV0, LOCALFILE_MQ) < 0) {
+                mond.a_queue = -1;  // set an invalid fd so we can attempt to reconnect later on.
+                mdebug1("Could not generate removed agent alert for '%s'", agent);
+                merror(QUEUE_SEND);
+            }
+        } else {
+            mdebug1("Could not generate disconnected agent alert for '%s'", agent);
+        }
+    }
+}
+
 void monitor_agents()
 {
     char **cr_agents;
@@ -120,7 +141,7 @@ int delete_old_agent(const char *agent){
     char *agent_id = get_agent_id_from_name(agent_name);
     if(agent_id) {
         if (sock = auth_connect(), sock < 0) {
-            mdebug1("Monitord could not connecto to Authd socket. Is Authd running?");
+            mdebug1("Monitord could not connect to to Authd socket. Is Authd running?");
             val = -1;
             free(agent_id);
             return val;
