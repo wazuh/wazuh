@@ -5336,6 +5336,284 @@ void test_wdb_global_get_agents_to_disconnect_success(void **state)
     assert_ptr_equal(result, (cJSON*)1);
 }
 
+/* Tests wdb_global_get_agents_by_keepalive */
+
+void test_wdb_global_get_agents_by_keepalive_comparator_fail(void **state)
+{
+    int result = 0;
+    int last_agent_id = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *output = NULL;
+    char comparator = 'W';
+    int keep_alive = 100;
+
+    expect_string(__wrap__merror, formatted_msg, "Invalid comparator");
+
+    result = wdb_global_get_agents_by_keepalive(data->wdb, &last_agent_id, comparator, keep_alive, &output);
+
+    assert_string_equal(output, "Invalid comparator");
+    os_free(output);
+    assert_int_equal(result, WDBC_ERROR);
+}
+
+void test_wdb_global_get_agents_by_keepalive_transaction_fail(void **state)
+{
+    int result = 0;
+    int last_agent_id = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *output = NULL;
+    char comparator = '<';
+    int keep_alive = 100;
+
+    will_return(__wrap_wdb_begin2, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
+
+    result = wdb_global_get_agents_by_keepalive(data->wdb, &last_agent_id, comparator, keep_alive, &output);
+
+    assert_string_equal(output, "Cannot begin transaction");
+    os_free(output);
+    assert_int_equal(result, WDBC_ERROR);
+}
+
+void test_wdb_global_get_agents_by_keepalive_cache_fail(void **state)
+{
+    int result = 0;
+    int last_agent_id = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *output = NULL;
+    char comparator = '<';
+    int keep_alive = 100;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
+
+    result = wdb_global_get_agents_by_keepalive(data->wdb, &last_agent_id, comparator, keep_alive, &output);
+
+    assert_string_equal(output, "Cannot cache statement");
+    os_free(output);
+    assert_int_equal(result, WDBC_ERROR);
+}
+
+void test_wdb_global_get_agents_by_keepalive_bind1_fail(void **state)
+{
+    int result = 0;
+    int last_agent_id = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *output = NULL;
+    char comparator = '<';
+    int keep_alive = 100;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
+
+    result = wdb_global_get_agents_by_keepalive(data->wdb, &last_agent_id, comparator, keep_alive, &output);
+
+    assert_string_equal(output, "Cannot bind sql statement");
+    os_free(output);
+    assert_int_equal(result, WDBC_ERROR);
+}
+
+void test_wdb_global_get_agents_by_keepalive_bind2_fail(void **state)
+{
+    int result = 0;
+    int last_agent_id = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *output = NULL;
+    char comparator = '<';
+    int keep_alive = 100;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, keep_alive);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
+
+    result = wdb_global_get_agents_by_keepalive(data->wdb, &last_agent_id, comparator, keep_alive, &output);
+
+    assert_string_equal(output, "Cannot bind sql statement");
+    os_free(output);
+    assert_int_equal(result, WDBC_ERROR);
+}
+
+void test_wdb_global_get_agents_by_keepalive_no_agents(void **state)
+{
+    int result = 0;
+    int last_agent_id = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *output = NULL;
+    char comparator = '<';
+    int keep_alive = 100;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, keep_alive);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt, NULL);
+    expect_function_call_any(__wrap_cJSON_Delete);
+
+    result = wdb_global_get_agents_by_keepalive(data->wdb, &last_agent_id, comparator, keep_alive, &output);
+
+    assert_string_equal(output, "");
+    os_free(output);
+    assert_int_equal(result, WDBC_OK);
+}
+
+void test_wdb_global_get_agents_by_keepalive_success_lt(void **state)
+{
+    int result = 0;
+    int last_agent_id = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *output = NULL;
+    cJSON *root = NULL;
+    cJSON *json_agent = NULL;
+    int agent_id = 10;
+    char str_agt_id[] = "10";
+    char comparator = '<';
+    int keep_alive = 100;
+
+    root = cJSON_CreateArray();
+    json_agent = cJSON_CreateObject();
+    cJSON_AddNumberToObject(json_agent, "id", agent_id);
+    cJSON_AddItemToArray(root, json_agent);
+
+    will_return_count(__wrap_wdb_begin2, 1, -1);
+    will_return_count(__wrap_wdb_stmt_cache, 1, -1);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, keep_alive);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    // Mocking one valid agent
+    will_return(__wrap_wdb_exec_stmt, root);
+
+    // No more agents
+    will_return(__wrap_wdb_exec_stmt, NULL);
+    expect_function_call_any(__wrap_cJSON_Delete);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, keep_alive);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    result = wdb_global_get_agents_by_keepalive(data->wdb, &last_agent_id, comparator, keep_alive, &output);
+
+    assert_string_equal(output, str_agt_id);
+
+    assert_string_equal(output, "10");
+    os_free(output);
+    __real_cJSON_Delete(root);
+    assert_int_equal(result, WDBC_OK);
+}
+
+void test_wdb_global_get_agents_by_keepalive_success_gt(void **state)
+{
+    int result = 0;
+    int last_agent_id = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *output = NULL;
+    cJSON *root = NULL;
+    cJSON *json_agent = NULL;
+    int agent_id = 10;
+    char str_agt_id[] = "10";
+    char comparator = '>';
+    int keep_alive = 100;
+
+    root = cJSON_CreateArray();
+    json_agent = cJSON_CreateObject();
+    cJSON_AddNumberToObject(json_agent, "id", agent_id);
+    cJSON_AddItemToArray(root, json_agent);
+
+    will_return_count(__wrap_wdb_begin2, 1, -1);
+    will_return_count(__wrap_wdb_stmt_cache, 1, -1);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, keep_alive);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    // Mocking one valid agent
+    will_return(__wrap_wdb_exec_stmt, root);
+
+    // No more agents
+    will_return(__wrap_wdb_exec_stmt, NULL);
+    expect_function_call_any(__wrap_cJSON_Delete);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, keep_alive);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    result = wdb_global_get_agents_by_keepalive(data->wdb, &last_agent_id, comparator, keep_alive, &output);
+
+    assert_string_equal(output, str_agt_id);
+
+    assert_string_equal(output, "10");
+    os_free(output);
+    __real_cJSON_Delete(root);
+    assert_int_equal(result, WDBC_OK);
+}
+
+void test_wdb_global_get_agents_by_keepalive_full(void **state)
+{
+    int result = 0;
+    int last_agent_id = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *output = NULL;
+    cJSON *root = NULL;
+    cJSON *json_agent = NULL;
+    int agent_id = 1000;
+    char comparator = '<';
+    int keep_alive = 100;
+
+    // Mocking many agents to create an array bigger than WDB_MAX_RESPONSE_SIZE
+    root = cJSON_CreateArray();
+    json_agent = cJSON_CreateObject();
+    cJSON_AddNumberToObject(json_agent, "id", agent_id);
+    cJSON_AddItemToArray(root, json_agent);
+    will_return_count(__wrap_wdb_exec_stmt, root, -1);
+
+    expect_function_call_any(__wrap_cJSON_Delete);
+    will_return_count(__wrap_wdb_begin2, 1, -1);
+    will_return_count(__wrap_wdb_stmt_cache, 1, -1);
+
+    expect_any_count(__wrap_sqlite3_bind_int, index, -1);
+    expect_any_count(__wrap_sqlite3_bind_int, value, -1);
+    will_return_count(__wrap_sqlite3_bind_int, SQLITE_OK, -1);
+
+    result = wdb_global_get_agents_by_keepalive(data->wdb, &last_agent_id, comparator, keep_alive, &output);
+
+    assert_non_null(output);
+    os_free(output);
+    __real_cJSON_Delete(root);
+    assert_int_equal(result, WDBC_DUE);
+}
+
 /* Tests wdb_global_get_all_agents */
 
 void test_wdb_global_get_all_agents_transaction_fail(void **state)
@@ -5908,6 +6186,16 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_to_disconnect_bind_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_to_disconnect_exec_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_to_disconnect_success, test_setup, test_teardown),
+        /* Tests wdb_global_get_agents_by_keepalive */
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_keepalive_comparator_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_keepalive_transaction_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_keepalive_cache_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_keepalive_bind1_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_keepalive_bind2_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_keepalive_no_agents, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_keepalive_success_lt, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_keepalive_success_gt, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_keepalive_full, test_setup, test_teardown),
         /* Tests wdb_global_get_all_agents */
         cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_cache_fail, test_setup, test_teardown),
