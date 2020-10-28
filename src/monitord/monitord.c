@@ -17,7 +17,7 @@
 #include "config/config.h"
 #include "string_op.h"
 #include "wazuh_db/wdb.h"
-#include <ctime>
+#include "time.h"
 
 /* Global variables */
 monitor_config mond;
