@@ -218,12 +218,12 @@ void test_sys_convert_bin_plist_ok(void **state)
 
 // normalize_mac_package
 
-void test_normalize_mac_package_name(void **state) {
+static void test_normalize_mac_package_name(void **state) {
     int ret;
     int i;
     char * vendor = NULL;
     char * package = NULL;
-    char * source_package[18][3] = {
+    char * source_package[16][3] = {
         {"Microsoft Word", "Microsoft", "Word"},
         {"Microsoft Excel", "Microsoft", "Excel"},
         {"VMware Fusion", "VMware", "Fusion"},
@@ -231,22 +231,22 @@ void test_normalize_mac_package_name(void **state) {
         {"1Password 7", NULL, "1Password"},
         {"zoom.us", NULL, "zoom"},
         {"TotalDefenseAntivirusforMac", "TotalDefense", "Anti-Virus"},
+        {"TotalDefenseInternetSecurityforMac", "TotalDefense", "InternetSecurity"},
         {"AVGAntivirus", "AVG", "Anti-Virus"},
+        {"AVGInternetSecurity", "AVG", "InternetSecurity"},
         {"AntivirusforMac", NULL, "Antivirus"},
-        {"Sophos Anti-Virus", "Sophos", "Anti-Virus"},
-        {"Kaspersky Anti-Virus for mac", "Kaspersky", "Anti-Virus"},
+        {"Kaspersky Anti-Virus For Mac", NULL, "Kaspersky Anti-Virus"},
         {"Symantec Endpoint Protection", "Symantec", "Endpoint Protection"},
         {"McAfee Endpoint Security for Mac", "McAfee", "Endpoint Security"},
         {"Quick Heal Total Security", "Quick Heal", "Total Security"},
         {"QuickHeal Total Security", "QuickHeal", "Total Security"},
-        {"K7 AntiVirus", "K7Computing", "AntiVirus"},
         {"Foxit Reader", NULL, NULL},
         {NULL, NULL, NULL},
     };
 
-    for (i = 0; i < 18; i++) {
+    for (i = 0; i < 16; i++) {
         ret = normalize_mac_package_name(source_package[i][0], &vendor, &package);
-        if (i < 16) {
+        if (i < 14) {
             assert_int_equal(ret, 1);
             if (source_package[i][1]) {
                 assert_string_equal(vendor, source_package[i][1]);
