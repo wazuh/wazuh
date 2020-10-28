@@ -19,10 +19,7 @@ set(FIM_DB_BASE_FLAGS "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_v2
                        -Wl,--wrap=DirSize,--wrap=IsDir,--wrap=sqlite3_column_count,--wrap=getDefine_Int")
 
 target_link_libraries(test_fim_db SYSCHECK_O ${TEST_DEPS})
-if(${TARGET} STREQUAL "agent")
-    list(APPEND syscheckd_tests_flags "")
-    target_link_libraries(test_fim_db "${FIM_DB_BASE_FLAGS} -Wl,--wrap=isChroot -Wl,--wrap=usleep,--wrap=time")
-elseif(${TARGET} STREQUAL "winagent")
+if(${TARGET} STREQUAL "winagent")
     target_link_libraries(test_fim_db "${FIM_DB_BASE_FLAGS}")
 else()
     target_link_libraries(test_fim_db "${FIM_DB_BASE_FLAGS} -Wl,--wrap=usleep,--wrap=time")

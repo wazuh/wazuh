@@ -328,10 +328,6 @@ static int setup_group(void **state) {
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
 
-#ifdef TEST_AGENT
-    will_return_always(__wrap_isChroot, 1);
-#endif
-
 #ifndef TEST_SERVER
     will_return_always(__wrap_getDefine_Int, 0);
 #endif
