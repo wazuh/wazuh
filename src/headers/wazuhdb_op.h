@@ -28,7 +28,6 @@ int wdbc_connect();
 int wdbc_query(const int sock, const char *query, char *response, const int len);
 int wdbc_query_ex(int *sock, const char *query, char *response, const int len);
 int wdbc_parse_result(char *result, char **payload);
-wdbc_result wdbc_parse_result_s(const char* buffer, char** payload);
 cJSON * wdbc_query_parse_json(int *sock, const char *query, char *response, const int len);
 wdbc_result wdbc_query_parse(int *sock, const char *query, char *response, const int len, char** payload);
 

@@ -193,39 +193,6 @@ int wdbc_parse_result(char *result, char **payload) {
 }
 
 /**
- * @brief Safe parse the result of the query to Wazuh-DB
- *
- * If payload is not NULL, this function stores the address of the result
- * argument, this is the substring after the first whitespace.
- *
- * This function use strncmp for a safe comparison and doesn't write on result
- *
- * @param buffer [in] Result from the query to Wazuh-DB to be parsed.
- * @param payload[out] Pointer inside the buffer where the payload starts.
- * @return Enum wdbc_result.
- */
-wdbc_result wdbc_parse_result_s(const char* buffer, char** payload) {
-    wdbc_result retval = WDBC_UNKNOWN;
-    char* ptr = strchr(buffer, ' ');
-    if (payload) {
-        *payload = ptr ? ptr+1 : NULL;
-    }
-
-    if (!strncmp(buffer, WDBC_RESULT[WDBC_OK], strlen(WDBC_RESULT[WDBC_OK]))) {
-        retval = WDBC_OK;
-    } else if (!strncmp(buffer, WDBC_RESULT[WDBC_ERROR], strlen(WDBC_RESULT[WDBC_ERROR]))) {
-        retval = WDBC_ERROR;
-    } else if (!strncmp(buffer, WDBC_RESULT[WDBC_IGNORE], strlen(WDBC_RESULT[WDBC_IGNORE]))) {
-        retval = WDBC_IGNORE;
-    } else if (!strncmp(buffer, WDBC_RESULT[WDBC_DUE], strlen(WDBC_RESULT[WDBC_DUE]))) {
-        retval = WDBC_DUE;
-    }
-
-    return retval;
-}
-
-
-/**
  * @brief Combine wdbc_query_ex and wdbc_parse_result functions and return a JSON item.
  *
  * @param[in] sock Pointer to the client socket descriptor.
@@ -280,7 +247,7 @@ wdbc_result wdbc_query_parse(int *sock, const char *query, char *response, const
 
     int result = wdbc_query_ex(sock, query, response, len);
     if (OS_SUCCESS == result) {
-        status = wdbc_parse_result_s(response, &_payload);
+        status = wdbc_parse_result(response, &_payload);
         if (status == WDBC_ERROR){
             merror("Bad response from wazuh-db: %s", _payload);
         }
