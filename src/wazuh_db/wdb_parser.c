@@ -697,6 +697,16 @@ int wdb_parse(char * input, char * output) {
         else if (strcmp(query, "reset-agents-connection") == 0) {
             result = wdb_parse_reset_agents_connection(wdb, output);
         }
+        else if (strcmp(query, "get-agents-by-connection-status") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax for get-agents-by-connection-status.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_get_agents_by_connection_status(wdb, next, output);
+            }
+        }
         else {
             mdebug1("Invalid DB query syntax.");
             mdebug2("Global DB query error near: %s", query);
@@ -5211,4 +5221,28 @@ int wdb_parse_reset_agents_connection(wdb_t * wdb, char * output) {
 
     snprintf(output, OS_MAXSTR + 1, "ok");
     return OS_SUCCESS;
+}
+
+int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, char* output) {
+    cJSON *agents = NULL;
+    char *out = NULL;
+
+    if (agents = wdb_global_get_agents_by_connection_status(wdb, input), !agents) {
+        mdebug1("Error getting agent information from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting agent information from global.db.");
+        return OS_INVALID;
+    }
+    #if 0
+    *output = cJSON_PrintUnformatted(agents);
+    cJSON_Delete(agents);
+
+    return WDBC_OK;
+    #else
+    out = cJSON_PrintUnformatted(agents);
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+    os_free(out);
+    cJSON_Delete(agents);
+
+    return OS_SUCCESS;
+    #endif
 }

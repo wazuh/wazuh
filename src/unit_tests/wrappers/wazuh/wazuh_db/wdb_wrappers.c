@@ -92,22 +92,19 @@ cJSON * __wrap_wdb_exec_stmt(__attribute__((unused)) sqlite3_stmt *stmt) {
 }
 
 int __wrap_wdbc_parse_result(char *result, char **payload) {
-    int retval = mock();
-
     check_expected(result);
 
-    if(payload){
-        *payload = strchr(result, ' ');
+    char *ptr = strchr(result, ' ');
+    if (ptr) {
+        *ptr++ = '\0';
+    } else {
+        ptr = result;
+    }
+    if (payload) {
+        *payload = ptr;
     }
 
-    if(*payload) {
-        (*payload)++;
-    }
-    else {
-        *payload = result;
-    }
-
-    return retval;
+    return mock();
 }
 
 int __wrap_wdbc_query_ex(int *sock, const char *query, char *response, const int len) {
@@ -158,7 +155,27 @@ cJSON* __wrap_wdbc_query_parse_json(__attribute__((unused)) int *sock,
 
     return mock_ptr_type(cJSON *);
 }
-cJSON* __wrap_wdb_exec(__attribute__((unused)) sqlite3 *db, 
+
+wdbc_result __wrap_wdbc_query_parse(int *sock,
+                                    const char *query,
+                                    char *response,
+                                    const int len,
+                                    char** payload) {
+    check_expected(sock);
+    check_expected(query);
+    check_expected(len);
+
+    snprintf(response, len, "%s", mock_ptr_type(char*));
+
+    char* ptr = strchr(response, ' ');
+    if (payload) {
+        *payload = ptr ? ptr+1 : NULL;
+    }
+
+    return mock();
+}
+
+cJSON* __wrap_wdb_exec(__attribute__((unused)) sqlite3 *db,
                  const char *sql) {
     check_expected(sql);
     return mock_ptr_type(cJSON*);
