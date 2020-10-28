@@ -125,6 +125,11 @@ static int teardown_nodes(void **state) {
     os_free(node_next);
     os_free(node->key);
     os_free(node);
+    while(upgrade_queue->first) {
+        w_linked_queue_node_t *tmp = upgrade_queue->first;
+        upgrade_queue->first = upgrade_queue->first->next;
+        os_free(tmp);
+    }
     linked_queue_free(upgrade_queue);
     return 0;
 }
