@@ -702,8 +702,9 @@ int wdb_reset_agents_connection(int *sock);
 int* wdb_get_agents_by_connection_status(const char* status, int *sock);
 
 /**
- * @brief This method creates and sends a command to WazuhDB to set as disconnected all the agents with a last_keepalive
- * before the specified keepalive threshold. Returns an array containing the ID of all the agents that had been set as disconnected.
+ * @brief This method creates and sends a command to WazuhDB to set as disconnected all the
+ * agents (excluding the manager) with a last_keepalive before the specified keepalive
+ * threshold. Returns an array containing the ID of all the agents that had been set as disconnected.
  * The array is heap allocated memory that must be freed by the caller.
  *
  * @param [in] keepalive The keepalive threshold before which an agent should be set as disconnected.
@@ -1801,7 +1802,7 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
 cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id);
 
 /*
- * @brief Gets all the agents' ID that satisfy the keepalive condition to be disconnected.
+ * @brief Gets all the agents' IDs (excluding the manager) that satisfy the keepalive condition to be disconnected.
  *
  * @param [in] wdb The Global struct database.
  * @param [in] keep_alive The value of keepalive threshold before which consider an agent as disconnected.
