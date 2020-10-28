@@ -2653,6 +2653,64 @@ void test_wdb_parse_reset_agents_connection_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
+/* Tests wdb_parse_global_get_agents_by_connection_status */
+
+void test_wdb_parse_global_get_agents_by_connection_status_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-agents-by-connection-status";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-connection-status");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for get-agents-by-connection-status.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: get-agents-by-connection-status");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'get-agents-by-connection-status'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_get_agents_by_connection_status_query_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-agents-by-connection-status active";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-connection-status active");
+    expect_string(__wrap_wdb_global_get_agents_by_connection_status, status, "active");
+    will_return(__wrap_wdb_global_get_agents_by_connection_status, NULL);
+    expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent information from global.db.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Error getting agent information from global.db.");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_get_agents_by_connection_status_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-agents-by-connection-status active";
+    cJSON *j_object = NULL;
+
+    j_object = cJSON_CreateObject();
+    cJSON_AddNumberToObject(j_object, "id", 1);
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-connection-status active");
+    expect_string(__wrap_wdb_global_get_agents_by_connection_status, status, "active");
+    will_return(__wrap_wdb_global_get_agents_by_connection_status, j_object);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "ok {\"id\":1}");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = {
@@ -2823,6 +2881,10 @@ int main()
         /* Tests wdb_parse_reset_agents_connection */
         cmocka_unit_test_setup_teardown(test_wdb_parse_reset_agents_connection_query_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_reset_agents_connection_success, test_setup, test_teardown),
+        /* Tests wdb_parse_global_get_agent_info */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_query_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_success, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
