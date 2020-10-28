@@ -169,6 +169,12 @@ int __wrap_wm_agent_upgrade_validate_version(const char *wazuh_version, wm_upgra
     return mock();
 }
 
+int __wrap_wm_agent_upgrade_validate_wpk_version(__attribute__((unused)) const wm_agent_info *agent_info, __attribute__((unused)) wm_upgrade_task *task, const char *wpk_repository_config) {
+    check_expected(wpk_repository_config);
+
+    return mock();
+}
+
 int __wrap_wm_agent_upgrade_validate_wpk(__attribute__((unused)) const wm_upgrade_task *task) {
     return mock();
 }

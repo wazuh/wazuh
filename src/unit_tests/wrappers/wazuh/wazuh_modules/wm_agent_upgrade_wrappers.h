@@ -55,6 +55,8 @@ int __wrap_wm_agent_upgrade_validate_system(const char *platform, const char *os
 
 int __wrap_wm_agent_upgrade_validate_version(const char *wazuh_version, wm_upgrade_command command, void *task);
 
+int __wrap_wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, const char *wpk_repository_config);
+
 int __wrap_wm_agent_upgrade_validate_wpk(const wm_upgrade_task *task);
 
 int __wrap_wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task *task);

@@ -107,7 +107,7 @@ void test_wm_agent_upgrade_upgrade_success_callback_validate_error(void **state)
     state[1] = (void *)response;
 
     assert_int_equal(error, OS_INVALID);
-    assert_memory_equal(response, input, sizeof(input));
+    assert_null(response);
 }
 
 void test_wm_agent_upgrade_update_status_success_callback_ok(void **state)
@@ -171,7 +171,7 @@ void test_wm_agent_upgrade_update_status_success_callback_delete_error(void **st
     state[0] = (void *)input;
     state[1] = (void *)result;
 
-    assert_int_equal(error, OS_INVALID);
+    assert_int_equal(error, 0);
     assert_memory_equal(result, input, sizeof(input));
 }
 
@@ -191,7 +191,7 @@ void test_wm_agent_upgrade_update_status_success_validate_error(void **state)
     state[1] = (void *)result;
 
     assert_int_equal(error, OS_INVALID);
-    assert_memory_equal(result, input, sizeof(input));
+    assert_null(result);
 }
 
 void test_wm_agent_upgrade_task_module_callback_no_callbacks_ok(void **state)
