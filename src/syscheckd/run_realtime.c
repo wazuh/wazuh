@@ -119,6 +119,7 @@ int realtime_adddir(const char *dir, int whodata, int followsl) {
                     if (retval = OSHash_Update_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
                         merror("Unable to update 'dirtb'. Directory not found: '%s'", data);
                         os_free(data);
+                        w_mutex_unlock(&syscheck.fim_realtime_mutex);
                         return (-1);
                     }
                 }
@@ -195,13 +196,9 @@ void realtime_process() {
                         delete_subdirectories_watches(entry);
                         // fall through
                     case IN_DELETE_SELF:
-                        w_mutex_lock(&syscheck.fim_realtime_mutex);
-
-                        char * data = OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar);
                         mdebug2(FIM_INOTIFY_WATCH_DELETED, entry);
-                        os_free(data);
+                        free(OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar));
 
-                        w_mutex_unlock(&syscheck.fim_realtime_mutex);
                         break;
                     }
                 }
