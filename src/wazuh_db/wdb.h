@@ -691,7 +691,7 @@ int wdb_remove_group_from_belongs_db(const char *name, int *sock);
 int wdb_reset_agents_connection(int *sock);
 
 /**
- * @brief Get every agent (excluding the manager) that match the specified connection status.
+ * @brief Get every agent (excluding the manager) that matches the specified connection status.
  *
  * @param[in] status The connection status.
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
