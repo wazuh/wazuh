@@ -2518,6 +2518,34 @@ void test_wm_agent_upgrade_send_wpk_to_agent_validate_wpk_err(void **state)
     assert_int_equal(res, WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH);
 }
 
+void test_wm_agent_upgrade_send_wpk_to_agent_validate_wpk_version_err(void **state)
+{
+    (void) state;
+
+    wm_manager_configs *config = state[0];
+    wm_agent_task *agent_task = state[1];
+    wm_upgrade_task *upgrade_task = NULL;
+
+    config->chunk_size = 5;
+    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL;
+
+    agent_task->agent_info->agent_id = 111;
+    os_strdup("ubuntu", agent_task->agent_info->platform);
+    agent_task->task_info->command = WM_UPGRADE_UPGRADE;
+    upgrade_task = wm_agent_upgrade_init_upgrade_task();
+    os_strdup("test.wpk", upgrade_task->wpk_file);
+    os_strdup("d321af65983fa412e3a12c312ada12ab321a253a", upgrade_task->wpk_sha1);
+    agent_task->task_info->task = upgrade_task;
+
+    // wm_agent_upgrade_validate_wpk_version
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL);
+    will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST);
+
+    int res = wm_agent_upgrade_send_wpk_to_agent(agent_task, config);
+
+    assert_int_equal(res, WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST);
+}
+
 void test_wm_agent_upgrade_send_wpk_to_agent_validate_wpk_custom_err(void **state)
 {
     (void) state;
@@ -3514,6 +3542,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_send_wpk_to_agent_upgrade_open_file_err, setup_config_agent_task, teardown_config_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_send_wpk_to_agent_upgrade_lock_restart_err, setup_config_agent_task, teardown_config_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_send_wpk_to_agent_validate_wpk_err, setup_config_agent_task, teardown_config_agent_task),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_send_wpk_to_agent_validate_wpk_version_err, setup_config_agent_task, teardown_config_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_send_wpk_to_agent_validate_wpk_custom_err, setup_config_agent_task, teardown_config_agent_task),
         // wm_agent_upgrade_start_upgrade
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_start_upgrade_upgrade_ok, setup_upgrade_args, teardown_upgrade_args),
