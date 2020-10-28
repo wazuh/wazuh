@@ -89,7 +89,7 @@ wdbc_result __wrap_wdb_global_sync_agent_info_get(wdb_t *wdb, int* last_agent_id
 
 int __wrap_wdb_global_sync_agent_info_set(wdb_t *wdb,cJSON * json_agent);
 
-cJSON* __wrap_wdb_global_get_agents_to_disconnect(wdb_t *wdb, int keep_alive);
+wdbc_result __wrap_wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, char comparator, int keep_alive, char **output);
 
 wdbc_result __wrap_wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **output);
 
@@ -98,6 +98,8 @@ cJSON* __wrap_wdb_global_get_agent_info(wdb_t *wdb, int id);
 int __wrap_wdb_global_reset_agents_connection(wdb_t *wdb);
 
 cJSON* __wrap_wdb_global_get_agents_by_connection_status(wdb_t* wdb, const char* status);
+
+cJSON* __wrap_wdb_global_get_agents_to_disconnect(wdb_t *wdb, int keep_alive);
 
 int __wrap_wdb_global_check_manager_keepalive(wdb_t *wdb);
 
