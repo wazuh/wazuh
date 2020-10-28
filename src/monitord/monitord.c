@@ -17,6 +17,7 @@
 #include "config/config.h"
 #include "string_op.h"
 #include "wazuh_db/wdb.h"
+#include <ctime>
 
 /* Global variables */
 monitor_config mond;
@@ -123,7 +124,7 @@ void Monitord()
         switch (MonitorCheckCounters(&counters)) {
             case 1:
                 /* agents_disconnection_time counter */
-                agents_array = wdb_disconnect_agents(&sock, mond.global.agents_disconnection_time);
+                agents_array = wdb_disconnect_agents(time(0) - mond.global.agents_disconnection_time, &sock);
                 if (agents_array) {
                     for (int i = 0; agents_array[i] != -1; i++) {
                         if (OSHash_Numeric_Add_ex(agents_to_alert_hash, agents_array[i], (void*)1) == 0) {
