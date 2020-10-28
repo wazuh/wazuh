@@ -53,6 +53,8 @@ int __wrap_wdbi_query_clear(wdb_t *wdb, wdb_component_t component, const char *p
 
 cJSON* __wrap_wdbc_query_parse_json(int *sock, const char *query, char *response, const int len);
 
+wdbc_result __wrap_wdbc_query_parse(int *sock, const char *query, char *response, const int len, char** payload);
+
 cJSON* __wrap_wdb_exec(sqlite3 *db, const char *sql);
 
 void __wrap_wdb_leave(wdb_t *wdb);
