@@ -2377,18 +2377,18 @@ void test_wdb_parse_global_disconnect_agents_syntax_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global disconnect_agents";
+    char query[OS_BUFFER_SIZE] = "global disconnect-agents";
 
     // Logging command and opening database
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect_agents");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect-agents");
     will_return(__wrap_wdb_open_global, data->wdb);
     // Logging command syntax error
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for disconnect_agents.");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: disconnect_agents");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for disconnect-agents.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: disconnect-agents");
 
     ret = wdb_parse(query, data->output);
 
-    assert_string_equal(data->output, "err Invalid DB query syntax, near 'disconnect_agents'");
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'disconnect-agents'");
     assert_int_equal(ret, OS_INVALID);
 }
 
@@ -2396,10 +2396,10 @@ void test_wdb_parse_global_disconnect_agents_error_getting_agents(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global disconnect_agents 100";
+    char query[OS_BUFFER_SIZE] = "global disconnect-agents 100";
 
     // Logging command and opening database
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect_agents 100");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect-agents 100");
     will_return(__wrap_wdb_open_global, data->wdb);
     // Getting the list of agents to disconnect
     expect_value(__wrap_wdb_global_get_agents_to_disconnect, keep_alive, 100);
@@ -2417,7 +2417,7 @@ void test_wdb_parse_global_disconnect_agents_error_setting_agent_to_disconnected
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global disconnect_agents 100";
+    char query[OS_BUFFER_SIZE] = "global disconnect-agents 100";
 
     cJSON *root = NULL;
     cJSON *j_object = NULL;
@@ -2428,7 +2428,7 @@ void test_wdb_parse_global_disconnect_agents_error_setting_agent_to_disconnected
     cJSON_AddItemToArray(root, j_object);
 
     // Logging command and opening database
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect_agents 100");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect-agents 100");
     will_return(__wrap_wdb_open_global, data->wdb);
     // Getting the list of agents to disconnect
     expect_value(__wrap_wdb_global_get_agents_to_disconnect, keep_alive, 100);
@@ -2450,7 +2450,7 @@ void test_wdb_parse_global_disconnect_agents_success(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global disconnect_agents 100";
+    char query[OS_BUFFER_SIZE] = "global disconnect-agents 100";
 
     cJSON *root = NULL;
     cJSON *j_object1 = NULL;
@@ -2465,7 +2465,7 @@ void test_wdb_parse_global_disconnect_agents_success(void **state)
     cJSON_AddItemToArray(root, j_object2);
 
     // Logging command and opening database
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect_agents 100");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect-agents 100");
     will_return(__wrap_wdb_open_global, data->wdb);
     // Getting the list of agents to disconnect
     expect_value(__wrap_wdb_global_get_agents_to_disconnect, keep_alive, 100);
