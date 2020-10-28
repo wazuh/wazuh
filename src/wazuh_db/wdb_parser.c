@@ -664,9 +664,9 @@ int wdb_parse(char * input, char * output) {
                 result = wdb_parse_global_sync_agent_info_set(wdb, next, output);
             }
         }
-        else if (strcmp(query, "disconnect_agents") == 0) {
+        else if (strcmp(query, "disconnect-agents") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for disconnect_agents.");
+                mdebug1("Global DB Invalid DB query syntax for disconnect-agents.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;

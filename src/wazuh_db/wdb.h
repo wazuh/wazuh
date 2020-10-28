@@ -204,7 +204,8 @@ typedef enum global_db_access {
     WDB_DELETE_AGENT_BELONG,
     WDB_DELETE_GROUP_BELONG,
     WDB_RESET_AGENTS_CONNECTION,
-    WDB_GET_AGENTS_BY_CONNECTION_STATUS
+    WDB_GET_AGENTS_BY_CONNECTION_STATUS,
+    WDB_DISCONNECT_AGENTS
 } global_db_access;
 
 typedef struct wdb_t {
@@ -699,6 +700,17 @@ int wdb_reset_agents_connection(int *sock);
  * @return Pointer to the array, on success. NULL on errors.
  */
 int* wdb_get_agents_by_connection_status(const char* status, int *sock);
+
+/**
+ * @brief This method creates and sends a command to WazuhDB to set as disconnected all the agents with a last_keepalive
+ * before the specified keepalive threshold. Returns an array containing the ID of all the agents that had been set as disconnected.
+ * The array is heap allocated memory that must be freed by the caller.
+ *
+ * @param [in] keepalive The keepalive threshold before which an agent should be set as disconnected.
+ * @param [in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @return Pointer to the array, on success. NULL if no agents were set as disconnected or an error ocurred.
+ */
+int* wdb_disconnect_agents(int keepalive, int *sock);
 
 /**
  * @brief Create database for agent from profile.
@@ -1308,7 +1320,7 @@ int wdb_parse_global_sync_agent_info_get(wdb_t * wdb, char * input, char * outpu
 int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to parse the disconnect_agents command data.
+ * @brief Function to parse the disconnect-agents command data.
  *
  * @param [in] wdb The global struct database.
  * @param [in] input String with the time threshold before which consider an agent as disconnected.
