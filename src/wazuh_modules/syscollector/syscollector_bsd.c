@@ -1999,7 +1999,8 @@ char * get_vendor_mac(const char * string) {
         "micPDF",
         "foxit-software"
     };
-    int size_vendors = sizeof(vendors) / sizeof(vendors[0]);
+    
+    int size_vendors = array_size(vendors);
     int i;
     if (!string) {
         return NULL;
