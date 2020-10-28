@@ -85,6 +85,19 @@ void w_calloc_expression_t_osip(void ** state)
     os_free(var);
 }
 
+void w_calloc_expression_t_pcre2(void ** state)
+{
+    w_expression_t * var = NULL;
+
+    w_calloc_expression_t(&var, EXP_TYPE_PCRE2);
+
+    assert_non_null(var);
+    assert_int_equal(var->exp_type, EXP_TYPE_PCRE2);
+
+    os_free(var->pcre2);
+    os_free(var);
+}
+
 // w_expression_add_osip
 
 void w_expression_add_osip_empty_ok(void ** state)
@@ -272,6 +285,183 @@ void w_free_expression_t_default(void ** state)
     var->exp_type = 55;
 
     w_free_expression_t(&var);
+}
+
+// w_expression_compile
+
+void w_expression_compile_osregex_fail(void ** state)
+{
+    test_mode = 1;
+
+    w_expression_t * expression = NULL;
+    os_calloc(1, sizeof(w_expression_t), expression);
+    expression->exp_type = EXP_TYPE_OSREGEX;
+
+    char * pattern = NULL;
+    os_strdup("test", pattern);
+
+    int flags =0;
+
+    expect_string(__wrap_OSRegex_Compile, pattern,"test");
+    will_return(__wrap_OSRegex_Compile, 0);
+
+    bool ret = w_expression_compile(expression, pattern, flags);
+    assert_false(ret);
+
+    os_free(pattern);
+    os_free(expression);
+}
+
+void w_expression_compile_osregex(void ** state)
+{
+    test_mode = 1;
+
+    w_expression_t * expression = NULL;
+    os_calloc(1, sizeof(w_expression_t), expression);
+    expression->exp_type = EXP_TYPE_OSREGEX;
+
+    char * pattern = NULL;
+    os_strdup("test", pattern);
+
+    int flags =0;
+
+    expect_string(__wrap_OSRegex_Compile, pattern,"test");
+    will_return(__wrap_OSRegex_Compile, 1);
+
+    bool ret = w_expression_compile(expression, pattern, flags);
+    assert_true(ret);
+
+    os_free(pattern);
+    os_free(expression);
+}
+
+void w_expression_compile_osmatch_fail(void ** state)
+{
+    test_mode = 1;
+
+    w_expression_t * expression = NULL;
+    os_calloc(1, sizeof(w_expression_t), expression);
+    expression->exp_type = EXP_TYPE_OSMATCH;
+
+    char * pattern = NULL;
+    os_strdup("test", pattern);
+
+    int flags =0;
+
+    expect_string(__wrap_OSMatch_Compile, pattern,"test");
+    will_return(__wrap_OSMatch_Compile, 0);
+
+    bool ret = w_expression_compile(expression, pattern, flags);
+    assert_false(ret);
+
+    os_free(pattern);
+    os_free(expression);
+}
+
+void w_expression_compile_osmatch(void ** state)
+{
+    test_mode = 1;
+
+    w_expression_t * expression = NULL;
+    os_calloc(1, sizeof(w_expression_t), expression);
+    expression->exp_type = EXP_TYPE_OSMATCH;
+
+    char * pattern = NULL;
+    os_strdup("test", pattern);
+
+    int flags =0;
+
+    expect_string(__wrap_OSMatch_Compile, pattern,"test");
+    will_return(__wrap_OSMatch_Compile, 1);
+
+    bool ret = w_expression_compile(expression, pattern, flags);
+    assert_true(ret);
+
+    os_free(pattern);
+    os_free(expression);
+}
+
+void w_expression_compile_pcre2(void ** state)
+{
+    test_mode = 1;
+
+    w_expression_t * expression = NULL;
+    os_calloc(1, sizeof(w_expression_t), expression);
+    expression->exp_type = EXP_TYPE_PCRE2;
+
+    os_calloc(1, sizeof(w_pcre2_code_t), expression->pcre2);
+
+    char * pattern = NULL;
+    os_strdup("test", pattern);
+
+    int flags =0;
+
+    bool ret = w_expression_compile(expression, pattern, flags);
+    assert_true(ret);
+
+    os_free(pattern);
+    os_free(expression->pcre2);
+    os_free(expression);
+}
+
+void w_expression_compile_string(void ** state)
+{
+    test_mode = 1;
+
+    w_expression_t * expression = NULL;
+    os_calloc(1, sizeof(w_expression_t), expression);
+    expression->exp_type = EXP_TYPE_STRING;
+
+    char * pattern = NULL;
+    os_strdup("test", pattern);
+
+    int flags =0;
+
+    bool ret = w_expression_compile(expression, pattern, flags);
+    assert_true(ret);
+
+    os_free(pattern);
+    os_free(expression);
+}
+
+void w_expression_compile_osip_array(void ** state)
+{
+    test_mode = 1;
+
+    w_expression_t * expression = NULL;
+    os_calloc(1, sizeof(w_expression_t), expression);
+    expression->exp_type = EXP_TYPE_OSIP_ARRAY;
+
+    char * pattern = NULL;
+    os_strdup("test", pattern);
+
+    int flags =0;
+
+    bool ret = w_expression_compile(expression, pattern, flags);
+    assert_true(ret);
+
+    os_free(pattern);
+    os_free(expression);
+}
+
+void w_expression_compile_default(void ** state)
+{
+    test_mode = 1;
+
+    w_expression_t * expression = NULL;
+    os_calloc(1, sizeof(w_expression_t), expression);
+    expression->exp_type = 55;
+
+    char * pattern = NULL;
+    os_strdup("test", pattern);
+
+    int flags =0;
+
+    bool ret = w_expression_compile(expression, pattern, flags);
+    assert_true(ret);
+
+    os_free(pattern);
+    os_free(expression);
 }
 
 // w_expression_match
@@ -746,38 +936,6 @@ void w_expression_get_regex_type_exp_type_pcre2(void ** state)
     os_free(expression);
 }
 
-
-/*
-const char * w_expression_get_regex_type(w_expression_t * expression) {
-
-    const char * retval = NULL;
-
-    if (!expression) {
-        return retval;
-    }
-
-    switch (expression->exp_type) {
-
-        case EXP_TYPE_OSREGEX:
-            retval = "osregex";
-            break;
-
-        case EXP_TYPE_OSMATCH:
-            retval = "osmatch";
-            break;
-
-        case EXP_TYPE_PCRE2:
-            retval = "pcre2";
-            break;
-
-        default:
-            break;
-    }
-
-    return retval;
-}
-*/
-
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -787,6 +945,7 @@ int main(void)
         cmocka_unit_test(w_calloc_expression_t_regex),
         cmocka_unit_test(w_calloc_expression_t_string),
         cmocka_unit_test(w_calloc_expression_t_osip),
+        cmocka_unit_test(w_calloc_expression_t_pcre2),
 
         // Tests w_add_ip_to_array
         cmocka_unit_test(w_expression_add_osip_empty_ok),
@@ -804,7 +963,17 @@ int main(void)
         //cmocka_unit_test(w_free_expression_t_exp_type_pcre2),
         cmocka_unit_test(w_free_expression_t_default),
 
-        //Test w_expression_test
+        //Test w_expression_compile
+        cmocka_unit_test(w_expression_compile_osregex_fail),
+        cmocka_unit_test(w_expression_compile_osregex),
+        cmocka_unit_test(w_expression_compile_osmatch_fail),
+        cmocka_unit_test(w_expression_compile_osmatch),
+        cmocka_unit_test(w_expression_compile_pcre2),
+        cmocka_unit_test(w_expression_compile_string),
+        cmocka_unit_test(w_expression_compile_osip_array),
+        cmocka_unit_test(w_expression_compile_default),
+
+        //Test w_expression_match
         cmocka_unit_test(w_expression_match_NULL),
         cmocka_unit_test(w_expression_match_osmatch),
         cmocka_unit_test(w_expression_match_osregex),
@@ -833,7 +1002,6 @@ int main(void)
         cmocka_unit_test(w_expression_get_regex_type_exp_type_osregex),
         cmocka_unit_test(w_expression_get_regex_type_exp_type_osmatch),
         cmocka_unit_test(w_expression_get_regex_type_exp_type_pcre2)
-
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
