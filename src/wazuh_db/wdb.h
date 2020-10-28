@@ -1336,7 +1336,8 @@ int wdb_parse_global_get_agents_by_keepalive(wdb_t* wdb, char* input, char* outp
  * @param [in] wdb The global struct database.
  * @param [in] input String with the time threshold before which consider an agent as disconnected.
  * @param [out] output Response of the command in JSON format with the list of agents that were set as disconnected.
- * @return 0 Success: response contains the value. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output);
 
