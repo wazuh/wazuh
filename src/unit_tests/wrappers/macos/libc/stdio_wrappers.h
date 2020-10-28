@@ -25,13 +25,15 @@
 #undef fseek
 #define fseek wrap_fseek
 #undef fgets
-#define fgets wrap_fgets 
+#define fgets wrap_fgets
 #undef mmap
 #define mmap wrap_mmap
 #undef munmap
 #define munmap wrap_munmap
 #undef tmpfile
 #define tmpfile wrap_tmpfile
+#undef fopen
+#define fopen wrap_fopen
 
 
 char * wrap_fgets(char * __s, int __n, FILE * __stream);
@@ -45,4 +47,6 @@ int wrap_fseek(FILE *fp, int seek,  int flag);
 void * wrap_mmap(void *start, size_t length, int prot, int flags, int fd, off_t offset);
 int wrap_munmap (void *mem, size_t size);
 FILE * wrap_tmpfile();
+FILE * wrap_fopen (const char* path, const char* mode);
+
 #endif
