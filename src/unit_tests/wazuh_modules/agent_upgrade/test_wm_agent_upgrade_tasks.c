@@ -78,6 +78,26 @@ static int teardown_jsons(void **state) {
     return 0;
 }
 
+static int setup_nodes(void **state) {
+    OSHashNode *node = NULL;
+    OSHashNode *node_next = NULL;
+    os_calloc(1, sizeof(OSHashNode), node);
+    os_calloc(1, sizeof(OSHashNode), node_next);
+    node->next = node_next;
+    *state = (void *)node;
+    return 0;
+}
+
+static int teardown_nodes(void **state) {
+    OSHashNode *node = (OSHashNode *)*state;
+    OSHashNode *node_next = node->next;
+    os_free(node_next->key);
+    os_free(node_next);
+    os_free(node->key);
+    os_free(node);
+    return 0;
+}
+
 // Tests
 
 void test_wm_agent_upgrade_create_task_entry_ok(void **state)
@@ -156,6 +176,45 @@ void test_wm_agent_upgrade_get_next_node(void **state)
     OSHashNode* ret = wm_agent_upgrade_get_next_node(&index, node);
 
     assert_int_equal(ret, 1);
+}
+
+void test_wm_agent_upgrade_get_agent_ids_ok(void **state)
+{
+    OSHashNode *node = *state;
+    OSHashNode *node_next = node->next;
+
+    os_strdup("025", node->key);
+    os_strdup("035", node_next->key);
+
+    expect_value(__wrap_OSHash_Begin, self, task_table_by_agent_id);
+    will_return(__wrap_OSHash_Begin, node);
+
+    expect_value(__wrap_OSHash_Next, self, task_table_by_agent_id);
+    will_return(__wrap_OSHash_Next, node_next);
+
+    expect_value(__wrap_OSHash_Next, self, task_table_by_agent_id);
+    will_return(__wrap_OSHash_Next, NULL);
+
+    cJSON *agents_array = wm_agent_upgrade_get_agent_ids();
+
+    assert_non_null(agents_array);
+    assert_int_equal(cJSON_GetArraySize(agents_array), 2);
+    assert_int_equal(cJSON_GetArrayItem(agents_array, 0)->valueint, 25);
+    assert_int_equal(cJSON_GetArrayItem(agents_array, 1)->valueint, 35);
+
+    cJSON_Delete(agents_array);
+}
+
+void test_wm_agent_upgrade_get_agent_ids_empty(void **state)
+{
+    (void) state;
+
+    expect_value(__wrap_OSHash_Begin, self, task_table_by_agent_id);
+    will_return(__wrap_OSHash_Begin, NULL);
+
+    cJSON *agents_array = wm_agent_upgrade_get_agent_ids();
+
+    assert_null(agents_array);
 }
 
 void test_wm_agent_send_task_information_master_ok(void **state)
@@ -719,6 +778,9 @@ int main(void) {
         cmocka_unit_test(test_wm_agent_upgrade_get_first_node),
         // wm_agent_upgrade_get_next_node
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_get_next_node, setup_node, teardown_node),
+        // wm_agent_upgrade_get_agent_ids
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_get_agent_ids_ok, setup_nodes, teardown_nodes),
+        cmocka_unit_test(test_wm_agent_upgrade_get_agent_ids_empty),
         // wm_agent_send_task_information_master
         cmocka_unit_test_teardown(test_wm_agent_send_task_information_master_ok, teardown_jsons),
         cmocka_unit_test_teardown(test_wm_agent_send_task_information_master_json_err, teardown_jsons),
