@@ -1,6 +1,20 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v4.0.1] -
+
+### Added
+
+### Changed
+
+### Fixed
+
+- **Framework:**
+  - Fix Python's cryptography library ([#6442](https://github.com/wazuh/wazuh/issues/6442))
+
+### Removed
+
+
 ## [v4.0.0] -
 
 ### Added
