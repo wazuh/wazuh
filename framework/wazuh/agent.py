@@ -712,7 +712,6 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
                                       sort_fields=['task_id'], sort_ascending='True')
 
     agent_list = list(map(int, agents_padding(result=result, agent_list=agent_list)))
-    wpk_repo = wpk_repo if wpk_repo else common.wpk_repo_url_4_x
     if version and not version.startswith('v'):
         version = f'v{version}'
 
