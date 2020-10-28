@@ -11,6 +11,7 @@
 #ifndef MONITORD_H
 #define MONITORD_H
 
+#include "hash_op.h"
 #ifndef ARGV0
 #define ARGV0 "ossec-monitord"
 #endif
@@ -22,6 +23,13 @@
 #define MONITORD_MSG_HEADER "1:" ARGV0 ":"
 #define AG_DISCON_MSG MONITORD_MSG_HEADER OS_AG_DISCON
 
+/* Monitord counters */
+typedef struct _mond_counters {
+    long agents_disconnection;
+    long agents_disconnection_alert;
+    long delete_old_agents;
+} mond_counters;
+
 /* Prototypes */
 void Monitord(void) __attribute__((noreturn));
 void manage_files(int cday, int cmon, int cyear);
@@ -32,6 +40,11 @@ void OS_CompressLog(const char *logfile);
 void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json, int daily_rotations);
 int delete_old_agent(const char *agent_id);
 int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short day_wait);
+void monitor_agent_disconnection(char *agent);
+
+/* Counters prototypes */
+void MonitorStartCounters(mond_counters *counters);
+int MonitorCheckCounters(mond_counters *counters);
 
 /* Parse read config into JSON format */
 cJSON *getMonitorInternalOptions(void);
@@ -43,5 +56,7 @@ void * moncom_main(__attribute__((unused)) void * arg);
 
 /* Global variables */
 extern monitor_config mond;
+extern OSHash* agents_to_alert_hash;
+
 
 #endif /* MONITORD_H */
