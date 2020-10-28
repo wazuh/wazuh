@@ -7,7 +7,7 @@ target_compile_options(test_registry PRIVATE "-Wall")
 
 target_link_libraries(test_registry SYSCHECK_O ${TEST_DEPS})
 target_link_libraries(test_registry "-Wl,--wrap=_mdebug2,--wrap=_mdebug1,--wrap=_merror,--wrap=_mwarn
-                                     -Wl,--wrap=send_syscheck_msg")
+                                     -Wl,--wrap=send_syscheck_msg,--wrap=os_random")
 
 add_test(NAME test_registry COMMAND test_registry)
 
