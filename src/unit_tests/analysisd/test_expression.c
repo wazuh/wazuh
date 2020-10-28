@@ -274,7 +274,7 @@ void w_free_expression_t_default(void ** state)
     w_free_expression_t(&var);
 }
 
-// w_expression_test
+// w_expression_match
 
 void w_expression_match_NULL(void ** state)
 {
@@ -474,7 +474,7 @@ void w_expression_match_pcre2_match_regex_matching(void ** state)
     w_free_expression_t(&expression);
 }
 
-void w_expression_test_default(void ** state)
+void w_expression_match_default(void ** state)
 {
     w_expression_t * expression = NULL;
     os_calloc(1, sizeof(w_expression_t), expression);
@@ -530,6 +530,8 @@ void w_expression_match_end_match_NULL(void ** state)
     os_free(regex_match);
     w_free_expression_t(&expression);
 }
+
+// w_expression_PCRE2_fill_regex_match
 
 void w_expression_PCRE2_fill_regex_match_no_capture_groups(void ** state)
 {
@@ -624,6 +626,8 @@ void w_expression_PCRE2_fill_regex_match_done(void ** state)
     os_free(regex_match);
 }
 
+// w_expression_get_regex_pattern
+
 void w_expression_get_regex_pattern_expression_NULL(void ** state)
 {
     w_expression_t * expression = NULL;
@@ -682,6 +686,98 @@ void w_expression_get_regex_pattern_exp_type_pcre2(void ** state)
     os_free(expression);
 }
 
+// w_expression_get_regex_type
+
+void w_expression_get_regex_type_expression_NULL(void ** state)
+{
+    w_expression_t * expression = NULL;
+
+    w_expression_get_regex_type(expression);
+}
+
+void w_expression_get_regex_type_exp_type_osregex(void ** state)
+{
+    w_expression_t * expression = NULL;
+    os_calloc(1, sizeof(w_expression_t), expression);
+    expression->exp_type = EXP_TYPE_OSREGEX;
+
+    os_calloc(1, sizeof(OSRegex), expression->regex);
+    os_strdup("test", expression->regex->raw);
+
+    const char* ret = w_expression_get_regex_type(expression);
+    assert_string_equal(ret, "osregex");
+
+    os_free(expression->regex->raw);
+    os_free(expression->regex);
+    os_free(expression);
+}
+
+void w_expression_get_regex_type_exp_type_osmatch(void ** state)
+{
+    w_expression_t * expression = NULL;
+    os_calloc(1, sizeof(w_expression_t), expression);
+    expression->exp_type = EXP_TYPE_OSMATCH;
+
+    os_calloc(1, sizeof(OSMatch), expression->match);
+    os_strdup("test", expression->match->raw);
+
+    const char* ret = w_expression_get_regex_type(expression);
+    assert_string_equal(ret, "osmatch");
+
+    os_free(expression->match->raw);
+    os_free(expression->match);
+    os_free(expression);
+}
+
+void w_expression_get_regex_type_exp_type_pcre2(void ** state)
+{
+    w_expression_t * expression = NULL;
+    os_calloc(1, sizeof(w_expression_t), expression);
+    expression->exp_type = EXP_TYPE_PCRE2;
+
+    os_calloc(1, sizeof(OSMatch), expression->pcre2);
+    os_strdup("test", expression->pcre2->raw_pattern);
+
+    const char* ret = w_expression_get_regex_type(expression);
+    assert_string_equal(ret, "pcre2");
+
+    os_free(expression->pcre2->raw_pattern);
+    os_free(expression->pcre2);
+    os_free(expression);
+}
+
+
+/*
+const char * w_expression_get_regex_type(w_expression_t * expression) {
+
+    const char * retval = NULL;
+
+    if (!expression) {
+        return retval;
+    }
+
+    switch (expression->exp_type) {
+
+        case EXP_TYPE_OSREGEX:
+            retval = "osregex";
+            break;
+
+        case EXP_TYPE_OSMATCH:
+            retval = "osmatch";
+            break;
+
+        case EXP_TYPE_PCRE2:
+            retval = "pcre2";
+            break;
+
+        default:
+            break;
+    }
+
+    return retval;
+}
+*/
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -716,7 +812,7 @@ int main(void)
         cmocka_unit_test(w_expression_match_pcre2_match_no_captured_groups),
         cmocka_unit_test(w_expression_match_pcre2_match_captured_groups),
         cmocka_unit_test(w_expression_match_pcre2_match_regex_matching),
-        cmocka_unit_test(w_expression_test_default),
+        cmocka_unit_test(w_expression_match_default),
         cmocka_unit_test(w_expression_match_end_match_NULL),
 
         //Test w_expression_PCRE2_fill_regex_match
@@ -731,6 +827,13 @@ int main(void)
         cmocka_unit_test(w_expression_get_regex_pattern_exp_type_osregex),
         cmocka_unit_test(w_expression_get_regex_pattern_exp_type_osmatch),
         cmocka_unit_test(w_expression_get_regex_pattern_exp_type_pcre2),
+
+        //Test w_expression_get_regex_type
+        cmocka_unit_test(w_expression_get_regex_type_expression_NULL),
+        cmocka_unit_test(w_expression_get_regex_type_exp_type_osregex),
+        cmocka_unit_test(w_expression_get_regex_type_exp_type_osmatch),
+        cmocka_unit_test(w_expression_get_regex_type_exp_type_pcre2)
+
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
