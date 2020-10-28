@@ -54,6 +54,10 @@ void fim_registry_free_key(fim_registry_key *key);
 void fim_registry_free_value_data(fim_registry_value_data *data);
 fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, const registry *configuration);
 void fim_registry_calculate_hashes(fim_entry *entry, registry *configuration, BYTE *data_buffer);
+void fim_registry_process_value_delete_event(fdb_t *fim_sql, fim_entry *data, pthread_mutex_t *mutex, void *_alert, void *_ev_mode, void *_w_evt);
+void fim_registry_process_key_delete_event(fdb_t *fim_sql, fim_entry *data, pthread_mutex_t *mutex, void *_alert, void *_ev_mode, void *_w_evt);
+void fim_registry_process_value_event(fim_entry *new, fim_entry *saved, fim_event_mode mode, BYTE *data_buffer);
+
 
 void expect_RegOpenKeyEx_call(HKEY hKey, LPCSTR sub_key, DWORD options, REGSAM sam, PHKEY result, LONG return_value) {
     expect_value(wrap_RegOpenKeyEx, hKey, hKey);
@@ -201,13 +205,13 @@ int check_fim_db_reg_value_data(const char *data_name, unsigned int type, unsign
     return 0;
 }
 
-fim_registry_key *create_reg_key(const char *path, int arch, const char *perm, const char *uid, const char *gid, const char *user_name,
+fim_registry_key *create_reg_key(int id, const char *path, int arch, const char *perm, const char *uid, const char *gid, const char *user_name,
                                  const char *group_name) {
     fim_registry_key *ret;
 
     os_calloc(1, sizeof(fim_registry_key), ret);
 
-    ret->id = 0;
+    ret->id = id;
     os_strdup(path, ret->path);
     ret->arch = arch;
     os_strdup(perm, ret->perm);
@@ -219,9 +223,42 @@ fim_registry_key *create_reg_key(const char *path, int arch, const char *perm, c
     return ret;
 }
 
+fim_registry_value_data *create_reg_value_data(int id, char *name, unsigned int type, unsigned int size) {
+    fim_registry_value_data *ret;
+
+    os_calloc(1, sizeof(fim_registry_value_data), ret);
+
+    ret->id = id;
+    os_strdup(name, ret->name);
+    ret->type = type;
+    ret->size = size;
+
+    return ret;
+}
+
+int delete_tables(){
+    char *err_msg = NULL;
+    // DELETE TABLES
+    sqlite3_exec(syscheck.database->db, "DELETE FROM registry_data;", NULL, NULL, &err_msg);
+    if (err_msg) {
+        fail_msg("%s", err_msg);
+        sqlite3_free(err_msg);
+
+        return -1;
+    }
+    sqlite3_exec(syscheck.database->db, "DELETE FROM registry_key;", NULL, NULL, &err_msg);
+    if (err_msg) {
+        fail_msg("%s", err_msg);
+        sqlite3_free(err_msg);
+
+        return -1;
+    }
+    return 0;
+}
+
 static int setup_group(void **state) {
     int i;
-    time_mock_value = 12345;
+    time_mock_value = 9999999;
     strcpy(inv_hKey, "HKEY_LOCAL_MACHINE_Invalid_key\\Software\\Ignore");
 
     syscheck.registry = default_config;
@@ -252,6 +289,7 @@ static int teardown_group(void **state) {
 
     syscheck.registry = NULL;
     syscheck.key_ignore = NULL;
+    syscheck.value_ignore = NULL;
 
     for (i = 0; syscheck.key_ignore_regex[i].regex; i++) {
         OSMatch_FreePattern(syscheck.key_ignore_regex[i].regex);
@@ -288,10 +326,10 @@ static int setup_base_line(void **state) {
     if(keys_array == NULL)
         return -1;
 
-    keys_array[0] = create_reg_key("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", 1,
+    keys_array[0] = create_reg_key(0, "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", 1,
                                    "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
                                    "userid", "groupid", "username", "groupname");
-    keys_array[1] = create_reg_key("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\FirstSubKey", 1,
+    keys_array[1] = create_reg_key(0, "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\FirstSubKey", 1,
                                    "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
                                    "userid", "groupid", "username", "groupname");
     keys_array[2] = NULL;
@@ -302,22 +340,9 @@ static int setup_base_line(void **state) {
 }
 
 static int teardown_clean_db_and_state(void **state) {
-    char *err_msg = NULL;
     fim_registry_key **keys_array = *state;
 
-    // DELETE TABLES
-    sqlite3_exec(syscheck.database->db, "DELETE FROM registry_data;", NULL, NULL, &err_msg);
-    if (err_msg) {
-        fail_msg("%s", err_msg);
-        sqlite3_free(err_msg);
-
-        return -1;
-    }
-    sqlite3_exec(syscheck.database->db, "DELETE FROM registry_key;", NULL, NULL, &err_msg);
-    if (err_msg) {
-        fail_msg("%s", err_msg);
-        sqlite3_free(err_msg);
-
+    if (delete_tables()){
         return -1;
     }
 
@@ -342,16 +367,16 @@ static int setup_regular_scan(void **state) {
     if(keys_array == NULL)
         return -1;
 
-    keys_array[0] = create_reg_key("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", 1,
+    keys_array[0] = create_reg_key(0, "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", 1,
                                    "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
                                    "userid", "groupid", "username", "groupname");
-    keys_array[1] = create_reg_key("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\FirstSubKey", 1,
+    keys_array[1] = create_reg_key(0, "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\FirstSubKey", 1,
                                    "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
                                    "userid", "groupid", "username", "groupname");
-    keys_array[2] = create_reg_key("HKEY_LOCAL_MACHINE\\Software\\RecursionLevel0", 1,
+    keys_array[2] = create_reg_key(0, "HKEY_LOCAL_MACHINE\\Software\\RecursionLevel0", 1,
                                    "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
                                    "userid", "groupid", "username2", "groupname2");
-    keys_array[3] = create_reg_key("HKEY_LOCAL_MACHINE\\Software\\RecursionLevel0\\depth0", 1,
+    keys_array[3] = create_reg_key(0, "HKEY_LOCAL_MACHINE\\Software\\RecursionLevel0\\depth0", 1,
                                    "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
                                    "userid", "groupid", "username2", "groupname2");
     keys_array[4] = NULL;
@@ -406,6 +431,163 @@ static int teardown_test_hashes(void **state) {
 
     return 0;
 }
+
+static int setup_process_delete_events(void **state) {
+    char *err_msg = NULL;
+    syscheck.registry = default_config;
+
+    // Set fim_entry
+    fim_entry *entry = calloc(1, sizeof(fim_entry));
+    if(entry == NULL)
+        return -1;
+    entry->type = FIM_TYPE_REGISTRY;
+
+    // Key
+    entry->registry_entry.key = create_reg_key(1, "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", 1,
+                            "permissions", "userid", "groupid", "username", "groupname");
+    sqlite3_exec(syscheck.database->db, "INSERT INTO registry_key VALUES(1, \"HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\", \"permissions\", \"userid\", \"groupid\", \"username\", \"groupname\", 1234, \'[x64]\', 0, 1234, \"checksum1\");", NULL, NULL, &err_msg);
+    if (err_msg) {
+        fail_msg("%s", err_msg);
+        sqlite3_free(err_msg);
+
+        return -1;
+    }
+
+    // Value
+    char value_name[10] = "valuename";
+    unsigned int value_type = REG_DWORD;
+    unsigned int value_size = 4;
+
+    entry->registry_entry.value = create_reg_value_data(1, value_name, value_type, value_size);
+    sqlite3_exec(syscheck.database->db, "INSERT INTO registry_data VALUES(1, \"valuename\", 4, 4, \"hash1\", \"hash2\", \"hash3\", 0, 1234, \"checksum2\");", NULL, NULL, &err_msg);
+    if (err_msg) {
+        fail_msg("%s", err_msg);
+        sqlite3_free(err_msg);
+
+        return -1;
+    }
+
+    *state = entry;
+    return 0;
+}
+
+static int teardown_process_delete_events(void **state) {
+    fim_entry *entry = *state;
+
+    if (delete_tables()){
+        return -1;
+    }
+
+    // Free state
+    if (entry){
+        // Temporary
+        fim_registry_free_key(entry->registry_entry.key);
+        fim_registry_free_value_data(entry->registry_entry.value);
+        free(entry);
+        entry = NULL;
+    }
+
+    return 0;
+}
+
+static int setup_process_value_events(void **state) {
+    char *err_msg = NULL;
+    syscheck.registry = default_config;
+    fim_entry **entry_array = calloc(3, sizeof(fim_entry*));
+
+    // Set fim_entry
+    fim_entry *entry1 = calloc(1, sizeof(fim_entry));
+    if(entry1 == NULL)
+        return -1;
+    entry1->type = FIM_TYPE_REGISTRY;
+
+    // Key
+    entry1->registry_entry.key = create_reg_key(1, "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", 1,
+                            "permissions", "userid", "groupid", "username", "groupname");
+    sqlite3_exec(syscheck.database->db, "INSERT INTO registry_key VALUES(1, \"HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\", \"permissions\", \"userid\", \"groupid\", \"username\", \"groupname\", 1234, \'[x64]\', 0, 1234, \"checksum1\");", NULL, NULL, &err_msg);
+    if (err_msg) {
+        fail_msg("%s", err_msg);
+        sqlite3_free(err_msg);
+
+        return -1;
+    }
+
+    // Value
+    char value_name[10] = "valuename";
+    unsigned int value_type = REG_DWORD;
+    unsigned int value_size = 4;
+
+    entry1->registry_entry.value = create_reg_value_data(1, value_name, value_type, value_size);
+    sqlite3_exec(syscheck.database->db, "INSERT INTO registry_data VALUES(1, \"valuename\", 4, 4, \"hash1\", \"hash2\", \"hash3\", 0, 1234, \"checksum2\");", NULL, NULL, &err_msg);
+    if (err_msg) {
+        fail_msg("%s", err_msg);
+        sqlite3_free(err_msg);
+
+        return -1;
+    }
+
+
+    // Set fim_entry2
+    fim_entry *entry2 = calloc(1, sizeof(fim_entry));
+    if(entry2 == NULL)
+        return -1;
+    entry2->type = FIM_TYPE_REGISTRY;
+
+    // Key
+    entry2->registry_entry.key = create_reg_key(1, "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", 1,
+                            "permissions", "userid", "groupid", "username", "groupname");
+
+    // Value
+    unsigned int value_type2 = REG_QWORD;
+    unsigned int value_size2 = 8;
+
+    entry2->registry_entry.value = create_reg_value_data(1, value_name, value_type2, value_size2);
+
+    entry_array[0] = entry1;
+    entry_array[1] = entry2;
+    entry_array[2] = NULL;
+
+    *state = entry_array;
+    return 0;
+}
+
+static int teardown_process_value_events_failed(void **state) {
+    fim_entry **entry_array = *state;
+
+    if (delete_tables()){
+        return -1;
+    }
+
+    // Free state
+    if (entry_array){
+        int i = 0;
+        while (entry_array[i]){
+            if (entry_array[i++])
+                fim_registry_free_entry(entry_array[i++]);
+        }
+        free(entry_array);
+    }
+
+    return 0;
+}
+
+static int teardown_process_value_events_success(void **state) {
+    fim_entry **entry_array = *state;
+
+    if (delete_tables()){
+        return -1;
+    }
+
+    // Free state
+    if (entry_array){
+        fim_registry_free_entry(entry_array[1]);
+        free(entry_array);
+    }
+
+    return 0;
+}
+
+// TESTS
 
 static void test_fim_set_root_key_null_root_key(void **state) {
     int ret;
@@ -815,9 +997,28 @@ static void test_fim_registry_calculate_hashes_default_type(void **state) {
     assert_string_equal(entry->registry_entry.value->checksum, "1234567890ABCDEF1234567890ABCDEF12345678");
 }
 
+static void test_fim_registry_calculate_hashes_no_config(void **state) {
+    fim_entry *entry = *state;
+
+    syscheck.registry = one_entry_config;
+    registry *configuration = &syscheck.registry[0];
+    configuration->opts = 0;
+    BYTE *data_buffer = (unsigned char *)"value_data";
+    entry->registry_entry.value->type = -1;
+
+    fim_registry_calculate_hashes(entry, configuration, data_buffer);
+
+    assert_string_equal(entry->registry_entry.value->hash_md5, "");
+    assert_string_equal(entry->registry_entry.value->hash_sha1, "");
+    assert_string_equal(entry->registry_entry.value->hash_sha256, "");
+    assert_string_equal(entry->registry_entry.value->checksum, "1234567890ABCDEF1234567890ABCDEF12345678");
+}
+
 static void test_fim_registry_scan_no_entries_configured(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_START);
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
+
+    will_return_always(__wrap_os_random, 2345);
 
     fim_registry_scan();
 
@@ -836,7 +1037,7 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     ace.Mask = FILE_WRITE_DATA | WRITE_DAC | FILE_APPEND_DATA | FILE_WRITE_ATTRIBUTES | DELETE;
 
     // Set value of FirstSubKey
-    char value_name[10] = "valuename";
+    char value_name[10] = "test_value";
     unsigned int value_type = REG_DWORD;
     unsigned int value_size = 4;
     DWORD value_data = 123456;
@@ -848,24 +1049,25 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_START);
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
     expect_any_always(__wrap__mdebug2, formatted_msg);
+    will_return_always(__wrap_os_random, 2345);
 
     // Scan a subkey of batfile
     expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile", 0,
                              KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(1, 0, &last_write_time, ERROR_SUCCESS);
     expect_RegEnumKeyEx_call("FirstSubKey", 12, ERROR_SUCCESS);
-
     // Inside fim_registry_get_key_data
     expect_fim_registry_get_key_data_call(usid, gsid, "username", "groupname", acl_size, ace, last_write_time);
+
 
     // Scan a value of FirstSubKey
     expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile\\FirstSubKey", 0,
                              KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(0, 1, &last_write_time, ERROR_SUCCESS);
     expect_RegEnumValue_call(value_name, value_type, (LPBYTE)&value_data, value_size, ERROR_SUCCESS);
-
     // Inside fim_registry_get_key_data
     expect_fim_registry_get_key_data_call(usid, gsid, "username", "groupname", acl_size, ace, last_write_time);
+
 
     // Test
     fim_registry_scan();
@@ -876,7 +1078,7 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     assert_int_equal(ret, 0);
     ret = check_fim_db_reg_key(keys_array[1]);
     assert_int_equal(ret, 0);
-    ret = check_fim_db_reg_value_data("valuename", REG_DWORD, 4, keys_array[1]->path, keys_array[1]->arch);
+    ret = check_fim_db_reg_value_data("test_value", REG_DWORD, 4, keys_array[1]->path, keys_array[1]->arch);
     assert_int_equal(ret, 0);
 }
 
@@ -892,7 +1094,7 @@ static void test_fim_registry_scan_regular_scan(void **state) {
     ace.Mask = FILE_WRITE_DATA | WRITE_DAC | FILE_APPEND_DATA | FILE_WRITE_ATTRIBUTES | DELETE;
 
     // Set value of FirstSubKey
-    char value_name[10] = "valuename";
+    char value_name[10] = "test_value";
     unsigned int value_type = REG_DWORD;
     unsigned int value_size = 4;
     DWORD value_data = 123456;
@@ -905,43 +1107,42 @@ static void test_fim_registry_scan_regular_scan(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "(6919): Invalid syscheck registry entry: 'HKEY_LOCAL_MACHINE_Invalid_key\\Software\\Ignore' arch: '[x64] '.");
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
     expect_any_always(__wrap__mdebug2, formatted_msg);
+    will_return_always(__wrap_os_random, 2345);
 
     // Scan a subkey of batfile
     expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile", 0,
                              KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(1, 0, &last_write_time, ERROR_SUCCESS);
     expect_RegEnumKeyEx_call("FirstSubKey", 12, ERROR_SUCCESS);
-
     // Inside fim_registry_get_key_data
     expect_fim_registry_get_key_data_call(usid, gsid, "username", "groupname", acl_size, ace, last_write_time);
+
 
     // Scan a value of FirstSubKey
     expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile\\FirstSubKey", 0,
                              KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(0, 1, &last_write_time, ERROR_SUCCESS);
     expect_RegEnumValue_call(value_name, value_type, (LPBYTE)&value_data, value_size, ERROR_SUCCESS);
-
     // Inside fim_registry_get_key_data
     expect_fim_registry_get_key_data_call(usid, gsid, "username", "groupname", acl_size, ace, last_write_time);
+
 
     // Scan a subkey of RecursionLevel0
     expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\RecursionLevel0", 0, KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(1, 0, &last_write_time, ERROR_SUCCESS);
-
     expect_RegEnumKeyEx_call("depth0", 7, ERROR_SUCCESS);
-
     // Inside fim_registry_get_key_data
     expect_fim_registry_get_key_data_call(usid, gsid, "username2", "groupname2", acl_size, ace, last_write_time);
+
 
     // Scan a subkey of depth0
     expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\RecursionLevel0\\depth0", 0,
                              KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(1, 0, &last_write_time, ERROR_SUCCESS);
-
     expect_RegEnumKeyEx_call("depth1", 7, ERROR_SUCCESS);
-
     // Inside fim_registry_get_key_data
     expect_fim_registry_get_key_data_call(usid, gsid, "username2", "groupname2", acl_size, ace, last_write_time);
+
 
     // Test
     fim_registry_scan();
@@ -951,11 +1152,225 @@ static void test_fim_registry_scan_regular_scan(void **state) {
     assert_int_equal(ret, 0);
     ret = check_fim_db_reg_key(keys_array[1]);
     assert_int_equal(ret, 0);
-    ret = check_fim_db_reg_value_data("valuename", REG_DWORD, 4, keys_array[1]->path, keys_array[1]->arch);
+    ret = check_fim_db_reg_value_data("test_value", REG_DWORD, 4, keys_array[1]->path, keys_array[1]->arch);
     assert_int_equal(ret, 0);
     ret = check_fim_db_reg_key(keys_array[2]);
     assert_int_equal(ret, 0);
     ret = check_fim_db_reg_key(keys_array[3]);
+    assert_int_equal(ret, 0);
+}
+
+static void test_fim_registry_scan_RegOpenKeyEx_fail(void **state) {
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_START);
+    expect_string(__wrap__mdebug1, formatted_msg, "(6920): Unable to open registry key: 'Software\\Classes\\batfile' arch: '[x64]'.");
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+    will_return_always(__wrap_os_random, 2345);
+
+    // Scan a subkey of batfile
+    expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile", 0,
+                             KEY_READ | KEY_WOW64_64KEY, NULL, -1);
+
+    // Test
+    fim_registry_scan();
+}
+
+static void test_fim_registry_scan_RegQueryInfoKey_fail(void **state) {
+    FILETIME last_write_time = { 0, 1000 };
+
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_START);
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+    will_return_always(__wrap_os_random, 2345);
+
+    // Scan a subkey of batfile
+    expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile", 0,
+                             KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
+    expect_RegQueryInfoKey_call(1, 0, &last_write_time, -1);
+
+    // Test
+    fim_registry_scan();
+}
+
+static void test_fim_registry_process_value_delete_event_null_configuration(void **state) {
+    fim_entry *entry = *state;
+    int ret = 0;
+    pthread_mutex_t mutex = 0;
+    int alert = 1;
+    fim_event_mode event_mode = FIM_SCHEDULED;
+    void *w_event = NULL;
+
+    // Test if the entry is not configured
+    syscheck.registry = empty_config;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (registry):'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile'");
+
+    fim_registry_process_value_delete_event(syscheck.database, entry, &mutex, &alert, &event_mode, w_event);
+
+    // Check that value was not removed from DB
+    ret = check_fim_db_reg_value_data(entry->registry_entry.value->name,
+                                      entry->registry_entry.value->type,
+                                      entry->registry_entry.value->size,
+                                      entry->registry_entry.key->path,
+                                      entry->registry_entry.key->arch);
+    assert_int_equal(ret, 0);
+}
+
+static void test_fim_registry_process_value_delete_event_success(void **state) {
+    fim_entry *entry = *state;
+    int ret = 0;
+    pthread_mutex_t mutex = 0;
+    int alert = 1;
+    fim_event_mode event_mode = FIM_SCHEDULED;
+    void *w_event = NULL;
+
+    fim_registry_process_value_delete_event(syscheck.database, entry, &mutex, &alert, &event_mode, w_event);
+
+    // Check that value was removed from DB
+    ret = check_fim_db_reg_value_data(entry->registry_entry.value->name,
+                                      entry->registry_entry.value->type,
+                                      entry->registry_entry.value->size,
+                                      entry->registry_entry.key->path,
+                                      entry->registry_entry.key->arch);
+    assert_int_equal(ret, -1);
+}
+
+static void test_fim_registry_process_key_delete_event_null_configuration(void **state) {
+    fim_entry *entry = *state;
+    int ret = 0;
+    pthread_mutex_t mutex = 0;
+    int alert = 1;
+    fim_event_mode event_mode = FIM_SCHEDULED;
+    void *w_event = NULL;
+
+    // Test if the entry is not configured
+    syscheck.registry = empty_config;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (registry):'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile'");
+
+    fim_registry_process_key_delete_event(syscheck.database, entry, &mutex, &alert, &event_mode, w_event);
+
+    // Check that value and key was not removed from DB
+    ret = check_fim_db_reg_value_data(entry->registry_entry.value->name,
+                                      entry->registry_entry.value->type,
+                                      entry->registry_entry.value->size,
+                                      entry->registry_entry.key->path,
+                                      entry->registry_entry.key->arch);
+    assert_int_equal(ret, 0);
+
+    ret = check_fim_db_reg_key(entry->registry_entry.key);
+    assert_int_equal(ret, 0);
+}
+
+static void test_fim_registry_process_key_delete_event_success(void **state) {
+    fim_entry *entry = *state;
+    int ret = 0;
+    pthread_mutex_t mutex = 0;
+    int alert = 1;
+    fim_event_mode event_mode = FIM_SCHEDULED;
+    void *w_event = NULL;
+
+    will_return_always(__wrap_os_random, 2345);
+
+    fim_registry_process_key_delete_event(syscheck.database, entry, &mutex, &alert, &event_mode, w_event);
+
+    // Check that key was removed from DB
+    ret = check_fim_db_reg_key(entry->registry_entry.key);
+    assert_int_equal(ret, -1);
+}
+
+static void test_fim_registry_process_value_event_null_configuration(void **state) {
+    fim_entry **entry_array = *state;
+    int ret = 0;
+    fim_event_mode event_mode = FIM_SCHEDULED;
+    BYTE *data_buffer = (unsigned char *)"value_data";
+
+    // Test if the entry is not configured
+    syscheck.registry = empty_config;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (registry):'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile'");
+
+    fim_registry_process_value_event(entry_array[1], entry_array[0], event_mode, data_buffer);
+
+    // Check that value was not modified from DB (entry_array[0] is the saved entry, entry_array[1] is the new)
+    ret = check_fim_db_reg_value_data(entry_array[0]->registry_entry.value->name,
+                                      entry_array[0]->registry_entry.value->type,
+                                      entry_array[0]->registry_entry.value->size,
+                                      entry_array[0]->registry_entry.key->path,
+                                      entry_array[0]->registry_entry.key->arch);
+    assert_int_equal(ret, 0);
+
+}
+
+static void test_fim_registry_process_value_event_ignore_event(void **state) {
+    fim_entry **entry_array = *state;
+    int ret = 0;
+    fim_event_mode event_mode = FIM_SCHEDULED;
+    BYTE *data_buffer = (unsigned char *)"value_data";
+
+    // Test if the entry is not configured
+    static registry_ignore ignore_conf[] = { { "valuename", ARCH_32BIT}, { "valuename", ARCH_64BIT}, { NULL, 0} };
+    syscheck.value_ignore = ignore_conf;
+
+    printf("~~~~~puntero: %p", syscheck.value_ignore[0].entry);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6204): Ignoring 'value' 'valuename' due to 'valuename'");
+
+    fim_registry_process_value_event(entry_array[1], entry_array[0], event_mode, data_buffer);
+
+    // Check that value was not modified from DB (entry_array[0] is the saved entry, entry_array[1] is the new)
+    ret = check_fim_db_reg_value_data(entry_array[0]->registry_entry.value->name,
+                                      entry_array[0]->registry_entry.value->type,
+                                      entry_array[0]->registry_entry.value->size,
+                                      entry_array[0]->registry_entry.key->path,
+                                      entry_array[0]->registry_entry.key->arch);
+    assert_int_equal(ret, 0);
+
+    syscheck.value_ignore = NULL;
+}
+
+static void test_fim_registry_process_value_event_restrict_event(void **state) {
+    fim_entry **entry_array = *state;
+    int ret = 0;
+    fim_event_mode event_mode = FIM_SCHEDULED;
+    BYTE *data_buffer = (unsigned char *)"value_data";
+    OSMatch *restrict_list;
+    os_calloc(1, sizeof(OSMatch), restrict_list);
+    OSMatch_Compile("restricted_value", restrict_list, 0);
+
+    // Test if the entry is not configured
+    syscheck.registry[0].restrict_value = restrict_list;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6203): Ignoring file 'valuename' due to restriction 'restricted_value'");
+
+    fim_registry_process_value_event(entry_array[1], entry_array[0], event_mode, data_buffer);
+
+    OSMatch_FreePattern(restrict_list);
+    os_free(restrict_list);
+    syscheck.registry[0].restrict_value = NULL;
+
+    // Check that value was not modified from DB (entry_array[0] is the saved entry, entry_array[1] is the new)
+    ret = check_fim_db_reg_value_data(entry_array[0]->registry_entry.value->name,
+                                      entry_array[0]->registry_entry.value->type,
+                                      entry_array[0]->registry_entry.value->size,
+                                      entry_array[0]->registry_entry.key->path,
+                                      entry_array[0]->registry_entry.key->arch);
+    assert_int_equal(ret, 0);
+}
+
+static void test_fim_registry_process_value_event_success(void **state) {
+    fim_entry **entry_array = *state;
+    int ret = 0;
+    fim_event_mode event_mode = FIM_SCHEDULED;
+    BYTE *data_buffer = (unsigned char *)"value_data";
+
+    fim_registry_process_value_event(entry_array[1], entry_array[0], event_mode, data_buffer);
+
+    // Check that value was modified from DB (entry_array[0] is the saved entry, entry_array[1] is the new)
+    ret = check_fim_db_reg_value_data(entry_array[1]->registry_entry.value->name,
+                                      entry_array[1]->registry_entry.value->type,
+                                      entry_array[1]->registry_entry.value->size,
+                                      entry_array[1]->registry_entry.key->path,
+                                      entry_array[1]->registry_entry.key->arch);
     assert_int_equal(ret, 0);
 }
 
@@ -1002,11 +1417,29 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_registry_calculate_hashes_CHECK_SHA1SUM, setup_test_hashes, teardown_test_hashes),
         cmocka_unit_test_setup_teardown(test_fim_registry_calculate_hashes_CHECK_SHA256SUM, setup_test_hashes, teardown_test_hashes),
         cmocka_unit_test_setup_teardown(test_fim_registry_calculate_hashes_default_type, setup_test_hashes, teardown_test_hashes),
+        cmocka_unit_test_setup_teardown(test_fim_registry_calculate_hashes_no_config, setup_test_hashes, teardown_test_hashes),
 
         /* fim_registry_scan tests */
         cmocka_unit_test_setup_teardown(test_fim_registry_scan_no_entries_configured, setup_remove_entries, teardown_restore_scan),
         cmocka_unit_test_setup_teardown(test_fim_registry_scan_base_line_generation, setup_base_line, teardown_clean_db_and_state),
         cmocka_unit_test_setup_teardown(test_fim_registry_scan_regular_scan, setup_regular_scan, teardown_clean_db_and_state),
+        cmocka_unit_test_setup_teardown(test_fim_registry_scan_RegOpenKeyEx_fail, setup_base_line, teardown_clean_db_and_state),
+        cmocka_unit_test_setup_teardown(test_fim_registry_scan_RegQueryInfoKey_fail, setup_base_line, teardown_clean_db_and_state),
+
+        /* fim_registry_process_value_delete_event tests */
+        cmocka_unit_test_setup_teardown(test_fim_registry_process_value_delete_event_null_configuration, setup_process_delete_events, teardown_process_delete_events),
+        cmocka_unit_test_setup_teardown(test_fim_registry_process_value_delete_event_success, setup_process_delete_events, teardown_process_delete_events),
+
+        /* fim_registry_process_key_delete_event tests */
+        cmocka_unit_test_setup_teardown(test_fim_registry_process_key_delete_event_null_configuration, setup_process_delete_events, teardown_process_delete_events),
+        cmocka_unit_test_setup_teardown(test_fim_registry_process_key_delete_event_success, setup_process_delete_events, teardown_process_delete_events),
+
+        /* fim_registry_process_value_event tests */
+        cmocka_unit_test_setup_teardown(test_fim_registry_process_value_event_null_configuration, setup_process_value_events, teardown_process_value_events_failed),
+        cmocka_unit_test_setup_teardown(test_fim_registry_process_value_event_ignore_event, setup_process_value_events, teardown_process_value_events_failed),
+        cmocka_unit_test_setup_teardown(test_fim_registry_process_value_event_restrict_event, setup_process_value_events, teardown_process_value_events_success),
+        cmocka_unit_test_setup_teardown(test_fim_registry_process_value_event_success, setup_process_value_events, teardown_process_value_events_success),
+
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
