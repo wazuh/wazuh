@@ -717,7 +717,7 @@ int OS_SetSocketSize(int sock, int mode, int max_msg_size) {
 
         /* Get current maximum size */
         if (getsockopt(sock, SOL_SOCKET, SO_RCVBUF, (void *)&len, &optlen) == -1) {
-            return -1;
+            len = 0;
         }
 
         /* Set maximum message size */
@@ -732,7 +732,7 @@ int OS_SetSocketSize(int sock, int mode, int max_msg_size) {
 
         /* Get current maximum size */
         if (getsockopt(sock, SOL_SOCKET, SO_SNDBUF, (void *)&len, &optlen) == -1) {
-            return -1;
+            len = 0;
         }
 
         /* Set maximum message size */
