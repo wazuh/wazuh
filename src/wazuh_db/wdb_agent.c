@@ -1340,6 +1340,7 @@ int* wdb_get_agents_by_connection_status(const char* status, int *sock) {
     char* wdbquery = NULL;
     char* wdboutput = NULL;
     char* payload = NULL;
+    char* merged_payload = NULL;
     int* array = NULL;
     wdbc_result result = WDBC_UNKNOWN;
     int aux_sock = -1;
@@ -1353,13 +1354,17 @@ int* wdb_get_agents_by_connection_status(const char* status, int *sock) {
     os_free(wdbquery);
 
     //Check if there is pending data on WazuhDB
-    while (result == WDBC_DUE) {
-        char* pending_response = NULL;
-        char* pending_payload = NULL;
-        os_malloc(WDBOUTPUT_SIZE, pending_response);
-        result = wdbc_query_parse(query_sock, "continue", pending_response, WDBOUTPUT_SIZE, &pending_payload);
-        wm_strcat(&wdboutput, pending_payload, 0);
-        os_free(pending_response);
+    if (result == WDBC_DUE) {
+        os_strdup(payload, merged_payload);
+        while (result == WDBC_DUE) {
+            char* pending_response = NULL;
+            char* pending_payload = NULL;
+            os_malloc(WDBOUTPUT_SIZE, pending_response);
+            result = wdbc_query_parse(query_sock, "continue", pending_response, WDBOUTPUT_SIZE, &pending_payload);
+            wm_strcat(&merged_payload, pending_payload, 0);
+            os_free(pending_response);
+        }
+        payload = merged_payload;
     }
 
     if (!sock) {
@@ -1385,6 +1390,7 @@ int* wdb_get_agents_by_connection_status(const char* status, int *sock) {
     }
 
     os_free(wdboutput);
+    os_free(merged_payload);
 
     return array;
 }
