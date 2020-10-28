@@ -332,6 +332,30 @@ void delete_subdirectories_watches(char *dir) {
     os_free(dir_slash);
 }
 
+void realtime_sanitize_watch_map() {
+    OSHashNode *hash_node;
+    unsigned int inode_it = 0;
+    struct timespec start;
+    struct timespec end;
+
+    gettime(&start);
+    w_mutex_lock(&syscheck.fim_realtime_mutex);
+    hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
+
+    while (hash_node) {
+        if (realtime_update_watch(hash_node->key, hash_node->data) == 0) {
+            hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
+            continue;
+        }
+
+        hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node);
+    }
+
+    w_mutex_unlock(&syscheck.fim_realtime_mutex);
+    gettime(&end);
+    mdebug2("Time spent sanitizing wd hashmap: %.3f seconds", time_diff(&start, &end));
+}
+
 #elif defined(WIN32)
 
 static pthread_mutex_t adddir_mutex;
@@ -627,6 +651,10 @@ int fim_check_realtime_directory(const char *dir) {
     return 0;
 }
 
+void realtime_sanitize_watch_map() {
+    return;
+}
+
 #else /* !WIN32 */
 
 int realtime_start()
@@ -646,34 +674,8 @@ void realtime_process()
     return;
 }
 
-#endif /* WIN32 */
-
-#if defined(WIN32) || defined(INOTIFY_ENABLED)
-
 void realtime_sanitize_watch_map() {
-#ifndef WIN32
-    OSHashNode *hash_node;
-    unsigned int inode_it = 0;
-    struct timespec start;
-    struct timespec end;
-
-    gettime(&start);
-    w_mutex_lock(&syscheck.fim_realtime_mutex);
-    hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
-
-    while (hash_node) {
-        if (realtime_update_watch(hash_node->key, hash_node->data) == 0) {
-            hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
-            continue;
-        }
-
-        hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node);
-    }
-
-    w_mutex_unlock(&syscheck.fim_realtime_mutex);
-    gettime(&end);
-    mdebug2("Time spent sanitizing wd hashmap: %.3f seconds", time_diff(&start, &end));
-#endif
+    return;
 }
 
-#endif
+#endif /* WIN32 */
