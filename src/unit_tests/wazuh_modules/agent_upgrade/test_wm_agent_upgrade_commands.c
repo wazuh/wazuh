@@ -23,48 +23,45 @@
 #include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_tasks.h"
 #include "../../headers/shared.h"
 
-int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task, const wm_manager_configs* manager_configs);
-int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task, const wm_manager_configs* manager_configs);
+int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task);
+int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task);
+int wm_agent_upgrade_create_upgrade_tasks(cJSON *data_array, wm_upgrade_command command);
 
 // Setup / teardown
 
-static int setup_config_agent_task(void **state) {
-    wm_manager_configs *config = NULL;
-    wm_agent_task *agent_task = NULL;
-    os_calloc(1, sizeof(wm_manager_configs), config);
-    agent_task = wm_agent_upgrade_init_agent_task();
-    agent_task->agent_info = wm_agent_upgrade_init_agent_info();
-    agent_task->task_info = wm_agent_upgrade_init_task_info();
-    state[0] = (void *)config;
-    state[1] = (void *)agent_task;
+static int teardown_json(void **state) {
+    cJSON *json = *state;
+    cJSON_Delete(json);
     return 0;
 }
 
-static int teardown_config_agent_task(void **state) {
-    wm_manager_configs *config = state[0];
-    wm_agent_task *agent_task = state[1];
-    os_free(config);
+static int setup_agent_task(void **state) {
+    wm_agent_task *agent_task = NULL;
+    agent_task = wm_agent_upgrade_init_agent_task();
+    agent_task->agent_info = wm_agent_upgrade_init_agent_info();
+    agent_task->task_info = wm_agent_upgrade_init_task_info();
+    *state = (void *)agent_task;
+    return 0;
+}
+
+static int teardown_agent_task(void **state) {
+    wm_agent_task *agent_task = *state;
     wm_agent_upgrade_free_agent_task(agent_task);
     return 0;
 }
 
 static int setup_analyze_agent_task(void **state) {
     setup_hash_table(NULL);
-    wm_manager_configs *config = NULL;
     wm_agent_task *agent_task = NULL;
-    os_calloc(1, sizeof(wm_manager_configs), config);
     agent_task = wm_agent_upgrade_init_agent_task();
     agent_task->task_info = wm_agent_upgrade_init_task_info();
-    state[0] = (void *)config;
-    state[1] = (void *)agent_task;
+    *state = (void *)agent_task;
     return 0;
 }
 
 static int teardown_analyze_agent_task(void **state) {
     teardown_hash_table();
-    wm_manager_configs *config = state[0];
-    wm_agent_task *agent_task = state[1];
-    os_free(config);
+    wm_agent_task *agent_task = *state;
     wm_agent_upgrade_free_agent_task(agent_task);
     return 0;
 }
@@ -140,37 +137,25 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_ok(void **state)
 
     int agent = 44;
     int keep_alive = 2345678;
+    char *platform = "ubuntu";
+    char *os_major = "18";
+    char *os_minor = "04";
+    char *arch = "x64_86";
+    char *wazuh_version = "v3.13.1";
     wm_upgrade_task *upgrade_task = NULL;
 
-    wm_manager_configs *config = state[0];
-    wm_agent_task *agent_task = state[1];
-
-    config->chunk_size = 5;
+    wm_agent_task *agent_task = *state;
 
     agent_task->agent_info->agent_id = agent;
     agent_task->agent_info->last_keep_alive = keep_alive;
+    os_strdup(platform, agent_task->agent_info->platform);
+    os_strdup(os_major, agent_task->agent_info->major_version);
+    os_strdup(os_minor, agent_task->agent_info->minor_version);
+    os_strdup(arch, agent_task->agent_info->architecture);
+    os_strdup(wazuh_version, agent_task->agent_info->wazuh_version);
     upgrade_task = wm_agent_upgrade_init_upgrade_task();
     agent_task->task_info->command = WM_UPGRADE_UPGRADE;
     agent_task->task_info->task = upgrade_task;
-
-    cJSON *request = cJSON_CreateObject();
-    cJSON *origin = cJSON_CreateObject();
-    cJSON *parameters = cJSON_CreateObject();
-    cJSON *agents = cJSON_CreateArray();
-
-    cJSON_AddStringToObject(origin, "module", "upgrade_module");
-    cJSON_AddItemToObject(request, "origin", origin);
-    cJSON_AddStringToObject(request, "command", "upgrade_get_status");
-    cJSON_AddItemToArray(agents, cJSON_CreateNumber(agent));
-    cJSON_AddItemToObject(parameters, "agents", agents);
-    cJSON_AddItemToObject(request, "parameters", parameters);
-
-    cJSON *task_response = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(task_response, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(task_response, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
-    cJSON_AddNumberToObject(task_response, "agent", agent);
-    cJSON_AddStringToObject(task_response, "status", "Done");
 
     // wm_agent_upgrade_validate_id
 
@@ -182,31 +167,22 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_ok(void **state)
     expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, keep_alive);
     will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_SUCCESS);
 
+    // wm_agent_upgrade_validate_system
+
+    expect_string(__wrap_wm_agent_upgrade_validate_system, platform, platform);
+    expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, os_major);
+    expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, os_minor);
+    expect_string(__wrap_wm_agent_upgrade_validate_system, arch, arch);
+    will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
+
     // wm_agent_upgrade_validate_version
+
+    expect_string(__wrap_wm_agent_upgrade_validate_version, wazuh_version, wazuh_version);
     expect_value(__wrap_wm_agent_upgrade_validate_version, command, agent_task->task_info->command);
-    expect_memory(__wrap_wm_agent_upgrade_validate_version, manager_configs, config, sizeof(config));
-    will_return(__wrap_wm_agent_upgrade_validate_version, "");
-    will_return(__wrap_wm_agent_upgrade_validate_version, "");
+    will_return(__wrap_wm_agent_upgrade_validate_version, "v4.1.0");
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
 
-    // wm_agent_upgrade_parse_task_module_request
-
-    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_GET_STATUS);
-    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, request);
-
-    // wm_agent_upgrade_task_module_callback
-
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, request, sizeof(request));
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response);
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
-
-    // wm_agent_upgrade_validate_task_status_message
-
-    expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, task_response, sizeof(task_response));
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, "Done");
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, 1);
-
-    int ret = wm_agent_upgrade_validate_agent_task(agent_task, config);
+    int ret = wm_agent_upgrade_validate_agent_task(agent_task);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
 }
@@ -217,38 +193,26 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_custom_ok(void **state)
 
     int agent = 44;
     int keep_alive = 2345678;
+    char *platform = "ubuntu";
+    char *os_major = "18";
+    char *os_minor = "04";
+    char *arch = "x64_86";
+    char *wazuh_version = "v3.13.1";
     wm_upgrade_custom_task *upgrade_custom_task = NULL;
 
-    wm_manager_configs *config = state[0];
-    wm_agent_task *agent_task = state[1];
-
-    config->chunk_size = 5;
+    wm_agent_task *agent_task = *state;
 
     agent_task->agent_info->agent_id = agent;
     agent_task->agent_info->last_keep_alive = keep_alive;
+    os_strdup(platform, agent_task->agent_info->platform);
+    os_strdup(os_major, agent_task->agent_info->major_version);
+    os_strdup(os_minor, agent_task->agent_info->minor_version);
+    os_strdup(arch, agent_task->agent_info->architecture);
+    os_strdup(wazuh_version, agent_task->agent_info->wazuh_version);
     upgrade_custom_task = wm_agent_upgrade_init_upgrade_custom_task();
     agent_task->task_info->command = WM_UPGRADE_UPGRADE_CUSTOM;
     agent_task->task_info->task = upgrade_custom_task;
 
-    cJSON *request = cJSON_CreateObject();
-    cJSON *origin = cJSON_CreateObject();
-    cJSON *parameters = cJSON_CreateObject();
-    cJSON *agents = cJSON_CreateArray();
-
-    cJSON_AddStringToObject(origin, "module", "upgrade_module");
-    cJSON_AddItemToObject(request, "origin", origin);
-    cJSON_AddStringToObject(request, "command", "upgrade_get_status");
-    cJSON_AddItemToArray(agents, cJSON_CreateNumber(agent));
-    cJSON_AddItemToObject(parameters, "agents", agents);
-    cJSON_AddItemToObject(request, "parameters", parameters);
-
-    cJSON *task_response = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(task_response, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(task_response, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
-    cJSON_AddNumberToObject(task_response, "agent", agent);
-    cJSON_AddStringToObject(task_response, "status", "Done");
-
     // wm_agent_upgrade_validate_id
 
     expect_value(__wrap_wm_agent_upgrade_validate_id, agent_id, agent);
@@ -259,185 +223,23 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_custom_ok(void **state)
     expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, keep_alive);
     will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_SUCCESS);
 
+    // wm_agent_upgrade_validate_system
+
+    expect_string(__wrap_wm_agent_upgrade_validate_system, platform, platform);
+    expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, os_major);
+    expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, os_minor);
+    expect_string(__wrap_wm_agent_upgrade_validate_system, arch, arch);
+    will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
+
     // wm_agent_upgrade_validate_version
+
+    expect_string(__wrap_wm_agent_upgrade_validate_version, wazuh_version, wazuh_version);
     expect_value(__wrap_wm_agent_upgrade_validate_version, command, agent_task->task_info->command);
-    expect_memory(__wrap_wm_agent_upgrade_validate_version, manager_configs, config, sizeof(config));
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
 
-    // wm_agent_upgrade_parse_task_module_request
-
-    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_GET_STATUS);
-    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, request);
-
-    // wm_agent_upgrade_task_module_callback
-
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, request, sizeof(request));
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response);
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
-
-    // wm_agent_upgrade_validate_task_status_message
-
-    expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, task_response, sizeof(task_response));
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, "Done");
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, 1);
-
-    int ret = wm_agent_upgrade_validate_agent_task(agent_task, config);
+    int ret = wm_agent_upgrade_validate_agent_task(agent_task);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
-}
-
-void test_wm_agent_upgrade_validate_agent_task_in_progress_err(void **state)
-{
-    (void) state;
-
-    int agent = 44;
-    int keep_alive = 2345678;
-    wm_upgrade_task *upgrade_task = NULL;
-
-    wm_manager_configs *config = state[0];
-    wm_agent_task *agent_task = state[1];
-
-    config->chunk_size = 5;
-
-    agent_task->agent_info->agent_id = agent;
-    agent_task->agent_info->last_keep_alive = keep_alive;
-    upgrade_task = wm_agent_upgrade_init_upgrade_task();
-    agent_task->task_info->command = WM_UPGRADE_UPGRADE;
-    agent_task->task_info->task = upgrade_task;
-
-    cJSON *request = cJSON_CreateObject();
-    cJSON *origin = cJSON_CreateObject();
-    cJSON *parameters = cJSON_CreateObject();
-    cJSON *agents = cJSON_CreateArray();
-
-    cJSON_AddStringToObject(origin, "module", "upgrade_module");
-    cJSON_AddItemToObject(request, "origin", origin);
-    cJSON_AddStringToObject(request, "command", "upgrade_get_status");
-    cJSON_AddItemToArray(agents, cJSON_CreateNumber(agent));
-    cJSON_AddItemToObject(parameters, "agents", agents);
-    cJSON_AddItemToObject(request, "parameters", parameters);
-
-    cJSON *task_response = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(task_response, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(task_response, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
-    cJSON_AddNumberToObject(task_response, "agent", agent);
-    cJSON_AddStringToObject(task_response, "status", "Done");
-
-    // wm_agent_upgrade_validate_id
-
-    expect_value(__wrap_wm_agent_upgrade_validate_id, agent_id, agent);
-    will_return(__wrap_wm_agent_upgrade_validate_id, WM_UPGRADE_SUCCESS);
-
-    // wm_agent_upgrade_validate_status
-
-    expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, keep_alive);
-    will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_SUCCESS);
-
-    // wm_agent_upgrade_validate_version
-    expect_value(__wrap_wm_agent_upgrade_validate_version, command, agent_task->task_info->command);
-    expect_memory(__wrap_wm_agent_upgrade_validate_version, manager_configs, config, sizeof(config));
-    will_return(__wrap_wm_agent_upgrade_validate_version, "");
-    will_return(__wrap_wm_agent_upgrade_validate_version, "");
-    will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
-
-    // wm_agent_upgrade_parse_task_module_request
-
-    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_GET_STATUS);
-    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, request);
-
-    // wm_agent_upgrade_task_module_callback
-
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, request, sizeof(request));
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response);
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
-
-    // wm_agent_upgrade_validate_task_status_message
-
-    expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, task_response, sizeof(task_response));
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, "In progress");
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, 1);
-
-    int ret = wm_agent_upgrade_validate_agent_task(agent_task, config);
-
-    assert_int_equal(ret, WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS);
-}
-
-void test_wm_agent_upgrade_validate_agent_task_task_manager_err(void **state)
-{
-    (void) state;
-
-    int agent = 44;
-    int keep_alive = 2345678;
-    wm_upgrade_task *upgrade_task = NULL;
-
-    wm_manager_configs *config = state[0];
-    wm_agent_task *agent_task = state[1];
-
-    config->chunk_size = 5;
-
-    agent_task->agent_info->agent_id = agent;
-    agent_task->agent_info->last_keep_alive = keep_alive;
-    upgrade_task = wm_agent_upgrade_init_upgrade_task();
-    agent_task->task_info->command = WM_UPGRADE_UPGRADE;
-    agent_task->task_info->task = upgrade_task;
-
-    cJSON *request = cJSON_CreateObject();
-    cJSON *origin = cJSON_CreateObject();
-    cJSON *parameters = cJSON_CreateObject();
-    cJSON *agents = cJSON_CreateArray();
-
-    cJSON_AddStringToObject(origin, "module", "upgrade_module");
-    cJSON_AddItemToObject(request, "origin", origin);
-    cJSON_AddStringToObject(request, "command", "upgrade_get_status");
-    cJSON_AddItemToArray(agents, cJSON_CreateNumber(agent));
-    cJSON_AddItemToObject(parameters, "agents", agents);
-    cJSON_AddItemToObject(request, "parameters", parameters);
-
-    cJSON *task_response = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(task_response, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(task_response, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
-    cJSON_AddNumberToObject(task_response, "agent", agent);
-    cJSON_AddStringToObject(task_response, "status", "Done");
-
-    // wm_agent_upgrade_validate_id
-
-    expect_value(__wrap_wm_agent_upgrade_validate_id, agent_id, agent);
-    will_return(__wrap_wm_agent_upgrade_validate_id, WM_UPGRADE_SUCCESS);
-
-    // wm_agent_upgrade_validate_status
-
-    expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, keep_alive);
-    will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_SUCCESS);
-
-    // wm_agent_upgrade_validate_version
-    expect_value(__wrap_wm_agent_upgrade_validate_version, command, agent_task->task_info->command);
-    expect_memory(__wrap_wm_agent_upgrade_validate_version, manager_configs, config, sizeof(config));
-    will_return(__wrap_wm_agent_upgrade_validate_version, "");
-    will_return(__wrap_wm_agent_upgrade_validate_version, "");
-    will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
-
-    // wm_agent_upgrade_parse_task_module_request
-
-    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_GET_STATUS);
-    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, request);
-
-    // wm_agent_upgrade_task_module_callback
-
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, request, sizeof(request));
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response);
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
-
-    // wm_agent_upgrade_validate_task_status_message
-
-    expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, task_response, sizeof(task_response));
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, "Done");
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, 0);
-
-    int ret = wm_agent_upgrade_validate_agent_task(agent_task, config);
-
-    assert_int_equal(ret, WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
 }
 
 void test_wm_agent_upgrade_validate_agent_task_version_err(void **state)
@@ -446,15 +248,22 @@ void test_wm_agent_upgrade_validate_agent_task_version_err(void **state)
 
     int agent = 44;
     int keep_alive = 2345678;
+    char *platform = "ubuntu";
+    char *os_major = "18";
+    char *os_minor = "04";
+    char *arch = "x64_86";
+    char *wazuh_version = "v3.13.1";
     wm_upgrade_task *upgrade_task = NULL;
 
-    wm_manager_configs *config = state[0];
-    wm_agent_task *agent_task = state[1];
-
-    config->chunk_size = 5;
+    wm_agent_task *agent_task = *state;
 
     agent_task->agent_info->agent_id = agent;
     agent_task->agent_info->last_keep_alive = keep_alive;
+    os_strdup(platform, agent_task->agent_info->platform);
+    os_strdup(os_major, agent_task->agent_info->major_version);
+    os_strdup(os_minor, agent_task->agent_info->minor_version);
+    os_strdup(arch, agent_task->agent_info->architecture);
+    os_strdup(wazuh_version, agent_task->agent_info->wazuh_version);
     upgrade_task = wm_agent_upgrade_init_upgrade_task();
     agent_task->task_info->command = WM_UPGRADE_UPGRADE;
     agent_task->task_info->task = upgrade_task;
@@ -469,14 +278,71 @@ void test_wm_agent_upgrade_validate_agent_task_version_err(void **state)
     expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, keep_alive);
     will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_SUCCESS);
 
+    // wm_agent_upgrade_validate_system
+
+    expect_string(__wrap_wm_agent_upgrade_validate_system, platform, platform);
+    expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, os_major);
+    expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, os_minor);
+    expect_string(__wrap_wm_agent_upgrade_validate_system, arch, arch);
+    will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
+
     // wm_agent_upgrade_validate_version
+
+    expect_string(__wrap_wm_agent_upgrade_validate_version, wazuh_version, wazuh_version);
     expect_value(__wrap_wm_agent_upgrade_validate_version, command, agent_task->task_info->command);
-    expect_memory(__wrap_wm_agent_upgrade_validate_version, manager_configs, config, sizeof(config));
-    will_return(__wrap_wm_agent_upgrade_validate_version, "");
     will_return(__wrap_wm_agent_upgrade_validate_version, "");
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_GLOBAL_DB_FAILURE);
 
-    int ret = wm_agent_upgrade_validate_agent_task(agent_task, config);
+    int ret = wm_agent_upgrade_validate_agent_task(agent_task);
+
+    assert_int_equal(ret, WM_UPGRADE_GLOBAL_DB_FAILURE);
+}
+
+void test_wm_agent_upgrade_validate_agent_task_system_err(void **state)
+{
+    (void) state;
+
+    int agent = 44;
+    int keep_alive = 2345678;
+    char *platform = "ubuntu";
+    char *os_major = "18";
+    char *os_minor = "04";
+    char *arch = "x64_86";
+    char *wazuh_version = "v3.13.1";
+    wm_upgrade_task *upgrade_task = NULL;
+
+    wm_agent_task *agent_task = *state;
+
+    agent_task->agent_info->agent_id = agent;
+    agent_task->agent_info->last_keep_alive = keep_alive;
+    os_strdup(platform, agent_task->agent_info->platform);
+    os_strdup(os_major, agent_task->agent_info->major_version);
+    os_strdup(os_minor, agent_task->agent_info->minor_version);
+    os_strdup(arch, agent_task->agent_info->architecture);
+    os_strdup(wazuh_version, agent_task->agent_info->wazuh_version);
+    upgrade_task = wm_agent_upgrade_init_upgrade_task();
+    agent_task->task_info->command = WM_UPGRADE_UPGRADE;
+    agent_task->task_info->task = upgrade_task;
+
+    // wm_agent_upgrade_validate_id
+
+    expect_value(__wrap_wm_agent_upgrade_validate_id, agent_id, agent);
+    will_return(__wrap_wm_agent_upgrade_validate_id, WM_UPGRADE_SUCCESS);
+
+    // wm_agent_upgrade_validate_status
+
+    expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, keep_alive);
+    will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_SUCCESS);
+
+    // wm_agent_upgrade_validate_system
+
+    expect_string(__wrap_wm_agent_upgrade_validate_system, platform, platform);
+    expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, os_major);
+    expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, os_minor);
+    expect_string(__wrap_wm_agent_upgrade_validate_system, arch, arch);
+    will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_GLOBAL_DB_FAILURE);
+
+    int ret = wm_agent_upgrade_validate_agent_task(agent_task);
 
     assert_int_equal(ret, WM_UPGRADE_GLOBAL_DB_FAILURE);
 }
@@ -487,15 +353,22 @@ void test_wm_agent_upgrade_validate_agent_task_status_err(void **state)
 
     int agent = 44;
     int keep_alive = 2345678;
+    char *platform = "ubuntu";
+    char *os_major = "18";
+    char *os_minor = "04";
+    char *arch = "x64_86";
+    char *wazuh_version = "v3.13.1";
     wm_upgrade_task *upgrade_task = NULL;
 
-    wm_manager_configs *config = state[0];
-    wm_agent_task *agent_task = state[1];
-
-    config->chunk_size = 5;
+    wm_agent_task *agent_task = *state;
 
     agent_task->agent_info->agent_id = agent;
     agent_task->agent_info->last_keep_alive = keep_alive;
+    os_strdup(platform, agent_task->agent_info->platform);
+    os_strdup(os_major, agent_task->agent_info->major_version);
+    os_strdup(os_minor, agent_task->agent_info->minor_version);
+    os_strdup(arch, agent_task->agent_info->architecture);
+    os_strdup(wazuh_version, agent_task->agent_info->wazuh_version);
     upgrade_task = wm_agent_upgrade_init_upgrade_task();
     agent_task->task_info->command = WM_UPGRADE_UPGRADE;
     agent_task->task_info->task = upgrade_task;
@@ -510,7 +383,7 @@ void test_wm_agent_upgrade_validate_agent_task_status_err(void **state)
     expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, keep_alive);
     will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_AGENT_IS_NOT_ACTIVE);
 
-    int ret = wm_agent_upgrade_validate_agent_task(agent_task, config);
+    int ret = wm_agent_upgrade_validate_agent_task(agent_task);
 
     assert_int_equal(ret, WM_UPGRADE_AGENT_IS_NOT_ACTIVE);
 }
@@ -521,15 +394,22 @@ void test_wm_agent_upgrade_validate_agent_task_agent_id_err(void **state)
 
     int agent = 44;
     int keep_alive = 2345678;
+    char *platform = "ubuntu";
+    char *os_major = "18";
+    char *os_minor = "04";
+    char *arch = "x64_86";
+    char *wazuh_version = "v3.13.1";
     wm_upgrade_task *upgrade_task = NULL;
 
-    wm_manager_configs *config = state[0];
-    wm_agent_task *agent_task = state[1];
-
-    config->chunk_size = 5;
+    wm_agent_task *agent_task = *state;
 
     agent_task->agent_info->agent_id = agent;
     agent_task->agent_info->last_keep_alive = keep_alive;
+    os_strdup(platform, agent_task->agent_info->platform);
+    os_strdup(os_major, agent_task->agent_info->major_version);
+    os_strdup(os_minor, agent_task->agent_info->minor_version);
+    os_strdup(arch, agent_task->agent_info->architecture);
+    os_strdup(wazuh_version, agent_task->agent_info->wazuh_version);
     upgrade_task = wm_agent_upgrade_init_upgrade_task();
     agent_task->task_info->command = WM_UPGRADE_UPGRADE;
     agent_task->task_info->task = upgrade_task;
@@ -539,7 +419,7 @@ void test_wm_agent_upgrade_validate_agent_task_agent_id_err(void **state)
     expect_value(__wrap_wm_agent_upgrade_validate_id, agent_id, agent);
     will_return(__wrap_wm_agent_upgrade_validate_id, WM_UPGRADE_INVALID_ACTION_FOR_MANAGER);
 
-    int ret = wm_agent_upgrade_validate_agent_task(agent_task, config);
+    int ret = wm_agent_upgrade_validate_agent_task(agent_task);
 
     assert_int_equal(ret, WM_UPGRADE_INVALID_ACTION_FOR_MANAGER);
 }
@@ -558,10 +438,7 @@ void test_wm_agent_upgrade_analyze_agent_ok(void **state)
     char *version = "v3.13.1";
     wm_upgrade_task *upgrade_task = NULL;
 
-    wm_manager_configs *config = state[0];
-    wm_agent_task *agent_task = state[1];
-
-    config->chunk_size = 5;
+    wm_agent_task *agent_task = *state;
 
     upgrade_task = wm_agent_upgrade_init_upgrade_task();
     agent_task->task_info->command = WM_UPGRADE_UPGRADE;
@@ -576,25 +453,6 @@ void test_wm_agent_upgrade_analyze_agent_ok(void **state)
     cJSON_AddStringToObject(agent_info, "version", version);
     cJSON_AddNumberToObject(agent_info, "last_keepalive", keep_alive);
     cJSON_AddItemToArray(agent_info_array, agent_info);
-
-    cJSON *request_status = cJSON_CreateObject();
-    cJSON *origin_status = cJSON_CreateObject();
-    cJSON *parameters_status = cJSON_CreateObject();
-    cJSON *agents_status = cJSON_CreateArray();
-
-    cJSON_AddStringToObject(origin_status, "module", "upgrade_module");
-    cJSON_AddItemToObject(request_status, "origin", origin_status);
-    cJSON_AddStringToObject(request_status, "command", "upgrade_get_status");
-    cJSON_AddItemToArray(agents_status, cJSON_CreateNumber(agent));
-    cJSON_AddItemToObject(parameters_status, "agents", agents_status);
-    cJSON_AddItemToObject(request_status, "parameters", parameters_status);
-
-    cJSON *status_response = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(status_response, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(status_response, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
-    cJSON_AddNumberToObject(status_response, "agent", agent);
-    cJSON_AddStringToObject(status_response, "status", "Done");
 
     // wdb_agent_info
 
@@ -611,35 +469,26 @@ void test_wm_agent_upgrade_analyze_agent_ok(void **state)
     expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, keep_alive);
     will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_SUCCESS);
 
+    // wm_agent_upgrade_validate_system
+
+    expect_string(__wrap_wm_agent_upgrade_validate_system, platform, platform);
+    expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, major);
+    expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, minor);
+    expect_string(__wrap_wm_agent_upgrade_validate_system, arch, arch);
+    will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
+
     // wm_agent_upgrade_validate_version
+
+    expect_string(__wrap_wm_agent_upgrade_validate_version, wazuh_version, version);
     expect_value(__wrap_wm_agent_upgrade_validate_version, command, agent_task->task_info->command);
-    expect_memory(__wrap_wm_agent_upgrade_validate_version, manager_configs, config, sizeof(config));
-    will_return(__wrap_wm_agent_upgrade_validate_version, "");
-    will_return(__wrap_wm_agent_upgrade_validate_version, "");
+    will_return(__wrap_wm_agent_upgrade_validate_version, "v4.1.0");
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
-
-    // wm_agent_upgrade_parse_task_module_request
-
-    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_GET_STATUS);
-    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, request_status);
-
-    // wm_agent_upgrade_task_module_callback
-
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, request_status, sizeof(request_status));
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, status_response);
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
-
-    // wm_agent_upgrade_validate_task_status_message
-
-    expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, status_response, sizeof(status_response));
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, "Done");
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, 1);
 
     // wm_agent_upgrade_create_task_entry
     expect_value(__wrap_wm_agent_upgrade_create_task_entry, agent_id, agent);
     will_return(__wrap_wm_agent_upgrade_create_task_entry, OSHASH_SUCCESS);
 
-    error_code = wm_agent_upgrade_analyze_agent(agent, agent_task, config);
+    error_code = wm_agent_upgrade_analyze_agent(agent, agent_task);
 
     assert_int_equal(error_code, WM_UPGRADE_SUCCESS);
     assert_non_null(agent_task->agent_info);
@@ -665,10 +514,7 @@ void test_wm_agent_upgrade_analyze_agent_duplicated_err(void **state)
     char *version = "v3.13.1";
     wm_upgrade_task *upgrade_task = NULL;
 
-    wm_manager_configs *config = state[0];
-    wm_agent_task *agent_task = state[1];
-
-    config->chunk_size = 5;
+    wm_agent_task *agent_task = *state;
 
     upgrade_task = wm_agent_upgrade_init_upgrade_task();
     agent_task->task_info->command = WM_UPGRADE_UPGRADE;
@@ -683,24 +529,6 @@ void test_wm_agent_upgrade_analyze_agent_duplicated_err(void **state)
     cJSON_AddStringToObject(agent_info, "version", version);
     cJSON_AddNumberToObject(agent_info, "last_keepalive", keep_alive);
     cJSON_AddItemToArray(agent_info_array, agent_info);
-
-    cJSON *request_status = cJSON_CreateObject();
-    cJSON *origin_status = cJSON_CreateObject();
-    cJSON *parameters_status = cJSON_CreateObject();
-    cJSON *agents_status = cJSON_CreateArray();
-
-    cJSON_AddStringToObject(origin_status, "module", "upgrade_module");
-    cJSON_AddItemToObject(request_status, "origin", origin_status);
-    cJSON_AddStringToObject(request_status, "command", "upgrade_get_status");
-    cJSON_AddItemToArray(agents_status, cJSON_CreateNumber(agent));
-    cJSON_AddItemToObject(parameters_status, "agents", agents_status);
-    cJSON_AddItemToObject(request_status, "parameters", parameters_status);
-
-    cJSON *status_response = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(status_response, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(status_response, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
-    cJSON_AddNumberToObject(status_response, "agent", agent);
 
     // wdb_agent_info
 
@@ -717,35 +545,26 @@ void test_wm_agent_upgrade_analyze_agent_duplicated_err(void **state)
     expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, keep_alive);
     will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_SUCCESS);
 
+    // wm_agent_upgrade_validate_system
+
+    expect_string(__wrap_wm_agent_upgrade_validate_system, platform, platform);
+    expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, major);
+    expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, minor);
+    expect_string(__wrap_wm_agent_upgrade_validate_system, arch, arch);
+    will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
+
     // wm_agent_upgrade_validate_version
+
+    expect_string(__wrap_wm_agent_upgrade_validate_version, wazuh_version, version);
     expect_value(__wrap_wm_agent_upgrade_validate_version, command, agent_task->task_info->command);
-    expect_memory(__wrap_wm_agent_upgrade_validate_version, manager_configs, config, sizeof(config));
-    will_return(__wrap_wm_agent_upgrade_validate_version, "");
-    will_return(__wrap_wm_agent_upgrade_validate_version, "");
+    will_return(__wrap_wm_agent_upgrade_validate_version, "v4.1.0");
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
-
-    // wm_agent_upgrade_parse_task_module_request
-
-    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_GET_STATUS);
-    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, request_status);
-
-    // wm_agent_upgrade_task_module_callback
-
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, request_status, sizeof(request_status));
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, status_response);
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
-
-    // wm_agent_upgrade_validate_task_status_message
-
-    expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, status_response, sizeof(status_response));
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, "Done");
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, 1);
 
     // wm_agent_upgrade_create_task_entry
     expect_value(__wrap_wm_agent_upgrade_create_task_entry, agent_id, agent);
     will_return(__wrap_wm_agent_upgrade_create_task_entry, OSHASH_DUPLICATE);
 
-    error_code = wm_agent_upgrade_analyze_agent(agent, agent_task, config);
+    error_code = wm_agent_upgrade_analyze_agent(agent, agent_task);
 
     assert_int_equal(error_code, WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS);
     assert_non_null(agent_task->agent_info);
@@ -771,10 +590,7 @@ void test_wm_agent_upgrade_analyze_agent_unknown_err(void **state)
     char *version = "v3.13.1";
     wm_upgrade_task *upgrade_task = NULL;
 
-    wm_manager_configs *config = state[0];
-    wm_agent_task *agent_task = state[1];
-
-    config->chunk_size = 5;
+    wm_agent_task *agent_task = *state;
 
     upgrade_task = wm_agent_upgrade_init_upgrade_task();
     agent_task->task_info->command = WM_UPGRADE_UPGRADE;
@@ -789,24 +605,6 @@ void test_wm_agent_upgrade_analyze_agent_unknown_err(void **state)
     cJSON_AddStringToObject(agent_info, "version", version);
     cJSON_AddNumberToObject(agent_info, "last_keepalive", keep_alive);
     cJSON_AddItemToArray(agent_info_array, agent_info);
-
-    cJSON *request_status = cJSON_CreateObject();
-    cJSON *origin_status = cJSON_CreateObject();
-    cJSON *parameters_status = cJSON_CreateObject();
-    cJSON *agents_status = cJSON_CreateArray();
-
-    cJSON_AddStringToObject(origin_status, "module", "upgrade_module");
-    cJSON_AddItemToObject(request_status, "origin", origin_status);
-    cJSON_AddStringToObject(request_status, "command", "upgrade_get_status");
-    cJSON_AddItemToArray(agents_status, cJSON_CreateNumber(agent));
-    cJSON_AddItemToObject(parameters_status, "agents", agents_status);
-    cJSON_AddItemToObject(request_status, "parameters", parameters_status);
-
-    cJSON *status_response = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(status_response, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(status_response, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
-    cJSON_AddNumberToObject(status_response, "agent", agent);
 
     // wdb_agent_info
 
@@ -823,35 +621,26 @@ void test_wm_agent_upgrade_analyze_agent_unknown_err(void **state)
     expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, keep_alive);
     will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_SUCCESS);
 
+    // wm_agent_upgrade_validate_system
+
+    expect_string(__wrap_wm_agent_upgrade_validate_system, platform, platform);
+    expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, major);
+    expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, minor);
+    expect_string(__wrap_wm_agent_upgrade_validate_system, arch, arch);
+    will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
+
     // wm_agent_upgrade_validate_version
+
+    expect_string(__wrap_wm_agent_upgrade_validate_version, wazuh_version, version);
     expect_value(__wrap_wm_agent_upgrade_validate_version, command, agent_task->task_info->command);
-    expect_memory(__wrap_wm_agent_upgrade_validate_version, manager_configs, config, sizeof(config));
-    will_return(__wrap_wm_agent_upgrade_validate_version, "");
-    will_return(__wrap_wm_agent_upgrade_validate_version, "");
+    will_return(__wrap_wm_agent_upgrade_validate_version, "v4.1.0");
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
-
-    // wm_agent_upgrade_parse_task_module_request
-
-    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_GET_STATUS);
-    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, request_status);
-
-    // wm_agent_upgrade_task_module_callback
-
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, request_status, sizeof(request_status));
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, status_response);
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
-
-    // wm_agent_upgrade_validate_task_status_message
-
-    expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, status_response, sizeof(status_response));
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, "Done");
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, 1);
 
     // wm_agent_upgrade_create_task_entry
     expect_value(__wrap_wm_agent_upgrade_create_task_entry, agent_id, agent);
     will_return(__wrap_wm_agent_upgrade_create_task_entry, OS_INVALID);
 
-    error_code = wm_agent_upgrade_analyze_agent(agent, agent_task, config);
+    error_code = wm_agent_upgrade_analyze_agent(agent, agent_task);
 
     assert_int_equal(error_code, WM_UPGRADE_UNKNOWN_ERROR);
     assert_non_null(agent_task->agent_info);
@@ -877,10 +666,7 @@ void test_wm_agent_upgrade_analyze_agent_validate_err(void **state)
     char *version = "v3.13.1";
     wm_upgrade_task *upgrade_task = NULL;
 
-    wm_manager_configs *config = state[0];
-    wm_agent_task *agent_task = state[1];
-
-    config->chunk_size = 5;
+    wm_agent_task *agent_task = *state;
 
     upgrade_task = wm_agent_upgrade_init_upgrade_task();
     agent_task->task_info->command = WM_UPGRADE_UPGRADE;
@@ -906,7 +692,7 @@ void test_wm_agent_upgrade_analyze_agent_validate_err(void **state)
     expect_value(__wrap_wm_agent_upgrade_validate_id, agent_id, agent);
     will_return(__wrap_wm_agent_upgrade_validate_id, WM_UPGRADE_INVALID_ACTION_FOR_MANAGER);
 
-    error_code = wm_agent_upgrade_analyze_agent(agent, agent_task, config);
+    error_code = wm_agent_upgrade_analyze_agent(agent, agent_task);
 
     assert_int_equal(error_code, WM_UPGRADE_INVALID_ACTION_FOR_MANAGER);
     assert_non_null(agent_task->agent_info);
@@ -926,10 +712,7 @@ void test_wm_agent_upgrade_analyze_agent_global_db_err(void **state)
     int agent = 119;
     wm_upgrade_task *upgrade_task = NULL;
 
-    wm_manager_configs *config = state[0];
-    wm_agent_task *agent_task = state[1];
-
-    config->chunk_size = 5;
+    wm_agent_task *agent_task =*state;
 
     upgrade_task = wm_agent_upgrade_init_upgrade_task();
     agent_task->task_info->command = WM_UPGRADE_UPGRADE;
@@ -940,7 +723,7 @@ void test_wm_agent_upgrade_analyze_agent_global_db_err(void **state)
     expect_value(__wrap_wdb_get_agent_info, id, agent);
     will_return(__wrap_wdb_get_agent_info, NULL);
 
-    error_code = wm_agent_upgrade_analyze_agent(agent, agent_task, config);
+    error_code = wm_agent_upgrade_analyze_agent(agent, agent_task);
 
     assert_int_equal(error_code, WM_UPGRADE_GLOBAL_DB_FAILURE);
     assert_non_null(agent_task->agent_info);
@@ -949,6 +732,279 @@ void test_wm_agent_upgrade_analyze_agent_global_db_err(void **state)
     assert_null(agent_task->agent_info->minor_version);
     assert_null(agent_task->agent_info->architecture);
     assert_null(agent_task->agent_info->wazuh_version);
+}
+
+void test_wm_agent_upgrade_create_upgrade_tasks_ok(void **state)
+{
+    cJSON *data_array = cJSON_CreateArray();
+    int agent1 = 55;
+
+    cJSON *agents_array1 = cJSON_CreateArray();
+    cJSON_AddItemToArray(agents_array1, cJSON_CreateNumber(agent1));
+
+    cJSON *agents_array2 = cJSON_CreateArray();
+    cJSON_AddItemToArray(agents_array2, cJSON_CreateNumber(agent1));
+
+    cJSON *status_request = cJSON_CreateObject();
+    cJSON *status_origin = cJSON_CreateObject();
+    cJSON *status_parameters = cJSON_CreateObject();
+    cJSON *status_agents = cJSON_CreateArray();
+
+    cJSON_AddStringToObject(status_origin, "module", "upgrade_module");
+    cJSON_AddItemToObject(status_request, "origin", status_origin);
+    cJSON_AddStringToObject(status_request, "command", "upgrade_get_status");
+    cJSON_AddItemToArray(status_agents, cJSON_CreateNumber(agent1));
+    cJSON_AddItemToObject(status_parameters, "agents", status_agents);
+    cJSON_AddItemToObject(status_request, "parameters", status_parameters);
+
+    cJSON *request_json = cJSON_CreateObject();
+    cJSON *origin_json = cJSON_CreateObject();
+    cJSON *parameters_json= cJSON_CreateObject();
+    cJSON *agents_json = cJSON_CreateArray();
+
+    cJSON_AddStringToObject(origin_json, "module", "upgrade_module");
+    cJSON_AddItemToObject(request_json, "origin", origin_json);
+    cJSON_AddStringToObject(request_json, "command", "upgrade_custom");
+    cJSON_AddItemToArray(agents_json, cJSON_CreateNumber(agent1));
+    cJSON_AddItemToObject(parameters_json, "agents", agents_json);
+    cJSON_AddItemToObject(request_json, "parameters", parameters_json);
+
+    cJSON *task_response = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(task_response, "error", WM_UPGRADE_SUCCESS);
+    cJSON_AddStringToObject(task_response, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddNumberToObject(task_response, "agent", agent1);
+    cJSON_AddNumberToObject(task_response, "task_id", 100);
+
+    // wm_agent_upgrade_get_agent_ids
+
+    will_return(__wrap_wm_agent_upgrade_get_agent_ids, agents_array1);
+
+    // wm_agent_upgrade_parse_task_module_request
+
+    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_GET_STATUS);
+    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, status_request);
+
+    // wm_agent_upgrade_task_module_callback
+
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, status_request, sizeof(status_request));
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, NULL);
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
+
+    // wm_agent_upgrade_get_agent_ids
+
+    will_return(__wrap_wm_agent_upgrade_get_agent_ids, agents_array2);
+
+    // wm_agent_upgrade_parse_task_module_request
+
+    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_UPGRADE_CUSTOM);
+    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, request_json);
+
+    // wm_agent_upgrade_task_module_callback
+
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, request_json, sizeof(request_json));
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response);
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
+
+    // wm_agent_upgrade_prepare_upgrades
+
+    will_return(__wrap_wm_agent_upgrade_prepare_upgrades, 1);
+
+    int ret = wm_agent_upgrade_create_upgrade_tasks(data_array, WM_UPGRADE_UPGRADE_CUSTOM);
+
+    *state = data_array;
+
+    assert_int_equal(ret, 1);
+    assert_int_equal(cJSON_GetArraySize(data_array), 1);
+    assert_memory_equal(cJSON_GetArrayItem(data_array, 0), task_response, sizeof(task_response));
+}
+
+void test_wm_agent_upgrade_create_upgrade_tasks_upgrade_err(void **state)
+{
+    cJSON *data_array = cJSON_CreateArray();
+    int agent1 = 55;
+
+    cJSON *agents_array1 = cJSON_CreateArray();
+    cJSON_AddItemToArray(agents_array1, cJSON_CreateNumber(agent1));
+
+    cJSON *agents_array2 = cJSON_CreateArray();
+    cJSON_AddItemToArray(agents_array2, cJSON_CreateNumber(agent1));
+
+    cJSON *status_request = cJSON_CreateObject();
+    cJSON *status_origin = cJSON_CreateObject();
+    cJSON *status_parameters = cJSON_CreateObject();
+    cJSON *status_agents = cJSON_CreateArray();
+
+    cJSON_AddStringToObject(status_origin, "module", "upgrade_module");
+    cJSON_AddItemToObject(status_request, "origin", status_origin);
+    cJSON_AddStringToObject(status_request, "command", "upgrade_get_status");
+    cJSON_AddItemToArray(status_agents, cJSON_CreateNumber(agent1));
+    cJSON_AddItemToObject(status_parameters, "agents", status_agents);
+    cJSON_AddItemToObject(status_request, "parameters", status_parameters);
+
+    cJSON *request_json = cJSON_CreateObject();
+    cJSON *origin_json = cJSON_CreateObject();
+    cJSON *parameters_json= cJSON_CreateObject();
+    cJSON *agents_json = cJSON_CreateArray();
+
+    cJSON_AddStringToObject(origin_json, "module", "upgrade_module");
+    cJSON_AddItemToObject(request_json, "origin", origin_json);
+    cJSON_AddStringToObject(request_json, "command", "upgrade_custom");
+    cJSON_AddItemToArray(agents_json, cJSON_CreateNumber(agent1));
+    cJSON_AddItemToObject(parameters_json, "agents", agents_json);
+    cJSON_AddItemToObject(request_json, "parameters", parameters_json);
+
+    cJSON *task_response = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(task_response, "error", WM_UPGRADE_SUCCESS);
+    cJSON_AddStringToObject(task_response, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddNumberToObject(task_response, "agent", agent1);
+    cJSON_AddNumberToObject(task_response, "task_id", 100);
+
+    // wm_agent_upgrade_get_agent_ids
+
+    will_return(__wrap_wm_agent_upgrade_get_agent_ids, agents_array1);
+
+    // wm_agent_upgrade_parse_task_module_request
+
+    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_GET_STATUS);
+    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, status_request);
+
+    // wm_agent_upgrade_task_module_callback
+
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, status_request, sizeof(status_request));
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, NULL);
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
+
+    // wm_agent_upgrade_get_agent_ids
+
+    will_return(__wrap_wm_agent_upgrade_get_agent_ids, agents_array2);
+
+    // wm_agent_upgrade_parse_task_module_request
+
+    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_UPGRADE_CUSTOM);
+    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, request_json);
+
+    // wm_agent_upgrade_task_module_callback
+
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, request_json, sizeof(request_json));
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response);
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, OS_INVALID);
+
+    int ret = wm_agent_upgrade_create_upgrade_tasks(data_array, WM_UPGRADE_UPGRADE_CUSTOM);
+
+    *state = data_array;
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(cJSON_GetArraySize(data_array), 1);
+    assert_memory_equal(cJSON_GetArrayItem(data_array, 0), task_response, sizeof(task_response));
+}
+
+void test_wm_agent_upgrade_create_upgrade_tasks_upgrade_no_agents(void **state)
+{
+    cJSON *data_array = cJSON_CreateArray();
+    int agent1 = 55;
+
+    cJSON *agents_array1 = cJSON_CreateArray();
+    cJSON_AddItemToArray(agents_array1, cJSON_CreateNumber(agent1));
+
+    cJSON *status_request = cJSON_CreateObject();
+    cJSON *status_origin = cJSON_CreateObject();
+    cJSON *status_parameters = cJSON_CreateObject();
+    cJSON *status_agents = cJSON_CreateArray();
+
+    cJSON_AddStringToObject(status_origin, "module", "upgrade_module");
+    cJSON_AddItemToObject(status_request, "origin", status_origin);
+    cJSON_AddStringToObject(status_request, "command", "upgrade_get_status");
+    cJSON_AddItemToArray(status_agents, cJSON_CreateNumber(agent1));
+    cJSON_AddItemToObject(status_parameters, "agents", status_agents);
+    cJSON_AddItemToObject(status_request, "parameters", status_parameters);
+
+    // wm_agent_upgrade_get_agent_ids
+
+    will_return(__wrap_wm_agent_upgrade_get_agent_ids, agents_array1);
+
+    // wm_agent_upgrade_parse_task_module_request
+
+    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_GET_STATUS);
+    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, status_request);
+
+    // wm_agent_upgrade_task_module_callback
+
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, status_request, sizeof(status_request));
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, NULL);
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
+
+    // wm_agent_upgrade_get_agent_ids
+
+    will_return(__wrap_wm_agent_upgrade_get_agent_ids, NULL);
+
+    int ret = wm_agent_upgrade_create_upgrade_tasks(data_array, WM_UPGRADE_UPGRADE_CUSTOM);
+
+    *state = data_array;
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(cJSON_GetArraySize(data_array), 0);
+}
+
+void test_wm_agent_upgrade_create_upgrade_tasks_get_status_err(void **state)
+{
+    cJSON *data_array = cJSON_CreateArray();
+    int agent1 = 55;
+
+    cJSON *agents_array1 = cJSON_CreateArray();
+    cJSON_AddItemToArray(agents_array1, cJSON_CreateNumber(agent1));
+
+    cJSON *status_request = cJSON_CreateObject();
+    cJSON *status_origin = cJSON_CreateObject();
+    cJSON *status_parameters = cJSON_CreateObject();
+    cJSON *status_agents = cJSON_CreateArray();
+
+    cJSON_AddStringToObject(status_origin, "module", "upgrade_module");
+    cJSON_AddItemToObject(status_request, "origin", status_origin);
+    cJSON_AddStringToObject(status_request, "command", "upgrade_get_status");
+    cJSON_AddItemToArray(status_agents, cJSON_CreateNumber(agent1));
+    cJSON_AddItemToObject(status_parameters, "agents", status_agents);
+    cJSON_AddItemToObject(status_request, "parameters", status_parameters);
+
+    // wm_agent_upgrade_get_agent_ids
+
+    will_return(__wrap_wm_agent_upgrade_get_agent_ids, agents_array1);
+
+    // wm_agent_upgrade_parse_task_module_request
+
+    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_GET_STATUS);
+    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, status_request);
+
+    // wm_agent_upgrade_task_module_callback
+
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, status_request, sizeof(status_request));
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, NULL);
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, OS_INVALID);
+
+    int ret = wm_agent_upgrade_create_upgrade_tasks(data_array, WM_UPGRADE_UPGRADE_CUSTOM);
+
+    *state = data_array;
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(cJSON_GetArraySize(data_array), 0);
+}
+
+void test_wm_agent_upgrade_create_upgrade_tasks_get_status_no_agents(void **state)
+{
+    cJSON *data_array = cJSON_CreateArray();
+    int agent1 = 55;
+
+    // wm_agent_upgrade_get_agent_ids
+
+    will_return(__wrap_wm_agent_upgrade_get_agent_ids, NULL);
+
+    int ret = wm_agent_upgrade_create_upgrade_tasks(data_array, WM_UPGRADE_UPGRADE_CUSTOM);
+
+    *state = data_array;
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(cJSON_GetArraySize(data_array), 0);
 }
 
 void test_wm_agent_upgrade_process_agent_result_command_done(void **state)
@@ -1098,7 +1154,6 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
     (void) state;
 
     int agents[3];
-    wm_manager_configs *config = NULL;
     wm_upgrade_custom_task *upgrade_custom_task = NULL;
 
     char *custom_file_path = "/tmp/test.wpk";
@@ -1107,9 +1162,6 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
     agents[0] = 1;
     agents[1] = 2;
     agents[2] = OS_INVALID;
-
-    os_calloc(1, sizeof(wm_manager_configs), config);
-    config->chunk_size = 5;
 
     upgrade_custom_task = wm_agent_upgrade_init_upgrade_custom_task();
     os_strdup(custom_file_path, upgrade_custom_task->custom_file_path);
@@ -1127,24 +1179,23 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
     cJSON_AddNumberToObject(agent_info1, "last_keepalive", 123456789);
     cJSON_AddItemToArray(agent_info_array1, agent_info1);
 
-    cJSON *status_request1 = cJSON_CreateObject();
-    cJSON *status_origin1 = cJSON_CreateObject();
-    cJSON *status_parameters1 = cJSON_CreateObject();
-    cJSON *status_agents1 = cJSON_CreateArray();
+    cJSON *agents_array1 = cJSON_CreateArray();
+    cJSON_AddItemToArray(agents_array1, cJSON_CreateNumber(agents[0]));
 
-    cJSON_AddStringToObject(status_origin1, "module", "upgrade_module");
-    cJSON_AddItemToObject(status_request1, "origin", status_origin1);
-    cJSON_AddStringToObject(status_request1, "command", "upgrade_get_status");
-    cJSON_AddItemToArray(status_agents1, cJSON_CreateNumber(agents[0]));
-    cJSON_AddItemToObject(status_parameters1, "agents", status_agents1);
-    cJSON_AddItemToObject(status_request1, "parameters", status_parameters1);
+    cJSON *agents_array2 = cJSON_CreateArray();
+    cJSON_AddItemToArray(agents_array2, cJSON_CreateNumber(agents[0]));
 
-    cJSON *status_response1 = cJSON_CreateObject();
+    cJSON *status_request = cJSON_CreateObject();
+    cJSON *status_origin = cJSON_CreateObject();
+    cJSON *status_parameters = cJSON_CreateObject();
+    cJSON *status_agents = cJSON_CreateArray();
 
-    cJSON_AddNumberToObject(status_response1, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(status_response1, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
-    cJSON_AddNumberToObject(status_response1, "agent", agents[0]);
-    cJSON_AddStringToObject(status_response1, "status", "Done");
+    cJSON_AddStringToObject(status_origin, "module", "upgrade_module");
+    cJSON_AddItemToObject(status_request, "origin", status_origin);
+    cJSON_AddStringToObject(status_request, "command", "upgrade_get_status");
+    cJSON_AddItemToArray(status_agents, cJSON_CreateNumber(agents[0]));
+    cJSON_AddItemToObject(status_parameters, "agents", status_agents);
+    cJSON_AddItemToObject(status_request, "parameters", status_parameters);
 
     cJSON *task_response1 = cJSON_CreateObject();
 
@@ -1193,27 +1244,19 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
     expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, 123456789);
     will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_SUCCESS);
 
+    // wm_agent_upgrade_validate_system
+
+    expect_string(__wrap_wm_agent_upgrade_validate_system, platform, "ubuntu");
+    expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, "18");
+    expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, "04");
+    expect_string(__wrap_wm_agent_upgrade_validate_system, arch, "x86_64");
+    will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
+
     // wm_agent_upgrade_validate_version
+
+    expect_string(__wrap_wm_agent_upgrade_validate_version, wazuh_version, "v3.13.1");
     expect_value(__wrap_wm_agent_upgrade_validate_version, command, WM_UPGRADE_UPGRADE_CUSTOM);
-    expect_memory(__wrap_wm_agent_upgrade_validate_version, manager_configs, config, sizeof(config));
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
-
-    // wm_agent_upgrade_parse_task_module_request
-
-    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_GET_STATUS);
-    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, status_request1);
-
-    // wm_agent_upgrade_task_module_callback
-
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, status_request1, sizeof(status_request1));
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, status_response1);
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
-
-    // wm_agent_upgrade_validate_task_status_message
-
-    expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, status_response1, sizeof(status_response1));
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, "Done");
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, 1);
 
     // wm_agent_upgrade_create_task_entry
     expect_value(__wrap_wm_agent_upgrade_create_task_entry, agent_id, agents[0]);
@@ -1230,6 +1273,25 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
     expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
     expect_value(__wrap_wm_agent_upgrade_parse_data_response, agent_int, agents[1]);
     will_return(__wrap_wm_agent_upgrade_parse_data_response, task_response2);
+
+    // wm_agent_upgrade_get_agent_ids
+
+    will_return(__wrap_wm_agent_upgrade_get_agent_ids, agents_array1);
+
+    // wm_agent_upgrade_parse_task_module_request
+
+    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_GET_STATUS);
+    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, status_request);
+
+    // wm_agent_upgrade_task_module_callback
+
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, status_request, sizeof(status_request));
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, NULL);
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
+
+    // wm_agent_upgrade_get_agent_ids
+
+    will_return(__wrap_wm_agent_upgrade_get_agent_ids, agents_array2);
 
     // wm_agent_upgrade_parse_task_module_request
 
@@ -1251,14 +1313,12 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
     expect_value(__wrap_wm_agent_upgrade_parse_response, error_id, WM_UPGRADE_SUCCESS);
     will_return(__wrap_wm_agent_upgrade_parse_response, response_json);
 
-    char *result = wm_agent_upgrade_process_upgrade_custom_command(agents, upgrade_custom_task, config);
+    char *result = wm_agent_upgrade_process_upgrade_custom_command(agents, upgrade_custom_task);
 
     state[1] = (void *)result;
 
     assert_non_null(result);
     assert_string_equal(result, "{\"error\":0,\"message\":\"Success\",\"data\":[{\"error\":6,\"message\":\"Agent information not found in database\",\"agent\":2},{\"message\":\"Success\",\"agent\":1,\"task_id\":100}]}");
-
-    os_free(config);
 }
 
 void test_wm_agent_upgrade_process_upgrade_custom_command_no_agents(void **state)
@@ -1266,7 +1326,6 @@ void test_wm_agent_upgrade_process_upgrade_custom_command_no_agents(void **state
     (void) state;
 
     int agents[3];
-    wm_manager_configs *config = NULL;
     wm_upgrade_custom_task *upgrade_custom_task = NULL;
 
     char *custom_file_path = "/tmp/test.wpk";
@@ -1275,9 +1334,6 @@ void test_wm_agent_upgrade_process_upgrade_custom_command_no_agents(void **state
     agents[0] = 1;
     agents[1] = 2;
     agents[2] = OS_INVALID;
-
-    os_calloc(1, sizeof(wm_manager_configs), config);
-    config->chunk_size = 5;
 
     upgrade_custom_task = wm_agent_upgrade_init_upgrade_custom_task();
     os_strdup(custom_file_path, upgrade_custom_task->custom_file_path);
@@ -1326,6 +1382,10 @@ void test_wm_agent_upgrade_process_upgrade_custom_command_no_agents(void **state
     expect_value(__wrap_wm_agent_upgrade_parse_data_response, agent_int, agents[1]);
     will_return(__wrap_wm_agent_upgrade_parse_data_response, task_response2);
 
+    // wm_agent_upgrade_get_agent_ids
+
+    will_return(__wrap_wm_agent_upgrade_get_agent_ids, NULL);
+
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtwarn, formatted_msg, "(8160): There are no valid agents to upgrade.");
 
@@ -1334,180 +1394,12 @@ void test_wm_agent_upgrade_process_upgrade_custom_command_no_agents(void **state
     expect_value(__wrap_wm_agent_upgrade_parse_response, error_id, WM_UPGRADE_SUCCESS);
     will_return(__wrap_wm_agent_upgrade_parse_response, response_json);
 
-    char *result = wm_agent_upgrade_process_upgrade_custom_command(agents, upgrade_custom_task, config);
+    char *result = wm_agent_upgrade_process_upgrade_custom_command(agents, upgrade_custom_task);
 
     state[1] = (void *)result;
 
     assert_non_null(result);
     assert_string_equal(result, "{\"error\":0,\"message\":\"Success\",\"data\":[{\"error\":6,\"message\":\"Agent information not found in database\",\"agent\":1},{\"error\":6,\"message\":\"Agent information not found in database\",\"agent\":2}]}");
-
-    os_free(config);
-}
-
-void test_wm_agent_upgrade_process_upgrade_custom_command_task_manager_error(void **state)
-{
-    (void) state;
-
-    int agents[3];
-    wm_manager_configs *config = NULL;
-    wm_upgrade_custom_task *upgrade_custom_task = NULL;
-
-    char *custom_file_path = "/tmp/test.wpk";
-    char *custom_installer = "test.sh";
-
-    agents[0] = 1;
-    agents[1] = 2;
-    agents[2] = OS_INVALID;
-
-    os_calloc(1, sizeof(wm_manager_configs), config);
-    config->chunk_size = 5;
-
-    upgrade_custom_task = wm_agent_upgrade_init_upgrade_custom_task();
-    os_strdup(custom_file_path, upgrade_custom_task->custom_file_path);
-    os_strdup(custom_installer, upgrade_custom_task->custom_installer);
-
-    state[0] = (void *)upgrade_custom_task;
-
-    cJSON *agent_info_array1 = cJSON_CreateArray();
-    cJSON *agent_info1 = cJSON_CreateObject();
-    cJSON_AddStringToObject(agent_info1, "os_platform", "ubuntu");
-    cJSON_AddStringToObject(agent_info1, "os_major", "18");
-    cJSON_AddStringToObject(agent_info1, "os_minor", "04");
-    cJSON_AddStringToObject(agent_info1, "os_arch", "x86_64");
-    cJSON_AddStringToObject(agent_info1, "version", "v3.13.1");
-    cJSON_AddNumberToObject(agent_info1, "last_keepalive", 123456789);
-    cJSON_AddItemToArray(agent_info_array1, agent_info1);
-
-    cJSON *status_request1 = cJSON_CreateObject();
-    cJSON *status_origin1 = cJSON_CreateObject();
-    cJSON *status_parameters1 = cJSON_CreateObject();
-    cJSON *status_agents1 = cJSON_CreateArray();
-
-    cJSON_AddStringToObject(status_origin1, "module", "upgrade_module");
-    cJSON_AddItemToObject(status_request1, "origin", status_origin1);
-    cJSON_AddStringToObject(status_request1, "command", "upgrade_get_status");
-    cJSON_AddItemToArray(status_agents1, cJSON_CreateNumber(agents[0]));
-    cJSON_AddItemToObject(status_parameters1, "agents", status_agents1);
-    cJSON_AddItemToObject(status_request1, "parameters", status_parameters1);
-
-    cJSON *status_response1 = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(status_response1, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(status_response1, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
-    cJSON_AddNumberToObject(status_response1, "agent", agents[0]);
-    cJSON_AddStringToObject(status_response1, "status", "Done");
-
-    cJSON *task_response1 = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(task_response1, "error", WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
-    cJSON_AddStringToObject(task_response1, "message", upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
-    cJSON_AddNumberToObject(task_response1, "agent", agents[0]);
-
-    cJSON *task_response2 = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(task_response2, "error", WM_UPGRADE_GLOBAL_DB_FAILURE);
-    cJSON_AddStringToObject(task_response2, "message", upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
-    cJSON_AddNumberToObject(task_response2, "agent", agents[1]);
-
-    cJSON *request_json = cJSON_CreateObject();
-    cJSON *origin_json = cJSON_CreateObject();
-    cJSON *parameters_json= cJSON_CreateObject();
-    cJSON *agents_json = cJSON_CreateArray();
-
-    cJSON_AddStringToObject(origin_json, "module", "upgrade_module");
-    cJSON_AddItemToObject(request_json, "origin", origin_json);
-    cJSON_AddStringToObject(request_json, "command", "upgrade_custom");
-    cJSON_AddItemToArray(agents_json, cJSON_CreateNumber(agents[0]));
-    cJSON_AddItemToObject(parameters_json, "agents", agents_json);
-    cJSON_AddItemToObject(request_json, "parameters", parameters_json);
-
-    cJSON *response_json = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(response_json, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(response_json, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
-
-    // Analize agent[0]
-
-    // wdb_agent_info
-
-    expect_value(__wrap_wdb_get_agent_info, id, agents[0]);
-    will_return(__wrap_wdb_get_agent_info, agent_info_array1);
-
-    // wm_agent_upgrade_validate_id
-
-    expect_value(__wrap_wm_agent_upgrade_validate_id, agent_id, agents[0]);
-    will_return(__wrap_wm_agent_upgrade_validate_id, WM_UPGRADE_SUCCESS);
-
-    // wm_agent_upgrade_validate_status
-
-    expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, 123456789);
-    will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_SUCCESS);
-
-    // wm_agent_upgrade_validate_version
-    expect_value(__wrap_wm_agent_upgrade_validate_version, command, WM_UPGRADE_UPGRADE_CUSTOM);
-    expect_memory(__wrap_wm_agent_upgrade_validate_version, manager_configs, config, sizeof(config));
-    will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
-
-    // wm_agent_upgrade_parse_task_module_request
-
-    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_GET_STATUS);
-    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, status_request1);
-
-    // wm_agent_upgrade_task_module_callback
-
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, status_request1, sizeof(status_request1));
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, status_response1);
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
-
-    // wm_agent_upgrade_validate_task_status_message
-
-    expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, status_response1, sizeof(status_response1));
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, "Done");
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, 1);
-
-    // wm_agent_upgrade_create_task_entry
-    expect_value(__wrap_wm_agent_upgrade_create_task_entry, agent_id, agents[0]);
-    will_return(__wrap_wm_agent_upgrade_create_task_entry, OSHASH_SUCCESS);
-
-    // Analize agent[1]
-
-    // wdb_agent_info
-
-    expect_value(__wrap_wdb_get_agent_info, id, agents[1]);
-    will_return(__wrap_wdb_get_agent_info, NULL);
-
-    expect_value(__wrap_wm_agent_upgrade_parse_data_response, error_id, WM_UPGRADE_GLOBAL_DB_FAILURE);
-    expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
-    expect_value(__wrap_wm_agent_upgrade_parse_data_response, agent_int, agents[1]);
-    will_return(__wrap_wm_agent_upgrade_parse_data_response, task_response2);
-
-    // wm_agent_upgrade_parse_task_module_request
-
-    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_UPGRADE_CUSTOM);
-    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, request_json);
-
-    // wm_agent_upgrade_task_module_callback
-
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, request_json, sizeof(request_json));
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response1);
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, OS_INVALID);
-
-    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mtwarn, formatted_msg, "(8160): There are no valid agents to upgrade.");
-
-    // wm_agent_upgrade_parse_response
-
-    expect_value(__wrap_wm_agent_upgrade_parse_response, error_id, WM_UPGRADE_SUCCESS);
-    will_return(__wrap_wm_agent_upgrade_parse_response, response_json);
-
-    char *result = wm_agent_upgrade_process_upgrade_custom_command(agents, upgrade_custom_task, config);
-
-    state[1] = (void *)result;
-
-    assert_non_null(result);
-    assert_string_equal(result, "{\"error\":0,\"message\":\"Success\",\"data\":[{\"error\":6,\"message\":\"Agent information not found in database\",\"agent\":2},{\"error\":4,\"message\":\"Task manager communication error\",\"agent\":1}]}");
-
-    os_free(config);
 }
 
 void test_wm_agent_upgrade_process_upgrade_command(void **state)
@@ -1515,15 +1407,11 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
     (void) state;
 
     int agents[3];
-    wm_manager_configs *config = NULL;
     wm_upgrade_task *upgrade_task = NULL;
 
     agents[0] = 1;
     agents[1] = 2;
     agents[2] = OS_INVALID;
-
-    os_calloc(1, sizeof(wm_manager_configs), config);
-    config->chunk_size = 5;
 
     upgrade_task = wm_agent_upgrade_init_upgrade_task();
 
@@ -1539,24 +1427,23 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
     cJSON_AddNumberToObject(agent_info1, "last_keepalive", 123456789);
     cJSON_AddItemToArray(agent_info_array1, agent_info1);
 
-    cJSON *status_request1 = cJSON_CreateObject();
-    cJSON *status_origin1 = cJSON_CreateObject();
-    cJSON *status_parameters1 = cJSON_CreateObject();
-    cJSON *status_agents1 = cJSON_CreateArray();
+    cJSON *agents_array1 = cJSON_CreateArray();
+    cJSON_AddItemToArray(agents_array1, cJSON_CreateNumber(agents[0]));
 
-    cJSON_AddStringToObject(status_origin1, "module", "upgrade_module");
-    cJSON_AddItemToObject(status_request1, "origin", status_origin1);
-    cJSON_AddStringToObject(status_request1, "command", "upgrade_get_status");
-    cJSON_AddItemToArray(status_agents1, cJSON_CreateNumber(agents[0]));
-    cJSON_AddItemToObject(status_parameters1, "agents", status_agents1);
-    cJSON_AddItemToObject(status_request1, "parameters", status_parameters1);
+    cJSON *agents_array2 = cJSON_CreateArray();
+    cJSON_AddItemToArray(agents_array2, cJSON_CreateNumber(agents[0]));
 
-    cJSON *status_response1 = cJSON_CreateObject();
+    cJSON *status_request = cJSON_CreateObject();
+    cJSON *status_origin = cJSON_CreateObject();
+    cJSON *status_parameters = cJSON_CreateObject();
+    cJSON *status_agents = cJSON_CreateArray();
 
-    cJSON_AddNumberToObject(status_response1, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(status_response1, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
-    cJSON_AddNumberToObject(status_response1, "agent", agents[0]);
-    cJSON_AddStringToObject(status_response1, "status", "Done");
+    cJSON_AddStringToObject(status_origin, "module", "upgrade_module");
+    cJSON_AddItemToObject(status_request, "origin", status_origin);
+    cJSON_AddStringToObject(status_request, "command", "upgrade_get_status");
+    cJSON_AddItemToArray(status_agents, cJSON_CreateNumber(agents[0]));
+    cJSON_AddItemToObject(status_parameters, "agents", status_agents);
+    cJSON_AddItemToObject(status_request, "parameters", status_parameters);
 
     cJSON *task_response1 = cJSON_CreateObject();
 
@@ -1605,29 +1492,20 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
     expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, 123456789);
     will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_SUCCESS);
 
+    // wm_agent_upgrade_validate_system
+
+    expect_string(__wrap_wm_agent_upgrade_validate_system, platform, "ubuntu");
+    expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, "18");
+    expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, "04");
+    expect_string(__wrap_wm_agent_upgrade_validate_system, arch, "x86_64");
+    will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
+
     // wm_agent_upgrade_validate_version
+
+    expect_string(__wrap_wm_agent_upgrade_validate_version, wazuh_version, "v3.13.1");
     expect_value(__wrap_wm_agent_upgrade_validate_version, command, WM_UPGRADE_UPGRADE);
-    expect_memory(__wrap_wm_agent_upgrade_validate_version, manager_configs, config, sizeof(config));
-    will_return(__wrap_wm_agent_upgrade_validate_version, "test.wpk");
-    will_return(__wrap_wm_agent_upgrade_validate_version, "d321af65983fa412e3a12c312ada12ab321a253a");
+    will_return(__wrap_wm_agent_upgrade_validate_version, "v4.1.0");
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
-
-    // wm_agent_upgrade_parse_task_module_request
-
-    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_GET_STATUS);
-    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, status_request1);
-
-    // wm_agent_upgrade_task_module_callback
-
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, status_request1, sizeof(status_request1));
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, status_response1);
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
-
-    // wm_agent_upgrade_validate_task_status_message
-
-    expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, status_response1, sizeof(status_response1));
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, "Done");
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, 1);
 
     // wm_agent_upgrade_create_task_entry
     expect_value(__wrap_wm_agent_upgrade_create_task_entry, agent_id, agents[0]);
@@ -1644,6 +1522,25 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
     expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
     expect_value(__wrap_wm_agent_upgrade_parse_data_response, agent_int, agents[1]);
     will_return(__wrap_wm_agent_upgrade_parse_data_response, task_response2);
+
+    // wm_agent_upgrade_get_agent_ids
+
+    will_return(__wrap_wm_agent_upgrade_get_agent_ids, agents_array1);
+
+    // wm_agent_upgrade_parse_task_module_request
+
+    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_GET_STATUS);
+    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, status_request);
+
+    // wm_agent_upgrade_task_module_callback
+
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, status_request, sizeof(status_request));
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, NULL);
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
+
+    // wm_agent_upgrade_get_agent_ids
+
+    will_return(__wrap_wm_agent_upgrade_get_agent_ids, agents_array2);
 
     // wm_agent_upgrade_parse_task_module_request
 
@@ -1665,14 +1562,12 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
     expect_value(__wrap_wm_agent_upgrade_parse_response, error_id, WM_UPGRADE_SUCCESS);
     will_return(__wrap_wm_agent_upgrade_parse_response, response_json);
 
-    char *result = wm_agent_upgrade_process_upgrade_command(agents, upgrade_task, config);
+    char *result = wm_agent_upgrade_process_upgrade_command(agents, upgrade_task);
 
     state[1] = (void *)result;
 
     assert_non_null(result);
     assert_string_equal(result, "{\"error\":0,\"message\":\"Success\",\"data\":[{\"error\":6,\"message\":\"Agent information not found in database\",\"agent\":2},{\"message\":\"Success\",\"agent\":1,\"task_id\":110}]}");
-
-    os_free(config);
 }
 
 void test_wm_agent_upgrade_process_upgrade_command_no_agents(void **state)
@@ -1680,15 +1575,11 @@ void test_wm_agent_upgrade_process_upgrade_command_no_agents(void **state)
     (void) state;
 
     int agents[3];
-    wm_manager_configs *config = NULL;
     wm_upgrade_task *upgrade_task = NULL;
 
     agents[0] = 1;
     agents[1] = 2;
     agents[2] = OS_INVALID;
-
-    os_calloc(1, sizeof(wm_manager_configs), config);
-    config->chunk_size = 5;
 
     upgrade_task = wm_agent_upgrade_init_upgrade_task();
 
@@ -1735,6 +1626,10 @@ void test_wm_agent_upgrade_process_upgrade_command_no_agents(void **state)
     expect_value(__wrap_wm_agent_upgrade_parse_data_response, agent_int, agents[1]);
     will_return(__wrap_wm_agent_upgrade_parse_data_response, task_response2);
 
+    // wm_agent_upgrade_get_agent_ids
+
+    will_return(__wrap_wm_agent_upgrade_get_agent_ids, NULL);
+
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtwarn, formatted_msg, "(8160): There are no valid agents to upgrade.");
 
@@ -1743,177 +1638,12 @@ void test_wm_agent_upgrade_process_upgrade_command_no_agents(void **state)
     expect_value(__wrap_wm_agent_upgrade_parse_response, error_id, WM_UPGRADE_SUCCESS);
     will_return(__wrap_wm_agent_upgrade_parse_response, response_json);
 
-    char *result = wm_agent_upgrade_process_upgrade_command(agents, upgrade_task, config);
+    char *result = wm_agent_upgrade_process_upgrade_command(agents, upgrade_task);
 
     state[1] = (void *)result;
 
     assert_non_null(result);
     assert_string_equal(result, "{\"error\":0,\"message\":\"Success\",\"data\":[{\"error\":6,\"message\":\"Agent information not found in database\",\"agent\":1},{\"error\":6,\"message\":\"Agent information not found in database\",\"agent\":2}]}");
-
-    os_free(config);
-}
-
-void test_wm_agent_upgrade_process_upgrade_command_task_manager_error(void **state)
-{
-    (void) state;
-
-    int agents[3];
-    wm_manager_configs *config = NULL;
-    wm_upgrade_task *upgrade_task = NULL;
-
-    agents[0] = 1;
-    agents[1] = 2;
-    agents[2] = OS_INVALID;
-
-    os_calloc(1, sizeof(wm_manager_configs), config);
-    config->chunk_size = 5;
-
-    upgrade_task = wm_agent_upgrade_init_upgrade_task();
-
-    state[0] = (void *)upgrade_task;
-
-    cJSON *agent_info_array1 = cJSON_CreateArray();
-    cJSON *agent_info1 = cJSON_CreateObject();
-    cJSON_AddStringToObject(agent_info1, "os_platform", "ubuntu");
-    cJSON_AddStringToObject(agent_info1, "os_major", "18");
-    cJSON_AddStringToObject(agent_info1, "os_minor", "04");
-    cJSON_AddStringToObject(agent_info1, "os_arch", "x86_64");
-    cJSON_AddStringToObject(agent_info1, "version", "v3.13.1");
-    cJSON_AddNumberToObject(agent_info1, "last_keepalive", 123456789);
-    cJSON_AddItemToArray(agent_info_array1, agent_info1);
-
-    cJSON *status_request1 = cJSON_CreateObject();
-    cJSON *status_origin1 = cJSON_CreateObject();
-    cJSON *status_parameters1 = cJSON_CreateObject();
-    cJSON *status_agents1 = cJSON_CreateArray();
-
-    cJSON_AddStringToObject(status_origin1, "module", "upgrade_module");
-    cJSON_AddItemToObject(status_request1, "origin", status_origin1);
-    cJSON_AddStringToObject(status_request1, "command", "upgrade_get_status");
-    cJSON_AddItemToArray(status_agents1, cJSON_CreateNumber(agents[0]));
-    cJSON_AddItemToObject(status_parameters1, "agents", status_agents1);
-    cJSON_AddItemToObject(status_request1, "parameters", status_parameters1);
-
-    cJSON *status_response1 = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(status_response1, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(status_response1, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
-    cJSON_AddNumberToObject(status_response1, "agent", agents[0]);
-    cJSON_AddStringToObject(status_response1, "status", "Done");
-
-    cJSON *task_response1 = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(task_response1, "error", WM_UPGRADE_TASK_MANAGER_COMMUNICATION);
-    cJSON_AddStringToObject(task_response1, "message", upgrade_error_codes[WM_UPGRADE_TASK_MANAGER_COMMUNICATION]);
-    cJSON_AddNumberToObject(task_response1, "agent", agents[0]);
-
-    cJSON *task_response2 = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(task_response2, "error", WM_UPGRADE_GLOBAL_DB_FAILURE);
-    cJSON_AddStringToObject(task_response2, "message", upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
-    cJSON_AddNumberToObject(task_response2, "agent", agents[1]);
-
-    cJSON *request_json = cJSON_CreateObject();
-    cJSON *origin_json = cJSON_CreateObject();
-    cJSON *parameters_json= cJSON_CreateObject();
-    cJSON *agents_json = cJSON_CreateArray();
-
-    cJSON_AddStringToObject(origin_json, "module", "upgrade_module");
-    cJSON_AddItemToObject(request_json, "origin", origin_json);
-    cJSON_AddStringToObject(request_json, "command", "upgrade");
-    cJSON_AddItemToArray(agents_json, cJSON_CreateNumber(agents[0]));
-    cJSON_AddItemToObject(parameters_json, "agents", agents_json);
-    cJSON_AddItemToObject(request_json, "parameters", parameters_json);
-
-    cJSON *response_json = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(response_json, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(response_json, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
-
-    // Analize agent[0]
-
-    // wdb_agent_info
-
-    expect_value(__wrap_wdb_get_agent_info, id, agents[0]);
-    will_return(__wrap_wdb_get_agent_info, agent_info_array1);
-
-    // wm_agent_upgrade_validate_id
-
-    expect_value(__wrap_wm_agent_upgrade_validate_id, agent_id, agents[0]);
-    will_return(__wrap_wm_agent_upgrade_validate_id, WM_UPGRADE_SUCCESS);
-
-    // wm_agent_upgrade_validate_status
-
-    expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, 123456789);
-    will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_SUCCESS);
-
-    // wm_agent_upgrade_validate_version
-    expect_value(__wrap_wm_agent_upgrade_validate_version, command, WM_UPGRADE_UPGRADE);
-    expect_memory(__wrap_wm_agent_upgrade_validate_version, manager_configs, config, sizeof(config));
-    will_return(__wrap_wm_agent_upgrade_validate_version, "test.wpk");
-    will_return(__wrap_wm_agent_upgrade_validate_version, "d321af65983fa412e3a12c312ada12ab321a253a");
-    will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
-
-    // wm_agent_upgrade_parse_task_module_request
-
-    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_GET_STATUS);
-    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, status_request1);
-
-    // wm_agent_upgrade_task_module_callback
-
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, status_request1, sizeof(status_request1));
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, status_response1);
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
-
-    // wm_agent_upgrade_validate_task_status_message
-
-    expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, status_response1, sizeof(status_response1));
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, "Done");
-    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, 1);
-
-    // wm_agent_upgrade_create_task_entry
-    expect_value(__wrap_wm_agent_upgrade_create_task_entry, agent_id, agents[0]);
-    will_return(__wrap_wm_agent_upgrade_create_task_entry, OSHASH_SUCCESS);
-
-    // Analize agent[1]
-
-    // wdb_agent_info
-
-    expect_value(__wrap_wdb_get_agent_info, id, agents[1]);
-    will_return(__wrap_wdb_get_agent_info, NULL);
-
-    expect_value(__wrap_wm_agent_upgrade_parse_data_response, error_id, WM_UPGRADE_GLOBAL_DB_FAILURE);
-    expect_string(__wrap_wm_agent_upgrade_parse_data_response, message, upgrade_error_codes[WM_UPGRADE_GLOBAL_DB_FAILURE]);
-    expect_value(__wrap_wm_agent_upgrade_parse_data_response, agent_int, agents[1]);
-    will_return(__wrap_wm_agent_upgrade_parse_data_response, task_response2);
-
-    // wm_agent_upgrade_parse_task_module_request
-
-    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_UPGRADE);
-    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, request_json);
-
-    // wm_agent_upgrade_task_module_callback
-
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, request_json, sizeof(request_json));
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response1);
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, OS_INVALID);
-
-    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mtwarn, formatted_msg, "(8160): There are no valid agents to upgrade.");
-
-    // wm_agent_upgrade_parse_response
-
-    expect_value(__wrap_wm_agent_upgrade_parse_response, error_id, WM_UPGRADE_SUCCESS);
-    will_return(__wrap_wm_agent_upgrade_parse_response, response_json);
-
-    char *result = wm_agent_upgrade_process_upgrade_command(agents, upgrade_task, config);
-
-    state[1] = (void *)result;
-
-    assert_non_null(result);
-    assert_string_equal(result, "{\"error\":0,\"message\":\"Success\",\"data\":[{\"error\":6,\"message\":\"Agent information not found in database\",\"agent\":2},{\"error\":4,\"message\":\"Task manager communication error\",\"agent\":1}]}");
-
-    os_free(config);
 }
 
 int main(void) {
@@ -1921,30 +1651,33 @@ int main(void) {
         // wm_agent_upgrade_cancel_pending_upgrades
         cmocka_unit_test(test_wm_agent_upgrade_cancel_pending_upgrades),
         // wm_agent_upgrade_validate_agent_task
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_agent_task_upgrade_ok, setup_config_agent_task, teardown_config_agent_task),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_agent_task_upgrade_custom_ok, setup_config_agent_task, teardown_config_agent_task),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_agent_task_in_progress_err, setup_config_agent_task, teardown_config_agent_task),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_agent_task_task_manager_err, setup_config_agent_task, teardown_config_agent_task),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_agent_task_version_err, setup_config_agent_task, teardown_config_agent_task),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_agent_task_status_err, setup_config_agent_task, teardown_config_agent_task),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_agent_task_agent_id_err, setup_config_agent_task, teardown_config_agent_task),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_agent_task_upgrade_ok, setup_agent_task, teardown_agent_task),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_agent_task_upgrade_custom_ok, setup_agent_task, teardown_agent_task),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_agent_task_version_err, setup_agent_task, teardown_agent_task),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_agent_task_system_err, setup_agent_task, teardown_agent_task),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_agent_task_status_err, setup_agent_task, teardown_agent_task),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_agent_task_agent_id_err, setup_agent_task, teardown_agent_task),
         // wm_agent_upgrade_analyze_agent
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_analyze_agent_ok, setup_analyze_agent_task, teardown_analyze_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_analyze_agent_duplicated_err, setup_analyze_agent_task, teardown_analyze_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_analyze_agent_unknown_err, setup_analyze_agent_task, teardown_analyze_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_analyze_agent_validate_err, setup_analyze_agent_task, teardown_analyze_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_analyze_agent_global_db_err, setup_analyze_agent_task, teardown_analyze_agent_task),
+        // wm_agent_upgrade_create_upgrade_tasks
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_create_upgrade_tasks_ok, teardown_json),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_create_upgrade_tasks_upgrade_err, teardown_json),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_create_upgrade_tasks_upgrade_no_agents, teardown_json),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_create_upgrade_tasks_get_status_err, teardown_json),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_create_upgrade_tasks_get_status_no_agents, teardown_json),
         // wm_agent_upgrade_process_agent_result_command
         cmocka_unit_test_teardown(test_wm_agent_upgrade_process_agent_result_command_done, teardown_agent_status_task_string),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_process_agent_result_command_failed, teardown_agent_status_task_string),
         // wm_agent_upgrade_process_upgrade_custom_command
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_process_upgrade_custom_command, setup_process_hash_table, teardown_upgrade_custom_task_string),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_process_upgrade_custom_command_no_agents, setup_process_hash_table, teardown_upgrade_custom_task_string),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_process_upgrade_custom_command_task_manager_error, setup_process_hash_table, teardown_upgrade_custom_task_string),
         // wm_agent_upgrade_process_upgrade_command
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_process_upgrade_command, setup_process_hash_table, teardown_upgrade_task_string),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_process_upgrade_command_no_agents, setup_process_hash_table, teardown_upgrade_task_string),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_process_upgrade_command_task_manager_error, setup_process_hash_table, teardown_upgrade_task_string)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

@@ -265,7 +265,10 @@ STATIC int wm_agent_upgrade_send_wpk_to_agent(const wm_agent_task *agent_task, c
 
     // Validate WPK file
     if (WM_UPGRADE_UPGRADE == agent_task->task_info->command) {
-        result = wm_agent_upgrade_validate_wpk((wm_upgrade_task *)agent_task->task_info->task);
+        result = wm_agent_upgrade_validate_wpk_version(agent_task->agent_info, (wm_upgrade_task *)agent_task->task_info->task, manager_configs->wpk_repository);
+        if (result == WM_UPGRADE_SUCCESS) {
+            result = wm_agent_upgrade_validate_wpk((wm_upgrade_task *)agent_task->task_info->task);
+        }
     } else {
         result = wm_agent_upgrade_validate_wpk_custom((wm_upgrade_custom_task *)agent_task->task_info->task);
     }

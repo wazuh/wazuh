@@ -16,9 +16,9 @@
 /**
  * Parse received upgrade message and returns task and agent ids values and a code
  * representing a command if it is valid or an error code otherwise
- * 
+ *
  * Example:
- * 
+ *
  * {
  *	    "command": "upgrade",
  *	    "parameters": {
@@ -27,7 +27,7 @@
  *          "force_upgrade": 0
  *	    }
  * }
- * 
+ *
  * @param buffer message to be parsed
  * @param task on success command task will be stored in this variable
  * @param agent_ids on success agent ids list will be stored in this variable
@@ -42,23 +42,23 @@ int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_
 
 /**
  * Parse a data message
- * 
- * 
+ *
+ *
  * Example 1:
- * 
+ *
  * {
  *     "error":12,
  *     "message":"The repository is not reachable.",
  *     "agent":4
  * }
- * 
+ *
  * Example 2:
- * 
+ *
  * {
  *     "error":1,
  *     "message":"Could not parse message JSON."
  * }
- * 
+ *
  * @param error_id positive number if error, 0 if successs
  * @param message response message
  * @param agent_id [OPTIONAL] id of the agent
@@ -68,9 +68,9 @@ cJSON* wm_agent_upgrade_parse_data_response(int error_id, const char* message, c
 
 /**
  * Parse a response message
- * 
+ *
  * Example:
- * 
+ *
  * {
  *     "error":0,
  *     "data": [
@@ -88,7 +88,7 @@ cJSON* wm_agent_upgrade_parse_data_response(int error_id, const char* message, c
  *     ],
  *     "message": "Successful"
  * }
- * 
+ *
  * @param error_id positive number if error, 0 if successs
  * @param data [OPTIONAL] array of responses
  * @return response json
@@ -97,9 +97,9 @@ cJSON* wm_agent_upgrade_parse_response(int error_id, cJSON *data);
 
 /**
  * Parse a message to be sent to the task module
- * 
+ *
  * Example:
- * 
+ *
  * {
  *	    "command": "upgrade_update_status",
  *	    "origin": {
@@ -111,7 +111,7 @@ cJSON* wm_agent_upgrade_parse_response(int error_id, cJSON *data);
  *          "error_msg": "Send open file error."
  *	    }
  * }
- * 
+ *
  * @param command task command
  * @param agents_array JSON array of agents id
  * @param status optional status string

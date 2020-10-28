@@ -41,6 +41,8 @@ OSHashNode* __wrap_wm_agent_upgrade_get_first_node(unsigned int *index);
 
 OSHashNode* __wrap_wm_agent_upgrade_get_next_node(unsigned int *index, OSHashNode *current);
 
+cJSON* __wrap_wm_agent_upgrade_get_agent_ids();
+
 int __wrap_wm_agent_upgrade_compare_versions(const char *version1, const char *version2);
 
 bool __wrap_wm_agent_upgrade_validate_task_status_message(const cJSON *input_json, char **status, int *agent_id);
@@ -49,7 +51,11 @@ int __wrap_wm_agent_upgrade_validate_id(int agent_id);
 
 int __wrap_wm_agent_upgrade_validate_status(int last_keep_alive);
 
-int __wrap_wm_agent_upgrade_validate_version(const wm_agent_info *agent_info, void *task, wm_upgrade_command command, const wm_manager_configs* manager_configs);
+int __wrap_wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch);
+
+int __wrap_wm_agent_upgrade_validate_version(const char *wazuh_version, wm_upgrade_command command, void *task);
+
+int __wrap_wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, const char *wpk_repository_config);
 
 int __wrap_wm_agent_upgrade_validate_wpk(const wm_upgrade_task *task);
 
