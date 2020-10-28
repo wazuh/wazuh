@@ -246,7 +246,8 @@ async def get_agent_config(request, pretty=False, wait_for_complete=False, agent
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_single_agent_multiple_groups(request, agent_id, groups_list=None, pretty=False, wait_for_complete=False):
+async def delete_single_agent_multiple_groups(request, agent_id, groups_list=None, pretty=False,
+                                              wait_for_complete=False):
     """'Remove the agent from all groups or a list of them.
 
     The agent will automatically revert to the "default" group if it is removed from all its assigned groups.
@@ -428,8 +429,9 @@ async def put_upgrade_agents(request, agents_list='*', pretty=False, wait_for_co
     ApiResponse
         Upgrade message after trying to upgrade the agents.
     """
-    if 'all' in agents_list:
-        agents_list = None
+    if len(agents_list) > 100:
+        raise_if_exc(WazuhError(1757))
+
     f_kwargs = {'agent_list': agents_list,
                 'wpk_repo': wpk_repo,
                 'version': version,
@@ -472,8 +474,9 @@ async def put_upgrade_custom_agents(request, agents_list='*', pretty=False, wait
     ApiResponse
         Upgrade message after trying to upgrade the agents.
     """
-    if 'all' in agents_list:
-        agents_list = None
+    if len(agents_list) > 100:
+        raise_if_exc(WazuhError(1757))
+
     f_kwargs = {'agent_list': agents_list,
                 'file_path': file_path,
                 'installer': installer}

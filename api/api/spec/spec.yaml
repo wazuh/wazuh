@@ -3817,7 +3817,16 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/AgentID'
-    agents_list_delete_or_upgrade:
+    agents_list_upgrade:
+      in: query
+      name: agents_list
+      description: "List of agent IDs (separated by comma), select a list of agents with size less or equal than 100"
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/AgentID'
+    agents_list_delete:
       in: query
       name: agents_list
       description: "List of agent IDs (separated by comma), use the keyword `all` to select all agents"
@@ -5165,7 +5174,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list_delete_or_upgrade'
+        - $ref: '#/components/parameters/agents_list_delete'
         - $ref: '#/components/parameters/purge'
         - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/older_than'
@@ -5745,7 +5754,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list_delete_or_upgrade'
+        - $ref: '#/components/parameters/agents_list_upgrade'
         - $ref: '#/components/parameters/wpk_repo'
         - $ref: '#/components/parameters/upgrade_version'
         - $ref: '#/components/parameters/use_http'
@@ -5781,7 +5790,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list_delete_or_upgrade'
+        - $ref: '#/components/parameters/agents_list_upgrade'
         - $ref: '#/components/parameters/file_path'
         - $ref: '#/components/parameters/installer'
       responses:
@@ -5848,7 +5857,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list_delete_or_upgrade'
+        - $ref: '#/components/parameters/agents_list_delete'
         - $ref: '#/components/parameters/group_id_query'
       responses:
         '200':
@@ -11321,7 +11330,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list_delete_or_upgrade'
+        - $ref: '#/components/parameters/agents_list_delete'
       responses:
         '200':
           description: "Delete syscheck database"

@@ -8,7 +8,6 @@ import hashlib
 import ipaddress
 from base64 import b64encode
 from datetime import date, datetime, timedelta, timezone
-from glob import glob
 from json import dumps, loads
 from os import chown, chmod, path, makedirs, urandom, stat, remove
 from platform import platform
@@ -18,7 +17,6 @@ from time import time
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
-from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.ossec_queue import OssecQueue
 from wazuh.core.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
@@ -1202,7 +1200,7 @@ def agents_padding(result, agent_list):
     return agent_list
 
 
-def core_upgrade_agents(command, get_result=False):
+def core_upgrade_agents(agents_chunk, command='upgrade_result', parameters=None, get_result=False):
     """Send command to upgrade module / task module
 
     Parameters
@@ -1215,9 +1213,29 @@ def core_upgrade_agents(command, get_result=False):
     -------
     Message received from the socket (Task module or Upgrade module)
     """
+    if not get_result:
+        msg = {'version': 1,
+               'origin': {'module': 'api'},
+               'command': command,
+               'parameters': {
+                   'agents': agents_chunk,
+                   'version': parameters['version'],
+                   'force_upgrade': parameters['force'],
+                   'use_http': parameters['use_http'],
+                   'wpk_repo': parameters['wpk_repo'],
+                   'file_path': parameters['file_path'],
+                   'installer': parameters['installer']
+               }
+               }
+    else:
+        msg = {'version': 1, 'origin': {'module': 'api'}, 'command': command,
+               'module': 'api', 'parameters': {'agents': agents_chunk}}
+
+    msg['parameters'] = {k: v for k, v in msg['parameters'].items() if v is not None}
+
     # Send upgrading command
     s = OssecSocket(common.UPGRADE_SOCKET) if not get_result else OssecSocket(common.TASKS_SOCKET)
-    s.send(dumps(command).encode())
+    s.send(dumps(msg).encode())
     data = loads(s.receive().decode())
     s.close()
 
