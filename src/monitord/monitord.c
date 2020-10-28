@@ -8,18 +8,35 @@
  * Foundation
  */
 
+#include "cJSON.h"
+#include "debug_op.h"
+#include "hash_op.h"
 #include "os_err.h"
 #include "shared.h"
 #include "monitord.h"
 #include "config/config.h"
+#include "string_op.h"
+#include "wazuh_db/wdb.h"
 
 /* Global variables */
 monitor_config mond;
+OSHash* agents_to_alert_hash;
+
 
 void Monitord()
 {
+    int sock = -1;
+    mond_counters counters;
+    int *agents_array = NULL;
+    unsigned int inode_it = 0;
+    OSHashNode *agent_hash_node = NULL;
+    cJSON *j_agent_info = NULL;
+    cJSON *j_agent_status = NULL;
+    cJSON *j_agent_lastkeepalive = NULL;
+    cJSON *j_agent_name = NULL;
+    cJSON *j_agent_ip = NULL;
+
     time_t tm;
-    int counter = 0;
     struct tm tm_result = { .tm_sec = 0 };
 
     char path[PATH_MAX];
@@ -74,31 +91,131 @@ void Monitord()
     // Start com request thread
     w_create_thread(moncom_main, NULL);
 
+    /* Starting counters */
+    MonitorStartCounters(&counters);
+
+    agents_to_alert_hash = OSHash_Create();
+    if(!agents_to_alert_hash) {
+        merror(MEM_ERROR, errno, strerror(errno));
+    }
+
     /* Main monitor loop */
     while (1) {
         tm = time(NULL);
         localtime_r(&tm, &tm_result);
-        counter++;
 
-#ifndef LOCAL
-        /* Check for unavailable agents, every two minutes */
-        if (mond.monitor_agents && counter >= 120) {
-            if (mond.a_queue < 0) {
-                /* Connect to the message queue */
-                if ((mond.a_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) > 0) {
-                    /* Send startup message */
-                    snprintf(str, OS_SIZE_1024 - 1, OS_AD_STARTED);
-                    if (SendMSG(mond.a_queue, str, ARGV0,
-                                LOCALFILE_MQ) < 0) {
-                        mond.a_queue = -1;  // We keep trying to reconnect next time.
-                        merror(QUEUE_SEND);
-                    }
+        if (mond.a_queue < 0) {
+            /* Connect to the message queue */
+            if ((mond.a_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) > 0) {
+                /* Send startup message */
+                snprintf(str, OS_SIZE_1024 - 1, OS_AD_STARTED);
+                if (SendMSG(mond.a_queue, str, ARGV0,
+                            LOCALFILE_MQ) < 0) {
+                    mond.a_queue = -1;  // We keep trying to reconnect next time.
+                    merror(QUEUE_SEND);
                 }
             }
-            monitor_agents();
-            counter = 0;
         }
-#endif
+
+        /* In a local installation, there is no need to check agents */
+        #ifndef LOCAL
+
+        switch (MonitorCheckCounters(&counters)) {
+            case 1:
+                /* agents_disconnection_time counter */
+                agents_array = wdb_disconnect_agents(&sock, mond.global.agents_disconnection_time);
+                if (agents_array) {
+                    for (int i = 0; agents_array[i] != -1; i++) {
+                        if (OSHash_Numeric_Add_ex(agents_to_alert_hash, agents_array[i], (void*)1) == 0) {
+                            mdebug1("Can't add agent ID '%d' to the alerts hash table",agents_array[i]);
+                        }
+                    }
+                    os_free(agents_array);
+                }
+                break;
+            case 2:
+                /* agents_disconnection_alert_time counter */
+                agent_hash_node = OSHash_Begin(agents_to_alert_hash, &inode_it);
+                while (agent_hash_node) {
+                    j_agent_info = wdb_get_agent_info(atoi(agent_hash_node->key), &sock);
+                    if (j_agent_info) {
+                        j_agent_status = cJSON_GetObjectItem(j_agent_info, "connection_status");
+                        j_agent_lastkeepalive = cJSON_GetObjectItem(j_agent_info, "last_keepalive");
+                        j_agent_name = cJSON_GetObjectItem(j_agent_info, "name");
+                        j_agent_ip = cJSON_GetObjectItem(j_agent_info, "ip");
+
+                        if (cJSON_IsString(j_agent_status) && j_agent_status->valuestring != NULL &&
+                            cJSON_IsString(j_agent_name) && j_agent_name->valuestring != NULL &&
+                            cJSON_IsString(j_agent_ip) && j_agent_ip->valuestring != NULL &&
+                            cJSON_IsNumber(j_agent_lastkeepalive)) {
+
+                                if (strcmp(j_agent_status->valuestring, "active") == 0) {
+                                    /* The agent is now connected, removing from table */
+                                    OSHash_Delete_ex(agents_to_alert_hash, agent_hash_node->key);
+                                }
+
+                                else if (strcmp(j_agent_status->valuestring, "disconnected") == 0 &&
+                                        j_agent_lastkeepalive->valueint < (time(0) - mond.global.agents_disconnection_time + mond.global.agents_disconnection_alert_time)) {
+                                    /* Generating the disconnection alert */
+                                    char *agent_name_ip = NULL;
+                                    os_strdup(j_agent_name->valuestring, agent_name_ip);
+                                    wm_strcat(&agent_name_ip, j_agent_ip->valuestring, '-');
+                                    monitor_agent_disconnection(agent_name_ip);
+                                    OSHash_Delete_ex(agents_to_alert_hash, agent_hash_node->key);
+                                    os_free(agent_name_ip);
+                                }
+                            }
+                    } else {
+                        mdebug1("Unable to retrieve agent's '%s' data from Wazuh DB", agent_hash_node->key);
+                    }
+                    cJSON_Delete(j_agent_info);
+                    agent_hash_node = OSHash_Next(agents_to_alert_hash, &inode_it, agent_hash_node);
+                }
+                break;
+            case 3:
+                /* delete_old_agent counter */
+                agents_array = wdb_get_agents_by_connection_status("disconnected", &sock);
+                if (agents_array) {
+                    for (int i = 0; agents_array[i] != -1; i++) {
+                        j_agent_info = wdb_get_agent_info(agents_array[i], &sock);
+                        if (j_agent_info) {
+                            j_agent_name = cJSON_GetObjectItem(j_agent_info, "name");
+                            j_agent_lastkeepalive = cJSON_GetObjectItem(j_agent_info, "last_keepalive");
+                            j_agent_status = cJSON_GetObjectItem(j_agent_info, "connection_status");
+                            j_agent_ip = cJSON_GetObjectItem(j_agent_info, "ip");
+
+                            if (cJSON_IsString(j_agent_status) && j_agent_status->valuestring != NULL &&
+                                cJSON_IsString(j_agent_name) && j_agent_name->valuestring != NULL &&
+                                cJSON_IsString(j_agent_ip) && j_agent_ip->valuestring != NULL &&
+                                cJSON_IsNumber(j_agent_lastkeepalive)) {
+
+                                    if (strcmp(j_agent_status->valuestring, "disconnected") == 0 &&
+                                        j_agent_lastkeepalive->valueint < (time(0) - mond.delete_old_agents * 60)) {
+                                            char *agent_name_ip = NULL;
+                                            os_strdup(j_agent_name->valuestring, agent_name_ip);
+                                            wm_strcat(&agent_name_ip, j_agent_ip->valuestring, '-');
+                                            if(!delete_old_agent(agent_name_ip)){
+                                                snprintf(str, OS_SIZE_1024 - 1, OS_AG_REMOVED, agent_name_ip);
+
+                                                if (SendMSG(mond.a_queue, str, ARGV0, LOCALFILE_MQ) < 0) {
+                                                    mond.a_queue = -1;  // set an invalid fd so we can attempt to reconnect later on.
+                                                    merror(QUEUE_SEND);
+                                                }
+                                            }
+                                            os_free(agent_name_ip);
+                                    }
+                            cJSON_Delete(j_agent_info);
+                            }
+                        } else {
+                            mdebug1("Unable to retrieve agent's '%s' data from Wazuh DB", agent_hash_node->key);
+                        }
+                    }
+                os_free(agents_array);
+                }
+                break;
+            default:;
+        }
+        #endif
 
         /* Day changed, deal with log files */
         if (today != tm_result.tm_mday) {
@@ -234,4 +351,36 @@ int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short d
     }
 
     return OS_SUCCESS;
+}
+
+void MonitorStartCounters(mond_counters *counters) {
+    if (counters) {
+        counters->agents_disconnection = 0;
+        counters->agents_disconnection_alert = 0;
+        counters->delete_old_agents = 0;
+    }
+}
+
+int MonitorCheckCounters(mond_counters *counters) {
+    if (counters) {
+        counters->agents_disconnection++;
+        counters->agents_disconnection_alert++;
+        if (mond.delete_old_agents != 0){
+            counters->delete_old_agents++;
+        }
+
+        if (counters->agents_disconnection >= mond.global.agents_disconnection_time) {
+            counters->agents_disconnection = 0;
+            return 1;
+        } else if (counters->agents_disconnection_alert >= mond.global.agents_disconnection_alert_time) {
+            counters->agents_disconnection_alert = 0;
+            return 2;
+        // delete_old_agents is in minutes
+        } else if (mond.delete_old_agents != 0 && counters->delete_old_agents >= mond.delete_old_agents * 60) {
+            counters->delete_old_agents = 0;
+            return 3;
+        }
+    }
+
+    return 0;
 }
