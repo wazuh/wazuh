@@ -699,7 +699,7 @@ int wdb_parse(char * input, char * output) {
         }
         else if (strcmp(query, "get-agents-by-connection-status") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for get-agent-info.");
+                mdebug1("Global DB Invalid DB query syntax for get-agents-by-connection-status.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;

@@ -5604,6 +5604,85 @@ void test_wdb_global_reset_agents_connection_success(void **state)
     assert_int_equal(result, OS_SUCCESS);
 }
 
+/* Tests wdb_global_get_agents_by_connection_status */
+
+void test_wdb_global_get_agents_by_connection_status_transaction_fail(void **state)
+{
+    cJSON *output = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
+
+    output = wdb_global_get_agents_by_connection_status(data->wdb, "active");
+    assert_null(output);
+}
+
+void test_wdb_global_get_agents_by_connection_status_cache_fail(void **state)
+{
+    cJSON *output = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
+
+    output = wdb_global_get_agents_by_connection_status(data->wdb, "active");
+    assert_null(output);
+}
+
+void test_wdb_global_get_agents_by_connection_status_bind_fail(void **state)
+{
+    cJSON *output = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "active");
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
+
+    output = wdb_global_get_agents_by_connection_status(data->wdb, "active");
+    assert_null(output);
+}
+
+void test_wdb_global_get_agents_by_connection_status_exec_fail(void **state)
+{
+    cJSON *output = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "active");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    will_return(__wrap_wdb_exec_stmt, NULL);
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
+
+    output = wdb_global_get_agents_by_connection_status(data->wdb, "active");
+    assert_null(output);
+}
+
+void test_wdb_global_get_agents_by_connection_status_success(void **state)
+{
+    cJSON *output = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_any_always(__wrap_sqlite3_bind_text, pos);
+    expect_any_always(__wrap_sqlite3_bind_text, buffer);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    will_return(__wrap_wdb_exec_stmt, (cJSON*)1);
+
+    output = wdb_global_get_agents_by_connection_status(data->wdb, "active");
+    assert_ptr_equal(output, (cJSON*)1);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = {
@@ -5859,7 +5938,13 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_reset_agents_connection_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_reset_agents_connection_cache_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_reset_agents_step_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_reset_agents_connection_success, test_setup, test_teardown)
+        cmocka_unit_test_setup_teardown(test_wdb_global_reset_agents_connection_success, test_setup, test_teardown),
+        /* Tests wdb_global_get_agents_by_connection_status */
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_transaction_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_cache_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_bind_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_exec_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_success, test_setup, test_teardown)
         };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

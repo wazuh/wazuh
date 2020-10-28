@@ -290,6 +290,12 @@ int __wrap_wdb_global_reset_agents_connection( __attribute__((unused)) wdb_t *wd
     return mock();
 }
 
+cJSON* __wrap_wdb_global_get_agents_by_connection_status(__attribute__((unused)) wdb_t* wdb,
+                                                         const char* status) {
+    check_expected(status);
+    return mock_ptr_type(cJSON*);
+}
+
 int __wrap_wdb_global_check_manager_keepalive(wdb_t *wdb) {
     (void)wdb;
     return mock();

@@ -5158,7 +5158,7 @@ void test_wdb_reset_agents_connection_error_sql_execution(void **state)
 
 void test_wdb_reset_agents_connection_error_result(void **state)
 {
-    int ret = 0;    
+    int ret = 0;
     const char *query_str = "global reset-agents-connection";
     const char *response = "err";
 
@@ -5199,6 +5199,113 @@ void test_wdb_reset_agents_connection_success(void **state)
     ret = wdb_reset_agents_connection(NULL);
 
     assert_int_equal(OS_SUCCESS, ret);
+}
+
+void test_wdb_get_agents_by_connection_status_fail_response(void **state)
+{
+    const char *query_str = "global get-agents-by-connection-status active";
+    const char *response = "err";
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_parse, sock);
+    expect_string(__wrap_wdbc_query_parse, query, query_str);
+    expect_value(__wrap_wdbc_query_parse, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_parse, response);
+    will_return(__wrap_wdbc_query_parse, WDBC_ERROR);
+
+    int *array = wdb_get_agents_by_connection_status("active", NULL);
+
+    assert_null(array);
+}
+
+void test_wdb_get_agents_by_connection_status_empty_response(void **state)
+{
+    const char *query_str = "global get-agents-by-connection-status active";
+    const char *response = "ok";
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_parse, sock);
+    expect_string(__wrap_wdbc_query_parse, query, query_str);
+    expect_value(__wrap_wdbc_query_parse, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_parse, response);
+    will_return(__wrap_wdbc_query_parse, WDBC_OK);
+
+    // Parsing response
+    expect_function_call(__wrap_cJSON_Delete);
+
+    int *array = wdb_get_agents_by_connection_status("active", NULL);
+
+    assert_non_null(array);
+    assert_int_equal(-1, array[0]);
+}
+
+void test_wdb_get_agents_by_connection_status_due_query_success(void **state)
+{
+    const char *query_str1 = "global get-agents-by-connection-status active";
+    const char *query_str2 = "continue";
+    const char *response1 = "due [{\"id\":1},{\"id\":2},";
+    const char *response2 = "ok {\"id\":3},{\"id\":4}]";
+    cJSON* jsonresponse = cJSON_Parse("[{\"id\":1},{\"id\":2},{\"id\":3},{\"id\":4}]");
+
+    // Calling Wazuh DB first time
+    expect_any(__wrap_wdbc_query_parse, sock);
+    expect_string(__wrap_wdbc_query_parse, query, query_str1);
+    expect_value(__wrap_wdbc_query_parse, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_parse, response1);
+    will_return(__wrap_wdbc_query_parse, WDBC_DUE);
+
+    // Calling Wazuh DB second time
+    expect_any(__wrap_wdbc_query_parse, sock);
+    expect_string(__wrap_wdbc_query_parse, query, query_str2);
+    expect_value(__wrap_wdbc_query_parse, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_parse, response2);
+    will_return(__wrap_wdbc_query_parse, WDBC_OK);
+
+    // Parsing response
+    cJSON *item = jsonresponse->child;
+    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(item, "id"));
+    item = item->next;
+    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(item, "id"));
+    item = item->next;
+    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(item, "id"));
+    item = item->next;
+    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(item, "id"));
+    expect_function_call(__wrap_cJSON_Delete);
+
+    int *array = wdb_get_agents_by_connection_status("active", NULL);
+
+    assert_non_null(array);
+    assert_int_equal(1, array[0]);
+    assert_int_equal(2, array[1]);
+    assert_int_equal(3, array[2]);
+    assert_int_equal(4, array[3]);
+    assert_int_equal(-1, array[4]);
+}
+
+void test_wdb_get_agents_by_connection_status_success(void **state)
+{
+    const char *query_str = "global get-agents-by-connection-status active";
+    const char *response = "ok [{\"id\":1},{\"id\":2}]";
+    cJSON* jsonresponse = cJSON_Parse("[{\"id\":1},{\"id\":2}]");
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_parse, sock);
+    expect_string(__wrap_wdbc_query_parse, query, query_str);
+    expect_value(__wrap_wdbc_query_parse, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_parse, response);
+    will_return(__wrap_wdbc_query_parse, WDBC_OK);
+
+    // Parsing response
+    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(jsonresponse->child, "id"));
+    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(jsonresponse->child->next, "id"));
+    expect_function_call(__wrap_cJSON_Delete);
+
+    int *array = wdb_get_agents_by_connection_status("active", NULL);
+
+    assert_non_null(array);
+    assert_int_equal(1, array[0]);
+    assert_int_equal(2, array[1]);
+    assert_int_equal(-1, array[2]);
 }
 
 int main()
@@ -5378,7 +5485,13 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_reset_agents_connection_error_socket, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_reset_agents_connection_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_reset_agents_connection_error_result, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_reset_agents_connection_success, setup_wdb_agent, teardown_wdb_agent)
+        cmocka_unit_test_setup_teardown(test_wdb_reset_agents_connection_success, setup_wdb_agent, teardown_wdb_agent),
+        /* Tests wdb_get_agents_by_connection_status */
+        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_fail_response, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_empty_response, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_due_query_success, setup_wdb_agent, teardown_wdb_agent),
+
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -96,6 +96,8 @@ cJSON* __wrap_wdb_global_get_agent_info(wdb_t *wdb, int id);
 
 int __wrap_wdb_global_reset_agents_connection(wdb_t *wdb);
 
+cJSON* __wrap_wdb_global_get_agents_by_connection_status(wdb_t* wdb, const char* status);
+
 int __wrap_wdb_global_check_manager_keepalive(wdb_t *wdb);
 
 #endif
