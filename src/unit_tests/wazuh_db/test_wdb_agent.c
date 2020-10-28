@@ -2472,7 +2472,7 @@ void test_wdb_get_agent_keepalive_error_empty_json_response(void **state) {
     time_t keepalive = 0;
     char name[]="agent1";
     char ip[]="0.0.0.1";
-    cJSON* response = cJSON_Parse("[{}]");
+    cJSON* response = __real_cJSON_Parse("[{}]");
 
     // Calling Wazuh DB
     will_return(__wrap_wdbc_query_parse_json, 0);
@@ -2493,7 +2493,7 @@ void test_wdb_get_agent_keepalive_success(void **state) {
     time_t keepalive = 0;
     char name[]="agent1";
     char ip[]="0.0.0.1";
-    cJSON* response = cJSON_Parse("[{\"last_keepalive\":100}]");
+    cJSON* response = __real_cJSON_Parse("[{\"last_keepalive\":100}]");
 
     // Calling Wazuh DB
     will_return(__wrap_wdbc_query_parse_json, 0);
@@ -5236,6 +5236,7 @@ void test_wdb_get_agents_by_connection_status_fail_response(void **state)
     int *array = wdb_get_agents_by_connection_status("active", NULL);
 
     assert_null(array);
+    os_free(array);
 }
 
 void test_wdb_get_agents_by_connection_status_empty_response(void **state)
@@ -5251,12 +5252,14 @@ void test_wdb_get_agents_by_connection_status_empty_response(void **state)
     will_return(__wrap_wdbc_query_parse, WDBC_OK);
 
     // Parsing response
+    will_return(__wrap_cJSON_Parse, NULL);
     expect_function_call(__wrap_cJSON_Delete);
 
     int *array = wdb_get_agents_by_connection_status("active", NULL);
 
     assert_non_null(array);
     assert_int_equal(-1, array[0]);
+    os_free(array);
 }
 
 void test_wdb_get_agents_by_connection_status_due_query_success(void **state)
@@ -5265,7 +5268,7 @@ void test_wdb_get_agents_by_connection_status_due_query_success(void **state)
     const char *query_str2 = "continue";
     const char *response1 = "due [{\"id\":1},{\"id\":2},";
     const char *response2 = "ok {\"id\":3},{\"id\":4}]";
-    cJSON* jsonresponse = cJSON_Parse("[{\"id\":1},{\"id\":2},{\"id\":3},{\"id\":4}]");
+    cJSON* jsonresponse = __real_cJSON_Parse("[{\"id\":1},{\"id\":2},{\"id\":3},{\"id\":4}]");
 
     // Calling Wazuh DB first time
     expect_any(__wrap_wdbc_query_parse, sock);
@@ -5282,6 +5285,7 @@ void test_wdb_get_agents_by_connection_status_due_query_success(void **state)
     will_return(__wrap_wdbc_query_parse, WDBC_OK);
 
     // Parsing response
+    will_return(__wrap_cJSON_Parse, jsonresponse);
     cJSON *item = jsonresponse->child;
     will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(item, "id"));
     item = item->next;
@@ -5300,13 +5304,15 @@ void test_wdb_get_agents_by_connection_status_due_query_success(void **state)
     assert_int_equal(3, array[2]);
     assert_int_equal(4, array[3]);
     assert_int_equal(-1, array[4]);
+    os_free(array);
+    __real_cJSON_Delete(jsonresponse);
 }
 
 void test_wdb_get_agents_by_connection_status_success(void **state)
 {
     const char *query_str = "global get-agents-by-connection-status active";
     const char *response = "ok [{\"id\":1},{\"id\":2}]";
-    cJSON* jsonresponse = cJSON_Parse("[{\"id\":1},{\"id\":2}]");
+    cJSON* jsonresponse = __real_cJSON_Parse("[{\"id\":1},{\"id\":2}]");
 
     // Calling Wazuh DB
     expect_any(__wrap_wdbc_query_parse, sock);
@@ -5316,6 +5322,7 @@ void test_wdb_get_agents_by_connection_status_success(void **state)
     will_return(__wrap_wdbc_query_parse, WDBC_OK);
 
     // Parsing response
+    will_return(__wrap_cJSON_Parse, jsonresponse);
     will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(jsonresponse->child, "id"));
     will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(jsonresponse->child->next, "id"));
     expect_function_call(__wrap_cJSON_Delete);
@@ -5326,6 +5333,8 @@ void test_wdb_get_agents_by_connection_status_success(void **state)
     assert_int_equal(1, array[0]);
     assert_int_equal(2, array[1]);
     assert_int_equal(-1, array[2]);
+    os_free(array);
+    __real_cJSON_Delete(jsonresponse);
 }
 
 /* Tests wdb_disconnect_agents */
@@ -5345,6 +5354,7 @@ void test_wdb_disconnect_agents_fail_response(void **state)
     int *array = wdb_disconnect_agents(100, NULL);
 
     assert_null(array);
+    os_free(array);
 }
 
 void test_wdb_disconnect_agents_empty_response(void **state)
@@ -5360,12 +5370,14 @@ void test_wdb_disconnect_agents_empty_response(void **state)
     will_return(__wrap_wdbc_query_parse, WDBC_OK);
 
     // Parsing response
+    will_return(__wrap_cJSON_Parse, NULL);
     expect_function_call(__wrap_cJSON_Delete);
 
     int *array = wdb_disconnect_agents(100, NULL);
 
     assert_non_null(array);
     assert_int_equal(-1, array[0]);
+    os_free(array);
 }
 
 void test_wdb_disconnect_agents_due_query_success(void **state)
@@ -5374,7 +5386,7 @@ void test_wdb_disconnect_agents_due_query_success(void **state)
     const char *query_str2 = "continue";
     const char *response1 = "due [{\"id\":1},{\"id\":2},";
     const char *response2 = "ok {\"id\":3},{\"id\":4}]";
-    cJSON* jsonresponse = cJSON_Parse("[{\"id\":1},{\"id\":2},{\"id\":3},{\"id\":4}]");
+    cJSON* jsonresponse = __real_cJSON_Parse("[{\"id\":1},{\"id\":2},{\"id\":3},{\"id\":4}]");
 
     // Calling Wazuh DB first time
     expect_any(__wrap_wdbc_query_parse, sock);
@@ -5391,6 +5403,7 @@ void test_wdb_disconnect_agents_due_query_success(void **state)
     will_return(__wrap_wdbc_query_parse, WDBC_OK);
 
     // Parsing response
+    will_return(__wrap_cJSON_Parse, jsonresponse);
     cJSON *item = jsonresponse->child;
     will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(item, "id"));
     item = item->next;
@@ -5409,13 +5422,15 @@ void test_wdb_disconnect_agents_due_query_success(void **state)
     assert_int_equal(3, array[2]);
     assert_int_equal(4, array[3]);
     assert_int_equal(-1, array[4]);
+    os_free(array);
+    __real_cJSON_Delete(jsonresponse);
 }
 
 void test_wdb_disconnect_agents_success(void **state)
 {
     const char *query_str = "global disconnect-agents 100";
     const char *response = "ok [{\"id\":1},{\"id\":2}]";
-    cJSON* jsonresponse = cJSON_Parse("[{\"id\":1},{\"id\":2}]");
+    cJSON* jsonresponse = __real_cJSON_Parse("[{\"id\":1},{\"id\":2}]");
 
     // Calling Wazuh DB
     expect_any(__wrap_wdbc_query_parse, sock);
@@ -5425,6 +5440,7 @@ void test_wdb_disconnect_agents_success(void **state)
     will_return(__wrap_wdbc_query_parse, WDBC_OK);
 
     // Parsing response
+    will_return(__wrap_cJSON_Parse, jsonresponse);
     will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(jsonresponse->child, "id"));
     will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(jsonresponse->child->next, "id"));
     expect_function_call(__wrap_cJSON_Delete);
@@ -5435,6 +5451,8 @@ void test_wdb_disconnect_agents_success(void **state)
     assert_int_equal(1, array[0]);
     assert_int_equal(2, array[1]);
     assert_int_equal(-1, array[2]);
+    os_free(array);
+    __real_cJSON_Delete(jsonresponse);
 }
 
 int main()
