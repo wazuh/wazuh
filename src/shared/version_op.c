@@ -636,29 +636,121 @@ os_info *get_unix_version()
             // MacOSX
             } else if(strcmp(strtok_r(buff, "\n", &save_ptr),"Darwin") == 0){
                 info->os_platform = strdup("darwin");
-                if (cmd_output_ver = popen("sw_vers -productName", "r"), cmd_output_ver) {
-                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
-                        mdebug1("Cannot read from command output (sw_vers -productName).");
-                    } else {
-                        info->os_name = strdup(strtok_r(buff, "\n", &save_ptr));
+
+                //plist
+                if (os_release = fopen(MAC_SYSVERSION,"r"), os_release){
+                    bool build=false, name=false, version=false;
+                    while (fgets(buff, sizeof(buff) - 1, os_release)) {
+                        if(build){
+                            strtok_r(buff, ">", &save_ptr);
+                            id=strtok_r(NULL, "<", &save_ptr);
+                            w_strdup(id, info->os_build);
+                            if(info->os_build == NULL){
+                                mdebug1("Cannot read OS build from file %s.", MAC_SYSVERSION);
+                            }
+                            build=false;
+                        }
+                        if(name){
+                            strtok_r(buff, ">", &save_ptr);
+                            id=strtok_r(NULL, "<", &save_ptr);
+                            w_strdup(id, info->os_name);
+                            if(info->os_name == NULL){
+                                mdebug1("Cannot read OS name from file %s.", MAC_SYSVERSION);
+                            }
+                            name=false;
+                        }
+                        if(version){
+                            strtok_r(buff, ">", &save_ptr);
+                            id=strtok_r(NULL, "<", &save_ptr);
+                            w_strdup(id, info->os_version);
+                            if(info->os_version == NULL){
+                                mdebug1("Cannot read OS version from file %s.", MAC_SYSVERSION);
+                            }
+                            version=false;
+                        }
+                        if (strstr(buff,"ProductBuildVersion")){
+                            build=true;
+                        }
+                        if (strstr(buff,"ProductName")){
+                            name=true;
+                        }
+                        if (strstr(buff,"ProductVersion")){
+                            version=true;
+                        }
                     }
-                    pclose(cmd_output_ver);
+
+                    fclose(os_release);
                 }
-                if (cmd_output_ver = popen("sw_vers -productVersion", "r"), cmd_output_ver) {
-                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
-                        mdebug1("Cannot read from command output (sw_vers -productVersion).");
-                    } else {
-                        info->os_version = strdup(strtok_r(buff, "\n", &save_ptr));
+                //plist server
+                else if(os_release = fopen(MAC_SERVERVERSION,"r"), os_release) {
+                    bool build=false, name=false, version=false;
+                    while (fgets(buff, sizeof(buff) - 1, os_release)) {
+                        if(build){
+                            strtok_r(buff, ">", &save_ptr);
+                            id=strtok_r(NULL, "<", &save_ptr);
+                            w_strdup(id, info->os_build); 
+                            if(info->os_build == NULL){
+                                mdebug1("Cannot read OS build from file %s.", MAC_SERVERVERSION);
+                            }
+                            build=false;
+                        }
+                        if(name){
+                            strtok_r(buff, ">", &save_ptr);
+                            id=strtok_r(NULL, "<", &save_ptr);
+                            w_strdup(id, info->os_name);
+                            if(info->os_name == NULL){
+                                mdebug1("Cannot read OS name from file %s.", MAC_SERVERVERSION);
+                            }
+                            name=false;
+                        }
+                        if(version){
+                            strtok_r(buff, ">", &save_ptr);
+                            id=strtok_r(NULL, "<", &save_ptr);
+                            w_strdup(id, info->os_version);
+                            if(info->os_version == NULL){
+                                mdebug1("Cannot read OS version from file %s.", MAC_SERVERVERSION);
+                            }
+                            version=false;
+                        }
+                        if (strstr(buff,"ProductBuildVersion")){
+                            build=true;
+                        }
+                        if (strstr(buff,"ProductName")){
+                            name=true;
+                        }
+                        if (strstr(buff,"ProductVersion")){
+                            version=true;
+                        }
                     }
-                    pclose(cmd_output_ver);
+
+                    fclose(os_release);
                 }
-                if (cmd_output_ver = popen("sw_vers -buildVersion", "r"), cmd_output_ver) {
-                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
-                        mdebug1("Cannot read from command output (sw_vers -buildVersion).");
-                    } else {
-                        info->os_build = strdup(strtok_r(buff, "\n", &save_ptr));
+                //cmd
+                else{ 
+                    if (cmd_output_ver = popen("sw_vers -productName", "r"), cmd_output_ver) {
+                        if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                            mdebug1("Cannot read from command output (sw_vers -productName).");
+                        } else {
+                            w_strdup(strtok_r(buff, "\n", &save_ptr), info->os_name);
+                        }
+                        pclose(cmd_output_ver);
                     }
-                    pclose(cmd_output_ver);
+                    if (cmd_output_ver = popen("sw_vers -productVersion", "r"), cmd_output_ver) {
+                        if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                            mdebug1("Cannot read from command output (sw_vers -productVersion).");
+                        } else {
+                            w_strdup(strtok_r(buff, "\n", &save_ptr), info->os_version);
+                        }
+                        pclose(cmd_output_ver);
+                    }
+                    if (cmd_output_ver = popen("sw_vers -buildVersion", "r"), cmd_output_ver) {
+                        if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                            mdebug1("Cannot read from command output (sw_vers -buildVersion).");
+                        } else {
+                            w_strdup(strtok_r(buff, "\n", &save_ptr), info->os_build);
+                        }
+                        pclose(cmd_output_ver);
+                    }
                 }
                 if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
                     if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
@@ -668,7 +760,7 @@ os_info *get_unix_version()
                         char *kern = NULL;
                         kern = malloc(match_size +1);
                         snprintf(kern, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
-                        info->os_codename = strdup(OSX_ReleaseName(atoi(kern)));
+                        w_strdup(OSX_ReleaseName(atoi(kern)), info->os_codename);
                         free(kern);
                     }
                     pclose(cmd_output_ver);
@@ -772,6 +864,12 @@ os_info *get_unix_version()
             info->os_minor = malloc(match_size +1);
             snprintf(info->os_minor, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
         }
+        // Get os_patch
+        if (w_regexec("^[0-9]+\\.[0-9]+\\.([0-9]+)*", info->os_version, 2, match)) {
+            match_size = match[1].rm_eo - match[1].rm_so;
+            os_malloc(match_size, info->os_patch);
+            snprintf(info->os_patch, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
+        }
         // Get OSX codename
         if (info->os_platform && strcmp(info->os_platform,"darwin") == 0) {
             if (info->os_codename) {
@@ -804,6 +902,7 @@ void free_osinfo(os_info * osinfo) {
         free(osinfo->os_name);
         free(osinfo->os_major);
         free(osinfo->os_minor);
+        free(osinfo->os_patch);
         free(osinfo->os_build);
         free(osinfo->os_version);
         free(osinfo->os_codename);

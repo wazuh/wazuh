@@ -65,11 +65,12 @@ def test_get_all_token_rules(db_setup):
     """Check that rules are correctly created"""
     users, roles = test_add_token(db_setup)
     with db_setup.TokenManager() as tm:
-        user_rules, role_rules = tm.get_all_rules()
+        user_rules, role_rules, run_as_rules = tm.get_all_rules()
         for user in user_rules.keys():
             assert user in users
         for role in role_rules.keys():
             assert role in roles
+        assert isinstance(run_as_rules, dict)
 
 
 def test_nbf_invalid(db_setup):
@@ -169,9 +170,9 @@ def test_get_user(db_setup):
         users = am.get_users()
         assert users
         for user in users:
-            assert isinstance(user['user_id'], str)
+            assert isinstance(user['user_id'], int)
 
-        assert users[0]['user_id'] == '1'
+        assert users[0]['user_id'] == 1
 
 
 def test_get_roles(db_setup):
@@ -215,7 +216,7 @@ def test_delete_users(db_setup):
     with db_setup.AuthenticationManager() as am:
         am.add_user(username='toDelete', password='testingA3!')
         len_users = len(am.get_users())
-        am.delete_user(user_id='106')
+        am.delete_user(user_id=106)
         assert len_users == len(am.get_users()) + 1
 
 
@@ -401,10 +402,18 @@ def test_add_policy_role(db_setup):
 
 def test_add_user_roles(db_setup):
     """Check user-roles relation is added to database"""
+    with db_setup.RolesManager() as rm:
+        pass
     with db_setup.UserRolesManager() as urm:
         with db_setup.AuthenticationManager() as am:
             for user in am.get_users():
-                assert am.delete_user(user_id=user['user_id'])
+                result = am.delete_user(user_id=user['user_id'])
+                if result is True:
+                    assert not am.get_user_id(user_id=user['user_id'])
+                    assert len(urm.get_all_roles_from_user(user_id=user['user_id'])) == 0
+                else:
+                    assert am.get_user_id(user_id=user['user_id'])
+                    assert len(urm.get_all_roles_from_user(user_id=user['user_id'])) > 0
         with db_setup.RolesManager() as rm:
             assert rm.delete_all_roles()
 
@@ -741,13 +750,15 @@ def test_remove_all_rules_from_role(db_setup):
             assert not rrum.exist_role_rule(role_id=role, rule_id=rule_ids[index])
 
 
-def test_remove_all_roles_from_rlue(db_setup):
+def test_remove_all_roles_from_rule(db_setup):
     """Remove all roles in one rule in the database"""
     with db_setup.RolesRulesManager() as rrum:
         role_ids, rule_ids = test_add_role_rule(db_setup)
+        no_admin_rules = list()
         for rule in rule_ids:
-            rrum.remove_all_roles_in_rule(rule_id=rule)
-        for index, rule in enumerate(rule_ids):
+            if rrum.remove_all_roles_in_rule(rule_id=rule) is True:
+                no_admin_rules.append(rule)
+        for index, rule in enumerate(no_admin_rules):
             assert not rrum.exist_role_rule(role_id=role_ids[index], rule_id=rule)
 
 
@@ -804,8 +815,9 @@ def test_update_role_from_user(db_setup):
     """Replace specified role in user in the database"""
     with db_setup.UserRolesManager() as urm:
         user_ids, roles_ids = test_add_user_roles(db_setup)
-        for role in roles_ids:
-            urm.replace_user_role(user_id=user_ids[0], actual_role_id=role, new_role_id=roles_ids[-1])
+        urm.remove_role_in_user(user_id=user_ids[0], role_id=roles_ids[-1])
+        assert urm.replace_user_role(user_id=user_ids[0], actual_role_id=roles_ids[0],
+                                     new_role_id=roles_ids[-1]) is True
 
         assert not urm.exist_user_role(user_id=user_ids[0], role_id=roles_ids[0])
         assert urm.exist_user_role(user_id=user_ids[0], role_id=roles_ids[-1])
@@ -815,8 +827,9 @@ def test_update_policy_from_role(db_setup):
     """Replace specified policy in role in the database"""
     with db_setup.RolesPoliciesManager() as rpm:
         policies_ids, roles_ids = test_add_role_policy(db_setup)
-        for policy in policies_ids:
-            rpm.replace_role_policy(role_id=roles_ids[0], actual_policy_id=policy, new_policy_id=policies_ids[-1])
+        rpm.remove_policy_in_role(role_id=roles_ids[0], policy_id=policies_ids[-1])
+        assert rpm.replace_role_policy(role_id=roles_ids[0], current_policy_id=policies_ids[0],
+                                       new_policy_id=policies_ids[-1]) is True
 
         assert not rpm.exist_role_policy(role_id=roles_ids[0], policy_id=policies_ids[0])
         assert rpm.exist_role_policy(role_id=roles_ids[0], policy_id=policies_ids[-1])

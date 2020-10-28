@@ -27,6 +27,7 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
         schema_upgrade_v3_sql,
         schema_upgrade_v4_sql,
         schema_upgrade_v5_sql,
+        schema_upgrade_v6_sql,
     };
 
     char db_version[OS_SIZE_256 + 2];
@@ -74,7 +75,11 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
         wdb = wdb_backup_global(wdb, -1);
         return wdb;
     case 0:
-        // The table doesn't exist, this is the global.db version 0
+        // The table doesn't exist. Checking if version is 3.10 to upgrade or recreate
+        if (wdb_global_check_manager_keepalive(wdb) != 1) {
+            wdb = wdb_backup_global(wdb, -1);
+            return wdb;
+        }
         break;
     default:
         if( wdb_metadata_get_entry(wdb, "db_version", db_version) == 1) {

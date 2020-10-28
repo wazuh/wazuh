@@ -703,6 +703,7 @@ int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         cJSON * release = cJSON_GetObjectItem(inventory, "release");
         cJSON * version = cJSON_GetObjectItem(inventory, "version");
         cJSON * os_release = cJSON_GetObjectItem(inventory, "os_release");
+        cJSON * os_patch = cJSON_GetObjectItem(inventory, "os_patch");
 
         os_calloc(OS_SIZE_6144, sizeof(char), msg);
 
@@ -809,6 +810,13 @@ int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         if (os_release) {
             wm_strcat(&msg, os_release->valuestring, '|');
             fillData(lf,"os.os_release",os_release->valuestring);
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (os_patch) {
+            wm_strcat(&msg, os_patch->valuestring, '|');
+            fillData(lf,"os.patch",os_patch->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }

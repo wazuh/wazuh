@@ -753,7 +753,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/files"
       method: PUT
-      error: !anyint
       data: "{ossec_conf}"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -769,7 +768,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/files"
       method: PUT
-      error: !anyint
       data: "{ossec_conf}"
       headers:
         Authorization: "Bearer {test_login_token}"

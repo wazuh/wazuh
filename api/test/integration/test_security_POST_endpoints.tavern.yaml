@@ -136,7 +136,7 @@ stages:
         name: "test_i"
         rule:
           FIND$:
-            definition: "normal_rule"
+            definition: "normal_rulE"
     response:
       status_code: 200
       json:
@@ -147,7 +147,7 @@ stages:
               name: test_i
               rule:
                 FIND$:
-                  definition: "normal_rule"
+                  definition: "normal_rulE"
           total_affected_items: 1
 
   # POST /security/rules
@@ -425,6 +425,45 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       json:
+        name: "test_i2"
+        policy:
+          actions:
+            - "groud:read"
+          resources:
+            - "group:id:groupA"
+          effect: "allow"
+    response:
+      status_code: 200
+
+
+  # POST /security/policies
+  - name: Add an invalid policy to the system
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test_i3"
+        policy:
+          actions:
+            - "groud:read"
+          resources:
+            - "group:id:groupA&file:example:/testing/TESTING"
+          effect: "allow"
+    response:
+      status_code: 200
+
+  # POST /security/policies
+  - name: Add an invalid policy to the system
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
         name: "test_i1"
         policy:
           resources:
@@ -495,7 +534,7 @@ stages:
             - error:
                 code: !anyint
               id:
-                - '999'
+                - 999
           total_affected_items: 0
           total_failed_items: 1
 
@@ -519,8 +558,8 @@ stages:
             - error:
                 code: !anyint
               id:
-                - '999'
-                - '10000'
+                - 999
+                - 10000
           total_affected_items: 0
           total_failed_items: 2
 
@@ -600,7 +639,7 @@ stages:
             - error:
                 code: 4002
               id:
-                - '999'
+                - 999
           total_affected_items: 0
           total_failed_items: 1
 
@@ -624,8 +663,8 @@ stages:
             - error:
                 code: 4022
               id:
-                - '999'
-                - '10000'
+                - 999
+                - 10000
           total_affected_items: 0
           total_failed_items: 2
 
@@ -649,7 +688,7 @@ stages:
             - error:
                 code: !anyint
               id:
-                - '999'
+                - 999
           total_affected_items: 0
           total_failed_items: 1
 
@@ -686,6 +725,20 @@ stages:
       json:
         username: "new_user"
         password: "new_user1A!"
+        allow_run_as: true
+      method: POST
+    response:
+      status_code: 200
+
+  - name: Create a new user (secure password 2)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        username: "symbols"
+        password: "new_user1A!@#~½¬?¿ñàÀ"
         allow_run_as: true
       method: POST
     response:
@@ -860,8 +913,8 @@ stages:
             - error:
                 code: 4002
               id:
-                - '498'
-                - '500'
+                - 498
+                - 500
           total_affected_items: 0
           total_failed_items: 2
 
@@ -890,11 +943,11 @@ stages:
             - error:
                 code: 4002
               id:
-                - '498'
-                - '500'
+                - 498
+                - 500
             - error:
                 code: 4017
               id:
-                - '3'
+                - 3
           total_affected_items: 2
           total_failed_items: 3

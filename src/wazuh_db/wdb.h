@@ -159,8 +159,9 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GET_AGENTS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_GREATER_KEEPALIVE,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_LESS_KEEPALIVE,
-    WDB_STMT_SIZE,
+    WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
+    WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
 
 typedef enum global_db_access {
@@ -226,6 +227,7 @@ extern char *schema_upgrade_v2_sql;
 extern char *schema_upgrade_v3_sql;
 extern char *schema_upgrade_v4_sql;
 extern char *schema_upgrade_v5_sql;
+extern char *schema_upgrade_v6_sql;
 extern char *schema_global_upgrade_v1_sql;
 
 extern wdb_config wconfig;
@@ -812,10 +814,10 @@ int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, in
 int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast);
 
 // Insert OS info tuple. Return 0 on success or -1 on error.
-int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release);
+int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release);
 
 // Save OS info into DB.
-int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release);
+int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release);
 
 // Insert HW info tuple. Return 0 on success or -1 on error.
 int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage);
@@ -1705,5 +1707,18 @@ wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **out
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
+
+/**
+ * @brief Check the agent 0 status in the global database
+ *
+ * The table "agent" must have a tuple with id=0 and last_keepalive=1999/12/31 23:59:59 UTC.
+ * Otherwise, the database is either corrupt or old.
+ *
+ * @return Number of tuples matching that condition.
+ * @retval 1 The agent 0 status is OK.
+ * @retval 0 No tuple matching conditions exists.
+ * @retval -1 The table "agent" is missing or an error occurred.
+ */
+int wdb_global_check_manager_keepalive(wdb_t *wdb);
 
 #endif
