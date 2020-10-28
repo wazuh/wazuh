@@ -144,14 +144,10 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_GET_AGENTS] = "SELECT id FROM agent WHERE id > ? LIMIT 1;",
     [WDB_STMT_GLOBAL_GET_AGENTS_BY_GREATER_KEEPALIVE] = "SELECT id FROM agent WHERE id > ? AND last_keepalive > ? LIMIT 1;",
     [WDB_STMT_GLOBAL_GET_AGENTS_BY_LESS_KEEPALIVE] = "SELECT id FROM agent WHERE id > ? AND last_keepalive < ? LIMIT 1;",
-<<<<<<< HEAD
     [WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS] = "SELECT id FROM agent WHERE id > 0 AND connection_status = ?;",
-=======
-    [WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT] = "SELECT id FROM agent WHERE id > 0 AND connection_status = 'active' AND last_keepalive < ?;",
->>>>>>> Restoring get_agents_by_keepalive to avoid a lack of functionality
     [WDB_STMT_GLOBAL_GET_AGENT_INFO] = "SELECT * FROM agent WHERE id = ?;",
+    [WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT] = "SELECT id FROM agent WHERE id > 0 AND connection_status = 'active' AND last_keepalive < ?;",
     [WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS] = "UPDATE agent SET connection_status = 'disconnected' where connection_status != 'disconnected' AND connection_status != 'never_connected' AND id != 0;",
-    [WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT] = "SELECT id FROM agent WHERE connection_status = 'active' AND last_keepalive < ?;",
     [WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE] = "SELECT COUNT(*) FROM agent WHERE id=0 AND last_keepalive=253402300799;",
     [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
 };
