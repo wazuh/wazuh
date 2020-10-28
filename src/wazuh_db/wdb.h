@@ -161,11 +161,12 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_SYNC_SET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
-    WDB_STMT_GLOBAL_GET_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_GREATER_KEEPALIVE,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_LESS_KEEPALIVE,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS,
+    WDB_STMT_GLOBAL_GET_AGENT_INFO,
+    WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT,
     WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
@@ -203,7 +204,8 @@ typedef enum global_db_access {
     WDB_DELETE_AGENT_BELONG,
     WDB_DELETE_GROUP_BELONG,
     WDB_RESET_AGENTS_CONNECTION,
-    WDB_GET_AGENTS_BY_CONNECTION_STATUS
+    WDB_GET_AGENTS_BY_CONNECTION_STATUS,
+    WDB_DISCONNECT_AGENTS
 } global_db_access;
 
 typedef struct wdb_t {
@@ -698,6 +700,18 @@ int wdb_reset_agents_connection(int *sock);
  * @return Pointer to the array, on success. NULL on errors.
  */
 int* wdb_get_agents_by_connection_status(const char* status, int *sock);
+
+/**
+ * @brief This method creates and sends a command to WazuhDB to set as disconnected all the
+ * agents (excluding the manager) with a last_keepalive before the specified keepalive
+ * threshold. Returns an array containing the ID of all the agents that had been set as disconnected.
+ * The array is heap allocated memory that must be freed by the caller.
+ *
+ * @param [in] keepalive The keepalive threshold before which an agent should be set as disconnected.
+ * @param [in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @return Pointer to the array, on success. NULL if no agents were set as disconnected or an error ocurred.
+ */
+int* wdb_disconnect_agents(int keepalive, int *sock);
 
 /**
  * @brief Create database for agent from profile.
@@ -1317,6 +1331,17 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
 int wdb_parse_global_get_agents_by_keepalive(wdb_t* wdb, char* input, char* output);
 
 /**
+ * @brief Function to parse the disconnect-agents command data.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the time threshold before which consider an agent as disconnected.
+ * @param [out] output Response of the command in JSON format with the list of agents that were set as disconnected.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output);
+
+/**
  * @brief Function to parse last_id get-all-agents.
  *
  * @param [in] wdb The global struct database.
@@ -1833,7 +1858,16 @@ int wdb_global_reset_agents_connection(wdb_t *wdb);
  * @retval JSON with every agent ID on success.
  * @retval NULL on error.
  */
+
 cJSON* wdb_global_get_agents_by_connection_status(wdb_t *wdb, const char* status);
+/*
+ * @brief Gets all the agents' IDs (excluding the manager) that satisfy the keepalive condition to be disconnected.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] keep_alive The value of keepalive threshold before which consider an agent as disconnected.
+ * @return A pointer to a JSON with all the agents that satisfy the keepalive condition. Must be de-allocated by the caller.
+ */
+cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int keep_alive);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }

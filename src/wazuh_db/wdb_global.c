@@ -1248,6 +1248,36 @@ cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id) {
     return result;
 }
 
+cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int keep_alive) {
+    cJSON* result = NULL;
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("Cannot begin transaction");
+        return NULL;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT) < 0) {
+        mdebug1("Cannot cache statement");
+        return NULL;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT];
+
+    if (sqlite3_bind_int(stmt, 1, keep_alive) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return NULL;
+    }
+
+    result = wdb_exec_stmt(stmt);
+
+    if (!result) {
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
+    }
+
+    return result;
+}
+
 wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, char comparator, int keep_alive, char **output) {
     wdbc_result status = WDBC_UNKNOWN;
     unsigned response_size = 0;

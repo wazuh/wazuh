@@ -2371,6 +2371,118 @@ void test_wdb_parse_global_sync_agent_info_set_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
+/* Tests wdb_parse_global_disconnect_agents */
+
+void test_wdb_parse_global_disconnect_agents_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global disconnect-agents";
+
+    // Logging command and opening database
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect-agents");
+    will_return(__wrap_wdb_open_global, data->wdb);
+    // Logging command syntax error
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for disconnect-agents.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: disconnect-agents");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'disconnect-agents'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_disconnect_agents_error_getting_agents(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global disconnect-agents 100";
+
+    // Logging command and opening database
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect-agents 100");
+    will_return(__wrap_wdb_open_global, data->wdb);
+    // Getting the list of agents to disconnect
+    expect_value(__wrap_wdb_global_get_agents_to_disconnect, keep_alive, 100);
+    will_return(__wrap_wdb_global_get_agents_to_disconnect, NULL);
+    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Error getting agents to disconnect; err database queue/db/global.db: ERROR MESSAGE");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Error getting agents to disconnect; ERROR MESSAGE");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_disconnect_agents_error_setting_agent_to_disconnected(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global disconnect-agents 100";
+
+    cJSON *root = NULL;
+    cJSON *j_object = NULL;
+
+    root = cJSON_CreateArray();
+    j_object = cJSON_CreateObject();
+    cJSON_AddNumberToObject(j_object, "id", 1);
+    cJSON_AddItemToArray(root, j_object);
+
+    // Logging command and opening database
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect-agents 100");
+    will_return(__wrap_wdb_open_global, data->wdb);
+    // Getting the list of agents to disconnect
+    expect_value(__wrap_wdb_global_get_agents_to_disconnect, keep_alive, 100);
+    will_return(__wrap_wdb_global_get_agents_to_disconnect, root);
+    // Setting agents to disconnected
+    expect_value(__wrap_wdb_global_update_agent_connection_status, id, 1);
+    expect_string(__wrap_wdb_global_update_agent_connection_status, connection_status, AGENT_CS_DISCONNECTED);
+    will_return(__wrap_wdb_global_update_agent_connection_status, OS_INVALID);
+    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Error setting agent 1 as disconnected; err database queue/db/global.db: ERROR MESSAGE");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Cannot set agent 1 as disconnected; ERROR MESSAGE");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_disconnect_agents_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global disconnect-agents 100";
+
+    cJSON *root = NULL;
+    cJSON *j_object1 = NULL;
+    cJSON *j_object2 = NULL;
+
+    root = cJSON_CreateArray();
+    j_object1 = cJSON_CreateObject();
+    cJSON_AddNumberToObject(j_object1, "id", 1);
+    cJSON_AddItemToArray(root, j_object1);
+    j_object2 = cJSON_CreateObject();
+    cJSON_AddNumberToObject(j_object2, "id", 2);
+    cJSON_AddItemToArray(root, j_object2);
+
+    // Logging command and opening database
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect-agents 100");
+    will_return(__wrap_wdb_open_global, data->wdb);
+    // Getting the list of agents to disconnect
+    expect_value(__wrap_wdb_global_get_agents_to_disconnect, keep_alive, 100);
+    will_return(__wrap_wdb_global_get_agents_to_disconnect, root);
+    // Setting agents to disconnected
+    will_return_always(__wrap_wdb_global_update_agent_connection_status, OS_SUCCESS);
+    expect_value(__wrap_wdb_global_update_agent_connection_status, id, 1);
+    expect_string(__wrap_wdb_global_update_agent_connection_status, connection_status, AGENT_CS_DISCONNECTED);
+    expect_value(__wrap_wdb_global_update_agent_connection_status, id, 2);
+    expect_string(__wrap_wdb_global_update_agent_connection_status, connection_status, AGENT_CS_DISCONNECTED);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "ok [{\"id\":1},{\"id\":2}]");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
 /* Tests wdb_parse_global_get_agents_by_keepalive */
 
 void test_wdb_parse_global_get_agents_by_keepalive_syntax_error(void **state)
@@ -2861,6 +2973,11 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_del_label_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_set_label_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_success, test_setup, test_teardown),
+        /* Tests wdb_parse_global_disconnect_agents */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_error_getting_agents, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_error_setting_agent_to_disconnected, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_get_agents_by_keepalive */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_keepalive_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_keepalive_condition_error, test_setup, test_teardown),
