@@ -264,6 +264,7 @@ void w_free_expression_t_exp_type_pcre2(void ** state)
 
     os_calloc(1, sizeof(w_expression_t), var);
     var->exp_type = EXP_TYPE_PCRE2;
+    os_calloc(1, sizeof(w_pcre2_code_t), var->pcre2);
 
     int errornumber = 0;
     PCRE2_SIZE erroroffset = 0;
@@ -1116,7 +1117,7 @@ int main(void)
         cmocka_unit_test(w_free_expression_t_string),
         cmocka_unit_test(w_free_expression_t_exp_type_osip_array_NULL),
         cmocka_unit_test(w_free_expression_t_exp_type_osip_array),
-        //cmocka_unit_test(w_free_expression_t_exp_type_pcre2),
+        cmocka_unit_test(w_free_expression_t_exp_type_pcre2),
         cmocka_unit_test(w_free_expression_t_default),
 
         //Test w_expression_compile
