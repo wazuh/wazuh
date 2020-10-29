@@ -364,21 +364,23 @@ cJSON* sys_parse_pkg(const char * app_folder) {
                         parts = OS_StrBreak('>', read_buff, 2);
                         _parts = OS_StrBreak('<', parts[1], 2);
                     }
+
+                    if (parts && _parts) {
+                        // Save only the last pkg version available
+                        cJSON_DeleteItemFromObject(package, "version");
+                        cJSON_AddStringToObject(package, "version", _parts[0]);
+
+                        for (i = 0; _parts[i]; i++) {
+                            os_free(_parts[i]);
+                        }
+                        os_free(_parts);
+
+                        for (i = 0; parts[i]; i++) {
+                            os_free(parts[i]);
+                        }
+                        os_free(parts);
+                    }
                     
-                    // Save only the last pkg version available
-                    cJSON_DeleteItemFromObject(package, "version");
-                    cJSON_AddStringToObject(package, "version", _parts[0]);
-
-                    for (i = 0; _parts[i]; i++) {
-                        os_free(_parts[i]);
-                    }
-                    os_free(_parts);
-
-                    for (i = 0; parts[i]; i++) {
-                        os_free(parts[i]);
-                    }
-                    os_free(parts);
-    
                 } else if (strstr(read_buff, "LSApplicationCategoryType")){
                     if (strstr(read_buff, "<string>")){
                         char ** parts = OS_StrBreak('>', read_buff, 4);

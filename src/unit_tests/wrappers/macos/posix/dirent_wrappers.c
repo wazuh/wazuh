@@ -12,6 +12,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include <errno.h>
 #include "../../common.h"
 
 int wrap_closedir(__attribute__((unused)) DIR *dirp) {
@@ -25,7 +26,12 @@ int wrap_closedir(__attribute__((unused)) DIR *dirp) {
 DIR * wrap_opendir(const char *filename) {
     if(test_mode) {
         check_expected_ptr(filename);
-        return mock_ptr_type(DIR*);
+        DIR* ret = mock_ptr_type(DIR*);
+        if ret == NULL {
+            errno = ESRCH;
+        }
+
+        return ret; 
     } else {
         return opendir(filename);
     }

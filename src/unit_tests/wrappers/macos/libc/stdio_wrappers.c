@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 #include "headers/defs.h"
 #include "../../common.h"
 
@@ -72,8 +73,14 @@ int wrap_snprintf (char * s, size_t n, const char *__format, ...) {
 
 int wrap_fstat (int __fd, struct stat *__buf) {
     if (test_mode) {
+        int ret = 0;
         __buf->st_size = mock_type(int);
-        return mock_type(int);
+        ret = mock_type(int);
+        if ret < 0 {
+            errno = ESRCH;
+        }
+
+        return ret;
     }
 
     return fstat(__fd, __buf);
@@ -88,8 +95,14 @@ int wrap_fileno (FILE *fp) {
 
 int wrap_fclose (FILE *fp) {
     if (test_mode) {
+        int ret = 0;
         check_expected(fp);
-        return mock_type(int);
+        ret = mock_type(int);
+        if ret < 0 {
+            errno = ESRCH;
+        }
+
+        return ret;
     }
     return fclose(fp);
 }
@@ -113,7 +126,13 @@ int wrap_fseek(FILE *fp, int seek,  int flag) {
 void * wrap_mmap (void *start, size_t length, int prot, int flags, int fd, off_t offset) {
     if (test_mode) {
         check_expected(fd);
-        return mock_type(void*);
+        void *ret = mock_type(void*);
+        if ret == MAP_FAILED {
+            errno = ESRCH;
+        }
+
+        return ret;
+        
     }
     return mmap(start, length, prot, flags, fd, offset);
 }
@@ -128,7 +147,12 @@ int wrap_munmap (void *mem, size_t size) {
 
 FILE * wrap_tmpfile () {
     if (test_mode) {
-        return mock_type(FILE*);
+        FILE* ret = mock_type(FILE*);
+        if ret == NULL{
+            errno = ESRCH;
+        }
+
+        return ret;
     }
     return tmpfile();
 }
@@ -137,7 +161,12 @@ FILE * wrap_fopen (const char* path, const char* mode) {
     if(test_mode) {
         check_expected_ptr(path);
         check_expected(mode);
-        return mock_ptr_type(FILE*);
+        FILE* ret = mock_ptr_type(FILE*);
+        if ret == NULL{
+            errno = ESRCH;
+        }
+
+        return ret;
     } else {
         return fopen(path, mode);
     }
