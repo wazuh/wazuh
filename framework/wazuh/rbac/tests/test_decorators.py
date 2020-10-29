@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 import pytest
 from sqlalchemy import create_engine
+from importlib import reload
 
 from wazuh.core.exception import WazuhError
 from wazuh.rbac.tests.utils import init_db
@@ -24,6 +25,7 @@ def db_setup():
             with patch('shutil.chown'), patch('os.chmod'):
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
                     import wazuh.rbac.decorators as decorator
+                    reload(decorator)
     init_db('schema_security_test.sql', test_data_path)
 
     yield decorator
