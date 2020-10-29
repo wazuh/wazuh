@@ -721,8 +721,8 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
     for agents_chunk in agents_result_chunks:
         agent_results.append(
             core_upgrade_agents(command='upgrade' if not (installer or file_path) else 'upgrade_custom',
-                                agents_chunk=agents_chunk, wpk_repo=wpk_repo, version=version, force=force, use_http=use_http,
-                                file_path=file_path, installer=installer))
+                                agents_chunk=agents_chunk, wpk_repo=wpk_repo, version=version, force=force,
+                                use_http=use_http, file_path=file_path, installer=installer))
 
     for agent_result_chunk in agent_results:
         for agent_result in agent_result_chunk['data']:
