@@ -16,7 +16,8 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Changed limit parameter behaviour in GET sca checks endpoint. ([#6064](https://github.com/wazuh/wazuh/pull/6064))
+- Fixed an error with `/groups/{group_id}/config` Wazuh API endpoints (GET and PUT) when using complex `localfile` configurations. ([#6276](https://github.com/wazuh/wazuh/pull/6383))
+- Changed `limit` parameter behaviour in `GET sca/{agent_id}/checks/{policy_id}` endpoint. ([#6064](https://github.com/wazuh/wazuh/pull/6064))
 
 ## [v4.0.0] -
 
