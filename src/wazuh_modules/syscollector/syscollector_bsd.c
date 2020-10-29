@@ -2018,10 +2018,9 @@ char * get_vendor_mac(const char * string) {
         "avast",
         "simplexsolutionsinc",
         "liquid",
-        "micPDF",
         "foxit-software"
     };
-    
+
     int size_vendors = array_size(vendors);
     int i;
     if (!string) {
@@ -2030,8 +2029,7 @@ char * get_vendor_mac(const char * string) {
 
     os_strdup(string, string_cpy);
     token = strtok(string_cpy, ".");
-    if (!strcmp(token, "com") || !strcmp(token, "org") || !strcmp(token,"us") ||
-        !strcmp(token, "net") || !strcmp(token, "c3")) {
+    if (!strcmp(token, "com")) {
         token = strtok(NULL, ".");
         for (i = 0; i < size_vendors; i++) {
             if (!strcmp(token, vendors[i])) {

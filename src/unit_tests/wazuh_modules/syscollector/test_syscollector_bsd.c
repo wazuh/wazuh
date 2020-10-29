@@ -223,7 +223,7 @@ static void test_normalize_mac_package_name(void **state) {
     int i;
     char * vendor = NULL;
     char * package = NULL;
-    char * source_package[16][3] = {
+    char * source_package[18][3] = {
         {"Microsoft Word", "Microsoft", "Word"},
         {"Microsoft Excel", "Microsoft", "Excel"},
         {"VMware Fusion", "VMware", "Fusion"},
@@ -244,9 +244,9 @@ static void test_normalize_mac_package_name(void **state) {
         {NULL, NULL, NULL},
     };
 
-    for (i = 0; i < 16; i++) {
+    for (i = 0; i < 18; i++) {
         ret = normalize_mac_package_name(source_package[i][0], &vendor, &package);
-        if (i < 14) {
+        if (i < 16) {
             assert_int_equal(ret, 1);
             if (source_package[i][1]) {
                 assert_string_equal(vendor, source_package[i][1]);
@@ -1058,6 +1058,41 @@ void test_sys_read_homebrew_apps_success(void **state) {
     assert_int_equal(ret, 0);
 }
 
+void test_get_vendor_mac(void **state) {
+    int i;
+    char * vendor = NULL;
+    char * vendors[18][2] = {
+        {"com.google.Chrome", "Google"},
+        {"com.apple.Safari", "Apple"},
+        {"com.microsoft.to-do-mac", "Microsoft"},
+        {"com.adobe.Reader", "Adobe"},
+        {"com.atlassian.trello", "Atlassian"},
+        {"com.oracle.java.8u171.jdk", "Oracle"},
+        {"com.sophos.sav", "Sophos"},
+        {"com.symantec.endpointprotection", "Symantec"},
+        {"com.kaspersky.kav", "Kaspersky"},
+        {"com.mcafee.console", "Mcafee"},
+        {"com.bitdefender.antivirusformac", "Bitdefender"},
+        {"com.k7computing.AntiVirus", "K7computing"},
+        {"com.avg.antivirus", "Avg"},
+        {"com.avast.antivirus", "Avast"},
+        {"com.simplexsolutionsinc.vpnguardMac", "Simplexsolutionsinc"},
+        {"com.liquid.reader.osx", "Liquid"},
+        {"com.foxit-software.Foxit Reader", "Foxitsoftware"},
+        {"org.audacityteam.audacity", NULL},
+    };
+
+    for (i = 0; i < 18; i++) {
+        vendor = get_vendor_mac(vendors[i][0]);
+        if (i < 17) {
+            assert_string_equal(vendor, vendors[i][1]);
+            os_free(vendor);
+        } else {
+            assert_null(vendor);
+        }
+    }
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_sys_convert_bin_plist_failed_stat),
@@ -1080,6 +1115,7 @@ int main(void) {
         cmocka_unit_test(test_sys_parse_pkg_group),
         cmocka_unit_test(test_sys_parse_pkg_description_same_line),
         cmocka_unit_test(test_sys_parse_pkg_description),
+        cmocka_unit_test(test_get_vendor_mac),
         cmocka_unit_test_setup(test_sys_read_apps_dir_null, setup_max_eps),
         cmocka_unit_test_setup(test_sys_read_apps_skip_file, setup_max_eps),
         cmocka_unit_test_setup(test_sys_read_apps_no_object, setup_max_eps),
