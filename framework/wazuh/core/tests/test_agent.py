@@ -4,15 +4,13 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
-import re
 import sqlite3
 import sys
-from unittest.mock import ANY, patch, mock_open, call, Mock
+from unittest.mock import ANY, patch, mock_open, call
 
 import pytest
-from freezegun import freeze_time
-
 from api.util import remove_nones_to_dict
+from freezegun import freeze_time
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
@@ -695,7 +693,6 @@ def test_agent_remove_authd(mock_ossec_socket):
 @patch('wazuh.core.agent.chown')
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.stat')
-@patch('wazuh.core.agent.glob')
 @patch("wazuh.common.ossec_path", new=test_data_path)
 @patch('wazuh.core.agent.path.exists')
 @patch('wazuh.core.database.isfile', return_value=True)
@@ -710,7 +707,7 @@ def test_agent_remove_authd(mock_ossec_socket):
 @patch('wazuh.core.wdb.WazuhDBConnection.run_wdb_command')
 @patch('socket.socket.connect')
 def test_agent_remove_manual(socket_mock, run_wdb_mock, send_mock, grp_mock, pwd_mock, chmod_r_mock, makedirs_mock,
-                             safe_move_mock, isdir_mock, isfile_mock, exists_mock, glob_mock, stat_mock, chmod_mock,
+                             safe_move_mock, isdir_mock, isfile_mock, exists_mock, stat_mock, chmod_mock,
                              chown_mock, rmtree_mock, remove_mock, mock_delete_agents, backup, exists_backup_dir):
     """Test the _remove_manual function
 
@@ -1381,7 +1378,8 @@ def test_agent_check_multigroup_limit(groups, expected_result):
 @patch('wazuh.common.shared_path', new=test_data_path)
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_unset_single_group_agent(socket_mock, send_mock, agent_id, group_id, force, previous_groups, set_default):
+def test_agent_unset_single_group_agent(socket_mock, send_mock, agent_id, group_id, force, previous_groups,
+                                        set_default):
     """Test if unset_single_group_agent() returns expected message and removes group from agent
 
     Parameters
@@ -1451,7 +1449,6 @@ def test_agent_unset_single_group_agent_ko(socket_mock, send_mock):
             # Agent file does not exists
             with pytest.raises(WazuhError, match='.* 1745 .*'):
                 Agent.unset_single_group_agent('002', 'default')
-
 
 
 @patch('wazuh.core.configuration.OssecSocket')
@@ -1562,7 +1559,6 @@ def test_expand_group(socket_mock, send_mock, group, expected_agents):
 @patch('wazuh.core.agent.chown')
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.stat')
-@patch('wazuh.core.agent.glob')
 @patch("wazuh.common.client_keys", new=os.path.join(test_data_path, 'etc', 'client.keys'))
 @patch('wazuh.core.agent.path.isdir', return_value=True)
 @patch('wazuh.core.agent.makedirs')
@@ -1572,9 +1568,9 @@ def test_expand_group(socket_mock, send_mock, group, expected_agents):
 @patch("wazuh.common.ossec_gid", return_value=getgrnam("root"))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_remove_manual_ko(socket_mock, send_mock, grp_mock, pwd_mock, chmod_r_mock, makedirs_mock,
-                                isdir_mock, glob_mock, stat_mock, chmod_mock, chown_mock, rmtree_mock, remove_mock, delete_mock,
-                                 agent_id, expected_exception):
+def test_agent_remove_manual_ko(socket_mock, send_mock, grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, isdir_mock,
+                                stat_mock, chmod_mock, chown_mock, rmtree_mock, remove_mock, delete_mock, agent_id,
+                                expected_exception):
     """Test the _remove_manual function error cases.
 
     Parameters
@@ -1584,6 +1580,7 @@ def test_agent_remove_manual_ko(socket_mock, send_mock, grp_mock, pwd_mock, chmo
     expected_exception : int
         Error code that is expected.
     """
+
     def check_exception(client_keys):
         with patch('wazuh.core.agent.open', mock_open(read_data=client_keys)) as m:
             with pytest.raises(WazuhException, match=f".* {expected_exception} .*"):
