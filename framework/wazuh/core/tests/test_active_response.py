@@ -4,17 +4,14 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
-import sys
 from unittest.mock import patch, MagicMock
 
 import pytest
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
-        sys.modules['api'] = MagicMock()
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         from wazuh.core.exception import WazuhError
         from wazuh.core import active_response
-        del sys.modules['api']
 
 
 # Variables
@@ -49,7 +46,7 @@ def agent_config(expected_exception):
     (None, 'restart-ossec0', [], True),
     (None, 'restart-ossec0', ["arg1", "arg2"], False)
 ])
-@patch('wazuh.common.ossec_path', new=test_data_path)
+@patch('wazuh.core.common.ossec_path', new=test_data_path)
 def test_create_message(expected_exception, command, arguments, custom):
     """Checks message returned is correct
 
@@ -79,7 +76,7 @@ def test_create_message(expected_exception, command, arguments, custom):
             assert '!' in ret, f'! symbol not being added when custom command'
 
 
-@patch('wazuh.common.ossec_path', new=test_data_path)
+@patch('wazuh.core.common.ossec_path', new=test_data_path)
 def test_get_commands():
     """
     Checks if get_commands method returns a list

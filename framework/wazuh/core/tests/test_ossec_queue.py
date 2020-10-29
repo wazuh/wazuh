@@ -8,6 +8,7 @@ import pytest
 from wazuh.core.ossec_queue import OssecQueue
 from wazuh.core.exception import WazuhException
 
+
 @patch('wazuh.core.ossec_queue.OssecQueue._connect')
 def test_OssecQueue__init__(mock_conn):
     """Tests OssecQueue.__init__ function works"""

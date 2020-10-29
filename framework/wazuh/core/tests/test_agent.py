@@ -12,12 +12,11 @@ from unittest.mock import ANY, patch, mock_open, call, Mock
 import pytest
 from freezegun import freeze_time
 
-from api.util import remove_nones_to_dict
-
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         from wazuh.core.agent import *
         from wazuh.core.exception import WazuhException
+        from api.util import remove_nones_to_dict
 
 from pwd import getpwnam
 from grp import getgrnam
@@ -682,7 +681,7 @@ def test_agent_remove_authd(mock_ossec_socket):
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.stat')
 @patch('wazuh.core.agent.glob')
-@patch("wazuh.common.ossec_path", new=test_data_path)
+@patch("wazuh.core.common.ossec_path", new=test_data_path)
 @patch('wazuh.core.agent.path.exists')
 @patch('wazuh.core.database.isfile', return_value=True)
 @patch('wazuh.core.agent.path.isdir', return_value=False)
@@ -690,8 +689,8 @@ def test_agent_remove_authd(mock_ossec_socket):
 @patch('wazuh.core.agent.makedirs')
 @patch('wazuh.core.agent.chmod_r')
 @freeze_time('1975-01-01')
-@patch("wazuh.common.ossec_uid", return_value=getpwnam("root"))
-@patch("wazuh.common.ossec_gid", return_value=getgrnam("root"))
+@patch("wazuh.core.common.ossec_uid", return_value=getpwnam("root"))
+@patch("wazuh.core.common.ossec_gid", return_value=getgrnam("root"))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('wazuh.core.wdb.WazuhDBConnection.run_wdb_command')
 @patch('socket.socket.connect')
@@ -852,8 +851,8 @@ def test_agent_add_authd_ko(mock_ossec_socket, mocked_exception, expected_except
 ])
 @patch('wazuh.core.agent.safe_move')
 @patch('wazuh.core.agent.copyfile')
-@patch('wazuh.common.ossec_uid')
-@patch('wazuh.common.ossec_gid')
+@patch('wazuh.core.common.ossec_uid')
+@patch('wazuh.core.common.ossec_gid')
 @patch('wazuh.core.agent.chown')
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.stat')
@@ -885,8 +884,8 @@ def test_agent_add_manual(socket_mock, mock_send, mock_lockf, mock_stat, mock_ch
 
 
 @patch('wazuh.core.agent.copyfile')
-@patch('wazuh.common.ossec_uid')
-@patch('wazuh.common.ossec_gid')
+@patch('wazuh.core.common.ossec_uid')
+@patch('wazuh.core.common.ossec_gid')
 @patch('wazuh.core.agent.chown')
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.stat')
@@ -949,8 +948,8 @@ def test_agent_add_manual_ko(mock_lockf, mock_stat, mock_chmod, mock_chown, mock
 
 
 @patch('wazuh.core.agent.path.exists', return_value=True)
-@patch('wazuh.common.shared_path', new=os.path.join(test_data_path, 'etc', 'shared'))
-@patch('wazuh.common.backup_path', new=os.path.join(test_data_path, 'backup'))
+@patch('wazuh.core.common.shared_path', new=os.path.join(test_data_path, 'etc', 'shared'))
+@patch('wazuh.core.common.backup_path', new=os.path.join(test_data_path, 'backup'))
 @patch('wazuh.core.agent.safe_move')
 @patch('wazuh.core.agent.time', return_value=0)
 @patch('wazuh.core.agent.Agent._remove_manual', return_value='Agent was successfully deleted')
@@ -1150,8 +1149,8 @@ def test_agent_get_agents_overview_sort(socket_mock, send_mock, sort, first_id):
     ('002', 'test_group', True, False, None),
     ('002', 'test_group', False, True, ['default']),
 ])
-@patch('wazuh.common.groups_path', new=test_data_path)
-@patch('wazuh.common.shared_path', new=test_data_path)
+@patch('wazuh.core.common.groups_path', new=test_data_path)
+@patch('wazuh.core.common.shared_path', new=test_data_path)
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_add_group_to_agent(socket_mock, send_mock, agent_id, group_id, force, replace, replace_list):
@@ -1199,8 +1198,8 @@ def test_agent_add_group_to_agent(socket_mock, send_mock, agent_id, group_id, fo
         os.remove(os.path.join(test_data_path, agent_id))
 
 
-@patch('wazuh.common.groups_path', new=os.path.join(test_data_path, 'etc', 'shared'))
-@patch('wazuh.common.shared_path', new=os.path.join(test_data_path, 'etc', 'shared'))
+@patch('wazuh.core.common.groups_path', new=os.path.join(test_data_path, 'etc', 'shared'))
+@patch('wazuh.core.common.shared_path', new=os.path.join(test_data_path, 'etc', 'shared'))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_add_group_to_agent_ko(socket_mock, send_mock):
@@ -1231,7 +1230,7 @@ def test_agent_add_group_to_agent_ko(socket_mock, send_mock):
             with pytest.raises(WazuhError, match='.* 1751 .*'):
                 Agent.add_group_to_agent('default', '002')
 
-            with patch('wazuh.common.max_groups_per_multigroup', new=0):
+            with patch('wazuh.core.common.max_groups_per_multigroup', new=0):
                 # Multigroup limit exceeded.
                 with pytest.raises(WazuhError, match='.* 1737 .*'):
                     Agent.add_group_to_agent('test_group', '002')
@@ -1316,8 +1315,8 @@ def test_agent_get_agents_group_file(group_exists):
 
 
 @patch('builtins.open')
-@patch('wazuh.common.ossec_uid')
-@patch('wazuh.common.ossec_gid')
+@patch('wazuh.core.common.ossec_uid')
+@patch('wazuh.core.common.ossec_gid')
 @patch('wazuh.core.agent.chown')
 @patch('wazuh.core.agent.chmod')
 def test_agent_set_agent_group_file(mock_chmod, mock_chown, mock_gid, mock_uid, mock_open):
@@ -1341,7 +1340,7 @@ def test_agent_set_agent_group_file_ko():
     ('default0,default1', False),
     ('', False)
 ])
-@patch('wazuh.common.max_groups_per_multigroup', new=3)
+@patch('wazuh.core.common.max_groups_per_multigroup', new=3)
 def test_agent_check_multigroup_limit(groups, expected_result):
     """Test if check_multigroup_limit() returns True when limit of groups is reached
 
@@ -1363,8 +1362,8 @@ def test_agent_check_multigroup_limit(groups, expected_result):
     ('002', 'test_group', False, 'test_group', True),
     ('002', 'test_group', False, 'test_group,another_test', False)
 ])
-@patch('wazuh.common.groups_path', new=test_data_path)
-@patch('wazuh.common.shared_path', new=test_data_path)
+@patch('wazuh.core.common.groups_path', new=test_data_path)
+@patch('wazuh.core.common.shared_path', new=test_data_path)
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_unset_single_group_agent(socket_mock, send_mock, agent_id, group_id, force, previous_groups, set_default):
@@ -1413,8 +1412,8 @@ def test_agent_unset_single_group_agent(socket_mock, send_mock, agent_id, group_
         os.remove(os.path.join(test_data_path, agent_id))
 
 
-@patch('wazuh.common.groups_path', new=os.path.join(test_data_path, 'etc', 'shared'))
-@patch('wazuh.common.shared_path', new=os.path.join(test_data_path, 'etc', 'shared'))
+@patch('wazuh.core.common.groups_path', new=os.path.join(test_data_path, 'etc', 'shared'))
+@patch('wazuh.core.common.shared_path', new=os.path.join(test_data_path, 'etc', 'shared'))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_unset_single_group_agent_ko(socket_mock, send_mock):
@@ -1529,8 +1528,8 @@ def test_agent_get_versions_ko(socket_mock, send_mock):
 ])
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.chown')
-@patch('wazuh.common.ossec_uid')
-@patch('wazuh.common.ossec_gid')
+@patch('wazuh.core.common.ossec_uid')
+@patch('wazuh.core.common.ossec_gid')
 @patch('wazuh.core.agent.hashlib.sha1')
 @patch('wazuh.core.agent.open')
 @patch('wazuh.core.agent.requests.get')
@@ -1592,8 +1591,8 @@ def test_agent_get_wpk_file(socket_mock, send_mock, versions_mock, get_req_mock,
 
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.chown')
-@patch('wazuh.common.ossec_uid')
-@patch('wazuh.common.ossec_gid')
+@patch('wazuh.core.common.ossec_uid')
+@patch('wazuh.core.common.ossec_gid')
 @patch('wazuh.core.agent.hashlib.sha1')
 @patch('wazuh.core.agent.open')
 @patch('wazuh.core.agent.Agent._get_versions')
@@ -1652,7 +1651,7 @@ def test_agent_get_wpk_file_ko(socket_mock, send_mock, versions_mock, open_mock,
 @patch('wazuh.core.agent.stat', return_value=Mock(st_size=1))
 @patch('wazuh.core.agent.requests.get')
 @patch('wazuh.core.agent.Agent._get_wpk_file')
-@patch('wazuh.common.open_sleep', new=0)
+@patch('wazuh.core.common.open_sleep', new=0)
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_send_wpk_file(socket_mock, send_mock, _get_wpk_mock, get_req_mock, stat_mock, ossec_socket_mock,
@@ -1693,7 +1692,7 @@ def test_agent_send_wpk_file(socket_mock, send_mock, _get_wpk_mock, get_req_mock
 @patch('wazuh.core.agent.stat')
 @patch('wazuh.core.agent.requests.get')
 @patch('wazuh.core.agent.Agent._get_wpk_file')
-@patch('wazuh.common.open_sleep', new=0)
+@patch('wazuh.core.common.open_sleep', new=0)
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_send_wpk_file_ko(socket_mock, send_mock, _get_wpk_mock, get_req_mock, stat_mock, ossec_socket_mock,
@@ -1889,7 +1888,7 @@ def test_agent_upgrade_result_ko(socket_mock, send_mock, mock_sleep, socket_send
 @patch('wazuh.core.agent.stat', return_value=Mock(st_size=1))
 @patch('wazuh.core.agent.requests.get')
 @patch('wazuh.core.agent.path.isfile', return_value=True)
-@patch('wazuh.common.open_sleep', new=0)
+@patch('wazuh.core.common.open_sleep', new=0)
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_send_custom_wpk_file(socket_mock, send_mock, mock_isfile, mock_requests, mock_stat, ossec_socket_mock,
@@ -2165,13 +2164,13 @@ def test_expand_group(socket_mock, send_mock, group, expected_agents):
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.stat')
 @patch('wazuh.core.agent.glob')
-@patch("wazuh.common.client_keys", new=os.path.join(test_data_path, 'etc', 'client.keys'))
+@patch("wazuh.core.common.client_keys", new=os.path.join(test_data_path, 'etc', 'client.keys'))
 @patch('wazuh.core.agent.path.isdir', return_value=True)
 @patch('wazuh.core.agent.makedirs')
 @patch('wazuh.core.agent.chmod_r')
 @freeze_time('1975-01-01')
-@patch("wazuh.common.ossec_uid", return_value=getpwnam("root"))
-@patch("wazuh.common.ossec_gid", return_value=getgrnam("root"))
+@patch("wazuh.core.common.ossec_uid", return_value=getpwnam("root"))
+@patch("wazuh.core.common.ossec_gid", return_value=getgrnam("root"))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_remove_manual_ko(socket_mock, send_mock, grp_mock, pwd_mock, chmod_r_mock, makedirs_mock,
