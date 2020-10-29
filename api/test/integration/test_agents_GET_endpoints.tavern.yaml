@@ -4053,7 +4053,6 @@ stages:
         force: True
         agents_list: 001,002,000
         version: 4.0.0
-        wpk_repo: packages-dev.wazuh.com/pre-release/wpk
     response:
       status_code: 200
       json:
