@@ -140,10 +140,10 @@ void Monitord()
                 while (agent_hash_node) {
                     j_agent_info = wdb_get_agent_info(atoi(agent_hash_node->key), &sock);
                     if (j_agent_info) {
-                        j_agent_status = cJSON_GetObjectItem(j_agent_info, "connection_status");
-                        j_agent_lastkeepalive = cJSON_GetObjectItem(j_agent_info, "last_keepalive");
-                        j_agent_name = cJSON_GetObjectItem(j_agent_info, "name");
-                        j_agent_ip = cJSON_GetObjectItem(j_agent_info, "ip");
+                        j_agent_status = cJSON_GetObjectItem(j_agent_info->child, "connection_status");
+                        j_agent_lastkeepalive = cJSON_GetObjectItem(j_agent_info->child, "last_keepalive");
+                        j_agent_name = cJSON_GetObjectItem(j_agent_info->child, "name");
+                        j_agent_ip = cJSON_GetObjectItem(j_agent_info->child, "register_ip");
 
                         if (cJSON_IsString(j_agent_status) && j_agent_status->valuestring != NULL &&
                             cJSON_IsString(j_agent_name) && j_agent_name->valuestring != NULL &&
@@ -156,7 +156,7 @@ void Monitord()
                                 }
 
                                 else if (strcmp(j_agent_status->valuestring, "disconnected") == 0 &&
-                                        j_agent_lastkeepalive->valueint < (time(0) - mond.global.agents_disconnection_time + mond.global.agents_disconnection_alert_time)) {
+                                        j_agent_lastkeepalive->valueint < (time(0) - (mond.global.agents_disconnection_time + mond.global.agents_disconnection_alert_time))) {
                                     /* Generating the disconnection alert */
                                     char *agent_name_ip = NULL;
                                     os_strdup(j_agent_name->valuestring, agent_name_ip);
@@ -180,10 +180,10 @@ void Monitord()
                     for (int i = 0; agents_array[i] != -1; i++) {
                         j_agent_info = wdb_get_agent_info(agents_array[i], &sock);
                         if (j_agent_info) {
-                            j_agent_name = cJSON_GetObjectItem(j_agent_info, "name");
-                            j_agent_lastkeepalive = cJSON_GetObjectItem(j_agent_info, "last_keepalive");
-                            j_agent_status = cJSON_GetObjectItem(j_agent_info, "connection_status");
-                            j_agent_ip = cJSON_GetObjectItem(j_agent_info, "ip");
+                            j_agent_name = cJSON_GetObjectItem(j_agent_info->child, "name");
+                            j_agent_lastkeepalive = cJSON_GetObjectItem(j_agent_info->child, "last_keepalive");
+                            j_agent_status = cJSON_GetObjectItem(j_agent_info->child, "connection_status");
+                            j_agent_ip = cJSON_GetObjectItem(j_agent_info->child, "register_ip");
 
                             if (cJSON_IsString(j_agent_status) && j_agent_status->valuestring != NULL &&
                                 cJSON_IsString(j_agent_name) && j_agent_name->valuestring != NULL &&
