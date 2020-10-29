@@ -224,6 +224,9 @@ int main(int argc, char **argv)
         exit(0);
     }
 
+    /* Setup random */
+    srandom_init();
+
     if (!run_foreground) {
         /* Going on daemon mode */
         nowDaemon();
