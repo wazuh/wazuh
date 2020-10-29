@@ -68,7 +68,7 @@ int wm_agent_upgrade_validate_version(const char *wazuh_version, wm_upgrade_comm
  * @retval WM_UPGRADE_URL_NOT_FOUND
  * @retval WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST
  * */
-int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, const char *wpk_repository_config) __attribute__((nonnull));
+int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, const char *wpk_repository_config) __attribute__((nonnull(1, 2)));
 
 /**
  * Check if WPK file exist or download it

@@ -130,7 +130,13 @@ int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_up
     os_calloc(OS_SIZE_4096, sizeof(char), versions_url);
 
     if (!task->wpk_repository) {
-        os_strdup(wpk_repository_config, task->wpk_repository);
+        if (wpk_repository_config) {
+            os_strdup(wpk_repository_config, task->wpk_repository);
+        } else if (wm_agent_upgrade_compare_versions(task->wpk_version, "v4.0.0") < 0) {
+            os_strdup(WM_UPGRADE_WPK_REPO_URL_3_X, task->wpk_repository);
+        } else {
+            os_strdup(WM_UPGRADE_WPK_REPO_URL_4_X, task->wpk_repository);
+        }
     }
 
     // Set protocol
