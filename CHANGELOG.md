@@ -7,10 +7,10 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-### Fixed
-
 - **Framework:**
-  - Fix Python's cryptography library ([#6442](https://github.com/wazuh/wazuh/issues/6442))
+  - Update Python's cryptography library to version 3.2.1 ([#6442](https://github.com/wazuh/wazuh/issues/6442))
+
+### Fixed
 
 ### Removed
 
