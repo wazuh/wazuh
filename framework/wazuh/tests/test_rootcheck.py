@@ -9,22 +9,22 @@ from unittest.mock import patch, MagicMock, call
 
 import pytest
 
+from api.util import parse_api_param
 from wazuh.core.exception import WazuhError
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        sys.modules['api'] = MagicMock()
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
 
         del sys.modules['wazuh.rbac.orm']
-        del sys.modules['api']
 
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh import rootcheck
         from wazuh.core.rootcheck import fields
-        from wazuh.core.tests.test_rootcheck import InitRootcheck, send_msg_to_wdb
+        from wazuh.core.tests.test_rootcheck import InitRootcheck, send_msg_to_wdb, remove_db, \
+            test_data_path as core_data
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_data = InitRootcheck()
@@ -36,9 +36,9 @@ test_data = InitRootcheck()
 def test_clear(mock_connect, mock_info, mock_wdbconn):
     """Test if function clear() returns expected result and if delete command is executed.
 
-    The databases of 4 agents are requested to be cleared, 3 of them exists.
-    Is expected 2 failed items:
-        - 1 non existent agent
+    The databases of 4 agents are requested to be cleared, 3 of them exist.
+    2 failed items are expected:
+        - 1 non existent agent.
         - 1 exception when running execute() method.
     """
     result = rootcheck.clear(['000', '001', '002', '003']).render()
@@ -65,7 +65,13 @@ def test_get_last_scan(mock_connect, mock_send, mock_info):
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_get_rootcheck_agent(mock_connect, mock_send, mock_info, limit):
-    """Check if returned information have correct format"""
+    """Check if limit is correctly applied to get_rootcheck_agent() function
+
+    Parameters
+    ----------
+    limit : int
+        Number of items to be returned.
+    """
     result = rootcheck.get_rootcheck_agent(agent_list=['001'], limit=limit, filters={'status': 'all'}).render()['data']
     limit = limit if limit else 6
     assert len(result['affected_items']) == limit and result['total_affected_items'] == 6
@@ -84,7 +90,13 @@ def test_get_rootcheck_agent(mock_connect, mock_send, mock_info, limit):
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_get_rootcheck_agent_select(mock_connect, mock_send, mock_info, select):
-    """Check if returned information have correct format"""
+    """Check that only selected elements are returned
+
+    Parameters
+    ----------
+    select : list
+        Fields to be returned.
+    """
     result = rootcheck.get_rootcheck_agent(agent_list=['001'], select=select, filters={'status': 'all'}).render()['data']
     select = select if select else list(fields.keys())
 
@@ -94,8 +106,142 @@ def test_get_rootcheck_agent_select(mock_connect, mock_send, mock_info, select):
             assert key in select
 
 
-# TODO:
-#  - search
-#  - sort
-#  - query
-#  - distinct
+@pytest.mark.parametrize('search, total_expected_items', [
+    ('1.5', 4),
+    ('1.6', 0),
+    ('ssh', 1),
+    ('robust', 3),
+    ('4.1', 2),
+    ('outstanding', 5),
+    ('solved', 1)
+])
+@patch('wazuh.core.agent.Agent.get_basic_information')
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_get_rootcheck_agent_search(mock_connect, mock_send, mock_info, search, total_expected_items):
+    """Checks if the number of items returned is as expected when using the search parameter.
+
+    Parameters
+    ----------
+    search : str
+        String to be searched in the database.
+    total_expected_items : int
+        Number of expected items to be returned.
+    """
+    result = rootcheck.get_rootcheck_agent(agent_list=['001'], search=parse_api_param(search, 'search'),
+                                           filters={'status': 'all'}).render()['data']
+    assert result['total_affected_items'] == total_expected_items
+
+
+@pytest.mark.parametrize('query, total_expected_items', [
+    ('cis=1.4 Debian Linux', 3),
+    ('log=testing', 1),
+    ('log!=testing', 5),
+    ('', 6),
+    ('log=SSH Configuration', 0),
+    ('log~SSH Configuration', 1),
+    ('pci_dss<3', 4),
+    ('pci_dss>3', 2),
+    ('(pci_dss>3,pci_dss<2);log~System', 5),
+])
+@patch('wazuh.core.agent.Agent.get_basic_information')
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_get_rootcheck_agent_query(mock_connect, mock_send, mock_info, query, total_expected_items):
+    """Checks if the number of items returned is as expected when using query parameter.
+
+    Parameters
+    ----------
+    query : str
+        Query to be applied in the database
+    total_expected_items : int
+        Number of expected items to be returned.
+    """
+    result = rootcheck.get_rootcheck_agent(agent_list=['001'], q=query, filters={'status': 'all'}).render()['data']
+    assert result['total_affected_items'] == total_expected_items
+
+
+@pytest.mark.parametrize('select, distinct, total_expected_items', [
+    (['cis'], True, 3),
+    (['cis'], False, 6),
+    (['pci_dss'], True, 2),
+    (['pci_dss'], False, 6),
+    (['cis', 'pci_dss'], True, 3),
+    (['log'], True, 6),
+])
+@patch('wazuh.core.agent.Agent.get_basic_information')
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_get_rootcheck_agent_distinct(mock_connect, mock_send, mock_info, select, distinct, total_expected_items):
+    """Checks if the number of items returned is as expected when using distinct and select parameters.
+
+    Parameters
+    ----------
+    select : list
+        Fields to be returned.
+    distinct : bool
+        Whether to apply distinct filter.
+    total_expected_items : int
+        Number of expected items to be returned.
+    """
+    result = rootcheck.get_rootcheck_agent(agent_list=['001'], select=select, distinct=distinct,
+                                           filters={'status': 'all'}).render()['data']
+    assert result['total_affected_items'] == total_expected_items
+
+
+@pytest.mark.parametrize('sort, first_item', [
+    ('-log', 'Testing'),
+    ('+log', '/opt'),
+    ('-cis', 'Benchmark v1.0'),
+    ('+cis', '/var'),
+])
+@patch('wazuh.core.agent.Agent.get_basic_information')
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_get_rootcheck_agent_sort(mock_connect, mock_send, mock_info, sort, first_item):
+    """Checks if the the first item returned is expected when using sort parameter
+
+    Parameters
+    ----------
+    sort : str
+        Field and order to sort by
+    first_item : int
+        Expected string to be contained in the log of the first returned element.
+    """
+    result = rootcheck.get_rootcheck_agent(agent_list=['001'], sort=parse_api_param(sort, 'sort'),
+                                           filters={'status': 'all'}).render()['data']
+
+    assert first_item in result['affected_items'][0]['log']
+
+
+@pytest.mark.parametrize('filters, total_expected_items', [
+    ({'status': 'all'}, 6),
+    ({'status': 'solved'}, 1),
+    ({'status': 'outstanding'}, 5),
+    ({'status': 'all', 'cis': '2.3'}, 0),
+    ({'status': 'all', 'cis': '1.4 Debian Linux'}, 3),
+    ({'status': 'solved', 'cis': '1.4 Debian Linux'}, 0),
+    ({'status': 'all', 'pci_dss': '1.5'}, 4),
+    ({'status': 'all', 'pci_dss': '4.1'}, 2),
+    ({'status': 'solved', 'pci_dss': '4.1'}, 1),
+    ({'status': 'all', 'cis': '3.4 Debian Linux', 'pci_dss': '1.5'}, 1),
+    ({'status': 'all', 'cis': '3.4 Debian Linux', 'pci_dss': '4.1'}, 0)
+])
+@patch('wazuh.core.agent.Agent.get_basic_information')
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_get_rootcheck_agent_filters(mock_connect, mock_send, mock_info, filters, total_expected_items):
+    """Checks if the number of items returned is as expected when using different filters.
+
+    Parameters
+    ----------
+    filters : dict
+        Strings to filter by.
+    total_expected_items : int
+        Number of expected items to be returned.
+    """
+    result = rootcheck.get_rootcheck_agent(agent_list=['001'], filters=filters).render()['data']
+    assert result['total_affected_items'] == total_expected_items
+
+
+remove_db(core_data)
