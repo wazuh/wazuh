@@ -27,7 +27,7 @@ DIR * wrap_opendir(const char *filename) {
     if(test_mode) {
         check_expected_ptr(filename);
         DIR* ret = mock_ptr_type(DIR*);
-        if ret == NULL {
+        if (ret == NULL) {
             errno = ESRCH;
         }
 

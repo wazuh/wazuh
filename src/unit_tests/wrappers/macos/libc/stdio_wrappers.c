@@ -76,7 +76,7 @@ int wrap_fstat (int __fd, struct stat *__buf) {
         int ret = 0;
         __buf->st_size = mock_type(int);
         ret = mock_type(int);
-        if ret < 0 {
+        if (ret < 0) {
             errno = ESRCH;
         }
 
@@ -98,7 +98,7 @@ int wrap_fclose (FILE *fp) {
         int ret = 0;
         check_expected(fp);
         ret = mock_type(int);
-        if ret < 0 {
+        if (ret < 0) {
             errno = ESRCH;
         }
 
@@ -127,7 +127,7 @@ void * wrap_mmap (void *start, size_t length, int prot, int flags, int fd, off_t
     if (test_mode) {
         check_expected(fd);
         void *ret = mock_type(void*);
-        if ret == MAP_FAILED {
+        if (ret == MAP_FAILED) {
             errno = ESRCH;
         }
 
@@ -148,7 +148,7 @@ int wrap_munmap (void *mem, size_t size) {
 FILE * wrap_tmpfile () {
     if (test_mode) {
         FILE* ret = mock_type(FILE*);
-        if ret == NULL{
+        if (ret == NULL) {
             errno = ESRCH;
         }
 
@@ -162,7 +162,7 @@ FILE * wrap_fopen (const char* path, const char* mode) {
         check_expected_ptr(path);
         check_expected(mode);
         FILE* ret = mock_ptr_type(FILE*);
-        if ret == NULL{
+        if (ret == NULL) {
             errno = ESRCH;
         }
 
