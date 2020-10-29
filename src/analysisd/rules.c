@@ -1675,7 +1675,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                     w_calloc_expression_t(&config_ruleinfo->srcgeoip, EXP_TYPE_OSMATCH);
                     config_ruleinfo->srcgeoip->negate = negate_srcgeoip;
 
-                    if(!w_expression_compile(config_ruleinfo->srcgeoip, srcgeoip, 0)) {
+                    if (!w_expression_compile(config_ruleinfo->srcgeoip, srcgeoip, 0)) {
                         merror(RL_REGEX_SYNTAX, xml_srcgeoip, config_ruleinfo->sigid);
                         return(-1);
                     }
@@ -1688,7 +1688,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                     w_calloc_expression_t(&config_ruleinfo->dstgeoip, EXP_TYPE_OSMATCH);
                     config_ruleinfo->dstgeoip->negate = negate_dstgeoip;
 
-                    if(!w_expression_compile(config_ruleinfo->dstgeoip, dstgeoip, 0)) {
+                    if (!w_expression_compile(config_ruleinfo->dstgeoip, dstgeoip, 0)) {
                         merror(RL_REGEX_SYNTAX, xml_dstgeoip, config_ruleinfo->sigid);
                         return(-1);
                     }
@@ -1758,7 +1758,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                     w_calloc_expression_t(&config_ruleinfo->protocol, EXP_TYPE_OSMATCH);
                     config_ruleinfo->protocol->negate = negate_protocol;
 
-                    if(!w_expression_compile(config_ruleinfo->protocol, protocol, 0)){
+                    if (!w_expression_compile(config_ruleinfo->protocol, protocol, 0)){
                         merror(RL_REGEX_SYNTAX, protocol, config_ruleinfo->sigid);
                         goto cleanup;
                     }
@@ -1771,7 +1771,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                     w_calloc_expression_t(&config_ruleinfo->system_name, EXP_TYPE_OSMATCH);
                     config_ruleinfo->system_name->negate = negate_system_name;
 
-                    if(!w_expression_compile(config_ruleinfo->system_name, system_name, 0)){
+                    if (!w_expression_compile(config_ruleinfo->system_name, system_name, 0)){
                         merror(RL_REGEX_SYNTAX, xml_system_name, config_ruleinfo->sigid);
                         goto cleanup;
                     }
@@ -2550,12 +2550,12 @@ w_exp_type_t w_check_attr_type(xml_node *node, int rule_id) {
     const char * xml_type = "type";
 
     for (int i = 0; node->attributes[i]; i++) {
-        if(strcasecmp(node->attributes[i], xml_type) == 0) {
+        if (strcasecmp(node->attributes[i], xml_type) == 0) {
 
-            if(strcasecmp(node->values[i], "osregex") == 0) {
+            if (strcasecmp(node->values[i], "osregex") == 0) {
                 return EXP_TYPE_OSREGEX;
             }
-            else if(strcasecmp(node->values[i], "pcre2") == 0) {
+            else if (strcasecmp(node->values[i], "pcre2") == 0) {
                 return EXP_TYPE_PCRE2;
             }
             else {
