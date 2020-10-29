@@ -114,7 +114,7 @@ registry *fim_registry_configuration(const char *key, int arch) {
  */
 int fim_registry_validate_recursion_level(const char *key_path, const registry *configuration) {
     const char *pos;
-    int depth = -1;
+    int depth = 0;
     unsigned int parent_path_size;
 
     if (key_path == NULL || configuration == NULL) {
@@ -659,7 +659,7 @@ void fim_registry_process_value_event(fim_entry *new,
     if (configuration == NULL) {
         return;
     }
-    if (fim_registry_validate_ignore(new->registry_entry.value->name, configuration, 0)) {
+    if (fim_registry_validate_ignore(value_path, configuration, 0)) {
         return;
     }
 
