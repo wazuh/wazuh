@@ -6,11 +6,11 @@ import os
 import sqlite3
 from datetime import datetime
 from unittest.mock import patch, ANY
-from wazuh.core.exception import WazuhException
 
 import pytest
 
 from api.util import remove_nones_to_dict
+from wazuh.core.exception import WazuhException
 
 with patch('wazuh.core.common.ossec_uid'):
     with patch('wazuh.core.common.ossec_gid'):
