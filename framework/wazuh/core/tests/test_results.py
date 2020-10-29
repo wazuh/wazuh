@@ -7,8 +7,8 @@ from unittest.mock import patch
 
 import pytest
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult, _goes_before_than, nested_itemgetter, merge
         from wazuh import WazuhException, WazuhError
 

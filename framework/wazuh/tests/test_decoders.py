@@ -10,8 +10,8 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-with patch('wazuh.common.getgrnam'):
-    with patch('wazuh.common.getpwnam'):
+with patch('wazuh.core.common.getgrnam'):
+    with patch('wazuh.core.common.getpwnam'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         del sys.modules['wazuh.rbac.orm']
@@ -45,7 +45,7 @@ decoder_ossec_conf_2 = {
 
 @pytest.fixture(scope='module', autouse=True)
 def mock_ossec_path():
-    with patch('wazuh.common.ossec_path', new=test_data_path):
+    with patch('wazuh.core.common.ossec_path', new=test_data_path):
         with patch('wazuh.core.configuration.get_ossec_conf', return_value=decoder_ossec_conf):
             yield
 

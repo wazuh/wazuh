@@ -14,8 +14,8 @@ from xml.etree import ElementTree
 
 import pytest
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         from wazuh.core.utils import *
         from wazuh.core import exception
         from wazuh.core.agent import WazuhDBQueryAgents
@@ -1475,7 +1475,7 @@ def test_select_array(select, required_fields, expected_result):
     except WazuhError as e:
         assert e.code == 1724
 
-@patch('wazuh.common.ossec_path', new='/var/ossec')
+@patch('wazuh.core.common.ossec_path', new='/var/ossec')
 @patch('wazuh.core.utils.glob.glob')
 def test_get_files(mock_glob):
     """Test whether get_files() returns expected paths."""

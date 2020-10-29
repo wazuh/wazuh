@@ -9,8 +9,8 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         from wazuh.tests.util import RBAC_bypasser
@@ -42,7 +42,7 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 @patch("wazuh.core.ossec_queue.OssecQueue._connect")
 @patch("wazuh.syscheck.OssecQueue._send", return_value='1')
 @patch("wazuh.core.ossec_queue.OssecQueue.close")
-@patch('wazuh.common.ossec_path', new=test_data_path)
+@patch('wazuh.core.common.ossec_path', new=test_data_path)
 def test_run_command(mock_close,  mock_send, mock_conn, message_exception, send_exception, agent_id, command,
                      arguments, custom):
     """Verify the proper operation of active_response module.

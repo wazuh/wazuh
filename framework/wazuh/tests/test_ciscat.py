@@ -9,8 +9,8 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         del sys.modules['wazuh.rbac.orm']
@@ -29,7 +29,7 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     (['001'], False),
     (['003'], True)
 ])
-@patch('wazuh.common.wdb_path', new=test_data_path)
+@patch('wazuh.core.common.wdb_path', new=test_data_path)
 @patch('socket.socket.connect')
 @patch('wazuh.ciscat.get_agents_info', return_value=['001'])
 def test_get_ciscat_results(agents_info_mock, socket_mock, agent_id, exception):

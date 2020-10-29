@@ -8,8 +8,8 @@ from unittest.mock import patch, mock_open, ANY
 
 import pytest
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         from wazuh.core.manager import *
         from wazuh.core.exception import WazuhException
 
@@ -282,7 +282,7 @@ def test_upload_list_ko(mock_chmod, mock_random, mock_time, test_manager):
     'input_decoders_file',
     'input_lists_file'
 ])
-@patch('wazuh.common.ossec_path', test_data_path)
+@patch('wazuh.core.common.ossec_path', test_data_path)
 def test_validate_xml(input_file, test_manager):
     """Tests validate_xml function works
 

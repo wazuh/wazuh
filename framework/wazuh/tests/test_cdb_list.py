@@ -11,8 +11,8 @@ import pytest
 
 DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "test_cdb_list")
 
-with patch('wazuh.common.getgrnam'):
-    with patch('wazuh.common.getpwnam'):
+with patch('wazuh.core.common.getgrnam'):
+    with patch('wazuh.core.common.getpwnam'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         from wazuh.tests.util import RBAC_bypasser

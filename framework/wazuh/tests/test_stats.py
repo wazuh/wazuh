@@ -10,8 +10,8 @@ import pytest
 
 from wazuh.core.exception import WazuhException
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         del sys.modules['wazuh.rbac.orm']
@@ -94,7 +94,7 @@ def test_hourly(effect):
         assert isinstance(response, AffectedItemsWazuhResult), f'The result is not WazuhResult type'
 
 
-@patch('wazuh.common.stats_path', new=test_data_path)
+@patch('wazuh.core.common.stats_path', new=test_data_path)
 def test_hourly_data():
     """Makes sure that data returned by hourly() fit with the expected."""
     response = hourly()
@@ -121,7 +121,7 @@ def test_weekly(effect):
         assert isinstance(response, AffectedItemsWazuhResult), f'The result is not WazuhResult type'
 
 
-@patch('wazuh.common.stats_path', new=test_data_path)
+@patch('wazuh.core.common.stats_path', new=test_data_path)
 def test_weekly_data():
     """Makes sure that data returned by weekly() fit with the expected."""
     response = weekly()

@@ -11,8 +11,8 @@ import pytest
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..', '..', '..', 'api'))
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
 
@@ -70,8 +70,8 @@ def test_check_status(status, expected_result):
     ('0350-amazon_rules.xml', 'tests/data/rules', 'enabled', None),
     ('noexists.xml', 'tests/data/rules', 'enabled', WazuhError(1201))
 ])
-@patch("wazuh.common.ossec_path", new=parent_directory)
-@patch("wazuh.common.ruleset_rules_path", new=data_path)
+@patch("wazuh.core.common.ossec_path", new=parent_directory)
+@patch("wazuh.core.common.ruleset_rules_path", new=data_path)
 def test_load_rules_from_file(rule_file, rule_path, rule_status, exception):
     """Test set_groups rule core function."""
     try:

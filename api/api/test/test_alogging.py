@@ -9,8 +9,8 @@ from unittest.mock import patch, MagicMock, call
 
 import pytest
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         from api import alogging
 
 

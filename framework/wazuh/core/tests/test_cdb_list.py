@@ -8,8 +8,8 @@ from unittest.mock import mock_open, patch
 
 import pytest
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         from wazuh.core import common
         from wazuh.core.cdb_list import check_path, get_list_from_file, get_relative_path, iterate_lists, \
             split_key_value_with_quotes
