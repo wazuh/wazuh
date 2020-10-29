@@ -354,6 +354,7 @@ cJSON* sys_parse_pkg(const char * app_folder) {
                 } else if (sys_valid_plist_pkg_version(read_buff) == true) {
                     char ** parts = NULL;
                     char ** _parts = NULL;
+                    char * delim = NULL;
 
                     if (strstr(read_buff, "<string>")) {
                         parts = OS_StrBreak('>', read_buff, 4);
@@ -363,6 +364,11 @@ cJSON* sys_parse_pkg(const char * app_folder) {
                         strstr(read_buff, "<string>")) {
                         parts = OS_StrBreak('>', read_buff, 2);
                         _parts = OS_StrBreak('<', parts[1], 2);
+                    }
+
+                    delim = strstr(_parts[0], " (");
+                    if (delim) {
+                        *delim = '\0';
                     }
 
                     if (parts && _parts) {
