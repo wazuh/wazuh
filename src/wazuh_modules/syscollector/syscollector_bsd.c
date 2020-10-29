@@ -87,6 +87,12 @@ const char * discarded_packages [] = {
     NULL
 };
 
+// Valid package versions keys
+const char * plist_versions [] = {
+    "CFBundleShortVersionString",
+    "CliVersion"
+};
+
 STATIC int sys_read_apps(const char * app_folder, const char * timestamp, int random_id, int queue_fd, const char* LOCATION);
 STATIC int sys_read_homebrew_apps(const char * app_folder, const char * timestamp, int random_id, int queue_fd, const char* LOCATION);
 STATIC cJSON* sys_parse_pkg(const char * app_folder);
@@ -231,6 +237,25 @@ int sys_read_apps(const char * app_folder, const char * timestamp, int random_id
 }
 
 /**
+ * @brief Check whether the given plist string contains a
+ * valid and supported 'version' key.
+ *
+ * @param line String with version key.
+ * @return True if it's valid, False otherwise.
+ **/
+bool sys_valid_plist_pkg_version (const char *line) {
+    int8_t dic_size = array_size(plist_versions);
+
+    for (int8_t i = 0; i < dic_size; i++) {
+        if (strstr(line, plist_versions[i])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
  * @brief Read macOS plist files
  *
  * @param app_folder Path to the directory where the plist file is located.
@@ -326,39 +351,34 @@ cJSON* sys_parse_pkg(const char * app_folder) {
                         os_free(parts);
                         read_name = 1;
                     }
-                } else if (strstr(read_buff, "CFBundleShortVersionString")){
-                    if (strstr(read_buff, "<string>")){
-                        char ** parts = OS_StrBreak('>', read_buff, 4);
-                        char ** _parts = OS_StrBreak('<', parts[3], 2);
+                } else if (sys_valid_plist_pkg_version(read_buff) == true) {
+                    char ** parts = NULL;
+                    char ** _parts = NULL;
 
-                        cJSON_AddStringToObject(package, "version", _parts[0]);
+                    if (strstr(read_buff, "<string>")) {
+                        parts = OS_StrBreak('>', read_buff, 4);
+                        _parts =  OS_StrBreak('<', parts[3], 2);
 
-                        for (i = 0; _parts[i]; i++) {
-                            os_free(_parts[i]);
-                        }
-                        os_free(_parts);
-
-                        for (i = 0; parts[i]; i++) {
-                            os_free(parts[i]);
-                        }
-                        os_free(parts);
+                    } else if ((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && 
+                        strstr(read_buff, "<string>")) {
+                        parts = OS_StrBreak('>', read_buff, 2);
+                        _parts = OS_StrBreak('<', parts[1], 2);
                     }
-                    else if ((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
-                        char ** parts = OS_StrBreak('>', read_buff, 2);
-                        char ** _parts = OS_StrBreak('<', parts[1], 2);
+                    
+                    // Save only the last pkg version available
+                    cJSON_DeleteItemFromObject(package, "version");
+                    cJSON_AddStringToObject(package, "version", _parts[0]);
 
-                        cJSON_AddStringToObject(package, "version", _parts[0]);
-
-                        for (i = 0; _parts[i]; i++) {
-                            os_free(_parts[i]);
-                        }
-                        os_free(_parts);
-
-                        for (i = 0; parts[i]; i++) {
-                            os_free(parts[i]);
-                        }
-                        os_free(parts);
+                    for (i = 0; _parts[i]; i++) {
+                        os_free(_parts[i]);
                     }
+                    os_free(_parts);
+
+                    for (i = 0; parts[i]; i++) {
+                        os_free(parts[i]);
+                    }
+                    os_free(parts);
+    
                 } else if (strstr(read_buff, "LSApplicationCategoryType")){
                     if (strstr(read_buff, "<string>")){
                         char ** parts = OS_StrBreak('>', read_buff, 4);
