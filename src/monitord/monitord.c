@@ -31,6 +31,8 @@ void Monitord()
     int *agents_array = NULL;
     unsigned int inode_it = 0;
     OSHashNode *agent_hash_node = NULL;
+    OSHashNode *agent_hash_prev_node = NULL;
+
     cJSON *j_agent_info = NULL;
     cJSON *j_agent_status = NULL;
     cJSON *j_agent_lastkeepalive = NULL;
@@ -105,6 +107,11 @@ void Monitord()
         tm = time(NULL);
         localtime_r(&tm, &tm_result);
 
+
+
+        /* In a local installation, there is no need to check agents */
+        #ifndef LOCAL
+
         if (mond.a_queue < 0) {
             /* Connect to the message queue */
             if ((mond.a_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) > 0) {
@@ -117,9 +124,6 @@ void Monitord()
                 }
             }
         }
-
-        /* In a local installation, there is no need to check agents */
-        #ifndef LOCAL
 
         switch (MonitorCheckCounters(&counters)) {
             case 1:
@@ -136,6 +140,7 @@ void Monitord()
                 break;
             case 2:
                 /* agents_disconnection_alert_time counter */
+                inode_it = 0;
                 agent_hash_node = OSHash_Begin(agents_to_alert_hash, &inode_it);
                 while (agent_hash_node) {
                     j_agent_info = wdb_get_agent_info(atoi(agent_hash_node->key), &sock);
@@ -152,7 +157,9 @@ void Monitord()
 
                                 if (strcmp(j_agent_status->valuestring, "active") == 0) {
                                     /* The agent is now connected, removing from table */
+                                    agent_hash_prev_node = agent_hash_node->prev;
                                     OSHash_Delete_ex(agents_to_alert_hash, agent_hash_node->key);
+                                    agent_hash_node = agent_hash_prev_node;
                                 }
 
                                 else if (strcmp(j_agent_status->valuestring, "disconnected") == 0 &&
@@ -162,12 +169,17 @@ void Monitord()
                                     os_strdup(j_agent_name->valuestring, agent_name_ip);
                                     wm_strcat(&agent_name_ip, j_agent_ip->valuestring, '-');
                                     monitor_agent_disconnection(agent_name_ip);
+                                    agent_hash_prev_node = agent_hash_node->prev;
                                     OSHash_Delete_ex(agents_to_alert_hash, agent_hash_node->key);
+                                    agent_hash_node = agent_hash_prev_node;
                                     os_free(agent_name_ip);
                                 }
                             }
                     } else {
                         mdebug1("Unable to retrieve agent's '%s' data from Wazuh DB", agent_hash_node->key);
+                        agent_hash_prev_node = agent_hash_node->prev;
+                        OSHash_Delete_ex(agents_to_alert_hash, agent_hash_node->key);
+                        agent_hash_node = agent_hash_prev_node;
                     }
                     cJSON_Delete(j_agent_info);
                     agent_hash_node = OSHash_Next(agents_to_alert_hash, &inode_it, agent_hash_node);
