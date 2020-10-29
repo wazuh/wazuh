@@ -189,7 +189,7 @@ class WazuhDBConnection:
         """
         def send_request_to_wdb(query_lower, step, off, response):
             try:
-                request = query_lower.replace(':limit', 'limit ' + str(step)).replace(':offset', 'offset ' + str(off))
+                request = query_lower.replace(':limit', 'limit {}'.format(step)).replace(':offset', 'offset {}'.format(off))
                 response.extend(self._send(request))
             except ValueError:
                 # if the step is already 1, it can't be divided
