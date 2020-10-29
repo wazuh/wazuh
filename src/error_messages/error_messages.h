@@ -380,6 +380,8 @@
 #define VU_GET_NVD_YEAR_ERROR       "(5585): Couldn't get the NVD configured year."
 #define VU_NO_ENABLED_FEEDS         "(5586): No feeds specified for '%s' provider. Enabling all the available ones."
 #define VU_OFFLINE_CONFLICT         "(5587): Feed conflict. Only '%s' will be updated offline."
+#define VU_VER_INVALID_FORMAT       "(5588): Invalid format of Wazuh version for agent '%.3d'"
+#define VU_VER_READING_ERROR        "(5589): Couldn't read Wazuh version for agent '%.3d'"
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
