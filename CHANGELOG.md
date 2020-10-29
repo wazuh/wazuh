@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 # [v4.1.0]
 
+### Fixed
+
+- Changed limit parameter behaviour in GET sca checks endpoint. ([#6064](https://github.com/wazuh/wazuh/pull/6064))
+
 ## [v4.0.0] -
 
 ### Added
