@@ -404,6 +404,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger.debug("Received file from worker: '{}'".format(received_filename))
 
         files_checksums, decompressed_files_path = await wazuh.core.cluster.cluster.decompress_files(received_filename)
+        shutil.rmtree(decompressed_files_path)
         logger.info("Analyzing worker integrity: Received {} files to check.".format(len(files_checksums)))
 
         # classify files in shared, missing, extra and extra valid.
@@ -411,7 +412,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         # health check
         self.sync_integrity_status['total_files'] = counts
-        shutil.rmtree(decompressed_files_path)
 
         if not functools.reduce(operator.add, map(len, worker_files_ko.values())):
             logger.info("Analyzing worker integrity: Files checked. There are no KO files.")
