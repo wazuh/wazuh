@@ -1200,12 +1200,28 @@ def agents_padding(result, agent_list):
     return agent_list
 
 
-def core_upgrade_agents(agents_chunk, command='upgrade_result', parameters=None, get_result=False):
+def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, version=None,
+                        force=False, use_http=False, file_path=None, installer=None, get_result=False):
     """Send command to upgrade module / task module
 
     Parameters
     ----------
-    command
+    agents_chunk : list
+        List of agents ID's.
+    command : str
+        Command sent to the socket.
+    wpk_repo : str
+        URL for WPK download.
+    version : str
+        Version to upgrade to.
+    force : bool
+        force the update even if it is a downgrade.
+    use_http : bool
+        False for HTTPS protocol, True for HTTP protocol.
+    file_path : str
+        Path to the installation file.
+    installer : str
+        Selected installer.
     get_result : bool
         Get the result of an update (True -> Task module), Create new upgrade task (False -> Upgrade module)
 
@@ -1219,12 +1235,12 @@ def core_upgrade_agents(agents_chunk, command='upgrade_result', parameters=None,
                'command': command,
                'parameters': {
                    'agents': agents_chunk,
-                   'version': parameters['version'],
-                   'force_upgrade': parameters['force'],
-                   'use_http': parameters['use_http'],
-                   'wpk_repo': parameters['wpk_repo'],
-                   'file_path': parameters['file_path'],
-                   'installer': parameters['installer']
+                   'version': version,
+                   'force_upgrade': force,
+                   'use_http': use_http,
+                   'wpk_repo': wpk_repo,
+                   'file_path': file_path,
+                   'installer': installer
                }
                }
     else:
