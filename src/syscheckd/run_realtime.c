@@ -246,12 +246,10 @@ int realtime_update_watch(const char *wd, const char *dir) {
             merror(FIM_ERROR_INOTIFY_ADD_MAX_REACHED, dir, new_wd, errno);
             return -1;
         } else if (errno == ENOENT) {
-            if (strcmp(dir, syscheck.dir[index])) {
-                mdebug1("Removing watch on non existent directory '%s'", dir);
-                inotify_rm_watch(syscheck.realtime->fd, old_wd);
-                free(OSHash_Delete_ex(syscheck.realtime->dirtb, wd));
-                return 0;
-            }
+            mdebug1("Removing watch on non existent directory '%s'", dir);
+            inotify_rm_watch(syscheck.realtime->fd, old_wd);
+            free(OSHash_Delete_ex(syscheck.realtime->dirtb, wd));
+            return 0;
         } else {
             mdebug1(FIM_INOTIFY_ADD_WATCH, dir, new_wd, errno, strerror(errno));
             return -1;
