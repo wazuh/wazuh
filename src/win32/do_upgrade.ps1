@@ -37,6 +37,31 @@ function check-installation
     Get-Service -Name "Wazuh" | Start-Service
 }
 
+function modify-ossec-conf()
+{
+    $new_conf = '
+<!-- START of Custom Configuration. -->
+
+<ossec_config>
+
+  <client>
+    <server>
+      <address>0.0.0.0</address>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+    </server>
+    <crypto_method>aes</crypto_method>
+    <notify_time>10</notify_time>
+    <time-reconnect>60</time-reconnect>
+    <auto_restart>yes</auto_restart>
+  </client>
+</ossec_config>
+
+<!-- END of Custom Configuration. -->
+'
+    Set-Content -Path .\ossec.conf -Value $new_conf
+}
+
 # Get current version
 $current_version = (Get-Content VERSION)
 $current_file_date = (Get-Item ".\ossec-agent.exe").LastWriteTime
@@ -63,6 +88,7 @@ while($process_id -ne $null -And $counter -gt 0)
 
 # Install
 install
+modify-ossec-conf
 check-installation
 write-output "$(Get-Date -format u) - Installation finished." >> .\upgrade\upgrade.log
 
