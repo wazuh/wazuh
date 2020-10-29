@@ -274,7 +274,7 @@ int realtime_update_watch(const char *wd, const char *dir) {
             merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
         }
 
-        mdebug1(FIM_REALTIME_NEWDIRECTORY, dir);
+        mdebug1(FIM_REALTIME_NEWDIRECTORY, data);
     } else if (retval = OSHash_Update_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
         merror("Unable to update 'dirtb'. Directory not found: '%s'", data);
         os_free(data);
@@ -651,9 +651,11 @@ int fim_check_realtime_directory(const char *dir) {
     return 0;
 }
 
+// LCOV_EXCL_START
 void realtime_sanitize_watch_map() {
     return;
 }
+// LCOV_EXCL_STOP
 
 #else /* !WIN32 */
 
