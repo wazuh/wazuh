@@ -2758,7 +2758,7 @@ static void test_win_perm_to_json_error_splitting_permissions(void **state) {
 }
 
 #ifdef TEST_WINAGENT
-/*
+
 static void test_get_user_CreateFile_error_access_denied(void **state) {
     char **array = *state;
 
@@ -2914,7 +2914,7 @@ static void test_get_user_success(void **state) {
     assert_string_equal(array[0], "accountName");
     assert_string_equal(array[1], "sid");
 }
-*/
+
 
 void test_w_get_account_info_LookupAccountSid_error_insufficient_buffer(void **state) {
     char **array = *state;
@@ -3373,6 +3373,220 @@ void test_w_directory_exists_path_is_dir(void **state) {
 
     assert_non_null(ret);
 }
+
+void test_get_registry_permissions_RegGetKeySecurity_insufficient_buffer(void **state) {
+    HKEY hndl = (HKEY)123456;
+    unsigned int retval = 0;
+    char permissions[OS_SIZE_6144 + 1];
+
+    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
+    will_return(wrap_RegGetKeySecurity, ERROR_ACCESS_DENIED);
+
+    retval = get_registry_permissions(hndl, permissions);
+
+    assert_int_equal(retval, ERROR_ACCESS_DENIED);
+    assert_string_equal(permissions, "");
+}
+
+void test_get_registry_permissions_RegGetKeySecurity_fails(void **state) {
+    HKEY hndl = (HKEY)123456;
+    unsigned int retval = 0;
+    char permissions[OS_SIZE_6144 + 1];
+
+    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
+    will_return(wrap_RegGetKeySecurity, ERROR_INSUFFICIENT_BUFFER);
+
+    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
+    will_return(wrap_RegGetKeySecurity, ERROR_ACCESS_DENIED);
+
+    retval = get_registry_permissions(hndl, permissions);
+
+    assert_int_equal(retval, ERROR_ACCESS_DENIED);
+    assert_string_equal(permissions, "");
+}
+
+void test_get_registry_permissions_GetSecurityDescriptorDacl_fails(void **state) {
+    HKEY hndl = (HKEY)123456;
+    unsigned int retval = 0;
+    char permissions[OS_SIZE_6144 + 1];
+
+    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
+    will_return(wrap_RegGetKeySecurity, ERROR_INSUFFICIENT_BUFFER);
+
+    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
+    will_return(wrap_RegGetKeySecurity, ERROR_SUCCESS);
+
+    will_return(wrap_GetSecurityDescriptorDacl, FALSE);
+    will_return(wrap_GetSecurityDescriptorDacl, (PACL)0);
+    will_return(wrap_GetSecurityDescriptorDacl, FALSE);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "GetSecurityDescriptorDacl failed. GetLastError returned: 0");
+
+    retval = get_registry_permissions(hndl, permissions);
+
+    assert_int_equal(retval, ERROR_SUCCESS);
+    assert_string_equal(permissions, "");
+}
+
+void test_get_registry_permissions_GetSecurityDescriptorDacl_no_DACL(void **state) {
+    HKEY hndl = (HKEY)123456;
+    unsigned int retval = 0;
+    char permissions[OS_SIZE_6144 + 1];
+
+    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
+    will_return(wrap_RegGetKeySecurity, ERROR_INSUFFICIENT_BUFFER);
+
+    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
+    will_return(wrap_RegGetKeySecurity, ERROR_SUCCESS);
+
+    will_return(wrap_GetSecurityDescriptorDacl, FALSE);
+    will_return(wrap_GetSecurityDescriptorDacl, (PACL)0);
+    will_return(wrap_GetSecurityDescriptorDacl, TRUE);
+
+    char error_msg[OS_SIZE_1024];
+
+    snprintf(error_msg,
+             OS_SIZE_1024,
+             "%s",
+             "No DACL was found (all access is denied), or a NULL DACL (unrestricted access) was found.");
+
+    expect_string(__wrap__mdebug2, formatted_msg, error_msg);
+
+    retval = get_registry_permissions(hndl, permissions);
+
+    assert_int_equal(retval, ERROR_SUCCESS);
+    assert_string_equal(permissions, "");
+}
+
+void test_get_registry_permissions_GetAclInformation_fails(void **state) {
+    HKEY hndl = (HKEY)123456;
+    unsigned int retval = 0;
+    char permissions[OS_SIZE_6144 + 1];
+
+    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
+    will_return(wrap_RegGetKeySecurity, ERROR_INSUFFICIENT_BUFFER);
+
+    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
+    will_return(wrap_RegGetKeySecurity, ERROR_SUCCESS);
+
+    will_return(wrap_GetSecurityDescriptorDacl, TRUE);
+    will_return(wrap_GetSecurityDescriptorDacl, (PACL)4321);
+    will_return(wrap_GetSecurityDescriptorDacl, TRUE);
+
+    will_return(wrap_GetAclInformation, NULL);
+    will_return(wrap_GetAclInformation, FALSE);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "GetAclInformation failed. GetLastError returned: 0");
+
+    retval = get_registry_permissions(hndl, permissions);
+
+    assert_int_equal(retval, ERROR_SUCCESS);
+    assert_string_equal(permissions, "");
+}
+
+void test_get_registry_permissions_GetAce_fails(void **state) {
+    HKEY hndl = (HKEY)123456;
+    unsigned int retval = 0;
+    char permissions[OS_SIZE_6144 + 1];
+    ACL_SIZE_INFORMATION acl_size = { .AceCount = 1 };
+
+    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
+    will_return(wrap_RegGetKeySecurity, ERROR_INSUFFICIENT_BUFFER);
+
+    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
+    will_return(wrap_RegGetKeySecurity, ERROR_SUCCESS);
+
+    will_return(wrap_GetSecurityDescriptorDacl, TRUE);
+    will_return(wrap_GetSecurityDescriptorDacl, (PACL)4321);
+    will_return(wrap_GetSecurityDescriptorDacl, TRUE);
+
+    will_return(wrap_GetAclInformation, &acl_size);
+    will_return(wrap_GetAclInformation, TRUE);
+
+    will_return(wrap_GetAce, NULL);
+    will_return(wrap_GetAce, FALSE);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "GetAce failed. GetLastError returned: 0");
+
+    retval = get_registry_permissions(hndl, permissions);
+
+    assert_int_equal(retval, ERROR_SUCCESS);
+    assert_string_equal(permissions, "");
+}
+
+void test_get_registry_permissions_success(void **state) {
+    HKEY hndl = (HKEY)123456;
+    unsigned int retval = 0;
+    char permissions[OS_SIZE_6144 + 1];
+    ACL_SIZE_INFORMATION acl_size = { .AceCount = 1 };
+    ACCESS_ALLOWED_ACE ace = {
+        .Header.AceType = ACCESS_ALLOWED_ACE_TYPE,
+    };
+
+    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
+    will_return(wrap_RegGetKeySecurity, ERROR_INSUFFICIENT_BUFFER);
+
+    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
+    will_return(wrap_RegGetKeySecurity, ERROR_SUCCESS);
+
+    will_return(wrap_GetSecurityDescriptorDacl, TRUE);
+    will_return(wrap_GetSecurityDescriptorDacl, (PACL)4321);
+    will_return(wrap_GetSecurityDescriptorDacl, TRUE);
+
+    will_return(wrap_GetAclInformation, &acl_size);
+    will_return(wrap_GetAclInformation, TRUE);
+
+    will_return(wrap_GetAce, NULL);
+    will_return(wrap_GetAce, TRUE);
+
+    // Inside copy_ace_info
+    {
+        will_return(wrap_IsValidSid, 1);
+
+        // Inside w_get_account_info
+        will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Name size
+        will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Domain size
+        will_return(wrap_LookupAccountSid, 1);
+
+        will_return(wrap_LookupAccountSid, "accountName");
+        will_return(wrap_LookupAccountSid, "domainName");
+        will_return(wrap_LookupAccountSid, 1);
+    }
+
+    retval = get_registry_permissions(hndl, permissions);
+
+    assert_int_equal(retval, ERROR_SUCCESS);
+    assert_string_equal(permissions, "|accountName,0,0");
+}
+
+void test_get_registry_mtime_RegQueryInfoKeyA_fails(void **state) {
+    PFILETIME last_write_time;
+    unsigned int retval = 0;
+    HKEY hndl = 123456;
+
+    expect_value(wrap_RegQueryInfoKeyA, lpftLastWriteTime, last_write_time);
+    will_return(wrap_RegQueryInfoKeyA, ERROR_MORE_DATA);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Couldn't get modification time for registry key.");
+
+    retval = get_registry_mtime(hndl);
+
+    assert_int_equal(retval, 0);
+}
+
+void test_get_registry_mtime_success(void **state) {
+    PFILETIME last_write_time;
+    unsigned int retval = 0;
+    HKEY hndl = (HKEY)123456;
+
+    expect_value(wrap_RegQueryInfoKeyA, lpftLastWriteTime, last_write_time);
+    will_return(wrap_RegQueryInfoKeyA, ERROR_SUCCESS);
+
+    retval = get_registry_mtime(hndl);
+
+    assert_int_not_equal(retval, 0);
+}
+
 #endif
 
 
@@ -3529,6 +3743,7 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_teardown(test_win_perm_to_json_error_splitting_permissions, teardown_cjson),
 
 #ifdef TEST_WINAGENT
+        /* get_user tests */
         // cmocka_unit_test_setup_teardown(test_get_user_CreateFile_error_access_denied, setup_string_array, teardown_string_array),
         // cmocka_unit_test_setup_teardown(test_get_user_CreateFile_error_sharing_violation, setup_string_array, teardown_string_array),
         // cmocka_unit_test_setup_teardown(test_get_user_CreateFile_error_generic, setup_string_array, teardown_string_array),
@@ -3537,15 +3752,18 @@ int main(int argc, char *argv[]) {
         // cmocka_unit_test_setup_teardown(test_get_user_LookupAccountSid_error_none_mapped, setup_string_array, teardown_string_array),
         // cmocka_unit_test_setup_teardown(test_get_user_success, setup_string_array, teardown_string_array),
 
+        /* w_get_account_info tests */
         cmocka_unit_test_setup_teardown(test_w_get_account_info_LookupAccountSid_error_insufficient_buffer, setup_string_array, teardown_string_array),
         cmocka_unit_test_setup_teardown(test_w_get_account_info_LookupAccountSid_error_second_call, setup_string_array, teardown_string_array),
         cmocka_unit_test_setup_teardown(test_w_get_account_info_success, setup_string_array, teardown_string_array),
 
+        /* copy_ace_info tests */
         cmocka_unit_test(test_copy_ace_info_invalid_ace),
         cmocka_unit_test(test_copy_ace_info_invalid_sid),
         cmocka_unit_test(test_copy_ace_info_no_information_from_account_or_sid),
         cmocka_unit_test(test_copy_ace_info_success),
 
+        /* w_get_file_permissions tests */
         cmocka_unit_test(test_w_get_file_permissions_GetFileSecurity_error_on_size),
         cmocka_unit_test(test_w_get_file_permissions_GetFileSecurity_error),
         cmocka_unit_test(test_w_get_file_permissions_GetSecurityDescriptorDacl_error),
@@ -3555,13 +3773,28 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test(test_w_get_file_permissions_success),
         cmocka_unit_test(test_w_get_file_permissions_copy_ace_info_error),
 
+        /* w_get_file_attrs tests */
         cmocka_unit_test(test_w_get_file_attrs_error),
         cmocka_unit_test(test_w_get_file_attrs_success),
 
+        /* w_directory_exists tests */
         cmocka_unit_test(test_w_directory_exists_null_path),
         cmocka_unit_test(test_w_directory_exists_error_getting_attrs),
         cmocka_unit_test(test_w_directory_exists_path_is_not_dir),
         cmocka_unit_test(test_w_directory_exists_path_is_dir),
+
+        /* get_registry_permissions tests */
+        cmocka_unit_test(test_get_registry_permissions_RegGetKeySecurity_insufficient_buffer),
+        cmocka_unit_test(test_get_registry_permissions_RegGetKeySecurity_fails),
+        cmocka_unit_test(test_get_registry_permissions_GetSecurityDescriptorDacl_fails),
+        cmocka_unit_test(test_get_registry_permissions_GetSecurityDescriptorDacl_no_DACL),
+        cmocka_unit_test(test_get_registry_permissions_GetAclInformation_fails),
+        cmocka_unit_test(test_get_registry_permissions_GetAce_fails),
+        cmocka_unit_test(test_get_registry_permissions_success),
+
+        /* get_registry_mtime tests */
+        cmocka_unit_test(test_get_registry_mtime_RegQueryInfoKeyA_fails),
+        cmocka_unit_test(test_get_registry_mtime_success),
 #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
