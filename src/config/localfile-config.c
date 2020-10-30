@@ -372,6 +372,13 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         os_strdup("agent", logf[pl].target[0]);
     }
 
+    /* Missing file */
+    if (logf[pl].file == NULL) {
+        merror(MISS_FILE);
+        os_strdup("", logf[pl].file);
+        return (OS_INVALID);
+    }
+
     /* Missing log format */
     if (!logf[pl].logformat) {
         merror(MISS_LOG_FORMAT);
@@ -512,12 +519,6 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 os_strdup(logf[pl].exclude, log_config->globs[gl].exclude_path);
             }
         }
-    }
-
-    /* Missing file */
-    if (!logf[pl].file) {
-        merror(MISS_FILE);
-        return (OS_INVALID);
     }
 
     return (0);
