@@ -196,7 +196,8 @@ class WazuhDBConnection:
                 if step == 1:
                     raise WazuhInternalError(2007)
                 send_request_to_wdb(query_lower, step // 2, off, response)
-                send_request_to_wdb(query_lower, step // 2, step // 2 + off, response)
+                # Add step // 2 remaining when the step is odd to avoid losing information
+                send_request_to_wdb(query_lower, step // 2 + step % 2, step // 2 + off, response)
 
         query_lower = self.__query_lower(query)
 
