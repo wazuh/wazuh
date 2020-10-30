@@ -11,13 +11,9 @@ All notable changes to this project will be documented in this file.
 
 - **API:**
   - Added missing agent:group resource to RBAC's catalog. ([6427](https://github.com/wazuh/wazuh/issues/6427))
+  - Changed `limit` parameter behaviour in `GET sca/{agent_id}/checks/{policy_id}` endpoint and fixed some loss of information when paginating wdf. ([#6464](https://github.com/wazuh/wazuh/pull/6464))
 
 ### Removed
-
-### Fixed
-
-- Fixed an error with `/groups/{group_id}/config` Wazuh API endpoints (GET and PUT) when using complex `localfile` configurations. ([#6276](https://github.com/wazuh/wazuh/pull/6383))
-- Changed `limit` parameter behaviour in `GET sca/{agent_id}/checks/{policy_id}` endpoint. ([#6064](https://github.com/wazuh/wazuh/pull/6064))
 
 ## [v4.0.0] -
 
