@@ -363,7 +363,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         files_checksums, decompressed_files_path = await wazuh.core.cluster.cluster.decompress_files(received_filename)
         logger.info("Analyzing worker files: Received {} files to check.".format(len(files_checksums)))
-        await self.process_files_from_worker(files_checksums, decompressed_files_path, logger)
+        try:
+            await self.process_files_from_worker(files_checksums, decompressed_files_path, logger)
+        finally:
+            shutil.rmtree(decompressed_files_path)
 
     async def sync_extra_valid(self, task_name: str, received_file: asyncio.Event):
         """
@@ -568,9 +571,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         try:
             for filename, data in files_checksums.items():
                 await update_file(data=data, name=filename)
-
-            shutil.rmtree(decompressed_files_path)
-
         except Exception as e:
             self.logger.error("Error updating worker files: '{}'.".format(e))
             raise e
