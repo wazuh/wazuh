@@ -8,129 +8,91 @@
  * Foundation
  */
 
+#include "cJSON.h"
+#include "debug_op.h"
+#include "hash_op.h"
 #include "os_err.h"
 #include "shared.h"
 #include "monitord.h"
 #include "config/config.h"
+#include "string_op.h"
+#include "wazuh_db/wdb.h"
+#include "time.h"
 
 /* Global variables */
 monitor_config mond;
+OSHash* agents_to_alert_hash;
+monitor_time_control mond_time_control;
 
 void Monitord()
 {
-    time_t tm;
-    int counter = 0;
-    struct tm tm_result = { .tm_sec = 0 };
-
     char path[PATH_MAX];
     char path_json[PATH_MAX];
-    struct stat buf;
-    off_t size;
-
-    int today = 0;
-    int thismonth = 0;
-    int thisyear = 0;
-
-    char str[OS_SIZE_1024 + 1];
 
     /* Wait a few seconds to settle */
     sleep(10);
 
-    memset(str, '\0', OS_SIZE_1024 + 1);
-
-    /* Get current time before starting */
-    tm = time(NULL);
-    localtime_r(&tm, &tm_result);
-
-    today = tm_result.tm_mday;
-    thismonth = tm_result.tm_mon;
-    thisyear = tm_result.tm_year + 1900;
-
     /* Set internal log path to rotate them */
 #ifdef WIN32
-    // ossec.log
+    /* ossec.log */
     snprintf(path, PATH_MAX, "%s", LOGFILE);
-    // ossec.json
+    /* ossec.json */
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 #else
-    // /var/ossec/logs/ossec.log
+    /* /var/ossec/logs/ossec.log */
     snprintf(path, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGFILE);
-    // /var/ossec/logs/ossec.json
+    /* /var/ossec/logs/ossec.json */
     snprintf(path_json, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGJSONFILE);
 #endif
 
     /* Connect to the message queue or exit */
-    if ((mond.a_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+    monitor_queue_connect();
+    if (mond.a_queue < 0) {
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
-    }
-
-    /* Send startup message */
-    snprintf(str, OS_SIZE_1024 - 1, OS_AD_STARTED);
-    if (SendMSG(mond.a_queue, str, ARGV0,
-                LOCALFILE_MQ) < 0) {
-        merror(QUEUE_SEND);
     }
 
     // Start com request thread
     w_create_thread(moncom_main, NULL);
 
+    /* Creating agents disconnected alert table */
+    agents_to_alert_hash = OSHash_Create();
+    if(!agents_to_alert_hash) {
+        merror(MEM_ERROR, errno, strerror(errno));
+    }
+
+    /* Get current time and initiate counters */
+    monitor_init_time_control();
+
     /* Main monitor loop */
     while (1) {
-        tm = time(NULL);
-        localtime_r(&tm, &tm_result);
-        counter++;
+        monitor_step_time();
 
+        /* In a local installation, there is no need to check agents */
 #ifndef LOCAL
-        /* Check for unavailable agents, every two minutes */
-        if (mond.monitor_agents && counter >= 120) {
-            if (mond.a_queue < 0) {
-                /* Connect to the message queue */
-                if ((mond.a_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) > 0) {
-                    /* Send startup message */
-                    snprintf(str, OS_SIZE_1024 - 1, OS_AD_STARTED);
-                    if (SendMSG(mond.a_queue, str, ARGV0,
-                                LOCALFILE_MQ) < 0) {
-                        mond.a_queue = -1;  // We keep trying to reconnect next time.
-                        merror(QUEUE_SEND);
-                    }
-                }
-            }
-            monitor_agents();
-            counter = 0;
+        if (mond.a_queue < 0) {
+            /* Connecting to the message queue */
+            monitor_queue_connect();
+        }
+        if(check_disconnection_trigger()){
+            monitor_agents_disconnection();
+        }
+        if(check_alert_trigger()){
+            monitor_agents_alert();
+        }
+        if(check_deletion_trigger()){
+            monitor_agents_deletion();
         }
 #endif
 
-        /* Day changed, deal with log files */
-        if (today != tm_result.tm_mday) {
-            if (mond.rotate_log) {
-                sleep(mond.day_wait);
-                /* Daily rotation and compression of ossec.log/ossec.json */
-                w_rotate_log(mond.compress, mond.keep_log_days, 1, 0, mond.daily_rotations);
-            }
+        if(check_logs_time_trigger()){
+            monitor_logs(!CHECK_LOGS_SIZE, path, path_json);
+            /* Generating reports */
+            generate_reports(mond_time_control.today, mond_time_control.thismonth, mond_time_control.thisyear, &mond_time_control.current_time);
+            manage_files(mond_time_control.today, mond_time_control.thismonth, mond_time_control.thisyear);
+            monitor_update_date();
 
-            /* Generate reports */
-            generate_reports(today, thismonth, thisyear, &tm_result);
-            manage_files(today, thismonth, thisyear);
-
-            today = tm_result.tm_mday;
-            thismonth = tm_result.tm_mon;
-            thisyear = tm_result.tm_year + 1900;
-        } else if (mond.rotate_log && mond.size_rotate > 0) {
-            if (stat(path, &buf) == 0) {
-                size = buf.st_size;
-                /* If log file reachs maximum size, rotate ossec.log */
-                if ( (unsigned long) size >= mond.size_rotate) {
-                    w_rotate_log(mond.compress, mond.keep_log_days, 0, 0, mond.daily_rotations);
-                }
-            }
-
-            if (stat(path_json, &buf) == 0) {
-                size = buf.st_size;
-                /* If log file reachs maximum size, rotate ossec.json */
-                if ( (unsigned long) size >= mond.size_rotate) {
-                    w_rotate_log(mond.compress, mond.keep_log_days, 0, 1, mond.daily_rotations);
-                }
-            }
+        } else{
+            monitor_logs(CHECK_LOGS_SIZE, path, path_json);
         }
 
         sleep(1);
@@ -234,4 +196,80 @@ int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short d
     }
 
     return OS_SUCCESS;
+}
+
+void monitor_queue_connect() {
+    if ((mond.a_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) > 0) {
+        /* Send startup message */
+        if (SendMSG(mond.a_queue, OS_AD_STARTED, ARGV0, LOCALFILE_MQ) < 0) {
+            mond.a_queue = -1;  // We keep trying to reconnect next time.
+            merror(QUEUE_SEND);
+        }
+    }
+}
+
+void monitor_init_time_control() {
+    time_t tm;
+
+    mond_time_control.current_time.tm_sec = 0;
+    mond_time_control.disconnect_counter = 0;
+    mond_time_control.alert_counter = 0;
+    mond_time_control.delete_counter = 0;
+
+    tm = time(NULL);
+    localtime_r(&tm, &mond_time_control.current_time);
+
+    mond_time_control.today = mond_time_control.current_time.tm_mday;
+    mond_time_control.thismonth = mond_time_control.current_time.tm_mon;
+    mond_time_control.thisyear = mond_time_control.current_time.tm_year + 1900;
+}
+
+void monitor_step_time() {
+    time_t tm;
+    tm = time(NULL);
+    localtime_r(&tm, &mond_time_control.current_time);
+
+    mond_time_control.disconnect_counter++;
+    mond_time_control.alert_counter++;
+    if(mond.delete_old_agents != 0){
+        mond_time_control.delete_counter++;
+    }
+
+}
+
+void monitor_update_date() {
+    mond_time_control.today = mond_time_control.current_time.tm_mday;
+    mond_time_control.thismonth = mond_time_control.current_time.tm_mon;
+    mond_time_control.thisyear = mond_time_control.current_time.tm_year + 1900;
+}
+
+int check_disconnection_trigger() {
+    if (mond_time_control.disconnect_counter >= mond.global.agents_disconnection_time) {
+        mond_time_control.disconnect_counter = 0;
+        return 1;
+    }
+    return 0;
+}
+
+int check_alert_trigger() {
+    if (mond_time_control.alert_counter >= mond.global.agents_disconnection_alert_time) {
+        mond_time_control.alert_counter = 0;
+        return 1;
+    }
+    return 0;
+}
+
+int check_deletion_trigger() {
+    if (mond.delete_old_agents != 0 && mond_time_control.delete_counter >= mond.delete_old_agents * 60 ) {
+        mond_time_control.delete_counter = 0;
+        return 1;
+    }
+    return 0;
+}
+
+int check_logs_time_trigger() {
+    if ( mond_time_control.today != mond_time_control.current_time.tm_mday) {
+        return 1;
+    }
+    return 0;
 }
