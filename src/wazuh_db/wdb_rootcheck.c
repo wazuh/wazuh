@@ -105,7 +105,7 @@ int wdb_rootcheck_delete(wdb_t * wdb) {
         return -1;
     }
     stmt = wdb->stmt[WDB_STMT_ROOTCHECK_DELETE_PM];
-    
+
     result = wdb_step(stmt) == SQLITE_DONE ? sqlite3_changes(wdb->db) : -1;
     return result;
 }
