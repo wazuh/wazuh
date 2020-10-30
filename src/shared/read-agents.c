@@ -1196,8 +1196,7 @@ char **get_agents(int flag){
     }
 
     for (i = 0; id_array[i] != -1; i++){
-        int status = 0;
-        int last_keepalive = -1;
+        agent_status_t status = GA_STATUS_INV;
         char agent_name_ip[OS_SIZE_512] = "";
 
         json_agt_info = wdb_get_agent_info(id_array[i], &sock);
@@ -1215,25 +1214,28 @@ char **get_agents(int flag){
             snprintf(agent_name_ip, sizeof(agent_name_ip), "%s-%s", json_name->valuestring, json_ip->valuestring);
         }
 
-        json_field = cJSON_GetObjectItem(json_agt_info->child, "last_keepalive");
-        if(cJSON_IsNumber(json_field)){
-            last_keepalive = json_field->valueint;
+        json_field = cJSON_GetObjectItem(json_agt_info->child, "connection_status");
+        if(!cJSON_IsString(json_field)){
+            cJSON_Delete(json_agt_info);
+            continue;
         }
-        cJSON_Delete(json_agt_info);
 
-        status = last_keepalive > (time(0) - DISCON_TIME) ? 1 : 0;
+        status = !strcmp(json_field->valuestring, AGENT_CS_PENDING) ? GA_STATUS_PENDING :
+                 !strcmp(json_field->valuestring, AGENT_CS_ACTIVE) ? GA_STATUS_ACTIVE :
+                 !strcmp(json_field->valuestring, AGENT_CS_DISCONNECTED) ? GA_STATUS_NACTIVE : GA_STATUS_INV;
+        cJSON_Delete(json_agt_info);
 
         switch (flag) {
             case GA_ALL:
             case GA_ALL_WSTATUS:
                 break;
             case GA_ACTIVE:
-                if(status == 0){
+                if(status != GA_STATUS_ACTIVE){
                     continue;
                 }
                 break;
             case GA_NOTACTIVE:
-                if(status == 1){
+                if(status != GA_STATUS_NACTIVE){
                     continue;
                 }
                 break;
@@ -1249,17 +1251,13 @@ char **get_agents(int flag){
         /* Add agent entry */
         if (flag == GA_ALL_WSTATUS) {
             char agt_stat[1024];
-
-            snprintf(agt_stat, sizeof(agt_stat) - 1, "%s %s",
-                     agent_name_ip, status == 1 ? "active" : "disconnected");
-
+            snprintf(agt_stat, sizeof(agt_stat) - 1, "%s %s", agent_name_ip, print_agent_status(status));
             os_strdup(agt_stat, agents_array[array_size]);
         } else {
             os_strdup(agent_name_ip, agents_array[array_size]);
         }
 
         agents_array[array_size + 1] = NULL;
-
         array_size++;
     }
 
