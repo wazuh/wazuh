@@ -57,7 +57,7 @@ STATIC const char * error_messages[] = {
     [ERROR_UNKNOWN_COMMAND] = "Command not found",
     [ERROR_PARAMETERS_NOT_FOUND] = "Required parameters were not found",
     [ERROR_UNSOPPORTED_MODE] = "Unsupported file mode",
-    [ERROR_INVALID_FILE_NAME] = "Invalid File name",
+    [ERROR_INVALID_FILE_NAME] = "Invalid file name",
     [ERROR_FILE_OPEN] = "File Open Error: %s",
     [ERROR_FILE_NOT_OPENED] = "File not opened. Agent might have been auto-restarted during upgrade",
     [ERROR_FILE_NOT_OPENED2] = "No file opened",
@@ -233,12 +233,8 @@ STATIC char * wm_agent_upgrade_com_write(const cJSON* json_object) {
     char final_path[PATH_MAX + 1];
 
     if (!*file.path) {
-        if (file_path_obj && (file_path_obj->type == cJSON_String) && file_path_obj->valuestring) {
-            mterror(WM_AGENT_UPGRADE_LOGTAG, "At write: File not opened. Agent might have been auto-restarted during upgrade.");
-            return wm_agent_upgrade_command_ack(ERROR_FILE_NOT_OPENED, error_messages[ERROR_FILE_NOT_OPENED]);
-        }
-       mterror(WM_AGENT_UPGRADE_LOGTAG, "At write: No file is opened.");
-        return wm_agent_upgrade_command_ack(ERROR_FILE_NOT_OPENED2, error_messages[ERROR_FILE_NOT_OPENED2]);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At write: File not opened. Agent might have been auto-restarted during upgrade.");
+        return wm_agent_upgrade_command_ack(ERROR_FILE_NOT_OPENED, error_messages[ERROR_FILE_NOT_OPENED]);
     }
 
     if (!file_path_obj || (file_path_obj->type != cJSON_String) || _jailfile(final_path, INCOMING_DIR, file_path_obj->valuestring) < 0) {
