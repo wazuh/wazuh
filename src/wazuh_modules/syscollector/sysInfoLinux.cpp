@@ -14,6 +14,7 @@
 #include "stringHelper.h"
 #include "filesystemHelper.h"
 #include "cmdHelper.h"
+#include "sysOsParsers.h"
 
 constexpr auto WM_SYS_HW_DIR{"/sys/class/dmi/id/board_serial"};
 constexpr auto WM_SYS_CPU_DIR{"/proc/cpuinfo"};
@@ -285,4 +286,85 @@ nlohmann::json SysInfo::getPackages() const
         packages.push_back(getRpmInfo());
     }
     return packages[0];
+}
+
+static bool getOsInfoFromFiles(nlohmann::json& info)
+{
+    bool ret{false};
+    const std::vector<std::string> UNIX_RELEASE_FILES{"/etc/os-release", "/usr/lib/os-release"};
+    const auto CENTOS_RELEASE_FILE{"/etc/centos-release"};
+    static const std::vector<std::pair<std::string, std::string>> PLATFORMS_RELEASE_FILES
+    {
+        {"centos",      CENTOS_RELEASE_FILE     },
+        {"fedora",      "/etc/fedora-release"   },
+        {"rhel",        "/etc/redhat-release"   },
+        {"ubuntu",      "/etc/lsb-release"      },
+        {"gentoo",      "/etc/gentoo-release"   },
+        {"suse",        "/etc/SuSE-release"     },
+        {"arch",        "/etc/arch-release"     },
+        {"debian",      "/etc/debian_version"   },
+        {"slackware",   "/etc/slackware-version"},
+    };
+    const auto parseFnc
+    {
+        [&info](const std::string& fileName, const std::string& platform)
+        {
+            std::fstream file{fileName, std::ios_base::in};
+            if (file.is_open())
+            {
+                const auto spParser{FactorySysOsParser::create(platform)};
+                return spParser->parseFile(file, info);
+            }
+            return false;
+        }
+    };
+    for (const auto& unixReleaseFile : UNIX_RELEASE_FILES)
+    {
+        ret |= parseFnc(unixReleaseFile, "unix");
+    }
+    if (ret)
+    {
+        ret |= parseFnc(CENTOS_RELEASE_FILE, "centos");
+    }
+    else
+    {
+        for (const auto& platform : PLATFORMS_RELEASE_FILES)
+        {
+            std::fstream file{platform.second, std::ios_base::in};
+            ret |= parseFnc(platform.second, platform.first);
+        }
+    }
+    return ret;
+}
+
+void getOsInfoFromUname(nlohmann::json& info)
+{
+    std::string platform;
+    const auto osPlatform{Utils::exec("uname")};
+    if (osPlatform.find("SunOS") != std::string::npos)
+    {
+        platform = "solaris";
+    }
+    else if(osPlatform.find("HP-UX") != std::string::npos)
+    {
+        platform = "hp-ux";
+    }
+    const auto spParser{FactorySysOsParser::create(platform)};
+    if(!spParser->parseUname(Utils::exec("uname -r"), info))
+    {
+        info["os_name"] = "Linux";
+        info["os_platform"] = "linux";
+        info["os_version"] = "unknown";
+    }
+}
+
+
+nlohmann::json SysInfo::getOsInfo() const
+{
+    nlohmann::json ret;
+    if (!getOsInfoFromFiles(ret))
+    {
+        getOsInfoFromUname(ret);
+    }
+    return ret;
 }

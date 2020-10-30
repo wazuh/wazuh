@@ -21,6 +21,7 @@ public:
     virtual ~SysInfo() = default;
     nlohmann::json hardware();
     nlohmann::json packages();
+    nlohmann::json os();
 private:
     virtual std::string getSerialNumber() const;
     virtual std::string getCpuName() const;
@@ -28,6 +29,7 @@ private:
     virtual int getCpuCores() const;
     virtual void getMemory(nlohmann::json& info) const;
     virtual nlohmann::json getPackages() const;
+    virtual nlohmann::json getOsInfo() const;
 };
 
 

@@ -26,6 +26,7 @@ int SysInfo::getCpuMHz() const {return 0;}
 int SysInfo::getCpuCores() const {return 0;}
 void SysInfo::getMemory(nlohmann::json&) const {}
 nlohmann::json SysInfo::getPackages() const {return "";}
+nlohmann::json SysInfo::getOsInfo() const {return "";}
 
 class SysInfoWrapper: public SysInfo
 {
@@ -38,6 +39,7 @@ public:
     MOCK_METHOD(int, getCpuCores, (), (const override));
     MOCK_METHOD(void, getMemory, (nlohmann::json&), (const override));
     MOCK_METHOD(nlohmann::json, getPackages, (), (const override));
+    MOCK_METHOD(nlohmann::json, getOsInfo, (), (const override));
 };
 
 

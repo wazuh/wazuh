@@ -25,3 +25,8 @@ nlohmann::json SysInfo::packages()
 {
     return getPackages();
 }
+
+nlohmann::json SysInfo::os()
+{
+    return getOsInfo();
+}

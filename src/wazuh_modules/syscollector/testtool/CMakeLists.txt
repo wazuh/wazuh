@@ -24,7 +24,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 	add_definitions(-DWIN32=1)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   file(GLOB SYSCOLLECTOR_TESTTOOL_SRC
-      "${CMAKE_SOURCE_DIR}/*Linux.cpp")
+      "${CMAKE_SOURCE_DIR}/*Linux.cpp"
+      "${CMAKE_SOURCE_DIR}/sysOsParsers.cpp")
 else()
   if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     file(GLOB SYSCOLLECTOR_TESTTOOL_SRC
