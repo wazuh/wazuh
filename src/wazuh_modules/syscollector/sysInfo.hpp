@@ -8,8 +8,10 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+
 #ifndef _SYS_INFO_HPP
 #define _SYS_INFO_HPP
+
 #include "json.hpp"
 
 constexpr auto KByte{1024};
@@ -22,6 +24,7 @@ public:
     nlohmann::json hardware();
     nlohmann::json packages();
     nlohmann::json os();
+    nlohmann::json processes();
 private:
     virtual std::string getSerialNumber() const;
     virtual std::string getCpuName() const;
@@ -30,7 +33,7 @@ private:
     virtual void getMemory(nlohmann::json& info) const;
     virtual nlohmann::json getPackages() const;
     virtual nlohmann::json getOsInfo() const;
+    virtual nlohmann::json getProcessesInfo() const;
 };
-
 
 #endif //_SYS_INFO_HPP

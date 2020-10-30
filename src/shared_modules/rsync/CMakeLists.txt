@@ -54,8 +54,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_libraries(rsync crypto ssl ws2_32 crypt32)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set_target_properties(rsync PROPERTIES
-        LINK_FLAGS "-static-libgcc -static-libstdc++"
-  )
+        LINK_FLAGS "-static-libgcc -static-libstdc++")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     
 

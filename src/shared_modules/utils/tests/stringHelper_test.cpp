@@ -127,3 +127,12 @@ TEST_F(StringUtilsTest, StartsWith)
     EXPECT_FALSE(Utils::startsWith(item3, start));
     EXPECT_FALSE(Utils::startsWith(item4, start));
 }
+
+TEST_F(StringUtilsTest, SplitDelimiterNullTerminated)
+{
+    const char buffer[]{'h','e','l','l','o','\0','w','o','r','l','d','\0','\0'};
+    const auto tokens{Utils::splitNullTerminatedStrings(buffer)};
+    EXPECT_EQ(2ull, tokens.size());
+    EXPECT_EQ(tokens[0], "hello");
+    EXPECT_EQ(tokens[1], "world");
+}

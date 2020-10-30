@@ -30,3 +30,8 @@ nlohmann::json SysInfo::os()
 {
     return getOsInfo();
 }
+
+nlohmann::json SysInfo::processes()
+{
+    return getProcessesInfo();
+}
