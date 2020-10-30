@@ -246,3 +246,50 @@ bool HpUxOsParser::parseUname(const std::string& in, nlohmann::json& output)
     output["os_platform"] = "hp-ux";
     return ret;
 }
+
+bool MacOsParser::parseSwVersion(const std::string& in, nlohmann::json& output)
+{
+    static const std::map<std::string, std::string> KEY_MAP
+    {
+        {"ProductName",     "os_name"},
+        {"ProductVersion",  "os_version"},
+        {"BuildVersion",    "os_build"},
+    };
+    enum ValueIds
+    {
+        KEY_ID,
+        DATA_ID,
+        MAX_ID
+    };
+    bool ret{false};
+    const auto lines{Utils::split(in, '\n')};
+    for (auto line : lines)
+    {
+        line = Utils::trim(line);
+        const auto data{Utils::split(line, ':')};
+        if (data.size() == MAX_ID)
+        {
+            const auto it{KEY_MAP.find(data[KEY_ID])};
+            if (it != KEY_MAP.end())
+            {
+                output[it->second] = Utils::trim(data[DATA_ID], " \t");
+                ret = true;
+            }
+        }
+    }
+    output["os_platform"] = "darwin";
+    return ret;
+}
+
+bool MacOsParser::parseUname(const std::string& in, nlohmann::json& output)
+{
+    constexpr auto PATTERN_MATCH{R"([0-9].*\.[0-9]*)"};
+    std::string match;
+    std::regex pattern{PATTERN_MATCH};
+    const auto ret {findRegexInString(in, match, pattern, 0)};
+    if (ret)
+    {
+        output["os_codename"] = match;
+    }
+    return ret;
+}

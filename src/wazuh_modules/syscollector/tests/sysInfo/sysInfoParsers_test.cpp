@@ -304,3 +304,28 @@ TEST_F(SysInfoParsersTest, UknownPlatform)
 {
     EXPECT_THROW(FactorySysOsParser::create("some unknown platform"), std::runtime_error);
 }
+
+TEST_F(SysInfoParsersTest, MacOS)
+{
+    constexpr auto MACOS_SW_VERSION
+    {
+        R"(
+        ProductName:    Mac OS X
+        ProductVersion: 10.12.6
+        BuildVersion:   16G29
+        )"
+    };
+    constexpr auto MACOS_UNAME
+    {
+        "16.7.0"
+    };
+    nlohmann::json output;
+    MacOsParser parser;
+    EXPECT_TRUE(parser.parseSwVersion(MACOS_SW_VERSION, output));
+    EXPECT_TRUE(parser.parseUname(MACOS_UNAME, output));
+    EXPECT_EQ("10.12.6", output["os_version"]);
+    EXPECT_EQ("Mac OS X", output["os_name"]);
+    EXPECT_EQ("darwin", output["os_platform"]);
+    EXPECT_EQ("16G29", output["os_build"]);
+    EXPECT_EQ("16.7.0", output["os_codename"]);
+}
