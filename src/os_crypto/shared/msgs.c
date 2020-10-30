@@ -571,7 +571,7 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
     _tmpmsg[OS_MAXSTR + 1] = '\0';
     _finmsg[OS_MAXSTR + 1] = '\0';
     msg_encrypted[OS_MAXSTR] = '\0';
-    
+
     w_mutex_lock(&keys->keyentries[keys->keysize]->mutex);
     ReloadCounter(keys, keys->keysize, SENDER_COUNTER);
 

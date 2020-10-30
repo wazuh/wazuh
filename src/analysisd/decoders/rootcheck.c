@@ -56,7 +56,6 @@ int DecodeRootcheck(Eventinfo *lf)
 
     db_result = send_rootcheck_log(lf->agent_id, (long int)lf->time.tv_sec, lf->log, response);
 
-
     switch (db_result) {
     case -2:
         // Fallthrough
@@ -68,12 +67,16 @@ int DecodeRootcheck(Eventinfo *lf)
         mdebug1("Rootcheck decoder response: '%s'", response);
 
         lf->decoder_info = rootcheck_dec;
+
         char *op_code = wstr_chr(response, ' ');
-        if (strtol(++op_code, NULL, 10) == 2) {
-            // Entry was inserted
-            lf->rootcheck_fts = FTS_DONE;
+        if (op_code) {
+            op_code++;
+            if (op_code && strtol(op_code, NULL, 10) == 2) {
+                // Entry was inserted
+                lf->rootcheck_fts = FTS_DONE;
+            }
         }
-        
+
         lf->nfields = RK_NFIELDS;
         os_strdup(rootcheck_dec->fields[RK_TITLE], lf->fields[RK_TITLE].key);
         lf->fields[RK_TITLE].value = rk_get_title(lf->log);
