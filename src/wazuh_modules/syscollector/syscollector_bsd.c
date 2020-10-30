@@ -87,10 +87,11 @@ const char * discarded_packages [] = {
     NULL
 };
 
-// Valid package versions keys
+// Valid package version keys. 
+// The custom versions take priority over the default one.
 const char * plist_versions [] = {
-    "CFBundleShortVersionString",
-    "CliVersion"
+    "CFBundleShortVersionString", //default
+    "CliVersion" 
 };
 
 STATIC int sys_read_apps(const char * app_folder, const char * timestamp, int random_id, int queue_fd, const char* LOCATION);
@@ -366,8 +367,7 @@ cJSON* sys_parse_pkg(const char * app_folder) {
                         _parts = OS_StrBreak('<', parts[1], 2);
                     }
 
-                    delim = strstr(_parts[0], " (");
-                    if (delim) {
+                    if (delim = strstr(_parts[0], " ("), delim) {
                         *delim = '\0';
                     }
 

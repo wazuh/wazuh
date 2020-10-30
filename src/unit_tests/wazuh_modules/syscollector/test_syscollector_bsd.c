@@ -310,6 +310,7 @@ void test_sys_parse_pkg_fgets_null(void **state) {
     cJSON * package = cJSON_GetObjectItem(object, "program");
     cJSON * name = cJSON_GetObjectItem(package, "name");
     assert_string_equal(name->valuestring, "test");
+    cJSON_Delete(object);
 }
 
 void test_sys_parse_pkg_unknown_format(void **state) {
@@ -353,6 +354,7 @@ void test_sys_parse_pkg_unknown_format(void **state) {
     cJSON * package = cJSON_GetObjectItem(object, "program");
     cJSON * name = cJSON_GetObjectItem(package, "name");
     assert_string_equal(name->valuestring, "test");
+    cJSON_Delete(object);
 }
 
 void test_sys_parse_pkg_name_same_line(void **state) {
@@ -389,6 +391,7 @@ void test_sys_parse_pkg_name_same_line(void **state) {
     cJSON * vendor = cJSON_GetObjectItem(package, "vendor");
     assert_string_equal(name->valuestring, "test_name");
     assert_null(vendor);
+    cJSON_Delete(object);
 }
 
 void test_sys_parse_pkg_name_vendor_same_line(void **state) {
@@ -425,6 +428,7 @@ void test_sys_parse_pkg_name_vendor_same_line(void **state) {
     cJSON * vendor = cJSON_GetObjectItem(package, "vendor");
     assert_string_equal(name->valuestring, "Test");
     assert_string_equal(vendor->valuestring, "Microsoft");
+    cJSON_Delete(object);
 }
 
 void test_sys_parse_pkg_name(void **state) {
@@ -464,6 +468,7 @@ void test_sys_parse_pkg_name(void **state) {
     cJSON * vendor = cJSON_GetObjectItem(package, "vendor");
     assert_string_equal(name->valuestring, "test_name");
     assert_null(vendor);
+    cJSON_Delete(object);
 }
 
 void test_sys_parse_pkg_name_vendor(void **state) {
@@ -503,6 +508,7 @@ void test_sys_parse_pkg_name_vendor(void **state) {
     cJSON * vendor = cJSON_GetObjectItem(package, "vendor");
     assert_string_equal(name->valuestring, "Test");
     assert_string_equal(vendor->valuestring, "Microsoft");
+    cJSON_Delete(object);
 }
 
 void test_sys_parse_pkg_version_same_line(void **state) {
@@ -523,7 +529,7 @@ void test_sys_parse_pkg_version_same_line(void **state) {
     // now it doesn't go through sys_convert_bin_plist
 
     expect_value(wrap_fgets, __stream, (FILE *)1);
-    will_return(wrap_fgets, "<key>CFBundleShortVersionString</key><string>4.5.1 (78615.2064)</string>");
+    will_return(wrap_fgets, "<key>CFBundleShortVersionString</key><string>4.5.1</string>");
 
     expect_value(wrap_fgets, __stream, (FILE *)1);
     will_return(wrap_fgets, NULL);
@@ -539,6 +545,7 @@ void test_sys_parse_pkg_version_same_line(void **state) {
     cJSON * version = cJSON_GetObjectItem(package, "version");
     assert_string_equal(name->valuestring, "test");
     assert_string_equal(version->valuestring, "4.5.1");
+    cJSON_Delete(object);
 }
 
 void test_sys_parse_pkg_version(void **state) {
@@ -578,6 +585,47 @@ void test_sys_parse_pkg_version(void **state) {
     cJSON * version = cJSON_GetObjectItem(package, "version");
     assert_string_equal(name->valuestring, "test");
     assert_string_equal(version->valuestring, "4.5.1");
+    cJSON_Delete(object);
+}
+
+void test_sys_parse_pkg_custom_version_key(void **state) {
+
+    const char * app_folder = "/test.app";
+    cJSON * object = NULL;
+
+    expect_string(wrap_snprintf, s, "/test.app/Contents/Info.plist");
+    will_return(wrap_snprintf, 24);
+
+    expect_string(wrap_fopen, path, "/test.app/Contents/Info.plist");
+    expect_string(wrap_fopen, mode, "rb");
+    will_return(wrap_fopen, 1);
+
+    expect_value(wrap_fgets, __stream, (FILE *)1);
+    will_return(wrap_fgets, "<?xml");
+
+    // now it doesn't go through sys_convert_bin_plist
+
+    expect_value(wrap_fgets, __stream, (FILE *)1);
+    will_return(wrap_fgets, "<key>CFBundleShortVersionString</key><string>4.5.1</string>");
+    
+    expect_value(wrap_fgets, __stream, (FILE *)1);
+    will_return(wrap_fgets, "<key>CliVersion</key><string>5.5.1</string>");
+
+    expect_value(wrap_fgets, __stream, (FILE *)1);
+    will_return(wrap_fgets, NULL);
+
+    expect_value(wrap_fclose, fp, (void *)1);
+    will_return(wrap_fclose, 0);
+
+    object = sys_parse_pkg(app_folder);
+
+    // Check result
+    cJSON * package = cJSON_GetObjectItem(object, "program");
+    cJSON * name = cJSON_GetObjectItem(package, "name");
+    cJSON * version = cJSON_GetObjectItem(package, "version");
+    assert_string_equal(name->valuestring, "test");
+    assert_string_equal(version->valuestring, "5.5.1");
+    cJSON_Delete(object);
 }
 
 void test_sys_parse_pkg_group_same_line(void **state) {
@@ -614,6 +662,7 @@ void test_sys_parse_pkg_group_same_line(void **state) {
     cJSON * group = cJSON_GetObjectItem(package, "group");
     assert_string_equal(name->valuestring, "test");
     assert_string_equal(group->valuestring, "public.app-category.developer-tools");
+    cJSON_Delete(object);
 }
 
 void test_sys_parse_pkg_group(void **state) {
@@ -653,6 +702,7 @@ void test_sys_parse_pkg_group(void **state) {
     cJSON * group = cJSON_GetObjectItem(package, "group");
     assert_string_equal(name->valuestring, "test");
     assert_string_equal(group->valuestring, "public.app-category.developer-tools");
+    cJSON_Delete(object);
 }
 
 void test_sys_parse_pkg_description_same_line(void **state) {
@@ -689,6 +739,7 @@ void test_sys_parse_pkg_description_same_line(void **state) {
     cJSON * description = cJSON_GetObjectItem(package, "description");
     assert_string_equal(name->valuestring, "test");
     assert_string_equal(description->valuestring, "com.apple.Safari");
+    cJSON_Delete(object);
 }
 
 void test_sys_parse_pkg_description(void **state) {
@@ -728,6 +779,7 @@ void test_sys_parse_pkg_description(void **state) {
     cJSON * description = cJSON_GetObjectItem(package, "description");
     assert_string_equal(name->valuestring, "test");
     assert_string_equal(description->valuestring, "com.apple.Safari");
+    cJSON_Delete(object);
 }
 
 // sys_read_apps
@@ -771,6 +823,9 @@ void test_sys_read_apps_skip_file(void **state) {
 
     ret = sys_read_apps(app_folder, NULL, 0, 0, NULL);
     assert_int_equal(ret, 0);
+
+
+    os_free(de);
 }
 
 void test_sys_read_apps_no_object(void **state) {
@@ -810,6 +865,9 @@ void test_sys_read_apps_no_object(void **state) {
 
     ret = sys_read_apps(app_folder, NULL, 0, 0, NULL);
     assert_int_equal(ret, 0);
+
+
+    os_free(de);
 }
 
 void test_sys_read_apps_skip_package(void **state) {
@@ -831,7 +889,6 @@ void test_sys_read_apps_skip_package(void **state) {
 
     // sys_parse_pkg
 
-    cJSON * object = NULL;
     expect_string(wrap_snprintf, s, "/Applications/Test.app/Contents/Info.plist");
     will_return(wrap_snprintf, 42);
     expect_string(wrap_fopen, path, "/Applications/Test.app/Contents/Info.plist");
@@ -858,6 +915,9 @@ void test_sys_read_apps_skip_package(void **state) {
 
     ret = sys_read_apps(app_folder, NULL, 0, 0, NULL);
     assert_int_equal(ret, 0);
+
+
+    os_free(de);
 }
 
 void test_sys_read_apps_success(void **state) {
@@ -883,7 +943,6 @@ void test_sys_read_apps_success(void **state) {
 
     // sys_parse_pkg
 
-    cJSON * object = NULL;
     expect_string(wrap_snprintf, s, "/Applications/Test.app/Contents/Info.plist");
     will_return(wrap_snprintf, 42);
     expect_string(wrap_fopen, path, "/Applications/Test.app/Contents/Info.plist");
@@ -911,6 +970,9 @@ void test_sys_read_apps_success(void **state) {
 
     ret = sys_read_apps(app_folder, timestamp, random_id, queue_fd, LOCATION);
     assert_int_equal(ret, 0);
+
+
+    os_free(de);
 }
 
 // sys_read_homebrew_apps
@@ -951,6 +1013,8 @@ void test_sys_read_homebrew_apps_skip_file(void **state) {
 
     ret = sys_read_homebrew_apps(app_folder, NULL, 0, 0, NULL);
     assert_int_equal(ret, 0);
+
+    os_free(de);
 }
 
 void test_sys_read_homebrew_apps_skip_version(void **state) {
@@ -997,6 +1061,10 @@ void test_sys_read_homebrew_apps_skip_version(void **state) {
 
     ret = sys_read_homebrew_apps(app_folder, timestamp, random_id, queue_fd, LOCATION);
     assert_int_equal(ret, 0);
+
+
+    os_free(version);
+    os_free(de);
 }
 
 void test_sys_read_homebrew_apps_success(void **state) {
@@ -1056,6 +1124,9 @@ void test_sys_read_homebrew_apps_success(void **state) {
 
     ret = sys_read_homebrew_apps(app_folder, timestamp, random_id, queue_fd, LOCATION);
     assert_int_equal(ret, 0);
+
+    os_free(version);
+    os_free(de);
 }
 
 void test_get_vendor_mac(void **state) {
@@ -1111,6 +1182,7 @@ int main(void) {
         cmocka_unit_test(test_sys_parse_pkg_name_vendor),
         cmocka_unit_test(test_sys_parse_pkg_version_same_line),
         cmocka_unit_test(test_sys_parse_pkg_version),
+        cmocka_unit_test(test_sys_parse_pkg_custom_version_key),
         cmocka_unit_test(test_sys_parse_pkg_group_same_line),
         cmocka_unit_test(test_sys_parse_pkg_group),
         cmocka_unit_test(test_sys_parse_pkg_description_same_line),
