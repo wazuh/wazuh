@@ -34,14 +34,6 @@ constexpr auto VISTA_REG_HOTFIX{"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion
 constexpr auto SYSTEM_IDLE_PROCESS_NAME{"System Idle Process"};
 constexpr auto SYSTEM_PROCESS_NAME{"System"};
 
-struct CharDeleter
-{
-    void operator()(char* buffer)
-    {
-        free(buffer);
-    }
-};
-
 static bool isVistaOrLater()
 {
     static const bool ret

@@ -15,7 +15,7 @@ endif(COVERITY)
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14")
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+set(CMAKE_CXX_FLAGS_RELEASE "-g -O3")
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -42,20 +42,24 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DWIN32=1)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   file(GLOB SYSCOLLECTOR_SRC
-      "${CMAKE_SOURCE_DIR}/*Linux.cpp")
+      "${CMAKE_SOURCE_DIR}/*Linux.cpp"
+      "${CMAKE_SOURCE_DIR}/network/*Linux.cpp")
 else()
   if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     file(GLOB SYSCOLLECTOR_SRC
         "${CMAKE_SOURCE_DIR}/*Mac.cpp"
-        "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp")
+        "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp"
+        "${CMAKE_SOURCE_DIR}/network/*BSD.cpp")
   elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
     file(GLOB SYSCOLLECTOR_SRC
         "${CMAKE_SOURCE_DIR}/*FreeBSD.cpp"
-        "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp")
+        "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp"
+        "${CMAKE_SOURCE_DIR}/network/*BSD.cpp")
   elseif(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
     file(GLOB SYSCOLLECTOR_SRC
         "${CMAKE_SOURCE_DIR}/*OpenBSD.cpp"
-        "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp")
+        "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp"
+        "${CMAKE_SOURCE_DIR}/network/*BSD.cpp")
   endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
@@ -81,6 +85,12 @@ endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
     COMMAND ${CMAKE_COMMAND} -E copy
     ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/syscollector.dir/*.o*
     ${CMAKE_SOURCE_DIR}/
+    DEPENDS syscollector
+    )
+add_custom_target(copy-files-network ALL
+    COMMAND ${CMAKE_COMMAND} -E copy
+    ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/syscollector.dir/network/*.o*
+    ${CMAKE_SOURCE_DIR}/network/
     DEPENDS syscollector
     )
 

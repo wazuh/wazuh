@@ -14,8 +14,10 @@
 
 #include <string>
 #include <iostream>
+#include <fstream>
 #include <cstdio>
 #include <memory>
+#include <sstream>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -38,7 +40,7 @@ namespace Utils
         }
     };
 
-    std::vector<std::string> enumerateDir(const std::string& path)
+    static std::vector<std::string> enumerateDir(const std::string& path)
     {
         std::vector<std::string> ret;
         std::unique_ptr<DIR, DirSmartDeleter> spDir{opendir(path.c_str())};
@@ -52,6 +54,18 @@ namespace Utils
             }
         }
         return ret;
+    }
+
+    static std::string getFileContent(const std::string& filePath)
+    {
+        std::stringstream content;
+        std::ifstream file(filePath, std::ios_base::in);
+
+        if (file.is_open())
+        {
+            content << file.rdbuf();
+        }
+        return content.str();
     }
 }
 

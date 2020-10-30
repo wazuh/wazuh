@@ -24,20 +24,24 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_definitions(-DWIN32=1)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   file(GLOB SYSCOLLECTOR_TESTTOOL_SRC
-      "${CMAKE_SOURCE_DIR}/*Linux.cpp")
+      "${CMAKE_SOURCE_DIR}/*Linux.cpp"
+	  "${CMAKE_SOURCE_DIR}/network/*Linux.cpp")
 else()
   if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     file(GLOB SYSCOLLECTOR_TESTTOOL_SRC
         "${CMAKE_SOURCE_DIR}/*Mac.cpp"
-        "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp")
+        "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp"
+		"${CMAKE_SOURCE_DIR}/network/*BSD.cpp")
   elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
     file(GLOB SYSCOLLECTOR_TESTTOOL_SRC
         "${CMAKE_SOURCE_DIR}/*FreeBSD.cpp"
-        "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp")
+        "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp"
+		"${CMAKE_SOURCE_DIR}/network/*BSD.cpp")
   elseif(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
     file(GLOB SYSCOLLECTOR_TESTTOOL_SRC
         "${CMAKE_SOURCE_DIR}/*OpenBSD.cpp"
-        "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp")
+        "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp"
+		"${CMAKE_SOURCE_DIR}/network/*BSD.cpp")
   endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 

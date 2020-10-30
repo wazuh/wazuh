@@ -16,6 +16,7 @@
 
 constexpr auto KByte{1024};
 
+
 class SysInfo
 {
 public:
@@ -24,6 +25,7 @@ public:
     nlohmann::json hardware();
     nlohmann::json packages();
     nlohmann::json processes();
+    nlohmann::json networks();
 private:
     virtual std::string getSerialNumber() const;
     virtual std::string getCpuName() const;
@@ -32,6 +34,7 @@ private:
     virtual void getMemory(nlohmann::json& info) const;
     virtual nlohmann::json getPackages() const;
     virtual nlohmann::json getProcessesInfo() const;
+    virtual nlohmann::json getNetworks() const;
 };
 
 #endif //_SYS_INFO_HPP
