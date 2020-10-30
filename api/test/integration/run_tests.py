@@ -67,7 +67,8 @@ def run_tests(collected_tests, n_iterations=1):
             test_name = f'{test.rsplit(".")[0]}{i if i != 1 else ""}'
             print(f'{test} {iteration_info}')
             f = open(os.path.join(RESULTS_PATH, test_name), 'w')
-            subprocess.call(PYTEST_COMMAND.split(' ') + [test], stdout=f)
+            html_params = [f"--html={RESULTS_PATH}/html_reports/{test_name}.html", '--self-contained-html']
+            subprocess.call(PYTEST_COMMAND.split(' ') + html_params + [test], stdout=f)
             f.close()
             get_results(filename=os.path.join(RESULTS_PATH, test_name))
 
@@ -107,6 +108,7 @@ def get_script_arguments():
 
 if __name__ == '__main__':
     os.makedirs(os.path.join(TESTS_PATH, RESULTS_PATH), exist_ok=True)
+    os.makedirs(os.path.join(TESTS_PATH, RESULTS_PATH, 'html_reports'), exist_ok=True)
     options = get_script_arguments()
     key = options.keyword
     tl = options.test_list

@@ -133,3 +133,18 @@ variables:
     </syscheck>
 
     </agent_config>
+
+  query_list_xml:
+    <agent_config>
+    <localfile>
+    <location>System</location>
+    <log_format>eventchannel</log_format>
+    <query>
+    \<QueryList>
+    \<Query Id='0' Path='System'>
+    \<Select Path='System'>*[System[(Level&lt;=3)]]\</Select>
+    \</Query>
+    \</QueryList>
+    </query>
+    </localfile>
+    </agent_config>
