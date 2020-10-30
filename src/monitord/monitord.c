@@ -45,8 +45,11 @@ void Monitord()
     snprintf(path_json, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGJSONFILE);
 #endif
 
-    /* Connect to the message queue, infinite attempts */
+    /* Connect to the message queue or exit */
     monitor_queue_connect();
+    if (mond.a_queue < 0) {
+        merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
+    }
 
     // Start com request thread
     w_create_thread(moncom_main, NULL);
@@ -70,7 +73,6 @@ void Monitord()
             /* Connecting to the message queue */
             monitor_queue_connect();
         }
-
         if(check_disconnection_trigger()){
             monitor_agents_disconnection();
         }
@@ -83,14 +85,14 @@ void Monitord()
 #endif
 
         if(check_logs_time_trigger()){
-            monitor_logs(CHECK_LOGS_SIZE_FALSE, path, path_json);
+            monitor_logs(!CHECK_LOGS_SIZE, path, path_json);
             /* Generating reports */
             generate_reports(mond_time_control.today, mond_time_control.thismonth, mond_time_control.thisyear, &mond_time_control.current_time);
             manage_files(mond_time_control.today, mond_time_control.thismonth, mond_time_control.thisyear);
             monitor_update_date();
 
         } else{
-            monitor_logs(CHECK_LOGS_SIZE_TRUE, path, path_json);
+            monitor_logs(CHECK_LOGS_SIZE, path, path_json);
         }
 
         sleep(1);
