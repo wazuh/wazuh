@@ -2552,10 +2552,10 @@ w_exp_type_t w_check_attr_type(xml_node *node, int rule_id) {
     for (int i = 0; node->attributes[i]; i++) {
         if (strcasecmp(node->attributes[i], xml_type) == 0) {
 
-            if (strcasecmp(node->values[i], "osregex") == 0) {
+            if (strcasecmp(node->values[i], OSREGEX_STR) == 0) {
                 return EXP_TYPE_OSREGEX;
             }
-            else if (strcasecmp(node->values[i], "pcre2") == 0) {
+            else if (strcasecmp(node->values[i], PCRE2_STR) == 0) {
                 return EXP_TYPE_PCRE2;
             }
             else {
