@@ -11,7 +11,7 @@ All notable changes to this project will be documented in this file.
 
 - **API:**
   - Added missing agent:group resource to RBAC's catalog. ([6427](https://github.com/wazuh/wazuh/issues/6427))
-  - Changed `limit` parameter behaviour in `GET sca/{agent_id}/checks/{policy_id}` endpoint and fixed some loss of information when paginating wdf. ([#6464](https://github.com/wazuh/wazuh/pull/6464))
+  - Changed `limit` parameter behaviour in `GET sca/{agent_id}/checks/{policy_id}` endpoint and fixed some loss of information when paginating `wdb`. ([#6464](https://github.com/wazuh/wazuh/pull/6464))
 
 ### Removed
 
