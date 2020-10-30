@@ -17,10 +17,10 @@ static int mon_send_agent_msg(char *agent, char *msg);
 int sock = -1;
 
 void monitor_send_deletion_msg(char *agent) {
-    char str[OS_SIZE_1024 + 1];
+    char str[OS_SIZE_1024];
 
-    memset(str, '\0', OS_SIZE_1024 + 1);
-    snprintf(str, OS_SIZE_1024 - 1, OS_AG_REMOVED, agent);
+    memset(str, '\0', OS_SIZE_1024);
+    snprintf(str, OS_SIZE_1024, OS_AG_REMOVED, agent);
 
     if (SendMSG(mond.a_queue, str, ARGV0, LOCALFILE_MQ) < 0) {
         mond.a_queue = -1;  // set an invalid fd so we can attempt to reconnect later on.
@@ -30,12 +30,12 @@ void monitor_send_deletion_msg(char *agent) {
 }
 
 void monitor_send_disconnection_msg(char *agent) {
-    char str[OS_SIZE_1024 + 1];
+    char str[OS_SIZE_1024];
     int error;
 
-    memset(str, '\0', OS_SIZE_1024 + 1);
+    memset(str, '\0', OS_SIZE_1024);
     /* Send disconnected message */
-    snprintf(str, OS_SIZE_1024 - 1, AG_DISCON_MSG, agent);
+    snprintf(str, OS_SIZE_1024, AG_DISCON_MSG, agent);
     if (error = mon_send_agent_msg(agent, str), error) {
         if (error == 2) {
             // Agent is no longer in the database
@@ -48,11 +48,13 @@ void monitor_send_disconnection_msg(char *agent) {
 
 void monitor_agents_disconnection(){
     int *agents_array;
+    char str_agent_id[12];
 
     agents_array = wdb_disconnect_agents(time(0) - mond.global.agents_disconnection_time, &sock);
     if (agents_array) {
         for (int i = 0; agents_array[i] != -1; i++) {
-            if (OSHash_Numeric_Add_ex(agents_to_alert_hash, agents_array[i], (void*)1) == 0) {
+            snprintf(str_agent_id, 12, "%d", agents_array[i]);
+            if (OSHash_Add(agents_to_alert_hash, str_agent_id, (void*)1) == 0) {
                 mdebug1("Can't add agent ID '%d' to the alerts hash table",agents_array[i]);
             }
         }
@@ -63,7 +65,7 @@ void monitor_agents_disconnection(){
 void monitor_agents_alert(){
     unsigned int inode_it = 0;
     OSHashNode *agent_hash_node = NULL;
-    OSHashNode *agent_hash_prev_node = NULL;
+    OSHashNode *agent_hash_next_node = NULL;
 
     cJSON *j_agent_info = NULL;
     cJSON *j_agent_status = NULL;
@@ -73,6 +75,8 @@ void monitor_agents_alert(){
 
     agent_hash_node = OSHash_Begin(agents_to_alert_hash, &inode_it);
     while (agent_hash_node) {
+        agent_hash_next_node = OSHash_Next(agents_to_alert_hash, &inode_it, agent_hash_node);
+
         j_agent_info = wdb_get_agent_info(atoi(agent_hash_node->key), &sock);
         if (j_agent_info) {
             j_agent_status = cJSON_GetObjectItem(j_agent_info->child, "connection_status");
@@ -87,90 +91,83 @@ void monitor_agents_alert(){
 
                     if (strcmp(j_agent_status->valuestring, "active") == 0) {
                         /* The agent is now connected, removing from table */
-                        agent_hash_prev_node = agent_hash_node->prev;
-                        OSHash_Delete_ex(agents_to_alert_hash, agent_hash_node->key);
-                        agent_hash_node = agent_hash_prev_node;
+                        OSHash_Delete(agents_to_alert_hash, agent_hash_node->key);
                     }
 
-                    else if (strcmp(j_agent_status->valuestring, "disconnected") == 0 &&
-                            j_agent_lastkeepalive->valueint < (time(0) - (mond.global.agents_disconnection_time + mond.global.agents_disconnection_alert_time))) {
+                    else if (j_agent_lastkeepalive->valueint < (time(0) -
+                            (mond.global.agents_disconnection_time + mond.global.agents_disconnection_alert_time))) {
                         /* Generating the disconnection alert */
                         char *agent_name_ip = NULL;
                         os_strdup(j_agent_name->valuestring, agent_name_ip);
                         wm_strcat(&agent_name_ip, j_agent_ip->valuestring, '-');
                         monitor_send_disconnection_msg(agent_name_ip);
-                        agent_hash_prev_node = agent_hash_node->prev;
-                        OSHash_Delete_ex(agents_to_alert_hash, agent_hash_node->key);
-                        agent_hash_node = agent_hash_prev_node;
+                        OSHash_Delete(agents_to_alert_hash, agent_hash_node->key);
                         os_free(agent_name_ip);
                     }
                 }
         } else {
             mdebug1("Unable to retrieve agent's '%s' data from Wazuh DB", agent_hash_node->key);
-            agent_hash_prev_node = agent_hash_node->prev;
-            OSHash_Delete_ex(agents_to_alert_hash, agent_hash_node->key);
-            agent_hash_node = agent_hash_prev_node;
+            OSHash_Delete(agents_to_alert_hash, agent_hash_node->key);
         }
         cJSON_Delete(j_agent_info);
-        agent_hash_node = OSHash_Next(agents_to_alert_hash, &inode_it, agent_hash_node);
+        agent_hash_node = agent_hash_next_node;
     }
 }
 
 void monitor_agents_deletion(){
     int *agents_array;
     cJSON *j_agent_info = NULL;
-    cJSON *j_agent_status = NULL;
     cJSON *j_agent_lastkeepalive = NULL;
     cJSON *j_agent_name = NULL;
     cJSON *j_agent_ip = NULL;
+    char str_agent_id[12];
 
-     agents_array = wdb_get_agents_by_connection_status("disconnected", &sock);
+    agents_array = wdb_get_agents_by_connection_status("disconnected", &sock);
     if (agents_array) {
         for (int i = 0; agents_array[i] != -1; i++) {
             j_agent_info = wdb_get_agent_info(agents_array[i], &sock);
             if (j_agent_info) {
                 j_agent_name = cJSON_GetObjectItem(j_agent_info->child, "name");
                 j_agent_lastkeepalive = cJSON_GetObjectItem(j_agent_info->child, "last_keepalive");
-                j_agent_status = cJSON_GetObjectItem(j_agent_info->child, "connection_status");
                 j_agent_ip = cJSON_GetObjectItem(j_agent_info->child, "register_ip");
 
-                if (cJSON_IsString(j_agent_status) && j_agent_status->valuestring != NULL &&
-                    cJSON_IsString(j_agent_name) && j_agent_name->valuestring != NULL &&
+                if (cJSON_IsString(j_agent_name) && j_agent_name->valuestring != NULL &&
                     cJSON_IsString(j_agent_ip) && j_agent_ip->valuestring != NULL &&
                     cJSON_IsNumber(j_agent_lastkeepalive)) {
 
-                        if (strcmp(j_agent_status->valuestring, "disconnected") == 0 &&
-                                   j_agent_lastkeepalive->valueint < (time(0) -
-                                   (mond.global.agents_disconnection_time + mond.delete_old_agents * 60) )) {
+                    if (j_agent_lastkeepalive->valueint < (time(0) -
+                        (mond.global.agents_disconnection_time + mond.delete_old_agents * 60) )) {
 
-                                char *agent_name_ip = NULL;
-                                os_strdup(j_agent_name->valuestring, agent_name_ip);
-                                wm_strcat(&agent_name_ip, j_agent_ip->valuestring, '-');
-                                if(!delete_old_agent(agent_name_ip)){
-                                    monitor_send_deletion_msg(agent_name_ip);
-                                }
-                                os_free(agent_name_ip);
+                        char *agent_name_ip = NULL;
+                        os_strdup(j_agent_name->valuestring, agent_name_ip);
+                        wm_strcat(&agent_name_ip, j_agent_ip->valuestring, '-');
+                        if(!delete_old_agent(agent_name_ip)){
+                            monitor_send_deletion_msg(agent_name_ip);
                         }
-                cJSON_Delete(j_agent_info);
+                        os_free(agent_name_ip);
+                    }
+                    cJSON_Delete(j_agent_info);
                 }
             } else {
                 mdebug1("Unable to retrieve agent's '%d' data from Wazuh DB", agents_array[i]);
+                snprintf(str_agent_id, 12, "%d", agents_array[i]);
+                OSHash_Delete(agents_to_alert_hash, str_agent_id);
             }
         }
-    os_free(agents_array);
+        os_free(agents_array);
     }
 }
 
-void monitor_logs(int check_logs_size, char path[PATH_MAX], char path_json[PATH_MAX]){
+void monitor_logs(bool check_logs_size, char path[PATH_MAX], char path_json[PATH_MAX]) {
     struct stat buf;
     off_t size;
 
-    if (check_logs_size == CHECK_LOGS_SIZE_FALSE && mond.rotate_log) {
+    if (check_logs_size == FALSE && mond.rotate_log) {
         sleep(mond.day_wait);
         /* Daily rotation and compression of ossec.log/ossec.json */
         w_rotate_log(mond.compress, mond.keep_log_days, 1, 0, mond.daily_rotations);
 
-    } else if (check_logs_size == CHECK_LOGS_SIZE_TRUE && mond.rotate_log && mond.size_rotate > 0){
+    } else if (check_logs_size == TRUE && mond.rotate_log && mond.size_rotate > 0){
         if (stat(path, &buf) == 0) {
             size = buf.st_size;
             /* If log file reachs maximum size, rotate ossec.log */
@@ -189,7 +186,7 @@ void monitor_logs(int check_logs_size, char path[PATH_MAX], char path_json[PATH_
     }
 }
 
-int delete_old_agent(const char *agent){
+int delete_old_agent(const char *agent) {
     int sock;
     int json_output = 1;
     int val = 0;
@@ -218,8 +215,8 @@ int delete_old_agent(const char *agent){
 }
 
 int mon_send_agent_msg(char *agent, char *msg) {
-    char header[OS_SIZE_256 + 1];
-    char ag_name[OS_SIZE_128 + 1];
+    char header[OS_SIZE_256];
+    char ag_name[OS_SIZE_128];
     int ag_id;
     char *ag_ip = NULL;
     char *found = agent;
