@@ -1,6 +1,13 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v4.0.1] - 
+
+### Fixed
+
+- Fixed bugs in cluster integrity synchronization. ([#6367](https://github.com/wazuh/wazuh/issues/6367))
+
+
 ## [v4.0.0] -
 
 ### Added
