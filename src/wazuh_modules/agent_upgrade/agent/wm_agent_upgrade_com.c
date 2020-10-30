@@ -216,7 +216,7 @@ STATIC char * wm_agent_upgrade_com_open(const cJSON* json_object) {
         strncpy(file.path, final_path, PATH_MAX);
         return wm_agent_upgrade_command_ack(ERROR_OK, error_messages[ERROR_OK]);
     } else {
-        merror(FOPEN_ERROR, file_path_obj->valuestring, errno, strerror(errno));
+        mterror(WM_AGENT_UPGRADE_LOGTAG, FOPEN_ERROR, file_path_obj->valuestring, errno, strerror(errno));
         char *output;
         os_malloc(OS_MAXSTR + 1, output);
         snprintf(output, OS_MAXSTR + 1, error_messages[ERROR_FILE_OPEN], strerror(errno));

@@ -18,4 +18,6 @@ char *__wrap_realpath(const char *path, char *resolved_path);
 
 int __wrap_system(const char *__command);
 
+int __wrap_mkstemp(char *template);
+
 #endif
