@@ -23,13 +23,6 @@
 #define MONITORD_MSG_HEADER "1:" ARGV0 ":"
 #define AG_DISCON_MSG MONITORD_MSG_HEADER OS_AG_DISCON
 
-/* Monitord counters */
-typedef struct _mond_counters {
-    long agents_disconnection;
-    long agents_disconnection_alert;
-    long delete_old_agents;
-} mond_counters;
-
 /* Prototypes */
 void Monitord(void) __attribute__((noreturn));
 void manage_files(int cday, int cmon, int cyear);
@@ -40,11 +33,24 @@ void OS_CompressLog(const char *logfile);
 void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json, int daily_rotations);
 int delete_old_agent(const char *agent_id);
 int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short day_wait);
-void monitor_agent_disconnection(char *agent);
-
-/* Counters prototypes */
-void MonitorStartCounters(mond_counters *counters);
-int MonitorCheckCounters(mond_counters *counters);
+/* Time control prototypes */
+void monitor_init_time_control();
+void monitor_step_time();
+void monitor_update_date();
+/* Triggers prototypes */
+int check_disconnection_trigger();
+int check_alert_trigger();
+int check_deletion_trigger();
+int check_logs_time_trigger();
+/* Messages prototypes */
+void monitor_queue_connect();
+void monitor_send_deletion_msg(char *agent);
+void monitor_send_disconnection_msg(char *agent);
+/* Actions prototypes */
+void monitor_agents_disconnection();
+void monitor_agents_alert();
+void monitor_agents_deletion();
+void monitor_logs(int check_logs_size, char path[PATH_MAX], char path_json[PATH_MAX]);
 
 /* Parse read config into JSON format */
 cJSON *getMonitorInternalOptions(void);
@@ -53,6 +59,21 @@ cJSON *getReportsOptions(void);
 size_t moncom_dispatch(char * command, char ** output);
 size_t moncom_getconfig(const char * section, char ** output);
 void * moncom_main(__attribute__((unused)) void * arg);
+
+typedef struct _monitor_time_control {
+    long disconnect_counter;
+    long alert_counter;
+    long delete_counter;
+    struct tm current_time;
+    int today;
+    int thismonth;
+    int thisyear;
+} monitor_time_control;
+
+typedef enum {
+    CHECK_LOGS_SIZE_FALSE = 0,
+    CHECK_LOGS_SIZE_TRUE
+} monitor_check_logs_size;
 
 /* Global variables */
 extern monitor_config mond;
