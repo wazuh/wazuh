@@ -10,6 +10,7 @@
  */
 #include "sysInfo.hpp"
 #include "cmdHelper.h"
+#include "sysOsParsers.h"
 #include "stringHelper.h"
 #include <sys/sysctl.h>
 

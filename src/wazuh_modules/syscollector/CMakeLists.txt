@@ -52,11 +52,13 @@ else()
   elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
     file(GLOB SYSCOLLECTOR_SRC
         "${CMAKE_SOURCE_DIR}/*FreeBSD.cpp"
-        "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp")
+        "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp"
+        "${CMAKE_SOURCE_DIR}/sysOsParsers.cpp")
   elseif(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
     file(GLOB SYSCOLLECTOR_SRC
         "${CMAKE_SOURCE_DIR}/*OpenBSD.cpp"
-        "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp")
+        "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp"
+        "${CMAKE_SOURCE_DIR}/sysOsParsers.cpp")
   endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 

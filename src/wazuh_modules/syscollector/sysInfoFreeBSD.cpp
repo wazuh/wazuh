@@ -11,6 +11,7 @@
 #include "sysInfo.hpp"
 #include "cmdHelper.h"
 #include "stringHelper.h"
+#include "sysOsParsers.h"
 #include <sys/sysctl.h>
 #include <sys/vmmeter.h>
 
