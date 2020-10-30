@@ -48,7 +48,8 @@ else()
   if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     file(GLOB SYSCOLLECTOR_SRC
         "${CMAKE_SOURCE_DIR}/*Mac.cpp"
-        "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp")
+        "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp"
+        "${CMAKE_SOURCE_DIR}/sysOsParsers.cpp")
   elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
     file(GLOB SYSCOLLECTOR_SRC
         "${CMAKE_SOURCE_DIR}/*FreeBSD.cpp"

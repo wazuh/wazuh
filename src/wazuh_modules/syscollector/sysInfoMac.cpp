@@ -12,6 +12,7 @@
 #include "cmdHelper.h"
 #include "stringHelper.h"
 #include "filesystemHelper.h"
+#include "sysOsParsers.h"
 #include <libproc.h>
 #include <pwd.h>
 #include <grp.h>
@@ -251,4 +252,13 @@ nlohmann::json SysInfo::getProcessesInfo() const
     }
 
     return jsProcessesList;
+}
+
+nlohmann::json SysInfo::getOsInfo() const
+{
+    nlohmann::json ret;
+    MacOsParser parser;
+    parser.parseSwVersion(Utils::exec("sw_vers"), ret);
+    parser.parseUname(Utils::exec("uname -r"), ret);
+    return ret;
 }
