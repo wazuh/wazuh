@@ -5,6 +5,7 @@ import itertools
 import json
 import logging
 import os
+import shutil
 import zipfile
 from datetime import datetime, timedelta
 from functools import reduce
@@ -250,6 +251,10 @@ async def decompress_files(zip_path, ko_files_name="cluster_control.json"):
         if os.path.exists("{}/{}".format(zip_dir, ko_files_name)):
             with open("{}/{}".format(zip_dir, ko_files_name)) as ko:
                 ko_files = json.loads(ko.read())
+    except Exception as e:
+        if os.path.exists(zip_dir):
+            shutil.rmtree(zip_dir)
+        raise e
     finally:
         # once read all files, remove the zipfile
         remove(zip_path)

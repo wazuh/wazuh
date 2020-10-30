@@ -8,7 +8,6 @@ import json
 import operator
 import os
 import random
-import re
 import shutil
 from calendar import timegm
 from datetime import datetime
@@ -16,10 +15,10 @@ from typing import Tuple, Dict, Callable
 
 import wazuh.core.cluster.cluster
 from wazuh.core import cluster as metadata, common, exception, utils
+from wazuh.core.agent import Agent
 from wazuh.core.cluster import server, common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
-from wazuh.core.agent import Agent
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
