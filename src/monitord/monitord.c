@@ -251,15 +251,15 @@ int check_disconnection_trigger() {
 
 int check_alert_trigger() {
     if (mond_time_control.alert_counter >= mond.global.agents_disconnection_alert_time) {
-        mond_time_control.disconnect_counter = 0;
+        mond_time_control.alert_counter = 0;
         return 1;
     }
     return 0;
 }
 
 int check_deletion_trigger() {
-    if (mond.delete_old_agents != 0 && mond_time_control.disconnect_counter >= mond.global.agents_disconnection_time * 60 ) {
-        mond_time_control.disconnect_counter = 0;
+    if (mond.delete_old_agents != 0 && mond_time_control.delete_counter >= mond.delete_old_agents * 60 ) {
+        mond_time_control.delete_counter = 0;
         return 1;
     }
     return 0;
