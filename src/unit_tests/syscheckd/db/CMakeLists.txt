@@ -18,7 +18,7 @@ set(FIM_DB_BASE_FLAGS "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_v2
                        -Wl,--wrap=fprintf,--wrap=fgets,--wrap=stat,--wrap=wstr_split,--wrap=os_random \
                        -Wl,--wrap=DirSize,--wrap=IsDir,--wrap=sqlite3_column_count,--wrap=getDefine_Int")
 
-target_link_libraries(test_fim_db SYSCHECK_O ${TEST_DEPS})
+target_link_libraries(test_fim_db SYSCHECK_O ${TEST_DEPS} fim_shared)
 if(${TARGET} STREQUAL "winagent")
     target_link_libraries(test_fim_db "${FIM_DB_BASE_FLAGS}")
 else()
@@ -32,14 +32,15 @@ add_executable(test_fim_db_files test_fim_db_files.c)
 
 target_compile_options(test_fim_db_files PRIVATE "-Wall")
 
-target_link_libraries(test_fim_db_files SYSCHECK_O ${TEST_DEPS})
-if(${TARGET} STREQUAL "agent")
-    list(APPEND syscheckd_tests_flags "")
-    target_link_libraries(test_fim_db_files "${FIM_DB_BASE_FLAGS} -Wl,--wrap=isChroot -Wl,--wrap=usleep,--wrap=time")
-elseif(${TARGET} STREQUAL "winagent")
-    target_link_libraries(test_fim_db_files "${FIM_DB_BASE_FLAGS}")
+target_link_libraries(test_fim_db_files SYSCHECK_O ${TEST_DEPS} fim_shared)
+
+set(FIM_DB_FILES_LINUX_FLAGS "-Wl,--wrap=isChroot -Wl,--wrap=usleep,--wrap=time,--wrap=sqlite3_bind_int64 \
+                              -Wl,--wrap=sqlite3_last_insert_rowid")
+
+if(${TARGET} STREQUAL "winagent")
+    target_link_libraries(test_fim_db_files ${FIM_DB_BASE_FLAGS})
 else()
-    target_link_libraries(test_fim_db_files "${FIM_DB_BASE_FLAGS} -Wl,--wrap=usleep,--wrap=time")
+    target_link_libraries(test_fim_db_files ${FIM_DB_BASE_FLAGS} ${FIM_DB_FILES_LINUX_FLAGS})
 endif()
 
 add_test(NAME test_fim_db_files COMMAND test_fim_db_files)

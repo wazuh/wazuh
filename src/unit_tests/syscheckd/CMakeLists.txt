@@ -55,6 +55,16 @@ set_target_properties(
 
 target_link_libraries(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
+# Add fim_tools library to compilation
+include_directories((${SRC_FOLDER}/syscheckd))
+include_directories((${SRC_FOLDER}/unit_tests))
+include_directories((${SRC_FOLDER}/unit_tests/syscheckd))
+include_directories((${SRC_FOLDER}/config))
+
+add_library(fim_shared STATIC db/expect_fim_db.c db/expect_fim_db_files.c)
+
+set_target_properties(fim_shared PROPERTIES LINKER_LANGUAGE C )
+
 # Generate syscheckd-event library
 if(${TARGET} STREQUAL "winagent")
   file(GLOB syscheck_event_files ${SRC_FOLDER}/syscheckd/*-event.o ${SRC_FOLDER}/syscheckd/*/*-event.o)
