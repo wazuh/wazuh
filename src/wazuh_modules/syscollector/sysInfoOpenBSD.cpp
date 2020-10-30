@@ -93,3 +93,16 @@ nlohmann::json SysInfo::getProcessesInfo() const
     // Currently not supported for this OS
     return {};
 }
+
+nlohmann::json SysInfo::getOsInfo() const
+{
+    nlohmann::json ret;
+    const auto spParser{FactorySysOsParser::create("bsd")};
+    if(!spParser->parseUname(Utils::exec("uname -r"), ret))
+    {
+        ret["os_name"] = "BSD";
+        ret["os_platform"] = "bsd";
+        ret["os_version"] = "unknown";
+    }
+    return ret;
+}
