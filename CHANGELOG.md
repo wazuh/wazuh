@@ -7,12 +7,16 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- **Framework:**
+  - Update Python's cryptography library to version 3.2.1 ([#6442](https://github.com/wazuh/wazuh/issues/6442))
+
 ### Fixed
 
 - **API:**
   - Added missing agent:group resource to RBAC's catalog. ([6427](https://github.com/wazuh/wazuh/issues/6427))
 
 ### Removed
+
 
 ## [v4.0.0] -
 
