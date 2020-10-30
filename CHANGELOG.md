@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.0.0] -
 
+### Fixed
+
+- Clean invalid real-time inotify watches from FIM module. ([#6445](https://github.com/wazuh/wazuh/pull/6445))
+
+
+## [v4.0.0] -
+
 ### Added
 
 - Added **enrollment capability**. Agents are now able to request a key from the manager if current key is missing or wrong. ([#5609](https://github.com/wazuh/wazuh/pull/5609))
