@@ -1109,7 +1109,7 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const c
         return NULL;
     }
 
-    /* Allocate memory for the info structure */   
+    /* Allocate memory for the info structure */
     os_calloc(1, sizeof(agent_info), agt_info);
 
     json_field = cJSON_GetObjectItem(json_agt_info->child, "os_uname");
@@ -1149,38 +1149,30 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const c
 agent_status_t get_agent_status(int agent_id){
     cJSON *json_agt_info = NULL;
     cJSON *json_field = NULL;
-    int last_keepalive = -1;
+    agent_status_t status = GA_STATUS_INV;
 
     json_agt_info = wdb_get_agent_info(agent_id, NULL);
 
     if (!json_agt_info) {
         mdebug1("Failed to get agent '%d' information from Wazuh DB.", agent_id);
-        return GA_STATUS_INV;
-    }
-    
-    json_field = cJSON_GetObjectItem(json_agt_info->child, "last_keepalive");
-    if (cJSON_IsNumber(json_field)) {
-        last_keepalive = json_field->valueint;
-        cJSON_Delete(json_agt_info);
-    
-    } else {
-        cJSON_Delete(json_agt_info);
-        return GA_STATUS_INV;
+        return status;
     }
 
-    if (last_keepalive < 0) {
-        return (GA_STATUS_INV);
+    json_field = cJSON_GetObjectItem(json_agt_info->child, "connection_status");
+    if (cJSON_IsString(json_field)) {
+        if (0 == strcmp(json_field->valuestring, AGENT_CS_PENDING)) {
+            status = GA_STATUS_PENDING;
+        }
+        else if (0 == strcmp(json_field->valuestring, AGENT_CS_ACTIVE)) {
+            status = GA_STATUS_ACTIVE;
+        }
+        else if (0 == strcmp(json_field->valuestring, AGENT_CS_DISCONNECTED)) {
+            status = GA_STATUS_NACTIVE;
+        }
     }
 
-    if (last_keepalive < (time(0) - DISCON_TIME)) {
-        return (GA_STATUS_NACTIVE);
-    }
-
-    if (last_keepalive == 0) {
-        return GA_STATUS_PENDING;
-    }
-
-    return (GA_STATUS_ACTIVE);
+    cJSON_Delete(json_agt_info);
+    return status;
 }
 
 /* List available agents */
@@ -1204,8 +1196,7 @@ char **get_agents(int flag){
     }
 
     for (i = 0; id_array[i] != -1; i++){
-        int status = 0;
-        int last_keepalive = -1;
+        agent_status_t status = GA_STATUS_INV;
         char agent_name_ip[OS_SIZE_512] = "";
 
         json_agt_info = wdb_get_agent_info(id_array[i], &sock);
@@ -1218,30 +1209,33 @@ char **get_agents(int flag){
         json_ip = cJSON_GetObjectItem(json_agt_info->child, "register_ip");
 
         /* Keeping the same name structure than plain text files in AGENTINFO_DIR */
-        if(cJSON_IsString(json_name) && json_name->valuestring != NULL && 
+        if(cJSON_IsString(json_name) && json_name->valuestring != NULL &&
             cJSON_IsString(json_ip) && json_ip->valuestring != NULL){
             snprintf(agent_name_ip, sizeof(agent_name_ip), "%s-%s", json_name->valuestring, json_ip->valuestring);
         }
 
-        json_field = cJSON_GetObjectItem(json_agt_info->child, "last_keepalive");
-        if(cJSON_IsNumber(json_field)){
-            last_keepalive = json_field->valueint;
+        json_field = cJSON_GetObjectItem(json_agt_info->child, "connection_status");
+        if(!cJSON_IsString(json_field)){
+            cJSON_Delete(json_agt_info);
+            continue;
         }
+
+        status = !strcmp(json_field->valuestring, AGENT_CS_PENDING) ? GA_STATUS_PENDING :
+                 !strcmp(json_field->valuestring, AGENT_CS_ACTIVE) ? GA_STATUS_ACTIVE :
+                 !strcmp(json_field->valuestring, AGENT_CS_DISCONNECTED) ? GA_STATUS_NACTIVE : GA_STATUS_INV;
         cJSON_Delete(json_agt_info);
-    
-        status = last_keepalive > (time(0) - DISCON_TIME) ? 1 : 0;
 
         switch (flag) {
             case GA_ALL:
             case GA_ALL_WSTATUS:
                 break;
             case GA_ACTIVE:
-                if(status == 0){
+                if(status != GA_STATUS_ACTIVE){
                     continue;
                 }
                 break;
             case GA_NOTACTIVE:
-                if(status == 1){
+                if(status != GA_STATUS_NACTIVE){
                     continue;
                 }
                 break;
@@ -1257,17 +1251,13 @@ char **get_agents(int flag){
         /* Add agent entry */
         if (flag == GA_ALL_WSTATUS) {
             char agt_stat[1024];
-
-            snprintf(agt_stat, sizeof(agt_stat) - 1, "%s %s",
-                     agent_name_ip, status == 1 ? "active" : "disconnected");
-
+            snprintf(agt_stat, sizeof(agt_stat) - 1, "%s %s", agent_name_ip, print_agent_status(status));
             os_strdup(agt_stat, agents_array[array_size]);
         } else {
             os_strdup(agent_name_ip, agents_array[array_size]);
         }
 
         agents_array[array_size + 1] = NULL;
-
         array_size++;
     }
 
@@ -1317,7 +1307,7 @@ char **get_agents_by_last_keepalive(int flag, int delta){
         json_ip = cJSON_GetObjectItem(json_agt_info->child, "register_ip");
 
         /* Keeping the same name structure than plain text files in AGENTINFO_DIR */
-        if(cJSON_IsString(json_name) && json_name->valuestring != NULL && 
+        if(cJSON_IsString(json_name) && json_name->valuestring != NULL &&
             cJSON_IsString(json_ip) && json_ip->valuestring != NULL){
             snprintf(agent_name_ip, sizeof(agent_name_ip), "%s-%s", json_name->valuestring, json_ip->valuestring);
             os_realloc(agents_array, (array_size + 2) * sizeof(char *), agents_array);
