@@ -67,7 +67,7 @@ void expect_fim_db_bind_get_inode() {
 void expect_fim_db_insert_path_success() {
     expect_fim_db_clean_stmt();
 
-    expect_fim_db_bind_replace_path(0);
+    expect_fim_db_bind_replace_path(2);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -77,9 +77,9 @@ void expect_fim_db_insert_data_success(int row_id) {
     expect_fim_db_clean_stmt();
 
     if (row_id == 0) {
-        expect_fim_db_bind_insert_data(0);
+        expect_fim_db_bind_insert_data(3);
     } else {
-        expect_fim_db_bind_update_data(0);
+        expect_fim_db_bind_update_data(3);
     }
 
     will_return(__wrap_sqlite3_step, 0);
