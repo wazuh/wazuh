@@ -70,11 +70,6 @@ std::string SysInfo::getCpuName() const
     return std::string{reinterpret_cast<const char*>(spBuff.get())};
 }
 
-nlohmann::json SysInfo::getPackages() const
-{
-    return {};
-}
-
 static nlohmann::json parseNetworks(const std::pair<std::string, std::vector<ifaddrs *>>& interfaceAddress)
 {
     nlohmann::json network {};
@@ -83,7 +78,7 @@ static nlohmann::json parseNetworks(const std::pair<std::string, std::vector<ifa
     {
         if (addr->ifa_addr)
         {
-            FactoryNetworkFamilyCreator<OSType::LINUX>::create(addr->ifa_addr->sa_family)->buildNetworkData(addr, network);
+            FactoryNetworkFamilyCreator<OSType::BSDBASED>::create(addr->ifa_addr->sa_family)->buildNetworkData(addr, network);
         }
     }
 

@@ -27,7 +27,7 @@ public:
     // LCOV_EXCL_START
     ~LinuxNetworkImpl() = default;
     // LCOV_EXCL_STOP
-    void buildNetworkData(const ifaddrs* interfaceAddress, nlohmann::json& network) override
+    void buildNetworkData(const ifaddrs* /*interfaceAddress*/, nlohmann::json& /*network*/) override
     {
         throw std::runtime_error("Non implemented specialization.");
     }

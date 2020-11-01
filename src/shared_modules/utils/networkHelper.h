@@ -51,7 +51,7 @@ namespace Utils
         {
             std::string retVal;
             auto broadcastAddrPlain { std::make_unique<char[]>(NI_MAXHOST) };
-            if (inet_ntop(family, &address, broadcastAddrPlain.get(), NI_MAXHOST))
+            if (inet_ntop(family, address, broadcastAddrPlain.get(), NI_MAXHOST))
             {
                 retVal = broadcastAddrPlain.get();
             }

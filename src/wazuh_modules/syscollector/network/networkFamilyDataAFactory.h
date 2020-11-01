@@ -19,15 +19,14 @@
 enum OSType
 {
     LINUX,
-    BSD,
-    MACOS
+    BSDBASED
 };
 
 template <OSType osType>
 class FactoryNetworkFamilyCreator final
 {
 public:
-    static std::shared_ptr<IOSNetwork> create(const sa_family_t osNetworkType)
+    static std::shared_ptr<IOSNetwork> create(const sa_family_t /*osNetworkType*/)
     {
         throw std::runtime_error
         {
@@ -47,7 +46,7 @@ public:
 };
 
 template <>
-class FactoryNetworkFamilyCreator<OSType::BSD> final
+class FactoryNetworkFamilyCreator<OSType::BSDBASED> final
 {
 public:
     static std::shared_ptr<IOSNetwork> create(const sa_family_t osNetworkType)

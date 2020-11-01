@@ -24,7 +24,7 @@ template <sa_family_t osNetworkType>
 class BSDNetworkImpl final : public IOSNetwork
 {
 public:
-    void buildNetworkData(const ifaddrs* interfaceAddress, nlohmann::json& network) override
+    void buildNetworkData(const ifaddrs* /*interfaceAddress*/, nlohmann::json& /*network*/) override
     {
         throw std::runtime_error("Non implemented specialization.");
     }

@@ -24,4 +24,7 @@ constexpr auto WM_SYS_NET_DIR {"/proc/net/" };
 constexpr auto DPKG_PATH {"/var/lib/dpkg/"};
 constexpr auto DPKG_STATUS_PATH {"/var/lib/dpkg/status"};
 
+constexpr auto MAC_ADDRESS_COUNT_SEGMENTS = 6ull;
+#define ROUNDUP(a) ((a) > 0 ? (1 + (((a)-1) | (sizeof(long) - 1))) : sizeof(long))
+
 #endif //_SHARED_DEFS_H
