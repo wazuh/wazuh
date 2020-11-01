@@ -8,6 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include <sys/types.h>
 #include <sys/sysctl.h>
 #include "sysInfo.hpp"
 #include "cmdHelper.h"

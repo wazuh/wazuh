@@ -16,6 +16,8 @@
 #include <iomanip>
 #include <net/route.h>
 #include <sys/sysctl.h>
+#include <sys/param.h>
+#include <netinet/in.h>
 
 #include "networkInterfaceBSD.h"
 #include "networkHelper.h"
