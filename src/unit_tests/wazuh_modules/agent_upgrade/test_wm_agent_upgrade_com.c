@@ -102,7 +102,7 @@ void test_unsign_invalid_source_incomming(void **state) {
     expect_string(__wrap_w_ref_parent_folder, path, source);
     will_return(__wrap_w_ref_parent_folder, 1);
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "At unsign(): Invalid file name 'test_filename'");
+    expect_string(__wrap__mterror, formatted_msg, "(8126): At unsign(): Invalid file name.");
     int ret = _unsign(source, finalpath);
     assert_int_equal(ret, -1);
 }
@@ -116,7 +116,7 @@ void test_unsign_invalid_source_temp(void **state) {
     expect_string(__wrap_w_ref_parent_folder, path, source);
     will_return(__wrap_w_ref_parent_folder, 1);
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "At unsign(): Invalid file name 'test_filename'");
+    expect_string(__wrap__mterror, formatted_msg, "(8126): At unsign(): Invalid file name.");
     int ret = _unsign(source, finalpath);
     assert_int_equal(ret, -1);
 }
@@ -137,7 +137,7 @@ void test_unsign_invalid_source_len(void **state) {
 #endif
     will_return(__wrap_strlen, PATH_MAX);
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "At unsign(): Too long temp file.");
+    expect_string(__wrap__mterror, formatted_msg, "(8137): At unsign(): Too long temp file.");
 
     int ret = _unsign(source, finalpath);
     assert_int_equal(ret, -1);
@@ -157,7 +157,7 @@ void test_unsign_temp_file_fail(void **state) {
     will_return(__wrap_strlen, strlen("tmp\\test_filename"));
     expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_filename");
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "At unsign: Couldn't unsign package file 'incoming\\test_filename'");
+    expect_string(__wrap__mterror, formatted_msg, "(8139): At unsign(): Could not unsign package file 'incoming\\test_filename'");
 #else
     expect_string(__wrap_strlen, s, "/var/ossec/tmp/test_filename");
     will_return(__wrap_strlen, strlen("/var/ossec/tmp/test_filename"));
@@ -167,7 +167,7 @@ void test_unsign_temp_file_fail(void **state) {
     will_return(__wrap_chmod, 0);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "At unsign: Couldn't unsign package file '/var/ossec//var/incoming/test_filename'");
+    expect_string(__wrap__mterror, formatted_msg, "(8139): At unsign(): Could not unsign package file '/var/ossec//var/incoming/test_filename'");
 #endif
     will_return(__wrap_w_wpk_unsign, -1);
     expect_any_count(__wrap_unlink, file, 2);
@@ -217,7 +217,7 @@ void test_uncompress_invalid_filename(void **state) {
     will_return(__wrap_w_ref_parent_folder, 1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "At uncompress(): Invalid file name 'test_filename'"); 
+    expect_string(__wrap__mterror, formatted_msg, "(8126): At uncompress(): Invalid file name.");
 
     int ret = _uncompress(compressed, package, merged);
     assert_int_equal(ret, -1);
@@ -239,7 +239,7 @@ void test_uncompress_invalid_file_len(void **state) {
     will_return(__wrap_strlen, PATH_MAX);
 #endif
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "At uncompress(): Too long temp file.");
+    expect_string(__wrap__mterror, formatted_msg, "(8137): At uncompress(): Too long temp file.");
 
     int ret = _uncompress("compressed_test", package, merged);
     assert_int_equal(ret, -1);
@@ -264,7 +264,7 @@ void test_uncompress_gzopen_fail(void **state) {
     expect_string(__wrap_gzopen, mode, "rb");
     will_return(__wrap_gzopen, NULL);
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "At uncompress(): Unable to open 'compressed_test'");
+    expect_string(__wrap__mterror, formatted_msg, "(8140): At uncompress(): Unable to open 'compressed_test'");
 
     int ret = _uncompress("compressed_test", package, merged);
     assert_int_equal(ret, -1);
@@ -291,9 +291,9 @@ void test_uncompress_fopen_fail(void **state) {
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
 #ifdef TEST_WINAGENT
-    expect_string(__wrap__mterror, formatted_msg, "At uncompress(): Unable to open 'tmp\\test_filename.mg.XXXXXX'");
+    expect_string(__wrap__mterror, formatted_msg, "(8140): At uncompress(): Unable to open 'tmp\\test_filename.mg.XXXXXX'");
 #else
-    expect_string(__wrap__mterror, formatted_msg, "At uncompress(): Unable to open '/var/ossec/tmp/test_filename.mg.XXXXXX'");
+    expect_string(__wrap__mterror, formatted_msg, "(8140): At uncompress(): Unable to open '/var/ossec/tmp/test_filename.mg.XXXXXX'");
 #endif
     expect_any(__wrap_fopen, path);
     expect_string(__wrap_fopen, mode, "wb");
@@ -345,7 +345,7 @@ void test_uncompress_fwrite_fail(void **state) {
     will_return(__wrap_fclose, 0);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "At uncompress(): Unable to write 'compressed_test'");
+    expect_string(__wrap__mterror, formatted_msg, "(8129): At uncompress(): Cannot write on 'compressed_test'");
 
     int ret = _uncompress("compressed_test", package, merged);
     assert_int_equal(ret, -1);
@@ -387,7 +387,7 @@ void test_uncompress_gzread_fail(void **state) {
     will_return(__wrap_unlink, 0);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "At uncompress(): Unable to read 'compressed_test'");
+    expect_string(__wrap__mterror, formatted_msg, "(8141): At uncompress(): Unable to read 'compressed_test'");
 
     int ret = _uncompress("compressed_test", package, merged);
     assert_int_equal(ret, -1);
@@ -496,13 +496,13 @@ void test_wm_agent_upgrade_com_open_unsopported_mode(void **state) {
 
     sprintf(file.path, "existent_path");
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mtwarn, formatted_msg,  "At open: File 'existent_path' was opened. Closing.");
+    expect_string(__wrap__mtwarn, formatted_msg,  "(8124): At open: File 'existent_path' was opened. Closing.");
 
     expect_any(__wrap_fclose, _File);
     will_return(__wrap_fclose, 0);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg,  "At open: Unsupported mode 'r'");
+    expect_string(__wrap__mterror, formatted_msg,  "(8125): At open: Unsupported mode 'r'");
 
     char *response = wm_agent_upgrade_com_open(command);
     assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Unsupported file mode");
@@ -515,7 +515,7 @@ void test_wm_agent_upgrade_com_open_invalid_file_name(void **state) {
     will_return(__wrap_w_ref_parent_folder, 1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg,  "At open: Invalid file name");
+    expect_string(__wrap__mterror, formatted_msg,  "(8126): At open: Invalid file name.");
 
     char *response = wm_agent_upgrade_com_open(command);
     assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Invalid file name");
@@ -560,7 +560,7 @@ void test_wm_agent_upgrade_com_write_file_closed(void **state) {
     sprintf(file.path, "%s", "\0");
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg,   "At write: File not opened. Agent might have been auto-restarted during upgrade.");
+    expect_string(__wrap__mterror, formatted_msg,   "(8127): At write: File not opened. Agent might have been auto-restarted during upgrade.");
 
     char *response = wm_agent_upgrade_com_write(command);
     assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "File not opened. Agent might have been auto-restarted during upgrade");
@@ -575,7 +575,7 @@ void test_wm_agent_upgrade_com_write_invalid_file_name(void **state) {
     will_return(__wrap_w_ref_parent_folder, 1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg,   "At write: Invalid file name");
+    expect_string(__wrap__mterror, formatted_msg,   "(8126): At write: Invalid file name.");
 
     char *response = wm_agent_upgrade_com_write(command);
     assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Invalid file name");
@@ -590,7 +590,7 @@ void test_wm_agent_upgrade_com_write_different_file_name(void **state) {
     will_return(__wrap_w_ref_parent_folder, 0);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "At write: The target file doesn't match the opened file (test_file_different).");
+    expect_string(__wrap__mterror, formatted_msg, "(8128): At write: The target file doesn't match the opened file 'test_file_different'");
 
     char *response = wm_agent_upgrade_com_write(command);
     assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "The target file doesn't match the opened file");
@@ -614,9 +614,9 @@ void test_wm_agent_upgrade_com_write_error(void **state) {
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
 #ifdef TEST_WINAGENT
-    expect_string(__wrap__mterror, formatted_msg, "At write: Cannot write on 'incoming\\test_filename'");
+    expect_string(__wrap__mterror, formatted_msg, "(8129): At write: Cannot write on 'incoming\\test_filename'");
 #else
-    expect_string(__wrap__mterror, formatted_msg, "At write: Cannot write on '/var/ossec//var/incoming/test_file'");
+    expect_string(__wrap__mterror, formatted_msg, "(8129): At write: Cannot write on '/var/ossec//var/incoming/test_file'");
 #endif
 
     char *response = wm_agent_upgrade_com_write(command);
@@ -649,7 +649,7 @@ void test_wm_agent_upgrade_com_close_file_opened(void **state) {
     sprintf(file.path, "%s", "\0");
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "At close: No file is opened.");
+    expect_string(__wrap__mterror, formatted_msg, "(8130): At close: No file is opened.");
 
     char *response = wm_agent_upgrade_com_close(command);
     assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "No file opened");
@@ -664,7 +664,7 @@ void test_wm_agent_upgrade_com_close_invalid_file_name(void **state) {
     will_return(__wrap_w_ref_parent_folder, 1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "At close: Invalid file name");
+    expect_string(__wrap__mterror, formatted_msg, "(8126): At close: Invalid file name.");
 
     char *response = wm_agent_upgrade_com_close(command);
     assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Invalid file name");
@@ -679,7 +679,7 @@ void test_wm_agent_upgrade_com_close_different_file_name(void **state) {
     will_return(__wrap_w_ref_parent_folder, 0);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "At close: The target file doesn't match the opened file (test_file_different).");
+    expect_string(__wrap__mterror, formatted_msg, "(8128): At close: The target file doesn't match the opened file 'test_file_different'");
 
     char *response = wm_agent_upgrade_com_close(command);
     assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "The target file doesn't match the opened file");
@@ -702,7 +702,7 @@ void test_wm_agent_upgrade_com_close_failed(void **state) {
 
     errno = EPERM;
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "At close: Operation not permitted");
+    expect_string(__wrap__mterror, formatted_msg, "(8131): At close: 'Operation not permitted'");
 
     char *response = wm_agent_upgrade_com_close(command);
     assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Cannot close file");
@@ -734,7 +734,7 @@ void test_wm_agent_upgrade_sha1_invalid_file(void **state) {
     will_return(__wrap_w_ref_parent_folder, 1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "At sha1: Invalid file name");
+    expect_string(__wrap__mterror, formatted_msg, "(8126): At sha1: Invalid file name.");
 
     char *response = wm_agent_upgrade_com_sha1(command);
     assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Invalid file name");
@@ -752,7 +752,7 @@ void test_wm_agent_upgrade_sha1_sha_error(void **state) {
     will_return(__wrap_OS_SHA1_File, -1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "At sha1: Error generating SHA1.");
+    expect_string(__wrap__mterror, formatted_msg, "(8132): At sha1: Error generating SHA1.");
 
     char *response = wm_agent_upgrade_com_sha1(command);
     assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Cannot generate SHA1");
@@ -783,10 +783,10 @@ void test_wm_agent_upgrade_com_upgrade_unsign_error(void **state) {
         expect_string(__wrap_w_ref_parent_folder, path, "test_file");
         will_return(__wrap_w_ref_parent_folder, 1);
         expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-        expect_string(__wrap__mterror, formatted_msg, "At unsign(): Invalid file name 'test_file'");
+        expect_string(__wrap__mterror, formatted_msg, "(8126): At unsign(): Invalid file name.");
     }
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "At upgrade: Could not verify signature");
+    expect_string(__wrap__mterror, formatted_msg, "(8131): At upgrade: 'Could not verify signature'");
 
     char *response = wm_agent_upgrade_com_upgrade(command);
     assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Could not verify signature");
@@ -827,14 +827,14 @@ void test_wm_agent_upgrade_com_upgrade_uncompress_error(void **state) {
         expect_string(__wrap_w_ref_parent_folder, path, "test_file");
         will_return(__wrap_w_ref_parent_folder, 1);
         expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-        expect_string(__wrap__mterror, formatted_msg, "At uncompress(): Invalid file name 'test_file'");
+        expect_string(__wrap__mterror, formatted_msg, "(8126): At uncompress(): Invalid file name.");
     }
 
     expect_any(__wrap_unlink, file);
     will_return(__wrap_unlink, 0);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "At upgrade: Could not uncompress package");
+    expect_string(__wrap__mterror, formatted_msg, "(8131): At upgrade: 'Could not uncompress package'");
 
     char *response = wm_agent_upgrade_com_upgrade(command);
     assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Could not uncompress package");
@@ -914,7 +914,7 @@ void test_wm_agent_upgrade_com_upgrade_clean_directory_error(void **state) {
     will_return(__wrap_cldir_ex, -1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "At upgrade: Could not clean up upgrade directory");
+    expect_string(__wrap__mterror, formatted_msg, "(8131): At upgrade: 'Could not clean up upgrade directory'");
 
     char *response = wm_agent_upgrade_com_upgrade(command);
     assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Could not clean up upgrade directory");
@@ -1089,7 +1089,7 @@ void test_wm_agent_upgrade_com_installer_error(void **state) {
     will_return(__wrap_w_ref_parent_folder, 1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "At upgrade: Invalid file name");
+    expect_string(__wrap__mterror, formatted_msg, "(8126): At upgrade: Invalid file name.");
 
     char *response = wm_agent_upgrade_com_upgrade(command);
     assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Invalid file name");
@@ -1184,7 +1184,7 @@ void test_wm_agent_upgrade_com_chmod_error(void **state) {
     will_return(__wrap_chmod, -1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "At upgrade: Could not chmod '/var/ossec//var/upgrade/install.sh'");
+    expect_string(__wrap__mterror, formatted_msg, "(8134): At upgrade: Could not chmod '/var/ossec//var/upgrade/install.sh'");
 
     char *response = wm_agent_upgrade_com_upgrade(command);
     assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Could not chmod");
@@ -1294,9 +1294,9 @@ void test_wm_agent_upgrade_com_execute_error(void **state) {
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
 
     #ifndef TEST_WINAGENT
-    expect_string(__wrap__mterror, formatted_msg, "At upgrade: Error executing command [/var/ossec//var/upgrade/install.sh]");
+    expect_string(__wrap__mterror, formatted_msg, "(8135): At upgrade: Error executing command [/var/ossec//var/upgrade/install.sh]");
     #else
-    expect_string(__wrap__mterror, formatted_msg, "At upgrade: Error executing command [upgrade/install.sh]");
+    expect_string(__wrap__mterror, formatted_msg, "(8135): At upgrade: Error executing command [upgrade/install.sh]");
     #endif
 
     char *response = wm_agent_upgrade_com_upgrade(command);
@@ -1417,9 +1417,9 @@ void test_wm_agent_upgrade_com_clear_result_failed(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     #ifndef TEST_WINAGENT
-        expect_string(__wrap__mtdebug1, formatted_msg,  "At clear_upgrade_result: Could not erase file '/var/ossec/var/upgrade/upgrade_result'.");
+        expect_string(__wrap__mtdebug1, formatted_msg,  "(8136): At clear_upgrade_result: Could not erase file '/var/ossec/var/upgrade/upgrade_result'");
     #else
-        expect_string(__wrap__mtdebug1, formatted_msg,  "At clear_upgrade_result: Could not erase file 'upgrade\\upgrade_result'.");
+        expect_string(__wrap__mtdebug1, formatted_msg,  "(8136): At clear_upgrade_result: Could not erase file 'upgrade\\upgrade_result'.");
     #endif
 
     char *response = wm_agent_upgrade_com_clear_result();
