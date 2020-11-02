@@ -505,7 +505,10 @@ void test_wm_agent_upgrade_com_open_unsopported_mode(void **state) {
     expect_string(__wrap__mterror, formatted_msg,  "At open: Unsupported mode 'r'");
 
     char *response = wm_agent_upgrade_com_open(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Unsupported file mode");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Unsupported file mode");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 void test_wm_agent_upgrade_com_open_invalid_file_name(void **state) {
@@ -518,7 +521,10 @@ void test_wm_agent_upgrade_com_open_invalid_file_name(void **state) {
     expect_string(__wrap__mterror, formatted_msg,  "At open: Invalid file name");
 
     char *response = wm_agent_upgrade_com_open(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Invalid file name");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Invalid file name");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 void test_wm_agent_upgrade_com_open_invalid_open(void **state) {
@@ -537,7 +543,10 @@ void test_wm_agent_upgrade_com_open_invalid_open(void **state) {
     errno = 2;
 
     char *response = wm_agent_upgrade_com_open(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "File Open Error: No such file or directory");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "File Open Error: No such file or directory");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 void test_wm_agent_upgrade_com_open_success(void **state) {
@@ -551,7 +560,10 @@ void test_wm_agent_upgrade_com_open_success(void **state) {
     will_return(__wrap_fopen, 4);
 
     char *response = wm_agent_upgrade_com_open(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "ok");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "ok");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 void test_wm_agent_upgrade_com_write_file_closed(void **state) {
@@ -563,7 +575,10 @@ void test_wm_agent_upgrade_com_write_file_closed(void **state) {
     expect_string(__wrap__mterror, formatted_msg,   "At write: File not opened. Agent might have been auto-restarted during upgrade.");
 
     char *response = wm_agent_upgrade_com_write(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "File not opened. Agent might have been auto-restarted during upgrade");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "File not opened. Agent might have been auto-restarted during upgrade");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 void test_wm_agent_upgrade_com_write_invalid_file_name(void **state) {
@@ -578,7 +593,10 @@ void test_wm_agent_upgrade_com_write_invalid_file_name(void **state) {
     expect_string(__wrap__mterror, formatted_msg,   "At write: Invalid file name");
 
     char *response = wm_agent_upgrade_com_write(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Invalid file name");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Invalid file name");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 void test_wm_agent_upgrade_com_write_different_file_name(void **state) {
@@ -593,7 +611,10 @@ void test_wm_agent_upgrade_com_write_different_file_name(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "At write: The target file doesn't match the opened file (test_file_different).");
 
     char *response = wm_agent_upgrade_com_write(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "The target file doesn't match the opened file");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "The target file doesn't match the opened file");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 void test_wm_agent_upgrade_com_write_error(void **state) {
@@ -610,7 +631,7 @@ void test_wm_agent_upgrade_com_write_error(void **state) {
     will_return(__wrap_fwrite, -1);
 
     expect_string(__wrap_strlen, s, "ABCDABCD");
-    will_return(__wrap_strlen, __real_strlen);
+    will_return(__wrap_strlen, __real_strlen("ABCDABCD"));
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
 #ifdef TEST_WINAGENT
@@ -620,7 +641,10 @@ void test_wm_agent_upgrade_com_write_error(void **state) {
 #endif
 
     char *response = wm_agent_upgrade_com_write(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Cannot write file");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Cannot write file");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 void test_wm_agent_upgrade_com_write_success(void **state) {
@@ -637,10 +661,13 @@ void test_wm_agent_upgrade_com_write_success(void **state) {
     will_return(__wrap_fwrite, 8);
 
     expect_string(__wrap_strlen, s, "ABCDABCD");
-    will_return(__wrap_strlen, __real_strlen);
+    will_return(__wrap_strlen, __real_strlen("ABCDABCD"));
 
     char *response = wm_agent_upgrade_com_write(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "ok");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "ok");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 void test_wm_agent_upgrade_com_close_file_opened(void **state) {
@@ -652,7 +679,10 @@ void test_wm_agent_upgrade_com_close_file_opened(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "At close: No file is opened.");
 
     char *response = wm_agent_upgrade_com_close(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "No file opened");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "No file opened");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 void test_wm_agent_upgrade_com_close_invalid_file_name(void **state) {
@@ -667,7 +697,10 @@ void test_wm_agent_upgrade_com_close_invalid_file_name(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "At close: Invalid file name");
 
     char *response = wm_agent_upgrade_com_close(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Invalid file name");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Invalid file name");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 void test_wm_agent_upgrade_com_close_different_file_name(void **state) {
@@ -682,7 +715,10 @@ void test_wm_agent_upgrade_com_close_different_file_name(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "At close: The target file doesn't match the opened file (test_file_different).");
 
     char *response = wm_agent_upgrade_com_close(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "The target file doesn't match the opened file");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "The target file doesn't match the opened file");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 void test_wm_agent_upgrade_com_close_failed(void **state) {
@@ -705,7 +741,10 @@ void test_wm_agent_upgrade_com_close_failed(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "At close: Operation not permitted");
 
     char *response = wm_agent_upgrade_com_close(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Cannot close file");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Cannot close file");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 void test_wm_agent_upgrade_com_close_success(void **state) {
@@ -724,7 +763,10 @@ void test_wm_agent_upgrade_com_close_success(void **state) {
     will_return(__wrap_fclose, 0);
 
     char *response = wm_agent_upgrade_com_close(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "ok");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "ok");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 void test_wm_agent_upgrade_sha1_invalid_file(void **state) {
@@ -737,7 +779,10 @@ void test_wm_agent_upgrade_sha1_invalid_file(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "At sha1: Invalid file name");
 
     char *response = wm_agent_upgrade_com_sha1(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Invalid file name");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Invalid file name");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 void test_wm_agent_upgrade_sha1_sha_error(void **state) {
@@ -755,7 +800,10 @@ void test_wm_agent_upgrade_sha1_sha_error(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "At sha1: Error generating SHA1.");
 
     char *response = wm_agent_upgrade_com_sha1(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Cannot generate SHA1");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Cannot generate SHA1");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 void test_wm_agent_upgrade_sha1_sha_success(void **state) {
@@ -770,7 +818,10 @@ void test_wm_agent_upgrade_sha1_sha_success(void **state) {
     will_return(__wrap_OS_SHA1_File, 0);
 
     char *response = wm_agent_upgrade_com_sha1(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "2c312ada12ab321a253ad321af65983fa412e3a1");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "2c312ada12ab321a253ad321af65983fa412e3a1");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 void test_wm_agent_upgrade_com_upgrade_unsign_error(void **state) {
@@ -789,7 +840,10 @@ void test_wm_agent_upgrade_com_upgrade_unsign_error(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "At upgrade: Could not verify signature");
 
     char *response = wm_agent_upgrade_com_upgrade(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Could not verify signature");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Could not verify signature");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 void test_wm_agent_upgrade_com_upgrade_uncompress_error(void **state) {
@@ -837,7 +891,10 @@ void test_wm_agent_upgrade_com_upgrade_uncompress_error(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "At upgrade: Could not uncompress package");
 
     char *response = wm_agent_upgrade_com_upgrade(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Could not uncompress package");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Could not uncompress package");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 
@@ -917,7 +974,10 @@ void test_wm_agent_upgrade_com_upgrade_clean_directory_error(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "At upgrade: Could not clean up upgrade directory");
 
     char *response = wm_agent_upgrade_com_upgrade(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Could not clean up upgrade directory");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Could not clean up upgrade directory");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 void test_wm_agent_upgrade_com_unmerge_error(void **state) {
@@ -1004,7 +1064,10 @@ void test_wm_agent_upgrade_com_unmerge_error(void **state) {
     expect_any(__wrap__mterror, formatted_msg);
 
     char *response = wm_agent_upgrade_com_upgrade(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Error unmerging file");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Error unmerging file");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 void test_wm_agent_upgrade_com_installer_error(void **state) {
@@ -1092,7 +1155,10 @@ void test_wm_agent_upgrade_com_installer_error(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "At upgrade: Invalid file name");
 
     char *response = wm_agent_upgrade_com_upgrade(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Invalid file name");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Invalid file name");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 #ifndef TEST_WINAGENT
@@ -1187,7 +1253,10 @@ void test_wm_agent_upgrade_com_chmod_error(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "At upgrade: Could not chmod '/var/ossec//var/upgrade/install.sh'");
 
     char *response = wm_agent_upgrade_com_upgrade(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Could not chmod");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Could not chmod");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 #endif
 
@@ -1300,7 +1369,10 @@ void test_wm_agent_upgrade_com_execute_error(void **state) {
     #endif
 
     char *response = wm_agent_upgrade_com_upgrade(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Error executing command");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Error executing command");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 void test_wm_agent_upgrade_com_success(void **state) {
@@ -1404,7 +1476,10 @@ void test_wm_agent_upgrade_com_success(void **state) {
     will_return(__wrap_wm_exec, 0);
 
     char *response = wm_agent_upgrade_com_upgrade(command);
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "0");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "0");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 void test_wm_agent_upgrade_com_clear_result_failed(void **state) {
@@ -1423,7 +1498,10 @@ void test_wm_agent_upgrade_com_clear_result_failed(void **state) {
     #endif
 
     char *response = wm_agent_upgrade_com_clear_result();
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Could not erase upgrade_result file");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Could not erase upgrade_result file");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 void test_wm_agent_upgrade_com_clear_result_success(void **state) {
@@ -1435,7 +1513,10 @@ void test_wm_agent_upgrade_com_clear_result_success(void **state) {
     will_return(__wrap_remove, 0);
 
     char *response = wm_agent_upgrade_com_clear_result();
-    assert_string_equal(cJSON_GetObjectItem(cJSON_Parse(response), task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "ok");
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "ok");
+    cJSON_Delete(response_object);
+    os_free(response);
 }
 
 int main(void) {

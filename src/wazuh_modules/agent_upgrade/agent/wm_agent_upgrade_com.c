@@ -189,7 +189,7 @@ size_t wm_agent_upgrade_process_command(const char *buffer, char **output) {
 STATIC char* wm_agent_upgrade_command_ack(int error_code, const char* message) {
     cJSON* root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, task_manager_json_keys[WM_TASK_ERROR], error_code);
-    cJSON_AddStringToObject(root, task_manager_json_keys[WM_TASK_ERROR_MESSAGE], strdup(message));
+    cJSON_AddStringToObject(root, task_manager_json_keys[WM_TASK_ERROR_MESSAGE], message);
     cJSON_AddItemToObject(root, task_manager_json_keys[WM_TASK_DATA], cJSON_CreateArray());
     char *msg_string = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
@@ -252,9 +252,12 @@ STATIC char * wm_agent_upgrade_com_write(const cJSON* json_object) {
         return wm_agent_upgrade_command_ack(ERROR_TARGET_FILE_NOT_MATCH, error_messages[ERROR_TARGET_FILE_NOT_MATCH]);
     }
 
-    if (value_obj && (value_obj->type == cJSON_Number) && fwrite(decode_base64(buffer_obj->valuestring), 1, value_obj->valueint, file.fp) == (unsigned)value_obj->valueint) {
+    char *base64_string = decode_base64(buffer_obj->valuestring);
+    if (value_obj && (value_obj->type == cJSON_Number) && base64_string && fwrite(base64_string, 1, value_obj->valueint, file.fp) == (unsigned)value_obj->valueint) {
+        os_free(base64_string);
         return wm_agent_upgrade_command_ack(ERROR_OK, error_messages[ERROR_OK]);
     } else {
+        os_free(base64_string);
         mterror(WM_AGENT_UPGRADE_LOGTAG, "At write: Cannot write on '%s'", final_path);
         return wm_agent_upgrade_command_ack(ERROR_WRITE_FILE, error_messages[ERROR_WRITE_FILE]);
     }
