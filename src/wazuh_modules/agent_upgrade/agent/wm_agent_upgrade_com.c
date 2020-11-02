@@ -291,7 +291,7 @@ STATIC char * wm_agent_upgrade_com_sha1(const cJSON* json_object) {
     os_sha1 sha1;
 
     if (!file_path_obj || (file_path_obj->type != cJSON_String) || _jailfile(final_path, INCOMING_DIR, file_path_obj->valuestring) < 0) {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, "At open: Invalid file name");
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At sha1: Invalid file name");
         return wm_agent_upgrade_command_ack(ERROR_INVALID_FILE_NAME, error_messages[ERROR_INVALID_FILE_NAME]);
     }
 
@@ -318,14 +318,14 @@ STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
     }
     // Unsign
     if (!package_obj || (package_obj->type != cJSON_String) || _unsign(package_obj->valuestring, compressed) < 0) {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, "At Upgrade: %s", error_messages[ERROR_SIGNATURE]);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At upgrade: %s", error_messages[ERROR_SIGNATURE]);
         return wm_agent_upgrade_command_ack(ERROR_SIGNATURE, error_messages[ERROR_SIGNATURE]);
     }
 
     // Uncompress
     if (_uncompress(compressed, package_obj->valuestring, merged) < 0) {
         unlink(compressed);
-        mterror(WM_AGENT_UPGRADE_LOGTAG, "At Upgrade: %s", error_messages[ERROR_COMPRESS]);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At upgrade: %s", error_messages[ERROR_COMPRESS]);
         return wm_agent_upgrade_command_ack(ERROR_COMPRESS, error_messages[ERROR_COMPRESS]);
     }
 
@@ -335,7 +335,7 @@ STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
 #else
     if (cldir_ex(UPGRADE_DIR)) {
 #endif
-        mterror(WM_AGENT_UPGRADE_LOGTAG, "At Upgrade: %s", error_messages[ERROR_CLEAN_DIRECTORY]);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At upgrade: %s", error_messages[ERROR_CLEAN_DIRECTORY]);
         return wm_agent_upgrade_command_ack(ERROR_CLEAN_DIRECTORY, error_messages[ERROR_CLEAN_DIRECTORY]);
     }
 
@@ -354,7 +354,7 @@ STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
 
     // Installer executable file
     if (!installer_obj || (installer_obj->type != cJSON_String) || _jailfile(installer_j, UPGRADE_DIR, installer_obj->valuestring) < 0) {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, "At open: Invalid file name");
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "At upgrade: Invalid file name");
         return wm_agent_upgrade_command_ack(ERROR_INVALID_FILE_NAME, error_messages[ERROR_INVALID_FILE_NAME]);
     }
 

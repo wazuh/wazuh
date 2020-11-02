@@ -74,7 +74,8 @@ else()
     list(APPEND upgrade_names "test_wm_agent_upgrade_com")
     list(APPEND upgrade_flags "-Wl,--wrap,w_ref_parent_folder -Wl,--wrap,_merror -Wl,--wrap,strlen -Wl,--wrap,w_wpk_unsign -Wl,--wrap,unlink -Wl,--wrap,getpid -Wl,--wrap,gzopen \
                                -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove \
-                               -Wl,--wrap,gzclose -Wl,--wrap,gzread -Wl,--wrap,mkstemp -Wl,--wrap,atexit -Wl,--wrap,chmod -Wl,--wrap,stat -Wl,--wrap,_mterror")
+                               -Wl,--wrap,gzclose -Wl,--wrap,gzread -Wl,--wrap,mkstemp -Wl,--wrap,atexit -Wl,--wrap,chmod -Wl,--wrap,stat -Wl,--wrap,_mterror \
+                               -Wl,--wrap,OS_SHA1_File -Wl,--wrap,getDefine_Int -Wl,--wrap,cldir_ex -Wl,--wrap,UnmergeFiles -Wl,--wrap,wm_exec")
 
 endif()
 
