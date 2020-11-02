@@ -9,8 +9,6 @@
  * Foundation.
  */
 
-
-
 #include "networkInterfaceBSD.h"
 #include "networkLinuxWrapper.h"
 
