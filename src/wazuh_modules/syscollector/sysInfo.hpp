@@ -21,7 +21,9 @@ class SysInfo
 {
 public:
     SysInfo() = default;
+    // LCOV_EXCL_START
     virtual ~SysInfo() = default;
+    // LCOV_EXCL_STOP
     nlohmann::json hardware();
     nlohmann::json packages();
     nlohmann::json processes();

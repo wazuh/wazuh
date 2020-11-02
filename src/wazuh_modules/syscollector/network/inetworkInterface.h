@@ -1,5 +1,5 @@
 /*
- * Wazuh RSYNC
+ * Wazuh SYSCOLLECTOR
  * Copyright (C) 2015-2020, Wazuh Inc.
  * October 24, 2020.
  *
@@ -23,7 +23,7 @@ public:
     // LCOV_EXCL_START
     virtual ~IOSNetwork() = default;
     // LCOV_EXCL_STOP
-    virtual void buildNetworkData(const ifaddrs* interfaceAddress, nlohmann::json& network) = 0;
+    virtual void buildNetworkData(nlohmann::json& network) = 0;
 };
 
 

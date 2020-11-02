@@ -10,7 +10,6 @@
  */
 #include <fstream>
 #include <iostream>
-#include <net/if_arp.h>
 #include "sharedDefs.h"
 #include "stringHelper.h"
 #include "filesystemHelper.h"
@@ -20,20 +19,8 @@
 #include "readproc.h"
 #include "networkUnixHelper.h"
 #include "networkHelper.h"
+#include "network/networkLinuxWrapper.h"
 #include "network/networkFamilyDataAFactory.h"
-
-static const std::map<std::pair<int, int>, std::string> NETWORK_INTERFACE_TYPE =
-{
-    { std::make_pair(ARPHRD_ETHER, ARPHRD_ETHER),               "ethernet"          },
-    { std::make_pair(ARPHRD_PRONET, ARPHRD_PRONET),             "token ring"        },
-    { std::make_pair(ARPHRD_PPP, ARPHRD_PPP),                   "point-to-point"    },
-    { std::make_pair(ARPHRD_ATM, ARPHRD_ATM),                   "ATM"               },
-    { std::make_pair(ARPHRD_IEEE1394, ARPHRD_IEEE1394),         "firewire"          },
-    { std::make_pair(ARPHRD_TUNNEL, ARPHRD_IRDA),               "tunnel"            },
-    { std::make_pair(ARPHRD_FCPP, ARPHRD_FCFABRIC),             "fibrechannel"      },
-    { std::make_pair(ARPHRD_IEEE802_TR, ARPHRD_IEEE802154_PHY), "wireless"          },
-};
-
 
 struct ProcTableDeleter
 {
@@ -387,29 +374,6 @@ nlohmann::json SysInfo::getProcessesInfo() const
     return jsProcessesList;
 }
 
-static nlohmann::json parseNetworks(const std::pair<std::string, std::vector<ifaddrs *>>& interfaceAddress)
-{
-    nlohmann::json network {};
-
-    const auto networkTypeCode { Utils::getFileContent(std::string(WM_SYS_IFDATA_DIR) + interfaceAddress.first + "/type") };
-    const auto operationalState { Utils::getFileContent(std::string(WM_SYS_IFDATA_DIR) + interfaceAddress.first + "/operstate") };
-
-    network["name"] = interfaceAddress.first;
-    network["type"] = Utils::NetworkHelper::getNetworkTypeStringCode(std::stoi(networkTypeCode), NETWORK_INTERFACE_TYPE);
-    network["state"] = Utils::splitIndex(operationalState, '\n', 0);
-    network["MAC"] = Utils::getFileContent(std::string(WM_SYS_IFDATA_DIR) + interfaceAddress.first + "/address");
-    
-    for (const auto addr : interfaceAddress.second)
-    {
-        if (addr->ifa_addr)
-        {
-            FactoryNetworkFamilyCreator<OSType::LINUX>::create(addr->ifa_addr->sa_family)->buildNetworkData(addr, network);
-        }
-    }
-
-    return network;
-}
-
 nlohmann::json SysInfo::getNetworks() const
 {
     nlohmann::json networks;
@@ -420,7 +384,13 @@ nlohmann::json SysInfo::getNetworks() const
 
     for(const auto& interface : networkInterfaces)
     {
-        networks["iface"].push_back(parseNetworks(interface));
+        nlohmann::json ifaddr {};
+
+        for (auto addr : interface.second)
+        {
+            FactoryNetworkFamilyCreator<OSType::LINUX>::create(std::make_shared<NetworkLinuxInterface>(addr))->buildNetworkData(ifaddr);
+        }
+        networks["iface"].push_back(ifaddr);
     }
     
     return networks;

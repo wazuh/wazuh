@@ -14,6 +14,7 @@
 #include "stringHelper.h"
 #include "filesystemHelper.h"
 #include "networkUnixHelper.h"
+#include "network/networkBSDWrapper.h"
 #include "network/networkFamilyDataAFactory.h"
 
 int SysInfo::getCpuCores() const
@@ -70,21 +71,6 @@ std::string SysInfo::getCpuName() const
     return std::string{reinterpret_cast<const char*>(spBuff.get())};
 }
 
-static nlohmann::json parseNetworks(const std::pair<std::string, std::vector<ifaddrs *>>& interfaceAddress)
-{
-    nlohmann::json network {};
-
-    for (const auto addr : interfaceAddress.second)
-    {
-        if (addr->ifa_addr)
-        {
-            FactoryNetworkFamilyCreator<OSType::BSDBASED>::create(addr->ifa_addr->sa_family)->buildNetworkData(addr, network);
-        }
-    }
-
-    return network;
-}
-
 nlohmann::json SysInfo::getNetworks() const
 {
     nlohmann::json networks;
@@ -95,6 +81,11 @@ nlohmann::json SysInfo::getNetworks() const
     
     for(const auto& interface : networkInterfaces)
     {
+        nlohmann::json ifaddr {};
+        for (const auto addr : interfaceAddress.second)
+        {
+            FactoryNetworkFamilyCreator<OSType::BSDBASED>::create(std::make_shared<NetworkBSDInterface>(addr))->buildNetworkData(network);
+        }
         networks["iface"].push_back(parseNetworks(interface));
     }
     

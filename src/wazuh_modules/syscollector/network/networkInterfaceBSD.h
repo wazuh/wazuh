@@ -1,5 +1,5 @@
 /*
- * Wazuh RSYNC
+ * Wazuh SYSCOLLECTOR
  * Copyright (C) 2015-2020, Wazuh Inc.
  * October 24, 2020.
  *
@@ -13,30 +13,35 @@
 #define _NETWORK_BSD_H
 
 #include "inetworkInterface.h"
+#include "inetworkWrapper.h"
 
 class FactoryBSDNetwork
 {
     public:
-    static std::shared_ptr<IOSNetwork>create(const sa_family_t osNetworkType);
+    static std::shared_ptr<IOSNetwork>create(const std::shared_ptr<INetworkInterfaceWrapper>& interface);
 };
 
 template <sa_family_t osNetworkType>
 class BSDNetworkImpl final : public IOSNetwork
 {
+    const std::shared_ptr<INetworkInterfaceWrapper>& m_interfaceAddress;
 public:
-    void buildNetworkData(const ifaddrs* /*interfaceAddress*/, nlohmann::json& /*network*/) override
+    explicit BSDNetworkImpl(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceAddress) 
+    : m_interfaceAddress(interfaceAddress)
+    { }
+    void buildNetworkData(nlohmann::json& /*network*/) override
     {
         throw std::runtime_error("Non implemented specialization.");
     }
 };
 
 template <>
-void BSDNetworkImpl<AF_INET>::buildNetworkData(const ifaddrs* interfaceAddress, nlohmann::json& network);
+void BSDNetworkImpl<AF_INET>::buildNetworkData(nlohmann::json& network);
 template <>
-void BSDNetworkImpl<AF_INET6>::buildNetworkData(const ifaddrs* interfaceAddress, nlohmann::json& network);
+void BSDNetworkImpl<AF_INET6>::buildNetworkData(nlohmann::json& network);
 #if defined (HAVE_AF_LINK)
 template <>
-void BSDNetworkImpl<AF_LINK>::buildNetworkData(const ifaddrs* interfaceAddress, nlohmann::json& network);
+void BSDNetworkImpl<AF_LINK>::buildNetworkData(nlohmann::json& network);
 #endif
 
 #endif // _NETWORK_BSD_H

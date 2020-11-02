@@ -1,5 +1,5 @@
 /*
- * Wazuh RSYNC
+ * Wazuh SYSCOLLECTOR
  * Copyright (C) 2015-2020, Wazuh Inc.
  * October 24, 2020.
  *
@@ -26,7 +26,7 @@ template <OSType osType>
 class FactoryNetworkFamilyCreator final
 {
 public:
-    static std::shared_ptr<IOSNetwork> create(const sa_family_t /*osNetworkType*/)
+    static std::shared_ptr<IOSNetwork> create(const std::shared_ptr<INetworkInterfaceWrapper>& /*interface*/)
     {
         throw std::runtime_error
         {
@@ -39,9 +39,9 @@ template <>
 class FactoryNetworkFamilyCreator<OSType::LINUX> final
 {
 public:
-    static std::shared_ptr<IOSNetwork> create(const sa_family_t osNetworkType)
+    static std::shared_ptr<IOSNetwork> create(const std::shared_ptr<INetworkInterfaceWrapper>& interface)
     {
-        return FactoryLinuxNetwork::create(osNetworkType);
+        return FactoryLinuxNetwork::create(interface);
     }
 };
 
@@ -49,9 +49,9 @@ template <>
 class FactoryNetworkFamilyCreator<OSType::BSDBASED> final
 {
 public:
-    static std::shared_ptr<IOSNetwork> create(const sa_family_t osNetworkType)
+    static std::shared_ptr<IOSNetwork> create(const std::shared_ptr<INetworkInterfaceWrapper>& interface)
     {
-        return FactoryBSDNetwork::create(osNetworkType);
+        return FactoryBSDNetwork::create(interface);
     }
 };    
 
