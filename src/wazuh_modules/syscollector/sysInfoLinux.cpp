@@ -408,18 +408,22 @@ static bool getOsInfoFromFiles(nlohmann::json& info)
 
 static void getOsInfoFromUname(nlohmann::json& info)
 {
+    bool result{false};
     std::string platform;
     const auto osPlatform{Utils::exec("uname")};
     if (osPlatform.find("SunOS") != std::string::npos)
     {
-        platform = "solaris";
+        constexpr auto SOLARIS_RELEASE_FILE{"/etc/release"};
+        const auto spParser{FactorySysOsParser::create("solaris")};
+        std::fstream file{SOLARIS_RELEASE_FILE, std::ios_base::in};
+        result = spParser && file.is_open() && spParser->parseFile(file, info);
     }
     else if(osPlatform.find("HP-UX") != std::string::npos)
     {
-        platform = "hp-ux";
+        const auto spParser{FactorySysOsParser::create("hp-ux")};
+        result = spParser && spParser->parseUname(Utils::exec("uname -r"), info);
     }
-    const auto spParser{FactorySysOsParser::create(platform)};
-    if(!spParser->parseUname(Utils::exec("uname -r"), info))
+    if(!result)
     {
         info["os_name"] = "Linux";
         info["os_platform"] = "linux";
@@ -431,9 +435,18 @@ static void getOsInfoFromUname(nlohmann::json& info)
 nlohmann::json SysInfo::getOsInfo() const
 {
     nlohmann::json ret;
+    struct utsname uts{};
     if (!getOsInfoFromFiles(ret))
     {
         getOsInfoFromUname(ret);
+    }
+    if (uname(&uts) >= 0)
+    {
+        ret["sysname"] = uts.sysname;
+        ret["host_name"] = uts.nodename;
+        ret["version"] = uts.version;
+        ret["architecture"] = uts.machine;
+        ret["release"] = uts.release;
     }
     return ret;
 }

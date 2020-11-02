@@ -126,6 +126,9 @@ public:
     bool parseUname(const std::string& in, nlohmann::json& output) override;
 };
 
+
+bool parseVersion(const std::string& in, nlohmann::json& output);
+
 class MacOsParser
 {
 public:

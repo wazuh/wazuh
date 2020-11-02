@@ -43,6 +43,9 @@ TEST_F(SysInfoParsersTest, UnixLinux)
     EXPECT_EQ("20.04.1 LTS (Focal Fossa)", output["os_version"]);
     EXPECT_EQ("Ubuntu", output["os_name"]);
     EXPECT_EQ("ubuntu", output["os_platform"]);
+    EXPECT_EQ("focal", output["os_codename"]);
+    EXPECT_EQ("20", output["os_major"]);
+    EXPECT_EQ("04", output["os_minor"]);
 }
 
 TEST_F(SysInfoParsersTest, UnixCentos)
@@ -75,6 +78,7 @@ TEST_F(SysInfoParsersTest, UnixCentos)
     EXPECT_EQ("8 (Core)", output["os_version"]);
     EXPECT_EQ("CentOS Linux", output["os_name"]);
     EXPECT_EQ("centos", output["os_platform"]);
+    EXPECT_EQ("8", output["os_major"]);
 }
 
 TEST_F(SysInfoParsersTest, Ubuntu)
@@ -93,6 +97,9 @@ TEST_F(SysInfoParsersTest, Ubuntu)
     EXPECT_EQ("20.04.1", output["os_version"]);
     EXPECT_EQ("Ubuntu", output["os_name"]);
     EXPECT_EQ("ubuntu", output["os_platform"]);
+    EXPECT_EQ("focal", output["os_codename"]);
+    EXPECT_EQ("20", output["os_major"]);
+    EXPECT_EQ("04", output["os_minor"]);
 }
 
 TEST_F(SysInfoParsersTest, Centos)
@@ -108,6 +115,9 @@ TEST_F(SysInfoParsersTest, Centos)
     EXPECT_EQ("8.2.2004", output["os_version"]);
     EXPECT_EQ("Centos Linux", output["os_name"]);
     EXPECT_EQ("centos", output["os_platform"]);
+    EXPECT_EQ("Core", output["os_codename"]);
+    EXPECT_EQ("8", output["os_major"]);
+    EXPECT_EQ("2", output["os_minor"]);
 }
 
 TEST_F(SysInfoParsersTest, BSDFreeBSD)
@@ -122,6 +132,8 @@ TEST_F(SysInfoParsersTest, BSDFreeBSD)
     EXPECT_EQ("12.1", output["os_version"]);
     EXPECT_EQ("BSD", output["os_name"]);
     EXPECT_EQ("bsd", output["os_platform"]);
+    EXPECT_EQ("12", output["os_major"]);
+    EXPECT_EQ("1", output["os_minor"]);
 }
 
 TEST_F(SysInfoParsersTest, BSDOpenBSD)
@@ -136,6 +148,8 @@ TEST_F(SysInfoParsersTest, BSDOpenBSD)
     EXPECT_EQ("6.6", output["os_version"]);
     EXPECT_EQ("BSD", output["os_name"]);
     EXPECT_EQ("bsd", output["os_platform"]);
+    EXPECT_EQ("6", output["os_major"]);
+    EXPECT_EQ("6", output["os_minor"]);
 }
 
 TEST_F(SysInfoParsersTest, RedHatCentos)
@@ -151,6 +165,9 @@ TEST_F(SysInfoParsersTest, RedHatCentos)
     EXPECT_EQ("5.11", output["os_version"]);
     EXPECT_EQ("Centos Linux", output["os_name"]);
     EXPECT_EQ("centos", output["os_platform"]);
+    EXPECT_EQ("Final", output["os_codename"]);
+    EXPECT_EQ("5", output["os_major"]);
+    EXPECT_EQ("11", output["os_minor"]);
 }
 
 TEST_F(SysInfoParsersTest, Debian)
@@ -166,6 +183,8 @@ TEST_F(SysInfoParsersTest, Debian)
     EXPECT_EQ("10.6", output["os_version"]);
     EXPECT_EQ("Debian GNU/Linux", output["os_name"]);
     EXPECT_EQ("debian", output["os_platform"]);
+    EXPECT_EQ("10", output["os_major"]);
+    EXPECT_EQ("6", output["os_minor"]);
 }
 
 TEST_F(SysInfoParsersTest, Arch)
@@ -181,6 +200,8 @@ TEST_F(SysInfoParsersTest, Arch)
     EXPECT_EQ("10.6", output["os_version"]);
     EXPECT_EQ("Arch Linux", output["os_name"]);
     EXPECT_EQ("arch", output["os_platform"]);
+    EXPECT_EQ("10", output["os_major"]);
+    EXPECT_EQ("6", output["os_minor"]);
 }
 
 TEST_F(SysInfoParsersTest, Slackware)
@@ -196,6 +217,8 @@ TEST_F(SysInfoParsersTest, Slackware)
     EXPECT_EQ("14.1", output["os_version"]);
     EXPECT_EQ("Slackware", output["os_name"]);
     EXPECT_EQ("slackware", output["os_platform"]);
+    EXPECT_EQ("14", output["os_major"]);
+    EXPECT_EQ("1", output["os_minor"]);
 }
 
 TEST_F(SysInfoParsersTest, Gentoo)
@@ -211,6 +234,8 @@ TEST_F(SysInfoParsersTest, Gentoo)
     EXPECT_EQ("2.6", output["os_version"]);
     EXPECT_EQ("Gentoo", output["os_name"]);
     EXPECT_EQ("gentoo", output["os_platform"]);
+    EXPECT_EQ("2", output["os_major"]);
+    EXPECT_EQ("6", output["os_minor"]);
 }
 
 TEST_F(SysInfoParsersTest, SuSE)
@@ -230,6 +255,9 @@ TEST_F(SysInfoParsersTest, SuSE)
     EXPECT_EQ("13.1", output["os_version"]);
     EXPECT_EQ("SuSE Linux", output["os_name"]);
     EXPECT_EQ("suse", output["os_platform"]);
+    EXPECT_EQ("Bottle", output["os_codename"]);
+    EXPECT_EQ("13", output["os_major"]);
+    EXPECT_EQ("1", output["os_minor"]);
 }
 
 TEST_F(SysInfoParsersTest, Fedora)
@@ -245,6 +273,8 @@ TEST_F(SysInfoParsersTest, Fedora)
     EXPECT_EQ("22", output["os_version"]);
     EXPECT_EQ("Fedora", output["os_name"]);
     EXPECT_EQ("fedora", output["os_platform"]);
+    EXPECT_EQ("Twenty Two", output["os_codename"]);
+    EXPECT_EQ("22", output["os_major"]);
 }
 
 TEST_F(SysInfoParsersTest, Solaris)
@@ -264,6 +294,8 @@ TEST_F(SysInfoParsersTest, Solaris)
     EXPECT_EQ("11.3", output["os_version"]);
     EXPECT_EQ("SunOS", output["os_name"]);
     EXPECT_EQ("sunos", output["os_platform"]);
+    EXPECT_EQ("11", output["os_major"]);
+    EXPECT_EQ("3", output["os_minor"]);
 }
 
 TEST_F(SysInfoParsersTest, Solaris1)
@@ -283,6 +315,7 @@ TEST_F(SysInfoParsersTest, Solaris1)
     EXPECT_EQ("10", output["os_version"]);
     EXPECT_EQ("SunOS", output["os_name"]);
     EXPECT_EQ("sunos", output["os_platform"]);
+    EXPECT_EQ("10", output["os_major"]);
 }
 
 TEST_F(SysInfoParsersTest, HPUX)
@@ -298,6 +331,9 @@ TEST_F(SysInfoParsersTest, HPUX)
     EXPECT_EQ("11.23", output["os_version"]);
     EXPECT_EQ("HP-UX", output["os_name"]);
     EXPECT_EQ("hp-ux", output["os_platform"]);
+    EXPECT_EQ("11", output["os_major"]);
+    EXPECT_EQ("23", output["os_minor"]);
+
 }
 
 TEST_F(SysInfoParsersTest, UknownPlatform)
@@ -327,5 +363,7 @@ TEST_F(SysInfoParsersTest, MacOS)
     EXPECT_EQ("Mac OS X", output["os_name"]);
     EXPECT_EQ("darwin", output["os_platform"]);
     EXPECT_EQ("16G29", output["os_build"]);
-    EXPECT_EQ("16.7.0", output["os_codename"]);
+    EXPECT_EQ("Sierra", output["os_codename"]);
+    EXPECT_EQ("10", output["os_major"]);
+    EXPECT_EQ("12", output["os_minor"]);
 }

@@ -260,5 +260,13 @@ nlohmann::json SysInfo::getOsInfo() const
     MacOsParser parser;
     parser.parseSwVersion(Utils::exec("sw_vers"), ret);
     parser.parseUname(Utils::exec("uname -r"), ret);
+    if (uname(&uts) >= 0)
+    {
+        ret["sysname"] = uts.sysname;
+        ret["host_name"] = uts.nodename;
+        ret["version"] = uts.version;
+        ret["architecture"] = uts.machine;
+        ret["release"] = uts.release;
+    }
     return ret;
 }
