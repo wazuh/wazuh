@@ -28,8 +28,8 @@
 /**
  * Module main function. It won't return
  * */
-STATIC void* wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config);    
-STATIC void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config);  
+STATIC void* wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config);
+STATIC void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config);
 STATIC cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config);
 
 /* Context definition */
@@ -52,7 +52,6 @@ STATIC void *wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
 
     #ifdef CLIENT
         wm_agent_upgrade_start_agent_module(&upgrade_config->agent_config);
-        
     #else
         wm_agent_upgrade_listen_messages(&upgrade_config->manager_config);
     #endif
@@ -73,8 +72,8 @@ STATIC cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config){
     cJSON *wm_info = cJSON_CreateObject();
 
     if (upgrade_config->enabled) {
-        cJSON_AddStringToObject(wm_info,"enabled","yes"); 
-    } else { 
+        cJSON_AddStringToObject(wm_info,"enabled","yes");
+    } else {
         cJSON_AddStringToObject(wm_info,"enabled","no");
     }
     #ifndef CLIENT
@@ -85,11 +84,10 @@ STATIC cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config){
     }
     #else
     if (upgrade_config->agent_config.enable_ca_verification) {
-        cJSON_AddStringToObject(wm_info,"ca_verification","yes"); 
+        cJSON_AddStringToObject(wm_info,"ca_verification","yes");
     } else {
         cJSON_AddStringToObject(wm_info,"ca_verification","no");
-    } 
-
+    }
     if (wcom_ca_store) {
         cJSON *calist = cJSON_CreateArray();
         for (int i=0; wcom_ca_store[i]; i++) {

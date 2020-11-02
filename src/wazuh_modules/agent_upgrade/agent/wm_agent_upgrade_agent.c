@@ -34,7 +34,7 @@ const char* upgrade_values[] = {
 
 const char* upgrade_messages[] = {
     [WM_UPGRADE_SUCCESSFUL] = "Upgrade was successful",
-    [WM_UPGRADE_FAILED]      = "Upgrade failed"
+    [WM_UPGRADE_FAILED] = "Upgrade failed"
 };
 
 static const char *task_statuses_map[] = {
@@ -48,11 +48,11 @@ char **wcom_ca_store = NULL;
  * Reads the upgrade_result file if it is present and sends the upgrade result message to the manager.
  * Example message:
  * {
- *   "command": "agent_upgraded/agent_upgrade_failed",
- *   "params":  {
- *     "error": 0/{ERROR_CODE},
- *     "message": "Upgrade was successfull"
- *   }
+ *	  "command": "upgrade_update_status",
+ *	  "parameters": {
+ *        "status": "Failed",
+ *        "error_msg": "Upgrade procedure exited with error code"
+ *	  }
  * }
  * @param queue_fd File descriptor of the upgrade queue
  * @param state upgrade result state
@@ -72,17 +72,18 @@ STATIC bool wm_upgrade_agent_search_upgrade_result(int *queue_fd);
 /**
  * Listen to the upgrade socket in order to receive commands
  * */
-STATIC void wm_agent_upgrade_listen_messages(__attribute__((unused)) void * arg);
+STATIC void wm_agent_upgrade_listen_messages();
 
 void wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config) {
-    #ifndef WIN32
-        w_create_thread(wm_agent_upgrade_listen_messages, NULL);
-    #endif
     wm_agent_upgrade_check_status(agent_config);
+    #ifndef WIN32
+        wm_agent_upgrade_listen_messages();
+    #endif
 }
- 
+
 #ifndef WIN32
-STATIC void wm_agent_upgrade_listen_messages(__attribute__((unused)) void * arg) {
+
+STATIC void wm_agent_upgrade_listen_messages() {
     // Initialize socket
     char sockname[PATH_MAX + 1];
     if (isChroot()) {
@@ -99,7 +100,7 @@ STATIC void wm_agent_upgrade_listen_messages(__attribute__((unused)) void * arg)
 
     while(1) {
         // listen - wait connection
-        fd_set fdset;    
+        fd_set fdset;
         FD_ZERO(&fdset);
         FD_SET(sock, &fdset);
 
@@ -115,7 +116,7 @@ STATIC void wm_agent_upgrade_listen_messages(__attribute__((unused)) void * arg)
             continue;
         }
 
-        //Accept 
+        //Accept
         int peer;
         if (peer = accept(sock, NULL, NULL), peer < 0) {
             if (errno != EINTR) {
@@ -126,7 +127,7 @@ STATIC void wm_agent_upgrade_listen_messages(__attribute__((unused)) void * arg)
 
         // Get request string
         char *buffer = NULL;
-        
+
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         int length;
         switch (length = OS_RecvSecureTCP(peer, buffer, OS_MAXSTR), length) {
@@ -141,14 +142,14 @@ STATIC void wm_agent_upgrade_listen_messages(__attribute__((unused)) void * arg)
             break;
         default:
             mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INCOMMING_MESSAGE, buffer);
-            char* message = wm_agent_upgrade_process_command(buffer);
-            
-            OS_SendSecureTCP(peer, strlen(message), message);
+            char* message = NULL;
+            size_t length = wm_agent_upgrade_process_command(buffer, &message);
+
+            OS_SendSecureTCP(peer, length, message);
             break;
         }
-        
-        close(peer);
 
+        close(peer);
 
     #ifdef WAZUH_UNIT_TESTING
         break;
@@ -157,11 +158,12 @@ STATIC void wm_agent_upgrade_listen_messages(__attribute__((unused)) void * arg)
 
     close(sock);
 }
+
 #endif
 
 void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config) {
     /**
-     *  StartMQ will wait until agent connection which is when the pkg_install.sh will write 
+     *  StartMQ will wait until agent connection which is when the pkg_install.sh will write
      *  the upgrade result
     */
     int queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
@@ -177,7 +179,7 @@ void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config) {
         /**
          * This loop will send the upgrade result notification to the manager
          * If the manager is able to update the upgrade status will notify the agent
-         * erasing the result file and exiting this loop 
+         * erasing the result file and exiting this loop
          * */
         while (result_available) {
             result_available = wm_upgrade_agent_search_upgrade_result(&queue_fd);

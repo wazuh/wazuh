@@ -166,7 +166,7 @@ cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object) __at
  * @return error code
  * @retval OS_SUCCESS on success
  * @retval OS_INVALID on errors
- * 
+ *
  * */
 int wm_agent_upgrade_task_module_callback(cJSON *data_array, const cJSON* task_module_request, cJSON* (*success_callback)(int *error, cJSON* input_json), void (*error_callback)(int agent_id, int free)) __attribute__((nonnull(1,2)));
 
@@ -179,7 +179,7 @@ int wm_agent_upgrade_task_module_callback(cJSON *data_array, const cJSON* task_m
 cJSON* wm_agent_upgrade_upgrade_success_callback(int *error, cJSON* input_json);
 
 /**
- * Callback function for task manager mensaje, if task manager was able to update task status 
+ * Callback function for task manager mensaje, if task manager was able to update task status
  * then it will send a message to the agent telling it to erase its upgrade_result file
  * @param error if there is any error processing the information, it will be set to OS_INVALID
  * @param input_json response from the task manager

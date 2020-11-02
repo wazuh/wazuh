@@ -14,9 +14,18 @@
 
 /**
  * Receives a string and process it with the available commands
+ * Request format:
+ *{
+ *   "command": "upgrade",
+ *   "parameters" : {
+ *       "file" : "file_path",
+ *       "installer" : "installer_path"
+ *    }
+ *}
  * @param buffer string with the information
- * @return string to be returned to the socket
+ * @param output response to command
+ * @return size of the response
  * */
-char *wm_agent_upgrade_process_command(const char* buffer);
+size_t wm_agent_upgrade_process_command(const char *buffer, char **output);
 
 #endif

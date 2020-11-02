@@ -246,5 +246,5 @@ STATIC cJSON *wm_agent_send_task_information_worker(const cJSON *message_object)
     os_free(message);
     cJSON_Delete(payload);
 
-    return cJSON_Parse(response);   
+    return cJSON_Parse(response);
 }

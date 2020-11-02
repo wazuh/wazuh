@@ -331,7 +331,7 @@ int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1) {
     return 0;
 }
 
-#if !defined(WIN32) && !defined(CLIENT) 
+#if !defined(WIN32) && !defined(CLIENT)
 int Read_TaskManager(const OS_XML *xml, xml_node *node, void *d1) {
     wmodule **wmodules = (wmodule**)d1;
     wmodule *cur_wmodule;

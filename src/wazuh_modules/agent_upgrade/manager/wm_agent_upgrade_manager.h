@@ -119,7 +119,7 @@ typedef struct _wm_agent_task {
 extern const char* upgrade_error_codes[];
 
 /**
- * Start listening loop, exits only on error 
+ * Start listening loop, exits only on error
  * @param timeout_sec timeout in seconds
  * @param manager_configs manager configuration parameters
  * @return only on errors, socket will be closed

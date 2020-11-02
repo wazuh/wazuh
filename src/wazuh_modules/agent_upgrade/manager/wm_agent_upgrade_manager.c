@@ -84,7 +84,7 @@ void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs)
             continue;
         }
 
-        //Accept 
+        //Accept
         int peer;
         if (peer = accept(sock, NULL, NULL), peer < 0) {
             if (errno != EINTR) {

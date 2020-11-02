@@ -368,11 +368,11 @@ STATIC int wm_agent_upgrade_send_open(int agent_id, int wpk_message_format, cons
 
     if (wpk_message_format >= 0) {
         cJSON *command_info = cJSON_CreateObject();
-        cJSON_AddStringToObject(command_info, "command", "open");\
+        cJSON_AddStringToObject(command_info, task_manager_json_keys[WM_TASK_COMMAND], "open");\
         cJSON *params = cJSON_CreateObject();
         cJSON_AddStringToObject(params, "mode", "wb");
         cJSON_AddStringToObject(params, "file", wpk_file);
-        cJSON_AddItemToObject(command_info, "parameters", params);
+        cJSON_AddItemToObject(command_info, task_manager_json_keys[WM_TASK_PARAMETERS], params);
         snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
         cJSON_Delete(command_info);
     } else {
@@ -415,12 +415,12 @@ STATIC int wm_agent_upgrade_send_write(int agent_id,  int wpk_message_format, co
 
             if (wpk_message_format >= 0) {
                 cJSON *command_info = cJSON_CreateObject();
-                cJSON_AddStringToObject(command_info, "command", "write");
+                cJSON_AddStringToObject(command_info, task_manager_json_keys[WM_TASK_COMMAND], "write");
                 cJSON *params = cJSON_CreateObject();
                 cJSON_AddStringToObject(params, "buffer", encode_base64(bytes, buffer));
                 cJSON_AddNumberToObject(params, "length", bytes);
                 cJSON_AddStringToObject(params, "file", wpk_file);
-                cJSON_AddItemToObject(command_info, "parameters", params);
+                cJSON_AddItemToObject(command_info, task_manager_json_keys[WM_TASK_PARAMETERS], params);
                 snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
                 cJSON_Delete(command_info);
             } else {
@@ -431,6 +431,7 @@ STATIC int wm_agent_upgrade_send_write(int agent_id,  int wpk_message_format, co
                 }
             }
 
+            os_free(response);
             response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
             if (wpk_message_format >= 0) {
                 result = wm_agent_upgrade_parse_agent_upgrade_command_response(response, NULL);
@@ -459,10 +460,10 @@ STATIC int wm_agent_upgrade_send_close(int agent_id,  int wpk_message_format, co
 
     if (wpk_message_format >= 0) {
         cJSON *command_info = cJSON_CreateObject();
-        cJSON_AddStringToObject(command_info, "command", "close");
+        cJSON_AddStringToObject(command_info, task_manager_json_keys[WM_TASK_COMMAND], "close");
         cJSON *params = cJSON_CreateObject();
         cJSON_AddStringToObject(params, "file", wpk_file);
-        cJSON_AddItemToObject(command_info, "parameters", params);
+        cJSON_AddItemToObject(command_info, task_manager_json_keys[WM_TASK_PARAMETERS], params);
         snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
         cJSON_Delete(command_info);
     } else {
@@ -493,10 +494,10 @@ STATIC int wm_agent_upgrade_send_sha1(int agent_id,  int wpk_message_format, con
 
     if (wpk_message_format >= 0) {
         cJSON *command_info = cJSON_CreateObject();
+        cJSON_AddStringToObject(command_info, task_manager_json_keys[WM_TASK_COMMAND], "sha1");
         cJSON *params = cJSON_CreateObject();
-        cJSON_AddStringToObject(params, "command", "sha1");
         cJSON_AddStringToObject(params, "file", wpk_file);
-        cJSON_AddItemToObject(command_info, "parameters", params);
+        cJSON_AddItemToObject(command_info, task_manager_json_keys[WM_TASK_PARAMETERS], params);
         snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
         cJSON_Delete(command_info);
     } else {
@@ -534,11 +535,11 @@ STATIC int wm_agent_upgrade_send_upgrade(int agent_id,  int wpk_message_format, 
 
     if (wpk_message_format >= 0) {
         cJSON *command_info = cJSON_CreateObject();
-        cJSON_AddStringToObject(command_info, "command", "upgrade");
+        cJSON_AddStringToObject(command_info, task_manager_json_keys[WM_TASK_COMMAND], "upgrade");
         cJSON *params = cJSON_CreateObject();
         cJSON_AddStringToObject(params, "file", wpk_file);
         cJSON_AddStringToObject(params, "installer", installer);
-        cJSON_AddItemToObject(command_info, "parameters", params);
+        cJSON_AddItemToObject(command_info, task_manager_json_keys[WM_TASK_PARAMETERS], params);
         snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
         cJSON_Delete(command_info);
     } else {

@@ -28,7 +28,11 @@ static const char *XML_MAX_THREADS = "max_threads";
 static int wm_agent_upgrade_read_ca_verification(xml_node **nodes, unsigned int *verification_flag);
 #endif
 
+#ifdef CLIENT
 int wm_agent_upgrade_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
+#else
+int wm_agent_upgrade_read(__attribute__((unused)) const OS_XML *xml, xml_node **nodes, wmodule *module) {
+#endif
     wm_agent_upgrade* data = NULL;
 
     if (!module->data) {
@@ -61,7 +65,7 @@ int wm_agent_upgrade_read(const OS_XML *xml, xml_node **nodes, wmodule *module) 
         if(!nodes[i]->element) {
             merror(XML_ELEMNULL);
             return OS_INVALID;
-        } 
+        }
         #ifdef CLIENT
         // Agent configurations
         else if (!strcmp(nodes[i]->element, XML_ENABLED)) {
@@ -192,12 +196,12 @@ int wm_agent_upgrade_read(const OS_XML *xml, xml_node **nodes, wmodule *module) 
 #ifdef CLIENT
 static int wm_agent_upgrade_read_ca_verification(xml_node **nodes, unsigned int *verification_flag) {
     int ca_store_count = 0;
-    if(wcom_ca_store) {
+    if (wcom_ca_store) {
         os_realloc(wcom_ca_store, ca_store_count + 1, wcom_ca_store);
         wcom_ca_store[0] = NULL;
     }
-    
-    for(int i = 0; nodes[i]; i++) {
+
+    for (int i = 0; nodes[i]; i++) {
         if (!strcmp(nodes[i]->element, XML_ENABLED)) {
             if (strcasecmp(nodes[i]->content, "yes") == 0) {
                 *verification_flag = 1;
@@ -207,8 +211,8 @@ static int wm_agent_upgrade_read_ca_verification(xml_node **nodes, unsigned int 
                 mwarn("Invalid content for tag <%s>", nodes[i]->element);
                 return OS_INVALID;
             }
-        } else if(!strcmp(nodes[i]->element, XML_CA_STORE)) {
-            os_realloc(wcom_ca_store, ca_store_count + 1, wcom_ca_store);
+        } else if (!strcmp(nodes[i]->element, XML_CA_STORE)) {
+            os_realloc(wcom_ca_store, ca_store_count + 2, wcom_ca_store);
             os_strdup(nodes[i]->content, wcom_ca_store[ca_store_count]);
             ca_store_count++;
             wcom_ca_store[ca_store_count] = NULL;
