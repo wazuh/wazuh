@@ -6,7 +6,7 @@ if(NOT WAZUHEXT)
 endif()
 
 # Add compiling flags
-add_compile_options(-ggdb -O0 -g -coverage -DTEST_SERVER -DENABLE_AUDIT -DINOTIFY_ENABLED)
+add_compile_options(-ggdb -O0 -g -coverage -DTEST_SERVER -DENABLE_AUDIT -DINOTIFY_ENABLED -Wall)
 
 # Set tests dependencies
 set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -lcmocka -fprofile-arcs -ftest-coverage)
@@ -16,3 +16,4 @@ add_subdirectory(remoted)
 add_subdirectory(wazuh_db)
 add_subdirectory(os_auth)
 add_subdirectory(wazuh_modules)
+add_subdirectory(monitord)
