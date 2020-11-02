@@ -83,11 +83,11 @@ nlohmann::json SysInfo::getNetworks() const
     for(const auto& interface : networkInterfaces)
     {
         nlohmann::json ifaddr {};
-        for (const auto addr : interfaceAddress.second)
+        for (const auto addr : interface.second)
         {
-            FactoryNetworkFamilyCreator<OSType::BSDBASED>::create(std::make_shared<NetworkBSDInterface>(addr))->buildNetworkData(network);
+            FactoryNetworkFamilyCreator<OSType::BSDBASED>::create(std::make_shared<NetworkBSDInterface>(addr))->buildNetworkData(ifaddr);
         }
-        networks["iface"].push_back(parseNetworks(interface));
+        networks["iface"].push_back(ifaddr);
     }
     
     return networks;

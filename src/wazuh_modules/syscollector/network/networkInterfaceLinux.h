@@ -43,7 +43,8 @@ template <>
 void LinuxNetworkImpl<AF_INET>::buildNetworkData(nlohmann::json& network);
 template <>
 void LinuxNetworkImpl<AF_INET6>::buildNetworkData(nlohmann::json& network);
+#if defined(AF_PACKET)
 template <>
 void LinuxNetworkImpl<AF_PACKET>::buildNetworkData(nlohmann::json& network);
-
+#endif
 #endif // _NETWORK_LINUX_H

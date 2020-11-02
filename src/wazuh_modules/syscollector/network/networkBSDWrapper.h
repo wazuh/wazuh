@@ -141,12 +141,12 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
     }
     std::string mtu() override
     {
-        return stats ? reinterpret_cast<if_data *>(interfaceAddress->ifa_data)->ifi_mtu : "";
+        return m_interfaceAddress ? std::to_string(reinterpret_cast<if_data *>(m_interfaceAddress->ifa_data)->ifi_mtu) : "";
     }
 
     LinkStats stats() override
     {
-        const auto stats { reinterpret_cast<if_data *>(interfaceAddress->ifa_data) };
+        const auto stats { reinterpret_cast<if_data *>(m_interfaceAddress->ifa_data) };
         LinkStats retVal {};
 
         if (stats)

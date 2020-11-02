@@ -10,23 +10,23 @@
  */
 
 #include "networkInterfaceBSD.h"
-#include "networkLinuxWrapper.h"
+#include "networkBSDWrapper.h"
 
-std::shared_ptr<IOSNetwork> FactoryBSDNetwork::create(const std::shared_ptr<INetworkInterfaceWrappers>& interface)
+std::shared_ptr<IOSNetwork> FactoryBSDNetwork::create(const std::shared_ptr<INetworkInterfaceWrapper>& interface)
 {
     std::shared_ptr<IOSNetwork> ret;
 
     if(AF_INET == interface->family())
     {
-        ret = std::make_shared<BSDNetworkImpl<AF_INET>>();
+        ret = std::make_shared<BSDNetworkImpl<AF_INET>>(interface);
     }
     else if (AF_INET6 == interface->family())
     {
-        ret = std::make_shared<BSDNetworkImpl<AF_INET6>>();
+        ret = std::make_shared<BSDNetworkImpl<AF_INET6>>(interface);
     }
     else if (AF_LINK == interface->family())
     {
-        ret = std::make_shared<BSDNetworkImpl<AF_LINK>>();
+        ret = std::make_shared<BSDNetworkImpl<AF_LINK>>(interface);
     }
     else
     {
