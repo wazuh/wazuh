@@ -424,6 +424,7 @@ void w_expression_compile_string(void ** state)
     assert_true(ret);
 
     os_free(pattern);
+    os_free(expression->string);
     os_free(expression);
 }
 
@@ -937,14 +938,12 @@ void w_expression_get_regex_pattern_exp_type_string(void ** state)
     os_calloc(1, sizeof(w_expression_t), expression);
     expression->exp_type = EXP_TYPE_STRING;
 
-    os_calloc(1, sizeof(OSRegex), expression->regex);
-    os_strdup("test", expression->regex->raw);
+    os_strdup("test", expression->string);
 
     const char* ret = w_expression_get_regex_pattern(expression);
-    assert_null(ret);
+    assert_string_equal("test", ret);
 
-    os_free(expression->regex->raw);
-    os_free(expression->regex);
+    os_free(expression->string);
     os_free(expression);
 }
 
@@ -1048,14 +1047,12 @@ void w_expression_get_regex_type_exp_type_string(void ** state)
     os_calloc(1, sizeof(w_expression_t), expression);
     expression->exp_type = EXP_TYPE_STRING;
 
-    os_calloc(1, sizeof(OSRegex), expression->regex);
-    os_strdup("test", expression->regex->raw);
+    os_strdup("test", expression->string);
 
     const char* ret = w_expression_get_regex_type(expression);
-    assert_null(ret);
+    assert_string_equal("string", ret);
 
-    os_free(expression->regex->raw);
-    os_free(expression->regex);
+    os_free(expression->string);
     os_free(expression);
 }
 

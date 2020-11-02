@@ -18,6 +18,7 @@
 #define OSMATCH_STR  "osmatch"
 #define OSREGEX_STR  "osregex"
 #define PCRE2_STR    "pcre2"
+#define STRING_STR   "string"
 
 /**
  * @brief Determine the types of expression allowed
