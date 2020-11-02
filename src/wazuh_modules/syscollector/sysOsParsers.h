@@ -126,9 +126,6 @@ public:
     bool parseUname(const std::string& in, nlohmann::json& output) override;
 };
 
-
-bool parseVersion(const std::string& in, nlohmann::json& output);
-
 class MacOsParser
 {
 public:
@@ -138,7 +135,7 @@ public:
 	bool parseUname(const std::string& in, nlohmann::json& output);
 };
 
-class FactorySysOsParser
+class FactorySysOsParser final
 {
 public:
     static std::unique_ptr<ISysOsParser> create(const std::string& platform)

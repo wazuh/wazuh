@@ -361,7 +361,7 @@ static bool getOsInfoFromFiles(nlohmann::json& info)
 {
     bool ret{false};
     const std::vector<std::string> UNIX_RELEASE_FILES{"/etc/os-release", "/usr/lib/os-release"};
-    const auto CENTOS_RELEASE_FILE{"/etc/centos-release"};
+    constexpr auto CENTOS_RELEASE_FILE{"/etc/centos-release"};
     static const std::vector<std::pair<std::string, std::string>> PLATFORMS_RELEASE_FILES
     {
         {"centos",      CENTOS_RELEASE_FILE     },
@@ -399,7 +399,6 @@ static bool getOsInfoFromFiles(nlohmann::json& info)
     {
         for (const auto& platform : PLATFORMS_RELEASE_FILES)
         {
-            std::fstream file{platform.second, std::ios_base::in};
             ret |= parseFnc(platform.second, platform.first);
         }
     }

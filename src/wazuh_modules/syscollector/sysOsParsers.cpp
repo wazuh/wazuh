@@ -87,15 +87,14 @@ static bool findCodeNameInString(const std::string& in,
     return ret;
 }
 
-static bool findMajorMinorVersionInString(const std::string& in,
-                                         nlohmann::json& output)
+static void findMajorMinorVersionInString(const std::string& in,
+                                          nlohmann::json& output)
 {
     constexpr auto MINOR_VERSION_PATTERN{"^[0-9]+\\.([0-9]+)\\.*"};
     constexpr auto MAJOR_VERSION_PATTERN{"^([0-9]+)\\.*"};
     std::string version;
     std::regex pattern{MAJOR_VERSION_PATTERN};
-    const auto ret{findRegexInString(in, version, pattern, 1)};
-    if (ret)
+    if (findRegexInString(in, version, pattern, 1))
     {
         output["os_major"] = version;
     }
@@ -104,7 +103,6 @@ static bool findMajorMinorVersionInString(const std::string& in,
     {
         output["os_minor"] = version;
     }
-    return ret;
 }
 
 
