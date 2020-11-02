@@ -19,6 +19,7 @@
 #include <sys/proc.h>
 #include <sys/proc_info.h>
 #include <sys/sysctl.h>
+#include <sys/utsname.h>
 #include <fstream>
 
 const std::string MAC_APPS_PATH{"/Applications"};
@@ -257,6 +258,7 @@ nlohmann::json SysInfo::getProcessesInfo() const
 nlohmann::json SysInfo::getOsInfo() const
 {
     nlohmann::json ret;
+    struct utsname uts{};
     MacOsParser parser;
     parser.parseSwVersion(Utils::exec("sw_vers"), ret);
     parser.parseUname(Utils::exec("uname -r"), ret);

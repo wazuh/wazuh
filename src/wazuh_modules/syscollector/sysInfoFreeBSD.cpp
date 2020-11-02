@@ -14,6 +14,7 @@
 #include "sysOsParsers.h"
 #include <sys/sysctl.h>
 #include <sys/vmmeter.h>
+#include <sys/utsname.h>
 
 void SysInfo::getMemory(nlohmann::json& info) const
 {
@@ -118,6 +119,7 @@ nlohmann::json SysInfo::getProcessesInfo() const
 nlohmann::json SysInfo::getOsInfo() const
 {
     nlohmann::json ret;
+    struct utsname uts{};
     const auto spParser{FactorySysOsParser::create("bsd")};
     if(!spParser->parseUname(Utils::exec("uname -r"), ret))
     {
