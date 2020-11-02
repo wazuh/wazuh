@@ -138,6 +138,10 @@ bool w_expression_compile(w_expression_t * expression, char * pattern, int flags
 
             break;
 
+        case EXP_TYPE_STRING:
+            os_strdup(pattern, expression->string);
+            break;
+
         default:
             break;
     }
@@ -270,6 +274,10 @@ const char * w_expression_get_regex_pattern(w_expression_t * expression) {
             retval = expression->pcre2->raw_pattern;
             break;
 
+        case EXP_TYPE_STRING:
+            retval = expression->string;
+            break;
+
         default:
             break;
     }
@@ -297,6 +305,10 @@ const char * w_expression_get_regex_type(w_expression_t * expression) {
 
         case EXP_TYPE_PCRE2:
             retval = PCRE2_STR;
+            break;
+        
+        case EXP_TYPE_STRING:
+            retval = STRING_STR;
             break;
 
         default:
