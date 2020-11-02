@@ -19,6 +19,8 @@
 #include <iomanip>
 #include <net/route.h>
 #include <sys/sysctl.h>
+#include <sys/param.h>
+#include <netinet/in.h>
 #include "inetworkWrapper.h"
 #include "networkHelper.h"
 #include "makeUnique.h"
