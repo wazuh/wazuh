@@ -26,6 +26,20 @@ wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, cha
 wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(const cJSON* params, char** error_message);
 wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status(const cJSON* params, char** error_message);
 
+// Wrappers
+
+int __wrap_OS_ReadXML(const char *file, OS_XML *_lxml) {
+    return mock();
+}
+
+char* __wrap_OS_GetOneContentforElement(OS_XML *_lxml, const char **element_name) {
+    return mock_type(char *);
+}
+
+void __wrap_OS_ClearXML(OS_XML *_lxml) {
+    return;
+}
+
 // Setup / teardown
 
 static int teardown_json(void **state) {
@@ -155,12 +169,19 @@ void test_wm_agent_upgrade_parse_response_data_object(void **state) {
 void test_wm_agent_upgrade_parse_task_module_request_complete(void **state)
 {
     int command = 1;
+    char *node = NULL;
     char *status = "Failed";
     char *error = "Error string";
+
+    os_strdup("node00", node);
 
     cJSON *agent_array = cJSON_CreateArray();
     cJSON_AddItemToArray(agent_array, cJSON_CreateNumber(10));
     cJSON_AddItemToArray(agent_array, cJSON_CreateNumber(11));
+
+    will_return(__wrap_OS_ReadXML, 1);
+
+    will_return(__wrap_OS_GetOneContentforElement, node);
 
     cJSON *response = wm_agent_upgrade_parse_task_module_request(command, agent_array, status, error);
 
@@ -168,6 +189,8 @@ void test_wm_agent_upgrade_parse_task_module_request_complete(void **state)
 
     assert_non_null(cJSON_GetObjectItem(response, "origin"));
     cJSON *origin = cJSON_GetObjectItem(response, "origin");
+    assert_non_null(cJSON_GetObjectItem(origin, "name"));
+    assert_string_equal(cJSON_GetObjectItem(origin, "name")->valuestring, "node00");
     assert_non_null(cJSON_GetObjectItem(origin, "module"));
     assert_string_equal(cJSON_GetObjectItem(origin, "module")->valuestring, "upgrade_module");
     assert_non_null(cJSON_GetObjectItem(response, "command"));
@@ -187,10 +210,17 @@ void test_wm_agent_upgrade_parse_task_module_request_complete(void **state)
 void test_wm_agent_upgrade_parse_task_module_request_without_status_and_error(void **state)
 {
     int command = 1;
+    char *node = NULL;
+
+    os_strdup("node00", node);
 
     cJSON *agent_array = cJSON_CreateArray();
     cJSON_AddItemToArray(agent_array, cJSON_CreateNumber(10));
     cJSON_AddItemToArray(agent_array, cJSON_CreateNumber(11));
+
+    will_return(__wrap_OS_ReadXML, 1);
+
+    will_return(__wrap_OS_GetOneContentforElement, node);
 
     cJSON *response = wm_agent_upgrade_parse_task_module_request(command, agent_array, NULL, NULL);
 
@@ -198,6 +228,40 @@ void test_wm_agent_upgrade_parse_task_module_request_without_status_and_error(vo
 
     assert_non_null(cJSON_GetObjectItem(response, "origin"));
     cJSON *origin = cJSON_GetObjectItem(response, "origin");
+    assert_non_null(cJSON_GetObjectItem(origin, "name"));
+    assert_string_equal(cJSON_GetObjectItem(origin, "name")->valuestring, "node00");
+    assert_non_null(cJSON_GetObjectItem(origin, "module"));
+    assert_string_equal(cJSON_GetObjectItem(origin, "module")->valuestring, "upgrade_module");
+    assert_non_null(cJSON_GetObjectItem(response, "command"));
+    assert_string_equal(cJSON_GetObjectItem(response, "command")->valuestring, "upgrade_custom");
+    assert_non_null(cJSON_GetObjectItem(response, "parameters"));
+    cJSON *parameters = cJSON_GetObjectItem(response, "parameters");
+    assert_non_null(cJSON_GetObjectItem(parameters, "agents"));
+    assert_int_equal(cJSON_GetArrayItem(cJSON_GetObjectItem(parameters, "agents"), 0)->valueint, 10);
+    assert_int_equal(cJSON_GetArrayItem(cJSON_GetObjectItem(parameters, "agents"), 1)->valueint, 11);
+    assert_null(cJSON_GetArrayItem(cJSON_GetObjectItem(parameters, "agents"), 2));
+    assert_null(cJSON_GetObjectItem(parameters, "status"));
+    assert_null(cJSON_GetObjectItem(parameters, "error_msg"));
+}
+
+void test_wm_agent_upgrade_parse_task_module_request_xml_error(void **state)
+{
+    int command = 1;
+
+    cJSON *agent_array = cJSON_CreateArray();
+    cJSON_AddItemToArray(agent_array, cJSON_CreateNumber(10));
+    cJSON_AddItemToArray(agent_array, cJSON_CreateNumber(11));
+
+    will_return(__wrap_OS_ReadXML, -1);
+
+    cJSON *response = wm_agent_upgrade_parse_task_module_request(command, agent_array, NULL, NULL);
+
+    *state = response;
+
+    assert_non_null(cJSON_GetObjectItem(response, "origin"));
+    cJSON *origin = cJSON_GetObjectItem(response, "origin");
+    assert_non_null(cJSON_GetObjectItem(origin, "name"));
+    assert_string_equal(cJSON_GetObjectItem(origin, "name")->valuestring, "");
     assert_non_null(cJSON_GetObjectItem(origin, "module"));
     assert_string_equal(cJSON_GetObjectItem(origin, "module")->valuestring, "upgrade_module");
     assert_non_null(cJSON_GetObjectItem(response, "command"));
@@ -1216,6 +1280,7 @@ int main(void) {
         // wm_agent_upgrade_parse_task_module_request
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_task_module_request_complete, teardown_json),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_task_module_request_without_status_and_error, teardown_json),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_task_module_request_xml_error, teardown_json),
         // wm_agent_upgrade_parse_agent_response
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_ok_with_data),
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_ok_without_data),

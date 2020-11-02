@@ -60,206 +60,80 @@
 #define GROUP_BEGIN_SZ     20
 #define PERM_BEGIN        "Permissions changed from "
 #define PERM_BEGIN_SZ     25
+
+#define LOG_LIMIT      100
 /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
 
 
-void FreeAlertData(alert_data *al_data)
-{
+void FreeAlertData(alert_data *al_data) {
     char **p;
+    os_free(al_data->alertid);
+    os_free(al_data->date);
+    os_free(al_data->location);
+    os_free(al_data->comment);
+    os_free(al_data->group);
+    os_free(al_data->srcip);
+    os_free(al_data->dstip);
+    os_free(al_data->user);
+    os_free(al_data->filename);
+    os_free(al_data->old_md5);
+    os_free(al_data->new_md5);
+    os_free(al_data->old_sha1);
+    os_free(al_data->new_sha1);
+    os_free(al_data->old_sha256);
+    os_free(al_data->new_sha256);
+    os_free(al_data->file_size);
+    os_free(al_data->owner_chg);
+    os_free(al_data->group_chg);
+    os_free(al_data->perm_chg);
 
-    if (al_data->alertid) {
-        free(al_data->alertid);
-        al_data->alertid = NULL;
-    }
-    if (al_data->date) {
-        free(al_data->date);
-        al_data->date = NULL;
-    }
-    if (al_data->location) {
-        free(al_data->location);
-        al_data->location = NULL;
-    }
-    if (al_data->comment) {
-        free(al_data->comment);
-        al_data->comment = NULL;
-    }
-    if (al_data->group) {
-        free(al_data->group);
-        al_data->group = NULL;
-    }
-    if (al_data->srcip) {
-        free(al_data->srcip);
-        al_data->srcip = NULL;
-    }
-    if (al_data->dstip) {
-        free(al_data->dstip);
-        al_data->dstip = NULL;
-    }
-    if (al_data->user) {
-        free(al_data->user);
-        al_data->user = NULL;
-    }
-    if (al_data->filename) {
-        free(al_data->filename);
-        al_data->filename = NULL;
-    }
-    if (al_data->old_md5) {
-        free(al_data->old_md5);
-        al_data->old_md5 = NULL;
-    }
-    if (al_data->new_md5) {
-        free(al_data->new_md5);
-        al_data->new_md5 = NULL;
-    }
-    if (al_data->old_sha1) {
-        free(al_data->old_sha1);
-        al_data->old_sha1 = NULL;
-    }
-    if (al_data->new_sha1) {
-        free(al_data->new_sha1);
-        al_data->new_sha1 = NULL;
-    }
-    if (al_data->old_sha256) {
-        free(al_data->old_sha256);
-        al_data->old_sha256 = NULL;
-    }
-    if (al_data->new_sha256) {
-        free(al_data->new_sha256);
-        al_data->new_sha256 = NULL;
-    }
-/* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
-    if(al_data->file_size)
-    {
-        free(al_data->file_size);
-        al_data->file_size = NULL;
-    }
-    if(al_data->owner_chg)
-    {
-        free(al_data->owner_chg);
-        al_data->owner_chg = NULL;
-    }
-    if(al_data->group_chg)
-    {
-        free(al_data->group_chg);
-        al_data->group_chg = NULL;
-    }
-    if(al_data->perm_chg)
-    {
-        free(al_data->perm_chg);
-        al_data->perm_chg = NULL;
-    }
 /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
     if (al_data->log) {
         p = al_data->log;
 
         while (*(p)) {
-            free(*(p));
-            *(p) = NULL;
+            os_free(*(p));
             p++;
         }
-        free(al_data->log);
-        al_data->log = NULL;
+        os_free(al_data->log);
     }
 #ifdef LIBGEOIP_ENABLED
-    if (al_data->srcgeoip) {
-        free(al_data->srcgeoip);
-        al_data->srcgeoip = NULL;
-    }
-    if (al_data->dstgeoip) {
-        free(al_data->dstgeoip);
-        al_data->dstgeoip = NULL;
-    }
+
+    os_free(al_data->srcgeoip);
+    os_free(al_data->dstgeoip);
+
 #endif
+    // al_data can't be NULL
     free(al_data);
     al_data = NULL;
 }
 
 /* Return alert data for the file specified */
-alert_data *GetAlertData(int flag, FILE *fp)
-{
+alert_data *GetAlertData(int flag, FILE *fp) {
+
+    alert_data *al_data;
+    os_calloc(1, sizeof(alert_data), al_data);
+
     int _r = 0, issyscheck = 0;
     size_t log_size = 0;
     char *p;
-
-    char *alertid = NULL;
-    char *date = NULL;
-    char *comment = NULL;
-    char *location = NULL;
-    char *srcip = NULL;
-    char *dstip = NULL;
-    char *user = NULL;
-    char *group = NULL;
-    char *filename = NULL;
-    char *old_md5 = NULL;
-    char *new_md5 = NULL;
-    char *old_sha1 = NULL;
-    char *new_sha1 = NULL;
-    char *old_sha256 = NULL;
-    char *new_sha256 = NULL;
-    char **log = NULL;
-/* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
-    char *file_size = NULL;
-    char *owner_chg = NULL;
-    char *group_chg = NULL;
-    char *perm_chg = NULL;
-/* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
-#ifdef LIBGEOIP_ENABLED
-    char *srcgeoip = NULL;
-    char *dstgeoip = NULL;
-#endif
-    int level = 0, rule = 0, srcport = 0, dstport = 0;
-
     char str[OS_MAXSTR + 1];
     str[OS_MAXSTR] = '\0';
 
     while (fgets(str, OS_MAXSTR, fp) != NULL) {
         /* End of alert */
-        if (strcmp(str, "\n") == 0 && log_size > 0) {
-            /* Found in here */
-            if (_r == 2) {
-                alert_data *al_data;
-                os_calloc(1, sizeof(alert_data), al_data);
-                al_data->alertid = alertid;
-                al_data->level = level;
-                al_data->rule = rule;
-                al_data->location = location;
-                al_data->comment = comment;
-                al_data->group = group;
-                al_data->log = log;
-                al_data->srcip = srcip;
-                al_data->srcport = srcport;
-                al_data->dstip = dstip;
-                al_data->dstport = dstport;
-                al_data->user = user;
-                al_data->date = date;
-                al_data->filename = filename;
-#ifdef LIBGEOIP_ENABLED
-                al_data->srcgeoip  = srcgeoip ;
-                al_data->dstgeoip = dstgeoip;
-#endif
-                al_data->old_md5 = old_md5;
-                al_data->new_md5 = new_md5;
-                al_data->old_sha1 = old_sha1;
-                al_data->new_sha1 = new_sha1;
-                al_data->old_sha256 = old_sha256;
-                al_data->new_sha256 = new_sha256;
-            /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
-                al_data->file_size = file_size;
-                al_data->owner_chg = owner_chg;
-                al_data->group_chg = group_chg;
-                al_data->perm_chg = perm_chg;
-            /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
-
-
-                return (al_data);
-            }
-            _r = 0;
-        }
-
-        /* Check for the header */
         if (strncmp(ALERT_BEGIN, str, ALERT_BEGIN_SZ) == 0) {
             char *m;
             size_t z = 0;
+            /* End of the alert. */
+            if (_r == 2) {
+                if (fseek(fp, -strlen(str), SEEK_CUR) != -1) {
+                    return (al_data);
+                } else {
+                    goto l_error;
+                }
+            }
+
             p = str + ALERT_BEGIN_SZ + 1;
 
             m = strstr(p, ":");
@@ -268,9 +142,9 @@ alert_data *GetAlertData(int flag, FILE *fp)
             }
 
             z = strlen(p) - strlen(m);
-            os_realloc(alertid, (z + 1)*sizeof(char), alertid);
-            strncpy(alertid, p, z);
-            alertid[z] = '\0';
+            os_realloc(al_data->alertid, (z + 1) * sizeof(char), al_data->alertid);
+            strncpy(al_data->alertid, p, z);
+            al_data->alertid[z] = '\0';
 
             /* Search for email flag */
             p = strchr(p, ' ');
@@ -293,12 +167,12 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 while (*p == ' ') {
                         p++;
                 }
-                free(group);
-                os_strdup(p, group);
+                os_free(al_data->group);
+                os_strdup(p, al_data->group);
 
                 /* Clean newline from group */
-                os_clearnl(group, p);
-                if (group != NULL && strstr(group, "syscheck") != NULL) {
+                os_clearnl(al_data->group, p);
+                if (al_data->group != NULL && strstr(al_data->group, "syscheck") != NULL) {
                     issyscheck = 1;
                 }
             }
@@ -333,13 +207,13 @@ alert_data *GetAlertData(int flag, FILE *fp)
             }
 
             /* If not, str is date and p is the location */
-            if (date || location || !p) {
+            if (al_data->date || al_data->location || !p) {
                 merror("date or location not NULL or p is NULL");
                 goto l_error;
             }
 
-            os_strdup(str, date);
-            os_strdup(p, location);
+            os_strdup(str, al_data->date);
+            os_strdup(p, al_data->location);
             _r = 2;
             log_size = 0;
             continue;
@@ -349,7 +223,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 os_clearnl(str, p);
 
                 p = str + RULE_BEGIN_SZ;
-                rule = atoi(p);
+                al_data->rule = atoi(p);
 
                 p = strchr(p, ' ');
                 if (p) {
@@ -364,7 +238,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
                     goto l_error;
                 }
 
-                level = atoi(p);
+                al_data->level = atoi(p);
 
                 /* Get the comment */
                 p = strchr(p, '\'');
@@ -373,11 +247,11 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 }
 
                 p++;
-                free(comment);
-                os_strdup(p, comment);
+                os_free(al_data->comment);
+                os_strdup(p, al_data->comment);
 
                 /* Must have the closing \' */
-                p = strrchr(comment, '\'');
+                p = strrchr(al_data->comment, '\'');
                 if (p) {
                     *p = '\0';
                 } else {
@@ -390,16 +264,16 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 os_clearnl(str, p);
 
                 p = str + SRCIP_BEGIN_SZ;
-                free(srcip);
-                os_strdup(p, srcip);
+                os_free(al_data->srcip);
+                os_strdup(p,al_data->srcip);
             }
 #ifdef LIBGEOIP_ENABLED
             /* GeoIP Source Location */
             else if (strncmp(GEOIP_BEGIN_SRC, str, GEOIP_BEGIN_SRC_SZ) == 0) {
                 os_clearnl(str, p);
                 p = str + GEOIP_BEGIN_SRC_SZ;
-                free(srcgeoip);
-                os_strdup(p, srcgeoip);
+                os_free(al_data->srcgeoip);
+                os_strdup(p, al_data->srcgeoip);
             }
 #endif
             /* srcport */
@@ -407,23 +281,23 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 os_clearnl(str, p);
 
                 p = str + SRCPORT_BEGIN_SZ;
-                srcport = atoi(p);
+                al_data->srcport = atoi(p);
             }
             /* dstip */
             else if (strncmp(DSTIP_BEGIN, str, DSTIP_BEGIN_SZ) == 0) {
                 os_clearnl(str, p);
 
                 p = str + DSTIP_BEGIN_SZ;
-                free(dstip);
-                os_strdup(p, dstip);
+                os_free(al_data->dstip);
+                os_strdup(p, al_data->dstip);
             }
 #ifdef LIBGEOIP_ENABLED
             /* GeoIP Destination Location */
             else if (strncmp(GEOIP_BEGIN_DST, str, GEOIP_BEGIN_DST_SZ) == 0) {
                 os_clearnl(str, p);
                 p = str + GEOIP_BEGIN_DST_SZ;
-                free(dstgeoip);
-                os_strdup(p, dstgeoip);
+                os_free(al_data->dstgeoip);
+                os_strdup(p, al_data->dstgeoip);
             }
 #endif
             /* dstport */
@@ -431,273 +305,47 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 os_clearnl(str, p);
 
                 p = str + DSTPORT_BEGIN_SZ;
-                dstport = atoi(p);
+                al_data->dstport = atoi(p);
             }
             /* username */
             else if (strncmp(USER_BEGIN, str, USER_BEGIN_SZ) == 0) {
                 os_clearnl(str, p);
 
                 p = str + USER_BEGIN_SZ;
-                free(user);
-                os_strdup(p, user);
+                os_free(al_data->user);
+                os_strdup(p, al_data->user);
             }
-            /* Old MD5 */
-            else if (strncmp(OLDMD5_BEGIN, str, OLDMD5_BEGIN_SZ) == 0) {
-                os_clearnl(str, p);
 
-                p = str + OLDMD5_BEGIN_SZ;
-                free(old_md5);
-                os_strdup(p, old_md5);
-            }
-            /* New MD5 */
-            else if (strncmp(NEWMD5_BEGIN, str, NEWMD5_BEGIN_SZ) == 0) {
-                os_clearnl(str, p);
-
-                p = str + NEWMD5_BEGIN_SZ;
-                free(new_md5);
-                os_strdup(p, new_md5);
-            }
-            /* Old SHA-1 */
-            else if (strncmp(OLDSHA1_BEGIN, str, OLDSHA1_BEGIN_SZ) == 0) {
-                os_clearnl(str, p);
-
-                p = str + OLDSHA1_BEGIN_SZ;
-                free(old_sha1);
-                os_strdup(p, old_sha1);
-            }
-            /* New SHA-1 */
-            else if (strncmp(NEWSHA1_BEGIN, str, NEWSHA1_BEGIN_SZ) == 0) {
-                os_clearnl(str, p);
-
-                p = str + NEWSHA1_BEGIN_SZ;
-                free(new_sha1);
-                os_strdup(p, new_sha1);
-            }
-            /* Old SHA-256 */
-            else if (strncmp(OLDSHA256_BEGIN, str, OLDSHA256_BEGIN_SZ) == 0) {
-                os_clearnl(str, p);
-
-                p = str + OLDSHA256_BEGIN_SZ;
-                free(old_sha256);
-                os_strdup(p, old_sha256);
-            }
-            /* New SHA-256 */
-            else if (strncmp(NEWSHA256_BEGIN, str, NEWSHA256_BEGIN_SZ) == 0) {
-                os_clearnl(str, p);
-
-                p = str + NEWSHA256_BEGIN_SZ;
-                free(new_sha256);
-                os_strdup(p, new_sha256);
-            }
-         /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
-            /* File Size */
-            else if(strncmp(SIZE_BEGIN, str, SIZE_BEGIN_SZ) == 0)
-            {
-                os_clearnl(str,p);
-
-                p = str + SIZE_BEGIN_SZ;
-                free(file_size);
-                os_strdup(p, file_size);
-            }
-            /* File Ownership */
-            else if(strncmp(OWNER_BEGIN, str, OWNER_BEGIN_SZ) == 0)
-            {
-                os_clearnl(str,p);
-
-                p = str + OWNER_BEGIN_SZ;
-                free(owner_chg);
-                os_strdup(p, owner_chg);
-            }
-            /* File Group Ownership */
-            else if(strncmp(GROUP_BEGIN, str, GROUP_BEGIN_SZ) == 0)
-            {
-                os_clearnl(str,p);
-
-                p = str + GROUP_BEGIN_SZ;
-                free(group_chg);
-                os_strdup(p, group_chg);
-            }
-            /* File Permissions */
-            else if(strncmp(PERM_BEGIN, str, PERM_BEGIN_SZ) == 0)
-            {
-                os_clearnl(str,p);
-
-                p = str + PERM_BEGIN_SZ;
-                free(perm_chg);
-                os_strdup(p, perm_chg);
-            }
          /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
             /* It is a log message */
-            else if (log_size < 20) {
+            else if (log_size < LOG_LIMIT) {
                 os_clearnl(str, p);
-
                 if (issyscheck == 1) {
                     if (strncmp(str, "Integrity checksum changed for: '", 33) == 0) {
-                        filename = strdup(str + 33);
-                        if (filename) {
-                            filename[strlen(filename) - 1] = '\0';
+                        al_data->filename = strdup(str + 33);
+                        if (al_data->filename) {
+                            al_data->filename[strlen(al_data->filename) - 1] = '\0';
                         }
                     }
                     issyscheck = 0;
                 }
 
-                os_realloc(log, (log_size + 2)*sizeof(char *), log);
-                os_strdup(str, log[log_size]);
+                os_realloc(al_data->log, (log_size + 2) * sizeof(char *), al_data->log);
+                os_strdup(str, al_data->log[log_size]);
                 log_size++;
-                log[log_size] = NULL;
+                al_data->log[log_size] = NULL;
             }
         }
+    }
 
-        continue;
+    // We reached the end of the alert and the information is saved.
+    if (feof(fp) && *str == '\0' && _r == 2) {
+        return al_data;
+    }
+
 l_error:
-        /* Free the memory */
-        _r = 0;
-        if (date) {
-            free(date);
-            date = NULL;
-        }
-        if (location) {
-            free(location);
-            location = NULL;
-        }
-        if (comment) {
-            free(comment);
-            comment = NULL;
-        }
-        if (srcip) {
-            free(srcip);
-            srcip = NULL;
-        }
-#ifdef LIBGEOIP_ENABLED
-        if (srcgeoip) {
-            free(srcgeoip);
-            srcgeoip = NULL;
-        }
-        if (dstgeoip) {
-            free(dstgeoip);
-            dstgeoip = NULL;
-        }
-#endif
-        if (user) {
-            free(user);
-            user = NULL;
-        }
-        if (filename) {
-            free(filename);
-            filename = NULL;
-        }
-        if (group) {
-            free(group);
-            group = NULL;
-        }
-        if (old_md5) {
-            free(old_md5);
-            old_md5 = NULL;
-        }
-
-        if (new_md5) {
-            free(new_md5);
-            new_md5 = NULL;
-        }
-
-        if (old_sha1) {
-            free(old_sha1);
-            old_sha1 = NULL;
-        }
-
-        if (new_sha1) {
-            free(new_sha1);
-            new_sha1 = NULL;
-        }
-
-        if (old_sha256) {
-            free(old_sha256);
-            old_sha256 = NULL;
-        }
-
-        if (new_sha256) {
-            free(new_sha256);
-            new_sha256 = NULL;
-        }
-/* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
-        if(file_size)
-        {
-            free(file_size);
-            file_size = NULL;
-        }
-        if(owner_chg)
-        {
-            free(owner_chg);
-            owner_chg = NULL;
-        }
-        if(group_chg)
-        {
-            free(group_chg);
-            group_chg = NULL;
-        }
-        if(perm_chg)
-        {
-            free(perm_chg);
-            perm_chg = NULL;
-        }
-/* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
-        while (log_size > 0) {
-            log_size--;
-            if (log[log_size]) {
-                free(log[log_size]);
-                log[log_size] = NULL;
-            }
-        }
-    }
-
-    if (alertid) {
-        free(alertid);
-        alertid = NULL;
-    }
-    if (group) {
-        free(group);
-        group = NULL;
-    }
-    if (location) {
-        free(location);
-        location = NULL;
-    }
-    if (date) {
-        free(date);
-        date = NULL;
-    }
-
-    while (log_size > 0) {
-        log_size--;
-        if (log[log_size]) {
-            free(log[log_size]);
-            log[log_size] = NULL;
-        }
-    }
-
-    free(log);
-    free(comment);
-    free(srcip);
-    free(dstip);
-    free(user);
-    free(old_md5);
-    free(new_md5);
-    free(old_sha1);
-    free(new_sha1);
-    free(old_sha256);
-    free(new_sha256);
-    free(filename);
-/* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
-    free(file_size);
-    free(owner_chg);
-    free(group_chg);
-    free(perm_chg);
-/* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
-#ifdef LIBGEOIP_ENABLED
-    free(srcgeoip);
-    free(dstgeoip);
-#endif
-
+    /* Free the memory */
+    FreeAlertData(al_data);
     /* We need to clean end of file before returning */
     clearerr(fp);
     return (NULL);

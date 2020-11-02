@@ -88,7 +88,7 @@ void cleaner(void* data) {
  * read_controlmsg (other thread) is going to deal with it
  * (only if message changed)
  */
-void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
+void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *wdb_sock)
 {
     char msg_ack[OS_FLSIZE + 1] = "";
     char *msg = NULL;
@@ -153,7 +153,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
 
         agent_id = atoi(key->id);
 
-        result = wdb_update_agent_keepalive(agent_id, logr.worker_node?"syncreq":"synced");
+        result = wdb_update_agent_keepalive(agent_id, logr.worker_node?"syncreq":"synced", wdb_sock);
 
         if (OS_SUCCESS != result)
             mwarn("Unable to save agent last keepalive in global.db");
@@ -178,7 +178,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             w_mutex_unlock(&lastmsg_mutex);
             agent_id = atoi(key->id);
 
-            if (OS_SUCCESS != wdb_update_agent_keepalive(agent_id, logr.worker_node?"syncreq":"synced")) {
+            if (OS_SUCCESS != wdb_update_agent_keepalive(agent_id, logr.worker_node?"syncreq":"synced", wdb_sock)) {
                 mwarn("Unable to set last keepalive as pending");
             }
         } else {
@@ -233,16 +233,17 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             if (node_name) {
                 wm_strcat(&agent_data->labels, node_label, agent_data->labels ? '\n' : 0);
                 wm_strcat(&agent_data->labels, node_name, 0);
+                os_strdup(node_name, agent_data->node_name);
             }
 
             agent_data->id = atoi(key->id);
             os_strdup(logr.worker_node ? "syncreq" : "synced", agent_data->sync_status);
 
             // Updating version and keepalive in global.db
-            result = wdb_update_agent_data(agent_data);
+            result = wdb_update_agent_data(agent_data, wdb_sock);
 
             if (OS_INVALID == result)
-                mwarn("Unable to update information in global.db for agent: %s", key->id);
+                mdebug1("Unable to update information in global.db for agent: %s", key->id);
 
             wdb_free_agent_info_data(agent_data);
         }

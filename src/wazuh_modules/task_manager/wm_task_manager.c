@@ -21,6 +21,7 @@
 #include "../wmodules.h"
 #include "wm_task_manager_db.h"
 #include "wm_task_manager_parsing.h"
+#include "wm_task_manager_tasks.h"
 #include "../os_net/os_net.h"
 
 STATIC int wm_task_manager_init(wm_task_manager *task_config) __attribute__((nonnull));
@@ -37,19 +38,15 @@ const wm_context WM_TASK_MANAGER_CONTEXT = {
 };
 
 size_t wm_task_manager_dispatch(const char *msg, char **response) {
+    wm_task_manager_task *task = NULL;
     cJSON *json_response = NULL;
-    cJSON *event_array = NULL;
     cJSON *data_array = NULL;
-    cJSON *task_object = NULL;
-    cJSON *task_response = NULL;
-    int task = 0;
-    int tasks = 0;
     int error_code = WM_TASK_SUCCESS;
 
     mtdebug1(WM_TASK_MANAGER_LOGTAG, MOD_TASK_INCOMMING_MESSAGE, msg);
 
     // Parse message
-    if (event_array = wm_task_manager_parse_message(msg), !event_array) {
+    if (task = wm_task_manager_parse_message(msg), !task) {
         cJSON* parse_error = wm_task_manager_parse_data_response(WM_TASK_INVALID_MESSAGE, OS_INVALID, OS_INVALID, NULL);
         json_response = wm_task_manager_parse_response(WM_TASK_INVALID_MESSAGE, parse_error);
         *response = cJSON_PrintUnformatted(json_response);
@@ -57,63 +54,30 @@ size_t wm_task_manager_dispatch(const char *msg, char **response) {
         return strlen(*response);
     }
 
-    data_array = cJSON_CreateArray();
+    // Analyze task, update tasks DB and generate JSON response
+    data_array = wm_task_manager_process_task(task, &error_code);
 
-    tasks = cJSON_GetArraySize(event_array);
-
-    // Iterate all the tasks of the request
-    for (task = 0; task < tasks; ++task) {
-        // Getting task
-        task_object = cJSON_GetArrayItem(event_array, task);
-
-        // Analyze task, update tasks DB and generate JSON response
-        task_response = wm_task_manager_analyze_task(task_object, &error_code);
-
-        switch (error_code) {
-        case WM_TASK_INVALID_MODULE:
-            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_UNKNOWN_VALUE_ERROR, task_manager_json_keys[WM_TASK_MODULE], task);
-            break;
-        case WM_TASK_INVALID_COMMAND:
-            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_UNKNOWN_VALUE_ERROR, task_manager_json_keys[WM_TASK_COMMAND], task);
-            break;
-        case WM_TASK_INVALID_AGENT_ID:
-            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_AGENT_ID], task);
-            break;
-        case WM_TASK_INVALID_TASK_ID:
-            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_TASK_ID], task);
-            break;
-        case WM_TASK_INVALID_STATUS:
-            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_STATUS], task);
-            break;
-        case WM_TASK_DATABASE_NO_TASK:
-            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_COULD_NOT_FIND_TASK, task);
-            break;
-        case WM_TASK_DATABASE_ERROR:
-            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_DB_ERROR, task);
-            cJSON_Delete(event_array);
-            cJSON_Delete(data_array);
-            cJSON_Delete(task_response);
-            cJSON* db_error = wm_task_manager_parse_data_response(WM_TASK_DATABASE_ERROR, OS_INVALID, OS_INVALID, NULL);
-            json_response = wm_task_manager_parse_response(WM_TASK_DATABASE_ERROR, db_error);
-            *response = cJSON_PrintUnformatted(json_response);
-            cJSON_Delete(json_response);
-            return strlen(*response);
-        default:
-            break;
-        }
-
-        if (task_response) {
-            cJSON_AddItemToArray(data_array, task_response);
-        }
-        error_code = WM_TASK_SUCCESS;
+    switch (error_code) {
+    case WM_TASK_INVALID_COMMAND:
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_UNDEFINED_ACTION_ERRROR);
+        cJSON_Delete(data_array);
+        data_array = wm_task_manager_parse_data_response(WM_TASK_INVALID_COMMAND, OS_INVALID, OS_INVALID, NULL);
+        break;
+    case WM_TASK_DATABASE_ERROR:
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_DB_ERROR);
+        cJSON_Delete(data_array);
+        data_array = wm_task_manager_parse_data_response(WM_TASK_DATABASE_ERROR, OS_INVALID, OS_INVALID, NULL);
+        break;
+    default:
+        break;
     }
 
-    json_response = wm_task_manager_parse_response(WM_TASK_SUCCESS, data_array);
+    json_response = wm_task_manager_parse_response(error_code, data_array);
     *response = cJSON_PrintUnformatted(json_response);
 
     mtdebug1(WM_TASK_MANAGER_LOGTAG, MOD_TASK_RESPONSE_MESSAGE, *response);
 
-    cJSON_Delete(event_array);
+    wm_task_manager_free_task(task);
     cJSON_Delete(json_response);
 
     return strlen(*response);

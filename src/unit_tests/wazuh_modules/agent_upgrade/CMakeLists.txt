@@ -1,4 +1,4 @@
-# Generate vulnerability detector library
+# Generate agent upgrade library
 file(GLOB upgrade_files
     ${SRC_FOLDER}/wazuh_modules/*.o
     ${SRC_FOLDER}/wazuh_modules/agent_upgrade/*.o
@@ -32,10 +32,10 @@ if(${TARGET} STREQUAL "server")
     list(APPEND upgrade_names "test_wm_agent_upgrade_manager")
     list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP \
                             -Wl,--wrap,wm_agent_upgrade_parse_message -Wl,--wrap,wm_agent_upgrade_process_upgrade_command -Wl,--wrap,wm_agent_upgrade_process_upgrade_custom_command -Wl,--wrap,wm_agent_upgrade_process_agent_result_command \
-                            -Wl,--wrap,wm_agent_upgrade_parse_response -Wl,--wrap,CreateThread -Wl,--wrap,getpid")
+                            -Wl,--wrap,wm_agent_upgrade_parse_response -Wl,--wrap,wm_agent_upgrade_cancel_pending_upgrades -Wl,--wrap,sleep -Wl,--wrap,CreateThread -Wl,--wrap,getpid")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_parsing")
-    list(APPEND upgrade_flags "-Wl,--wrap,_mterror")
+    list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mterror_exit -Wl,--wrap,OS_ReadXML -Wl,--wrap,OS_GetOneContentforElement -Wl,--wrap,OS_ClearXML")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_validate")
     list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,wurl_http_get -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,OS_SHA1_File -Wl,--wrap,wurl_request -Wl,--wrap,sleep \
@@ -47,21 +47,21 @@ if(${TARGET} STREQUAL "server")
                             -Wl,--wrap,w_is_worker -Wl,--wrap,cJSON_Duplicate -Wl,--wrap,getpid -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Get")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_tasks_callbacks")
-    list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,wm_agent_upgrade_validate_task_ids_message -Wl,--wrap,wm_agent_upgrade_insert_task_id -Wl,--wrap,wm_agent_upgrade_remove_entry \
+    list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,wm_agent_upgrade_validate_task_ids_message -Wl,--wrap,wm_agent_upgrade_remove_entry \
                             -Wl,--wrap,wm_agent_upgrade_parse_data_response -Wl,--wrap,wm_agent_upgrade_parse_response -Wl,--wrap,wm_agent_upgrade_validate_task_status_message -Wl,--wrap,wm_agent_upgrade_send_command_to_agent \
                             -Wl,--wrap,wm_agent_upgrade_parse_agent_response -Wl,--wrap,wm_agent_upgrade_send_tasks_information")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_commands")
     list(APPEND upgrade_flags "-Wl,--wrap,_mtinfo -Wl,--wrap,_mtwarn \
                             -Wl,--wrap,wm_agent_upgrade_parse_task_module_request -Wl,--wrap,wm_agent_upgrade_task_module_callback -Wl,--wrap,wm_agent_upgrade_validate_task_status_message -Wl,--wrap,wm_agent_upgrade_validate_id \
-                            -Wl,--wrap,wm_agent_upgrade_validate_status -Wl,--wrap,wm_agent_upgrade_validate_version -Wl,--wrap,wdb_get_agent_info -Wl,--wrap,wm_agent_upgrade_create_task_entry -Wl,--wrap,wm_agent_upgrade_parse_data_response \
-                            -Wl,--wrap,wm_agent_upgrade_parse_response -Wl,--wrap,wm_agent_upgrade_prepare_upgrades")
+                            -Wl,--wrap,wm_agent_upgrade_validate_status -Wl,--wrap,wm_agent_upgrade_validate_system -Wl,--wrap,wm_agent_upgrade_validate_version -Wl,--wrap,wdb_get_agent_info -Wl,--wrap,wm_agent_upgrade_create_task_entry \
+                            -Wl,--wrap,wm_agent_upgrade_parse_data_response -Wl,--wrap,wm_agent_upgrade_parse_response -Wl,--wrap,wm_agent_upgrade_prepare_upgrades -Wl,--wrap,wm_agent_upgrade_get_agent_ids")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_upgrades")
     list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mtdebug2 -Wl,--wrap,isChroot -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,close \
                             -Wl,--wrap,wm_agent_upgrade_parse_task_module_request -Wl,--wrap,wm_agent_upgrade_task_module_callback -Wl,--wrap,wm_agent_upgrade_parse_agent_response -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fclose \
                             -Wl,--wrap,OS_SHA1_File -Wl,--wrap,wm_agent_upgrade_get_first_node -Wl,--wrap,wm_agent_upgrade_get_next_node -Wl,--wrap,wm_agent_upgrade_compare_versions -Wl,--wrap,wm_agent_upgrade_remove_entry \
-                            -Wl,--wrap,wm_agent_upgrade_validate_task_status_message -Wl,--wrap,wm_agent_upgrade_validate_wpk -Wl,--wrap,wm_agent_upgrade_validate_wpk_custom \
+                            -Wl,--wrap,wm_agent_upgrade_validate_task_status_message -Wl,--wrap,wm_agent_upgrade_validate_wpk -Wl,--wrap,wm_agent_upgrade_validate_wpk_custom -Wl,--wrap,wm_agent_upgrade_validate_wpk_version \
                             -Wl,--wrap,queue_push_ex -Wl,--wrap,queue_pop_ex -Wl,--wrap,queue_pop_ex_timedwait -Wl,--wrap,pthread_cond_signal -Wl,--wrap,pthread_cond_wait -Wl,--wrap,CreateThread \
                             -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,getpid")
 

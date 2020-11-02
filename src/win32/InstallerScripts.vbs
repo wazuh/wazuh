@@ -155,11 +155,11 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
             End If
         End If
 
-         ' Writing the ossec.conf file
-          const ForWriting = 2
-          Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForWriting)
-          objFile.WriteLine strNewText
-          objFile.Close
+        ' Writing the ossec.conf file
+        const ForWriting = 2
+        Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForWriting)
+        objFile.WriteLine strNewText
+        objFile.Close
 
     End If
 

@@ -431,7 +431,8 @@ void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
 
     if(regexec(regexCompiled, lf->full_log, 2, match, 0) == 0){
         match_size = match[1].rm_eo - match[1].rm_so;
-        agent_hostname = malloc(match_size + 1);
+
+        os_malloc(match_size + 1, agent_hostname);
         snprintf (agent_hostname, match_size + 1, "%.*s", match_size, lf->full_log + match[1].rm_so);
 
         if (!cJSON_HasObjectItem(root, "predecoder")) {

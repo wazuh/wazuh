@@ -1123,6 +1123,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_linux_ok(void **state)
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
+    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
 
     agent_task->agent_info->agent_id = 111;
     os_strdup("ubuntu", agent_task->agent_info->platform);
@@ -1131,6 +1132,10 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_linux_ok(void **state)
     os_strdup("test.wpk", upgrade_task->wpk_file);
     os_strdup("d321af65983fa412e3a12c312ada12ab321a253a", upgrade_task->wpk_sha1);
     agent_task->task_info->task = upgrade_task;
+
+    // wm_agent_upgrade_validate_wpk_version
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_wpk
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
@@ -1277,6 +1282,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_windows_ok(void **state)
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
+    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
 
     agent_task->agent_info->agent_id = 111;
     os_strdup("windows", agent_task->agent_info->platform);
@@ -1285,6 +1291,10 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_windows_ok(void **state)
     os_strdup("test.wpk", upgrade_task->wpk_file);
     os_strdup("d321af65983fa412e3a12c312ada12ab321a253a", upgrade_task->wpk_sha1);
     agent_task->task_info->task = upgrade_task;
+
+    // wm_agent_upgrade_validate_wpk_version
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_wpk
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
@@ -1748,6 +1758,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_run_upgrade_err(void **stat
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
+    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
 
     agent_task->agent_info->agent_id = 111;
     os_strdup("ubuntu", agent_task->agent_info->platform);
@@ -1756,6 +1767,10 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_run_upgrade_err(void **stat
     os_strdup("test.wpk", upgrade_task->wpk_file);
     os_strdup("d321af65983fa412e3a12c312ada12ab321a253a", upgrade_task->wpk_sha1);
     agent_task->task_info->task = upgrade_task;
+
+    // wm_agent_upgrade_validate_wpk_version
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_wpk
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
@@ -1901,6 +1916,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_send_sha1_err(void **state)
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
+    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
 
     agent_task->agent_info->agent_id = 111;
     os_strdup("ubuntu", agent_task->agent_info->platform);
@@ -1909,6 +1925,10 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_send_sha1_err(void **state)
     os_strdup("test.wpk", upgrade_task->wpk_file);
     os_strdup("d321af65983fa412e3a12c312ada12ab321a253a", upgrade_task->wpk_sha1);
     agent_task->task_info->task = upgrade_task;
+
+    // wm_agent_upgrade_validate_wpk_version
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_wpk
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
@@ -2040,6 +2060,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_close_file_err(void **state
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
+    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
 
     agent_task->agent_info->agent_id = 111;
     os_strdup("ubuntu", agent_task->agent_info->platform);
@@ -2048,6 +2069,10 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_close_file_err(void **state
     os_strdup("test.wpk", upgrade_task->wpk_file);
     os_strdup("d321af65983fa412e3a12c312ada12ab321a253a", upgrade_task->wpk_sha1);
     agent_task->task_info->task = upgrade_task;
+
+    // wm_agent_upgrade_validate_wpk_version
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_wpk
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
@@ -2161,6 +2186,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_write_file_err(void **state
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
+    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
 
     agent_task->agent_info->agent_id = 111;
     os_strdup("ubuntu", agent_task->agent_info->platform);
@@ -2169,6 +2195,10 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_write_file_err(void **state
     os_strdup("test.wpk", upgrade_task->wpk_file);
     os_strdup("d321af65983fa412e3a12c312ada12ab321a253a", upgrade_task->wpk_sha1);
     agent_task->task_info->task = upgrade_task;
+
+    // wm_agent_upgrade_validate_wpk_version
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_wpk
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
@@ -2263,6 +2293,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_open_file_err(void **state)
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
+    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
 
     agent_task->agent_info->agent_id = 111;
     os_strdup("ubuntu", agent_task->agent_info->platform);
@@ -2271,6 +2302,10 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_open_file_err(void **state)
     os_strdup("test.wpk", upgrade_task->wpk_file);
     os_strdup("d321af65983fa412e3a12c312ada12ab321a253a", upgrade_task->wpk_sha1);
     agent_task->task_info->task = upgrade_task;
+
+    // wm_agent_upgrade_validate_wpk_version
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_wpk
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
@@ -2401,6 +2436,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_lock_restart_err(void **sta
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
+    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
 
     agent_task->agent_info->agent_id = 111;
     os_strdup("ubuntu", agent_task->agent_info->platform);
@@ -2409,6 +2445,10 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_lock_restart_err(void **sta
     os_strdup("test.wpk", upgrade_task->wpk_file);
     os_strdup("d321af65983fa412e3a12c312ada12ab321a253a", upgrade_task->wpk_sha1);
     agent_task->task_info->task = upgrade_task;
+
+    // wm_agent_upgrade_validate_wpk_version
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_wpk
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
@@ -2456,6 +2496,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_validate_wpk_err(void **state)
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
+    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
 
     agent_task->agent_info->agent_id = 111;
     os_strdup("ubuntu", agent_task->agent_info->platform);
@@ -2465,12 +2506,44 @@ void test_wm_agent_upgrade_send_wpk_to_agent_validate_wpk_err(void **state)
     os_strdup("d321af65983fa412e3a12c312ada12ab321a253a", upgrade_task->wpk_sha1);
     agent_task->task_info->task = upgrade_task;
 
+    // wm_agent_upgrade_validate_wpk_version
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
+
     // wm_agent_upgrade_validate_wpk
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH);
 
     int res = wm_agent_upgrade_send_wpk_to_agent(agent_task, config);
 
     assert_int_equal(res, WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH);
+}
+
+void test_wm_agent_upgrade_send_wpk_to_agent_validate_wpk_version_err(void **state)
+{
+    (void) state;
+
+    wm_manager_configs *config = state[0];
+    wm_agent_task *agent_task = state[1];
+    wm_upgrade_task *upgrade_task = NULL;
+
+    config->chunk_size = 5;
+    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
+
+    agent_task->agent_info->agent_id = 111;
+    os_strdup("ubuntu", agent_task->agent_info->platform);
+    agent_task->task_info->command = WM_UPGRADE_UPGRADE;
+    upgrade_task = wm_agent_upgrade_init_upgrade_task();
+    os_strdup("test.wpk", upgrade_task->wpk_file);
+    os_strdup("d321af65983fa412e3a12c312ada12ab321a253a", upgrade_task->wpk_sha1);
+    agent_task->task_info->task = upgrade_task;
+
+    // wm_agent_upgrade_validate_wpk_version
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST);
+
+    int res = wm_agent_upgrade_send_wpk_to_agent(agent_task, config);
+
+    assert_int_equal(res, WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST);
 }
 
 void test_wm_agent_upgrade_send_wpk_to_agent_validate_wpk_custom_err(void **state)
@@ -2523,6 +2596,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_ok(void **state)
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
+    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
 
     agent_task->agent_info->agent_id = agent_id;
     os_strdup("ubuntu", agent_task->agent_info->platform);
@@ -2532,7 +2606,47 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_ok(void **state)
     os_strdup("d321af65983fa412e3a12c312ada12ab321a253a", upgrade_task->wpk_sha1);
     agent_task->task_info->task = upgrade_task;
 
+    cJSON *task_request_status = cJSON_CreateObject();
+    cJSON *origin = cJSON_CreateObject();
+    cJSON *parameters = cJSON_CreateObject();
+    cJSON *agents = cJSON_CreateArray();
+
+    cJSON_AddStringToObject(origin, "module", "upgrade_module");
+    cJSON_AddItemToObject(task_request_status, "origin", origin);
+    cJSON_AddStringToObject(task_request_status, "command", "upgrade_update_status");
+    cJSON_AddItemToArray(agents, cJSON_CreateNumber(agent_id));
+    cJSON_AddItemToObject(parameters, "agents", agents);
+    cJSON_AddStringToObject(parameters, "status", status);
+    cJSON_AddItemToObject(task_request_status, "parameters", parameters);
+
+    cJSON *task_response_status = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(task_response_status, "error", WM_UPGRADE_SUCCESS);
+    cJSON_AddStringToObject(task_response_status, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddNumberToObject(task_response_status, "agent", agent_id);
+    cJSON_AddStringToObject(task_response_status, "status", status);
+
+    // wm_agent_upgrade_parse_task_module_request
+
+    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_UPDATE_STATUS);
+    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, task_request_status);
+    expect_string(__wrap_wm_agent_upgrade_parse_task_module_request, status, status);
+
+    // wm_agent_upgrade_task_module_callback
+
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, task_request_status, sizeof(task_request_status));
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response_status);
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
+
+    // wm_agent_upgrade_validate_task_status_message
+
+    expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, task_response_status, sizeof(task_response_status));
+    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, agent_id);
+
     // wm_agent_upgrade_send_wpk_to_agent
+
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
 
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
 
@@ -2667,7 +2781,8 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
 
     int socket = 555;
     int agent_id = 25;
-    char *status = "Legacy";
+    char *status1 = "In progress";
+    char *status2 = "Legacy";
 
     char *lock_restart = "025 com lock_restart -1";
     char *open_file = "025 com open wb test.wpk";
@@ -2685,6 +2800,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
+    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
 
     agent_task->agent_info->agent_id = agent_id;
     os_strdup("ubuntu", agent_task->agent_info->platform);
@@ -2695,27 +2811,67 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
     os_strdup("v3.13.1", upgrade_task->custom_version);
     agent_task->task_info->task = upgrade_task;
 
-    cJSON *task_request_status = cJSON_CreateObject();
-    cJSON *origin = cJSON_CreateObject();
-    cJSON *parameters = cJSON_CreateObject();
-    cJSON *agents = cJSON_CreateArray();
+    cJSON *task_request_status1 = cJSON_CreateObject();
+    cJSON *origin1 = cJSON_CreateObject();
+    cJSON *parameters1 = cJSON_CreateObject();
+    cJSON *agents1 = cJSON_CreateArray();
 
-    cJSON_AddStringToObject(origin, "module", "upgrade_module");
-    cJSON_AddItemToObject(task_request_status, "origin", origin);
-    cJSON_AddStringToObject(task_request_status, "command", "upgrade_update_status");
-    cJSON_AddItemToArray(agents, cJSON_CreateNumber(agent_id));
-    cJSON_AddItemToObject(parameters, "agents", agents);
-    cJSON_AddStringToObject(parameters, "status", status);
-    cJSON_AddItemToObject(task_request_status, "parameters", parameters);
+    cJSON_AddStringToObject(origin1, "module", "upgrade_module");
+    cJSON_AddItemToObject(task_request_status1, "origin", origin1);
+    cJSON_AddStringToObject(task_request_status1, "command", "upgrade_update_status");
+    cJSON_AddItemToArray(agents1, cJSON_CreateNumber(agent_id));
+    cJSON_AddItemToObject(parameters1, "agents", agents1);
+    cJSON_AddStringToObject(parameters1, "status", status1);
+    cJSON_AddItemToObject(task_request_status1, "parameters", parameters1);
 
-    cJSON *task_response_status = cJSON_CreateObject();
+    cJSON *task_response_status1 = cJSON_CreateObject();
 
-    cJSON_AddStringToObject(task_response_status, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(task_response_status, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
-    cJSON_AddNumberToObject(task_response_status, "agent", agent_id);
-    cJSON_AddStringToObject(task_response_status, "status", status);
+    cJSON_AddStringToObject(task_response_status1, "error", WM_UPGRADE_SUCCESS);
+    cJSON_AddStringToObject(task_response_status1, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddNumberToObject(task_response_status1, "agent", agent_id);
+    cJSON_AddStringToObject(task_response_status1, "status", status1);
+
+    cJSON *task_request_status2 = cJSON_CreateObject();
+    cJSON *origin2 = cJSON_CreateObject();
+    cJSON *parameters2 = cJSON_CreateObject();
+    cJSON *agents2 = cJSON_CreateArray();
+
+    cJSON_AddStringToObject(origin2, "module", "upgrade_module");
+    cJSON_AddItemToObject(task_request_status2, "origin", origin2);
+    cJSON_AddStringToObject(task_request_status2, "command", "upgrade_update_status");
+    cJSON_AddItemToArray(agents2, cJSON_CreateNumber(agent_id));
+    cJSON_AddItemToObject(parameters2, "agents", agents2);
+    cJSON_AddStringToObject(parameters2, "status", status2);
+    cJSON_AddItemToObject(task_request_status2, "parameters", parameters2);
+
+    cJSON *task_response_status2 = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(task_response_status2, "error", WM_UPGRADE_SUCCESS);
+    cJSON_AddStringToObject(task_response_status2, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddNumberToObject(task_response_status2, "agent", agent_id);
+    cJSON_AddStringToObject(task_response_status2, "status", status2);
+
+    // wm_agent_upgrade_parse_task_module_request
+
+    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_UPDATE_STATUS);
+    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, task_request_status1);
+    expect_string(__wrap_wm_agent_upgrade_parse_task_module_request, status, status1);
+
+    // wm_agent_upgrade_task_module_callback
+
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, task_request_status1, sizeof(task_request_status1));
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response_status1);
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
+
+    // wm_agent_upgrade_validate_task_status_message
+
+    expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, task_response_status1, sizeof(task_response_status1));
+    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, agent_id);
 
     // wm_agent_upgrade_send_wpk_to_agent
+
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
 
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
 
@@ -2845,18 +3001,18 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
     // wm_agent_upgrade_parse_task_module_request
 
     expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_UPDATE_STATUS);
-    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, task_request_status);
-    expect_string(__wrap_wm_agent_upgrade_parse_task_module_request, status, status);
+    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, task_request_status2);
+    expect_string(__wrap_wm_agent_upgrade_parse_task_module_request, status, status2);
 
     // wm_agent_upgrade_task_module_callback
 
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, task_request_status, sizeof(task_request_status));
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response_status);
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, task_request_status2, sizeof(task_request_status2));
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response_status2);
     will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
 
     // wm_agent_upgrade_validate_task_status_message
 
-    expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, task_response_status, sizeof(task_response_status));
+    expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, task_response_status2, sizeof(task_response_status2));
     will_return(__wrap_wm_agent_upgrade_validate_task_status_message, agent_id);
 
     wm_agent_upgrade_start_upgrade(args);
@@ -2898,6 +3054,43 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_custom_ok(void **state)
     upgrade_custom_task = wm_agent_upgrade_init_upgrade_custom_task();
     os_strdup("/tmp/test.wpk", upgrade_custom_task->custom_file_path);
     agent_task->task_info->task = upgrade_custom_task;
+
+    cJSON *task_request_status = cJSON_CreateObject();
+    cJSON *origin = cJSON_CreateObject();
+    cJSON *parameters = cJSON_CreateObject();
+    cJSON *agents = cJSON_CreateArray();
+
+    cJSON_AddStringToObject(origin, "module", "upgrade_module");
+    cJSON_AddItemToObject(task_request_status, "origin", origin);
+    cJSON_AddStringToObject(task_request_status, "command", "upgrade_update_status");
+    cJSON_AddItemToArray(agents, cJSON_CreateNumber(agent_id));
+    cJSON_AddItemToObject(parameters, "agents", agents);
+    cJSON_AddStringToObject(parameters, "status", status);
+    cJSON_AddItemToObject(task_request_status, "parameters", parameters);
+
+    cJSON *task_response_status = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(task_response_status, "error", WM_UPGRADE_SUCCESS);
+    cJSON_AddStringToObject(task_response_status, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddNumberToObject(task_response_status, "agent", agent_id);
+    cJSON_AddStringToObject(task_response_status, "status", status);
+
+    // wm_agent_upgrade_parse_task_module_request
+
+    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_UPDATE_STATUS);
+    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, task_request_status);
+    expect_string(__wrap_wm_agent_upgrade_parse_task_module_request, status, status);
+
+    // wm_agent_upgrade_task_module_callback
+
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, task_request_status, sizeof(task_request_status));
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response_status);
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
+
+    // wm_agent_upgrade_validate_task_status_message
+
+    expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, task_response_status, sizeof(task_response_status));
+    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, agent_id);
 
     // wm_agent_upgrade_send_wpk_to_agent
 
@@ -3039,7 +3232,8 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
 
     int socket = 555;
     int agent_id = 25;
-    char *status = "Failed";
+    char *status1 = "In progress";
+    char *status2 = "Failed";
     char *error = "Send lock restart error";
 
     char *lock_restart = "025 com lock_restart -1";
@@ -3057,6 +3251,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
+    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
 
     agent_task->agent_info->agent_id = agent_id;
     os_strdup("ubuntu", agent_task->agent_info->platform);
@@ -3066,28 +3261,67 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
     os_strdup("d321af65983fa412e3a12c312ada12ab321a253a", upgrade_task->wpk_sha1);
     agent_task->task_info->task = upgrade_task;
 
-    cJSON *task_request_status = cJSON_CreateObject();
-    cJSON *origin = cJSON_CreateObject();
-    cJSON *parameters = cJSON_CreateObject();
-    cJSON *agents = cJSON_CreateArray();
+    cJSON *task_request_status1 = cJSON_CreateObject();
+    cJSON *origin1 = cJSON_CreateObject();
+    cJSON *parameters1 = cJSON_CreateObject();
+    cJSON *agents1 = cJSON_CreateArray();
 
-    cJSON_AddStringToObject(origin, "module", "upgrade_module");
-    cJSON_AddItemToObject(task_request_status, "origin", origin);
-    cJSON_AddStringToObject(task_request_status, "command", "upgrade_update_status");
-    cJSON_AddItemToArray(agents, cJSON_CreateNumber(agent_id));
-    cJSON_AddItemToObject(parameters, "agents", agents);
-    cJSON_AddStringToObject(parameters, "status", status);
-    cJSON_AddStringToObject(parameters, "error_msg", error);
-    cJSON_AddItemToObject(task_request_status, "parameters", parameters);
+    cJSON_AddStringToObject(origin1, "module", "upgrade_module");
+    cJSON_AddItemToObject(task_request_status1, "origin", origin1);
+    cJSON_AddStringToObject(task_request_status1, "command", "upgrade_update_status");
+    cJSON_AddItemToArray(agents1, cJSON_CreateNumber(agent_id));
+    cJSON_AddItemToObject(parameters1, "agents", agents1);
+    cJSON_AddStringToObject(parameters1, "status", status1);
+    cJSON_AddItemToObject(task_request_status1, "parameters", parameters1);
 
-    cJSON *task_response_status = cJSON_CreateObject();
+    cJSON *task_response_status1 = cJSON_CreateObject();
 
-    cJSON_AddStringToObject(task_response_status, "error", WM_UPGRADE_SUCCESS);
-    cJSON_AddStringToObject(task_response_status, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
-    cJSON_AddNumberToObject(task_response_status, "agent", agent_id);
-    cJSON_AddStringToObject(task_response_status, "status", status);
+    cJSON_AddStringToObject(task_response_status1, "error", WM_UPGRADE_SUCCESS);
+    cJSON_AddStringToObject(task_response_status1, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddNumberToObject(task_response_status1, "agent", agent_id);
+    cJSON_AddStringToObject(task_response_status1, "status", status1);
+
+    cJSON *task_request_status2 = cJSON_CreateObject();
+    cJSON *origin2 = cJSON_CreateObject();
+    cJSON *parameters2 = cJSON_CreateObject();
+    cJSON *agents2 = cJSON_CreateArray();
+
+    cJSON_AddStringToObject(origin2, "module", "upgrade_module");
+    cJSON_AddItemToObject(task_request_status2, "origin", origin2);
+    cJSON_AddStringToObject(task_request_status2, "command", "upgrade_update_status");
+    cJSON_AddItemToArray(agents2, cJSON_CreateNumber(agent_id));
+    cJSON_AddItemToObject(parameters2, "agents", agents2);
+    cJSON_AddStringToObject(parameters2, "status", status2);
+    cJSON_AddItemToObject(task_request_status2, "parameters", parameters2);
+
+    cJSON *task_response_status2 = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(task_response_status2, "error", WM_UPGRADE_SUCCESS);
+    cJSON_AddStringToObject(task_response_status2, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
+    cJSON_AddNumberToObject(task_response_status2, "agent", agent_id);
+    cJSON_AddStringToObject(task_response_status2, "status", status2);
+
+    // wm_agent_upgrade_parse_task_module_request
+
+    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_UPDATE_STATUS);
+    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, task_request_status1);
+    expect_string(__wrap_wm_agent_upgrade_parse_task_module_request, status, status1);
+
+    // wm_agent_upgrade_task_module_callback
+
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, task_request_status1, sizeof(task_request_status1));
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response_status1);
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
+
+    // wm_agent_upgrade_validate_task_status_message
+
+    expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, task_response_status1, sizeof(task_response_status1));
+    will_return(__wrap_wm_agent_upgrade_validate_task_status_message, agent_id);
 
     // wm_agent_upgrade_send_wpk_to_agent
+
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
 
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
 
@@ -3123,19 +3357,19 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
     // wm_agent_upgrade_parse_task_module_request
 
     expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_AGENT_UPDATE_STATUS);
-    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, task_request_status);
-    expect_string(__wrap_wm_agent_upgrade_parse_task_module_request, status, status);
+    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, task_request_status2);
+    expect_string(__wrap_wm_agent_upgrade_parse_task_module_request, status, status2);
     expect_string(__wrap_wm_agent_upgrade_parse_task_module_request, error, error);
 
     // wm_agent_upgrade_task_module_callback
 
-    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, task_request_status, sizeof(task_request_status));
-    will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response_status);
+    expect_memory(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, task_request_status2, sizeof(task_request_status2));
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, task_response_status2);
     will_return(__wrap_wm_agent_upgrade_task_module_callback, 0);
 
     // wm_agent_upgrade_validate_task_status_message
 
-    expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, task_response_status, sizeof(task_response_status));
+    expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, task_response_status2, sizeof(task_response_status2));
     will_return(__wrap_wm_agent_upgrade_validate_task_status_message, agent_id);
 
     wm_agent_upgrade_start_upgrade(args);
@@ -3308,6 +3542,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_send_wpk_to_agent_upgrade_open_file_err, setup_config_agent_task, teardown_config_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_send_wpk_to_agent_upgrade_lock_restart_err, setup_config_agent_task, teardown_config_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_send_wpk_to_agent_validate_wpk_err, setup_config_agent_task, teardown_config_agent_task),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_send_wpk_to_agent_validate_wpk_version_err, setup_config_agent_task, teardown_config_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_send_wpk_to_agent_validate_wpk_custom_err, setup_config_agent_task, teardown_config_agent_task),
         // wm_agent_upgrade_start_upgrade
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_start_upgrade_upgrade_ok, setup_upgrade_args, teardown_upgrade_args),

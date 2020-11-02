@@ -20,18 +20,18 @@ const char* upgrade_error_codes[] = {
     [WM_UPGRADE_PARSING_ERROR] = "Could not parse message JSON",
     [WM_UPGRADE_PARSING_REQUIRED_PARAMETER] = "Required parameters in json message where not found",
     [WM_UPGRADE_TASK_CONFIGURATIONS] = "JSON parameter not recognized",
-    [WM_UPGRADE_TASK_MANAGER_COMMUNICATION] ="Could not create task id for upgrade task",
+    [WM_UPGRADE_TASK_MANAGER_COMMUNICATION] ="Task manager communication error",
     [WM_UPGRADE_TASK_MANAGER_FAILURE] = "", // Data string will be provided by task manager
     [WM_UPGRADE_GLOBAL_DB_FAILURE] = "Agent information not found in database",
     [WM_UPGRADE_INVALID_ACTION_FOR_MANAGER] = "Action not available for Manager (agent 000)",
     [WM_UPGRADE_AGENT_IS_NOT_ACTIVE] = "Agent is not active",
+    [WM_UPGRADE_SYSTEM_NOT_SUPPORTED] = "The WPK for this platform is not available",
     [WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS] = "Upgrade procedure could not start. Agent already upgrading",
     [WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED] = "Remote upgrade is not available for this agent version",
-    [WM_UPGRADE_SYSTEM_NOT_SUPPORTED] = "The WPK for this platform is not available",
-    [WM_UPGRADE_URL_NOT_FOUND] = "The repository is not reachable",
-    [WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST] = "The version of the WPK does not exist in the repository",
     [WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT] = "Current agent version is greater or equal",
     [WM_UPGRADE_NEW_VERSION_GREATER_MASTER] = "Upgrading an agent to a version higher than the manager requires the force flag",
+    [WM_UPGRADE_URL_NOT_FOUND] = "The repository is not reachable",
+    [WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST] = "The version of the WPK does not exist in the repository",
     [WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST] = "The WPK file does not exist",
     [WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH] = "The WPK sha1 of the file is not valid",
     [WM_UPGRADE_SEND_LOCK_RESTART_ERROR] = "Send lock restart error",
@@ -60,6 +60,12 @@ void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs)
         wm_agent_upgrade_destroy_upgrade_queue();
         return;
     }
+
+    // Wait a few seconds until the task manager starts
+    sleep(WM_AGENT_UPGRADE_START_WAIT_TIME);
+
+    // Cancel pending upgrade tasks since they were lost
+    wm_agent_upgrade_cancel_pending_upgrades();
 
     // Start dispatch upgrades thread
     w_create_thread(wm_agent_upgrade_dispatch_upgrades, (void *)manager_configs);
@@ -124,14 +130,14 @@ void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs)
             case WM_UPGRADE_UPGRADE:
                 // Upgrade command
                 if (task && agent_ids) {
-                    message = wm_agent_upgrade_process_upgrade_command(agent_ids, (wm_upgrade_task *)task, manager_configs);
+                    message = wm_agent_upgrade_process_upgrade_command(agent_ids, (wm_upgrade_task *)task);
                 }
                 wm_agent_upgrade_free_upgrade_task(task);
                 break;
             case WM_UPGRADE_UPGRADE_CUSTOM:
                 // Upgrade custom command
                 if (task && agent_ids) {
-                    message = wm_agent_upgrade_process_upgrade_custom_command(agent_ids, (wm_upgrade_custom_task *)task, manager_configs);
+                    message = wm_agent_upgrade_process_upgrade_custom_command(agent_ids, (wm_upgrade_custom_task *)task);
                 }
                 wm_agent_upgrade_free_upgrade_custom_task(task);
                 break;

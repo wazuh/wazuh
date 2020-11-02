@@ -75,6 +75,7 @@ void wm_agent_upgrade_free_upgrade_task(wm_upgrade_task* upgrade_task) {
     if (upgrade_task) {
         os_free(upgrade_task->custom_version);
         os_free(upgrade_task->wpk_repository);
+        os_free(upgrade_task->wpk_version);
         os_free(upgrade_task->wpk_file);
         os_free(upgrade_task->wpk_sha1);
         os_free(upgrade_task);
@@ -151,16 +152,6 @@ int wm_agent_upgrade_create_task_entry(int agent_id, wm_agent_task* agent_task) 
     return OSHash_Add_ex(task_table_by_agent_id, agent_id_string, agent_task);
 }
 
-void wm_agent_upgrade_insert_task_id(int agent_id, int task_id) {
-    char agent_id_string[128];
-    sprintf(agent_id_string, "%d", agent_id);
-    wm_agent_task *agent_task = (wm_agent_task *)OSHash_Get_ex(task_table_by_agent_id, agent_id_string);
-    if (agent_task) {
-        agent_task->task_info->task_id = task_id;
-        OSHash_Update_ex(task_table_by_agent_id, agent_id_string, agent_task);
-    }
-}
-
 void wm_agent_upgrade_remove_entry(int agent_id, int free) {
     char agent_id_string[128];
     sprintf(agent_id_string, "%d", agent_id);
@@ -176,6 +167,25 @@ OSHashNode* wm_agent_upgrade_get_first_node(unsigned int *index) {
 
 OSHashNode* wm_agent_upgrade_get_next_node(unsigned int *index, OSHashNode *current) {
     return OSHash_Next(task_table_by_agent_id, index, current);
+}
+
+cJSON* wm_agent_upgrade_get_agent_ids() {
+    OSHashNode *hash_node;
+    unsigned int index = 0;
+    cJSON *agents_array = cJSON_CreateArray();
+
+    hash_node = OSHash_Begin(task_table_by_agent_id, &index);
+
+    while(hash_node) {
+        cJSON_AddItemToArray(agents_array, cJSON_CreateNumber(atoi(hash_node->key)));
+        hash_node = OSHash_Next(task_table_by_agent_id, &index, hash_node);
+    }
+    if (!cJSON_GetArraySize(agents_array)) {
+        cJSON_Delete(agents_array);
+        return NULL;
+    }
+
+    return agents_array;
 }
 
 cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object) {

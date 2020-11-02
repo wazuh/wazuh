@@ -1,4 +1,4 @@
-# Generate vulnerability detector library
+# Generate task manager library
 file(GLOB task_files
     ${SRC_FOLDER}/wazuh_modules/*.o
     ${SRC_FOLDER}/wazuh_modules/task_manager/*.o)
@@ -24,7 +24,7 @@ target_link_libraries(TASK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 # Generate task manager tests
 list(APPEND task_names "test_wm_task_manager")
 list(APPEND task_flags "-Wl,--wrap,_mtinfo -Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,pthread_exit -Wl,--wrap,wm_task_manager_check_db -Wl,--wrap,CreateThread -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close \
-                        -Wl,--wrap,accept -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,w_is_worker -Wl,--wrap,wm_task_manager_parse_message -Wl,--wrap,wm_task_manager_analyze_task \
+                        -Wl,--wrap,accept -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,w_is_worker -Wl,--wrap,wm_task_manager_parse_message -Wl,--wrap,wm_task_manager_process_task \
                         -Wl,--wrap,wm_task_manager_parse_data_response -Wl,--wrap,getpid")
 
 list(APPEND task_names "test_wm_task_manager_db")
@@ -35,9 +35,9 @@ list(APPEND task_flags "-Wl,--wrap,_mtinfo -Wl,--wrap,_mterror -Wl,--wrap,sqlite
 list(APPEND task_names "test_wm_task_manager_parsing")
 list(APPEND task_flags "-Wl,--wrap,_mterror -Wl,--wrap,w_get_timestamp")
 
-list(APPEND task_names "test_wm_task_manager_analyze")
-list(APPEND task_flags "-Wl,--wrap,wm_task_manager_get_task_by_agent_id_and_module -Wl,--wrap,wm_task_manager_get_task_by_task_id -Wl,--wrap,wm_task_manager_parse_data_response -Wl,--wrap,wm_task_manager_parse_data_result \
-                        -Wl,--wrap,wm_task_manager_insert_task -Wl,--wrap,wm_task_manager_get_task_status -Wl,--wrap,wm_task_manager_update_task_status")
+list(APPEND task_names "test_wm_task_manager_commands")
+list(APPEND task_flags "-Wl,--wrap,wm_task_manager_get_upgrade_task_by_agent_id -Wl,--wrap,wm_task_manager_get_task_by_task_id -Wl,--wrap,wm_task_manager_parse_data_response -Wl,--wrap,wm_task_manager_parse_data_result \
+                        -Wl,--wrap,wm_task_manager_insert_task -Wl,--wrap,wm_task_manager_get_upgrade_task_status -Wl,--wrap,wm_task_manager_update_upgrade_task_status -Wl,--wrap,wm_task_manager_cancel_upgrade_tasks")
 
 # Compilig tests
 list(LENGTH task_names count)

@@ -20,6 +20,7 @@
 #define WM_UPGRADE_WPK_DOWNLOAD_ATTEMPTS 5
 #define WM_UPGRADE_WPK_OPEN_ATTEMPTS 10
 #define MANAGER_ID 0
+#define WM_AGENT_UPGRADE_START_WAIT_TIME 30
 
 typedef enum _wm_upgrade_error_code {
     WM_UPGRADE_SUCCESS = 0,
@@ -31,13 +32,13 @@ typedef enum _wm_upgrade_error_code {
     WM_UPGRADE_GLOBAL_DB_FAILURE,
     WM_UPGRADE_INVALID_ACTION_FOR_MANAGER,
     WM_UPGRADE_AGENT_IS_NOT_ACTIVE,
+    WM_UPGRADE_SYSTEM_NOT_SUPPORTED,
     WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS,
     WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED,
-    WM_UPGRADE_SYSTEM_NOT_SUPPORTED,
-    WM_UPGRADE_URL_NOT_FOUND,
-    WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST,
     WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT,
     WM_UPGRADE_NEW_VERSION_GREATER_MASTER,
+    WM_UPGRADE_URL_NOT_FOUND,
+    WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST,
     WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST,
     WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH,
     WM_UPGRADE_SEND_LOCK_RESTART_ERROR,
@@ -54,7 +55,8 @@ typedef enum _wm_upgrade_command {
     WM_UPGRADE_UPGRADE = WM_TASK_UPGRADE,
     WM_UPGRADE_UPGRADE_CUSTOM = WM_TASK_UPGRADE_CUSTOM,
     WM_UPGRADE_AGENT_GET_STATUS = WM_TASK_UPGRADE_GET_STATUS,
-    WM_UPGRADE_AGENT_UPDATE_STATUS = WM_TASK_UPGRADE_UPDATE_STATUS
+    WM_UPGRADE_AGENT_UPDATE_STATUS = WM_TASK_UPGRADE_UPDATE_STATUS,
+    WM_UPGRADE_CANCEL_TASKS = WM_TASK_UPGRADE_CANCEL_TASKS
 } wm_upgrade_command;
 
 /**
@@ -65,6 +67,7 @@ typedef struct _wm_upgrade_task {
     char *custom_version;        ///> upgrade to a custom version
     bool use_http;               ///> when enabled uses http instead of https to connect to repository
     bool force_upgrade;          ///> when enabled forces upgrade
+    char *wpk_version;           ///> WPK version to install
     char *wpk_file;              ///> WPK file name
     char *wpk_sha1;              ///> WPK sha1 to validate
 } wm_upgrade_task;
@@ -90,7 +93,6 @@ typedef struct _wm_upgrade_agent_status_task {
  * Definition of the structure that will represent a certain task
  */
 typedef struct _wm_task_info {
-    int task_id;                 ///> task_id associated with the task
     wm_upgrade_command command;  ///> command that has been requested
     void *task;                  ///> pointer to a task structure (depends on command)
 } wm_task_info;
@@ -127,29 +129,33 @@ extern const char* upgrade_error_codes[];
 void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs) __attribute__((nonnull));
 
 /**
- * Process and upgrade command. Create the task for each agent_id, dispatches to task manager and
+ * Process an upgrade_cancel_tasks command
+ * */
+void wm_agent_upgrade_cancel_pending_upgrades();
+
+/**
+ * Process an upgrade command. Create the task for each agent_id, dispatches to task manager and
  * then starts upgrading process.
  * @param agent_ids array with the list of agents id
  * @param task pointer to a wm_upgrade_task structure
- * @param manager_configs manager configuration parameters
  * @return string with the response
  * */
-char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task, const wm_manager_configs* manager_configs) __attribute__((nonnull));
+char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task) __attribute__((nonnull));
 
 /**
- * Process and upgrade custom command. Create the task for each agent_id, dispatches to task manager and
+ * Process an upgrade custom command. Create the task for each agent_id, dispatches to task manager and
  * then starts upgrading process.
  * @param agent_ids array with the list of agents id
  * @param task pointer to a wm_upgrade_custom_task structure
- * @param manager_configs manager configuration parameters
  * @return string with the response
  * */
-char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task, const wm_manager_configs* manager_configs) __attribute__((nonnull));
+char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task) __attribute__((nonnull));
 
 /**
- * Process and agent_upgraded command
+ * Process an agent_upgraded command
  * @param agent_ids List with id of the agents (In this case the list will contain only 1 id)
  * @param task Task with the update information
+ * @return string with the response
  * */
 char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, const wm_upgrade_agent_status_task* task) __attribute__((nonnull));
 

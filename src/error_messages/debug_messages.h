@@ -223,8 +223,8 @@
 #define FIM_REGISTRY_EVENT_FAIL             "(6329): Unable to save registry key: '%s'"
 #define FIM_RUNNING_SCAN                    "(6330): The scan has been running during: %.3f sec (%.3f clock sec)"
 #define FIM_GET_ATTRIBUTES                  "(6331): Couldn't get attributes for file: '%s'"
-#define FIM_WARN_REALTIME_UNSUPPORTED       "(6332): The realtime monitoring request on unsupported system."
-#define FIM_WARN_WHODATA_UNSUPPORTED        "(6333): The who-data monitoring request on unsupported system."
+#define FIM_WARN_REALTIME_UNSUPPORTED       "(6332): Realtime monitoring request on unsupported system."
+#define FIM_WARN_WHODATA_UNSUPPORTED        "(6333): Whodata monitoring request on unsupported system."
 #define FIM_AUDIT_INVALID_AUID              "(6334): Audit: Invalid 'auid' value read. Check Audit configuration (PAM)."
 #define FIM_ENTRIES_INFO                    "(6335): Fim entries: %d"
 #define FIM_INODES_INFO                     "(6336): Fim inode entries: %d, path count: %d"
@@ -242,6 +242,9 @@
 #define FIM_DIFF_FOLDER_SIZE                "(6348): Size of '%s' folder: %.5f KB."
 #define FIM_BIG_FILE_REPORT_CHANGES         "(6349): File '%s' is too big for configured maximum size to perform diff operation."
 #define FIM_DISK_QUOTA_LIMIT_REACHED        "(6350): The maximum configured size for the '%s' folder has been reached, the diff operation cannot be performed."
+#define FIM_DIFF_FILE_SIZE_LIMIT            "(6351): Maximum file size limit to generate diff information configured to '%d KB' for '%s'."
+#define FIM_DISK_QUOTA_LIMIT                "(6352): Maximum disk quota size limit configured to '%d KB'."
+#define FIM_DIFF_FOLDER_DELETED             "(6351): Folder '%s' has been deleted."
 
 /* Modules messages */
 #define WM_UPGRADE_RESULT_AGENT_INFO         "(8151): Agent Information obtained: '%s'"
