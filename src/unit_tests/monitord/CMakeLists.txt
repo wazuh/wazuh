@@ -49,6 +49,9 @@ list(APPEND monitord_tests_flags "-Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--
                                   -Wl,--wrap,OSHash_Next -Wl,--wrap,OSHash_Begin -Wl,--wrap,OSHash_Delete -Wl,--wrap,auth_connect\
                                   -Wl,--wrap,get_agent_id_from_name -Wl,--wrap,auth_remove_agent -Wl,--wrap,wdb_get_agents_by_connection_status")
 
+# Add extra compiling flags
+add_compile_options(-Wall)
+
 # Compilig tests
 list(LENGTH monitord_tests_names count)
 math(EXPR count "${count} - 1")
