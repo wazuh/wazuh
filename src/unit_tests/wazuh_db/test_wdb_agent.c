@@ -956,7 +956,6 @@ void test_wdb_update_agent_name_success(void **state)
 void test_wdb_update_agent_data_invalid_data(void **state)
 {
     int ret = 0;
-    int id = 1;
     agent_info_data *agent_data = NULL;
 
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid data provided to set in global.db.");
@@ -969,7 +968,6 @@ void test_wdb_update_agent_data_invalid_data(void **state)
 void test_wdb_update_agent_data_error_json(void **state)
 {
     int ret = 0;
-    int id = 1;
     agent_info_data *agent_data = NULL;
 
     os_calloc(1, sizeof(agent_info_data), agent_data);
@@ -1009,7 +1007,6 @@ void test_wdb_update_agent_data_error_json(void **state)
 void test_wdb_update_agent_data_error_socket(void **state)
 {
     int ret = 0;
-    int id = 1;
     agent_info_data *agent_data = NULL;
 
     os_calloc(1, sizeof(agent_info_data), agent_data);
@@ -1125,7 +1122,6 @@ void test_wdb_update_agent_data_error_socket(void **state)
 void test_wdb_update_agent_data_error_sql_execution(void **state)
 {
     int ret = 0;
-    int id = 1;
     agent_info_data *agent_data = NULL;
 
     os_calloc(1, sizeof(agent_info_data), agent_data);
@@ -1241,7 +1237,6 @@ void test_wdb_update_agent_data_error_sql_execution(void **state)
 void test_wdb_update_agent_data_error_result(void **state)
 {
     int ret = 0;
-    int id = 1;
     agent_info_data *agent_data = NULL;
 
     os_calloc(1, sizeof(agent_info_data), agent_data);
@@ -1352,7 +1347,6 @@ void test_wdb_update_agent_data_error_result(void **state)
 void test_wdb_update_agent_data_success(void **state)
 {
     int ret = 0;
-    int id = 1;
     agent_info_data *agent_data = NULL;
 
     os_calloc(1, sizeof(agent_info_data), agent_data);
@@ -2365,8 +2359,6 @@ void test_wdb_remove_agent_error_delete_belongs_and_name(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global delete-agent-belong 1");
 
-    const char *query_name_str = "global select-agent-name 1";
-
     // Calling Wazuh DB in select-agent-name
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, NULL);
@@ -3025,7 +3017,6 @@ void test_wdb_get_agent_status_error_no_json_response(void **state) {
 void test_wdb_get_agent_status_error_json_data(void **state) {
     cJSON *root = NULL;
     cJSON *row = NULL;
-    cJSON *str = NULL;
     int id = 1;
     int status = 0;
 
@@ -4690,8 +4681,7 @@ void test_wdb_update_groups_error_max_path(void **state) {
 
     // Generating a very long group name
     os_calloc(PATH_MAX+1, sizeof(char), very_long_name);
-    int i = 0;
-    for (i; i < PATH_MAX; ++i) {*(very_long_name + i) = 'A';};
+    for (int i = 0; i < PATH_MAX; ++i) {*(very_long_name + i) = 'A';}
 
     root = __real_cJSON_CreateArray();
     row1 = __real_cJSON_CreateObject();
@@ -4719,8 +4709,6 @@ void test_wdb_update_groups_error_max_path(void **state) {
     will_return(__wrap_opendir, 0);
 
     //// Call to wdb_remove_group_db
-    const char *name = "test_group";
-
     const char *query_str = "global delete-group-belong test_group";
     const char *response = "err";
 
@@ -4771,8 +4759,6 @@ void test_wdb_update_groups_error_removing_group_db(void **state) {
     will_return(__wrap_opendir, 0);
 
     //// Call to wdb_remove_group_db
-    const char *name = "test_group";
-
     const char *query_str = "global delete-group-belong test_group";
     const char *response = "err";
 
@@ -4926,8 +4912,6 @@ void test_wdb_agent_belongs_first_time_success(void **state) {
     cJSON *root = NULL;
     cJSON *row = NULL;
     cJSON *str = NULL;
-    int id = 1;
-    char *name = NULL;
 
     root = __real_cJSON_CreateArray();
     row = __real_cJSON_CreateObject();
