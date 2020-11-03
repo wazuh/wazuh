@@ -709,7 +709,7 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
     result = AffectedItemsWazuhResult(all_msg='All upgrade tasks have been created',
                                       some_msg='Some upgrade tasks have been created',
                                       none_msg='No upgrade task has been created',
-                                      sort_fields=['task_id'], sort_ascending='True')
+                                      sort_fields=['agent'], sort_ascending='True')
 
     agent_list = list(map(int, agents_padding(result=result, agent_list=agent_list)))
     if version and not version.startswith('v'):
@@ -737,7 +737,6 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
                 error = WazuhError(code=1810 + agent_result['error'], cmd_error=True,
                                    extra_message=agent_result['message'])
                 result.add_failed_item(id_=str(agent_result['agent']).zfill(3), error=error)
-    result.affected_items = sorted(result.affected_items, key=lambda k: k['agent'])
 
     return result
 

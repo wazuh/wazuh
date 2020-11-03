@@ -403,7 +403,7 @@ async def restart_agent(request, agent_id, pretty=False, wait_for_complete=False
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_upgrade_agents(request, agents_list='*', pretty=False, wait_for_complete=False, wpk_repo=None,
+async def put_upgrade_agents(request, agents_list=None, pretty=False, wait_for_complete=False, wpk_repo=None,
                              version=None, use_http=False, force=False):
     """Upgrade agents using a WPK file from online repository.
 
@@ -441,17 +441,14 @@ async def put_upgrade_agents(request, agents_list='*', pretty=False, wait_for_co
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          broadcasting=agents_list == '*',
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    data.affected_items = sorted(data.affected_items, key=lambda k: k['agent'])
-
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_upgrade_custom_agents(request, agents_list='*', pretty=False, wait_for_complete=False,
+async def put_upgrade_custom_agents(request, agents_list=None, pretty=False, wait_for_complete=False,
                                     file_path=None, installer=None):
     """Upgrade agents using a local WPK file.
 
@@ -483,12 +480,9 @@ async def put_upgrade_custom_agents(request, agents_list='*', pretty=False, wait
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          broadcasting=agents_list == '*',
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-
-    data.affected_items = sorted(data.affected_items, key=lambda k: k['agent'])
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
