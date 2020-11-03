@@ -2026,6 +2026,7 @@ char * get_vendor_mac(const char * string) {
         "liquid",
         "foxit-software"
     };
+    char * save_ptr = NULL;
     int size_vendors = array_size(vendors);
     int i;
 
@@ -2034,7 +2035,7 @@ char * get_vendor_mac(const char * string) {
     }
 
     os_strdup(string, string_cpy);
-    token = strtok(string_cpy, ".");
+    token = strtok_r(string_cpy, ".", &save_ptr);
     while (token != NULL && vendor == NULL) {
         for (i = 0; i < size_vendors; i++) {
             if (!strcmp(token, vendors[i])) {
@@ -2046,7 +2047,7 @@ char * get_vendor_mac(const char * string) {
                 break;
             }
         }
-        token = strtok(NULL, ".");
+        token = strtok_r(NULL, ".", &save_ptr);
     }
 
     os_free(string_cpy);
