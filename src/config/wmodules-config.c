@@ -377,7 +377,7 @@ int Read_TaskManager(const OS_XML *xml, xml_node *node, void *d1) {
 
     //Task Manager module
     if (!strcmp(node->element, WM_TASK_MANAGER_CONTEXT.name)) {
-        if (wm_task_manager_read(children, cur_wmodule) < 0) {
+        if (wm_task_manager_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }

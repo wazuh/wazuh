@@ -15,7 +15,7 @@
 static const char *XML_CLEANUP_TIME = "cleanup_time";
 static const char *XML_TASK_TIMEOUT = "task_timeout";
 
-int wm_task_manager_read(xml_node **nodes, wmodule *module) {
+int wm_task_manager_read(__attribute__((unused)) const OS_XML *xml, xml_node **nodes, wmodule *module) {
 
     unsigned int i;
     wm_task_manager* data;
