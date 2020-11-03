@@ -2637,8 +2637,7 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output) {
 
         os_patch = curr;
         *next++ = '\0';
-        curr = next;
-        
+
         if (!strcmp(os_patch, "NULL"))
             os_patch = NULL;
 

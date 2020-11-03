@@ -367,7 +367,7 @@ cJSON* sys_parse_pkg(const char * app_folder) {
                         _parts = OS_StrBreak('<', parts[1], 2);
                     }
 
-                    if (delim = strstr(_parts[0], " ("), delim) {
+                    if (_parts && (delim = strstr(_parts[0], " ("), delim)) {
                         *delim = '\0';
                     }
 
