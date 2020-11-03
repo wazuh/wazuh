@@ -429,9 +429,6 @@ async def put_upgrade_agents(request, agents_list='*', pretty=False, wait_for_co
     ApiResponse
         Upgrade message after trying to upgrade the agents.
     """
-    if len(agents_list) > 100:
-        raise_if_exc(WazuhError(1757))
-
     f_kwargs = {'agent_list': agents_list,
                 'wpk_repo': wpk_repo,
                 'version': version,
@@ -448,6 +445,8 @@ async def put_upgrade_agents(request, agents_list='*', pretty=False, wait_for_co
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
+
+    data.affected_items = sorted(data.affected_items, key=lambda k: k['agent'])
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
@@ -474,9 +473,6 @@ async def put_upgrade_custom_agents(request, agents_list='*', pretty=False, wait
     ApiResponse
         Upgrade message after trying to upgrade the agents.
     """
-    if len(agents_list) > 100:
-        raise_if_exc(WazuhError(1757))
-
     f_kwargs = {'agent_list': agents_list,
                 'file_path': file_path,
                 'installer': installer}
@@ -491,6 +487,8 @@ async def put_upgrade_custom_agents(request, agents_list='*', pretty=False, wait
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
+
+    data.affected_items = sorted(data.affected_items, key=lambda k: k['agent'])
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 

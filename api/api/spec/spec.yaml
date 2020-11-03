@@ -5771,13 +5771,13 @@ paths:
                 data:
                   affected_items:
                     - agent: "001"
-                    task_id: 1
+                      task_id: 1
                     - agent: "002"
-                    task_id: 2
+                      task_id: 2
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: [ ]
-                  message: "All upgrade tasks have been created"
+                message: "All upgrade tasks have been created"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -5816,13 +5816,13 @@ paths:
                 data:
                   affected_items:
                     - agent: "005"
-                    task_id: 3
+                      task_id: 3
                     - agent: "006"
-                    task_id: 4
+                      task_id: 4
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: [ ]
-                  message: "All upgrade tasks have been created"
+                message: "All upgrade tasks have been created"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -5867,11 +5867,11 @@ paths:
                       status: "Legacy upgrade: check the result manually since the agent cannot report the result of the task"
                       create_time: "2020/11/03 15:59:32"
                       update_time: "2020/11/03 16:01:55"
-                    total_affected_items: 1
-                    total_failed_items: 0
-                    failed_items: [ ]
-                  message: "All agents have been updated"
-                  error: 0
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: [ ]
+                message: "All agents have been updated"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
