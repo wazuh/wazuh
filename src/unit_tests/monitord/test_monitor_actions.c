@@ -355,7 +355,6 @@ void test_monitor_agents_deletion_success() {
     expect_string(__wrap_SendMSG, locmsg, ARGV0);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 1);
-    int not_used;
 
     monitor_agents_deletion();
 }
