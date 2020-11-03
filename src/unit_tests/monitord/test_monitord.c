@@ -26,25 +26,9 @@
 #include "headers/shared.h"
 #include "config/config.h"
 
-/*
-#include "wazuh_db/wdb.h"
-#include "wazuhdb_op.h"
-#include "hash_op.h"
-
-#include "../wrappers/posix/pthread_wrappers.h"
-#include "../wrappers/wazuh/shared/hash_op_wrappers.h"
-#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
-#include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
-*/
-
 time_t __wrap_time(__attribute__((unused)) time_t *t) {
     return mock_type(time_t);
 }
-
-typedef struct test_struct {
-    monitor_config mond;
-    monitor_time_control mond_time_control;
-} test_struct_t;
 
 extern monitor_time_control mond_time_control;
 
@@ -52,9 +36,6 @@ extern monitor_time_control mond_time_control;
 
 int setup_monitord(void **state) {
     test_mode = 1;
-    test_struct_t *init_data = NULL;
-    os_calloc(1,sizeof(test_struct_t),init_data);
-    *state = init_data;
 
     mond.global.agents_disconnection_alert_time = 0;
     mond.global.agents_disconnection_time = 0;
@@ -74,8 +55,7 @@ int setup_monitord(void **state) {
 
 int teardown_monitord(void **state) {
     test_mode = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    os_free(data);
+
     mond.global.agents_disconnection_alert_time = 0;
     mond.global.agents_disconnection_time = 0;
 
