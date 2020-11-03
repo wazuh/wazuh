@@ -38,10 +38,12 @@ set_target_properties(
 target_link_libraries(MONITOR_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 target_link_libraries(MAILD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
-
 list(APPEND monitord_tests_names "test_monitord")
 list(APPEND monitord_tests_flags "-Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,_merror -Wl,--wrap,time\
                                   -Wl,--wrap,StartMQ -Wl,--wrap,SendMSG")
+
+list(APPEND monitord_tests_names "test_monitor_actions")
+list(APPEND monitord_tests_flags "-Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,_merror -Wl,--wrap,SendMSG -Wl,--wrap,wdb_find_agent")
 
 # Compilig tests
 list(LENGTH monitord_tests_names count)
