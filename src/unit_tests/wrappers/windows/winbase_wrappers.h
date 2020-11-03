@@ -47,6 +47,8 @@ WINBOOL wrap_LookupAccountSid(LPCSTR lpSystemName,
                               LPDWORD cchReferencedDomainName,
                               PSID_NAME_USE peUse);
 
+void expect_LookupAccountSid_call(char *name, char *DomainName, int ret_value);
+
 WINBOOL wrap_ReadDirectoryChangesW(HANDLE hDirectory,
                                    LPVOID lpBuffer,
                                    DWORD nBufferLength,

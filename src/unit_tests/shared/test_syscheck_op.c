@@ -25,8 +25,10 @@
 
 #ifdef TEST_WINAGENT
 #include "../wrappers/wazuh/syscheckd/syscom_wrappers.h"
+#include "../wrappers/windows/sddl_wrappers.h"
 #include "../wrappers/windows/winreg_wrappers.h"
-#include "../wrappers/windows/errhandlingapi_wrappers.h"
+#include "../wrappers/windows/aclapi_wrappers.h"
+#include "../wrappers/windows/winbase_wrappers.h"
 #include "../wrappers/windows/errhandlingapi_wrappers.h"
 #include "../wrappers/windows/securitybaseapi_wrappers.h"
 #else
@@ -57,13 +59,20 @@ typedef struct __unescape_syscheck_field_data_s {
     char *output;
 }unescape_syscheck_field_data_t;
 
+typedef struct __registry_group_information {
+    char *name;
+    char *id;
+} registry_group_information;
+
 /* setup/teardown */
+
 static int teardown_string(void **state) {
     free(*state);
     return 0;
 }
 
 #ifdef TEST_WINAGENT
+
 static int setup_string_array(void **state) {
     char **array = calloc(10, sizeof(char*));
 
@@ -82,9 +91,40 @@ static int teardown_string_array(void **state) {
 
     return 0;
 }
+
+static int setup_get_registry_group(void **state) {
+    registry_group_information *group_information = (registry_group_information *)calloc(1, sizeof(registry_group_information));
+
+    if (group_information == NULL) {
+        return -1;
+    }
+
+    group_information->name = (char *)calloc(OS_SIZE_6144 + 1, sizeof(char));
+    group_information->id = (char *)calloc(OS_SIZE_6144 + 1, sizeof(char));
+
+    if (group_information->name == NULL || group_information->id == NULL) {
+        return -1;
+    }
+
+    *state = group_information;
+
+    return 0;
+}
+
+static int teardown_get_registry_group(void **state) {
+    registry_group_information *group_information = *state;
+
+    free(group_information->name);
+    free(group_information->id);
+    free(group_information);
+
+    return 0;
+}
+
 #endif
 
 #if defined(TEST_SERVER)
+
 static int setup_sk_decode(void **state) {
     sk_decode_data_t *data = calloc(1, sizeof(sk_decode_data_t));
 
@@ -112,7 +152,6 @@ static int teardown_sk_decode(void **state) {
     }
     return 0;
 }
-
 
 static int setup_sk_fill_event(void **state) {
     sk_fill_event_t* data = calloc(1, sizeof(sk_fill_event_t));
@@ -177,8 +216,11 @@ static int teardown_sk_build_sum(void **state) {
     }
     return 0;
 }
+
 #endif
+
 #ifndef TEST_WINAGENT
+
 static int setup_unescape_syscheck_field(void **state) {
     *state = calloc(1, sizeof(unescape_syscheck_field_data_t));
 
@@ -198,6 +240,7 @@ static int teardown_unescape_syscheck_field(void **state) {
     }
     return 0;
 }
+
 #endif
 
 static int teardown_cjson(void **state) {
@@ -3378,6 +3421,110 @@ void test_w_directory_exists_path_is_dir(void **state) {
     assert_non_null(ret);
 }
 
+void test_get_registry_group_GetSecurityInfo_fails(void **state) {
+    HKEY hndl = (HKEY)123456;
+    registry_group_information *group_information = *state;
+    char *group = group_information->name;
+    char *group_id = group_information->id;
+
+    expect_GetSecurityInfo_call(NULL, (PSID)"", ERROR_ACCESS_DENIED);
+    expect_GetLastError_call(ERROR_ACCESS_DENIED);
+
+    char error_msg[OS_SIZE_1024];
+
+    snprintf(error_msg,
+             OS_SIZE_1024,
+             "GetSecurityInfo error = %lu",
+             ERROR_ACCESS_DENIED);
+
+    expect_string(__wrap__merror, formatted_msg, error_msg);
+
+    group = get_registry_group(&group_id, hndl);
+
+    assert_string_equal(group, "");
+    assert_string_equal(group_id, "");
+}
+
+void test_get_registry_group_ConvertSidToStringSid_fails(void **state) {
+    HKEY hndl = (HKEY)123456;
+    registry_group_information *group_information = *state;
+    char *group = group_information->name;
+    char *group_id = group_information->id;
+
+    expect_GetSecurityInfo_call(NULL, (PSID)"groupid", ERROR_SUCCESS);
+
+    expect_ConvertSidToStringSid_call("dummy", FALSE);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "The user's SID could not be extracted.");
+
+    expect_LookupAccountSid_call("groupname", "domainname", TRUE);
+
+    group = get_registry_group(&group_id, hndl);
+
+    assert_string_equal(group, "groupname");
+    assert_null(group_id);
+}
+
+void test_get_registry_group_LookupAccountSid_fails(void **state) {
+    HKEY hndl = (HKEY)123456;
+    registry_group_information *group_information = *state;
+    char *group = group_information->name;
+    char *group_id = group_information->id;
+
+    expect_GetSecurityInfo_call(NULL, (PSID)"groupid", ERROR_SUCCESS);
+
+    expect_ConvertSidToStringSid_call("groupid", TRUE);
+
+    expect_LookupAccountSid_call("", "domainname", FALSE);
+    expect_GetLastError_call(ERROR_ACCESS_DENIED);
+
+    expect_string(__wrap__merror, formatted_msg, "Error in LookupAccountSid.");
+
+    group = get_registry_group(&group_id, hndl);
+
+    assert_string_equal(group, "");
+    assert_string_equal(group_id, "groupid");
+}
+
+void test_get_registry_group_LookupAccountSid_not_found(void **state) {
+    HKEY hndl = (HKEY)123456;
+    registry_group_information *group_information = *state;
+    char *group = group_information->name;
+    char *group_id = group_information->id;
+
+    expect_GetSecurityInfo_call(NULL, (PSID)"groupid", ERROR_SUCCESS);
+
+    expect_ConvertSidToStringSid_call("groupid", TRUE);
+
+    expect_LookupAccountSid_call("", "domainname", FALSE);
+    expect_GetLastError_call(ERROR_NONE_MAPPED);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Group not found for registry key");
+
+    group = get_registry_group(&group_id, hndl);
+
+    assert_string_equal(group, "");
+    assert_string_equal(group_id, "groupid");
+}
+
+void test_get_registry_group_success(void **state) {
+    HKEY hndl = (HKEY)123456;
+    registry_group_information *group_information = *state;
+    char *group = group_information->name;
+    char *group_id = group_information->id;
+
+    expect_GetSecurityInfo_call(NULL, (PSID)"groupid", ERROR_SUCCESS);
+
+    expect_ConvertSidToStringSid_call("groupid", TRUE);
+
+    expect_LookupAccountSid_call("groupname", "domainname", TRUE);
+
+    group = get_registry_group(&group_id, hndl);
+
+    assert_string_equal(group, "groupname");
+    assert_string_equal(group_id, "groupid");
+}
+
 void test_get_registry_permissions_RegGetKeySecurity_insufficient_buffer(void **state) {
     HKEY hndl = (HKEY)123456;
     unsigned int retval = 0;
@@ -3760,6 +3907,14 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test(test_w_directory_exists_error_getting_attrs),
         cmocka_unit_test(test_w_directory_exists_path_is_not_dir),
         cmocka_unit_test(test_w_directory_exists_path_is_dir),
+
+        /* get_registry_group tests */
+        cmocka_unit_test_setup_teardown(test_get_registry_group_GetSecurityInfo_fails, setup_get_registry_group, teardown_get_registry_group),
+        cmocka_unit_test_setup_teardown(test_get_registry_group_ConvertSidToStringSid_fails, setup_get_registry_group, teardown_get_registry_group),
+        cmocka_unit_test_setup_teardown(test_get_registry_group_LookupAccountSid_fails, setup_get_registry_group, teardown_get_registry_group),
+        cmocka_unit_test_setup_teardown(test_get_registry_group_LookupAccountSid_not_found, setup_get_registry_group, teardown_get_registry_group),
+        cmocka_unit_test_setup_teardown(test_get_registry_group_success, setup_get_registry_group, teardown_get_registry_group),
+
 
         /* get_registry_permissions tests */
         cmocka_unit_test(test_get_registry_permissions_RegGetKeySecurity_insufficient_buffer),

@@ -50,6 +50,12 @@ WINBOOL wrap_LookupAccountSid(__UNUSED_PARAM(LPCSTR lpSystemName),
     return mock();
 }
 
+void expect_LookupAccountSid_call(char *name, char *DomainName, int ret_value) {
+    will_return(wrap_LookupAccountSid, name);
+    will_return(wrap_LookupAccountSid, DomainName);
+    will_return(wrap_LookupAccountSid, ret_value);
+}
+
 WINBOOL wrap_GetFileSecurity(LPCSTR lpFileName,
                              __UNUSED_PARAM(SECURITY_INFORMATION RequestedInformation),
                              PSECURITY_DESCRIPTOR pSecurityDescriptor,

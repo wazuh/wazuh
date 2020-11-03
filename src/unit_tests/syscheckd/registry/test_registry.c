@@ -11,10 +11,17 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
 #include "../syscheckd/syscheck.h"
 #include "../syscheckd/registry/registry.h"
 #include "../syscheckd/db/fim_db.h"
+
 #include "../../wrappers/common.h"
+#include "../../wrappers/windows/sddl_wrappers.h"
+#include "../../wrappers/windows/aclapi_wrappers.h"
+#include "../../wrappers/windows/winreg_wrappers.h"
+#include "../../wrappers/windows/winbase_wrappers.h"
+#include "../../wrappers/windows/securitybaseapi_wrappers.h"
 
 #define CHECK_REGISTRY_ALL                                                                             \
     CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_MD5SUM | CHECK_SHA1SUM | \
@@ -95,23 +102,6 @@ void expect_SendMSG_call(const char *message_expected, const char *locmsg_expect
     expect_string(__wrap_SendMSG, locmsg, locmsg_expected);
     expect_value(__wrap_SendMSG, loc, loc_expected);
     will_return(__wrap_SendMSG, ret);
-}
-
-void expect_GetSecurityInfo_call(PSID ppsidOwner, PSID pSidGroup, DWORD ret_value){
-    if (ppsidOwner) will_return(wrap_GetSecurityInfo, ppsidOwner);
-    if (pSidGroup) will_return(wrap_GetSecurityInfo, pSidGroup);
-    will_return(wrap_GetSecurityInfo, ret_value);
-}
-
-void expect_ConvertSidToStringSid_call(LPSTR StringSid, int ret_value){
-    will_return(wrap_ConvertSidToStringSid, StringSid);
-    will_return(wrap_ConvertSidToStringSid, ret_value);
-}
-
-void expect_LookupAccountSid_call(char *name, char *DomainName, int ret_value){
-    will_return(wrap_LookupAccountSid, name);
-    will_return(wrap_LookupAccountSid, DomainName);
-    will_return(wrap_LookupAccountSid, ret_value);
 }
 
 void expect_fim_registry_get_key_data_call(LPSTR usid, LPSTR gsid, char *uname, char *gname,

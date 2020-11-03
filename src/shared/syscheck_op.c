@@ -936,7 +936,7 @@ char *get_registry_group(char **sid, HANDLE hndl) {
     char *result;
     LPSTR local_sid;
 
-    // Get the owner SID of the file or registry
+    // Get the group SID of the file or registry
     dwRtnCode = GetSecurityInfo(hndl,                       // Object handle
                                 SE_REGISTRY_KEY,            // Object type (file or registry)
                                 GROUP_SECURITY_INFORMATION, // Security information bit flags
@@ -1016,7 +1016,9 @@ DWORD get_registry_permissions(HKEY hndl, char *perm_key) {
     int perm_size = OS_SIZE_6144;
     char *permissions = perm_key;
 
-    if (RegGetKeySecurity(hndl, DACL_SECURITY_INFORMATION, NULL, &lpcbSecurityDescriptor) != ERROR_INSUFFICIENT_BUFFER) {
+    if (RegGetKeySecurity(hndl, DACL_SECURITY_INFORMATION, NULL, &lpcbSecurityDescriptor) !=
+        ERROR_INSUFFICIENT_BUFFER) {
+
         dwErrorCode = GetLastError();
         return dwErrorCode;
     }
@@ -1024,8 +1026,7 @@ DWORD get_registry_permissions(HKEY hndl, char *perm_key) {
     os_calloc(lpcbSecurityDescriptor, 1, pSecurityDescriptor);
 
     // Get the security information.
-    dwRtnCode = RegGetKeySecurity(
-                                  hndl,                         // Handle to an open key
+    dwRtnCode = RegGetKeySecurity(hndl,                         // Handle to an open key
                                   DACL_SECURITY_INFORMATION,    // Requeste DACL security information
                                   pSecurityDescriptor,          // Pointer that receives the DACL information
                                   &lpcbSecurityDescriptor);     // Pointer that specifies the size, in bytes

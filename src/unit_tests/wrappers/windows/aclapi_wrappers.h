@@ -29,6 +29,8 @@ DWORD wrap_GetSecurityInfo(HANDLE handle,
                            PACL *ppSacl,
                            PSECURITY_DESCRIPTOR *ppSecurityDescriptor);
 
+void expect_GetSecurityInfo_call(PSID ppsidOwner, PSID pSidGroup, DWORD ret_value);
+
 DWORD wrap_GetNamedSecurityInfo(LPCSTR pObjectName,
                                 SE_OBJECT_TYPE ObjectType,
                                 SECURITY_INFORMATION SecurityInfo,

@@ -24,10 +24,18 @@ DWORD wrap_GetSecurityInfo(__UNUSED_PARAM(HANDLE handle),
     if (ppsidOwner) {
         *ppsidOwner = mock_type(PSID);
     }
+
     if (ppsidGroup) {
         *ppsidGroup = mock_type(PSID);
     }
+
     return mock();
+}
+
+void expect_GetSecurityInfo_call(PSID ppsidOwner, PSID pSidGroup, DWORD ret_value) {
+    if (ppsidOwner) will_return(wrap_GetSecurityInfo, ppsidOwner);
+    if (pSidGroup) will_return(wrap_GetSecurityInfo, pSidGroup);
+    will_return(wrap_GetSecurityInfo, ret_value);
 }
 
 DWORD wrap_GetNamedSecurityInfo(LPCSTR pObjectName,
