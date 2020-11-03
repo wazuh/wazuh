@@ -23,3 +23,18 @@ int __wrap_wdb_find_agent(const char *name, const char *ip, __attribute__((unuse
     check_expected(ip);
     return mock();
 }
+
+int* __wrap_wdb_disconnect_agents(int keepalive, __attribute__((unused)) int *sock) {
+    check_expected(keepalive);
+    return mock_ptr_type(int*);
+}
+
+cJSON* __wrap_wdb_get_agent_info(int id, __attribute__((unused)) int *sock) {
+    check_expected(id);
+    return mock_ptr_type(cJSON*);
+}
+
+int* __wrap_wdb_get_agents_by_connection_status(const char* status, __attribute__((unused)) int *sock) {
+    check_expected(status);
+    return mock_ptr_type(int*);
+}
