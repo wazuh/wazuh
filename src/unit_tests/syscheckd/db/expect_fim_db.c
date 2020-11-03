@@ -96,8 +96,13 @@ void expect_fim_db_read_line_from_file_disk_success(int index, FILE *fd, const c
         will_return(__wrap_fseek, 0);
     }
 
+#ifndef TEST_WINAGENT
     expect_value(__wrap_fgets, __stream, fd);
     will_return(__wrap_fgets, line);
+#else
+    expect_value(wrap_fgets, __stream, fd);
+    will_return(wrap_fgets, line);
+#endif
 }
 
 void expect_fim_db_get_path_success(const char *path, const fim_entry *entry) {

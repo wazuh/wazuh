@@ -38,8 +38,11 @@ set(FIM_DB_FILES_LINUX_FLAGS "-Wl,--wrap=isChroot -Wl,--wrap=usleep,--wrap=time,
                               -Wl,--wrap=sqlite3_last_insert_rowid,--wrap=SendMSG,--wrap=rmdir_ex,--wrap=opendir \
                               -Wl,--wrap=readdir,--wrap=closedir")
 
+set(FIM_DB_FILES_WINDOWS_FLAG "-Wl,--wrap=sqlite3_last_insert_rowid,--wrap=SendMSG,,--wrap=rmdir_ex,--wrap=opendir \
+                               -Wl,--wrap=readdir,--wrap=closedir")
+
 if(${TARGET} STREQUAL "winagent")
-    target_link_libraries(test_fim_db_files ${FIM_DB_BASE_FLAGS})
+    target_link_libraries(test_fim_db_files ${FIM_DB_BASE_FLAGS} ${FIM_DB_FILES_WINDOWS_FLAG})
 else()
     target_link_libraries(test_fim_db_files ${FIM_DB_BASE_FLAGS} ${FIM_DB_FILES_LINUX_FLAGS})
 endif()

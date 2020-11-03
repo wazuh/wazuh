@@ -15,13 +15,18 @@
 #include "test_fim_db.h"
 
 void expect_fim_db_bind_insert_data(int text_count) {
+#ifndef TEST_WINAGENT
     expect_any_count(__wrap_sqlite3_bind_int, index, 3);
     expect_any_count(__wrap_sqlite3_bind_int, value, 3);
     will_return_count(__wrap_sqlite3_bind_int, 0, 3);
-#ifndef TEST_WINAGENT
+
     expect_any(__wrap_sqlite3_bind_int64, index);
     expect_any(__wrap_sqlite3_bind_int64, value);
     will_return(__wrap_sqlite3_bind_int64, 0);
+#else
+    expect_any_count(__wrap_sqlite3_bind_int, index, 2);
+    expect_any_count(__wrap_sqlite3_bind_int, value, 2);
+    will_return_count(__wrap_sqlite3_bind_int, 0, 2);
 #endif
     expect_any_count(__wrap_sqlite3_bind_text, pos, 9);
     expect_any_count(__wrap_sqlite3_bind_text, buffer, text_count);

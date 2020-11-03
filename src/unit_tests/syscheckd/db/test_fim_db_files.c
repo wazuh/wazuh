@@ -110,6 +110,7 @@ void test_fim_db_insert_data_no_rowid_error(void **state) {
 
 void test_fim_db_insert_data_no_rowid_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
+    int row_id = 0;
 
     expect_fim_db_clean_stmt();
     expect_fim_db_bind_insert_data(3);
@@ -118,7 +119,6 @@ void test_fim_db_insert_data_no_rowid_success(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     will_return(__wrap_sqlite3_last_insert_rowid, 1);
 
-    int row_id = 0;
     int ret = fim_db_insert_data(test_data->fim_sql, test_data->entry->file_entry.data, &row_id);
 
     assert_int_equal(row_id, 1);
@@ -399,13 +399,18 @@ void test_fim_db_insert_inode_id_null_error(void **state) {
 \**********************************************************************************************************************/
 void test_fim_db_remove_path_no_entry(void **state) {
     fim_file_data data;
-    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = "/etc/some/path", .file_entry.data = &data };
+#ifndef TEST_WINAGENT
+    char *entry_path = "/etc/some/path";
+#else
+    char *entry_path = "c:\\windows\\system32\\windowspowershell\\v1.0";
+#endif
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
     fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
 
     for (int i = 0; i < 3; i++) {
         expect_fim_db_clean_stmt();
     }
-    expect_fim_db_bind_path("/etc/some/path");
+    expect_fim_db_bind_path(entry_path);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
@@ -426,14 +431,19 @@ void test_fim_db_remove_path_no_entry(void **state) {
 
 void test_fim_db_remove_path_one_entry(void **state) {
     fim_file_data data;
-    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = "/etc/some/path", .file_entry.data = &data };
+#ifndef TEST_WINAGENT
+    char *entry_path = "/etc/some/path";
+#else
+    char *entry_path = "c:\\windows\\system32\\windowspowershell\\v1.0";
+#endif
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
     fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
 
     for (int i = 0; i < 3; i++) {
         expect_fim_db_clean_stmt();
     }
 
-    expect_fim_db_bind_path("/etc/some/path");
+    expect_fim_db_bind_path(entry_path);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
@@ -449,7 +459,7 @@ void test_fim_db_remove_path_one_entry(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
-    expect_fim_db_bind_path("/etc/some/path");
+    expect_fim_db_bind_path(entry_path);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -464,14 +474,19 @@ void test_fim_db_remove_path_one_entry(void **state) {
 
 void test_fim_db_remove_path_one_entry_step_fail(void **state) {
     fim_file_data data;
-    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = "/etc/some/path", .file_entry.data = &data };
+#ifndef TEST_WINAGENT
+    char *entry_path = "/etc/some/path";
+#else
+    char *entry_path = "c:\\windows\\system32\\windowspowershell\\v1.0";
+#endif
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
     fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
 
     for (int i = 0; i < 3; i++) {
         expect_fim_db_clean_stmt();
     }
 
-    expect_fim_db_bind_path("/etc/some/path");
+    expect_fim_db_bind_path(entry_path);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
@@ -497,7 +512,12 @@ void test_fim_db_remove_path_one_entry_step_fail(void **state) {
 
 void test_fim_db_remove_path_one_entry_alert_success(void **state) {
     fim_file_data data = DEFAULT_FILE_DATA;
-    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = "/etc/some/path", .file_entry.data = &data };
+#ifndef TEST_WINAGENT
+    char *entry_path = "/etc/some/path";
+#else
+    char *entry_path = "c:\\windows\\system32\\windowspowershell\\v1.0";
+#endif
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
     fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
     int alert = 1;
 
@@ -507,7 +527,7 @@ void test_fim_db_remove_path_one_entry_alert_success(void **state) {
         expect_fim_db_clean_stmt();
     }
 
-    expect_fim_db_bind_path("/etc/some/path");
+    expect_fim_db_bind_path(entry_path);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
@@ -522,14 +542,21 @@ void test_fim_db_remove_path_one_entry_alert_success(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
-    expect_fim_db_bind_path("/etc/some/path");
+    expect_fim_db_bind_path(entry_path);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
+#ifndef TEST_WINAGENT
     expect_fim_db_get_paths_from_inode(NULL);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6220): Sending delete message for file: '/etc/some/path'");
+#else
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "(6220): Sending delete message for file: 'c:\\windows\\system32\\windowspowershell\\v1.0'");
+
+    expect_fim_db_check_transaction();
+#endif
 
     expect_send_syscheck_msg(NULL);
 
@@ -541,11 +568,16 @@ void test_fim_db_remove_path_one_entry_alert_success(void **state) {
 
 void test_fim_db_remove_path_one_entry_alert_success_with_seechanges(void **state) {
     fim_file_data data = DEFAULT_FILE_DATA;
-    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = "/etc/some/path", .file_entry.data = &data };
+#ifndef TEST_WINAGENT
+    char *entry_path = "/etc/some/path";
+#else
+    char *entry_path = "c:\\windows\\system32\\windowspowershell\\v1.0";
+#endif
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
     fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
     int alert = 1;
     struct dirent dir = { .d_name = "mock_name" };
-    int config_directory = fim_configuration_directory("/etc/some/path", "file");
+    int config_directory = fim_configuration_directory(entry_path, "file");
 
     if (config_directory < 0) {
         fail();
@@ -557,7 +589,7 @@ void test_fim_db_remove_path_one_entry_alert_success_with_seechanges(void **stat
         expect_fim_db_clean_stmt();
     }
 
-    expect_fim_db_bind_path("/etc/some/path");
+    expect_fim_db_bind_path(entry_path);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
@@ -572,18 +604,27 @@ void test_fim_db_remove_path_one_entry_alert_success_with_seechanges(void **stat
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
-    expect_fim_db_bind_path("/etc/some/path");
+    expect_fim_db_bind_path(entry_path);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
+#ifndef TEST_WINAGENT
     expect_fim_db_get_paths_from_inode(NULL);
+#else
+    expect_fim_db_check_transaction();
+#endif
 
     syscheck.opts[config_directory] |= CHECK_SEECHANGES;
 
     expect_fim_diff_delete_compress_folder(&dir);
 
+#ifndef TEST_WINAGENT
     expect_string(__wrap__mdebug2, formatted_msg, "(6220): Sending delete message for file: '/etc/some/path'");
+#else
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "(6220): Sending delete message for file: 'c:\\windows\\system32\\windowspowershell\\v1.0'");
+#endif
 
     expect_send_syscheck_msg(NULL);
 
@@ -596,14 +637,19 @@ void test_fim_db_remove_path_one_entry_alert_success_with_seechanges(void **stat
 
 void test_fim_db_remove_path_multiple_entry(void **state) {
     fim_file_data data = DEFAULT_FILE_DATA;
-    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = "/etc/some/path", .file_entry.data = &data };
+#ifndef TEST_WINAGENT
+    char *entry_path = "/etc/some/path";
+#else
+    char *entry_path = "c:\\windows\\system32\\windowspowershell\\v1.0";
+#endif
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
     fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
 
     for (int i = 0; i < 3; i++) {
         expect_fim_db_clean_stmt();
     }
 
-    expect_fim_db_bind_path("/etc/some/path");
+    expect_fim_db_bind_path(entry_path);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
@@ -613,7 +659,7 @@ void test_fim_db_remove_path_multiple_entry(void **state) {
     expect_value(__wrap_sqlite3_column_int, iCol, 1);
     will_return(__wrap_sqlite3_column_int, 1);
 
-    expect_fim_db_bind_path("/etc/some/path");
+    expect_fim_db_bind_path(entry_path);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -628,14 +674,19 @@ void test_fim_db_remove_path_multiple_entry(void **state) {
 
 void test_fim_db_remove_path_multiple_entry_step_fail(void **state) {
     fim_file_data data = DEFAULT_FILE_DATA;
-    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = "/etc/some/path", .file_entry.data = &data };
+#ifndef TEST_WINAGENT
+    char *entry_path = "/etc/some/path";
+#else
+    char *entry_path = "c:\\windows\\system32\\windowspowershell\\v1.0";
+#endif
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
     fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
 
     for (int i = 0; i < 3; i++) {
         expect_fim_db_clean_stmt();
     }
 
-    expect_fim_db_bind_path("/etc/some/path");
+    expect_fim_db_bind_path(entry_path);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
@@ -645,7 +696,7 @@ void test_fim_db_remove_path_multiple_entry_step_fail(void **state) {
     expect_value(__wrap_sqlite3_column_int, iCol, 1);
     will_return(__wrap_sqlite3_column_int, 1);
 
-    expect_fim_db_bind_path("/etc/some/path");
+    expect_fim_db_bind_path(entry_path);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
@@ -660,14 +711,19 @@ void test_fim_db_remove_path_multiple_entry_step_fail(void **state) {
 
 void test_fim_db_remove_path_failed_path(void **state) {
     fim_file_data data = DEFAULT_FILE_DATA;
-    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = "/etc/some/path", .file_entry.data = &data };
+#ifndef TEST_WINAGENT
+    char *entry_path = "/etc/some/path";
+#else
+    char *entry_path = "c:\\windows\\system32\\windowspowershell\\v1.0";
+#endif
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
     fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
 
     for (int i = 0; i < 3; i++) {
         expect_fim_db_clean_stmt();
     }
 
-    expect_fim_db_bind_path("/etc/some/path");
+    expect_fim_db_bind_path(entry_path);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
@@ -695,14 +751,19 @@ void test_fim_db_remove_path_no_configuration_file(void **state) {
 
 void test_fim_db_remove_path_no_entry_realtime_file(void **state) {
     fim_file_data data = DEFAULT_FILE_DATA;
-    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = "/media/some/path", .file_entry.data = &data };
+#ifndef TEST_WINAGENT
+    char *entry_path = "/media/some/path";
+#else
+    char *entry_path = "c:\\windows\\system32\\wbem\\some\\path";
+#endif
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
     fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
 
     for (int i = 0; i < 3; i++) {
         expect_fim_db_clean_stmt();
     }
 
-    expect_fim_db_bind_path("/media/some/path");
+    expect_fim_db_bind_path(entry_path);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
@@ -722,14 +783,19 @@ void test_fim_db_remove_path_no_entry_realtime_file(void **state) {
 
 void test_fim_db_remove_path_no_entry_scheduled_file(void **state) {
     fim_file_data data = DEFAULT_FILE_DATA;
-    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = "/root/some/path", .file_entry.data = &data };
+#ifndef TEST_WINAGENT
+    char *entry_path = "/media/some/path";
+#else
+    char *entry_path = "c:\\windows\\sysnative\\drivers\\etc\\some\\path";
+#endif
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
     fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
 
     for (int i = 0; i < 3; i++) {
         expect_fim_db_clean_stmt();
     }
 
-    expect_fim_db_bind_path("/root/some/path");
+    expect_fim_db_bind_path(entry_path);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
@@ -832,7 +898,7 @@ void test_fim_db_get_not_scanned_failed(void **state) {
     will_return(__wrap_os_random, 2345);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_fopen, path, "tmp/tmp_19283746523452345");
+    expect_string(__wrap_fopen, path, ".\\tmp_19283746523452345");
 #else
     expect_string(__wrap_fopen, path, "./tmp_19283746523452345");
 #endif
@@ -842,7 +908,7 @@ void test_fim_db_get_not_scanned_failed(void **state) {
 #ifndef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage './tmp_19283746523452345': Success (0)");
 #else
-    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage 'tmp/tmp_19283746523452345': Success (0)");
+    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage '.\\tmp_19283746523452345': Success (0)");
 #endif
 
     int ret = fim_db_get_not_scanned(test_data->fim_sql, &file, syscheck.database_store);
@@ -857,7 +923,7 @@ void test_fim_db_get_not_scanned_success(void **state) {
     will_return(__wrap_os_random, 2345);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_fopen, path, "tmp/tmp_19283746523452345");
+    expect_string(__wrap_fopen, path, ".\\tmp_19283746523452345");
 #else
     expect_string(__wrap_fopen, path, "./tmp_19283746523452345");
 #endif
@@ -872,7 +938,7 @@ void test_fim_db_get_not_scanned_success(void **state) {
 #ifndef TEST_WINAGENT
     expect_string(__wrap_remove, filename, "./tmp_19283746523452345");
 #else
-    expect_string(__wrap_remove, filename, "tmp/tmp_19283746523452345");
+    expect_string(__wrap_remove, filename, ".\\tmp_19283746523452345");
 #endif
 
     expect_value(__wrap_fclose, _File, 1);
@@ -891,9 +957,11 @@ void test_fim_db_get_paths_from_inode_none_path(void **state) {
     expect_any_always(__wrap_sqlite3_bind_int, index);
     expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+#ifndef TEST_WINAGENT
     expect_any_always(__wrap_sqlite3_bind_int64, index);
     expect_any_always(__wrap_sqlite3_bind_int64, value);
     will_return_always(__wrap_sqlite3_bind_int64, 0);
+#endif
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     expect_fim_db_check_transaction();
@@ -910,9 +978,11 @@ void test_fim_db_get_paths_from_inode_single_path(void **state) {
     expect_any_always(__wrap_sqlite3_bind_int, index);
     expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+#ifndef TEST_WINAGENT
     expect_any_always(__wrap_sqlite3_bind_int64, index);
     expect_any_always(__wrap_sqlite3_bind_int64, value);
     will_return_always(__wrap_sqlite3_bind_int64, 0);
+#endif
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
@@ -938,9 +1008,11 @@ void test_fim_db_get_paths_from_inode_multiple_path(void **state) {
     expect_any_always(__wrap_sqlite3_bind_int, index);
     expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+#ifndef TEST_WINAGENT
     expect_any_always(__wrap_sqlite3_bind_int64, index);
     expect_any_always(__wrap_sqlite3_bind_int64, value);
     will_return_always(__wrap_sqlite3_bind_int64, 0);
+#endif
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
@@ -978,9 +1050,11 @@ void test_fim_db_get_paths_from_inode_multiple_unamatched_rows(void **state) {
     expect_any_always(__wrap_sqlite3_bind_int, index);
     expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+#ifndef TEST_WINAGENT
     expect_any_always(__wrap_sqlite3_bind_int64, index);
     expect_any_always(__wrap_sqlite3_bind_int64, value);
     will_return_always(__wrap_sqlite3_bind_int64, 0);
+#endif
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
