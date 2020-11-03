@@ -42,6 +42,7 @@ static const char *task_statuses_map[] = {
     [WM_UPGRADE_FAILED] = WM_TASK_STATUS_FAILED
 };
 
+// CA certificates
 char **wcom_ca_store = NULL;
 
 /**
@@ -72,18 +73,18 @@ STATIC bool wm_upgrade_agent_search_upgrade_result(int *queue_fd);
 /**
  * Listen to the upgrade socket in order to receive commands
  * */
-STATIC void wm_agent_upgrade_listen_messages();
+STATIC void* wm_agent_upgrade_listen_messages(__attribute__((unused)) void *arg);
 
 void wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config) {
-    wm_agent_upgrade_check_status(agent_config);
     #ifndef WIN32
-        wm_agent_upgrade_listen_messages();
+        w_create_thread(wm_agent_upgrade_listen_messages, NULL);
     #endif
+    wm_agent_upgrade_check_status(agent_config);
 }
 
 #ifndef WIN32
 
-STATIC void wm_agent_upgrade_listen_messages() {
+STATIC void* wm_agent_upgrade_listen_messages(__attribute__((unused)) void *arg) {
     // Initialize socket
     char sockname[PATH_MAX + 1];
     if (isChroot()) {
@@ -95,7 +96,7 @@ STATIC void wm_agent_upgrade_listen_messages() {
     int sock = OS_BindUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR);
     if (sock < 0) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_BIND_SOCK_ERROR, AGENT_UPGRADE_SOCK, strerror(errno));
-        return;
+        return NULL;
     }
 
     while(1) {
@@ -109,7 +110,7 @@ STATIC void wm_agent_upgrade_listen_messages() {
             if (errno != EINTR) {
                 mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_SELECT_ERROR, strerror(errno));
                 close(sock);
-                return;
+                return NULL;
             }
             continue;
         case 0:
@@ -145,6 +146,7 @@ STATIC void wm_agent_upgrade_listen_messages() {
             char* message = NULL;
             size_t length = wm_agent_upgrade_process_command(buffer, &message);
 
+            mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_RESPONSE_MESSAGE, message);
             OS_SendSecureTCP(peer, length, message);
             break;
         }
@@ -157,6 +159,8 @@ STATIC void wm_agent_upgrade_listen_messages() {
     }
 
     close(sock);
+
+    return NULL;
 }
 
 #endif

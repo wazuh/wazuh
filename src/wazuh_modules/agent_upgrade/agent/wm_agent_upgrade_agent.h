@@ -26,6 +26,8 @@ typedef enum _wm_upgrade_agent_state {
     WM_UPGRADE_MAX_STATE
 } wm_upgrade_agent_state;
 
+extern char **wcom_ca_store;
+
 /**
  * Start main loop of the upgrade module for the agent
  * @param agent_config Agent configuration parameters
@@ -39,7 +41,5 @@ void wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config) _
  * @param agent_config Agent configuration parameters
  * */
 void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config) __attribute__((nonnull));
-
-extern char **wcom_ca_store;
 
 #endif

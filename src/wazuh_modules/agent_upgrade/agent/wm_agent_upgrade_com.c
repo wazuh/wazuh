@@ -32,6 +32,7 @@ STATIC struct {
 
 typedef enum _command_error_codes {
     ERROR_OK = 0,
+    ERROR_UPGRADES_NOT_ALLOWED,
     ERROR_UNKNOWN_COMMAND,
     ERROR_PARAMETERS_NOT_FOUND,
     ERROR_UNSOPPORTED_MODE,
@@ -54,6 +55,7 @@ typedef enum _command_error_codes {
 
 STATIC const char * error_messages[] = {
     [ERROR_OK] = "ok",
+    [ERROR_UPGRADES_NOT_ALLOWED] = "Upgrade module is not ready yet",
     [ERROR_UNKNOWN_COMMAND] = "Command not found",
     [ERROR_PARAMETERS_NOT_FOUND] = "Required parameters were not found",
     [ERROR_UNSOPPORTED_MODE] = "Unsupported file mode",
@@ -73,6 +75,9 @@ STATIC const char * error_messages[] = {
     [ERROR_EXEC] = "Error executing command",
     [ERROR_CLEAR_UPGRADE_FILE] = "Could not erase upgrade_result file"
 };
+
+// Variable used to allow new upgrades after confirming the result of the previous upgrade
+bool allow_upgrades = false;
 
 /**
  * Format message into the response format
@@ -158,7 +163,7 @@ size_t wm_agent_upgrade_process_command(const char *buffer, char **output) {
 
             if (strcmp(command, "clear_upgrade_result") == 0) {
                 os_strdup(wm_agent_upgrade_com_clear_result(), *output);
-            } else {
+            } else if (allow_upgrades) {
                 const cJSON *parameters = cJSON_GetObjectItem(buffer_obj, task_manager_json_keys[WM_TASK_PARAMETERS]);
                 if (!parameters) {
                     os_strdup(wm_agent_upgrade_command_ack(ERROR_PARAMETERS_NOT_FOUND, error_messages[ERROR_PARAMETERS_NOT_FOUND]), *output);
@@ -173,6 +178,8 @@ size_t wm_agent_upgrade_process_command(const char *buffer, char **output) {
                 } else if(strcmp(command, "upgrade") == 0) {
                     os_strdup(wm_agent_upgrade_com_upgrade(parameters), *output);
                 }
+            } else {
+                os_strdup(wm_agent_upgrade_command_ack(ERROR_UPGRADES_NOT_ALLOWED, error_messages[ERROR_UPGRADES_NOT_ALLOWED]), *output);
             }
         }
 
@@ -388,6 +395,7 @@ STATIC char * wm_agent_upgrade_com_clear_result() {
     const char * PATH = UPGRADE_DIR "\\upgrade_result";
 #endif
     if (remove(PATH) == 0) {
+        allow_upgrades = true;
         return wm_agent_upgrade_command_ack(ERROR_OK, error_messages[ERROR_OK]);
     } else {
         mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_ERASE_FILE_ERROR, "clear_upgrade_result", PATH);
