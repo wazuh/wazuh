@@ -51,6 +51,7 @@ fim_entry *__wrap_fim_db_get_path(fdb_t *fim_sql,
                                   const char *file_path);
 
 int __wrap_fim_db_get_path_range(fdb_t *fim_sql,
+                                 int type,
                                  char *start,
                                  char *top,
                                  fim_tmp_file **file,
