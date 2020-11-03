@@ -69,10 +69,14 @@ STATIC void wm_upgrade_agent_send_ack_message(int *queue_fd, wm_upgrade_agent_st
  * */
 STATIC bool wm_upgrade_agent_search_upgrade_result(int *queue_fd);
 
+#ifndef WIN32
+
 /**
  * Listen to the upgrade socket in order to receive commands
  * */
 STATIC void* wm_agent_upgrade_listen_messages(__attribute__((unused)) void *arg);
+
+#endif
 
 void wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config) {
     #ifndef WIN32
