@@ -3826,6 +3826,7 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/AgentID'
+        maxItems: 100
     agents_list_delete:
       in: query
       name: agents_list
@@ -5767,12 +5768,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "Upgrade procedure started"
+                data:
+                  affected_items:
+                    - agent: "001"
+                    task_id: 1
+                    - agent: "002"
+                    task_id: 2
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: [ ]
+                  message: "All upgrade tasks have been created"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -5801,12 +5813,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "Installation started"
+                data:
+                  affected_items:
+                    - agent: "005"
+                    task_id: 3
+                    - agent: "006"
+                    task_id: 4
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: [ ]
+                  message: "All upgrade tasks have been created"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -5833,12 +5856,28 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: Agent was successfully upgraded
-                error: 0
+                data:
+                  affected_items:
+                    - message: "Success"
+                      agent: "001"
+                      task_id: 1
+                      node: "worker1"
+                      module: "upgrade_module"
+                      command: "upgrade"
+                      status: "Legacy upgrade: check the result manually since the agent cannot report the result of the task"
+                      create_time: "2020/11/03 15:59:32"
+                      update_time: "2020/11/03 16:01:55"
+                    total_affected_items: 1
+                    total_failed_items: 0
+                    failed_items: [ ]
+                  message: "All agents have been updated"
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
