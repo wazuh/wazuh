@@ -1179,7 +1179,7 @@ def get_rbac_filters(system_resources=None, permitted_resources=None, filters=No
 
 
 def agents_padding(result, agent_list):
-    """This function remove agent 000 from agent_list and
+    """Remove agent 000 from agent_list and transform the format of the agent ids to the general format
     it transforms the format of the agent ids to the general format
 
     Parameters
