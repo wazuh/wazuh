@@ -4,7 +4,6 @@ import re
 import shutil
 import subprocess
 import time
-import uuid
 from base64 import b64encode
 
 import pytest
