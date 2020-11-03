@@ -31,6 +31,7 @@ static const char *global_db_agent_fields[] = {
     ":os_version",
     ":version",
     ":last_keepalive",
+    ":connection_status",
     ":id",
     NULL
 };
