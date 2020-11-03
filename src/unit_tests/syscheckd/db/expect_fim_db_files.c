@@ -95,3 +95,18 @@ void expect_fim_db_bind_path(const char *path) {
     expect_string(__wrap_sqlite3_bind_text, buffer, path);
     will_return(__wrap_sqlite3_bind_text, 0);
 }
+
+void expect_fim_db_get_paths_from_inode(char **paths) {
+    expect_fim_db_clean_stmt(/*FIMDB_STMT_GET_PATHS_INODE*/);
+    expect_fim_db_clean_stmt(/*FIMDB_STMT_GET_PATHS_INODE_COUNT*/);
+
+    expect_fim_db_bind_get_inode();
+
+    will_return(__wrap_sqlite3_step, 0);
+    if (paths == NULL) {
+        will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    } else {
+        // TODO: Get length of paths by scanning to the final NULL, add sqlite3_column_text will_returns for each string
+    }
+    expect_fim_db_check_transaction();
+}

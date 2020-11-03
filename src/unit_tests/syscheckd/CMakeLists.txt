@@ -61,7 +61,10 @@ include_directories((${SRC_FOLDER}/unit_tests))
 include_directories((${SRC_FOLDER}/unit_tests/syscheckd))
 include_directories((${SRC_FOLDER}/config))
 
-add_library(fim_shared STATIC db/expect_fim_db.c db/expect_fim_db_files.c)
+add_library(fim_shared STATIC expect_run_check.c
+                              expect_fim_diff_changes.c
+                              db/expect_fim_db.c
+                              db/expect_fim_db_files.c)
 
 set_target_properties(fim_shared PROPERTIES LINKER_LANGUAGE C )
 

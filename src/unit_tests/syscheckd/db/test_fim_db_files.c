@@ -33,66 +33,46 @@
 #include "db/fim_db_files.h"
 #include "config/syscheck-config.h"
 
-/**********************************************************************************************************************\
- * Auxiliar expect functions
-\**********************************************************************************************************************/
-static void expect_fim_db_insert_path_success() {
-    will_return(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    will_return_count(__wrap_sqlite3_bind_int, 0, 6);
-    will_return_count(__wrap_sqlite3_bind_text, 0, 2);
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-}
+#include "test_fim_db.h"
 
-static void expect_fim_db_insert_data_success(int row_id) {
-    if (row_id == 0) {
-        expect_any(__wrap_sqlite3_bind_int64, index);
-        expect_any(__wrap_sqlite3_bind_int64, value);
-        will_return(__wrap_sqlite3_bind_int64, 0);
+static const fim_file_data DEFAULT_FILE_DATA = {
+    // Checksum attributes
+    .size = 0,
+    .perm = "rw-rw-r--",
+    .attributes = NULL,
+    .uid = "1000",
+    .gid = "1000",
+    .user_name = "root",
+    .group_name = "root",
+    .mtime = 123456789,
+    .inode = 1,
+    .hash_md5 = "0123456789abcdef0123456789abcdef",
+    .hash_sha1 = "0123456789abcdef0123456789abcdef01234567",
+    .hash_sha256 = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+
+    // Options
+    .mode = FIM_REALTIME,
+    .last_event = 0,
+    .dev = 100,
+    .scanned = 0,
+    .options = (CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE | CHECK_MD5SUM |
+                CHECK_SHA1SUM | CHECK_SHA256SUM),
+    .checksum = "0123456789abcdef0123456789abcdef01234567",
+};
+
+#ifndef TEST_WINAGENT
+extern unsigned long __real_time();
+unsigned long __wrap_time() {
+    if (test_mode) {
+        return 192837465;
     }
-
-    will_return(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    will_return_count(__wrap_sqlite3_bind_int, 0, 3);
-    will_return_count(__wrap_sqlite3_bind_text, 0, 9);
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-    if (row_id == 0) {
-        will_return(__wrap_sqlite3_last_insert_rowid, 1);
-    }
+    return __real_time();
 }
+#endif
 
 /**********************************************************************************************************************\
  * Setup and teardown functions
 \**********************************************************************************************************************/
-static int setup_group(void **state) {
-    expect_any_always(__wrap__mdebug1, formatted_msg);
-
-#ifdef TEST_AGENT
-    will_return_always(__wrap_isChroot, 1);
-#endif
-
-    Read_Syscheck_Config("../test_syscheck2.conf");
-
-    syscheck.database_store = 0;    // disk
-    w_mutex_init(&syscheck.fim_entry_mutex, NULL);
-    test_mode = 1;
-
-#ifdef TEST_WINAGENT
-    time_mock_value = 192837465;
-#endif
-    return 0;
-}
-
-static int teardown_group(void **state) {
-    Free_Syscheck(&syscheck);
-    w_mutex_destroy(&syscheck.fim_entry_mutex);
-    test_mode = 0;
-    return 0;
-}
-
 static int teardown_fim_db(void **state) {
     test_fim_db_insert_data *test_data = *state;
     free(test_data->entry->file_entry.path);
@@ -132,37 +112,21 @@ static int test_fim_db_paths_teardown(void **state) {
     return 0;
 }
 
-/*----------fim_db_insert_data()---------------*/
+/**********************************************************************************************************************\
+ * fim_db_insert_data()
+\**********************************************************************************************************************/
 void test_fim_db_insert_data_no_rowid_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
+    int row_id = 0;
 
-    // Inside fim_db_clean_stmt
-    {
-        will_return(__wrap_sqlite3_reset, SQLITE_OK);
-        will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    }
-
-    //Inside fim_db_bind_insert_data
-    {
-        expect_any_always(__wrap_sqlite3_bind_int, index);
-        expect_any_always(__wrap_sqlite3_bind_int, value);
-        will_return_always(__wrap_sqlite3_bind_int, 0);
-#ifndef TEST_WINAGENT
-        expect_any_always(__wrap_sqlite3_bind_int64, index);
-        expect_any_always(__wrap_sqlite3_bind_int64, value);
-        will_return_always(__wrap_sqlite3_bind_int64, 0);
-#endif
-        expect_any_always(__wrap_sqlite3_bind_text, pos);
-        expect_any_always(__wrap_sqlite3_bind_text, buffer);
-        will_return_always(__wrap_sqlite3_bind_text, 0);
-    }
+    expect_fim_db_clean_stmt();
+    expect_fim_db_bind_insert_data(3);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "Step error inserting data row_id '0': ERROR MESSAGE");
 
-    int row_id = 0;
     int ret = fim_db_insert_data(test_data->fim_sql, test_data->entry->file_entry.data, &row_id);
 
     assert_int_equal(row_id, 0);
@@ -172,26 +136,8 @@ void test_fim_db_insert_data_no_rowid_error(void **state) {
 void test_fim_db_insert_data_no_rowid_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
 
-    // Inside fim_db_clean_stmt
-    {
-        will_return(__wrap_sqlite3_reset, SQLITE_OK);
-        will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    }
-
-    //Inside fim_db_bind_insert_data
-    {
-        expect_any_always(__wrap_sqlite3_bind_int, index);
-        expect_any_always(__wrap_sqlite3_bind_int, value);
-        will_return_always(__wrap_sqlite3_bind_int, 0);
-#ifndef TEST_WINAGENT
-        expect_any_always(__wrap_sqlite3_bind_int64, index);
-        expect_any_always(__wrap_sqlite3_bind_int64, value);
-        will_return_always(__wrap_sqlite3_bind_int64, 0);
-#endif
-        expect_any_always(__wrap_sqlite3_bind_text, pos);
-        expect_any_always(__wrap_sqlite3_bind_text, buffer);
-        will_return_always(__wrap_sqlite3_bind_text, 0);
-    }
+    expect_fim_db_clean_stmt();
+    expect_fim_db_bind_insert_data(3);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -206,14 +152,10 @@ void test_fim_db_insert_data_no_rowid_success(void **state) {
 
 void test_fim_db_insert_data_rowid_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
-    will_return(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    expect_any_always(__wrap_sqlite3_bind_int, index);
-    expect_any_always(__wrap_sqlite3_bind_int, value);
-    will_return_always(__wrap_sqlite3_bind_int, 0);
-    expect_any_always(__wrap_sqlite3_bind_text, pos);
-    expect_any_always(__wrap_sqlite3_bind_text, buffer);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
+
+    expect_fim_db_clean_stmt();
+    expect_fim_db_bind_update_data(3);
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
@@ -227,87 +169,77 @@ void test_fim_db_insert_data_rowid_error(void **state) {
 
 void test_fim_db_insert_data_rowid_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
-    will_return(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    expect_any_always(__wrap_sqlite3_bind_int, index);
-    expect_any_always(__wrap_sqlite3_bind_int, value);
-    will_return_always(__wrap_sqlite3_bind_int, 0);
-    expect_any_always(__wrap_sqlite3_bind_text, pos);
-    expect_any_always(__wrap_sqlite3_bind_text, buffer);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
     int ret;
     int row_id = 1;
+
+    expect_fim_db_clean_stmt();
+    expect_fim_db_bind_update_data(3);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
     ret = fim_db_insert_data(test_data->fim_sql, test_data->entry->file_entry.data, &row_id);
+
     assert_int_equal(row_id, 1);
     assert_int_equal(ret, FIMDB_OK);
 }
-/*-----------------------------------------*/
-/*----------fim_db_insert_path()---------------*/
+
+/**********************************************************************************************************************\
+ * fim_db_insert_path()
+\**********************************************************************************************************************/
 void test_fim_db_insert_path_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
-    will_return(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    expect_any_always(__wrap_sqlite3_bind_int, index);
-    expect_any_always(__wrap_sqlite3_bind_int, value);
-    will_return_count(__wrap_sqlite3_bind_int, 0, 6);
-    expect_any_always(__wrap_sqlite3_bind_text, pos);
-    expect_any_always(__wrap_sqlite3_bind_text, buffer);
-    will_return_count(__wrap_sqlite3_bind_text, 0, 2);
+    int ret;
+
+    expect_fim_db_clean_stmt();
+    expect_fim_db_bind_replace_path(2);
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
     expect_string(__wrap__merror, formatted_msg, "Step error replacing path '/test/path': ERROR MESSAGE");
-    int ret;
+
     ret = fim_db_insert_path(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data, 1);
+
     assert_int_equal(ret, FIMDB_ERR);
 }
 
 
 void test_fim_db_insert_path_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
-    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    expect_any_always(__wrap_sqlite3_bind_int, index);
-    expect_any_always(__wrap_sqlite3_bind_int, value);
-    will_return_count(__wrap_sqlite3_bind_int, 0, 6);
-    expect_any_always(__wrap_sqlite3_bind_text, pos);
-    expect_any_always(__wrap_sqlite3_bind_text, buffer);
-    will_return_count(__wrap_sqlite3_bind_text, 0, 2);
+    int ret;
+
+    expect_fim_db_clean_stmt();
+    expect_fim_db_bind_replace_path(2);
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
-    int ret;
+
     ret = fim_db_insert_path(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data, 1);
+
     assert_int_equal(ret, FIMDB_OK);
 }
 
-/*-----------------------------------------*/
-/*----------fim_db_insert()----------------*/
-
+/**********************************************************************************************************************\
+ * fim_db_insert()
+\**********************************************************************************************************************/
 void test_fim_db_insert_db_full(void **state) {
     test_fim_db_insert_data *test_data = *state;
     int ret;
 
-    // Inside fim_db_get_count_file_entry
-    {
-        // Inside fim_db_clean_stmt
-        {
-            will_return(__wrap_sqlite3_reset, SQLITE_OK);
-            will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-        }
-    will_return(__wrap_sqlite3_step, 0);
-        will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_fim_db_get_count_entries(50000);
 
-        expect_value(__wrap_sqlite3_column_int, iCol, 0);
-        will_return(__wrap_sqlite3_column_int, 50000);
-    }
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Couldn't insert '/test/path' entry into DB. The DB is full, please check your configuration.");
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Couldn't insert '/test/path' entry into DB. The DB is full, please check your configuration.");
 
     syscheck.database = test_data->fim_sql;
+
     ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data, NULL);
+
     syscheck.database = NULL;
+
     assert_int_equal(ret, FIMDB_FULL);
 }
 
@@ -316,22 +248,8 @@ void test_fim_db_insert_inode_id_nonull(void **state) {
     test_fim_db_insert_data *test_data = *state;
     int ret;
 
-    // Inside fim_db_clean_stmt
-    {
-        will_return(__wrap_sqlite3_reset, SQLITE_OK);
-        will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    }
-
-    // Inside fim_db_bind_path
-    {
-        expect_any_always(__wrap_sqlite3_bind_int, index);
-        expect_any_always(__wrap_sqlite3_bind_int, value);
-        will_return(__wrap_sqlite3_bind_int, 0);
-
-        expect_any_always(__wrap_sqlite3_bind_text, pos);
-        expect_any_always(__wrap_sqlite3_bind_text, buffer);
-        will_return(__wrap_sqlite3_bind_text, 0);
-    }
+    expect_fim_db_clean_stmt();
+    expect_fim_db_bind_path("/test/path");
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -342,75 +260,39 @@ void test_fim_db_insert_inode_id_nonull(void **state) {
     expect_value(__wrap_sqlite3_column_int, iCol, 1);
     will_return(__wrap_sqlite3_column_int, 1);
 
-    // Inside fim_db_clean_stmt
-    {
-        will_return(__wrap_sqlite3_reset, SQLITE_OK);
-        will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    }
-
-    // Inside fim_db_bind_delete_data_id
-    {
-        will_return(__wrap_sqlite3_bind_int, 0);
-    }
+    expect_fim_db_clean_stmt();
+    expect_fim_db_bind_delete_data_id(1);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
-    // Inside fim_db_force_commit
-    {
-        wraps_fim_db_check_transaction();
-    }
+    expect_fim_db_force_commit();
 
-    // Inside fim_db_clean_stmt
-    {
-        will_return(__wrap_sqlite3_reset, SQLITE_OK);
-        will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    }
+    expect_fim_db_clean_stmt();
 
-    // Inside fim_db_bind_get_inode
-    {
-        expect_any(__wrap_sqlite3_bind_int64, index);
-        expect_any(__wrap_sqlite3_bind_int64, value);
-        will_return(__wrap_sqlite3_bind_int64, 0);
-    }
+    expect_fim_db_bind_get_inode();
 
     will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
-    will_return(__wrap_sqlite3_column_int, 1);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
     // Wrap functions for fim_db_insert_data() & fim_db_insert_path()
-    int inode_id = 1;
-    expect_fim_db_insert_data_success(inode_id);
+    expect_fim_db_insert_data_success(0);
     expect_fim_db_insert_path_success();
 
-    wraps_fim_db_check_transaction();
+    expect_fim_db_check_transaction();
 
     ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data, test_data->saved);
+
     assert_int_equal(ret, FIMDB_OK);   // Success
+    assert_int_equal(test_data->fim_sql->transaction.last_commit, 192837465);
 }
 
 void test_fim_db_insert_inode_id_null(void **state) {
     test_fim_db_insert_data *test_data = *state;
     int ret;
 
-    // Inside fim_db_clean_stmt
-    {
-        will_return(__wrap_sqlite3_reset, SQLITE_OK);
-        will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    }
-
-    // Inside fim_db_bind_path
-    {
-        expect_any_always(__wrap_sqlite3_bind_int, index);
-        expect_any_always(__wrap_sqlite3_bind_int, value);
-        will_return(__wrap_sqlite3_bind_int, 0);
-
-        expect_any_always(__wrap_sqlite3_bind_text, pos);
-        expect_any_always(__wrap_sqlite3_bind_text, buffer);
-        will_return(__wrap_sqlite3_bind_text, 0);
-    }
+    expect_fim_db_clean_stmt();
+    expect_fim_db_bind_path("/test/path");
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -427,31 +309,16 @@ void test_fim_db_insert_inode_id_null(void **state) {
         will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     }
 
-    // Inside fim_db_bind_delete_data_id
-    {
-        will_return(__wrap_sqlite3_bind_int, 0);
-    }
+    expect_fim_db_bind_delete_data_id(0);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
-    // Inside fim_db_force_commit
-    {
-        wraps_fim_db_check_transaction();
-    }
+    expect_fim_db_force_commit();
 
-    // Inside fim_db_clean_stmt
-    {
-        will_return(__wrap_sqlite3_reset, SQLITE_OK);
-        will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    }
+    expect_fim_db_clean_stmt();
 
-    // Inside fim_db_bind_get_inode
-    {
-        expect_any(__wrap_sqlite3_bind_int64, index);
-        expect_any(__wrap_sqlite3_bind_int64, value);
-        will_return(__wrap_sqlite3_bind_int64, 0);
-    }
+    expect_fim_db_bind_get_inode();
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -461,7 +328,7 @@ void test_fim_db_insert_inode_id_null(void **state) {
     expect_fim_db_insert_data_success(inode_id);
     expect_fim_db_insert_path_success();
 
-    wraps_fim_db_check_transaction();
+    expect_fim_db_check_transaction();
 
     ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data, test_data->saved);
     assert_int_equal(ret, FIMDB_OK);   // Success
@@ -472,22 +339,9 @@ void test_fim_db_insert_inode_id_null_error(void **state) {
     int ret;
     test_data->entry->file_entry.data->inode = 100;
 
-    // Inside fim_db_clean_stmt
-    {
-        will_return(__wrap_sqlite3_reset, SQLITE_OK);
-        will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    }
+    expect_fim_db_clean_stmt();
 
-    // Inside fim_db_bind_get_inode
-    {
-        expect_any_always(__wrap_sqlite3_bind_int, index);
-        expect_any_always(__wrap_sqlite3_bind_int, value);
-        will_return(__wrap_sqlite3_bind_int, 0);
-
-        expect_any(__wrap_sqlite3_bind_int64, index);
-        expect_any(__wrap_sqlite3_bind_int64, value);
-        will_return(__wrap_sqlite3_bind_int64, 0);
-    }
+    expect_fim_db_bind_get_inode();
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
@@ -501,444 +355,367 @@ void test_fim_db_insert_inode_id_null_error(void **state) {
 
 #endif
 
-/*----------fim_db_remove_path------------------*/
+/**********************************************************************************************************************\
+ * fim_db_remove_path()
+\**********************************************************************************************************************/
 void test_fim_db_remove_path_no_entry(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 1);
-#else
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 9);
-#endif
-    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    expect_any_always(__wrap_sqlite3_bind_text, pos);
-    expect_any_always(__wrap_sqlite3_bind_text, buffer);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
+    fim_file_data data;
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = "/etc/some/path", .file_entry.data = &data };
+    fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
+
+    for (int i = 0; i < 3; i++) {
+        expect_fim_db_clean_stmt();
+    }
+    expect_fim_db_bind_path("/etc/some/path");
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, 0);
+
     expect_value(__wrap_sqlite3_column_int, iCol, 1);
-    will_return(__wrap_sqlite3_column_int, 1);
-    wraps_fim_db_check_transaction();
-    time_t last_commit =  test_data->fim_sql->transaction.last_commit;
-    fim_db_remove_path(test_data->fim_sql, test_data->entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_WHODATA, NULL);
+    will_return(__wrap_sqlite3_column_int, 0);
+
+    expect_fim_db_check_transaction();
+
+    fim_db_remove_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_WHODATA, NULL);
+
     // Last commit time should change
-    assert_int_not_equal(last_commit, test_data->fim_sql->transaction.last_commit);
+    assert_int_equal(fim_sql.transaction.last_commit, 192837465);
 }
 
 void test_fim_db_remove_path_one_entry(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 1);
-#else
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 9);
-#endif
-    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    expect_any_always(__wrap_sqlite3_bind_int, index);
-    expect_any_always(__wrap_sqlite3_bind_int, value);
-    will_return_always(__wrap_sqlite3_bind_int, 0);
-    expect_any_always(__wrap_sqlite3_bind_text, pos);
-    expect_any_always(__wrap_sqlite3_bind_text, buffer);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
+    fim_file_data data;
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = "/etc/some/path", .file_entry.data = &data };
+    fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
+
+    for (int i = 0; i < 3; i++) {
+        expect_fim_db_clean_stmt();
+    }
+
+    expect_fim_db_bind_path("/etc/some/path");
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, 1);
+
     expect_value(__wrap_sqlite3_column_int, iCol, 1);
     will_return(__wrap_sqlite3_column_int, 1);
+
+    expect_fim_db_bind_delete_data_id(1);
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    expect_fim_db_bind_path("/etc/some/path");
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
-    wraps_fim_db_check_transaction();
-    time_t last_commit =  test_data->fim_sql->transaction.last_commit;
-    fim_db_remove_path(test_data->fim_sql, test_data->entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_WHODATA, NULL);
+
+    expect_fim_db_check_transaction();
+
+    fim_db_remove_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, NULL, (void *)FIM_WHODATA, NULL);
+
     // Last commit time should change
-    assert_int_not_equal(last_commit, test_data->fim_sql->transaction.last_commit);
+    assert_int_equal(fim_sql.transaction.last_commit, 192837465);
 }
 
 void test_fim_db_remove_path_one_entry_step_fail(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 1);
-#else
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 9);
-#endif
-    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    expect_any_always(__wrap_sqlite3_bind_int, index);
-    expect_any_always(__wrap_sqlite3_bind_int, value);
-    will_return_always(__wrap_sqlite3_bind_int, 0);
-    expect_any_always(__wrap_sqlite3_bind_text, pos);
-    expect_any_always(__wrap_sqlite3_bind_text, buffer);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
+    fim_file_data data;
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = "/etc/some/path", .file_entry.data = &data };
+    fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
+
+    for (int i = 0; i < 3; i++) {
+        expect_fim_db_clean_stmt();
+    }
+
+    expect_fim_db_bind_path("/etc/some/path");
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, 1);
+
     expect_value(__wrap_sqlite3_column_int, iCol, 1);
     will_return(__wrap_sqlite3_column_int, 1);
+
+    expect_fim_db_bind_delete_data_id(1);
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
-    wraps_fim_db_check_transaction();
-    time_t last_commit =  test_data->fim_sql->transaction.last_commit;
-    fim_db_remove_path(test_data->fim_sql, test_data->entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_WHODATA, NULL);
+
+    expect_fim_db_check_transaction();
+
+    fim_db_remove_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, NULL, (void *)FIM_WHODATA, NULL);
+
     // Last commit time should change
-    assert_int_not_equal(last_commit, test_data->fim_sql->transaction.last_commit);
-}
-
-void test_fim_db_remove_path_one_entry_alert_fail(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-    cJSON * json = cJSON_CreateObject();
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 1);
-#else
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 9);
-#endif
-    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    expect_any_always(__wrap_sqlite3_bind_int, index);
-    expect_any_always(__wrap_sqlite3_bind_int, value);
-    will_return_always(__wrap_sqlite3_bind_int, 0);
-    expect_any_always(__wrap_sqlite3_bind_text, pos);
-    expect_any_always(__wrap_sqlite3_bind_text, buffer);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
-    will_return(__wrap_sqlite3_column_int, 1);
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
-    will_return(__wrap_sqlite3_column_int, 1);
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 1);
-#else
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 9);
-#endif
-    will_return(__wrap_fim_json_event, json);
-    expect_string(__wrap__mdebug2, formatted_msg, "(6220): Sending delete message for file: '/test/path'");
-    wraps_fim_db_check_transaction();
-    time_t last_commit =  test_data->fim_sql->transaction.last_commit;
-    int alert = 1;
-    fim_db_remove_path(test_data->fim_sql, test_data->entry, &syscheck.fim_entry_mutex, &alert, (void *) FIM_WHODATA, NULL);
-    // Last commit time should change
-    assert_int_not_equal(last_commit, test_data->fim_sql->transaction.last_commit);
-}
-
-void test_fim_db_remove_path_one_entry_alert_fail_invalid_pos(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 1);
-#else
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 9);
-#endif
-    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    expect_any_always(__wrap_sqlite3_bind_int, index);
-    expect_any_always(__wrap_sqlite3_bind_int, value);
-    will_return_always(__wrap_sqlite3_bind_int, 0);
-    expect_any_always(__wrap_sqlite3_bind_text, pos);
-    expect_any_always(__wrap_sqlite3_bind_text, buffer);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
-    will_return(__wrap_sqlite3_column_int, 1);
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
-    will_return(__wrap_sqlite3_column_int, 1);
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, -1);
-    wraps_fim_db_check_transaction();
-    time_t last_commit =  test_data->fim_sql->transaction.last_commit;
-    int alert = 1;
-    fim_db_remove_path(test_data->fim_sql, test_data->entry, &syscheck.fim_entry_mutex, &alert, (void *) FIM_WHODATA, NULL);
-    // Last commit time should change
-    assert_int_not_equal(last_commit, test_data->fim_sql->transaction.last_commit);
+    assert_int_equal(fim_sql.transaction.last_commit, 192837465);
 }
 
 void test_fim_db_remove_path_one_entry_alert_success(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 1);
-#else
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 9);
-#endif
-    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    expect_any_always(__wrap_sqlite3_bind_int, index);
-    expect_any_always(__wrap_sqlite3_bind_int, value);
-    will_return_always(__wrap_sqlite3_bind_int, 0);
-    expect_any_always(__wrap_sqlite3_bind_text, pos);
-    expect_any_always(__wrap_sqlite3_bind_text, buffer);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
+    fim_file_data data = DEFAULT_FILE_DATA;
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = "/etc/some/path", .file_entry.data = &data };
+    fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
+    int alert = 1;
+
+    syscheck.database = &fim_sql;
+
+    for (int i = 0; i < 3; i++) {
+        expect_fim_db_clean_stmt();
+    }
+
+    expect_fim_db_bind_path("/etc/some/path");
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, 1);
     expect_value(__wrap_sqlite3_column_int, iCol, 1);
     will_return(__wrap_sqlite3_column_int, 1);
+
+    expect_fim_db_bind_delete_data_id(1);
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    expect_fim_db_bind_path("/etc/some/path");
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_delete_target_file, path, test_data->entry->file_entry.path);
-    will_return(__wrap_delete_target_file, 0);
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 1);
-#else
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 9);
-#endif
-    cJSON * json = cJSON_CreateObject();
+    expect_fim_db_get_paths_from_inode(NULL);
 
-    will_return(__wrap_fim_json_event, json);
-    expect_string(__wrap__mdebug2, formatted_msg, "(6220): Sending delete message for file: '/test/path'");
-    wraps_fim_db_check_transaction();
+    expect_string(__wrap__mdebug2, formatted_msg, "(6220): Sending delete message for file: '/etc/some/path'");
 
-    time_t last_commit =  test_data->fim_sql->transaction.last_commit;
-    int alert = 1;
+    expect_send_syscheck_msg(NULL);
 
-    syscheck.opts[1] |= CHECK_SEECHANGES;
+    fim_db_remove_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, &alert, (void *)FIM_WHODATA, NULL);
 
-#ifndef TEST_WINAGENT
-    char *diff_path;
-
-    diff_path = (char *)malloc(sizeof(char) * (strlen("/var/ossec/queue/diff/local") +
-                                                strlen(test_data->entry->file_entry.path) + 1));
-
-    snprintf(diff_path, (strlen("/var/ossec/queue/diff/local") + strlen(test_data->entry->file_entry.path) + 1), "%s%s",
-                "/var/ossec/queue/diff/local", test_data->entry->file_entry.path);
-
-    expect_string(__wrap_IsDir, file, diff_path);
-    will_return(__wrap_IsDir, 0);
-
-    expect_string(__wrap_DirSize, path, diff_path);
-    will_return(__wrap_DirSize, 200);
-#endif
-
-    fim_db_remove_path(test_data->fim_sql, test_data->entry, &syscheck.fim_entry_mutex, &alert, (void *) FIM_WHODATA, NULL);
-
-    syscheck.opts[1] &= ~CHECK_SEECHANGES;
     // Last commit time should change
-    assert_int_not_equal(last_commit, test_data->fim_sql->transaction.last_commit);
+    assert_int_equal(fim_sql.transaction.last_commit, 192837465);
+}
 
-#ifndef TEST_WINAGENT
-    if (diff_path) {
-        free(diff_path);
+void test_fim_db_remove_path_one_entry_alert_success_with_seechanges(void **state) {
+    fim_file_data data = DEFAULT_FILE_DATA;
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = "/etc/some/path", .file_entry.data = &data };
+    fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
+    int alert = 1;
+    struct dirent dir = { .d_name = "mock_name" };
+    int config_directory = fim_configuration_directory("/etc/some/path", "file");
+
+    if (config_directory < 0) {
+        fail();
     }
-#endif
+
+    syscheck.database = &fim_sql;
+
+    for (int i = 0; i < 3; i++) {
+        expect_fim_db_clean_stmt();
+    }
+
+    expect_fim_db_bind_path("/etc/some/path");
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 1);
+    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    will_return(__wrap_sqlite3_column_int, 1);
+
+    expect_fim_db_bind_delete_data_id(1);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    expect_fim_db_bind_path("/etc/some/path");
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    expect_fim_db_get_paths_from_inode(NULL);
+
+    syscheck.opts[config_directory] |= CHECK_SEECHANGES;
+
+    expect_fim_diff_delete_compress_folder(&dir);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6220): Sending delete message for file: '/etc/some/path'");
+
+    expect_send_syscheck_msg(NULL);
+
+    fim_db_remove_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, &alert, (void *)FIM_WHODATA, NULL);
+
+    syscheck.opts[config_directory] &= ~CHECK_SEECHANGES;
+    // Last commit time should change
+    assert_int_equal(fim_sql.transaction.last_commit, 192837465);
 }
 
 void test_fim_db_remove_path_multiple_entry(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 1);
-#else
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 9);
-#endif
-    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    expect_any_always(__wrap_sqlite3_bind_text, pos);
-    expect_any_always(__wrap_sqlite3_bind_text, buffer);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
+    fim_file_data data = DEFAULT_FILE_DATA;
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = "/etc/some/path", .file_entry.data = &data };
+    fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
+
+    for (int i = 0; i < 3; i++) {
+        expect_fim_db_clean_stmt();
+    }
+
+    expect_fim_db_bind_path("/etc/some/path");
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, 5);
     expect_value(__wrap_sqlite3_column_int, iCol, 1);
     will_return(__wrap_sqlite3_column_int, 1);
+
+    expect_fim_db_bind_path("/etc/some/path");
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
-    wraps_fim_db_check_transaction();
-    time_t last_commit =  test_data->fim_sql->transaction.last_commit;
-    fim_db_remove_path(test_data->fim_sql, test_data->entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_WHODATA, NULL);
+
+    expect_fim_db_check_transaction();
+
+    fim_db_remove_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_WHODATA, NULL);
+
     // Last commit time should change
-    assert_int_not_equal(last_commit, test_data->fim_sql->transaction.last_commit);
+    assert_int_equal(fim_sql.transaction.last_commit, 192837465);
 }
 
 void test_fim_db_remove_path_multiple_entry_step_fail(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 1);
-#else
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 9);
-#endif
-    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    expect_any_always(__wrap_sqlite3_bind_text, pos);
-    expect_any_always(__wrap_sqlite3_bind_text, buffer);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
+    fim_file_data data = DEFAULT_FILE_DATA;
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = "/etc/some/path", .file_entry.data = &data };
+    fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
+
+    for (int i = 0; i < 3; i++) {
+        expect_fim_db_clean_stmt();
+    }
+
+    expect_fim_db_bind_path("/etc/some/path");
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, 5);
     expect_value(__wrap_sqlite3_column_int, iCol, 1);
     will_return(__wrap_sqlite3_column_int, 1);
+
+    expect_fim_db_bind_path("/etc/some/path");
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
-    wraps_fim_db_check_transaction();
-    time_t last_commit =  test_data->fim_sql->transaction.last_commit;
-    fim_db_remove_path(test_data->fim_sql, test_data->entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_WHODATA, NULL);
+
+    expect_fim_db_check_transaction();
+
+    fim_db_remove_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_WHODATA, NULL);
+
     // Last commit time should change
-    assert_int_not_equal(last_commit, test_data->fim_sql->transaction.last_commit);
+    assert_int_equal(fim_sql.transaction.last_commit, 192837465);
 }
 
 void test_fim_db_remove_path_failed_path(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 1);
-#else
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 9);
-#endif
-    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    expect_any_always(__wrap_sqlite3_bind_text, pos);
-    expect_any_always(__wrap_sqlite3_bind_text, buffer);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
+    fim_file_data data = DEFAULT_FILE_DATA;
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = "/etc/some/path", .file_entry.data = &data };
+    fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
+
+    for (int i = 0; i < 3; i++) {
+        expect_fim_db_clean_stmt();
+    }
+
+    expect_fim_db_bind_path("/etc/some/path");
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
-    expect_string(__wrap_sqlite3_exec, sql, "END;");
-    will_return(__wrap_sqlite3_exec, "ERROR MESSAGE");
-    will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
-    expect_string(__wrap__merror, formatted_msg, "Error executing simple query 'END;': ERROR MESSAGE");
-    time_t last_commit =  test_data->fim_sql->transaction.last_commit;
-    fim_db_remove_path(test_data->fim_sql, test_data->entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_WHODATA, NULL);
+
+    expect_fim_db_check_transaction();
+
+    fim_db_remove_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_WHODATA, NULL);
+
     // Last commit time should change
-    assert_int_equal(last_commit, test_data->fim_sql->transaction.last_commit);
+    assert_int_equal(fim_sql.transaction.last_commit, 192837465);
 }
 
 void test_fim_db_remove_path_no_configuration_file(void **state) {
-    test_fim_db_insert_data *test_data = *state;
+    fim_file_data data = DEFAULT_FILE_DATA;
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = "/non/configured/path", .file_entry.data = &data };
+    fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
 
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, -1);
-    expect_string(__wrap__mdebug2, formatted_msg, "(6339): Delete event from path without configuration: '/test/path'");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/non/configured/path'");
 
-    fim_db_remove_path(test_data->fim_sql, test_data->entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_REALTIME, NULL);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6339): Delete event from path without configuration: '/non/configured/path'");
+
+
+    fim_db_remove_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_WHODATA, NULL);
 }
 
 void test_fim_db_remove_path_no_entry_realtime_file(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 3);
-#else
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 7);
-#endif
-    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    expect_any_always(__wrap_sqlite3_bind_text, pos);
-    expect_any_always(__wrap_sqlite3_bind_text, buffer);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
+    fim_file_data data = DEFAULT_FILE_DATA;
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = "/media/some/path", .file_entry.data = &data };
+    fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
+
+    for (int i = 0; i < 3; i++) {
+        expect_fim_db_clean_stmt();
+    }
+
+    expect_fim_db_bind_path("/media/some/path");
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, 0);
     expect_value(__wrap_sqlite3_column_int, iCol, 1);
     will_return(__wrap_sqlite3_column_int, 1);
-    wraps_fim_db_check_transaction();
-    time_t last_commit =  test_data->fim_sql->transaction.last_commit;
-    fim_db_remove_path(test_data->fim_sql, test_data->entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_REALTIME, NULL);
+
+    expect_fim_db_check_transaction();
+
+    fim_db_remove_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_REALTIME, NULL);
+
     // Last commit time should change
-    assert_int_not_equal(last_commit, test_data->fim_sql->transaction.last_commit);
+    assert_int_equal(fim_sql.transaction.last_commit, 192837465);
 }
 
 void test_fim_db_remove_path_no_entry_scheduled_file(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 4);
-#else
-    expect_string(__wrap_fim_configuration_directory, path, "/test/path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 1);
-#endif
-    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    expect_any_always(__wrap_sqlite3_bind_text, pos);
-    expect_any_always(__wrap_sqlite3_bind_text, buffer);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
+    fim_file_data data = DEFAULT_FILE_DATA;
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = "/root/some/path", .file_entry.data = &data };
+    fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
+
+    for (int i = 0; i < 3; i++) {
+        expect_fim_db_clean_stmt();
+    }
+
+    expect_fim_db_bind_path("/root/some/path");
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, 0);
     expect_value(__wrap_sqlite3_column_int, iCol, 1);
     will_return(__wrap_sqlite3_column_int, 1);
-    wraps_fim_db_check_transaction();
-    time_t last_commit =  test_data->fim_sql->transaction.last_commit;
-    fim_db_remove_path(test_data->fim_sql, test_data->entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_SCHEDULED, NULL);
+
+    expect_fim_db_check_transaction();
+
+    fim_db_remove_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_SCHEDULED, NULL);
+
     // Last commit time should change
-    assert_int_not_equal(last_commit, test_data->fim_sql->transaction.last_commit);
+    assert_int_equal(fim_sql.transaction.last_commit, 192837465);
 }
 
 
 /*----------fim_db_get_path()------------------*/
 void test_fim_db_get_path_inexistent(void **state) {
     test_fim_db_insert_data *test_data = *state;
-    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+
+    expect_fim_db_clean_stmt();
+
+
     expect_any_always(__wrap_sqlite3_bind_text, pos);
     expect_any_always(__wrap_sqlite3_bind_text, buffer);
     will_return_always(__wrap_sqlite3_bind_text, 0);
@@ -958,7 +735,7 @@ void test_fim_db_get_path_existent(void **state) {
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    wraps_fim_db_decode_full_row();
+    expect_fim_db_decode_full_row();
     fim_entry *ret = fim_db_get_path(test_data->fim_sql, test_data->entry->file_entry.path);
     state[1] = ret;
     assert_non_null(ret);
@@ -990,20 +767,22 @@ void test_fim_db_set_all_unscanned_failed(void **state) {
     will_return(__wrap_sqlite3_exec, "ERROR MESSAGE");
     will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
     expect_string(__wrap__merror, formatted_msg, "Error executing simple query 'UPDATE file_entry SET scanned = 0;': ERROR MESSAGE");
-    wraps_fim_db_check_transaction();
+    expect_fim_db_check_transaction();
     int ret = fim_db_set_all_unscanned(test_data->fim_sql);
     assert_int_equal(ret, FIMDB_ERR);
 }
 
 void test_fim_db_set_all_unscanned_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
-    wraps_fim_db_exec_simple_wquery("UPDATE file_entry SET scanned = 0;");
-    wraps_fim_db_check_transaction();
+    expect_fim_db_exec_simple_wquery("UPDATE file_entry SET scanned = 0;");
+    expect_fim_db_check_transaction();
     int ret = fim_db_set_all_unscanned(test_data->fim_sql);
     assert_int_equal(ret, FIMDB_OK);
 }
 
-/*----------fim_db_get_not_scanned()------------------*/
+/**********************************************************************************************************************\
+ * fim_db_get_not_scanned()
+\**********************************************************************************************************************/
 void test_fim_db_get_not_scanned_failed(void **state) {
 
     test_fim_db_insert_data *test_data = *state;
@@ -1014,13 +793,13 @@ void test_fim_db_get_not_scanned_failed(void **state) {
 #ifdef TEST_WINAGENT
     expect_string(__wrap_fopen, path, "tmp/tmp_19283746523452345");
 #else
-    expect_string(__wrap_fopen, path, "/var/ossec/tmp/tmp_19283746523452345");
+    expect_string(__wrap_fopen, path, "./tmp_19283746523452345");
 #endif
 
     expect_string(__wrap_fopen, mode, "w+");
     will_return(__wrap_fopen, 0);
 #ifndef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage '/var/ossec/tmp/tmp_19283746523452345': Success (0)");
+    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage './tmp_19283746523452345': Success (0)");
 #else
     expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage 'tmp/tmp_19283746523452345': Success (0)");
 #endif
@@ -1039,7 +818,7 @@ void test_fim_db_get_not_scanned_success(void **state) {
 #ifdef TEST_WINAGENT
     expect_string(__wrap_fopen, path, "tmp/tmp_19283746523452345");
 #else
-    expect_string(__wrap_fopen, path, "/var/ossec/tmp/tmp_19283746523452345");
+    expect_string(__wrap_fopen, path, "./tmp_19283746523452345");
 #endif
 
     expect_string(__wrap_fopen, mode, "w+");
@@ -1047,10 +826,10 @@ void test_fim_db_get_not_scanned_success(void **state) {
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
-    wraps_fim_db_check_transaction();
+    expect_fim_db_check_transaction();
 
 #ifndef TEST_WINAGENT
-    expect_string(__wrap_remove, filename, "/var/ossec/tmp/tmp_19283746523452345");
+    expect_string(__wrap_remove, filename, "./tmp_19283746523452345");
 #else
     expect_string(__wrap_remove, filename, "tmp/tmp_19283746523452345");
 #endif
@@ -1076,7 +855,7 @@ void test_fim_db_get_paths_from_inode_none_path(void **state) {
     will_return_always(__wrap_sqlite3_bind_int64, 0);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
-    wraps_fim_db_check_transaction();
+    expect_fim_db_check_transaction();
     char **paths;
     paths = fim_db_get_paths_from_inode(test_data->fim_sql, 1, 1);
     state[1] = paths;
@@ -1103,7 +882,7 @@ void test_fim_db_get_paths_from_inode_single_path(void **state) {
     will_return(__wrap_sqlite3_column_text, "Path 1");
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
-    wraps_fim_db_check_transaction();
+    expect_fim_db_check_transaction();
     char **paths;
     paths = fim_db_get_paths_from_inode(test_data->fim_sql, 1, 1);
     state[1] = paths;
@@ -1137,7 +916,7 @@ void test_fim_db_get_paths_from_inode_multiple_path(void **state) {
     }
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
-    wraps_fim_db_check_transaction();
+    expect_fim_db_check_transaction();
     char **paths;
     paths = fim_db_get_paths_from_inode(test_data->fim_sql, 1, 1);
     state[1] = paths;
@@ -1178,7 +957,7 @@ void test_fim_db_get_paths_from_inode_multiple_unamatched_rows(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     expect_string(__wrap__minfo, formatted_msg, "The count returned is smaller than the actual elements. This shouldn't happen.");
-    wraps_fim_db_check_transaction();
+    expect_fim_db_check_transaction();
     char **paths;
     paths = fim_db_get_paths_from_inode(test_data->fim_sql, 1, 1);
     state[1] = paths;
@@ -1189,7 +968,9 @@ void test_fim_db_get_paths_from_inode_multiple_unamatched_rows(void **state) {
     assert_null(paths[5]);
 }
 
-/*----------fim_db_delete_range()------------------*/
+/**********************************************************************************************************************\
+ * fim_db_delete_range()
+\**********************************************************************************************************************/
 void test_fim_db_delete_range_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
     test_data->tmp_file->fd = (FILE*)2345;
@@ -1210,7 +991,7 @@ void test_fim_db_delete_range_success(void **state) {
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    wraps_fim_db_decode_full_row();
+    expect_fim_db_decode_full_row();
 
     // Inside fim_db_remove_path (callback)
     will_return(__wrap_sqlite3_step, 0);
@@ -1221,7 +1002,7 @@ void test_fim_db_delete_range_success(void **state) {
     will_return(__wrap_sqlite3_column_int, 1);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
-    wraps_fim_db_check_transaction();
+    expect_fim_db_check_transaction();
 
     expect_value(__wrap_fclose, _File, (FILE*)2345);
     will_return(__wrap_fclose, 1);
@@ -1254,12 +1035,12 @@ void test_fim_db_delete_range_error(void **state) {
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    wraps_fim_db_decode_full_row();
+    expect_fim_db_decode_full_row();
 
     // Inside fim_db_remove_path (callback)
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
-    wraps_fim_db_check_transaction();
+    expect_fim_db_check_transaction();
 
     expect_value(__wrap_fclose, _File, (FILE*)2345);
     will_return(__wrap_fclose, 1);
@@ -1295,6 +1076,92 @@ void test_fim_db_delete_range_path_error(void **state) {
     will_return(__wrap_remove, 0);
 
     ret = fim_db_delete_range(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex, syscheck.database_store);
+
+    assert_int_equal(ret, FIMDB_OK);
+}
+
+/**********************************************************************************************************************\
+ * fim_db_delete_not_scanned() tests
+\**********************************************************************************************************************/
+void test_fim_db_delete_not_scanned(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    test_data->tmp_file->fd = (FILE *)2345;
+    int ret;
+
+    will_return(__wrap_fseek, 0);
+#ifdef WIN32
+    expect_value(wrap_fgets, __stream, (FILE *)2345);
+    will_return(wrap_fgets, "/tmp/file\n");
+#else
+    expect_value(__wrap_fgets, __stream, (FILE *)2345);
+    will_return(__wrap_fgets, "/tmp/file\n");
+#endif
+    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_text, pos);
+    expect_any_always(__wrap_sqlite3_bind_text, buffer);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_fim_db_decode_full_row();
+
+    // Inside fim_db_remove_path (callback)
+    // Its return value is not checked so forcing the error is the simplest way to wrap it
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    expect_fim_db_check_transaction();
+
+    expect_value(__wrap_fclose, _File, (FILE *)2345);
+    will_return(__wrap_fclose, 1);
+
+    expect_string(__wrap_remove, filename, "/tmp/file");
+    will_return(__wrap_remove, 0);
+
+    ret = fim_db_delete_not_scanned(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex,
+                                    syscheck.database_store);
+
+    assert_int_equal(ret, FIMDB_OK);
+}
+
+/**********************************************************************************************************************\
+ * fim_db_process_missing_entry() tests
+\**********************************************************************************************************************/
+void test_fim_db_process_missing_entry(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    test_data->tmp_file->fd = (FILE *)2345;
+    int ret;
+
+    will_return(__wrap_fseek, 0);
+#ifdef WIN32
+    expect_value(wrap_fgets, __stream, (FILE *)2345);
+    will_return(wrap_fgets, "/tmp/file\n");
+#else
+    expect_value(__wrap_fgets, __stream, (FILE *)2345);
+    will_return(__wrap_fgets, "/tmp/file\n");
+#endif
+    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_text, pos);
+    expect_any_always(__wrap_sqlite3_bind_text, buffer);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_fim_db_decode_full_row();
+
+    // Inside fim_db_remove_path (callback)
+    // Its return value is not checked so force the error is the simplest way to wrap it
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    expect_fim_db_check_transaction();
+
+    expect_value(__wrap_fclose, _File, (FILE *)2345);
+    will_return(__wrap_fclose, 1);
+
+    expect_string(__wrap_remove, filename, "/tmp/file");
+    will_return(__wrap_remove, 0);
+
+    ret = fim_db_process_missing_entry(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex,
+                                       syscheck.database_store, FIM_REALTIME, NULL);
 
     assert_int_equal(ret, FIMDB_OK);
 }
@@ -1370,7 +1237,7 @@ void test_fim_db_decode_full_row(void **state) {
     test_fim_db_insert_data *test_data;
     test_data = calloc(1, sizeof(test_fim_db_insert_data));
     test_data->fim_sql = calloc(1, sizeof(fdb_t));
-    wraps_fim_db_decode_full_row();
+    expect_fim_db_decode_full_row();
     test_data->entry = fim_db_decode_full_row(test_data->fim_sql->stmt[FIMDB_STMT_GET_PATH]);
     *state = test_data;
     assert_non_null(test_data->entry);
@@ -1424,7 +1291,7 @@ void test_fim_db_set_scanned_success(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
-    wraps_fim_db_check_transaction();
+    expect_fim_db_check_transaction();
 
     int ret = fim_db_set_scanned(test_data->fim_sql, test_data->entry->file_entry.path);
     assert_int_equal(ret, FIMDB_OK);
@@ -1449,18 +1316,17 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_insert_inode_id_null_error, test_fim_db_setup, test_fim_db_teardown),
 #endif
         // fim_db_remove_path
-        cmocka_unit_test_setup_teardown(test_fim_db_remove_path_no_entry, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_remove_path_one_entry, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_remove_path_one_entry_step_fail, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_remove_path_one_entry_alert_fail, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_remove_path_one_entry_alert_fail_invalid_pos, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_remove_path_one_entry_alert_success, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_remove_path_multiple_entry, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_remove_path_multiple_entry_step_fail, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_remove_path_failed_path, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_remove_path_no_configuration_file, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_remove_path_no_entry_realtime_file, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_remove_path_no_entry_scheduled_file, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test(test_fim_db_remove_path_no_entry),
+        cmocka_unit_test(test_fim_db_remove_path_one_entry),
+        cmocka_unit_test(test_fim_db_remove_path_one_entry_step_fail),
+        cmocka_unit_test(test_fim_db_remove_path_one_entry_alert_success),
+        cmocka_unit_test(test_fim_db_remove_path_one_entry_alert_success_with_seechanges),
+        cmocka_unit_test(test_fim_db_remove_path_multiple_entry),
+        cmocka_unit_test(test_fim_db_remove_path_multiple_entry_step_fail),
+        cmocka_unit_test(test_fim_db_remove_path_failed_path),
+        cmocka_unit_test(test_fim_db_remove_path_no_configuration_file),
+        cmocka_unit_test(test_fim_db_remove_path_no_entry_realtime_file),
+        cmocka_unit_test(test_fim_db_remove_path_no_entry_scheduled_file),
         // fim_db_get_path
         cmocka_unit_test_setup_teardown(test_fim_db_get_path_inexistent, test_fim_db_setup, teardown_fim_db_entry),
         cmocka_unit_test_setup_teardown(test_fim_db_get_path_existent, test_fim_db_setup, teardown_fim_db_entry),

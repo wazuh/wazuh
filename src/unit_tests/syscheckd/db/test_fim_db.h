@@ -1,15 +1,13 @@
 #ifndef __TEST_FIM_DB_H
 #define __TEST_FIM_DB_H
 
-#include "syscheck.h"
-#include "syscheck-config.h"
+#include "test_fim.h"
 
 /**********************************************************************************************************************\
  * Common wrappers used in tests
 \**********************************************************************************************************************/
 
 #include "wrappers/externals/sqlite/sqlite3_wrappers.h"
-#include "wrappers/wazuh/shared/debug_op_wrappers.h"
 
 /**********************************************************************************************************************\
  * Auxiliar structs used in tests
@@ -46,6 +44,7 @@ void expect_fim_db_bind_get_inode();
 void expect_fim_db_insert_path_success();
 void expect_fim_db_insert_data_success(int row_id);
 void expect_fim_db_bind_path(const char *path);
+void expect_fim_db_get_paths_from_inode(char **paths);
 
 /**********************************************************************************************************************\
  * Setup and teardown functions
