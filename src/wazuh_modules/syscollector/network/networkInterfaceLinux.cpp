@@ -66,7 +66,6 @@ void LinuxNetworkImpl<AF_INET>::buildNetworkData(nlohmann::json& network)
         }
 
         network["IPv4"]["dhcp"] = m_interfaceAddress->dhcp();
-        network["IPv4"]["gateway"] = m_interfaceAddress->gateway();
     }
     else
     {
@@ -120,4 +119,5 @@ void LinuxNetworkImpl<AF_PACKET>::buildNetworkData(nlohmann::json& network)
     network["rx_dropped"] = stats.rxDropped;
 
     network["MTU"] = m_interfaceAddress->mtu();
+    network["gateway"] = m_interfaceAddress->gateway();
 }

@@ -61,13 +61,11 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_INET)
     EXPECT_CALL(*mock, netmask()).Times(1).WillOnce(Return("255.255.255.0"));
     EXPECT_CALL(*mock, broadcast()).Times(1).WillOnce(Return("192.168.0.255"));
     EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return("8.8.8.8"));
-    EXPECT_CALL(*mock, gateway()).Times(1).WillOnce(Return("10.2.2.50"));
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::LINUX>::create(mock)->buildNetworkData(ifaddr));
     EXPECT_EQ("192.168.0.1",ifaddr.at("IPv4").at("address").get_ref<const std::string&>());
     EXPECT_EQ("255.255.255.0",ifaddr.at("IPv4").at("netmask").get_ref<const std::string&>());
     EXPECT_EQ("192.168.0.255",ifaddr.at("IPv4").at("broadcast").get_ref<const std::string&>());
     EXPECT_EQ("8.8.8.8",ifaddr.at("IPv4").at("dhcp").get_ref<const std::string&>());
-    EXPECT_EQ("10.2.2.50",ifaddr.at("IPv4").at("gateway").get_ref<const std::string&>());
     
 }
 
@@ -108,6 +106,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_PACKET)
     EXPECT_CALL(*mock, MAC()).Times(1).WillOnce(Return("00:A0:C9:14:C8:29"));
     EXPECT_CALL(*mock, stats()).Times(1).WillOnce(Return(LinkStats{0,1,2,3,4,5,6,7}));
     EXPECT_CALL(*mock, mtu()).Times(1).WillOnce(Return("1500"));
+    EXPECT_CALL(*mock, gateway()).Times(1).WillOnce(Return("10.2.2.50"));
 
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::LINUX>::create(mock)->buildNetworkData(ifaddr));
 
@@ -126,6 +125,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_PACKET)
     EXPECT_EQ(6,ifaddr.at("rx_dropped").get<int32_t>());
 
     EXPECT_EQ("1500",ifaddr.at("MTU").get_ref<const std::string&>());
+    EXPECT_EQ("10.2.2.50",ifaddr.at("gateway").get_ref<const std::string&>());
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_AF_UNSPEC_THROW)
