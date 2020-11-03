@@ -13,18 +13,6 @@
 #define _NETWORK_INTERFACE_WRAPPER_H
 #include "inetworkInterface.h"
 
-class INetworkWrappers
-{
-public:
-    // LCOV_EXCL_START
-    virtual ~INetworkWrappers() = default;
-    // LCOV_EXCL_STOP
-    virtual std::string type() = 0;
-    virtual std::string name() = 0;
-    virtual std::string state() = 0;
-    virtual std::string MAC() = 0;
-};
-
 class INetworkInterfaceWrapper
 {
 public:

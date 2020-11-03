@@ -17,23 +17,31 @@ std::shared_ptr<IOSNetwork> FactoryLinuxNetwork::create(const std::shared_ptr<IN
 {
     std::shared_ptr<IOSNetwork> ret;
 
-    if(AF_INET == interface->family())
+    if (interface.get())
     {
-        ret = std::make_shared<LinuxNetworkImpl<AF_INET>>(interface);
-    }
-    else if (AF_INET6 == interface->family())
-    {
-        ret = std::make_shared<LinuxNetworkImpl<AF_INET6>>(interface);
-    }
-    else if (AF_PACKET == interface->family())
-    {
-        ret = std::make_shared<LinuxNetworkImpl<AF_PACKET>>(interface);
+        const auto family { interface->family() };
+
+        if(AF_INET == family)
+        {
+            ret = std::make_shared<LinuxNetworkImpl<AF_INET>>(interface);
+        }
+        else if (AF_INET6 == family)
+        {
+            ret = std::make_shared<LinuxNetworkImpl<AF_INET6>>(interface);
+        }
+        else if (AF_PACKET == family)
+        {
+            ret = std::make_shared<LinuxNetworkImpl<AF_PACKET>>(interface);
+        }
+        else
+        {
+            throw std::runtime_error("Error creating linux network data retriever.");
+        }
     }
     else
     {
-        throw std::runtime_error("Error creating linux network data retriever.");
+        throw std::runtime_error("Error nullptr interface instance.");
     }
-
     return ret;
 }
 
