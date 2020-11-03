@@ -52,6 +52,11 @@ LONG wrap_RegQueryInfoKeyA(__UNUSED_PARAM(HKEY hKey),
     return mock();
 }
 
+void expect_RegQueryInfoKeyA_call(PFILETIME last_write_time, LONG return_value) {
+    will_return(wrap_RegQueryInfoKeyA, last_write_time);
+    will_return(wrap_RegQueryInfoKeyA, return_value);
+}
+
 LONG wrap_RegEnumKeyEx(__UNUSED_PARAM(HKEY hKey),
                        __UNUSED_PARAM(DWORD dwIndex),
                        LPSTR lpName,
@@ -124,4 +129,9 @@ WINBOOL wrap_RegGetKeySecurity(__UNUSED_PARAM(HKEY hKey),
                                LPDWORD lpcbSecurityDescriptor) {
     *lpcbSecurityDescriptor = mock();
     return mock();
+}
+
+void expect_RegGetKeySecurity_call(LPDWORD lpcbSecurityDescriptor, int ret_value) {
+    will_return(wrap_RegGetKeySecurity, lpcbSecurityDescriptor);
+    will_return(wrap_RegGetKeySecurity, ret_value);
 }

@@ -25,6 +25,10 @@
 
 #ifdef TEST_WINAGENT
 #include "../wrappers/wazuh/syscheckd/syscom_wrappers.h"
+#include "../wrappers/windows/winreg_wrappers.h"
+#include "../wrappers/windows/errhandlingapi_wrappers.h"
+#include "../wrappers/windows/errhandlingapi_wrappers.h"
+#include "../wrappers/windows/securitybaseapi_wrappers.h"
 #else
 #include "../wrappers/posix/unistd_wrappers.h"
 #endif
@@ -2758,7 +2762,7 @@ static void test_win_perm_to_json_error_splitting_permissions(void **state) {
 }
 
 #ifdef TEST_WINAGENT
-
+/*
 static void test_get_user_CreateFile_error_access_denied(void **state) {
     char **array = *state;
 
@@ -2914,7 +2918,7 @@ static void test_get_user_success(void **state) {
     assert_string_equal(array[0], "accountName");
     assert_string_equal(array[1], "sid");
 }
-
+ */
 
 void test_w_get_account_info_LookupAccountSid_error_insufficient_buffer(void **state) {
     char **array = *state;
@@ -3379,8 +3383,8 @@ void test_get_registry_permissions_RegGetKeySecurity_insufficient_buffer(void **
     unsigned int retval = 0;
     char permissions[OS_SIZE_6144 + 1];
 
-    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
-    will_return(wrap_RegGetKeySecurity, ERROR_ACCESS_DENIED);
+    expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_ACCESS_DENIED);
+    expect_GetLastError_call(ERROR_ACCESS_DENIED);
 
     retval = get_registry_permissions(hndl, permissions);
 
@@ -3393,11 +3397,9 @@ void test_get_registry_permissions_RegGetKeySecurity_fails(void **state) {
     unsigned int retval = 0;
     char permissions[OS_SIZE_6144 + 1];
 
-    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
-    will_return(wrap_RegGetKeySecurity, ERROR_INSUFFICIENT_BUFFER);
+    expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_INSUFFICIENT_BUFFER);
 
-    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
-    will_return(wrap_RegGetKeySecurity, ERROR_ACCESS_DENIED);
+    expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_ACCESS_DENIED);
 
     retval = get_registry_permissions(hndl, permissions);
 
@@ -3410,16 +3412,13 @@ void test_get_registry_permissions_GetSecurityDescriptorDacl_fails(void **state)
     unsigned int retval = 0;
     char permissions[OS_SIZE_6144 + 1];
 
-    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
-    will_return(wrap_RegGetKeySecurity, ERROR_INSUFFICIENT_BUFFER);
+    expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_INSUFFICIENT_BUFFER);
 
-    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
-    will_return(wrap_RegGetKeySecurity, ERROR_SUCCESS);
+    expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_SUCCESS);
 
-    will_return(wrap_GetSecurityDescriptorDacl, FALSE);
-    will_return(wrap_GetSecurityDescriptorDacl, (PACL)0);
-    will_return(wrap_GetSecurityDescriptorDacl, FALSE);
+    expect_GetSecurityDescriptorDacl_call(TRUE, (PACL*)0, FALSE);
 
+    expect_GetLastError_call(ERROR_SUCCESS);
     expect_string(__wrap__mdebug2, formatted_msg, "GetSecurityDescriptorDacl failed. GetLastError returned: 0");
 
     retval = get_registry_permissions(hndl, permissions);
@@ -3433,15 +3432,11 @@ void test_get_registry_permissions_GetSecurityDescriptorDacl_no_DACL(void **stat
     unsigned int retval = 0;
     char permissions[OS_SIZE_6144 + 1];
 
-    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
-    will_return(wrap_RegGetKeySecurity, ERROR_INSUFFICIENT_BUFFER);
+    expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_INSUFFICIENT_BUFFER);
 
-    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
-    will_return(wrap_RegGetKeySecurity, ERROR_SUCCESS);
+    expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_SUCCESS);
 
-    will_return(wrap_GetSecurityDescriptorDacl, FALSE);
-    will_return(wrap_GetSecurityDescriptorDacl, (PACL)0);
-    will_return(wrap_GetSecurityDescriptorDacl, TRUE);
+    expect_GetSecurityDescriptorDacl_call(TRUE, (PACL*)0, TRUE);
 
     char error_msg[OS_SIZE_1024];
 
@@ -3454,7 +3449,7 @@ void test_get_registry_permissions_GetSecurityDescriptorDacl_no_DACL(void **stat
 
     retval = get_registry_permissions(hndl, permissions);
 
-    assert_int_equal(retval, ERROR_SUCCESS);
+    assert_int_not_equal(retval, ERROR_SUCCESS);
     assert_string_equal(permissions, "");
 }
 
@@ -3463,19 +3458,15 @@ void test_get_registry_permissions_GetAclInformation_fails(void **state) {
     unsigned int retval = 0;
     char permissions[OS_SIZE_6144 + 1];
 
-    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
-    will_return(wrap_RegGetKeySecurity, ERROR_INSUFFICIENT_BUFFER);
+    expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_INSUFFICIENT_BUFFER);
 
-    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
-    will_return(wrap_RegGetKeySecurity, ERROR_SUCCESS);
+    expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_SUCCESS);
 
-    will_return(wrap_GetSecurityDescriptorDacl, TRUE);
-    will_return(wrap_GetSecurityDescriptorDacl, (PACL)4321);
-    will_return(wrap_GetSecurityDescriptorDacl, TRUE);
+    expect_GetSecurityDescriptorDacl_call(TRUE, (PACL*)4321, TRUE);
 
-    will_return(wrap_GetAclInformation, NULL);
-    will_return(wrap_GetAclInformation, FALSE);
+    expect_GetAclInformation_call(NULL, FALSE);
 
+    expect_GetLastError_call(ERROR_SUCCESS);
     expect_string(__wrap__mdebug2, formatted_msg, "GetAclInformation failed. GetLastError returned: 0");
 
     retval = get_registry_permissions(hndl, permissions);
@@ -3490,22 +3481,17 @@ void test_get_registry_permissions_GetAce_fails(void **state) {
     char permissions[OS_SIZE_6144 + 1];
     ACL_SIZE_INFORMATION acl_size = { .AceCount = 1 };
 
-    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
-    will_return(wrap_RegGetKeySecurity, ERROR_INSUFFICIENT_BUFFER);
+    expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_INSUFFICIENT_BUFFER);
 
-    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
-    will_return(wrap_RegGetKeySecurity, ERROR_SUCCESS);
+    expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_SUCCESS);
 
-    will_return(wrap_GetSecurityDescriptorDacl, TRUE);
-    will_return(wrap_GetSecurityDescriptorDacl, (PACL)4321);
-    will_return(wrap_GetSecurityDescriptorDacl, TRUE);
+    expect_GetSecurityDescriptorDacl_call(TRUE, (PACL*)4321, TRUE);
 
-    will_return(wrap_GetAclInformation, &acl_size);
-    will_return(wrap_GetAclInformation, TRUE);
+    expect_GetAclInformation_call(&acl_size, TRUE);
 
-    will_return(wrap_GetAce, NULL);
-    will_return(wrap_GetAce, FALSE);
+    expect_GetAce_call(NULL, FALSE);
 
+    expect_GetLastError_call(ERROR_SUCCESS);
     expect_string(__wrap__mdebug2, formatted_msg, "GetAce failed. GetLastError returned: 0");
 
     retval = get_registry_permissions(hndl, permissions);
@@ -3523,21 +3509,15 @@ void test_get_registry_permissions_success(void **state) {
         .Header.AceType = ACCESS_ALLOWED_ACE_TYPE,
     };
 
-    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
-    will_return(wrap_RegGetKeySecurity, ERROR_INSUFFICIENT_BUFFER);
+    expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_INSUFFICIENT_BUFFER);
 
-    will_return(wrap_RegGetKeySecurity, (LPDWORD)120);
-    will_return(wrap_RegGetKeySecurity, ERROR_SUCCESS);
+    expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_SUCCESS);
 
-    will_return(wrap_GetSecurityDescriptorDacl, TRUE);
-    will_return(wrap_GetSecurityDescriptorDacl, (PACL)4321);
-    will_return(wrap_GetSecurityDescriptorDacl, TRUE);
+    expect_GetSecurityDescriptorDacl_call(TRUE, (PACL*)4321, TRUE);
 
-    will_return(wrap_GetAclInformation, &acl_size);
-    will_return(wrap_GetAclInformation, TRUE);
+    expect_GetAclInformation_call(&acl_size, TRUE);
 
-    will_return(wrap_GetAce, NULL);
-    will_return(wrap_GetAce, TRUE);
+    expect_GetAce_call((LPVOID*)&ace, TRUE);
 
     // Inside copy_ace_info
     {
@@ -3562,10 +3542,9 @@ void test_get_registry_permissions_success(void **state) {
 void test_get_registry_mtime_RegQueryInfoKeyA_fails(void **state) {
     PFILETIME last_write_time;
     unsigned int retval = 0;
-    HKEY hndl = 123456;
+    HKEY hndl = (HKEY)123456;
 
-    expect_value(wrap_RegQueryInfoKeyA, lpftLastWriteTime, last_write_time);
-    will_return(wrap_RegQueryInfoKeyA, ERROR_MORE_DATA);
+    expect_RegQueryInfoKeyA_call(last_write_time, ERROR_MORE_DATA);
 
     expect_string(__wrap__mwarn, formatted_msg, "Couldn't get modification time for registry key.");
 
@@ -3579,8 +3558,7 @@ void test_get_registry_mtime_success(void **state) {
     unsigned int retval = 0;
     HKEY hndl = (HKEY)123456;
 
-    expect_value(wrap_RegQueryInfoKeyA, lpftLastWriteTime, last_write_time);
-    will_return(wrap_RegQueryInfoKeyA, ERROR_SUCCESS);
+    expect_RegQueryInfoKeyA_call(last_write_time, ERROR_SUCCESS);
 
     retval = get_registry_mtime(hndl);
 

@@ -75,11 +75,6 @@ void expect_RegQueryInfoKey_call(DWORD sub_keys, DWORD values, PFILETIME last_wr
     will_return(wrap_RegQueryInfoKey, return_value);
 }
 
-void expect_RegQueryInfoKeyA_call(PFILETIME last_write_time, LONG return_value) {
-    will_return(wrap_RegQueryInfoKeyA, last_write_time);
-    will_return(wrap_RegQueryInfoKeyA, return_value);
-}
-
 void expect_RegEnumKeyEx_call(LPSTR name, DWORD name_length, LONG return_value) {
     will_return(wrap_RegEnumKeyEx, name);
     will_return(wrap_RegEnumKeyEx, name_length);
@@ -117,27 +112,6 @@ void expect_LookupAccountSid_call(char *name, char *DomainName, int ret_value){
     will_return(wrap_LookupAccountSid, name);
     will_return(wrap_LookupAccountSid, DomainName);
     will_return(wrap_LookupAccountSid, ret_value);
-}
-
-void expect_RegGetKeySecurity_call(LPDWORD lpcbSecurityDescriptor, int ret_value){
-    will_return(wrap_RegGetKeySecurity, lpcbSecurityDescriptor);
-    will_return(wrap_RegGetKeySecurity, ret_value);
-}
-
-void expect_GetSecurityDescriptorDacl_call(int fDaclPresent, PACL *pDacl, int ret_value){
-    will_return(wrap_GetSecurityDescriptorDacl, fDaclPresent);
-    will_return(wrap_GetSecurityDescriptorDacl, pDacl);
-    will_return(wrap_GetSecurityDescriptorDacl, ret_value);
-}
-
-void expect_GetAclInformation_call(LPVOID pAclInformation, int ret_value){
-    will_return(wrap_GetAclInformation, pAclInformation);
-    will_return(wrap_GetAclInformation, ret_value);
-}
-
-void expect_GetAce_call(LPVOID *pAce, int ret_value){
-    will_return(wrap_GetAce, pAce);
-    will_return(wrap_GetAce, ret_value);
 }
 
 void expect_fim_registry_get_key_data_call(LPSTR usid, LPSTR gsid, char *uname, char *gname,

@@ -29,6 +29,12 @@ WINBOOL wrap_GetSecurityDescriptorDacl(__UNUSED_PARAM(PSECURITY_DESCRIPTOR pSecu
     return mock();
 }
 
+void expect_GetSecurityDescriptorDacl_call(int fDaclPresent, PACL *pDacl, int ret_value) {
+    will_return(wrap_GetSecurityDescriptorDacl, fDaclPresent);
+    will_return(wrap_GetSecurityDescriptorDacl, pDacl);
+    will_return(wrap_GetSecurityDescriptorDacl, ret_value);
+}
+
 WINBOOL wrap_GetAclInformation(__UNUSED_PARAM(PACL pAcl),
                                LPVOID pAclInformation,
                                DWORD nAclInformationLength,
@@ -41,11 +47,21 @@ WINBOOL wrap_GetAclInformation(__UNUSED_PARAM(PACL pAcl),
     return mock();
 }
 
+void expect_GetAclInformation_call(LPVOID pAclInformation, int ret_value) {
+    will_return(wrap_GetAclInformation, pAclInformation);
+    will_return(wrap_GetAclInformation, ret_value);
+}
+
 WINBOOL wrap_GetAce(__UNUSED_PARAM(PACL pAcl),
                     __UNUSED_PARAM(DWORD dwAceIndex),
                     LPVOID *pAce) {
     *pAce = mock_type(LPVOID);
     return mock();
+}
+
+void expect_GetAce_call(LPVOID *pAce, int ret_value) {
+    will_return(wrap_GetAce, pAce);
+    will_return(wrap_GetAce, ret_value);
 }
 
 WINBOOL wrap_AdjustTokenPrivileges(HANDLE TokenHandle,

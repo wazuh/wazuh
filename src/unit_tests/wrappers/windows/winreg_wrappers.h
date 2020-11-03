@@ -56,6 +56,8 @@ LONG wrap_RegQueryInfoKeyA(HKEY hKey,
                           LPDWORD lpcbSecurityDescriptor,
                           PFILETIME lpftLastWriteTime);
 
+void expect_RegQueryInfoKeyA_call(PFILETIME last_write_time, LONG return_value);
+
 LONG wrap_RegEnumKeyEx(HKEY hKey,
                        DWORD dwIndex,
                        LPSTR lpName,
@@ -92,5 +94,7 @@ WINBOOL wrap_RegGetKeySecurity(__UNUSED_PARAM(HKEY hKey),
                                __UNUSED_PARAM(SECURITY_INFORMATION SecurityInformation),
                                __UNUSED_PARAM(PSECURITY_DESCRIPTOR pSecurityDescriptor),
                                LPDWORD lpcbSecurityDescriptor);
+
+void expect_RegGetKeySecurity_call(LPDWORD lpcbSecurityDescriptor, int ret_value);
 
 #endif
