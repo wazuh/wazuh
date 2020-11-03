@@ -11,7 +11,6 @@
 
 #include "wazuh_modules/wmodules.h"
 #include "wm_agent_upgrade_agent.h"
-#include "wm_agent_upgrade_com.h"
 #ifndef WIN32
 #include "os_net/os_net.h"
 #endif
@@ -200,6 +199,10 @@ void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config) {
     #ifndef WIN32
         close(queue_fd);
     #endif
+    }
+
+    if (!allow_upgrades) {
+        allow_upgrades = true;
     }
 }
 
