@@ -342,7 +342,7 @@ int main()
     const struct CMUnitTest tests[] =
     {
         /* Tests monitor_init_time */
-        cmocka_unit_test_setup_teardown(test_monitor_step_time_success, setup_monitord, teardown_monitord),
+        cmocka_unit_test_setup_teardown(test_monitor_init_time_success, setup_monitord, teardown_monitord),
         /* Tests monitor_step_time */
         cmocka_unit_test_setup_teardown(test_monitor_step_time_success, setup_monitord, teardown_monitord),
         cmocka_unit_test_setup_teardown(test_monitor_step_time_no_old_agents_success, setup_monitord, teardown_monitord),
