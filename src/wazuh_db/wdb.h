@@ -187,7 +187,6 @@ typedef enum global_db_access {
     WDB_UPDATE_REG_OFFSET,
     WDB_SET_AGENT_LABELS,
     WDB_GET_ALL_AGENTS,
-    WDB_GET_AGENTS_BY_KEEPALIVE,
     WDB_FIND_AGENT,
     WDB_GET_AGENT_INFO,
     WDB_GET_AGENT_LABELS,
@@ -538,20 +537,6 @@ int wdb_set_agent_labels(int id, const char *labels, int *sock);
  * @retval NULL on errors.
  */
 int* wdb_get_all_agents(bool include_manager, int *sock);
-
-/**
- * @brief Returns an array containing the ID of every agent (except 0), ended with -1 based on its keep_alive.
- * This method creates and sends a command to WazuhDB to receive the ID of every agent.
- * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent ID is obtained.
- * The array is heap allocated memory that must be freed by the caller.
- *
- * @param [in] condition The symbol ">" or "<". The condition to match keep alive.
- * @param [in] keepalive The keep_alive to search the agents.
- * @param [in] include_manager flag to include the manager on agents list.
- * @param [in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Pointer to the array, on success. NULL on errors.
- */
-int* wdb_get_agents_by_keepalive(const char* condition, int keepalive, bool include_manager, int *sock);
 
 /**
  * @brief Find agent id by name and address.
@@ -1321,16 +1306,6 @@ int wdb_parse_global_sync_agent_info_get(wdb_t * wdb, char * input, char * outpu
 int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to parse last_id, condition and keepalive for get-agents-by-keepalive.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with last_id, condition, and keepalive.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains the value. -1 On error: invalid DB query syntax.
- */
-int wdb_parse_global_get_agents_by_keepalive(wdb_t* wdb, char* input, char* output);
-
-/**
  * @brief Function to parse the disconnect-agents command data.
  *
  * @param [in] wdb The global struct database.
@@ -1811,21 +1786,6 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
  * @retval NULL on error.
  */
 cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id);
-
-/*
- * @brief Gets every agent ID based on the keepalive.
- *        Response is prepared in one chunk,
- *        if the size of the chunk exceeds WDB_MAX_RESPONSE_SIZE parsing stops and reports the amount of agents obtained.
- *        Multiple calls to this function can be required to fully obtain all agents.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] last_agent_id ID where to start querying.
- * @param [in] condition The symbol '<' or '>' condition used to compare keepalive.
- * @param [in] keep_alive The value of keepalive to search for agents.
- * @param [out] output A buffer where the response is written. Must be de-allocated by the caller.
- * @return wdbc_result to represent if all agents has being obtained or any error occurred.
- */
-wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, char condition, int keep_alive, char **output);
 
 /**
  * @brief Gets every agent ID.

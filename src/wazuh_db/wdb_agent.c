@@ -34,7 +34,6 @@ static const char *global_db_commands[] = {
     [WDB_UPDATE_REG_OFFSET] = "global update-reg-offset %s",
     [WDB_SET_AGENT_LABELS] = "global set-labels %d %s",
     [WDB_GET_ALL_AGENTS] = "global get-all-agents last_id %d",
-    [WDB_GET_AGENTS_BY_KEEPALIVE] = "global get-agents-by-keepalive condition %s %d last_id %d",
     [WDB_FIND_AGENT] = "global find-agent %s",
     [WDB_GET_AGENT_INFO] = "global get-agent-info %d",
     [WDB_GET_AGENT_LABELS] = "global get-labels %d",
@@ -706,57 +705,6 @@ int* wdb_get_all_agents(bool include_manager, int *sock) {
             status = WDBC_ERROR;
         }
     }
-    if (status == WDBC_OK) {
-        array[len] = -1;
-    }
-    else {
-        os_free(array);
-    }
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    return array;
-}
-
-int* wdb_get_agents_by_keepalive(const char* condition, int keepalive, bool include_manager, int *sock) {
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-    int last_id = include_manager ? -1 : 0;
-    int *array = NULL;
-    int len = 0;
-    wdbc_result status = WDBC_DUE;
-    int aux_sock = -1;
-
-    while (status == WDBC_DUE) {
-        // Query WazuhDB
-        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_AGENTS_BY_KEEPALIVE], condition, keepalive, last_id);
-        if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
-            // Parse result
-            char* payload = NULL;
-            status = wdbc_parse_result(wdboutput, &payload);
-            if (status == WDBC_OK || status == WDBC_DUE) {
-                const char delim = ',';
-                const char sdelim[] = { delim, '\0' };
-                //Realloc new size
-                int new_len = os_strcnt(payload, delim)+1;
-                os_realloc(array, sizeof(int)*(len+new_len+1), array);
-                //Append IDs to array
-                char* agent_id = NULL;
-                char *savedptr = NULL;
-                for (agent_id = strtok_r(payload, sdelim, &savedptr); agent_id; agent_id = strtok_r(NULL, sdelim, &savedptr)) {
-                    array[len] = atoi(agent_id);
-                    last_id = array[len];
-                    len++;
-                }
-            }
-        }
-        else {
-            status = WDBC_ERROR;
-        }
-    }
-
     if (status == WDBC_OK) {
         array[len] = -1;
     }
