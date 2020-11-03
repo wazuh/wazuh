@@ -113,7 +113,7 @@ void expect_fim_db_get_path_success(const char *path, const fim_entry *entry) {
 /**********************************************************************************************************************\
  * Setup and teardown functions
 \**********************************************************************************************************************/
-int setup_group(void **state) {
+int setup_fim_db_group(void **state) {
     (void)state;
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
@@ -134,7 +134,7 @@ int setup_group(void **state) {
     return 0;
 }
 
-int teardown_group(void **state) {
+int teardown_fim_db_group(void **state) {
     Free_Syscheck(&syscheck);
     w_mutex_destroy(&syscheck.fim_entry_mutex);
     test_mode = 0;

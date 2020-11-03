@@ -1407,5 +1407,5 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_set_scanned_error, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_set_scanned_success, test_fim_db_setup, test_fim_db_teardown),
     };
-    return cmocka_run_group_tests(tests, setup_group, teardown_group);
+    return cmocka_run_group_tests(tests, setup_fim_db_group, teardown_fim_db_group);
 }

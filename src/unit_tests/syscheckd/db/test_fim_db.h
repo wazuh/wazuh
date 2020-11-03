@@ -53,8 +53,8 @@ void expect_fim_db_get_paths_from_inode(char **paths);
 /**********************************************************************************************************************\
  * Setup and teardown functions
 \**********************************************************************************************************************/
-int setup_group(void **state);
-int teardown_group(void **state);
+int setup_fim_db_group(void **state);
+int teardown_fim_db_group(void **state);
 int test_fim_db_setup(void **state);
 int test_fim_db_teardown(void **state);
 int test_fim_tmp_file_setup_disk(void **state);

@@ -2119,5 +2119,5 @@ int main(void) {
         cmocka_unit_test(test_fim_db_get_count_entries_success),
 #endif
     };
-    return cmocka_run_group_tests(tests, setup_group, teardown_group);
+    return cmocka_run_group_tests(tests, setup_fim_db_group, teardown_fim_db_group);
 }
