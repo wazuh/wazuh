@@ -78,7 +78,6 @@ void test_wdb_open_global_pool_success(void **state)
 void test_wdb_open_global_create_fail(void **state)
 {
     wdb_t *ret = NULL;
-    test_struct_t *data  = (test_struct_t *)*state;
 
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_value(__wrap_OSHash_Get, self, (OSHash*) 0);
@@ -92,7 +91,7 @@ void test_wdb_open_global_create_fail(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global database not found, creating.");
     will_return(__wrap_sqlite3_close_v2, OS_SUCCESS);
 
-    // wdb_create_global 
+    // wdb_create_global
     //// wdb_create_file
     expect_string(__wrap_sqlite3_open_v2, filename, "queue/db/global.db");
     will_return(__wrap_sqlite3_open_v2, NULL);
@@ -111,7 +110,7 @@ void test_wdb_open_global_create_fail(void **state)
 
 int main()
 {
-    const struct CMUnitTest tests[] = 
+    const struct CMUnitTest tests[] =
     {
         cmocka_unit_test_setup_teardown(test_wdb_open_global_pool_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_open_global_create_fail, setup_wdb, teardown_wdb)
