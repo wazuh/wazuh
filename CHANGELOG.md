@@ -3,21 +3,9 @@ All notable changes to this project will be documented in this file.
 
 # [v4.1.0]
 
-### Added
-
-- **Wazuh API:**
-    - Added new endpoints to upgrade and get upgrade results of multiple agents. ([#5536](https://github.com/wazuh/wazuh/issues/5536))
-
 ### Changed
 
-- Agent upgrade module refactored. ([#5387](https://github.com/wazuh/wazuh/issues/5387))
-
-### Fixed
-
-### Removed
-
-- **Wazuh API:**
-    - Removed the old upgrade and get upgrade result endpoints. ([#5536](https://github.com/wazuh/wazuh/issues/5536))
+- Refactored agent upgrade module. ([#5387](https://github.com/wazuh/wazuh/issues/5387))
 
 ## [v4.0.0] -
 
