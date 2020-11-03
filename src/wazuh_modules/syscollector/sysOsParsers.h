@@ -129,10 +129,10 @@ public:
 class MacOsParser
 {
 public:
-	MacOsParser() = default;
-	~MacOsParser() = default;
-	bool parseSwVersion(const std::string& in, nlohmann::json& output);
-	bool parseUname(const std::string& in, nlohmann::json& output);
+    MacOsParser() = default;
+    ~MacOsParser() = default;
+    bool parseSwVersion(const std::string& in, nlohmann::json& output);
+    bool parseUname(const std::string& in, nlohmann::json& output);
 };
 
 class FactorySysOsParser final
@@ -148,7 +148,7 @@ public:
         {
             return std::make_unique<CentosOsParser>();
         }
-		if (platform == "unix")
+        if (platform == "unix")
         {
             return std::make_unique<UnixOsParser>();
         }
