@@ -58,7 +58,7 @@ int realtime_start() {
 }
 
 /* Add a directory to real time checking */
-int realtime_adddir(const char *dir, __attribute__((unused)) int whodata, __attribute__((unused))int followsl) {
+int realtime_adddir(const char *dir, int whodata, int followsl) {
     if (whodata && audit_thread_active) {
         // Save dir into saved rules list
         w_mutex_lock(&audit_mutex);
@@ -102,6 +102,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata, __attr
                 snprintf(wdchar, 33, "%d", wd);
                 os_strdup(dir, data);
 
+                w_mutex_lock(&syscheck.fim_realtime_mutex);
                 if (!OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
                     if (retval = OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
                         os_free(data);
@@ -118,9 +119,11 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata, __attr
                     if (retval = OSHash_Update_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
                         merror("Unable to update 'dirtb'. Directory not found: '%s'", data);
                         os_free(data);
+                        w_mutex_unlock(&syscheck.fim_realtime_mutex);
                         return (-1);
                     }
                 }
+                w_mutex_unlock(&syscheck.fim_realtime_mutex);
             }
         }
     }
@@ -149,6 +152,7 @@ void realtime_process() {
 
             if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
                 mwarn("Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
+                syscheck.realtime->queue_overflow = true;
                 send_log_msg("ossec: Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
             }
             else {
@@ -160,8 +164,9 @@ void realtime_process() {
 
                 snprintf(wdchar, 33, "%d", event->wd);
 
+                w_mutex_lock(&syscheck.fim_realtime_mutex);
                 // The configured paths can end at / or not, we must check it.
-                entry = (char *)OSHash_Get(syscheck.realtime->dirtb, wdchar);
+                entry = (char *)OSHash_Get_ex(syscheck.realtime->dirtb, wdchar);
 
                 if (entry) {
                     // Check file entries with realtime
@@ -191,16 +196,13 @@ void realtime_process() {
                         delete_subdirectories_watches(entry);
                         // fall through
                     case IN_DELETE_SELF:
-                        w_mutex_lock(&syscheck.fim_realtime_mutex);
-
-                        char * data = OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar);
                         mdebug2(FIM_INOTIFY_WATCH_DELETED, entry);
-                        os_free(data);
+                        free(OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar));
 
-                        w_mutex_unlock(&syscheck.fim_realtime_mutex);
                         break;
                     }
                 }
+                w_mutex_unlock(&syscheck.fim_realtime_mutex);
             }
         }
 
@@ -213,6 +215,69 @@ void realtime_process() {
         free_strarray(paths);
         rbtree_destroy(tree);
     }
+}
+
+int realtime_update_watch(const char *wd, const char *dir) {
+    int old_wd, new_wd, index;
+    char wdchar[33];
+    char *data;
+    int retval;
+
+    if (syscheck.realtime->fd < 0) {
+        return -1;
+    }
+
+    index = fim_configuration_directory(dir, "file");
+
+    if (index < 0) {
+        inotify_rm_watch(syscheck.realtime->fd, atoi(wd));
+        free(OSHash_Delete_ex(syscheck.realtime->dirtb, wd));
+        return 0;
+    }
+
+    old_wd = atoi(wd);
+
+    new_wd = inotify_add_watch(syscheck.realtime->fd, dir,
+                               (syscheck.opts[index] & CHECK_FOLLOW) == 0 ? (REALTIME_MONITOR_FLAGS | IN_DONT_FOLLOW) :
+                                                                            REALTIME_MONITOR_FLAGS);
+
+    if (new_wd < 0) {
+        if (errno == ENOSPC) {
+            merror(FIM_ERROR_INOTIFY_ADD_MAX_REACHED, dir, new_wd, errno);
+            return -1;
+        } else if (errno == ENOENT) {
+            mdebug1("Removing watch on non existent directory '%s'", dir);
+            inotify_rm_watch(syscheck.realtime->fd, old_wd);
+            free(OSHash_Delete_ex(syscheck.realtime->dirtb, wd));
+            return 0;
+        } else {
+            mdebug1(FIM_INOTIFY_ADD_WATCH, dir, new_wd, errno, strerror(errno));
+            return -1;
+        }
+    }
+
+    if (new_wd == old_wd) {
+        return -1;
+    }
+
+    snprintf(wdchar, 33, "%d", new_wd);
+    os_strdup(dir, data);
+
+    // Remove the old wd entry
+    free(OSHash_Delete_ex(syscheck.realtime->dirtb, wd));
+
+    if (!OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
+        if (retval = OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
+            os_free(data);
+            merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
+        }
+
+        mdebug1(FIM_REALTIME_NEWDIRECTORY, data);
+    } else if (retval = OSHash_Update_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
+        merror("Unable to update 'dirtb'. Directory not found: '%s'", data);
+        os_free(data);
+    }
+    return 0;
 }
 
 void free_syscheck_dirtb_data(char *data) {
@@ -231,7 +296,6 @@ void delete_subdirectories_watches(char *dir) {
     if (dir[dir_len - 1] != '/') {
         os_calloc(dir_len + 2, sizeof(char), dir_slash);  // Length of dir plus an extra slash
 
-    
         // Copy the content of dir into dir_slash and add an extra slash
         snprintf(dir_slash, dir_len + 2, "%s/", dir);
     }
@@ -241,7 +305,6 @@ void delete_subdirectories_watches(char *dir) {
     }
 
     if(syscheck.realtime->fd) {
-        w_mutex_lock(&syscheck.fim_realtime_mutex);
         hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
 
         while(hash_node) {
@@ -262,11 +325,33 @@ void delete_subdirectories_watches(char *dir) {
 
             hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node);
         }
-
-        w_mutex_unlock(&syscheck.fim_realtime_mutex);
     }
 
     os_free(dir_slash);
+}
+
+void realtime_sanitize_watch_map() {
+    OSHashNode *hash_node;
+    unsigned int inode_it = 0;
+    struct timespec start;
+    struct timespec end;
+
+    gettime(&start);
+    w_mutex_lock(&syscheck.fim_realtime_mutex);
+    hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
+
+    while (hash_node) {
+        if (realtime_update_watch(hash_node->key, hash_node->data) == 0) {
+            hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
+            continue;
+        }
+
+        hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node);
+    }
+
+    w_mutex_unlock(&syscheck.fim_realtime_mutex);
+    gettime(&end);
+    mdebug2("Time spent sanitizing wd hashmap: %.3f seconds", time_diff(&start, &end));
 }
 
 #elif defined(WIN32)
@@ -564,6 +649,12 @@ int fim_check_realtime_directory(const char *dir) {
     return 0;
 }
 
+// LCOV_EXCL_START
+void realtime_sanitize_watch_map() {
+    return;
+}
+// LCOV_EXCL_STOP
+
 #else /* !WIN32 */
 
 int realtime_start()
@@ -583,32 +674,8 @@ void realtime_process()
     return;
 }
 
-unsigned int count_watches() {
-    return 0;
+void realtime_sanitize_watch_map() {
+    return;
 }
 
 #endif /* WIN32 */
-
-#if defined(WIN32) || defined(INOTIFY_ENABLED)
-
-unsigned int count_watches() {
-    OSHashNode *hash_node;
-    unsigned int inode_it = 0;
-    unsigned int num_watches = 0;
-
-    if(syscheck.realtime != NULL) {
-        w_mutex_lock(&syscheck.fim_entry_mutex);
-        hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
-
-        while(hash_node) {
-            num_watches++;
-            hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node);
-        }
-
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
-    }
-
-    return num_watches;
-}
-
-#endif

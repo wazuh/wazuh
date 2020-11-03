@@ -12,7 +12,8 @@ from wazuh.core.agent import get_agents_info
 from wazuh.core.exception import WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.sca import WazuhDBQuerySCA, fields_translation_sca, fields_translation_sca_check, \
-    fields_translation_sca_check_compliance, fields_translation_sca_check_rule, default_query_sca_check
+    fields_translation_sca_check_compliance, fields_translation_sca_check_rule, default_query_sca_check, \
+    WazuhDBQuerySCACheck
 from wazuh.rbac.decorators import expose_resources
 
 
@@ -21,15 +22,28 @@ def get_sca_list(agent_list=None, q="", offset=0, limit=common.database_limit, s
                  filters=None):
     """ Get a list of policies analyzed in the configuration assessment for a given agent
 
-    :param agent_list: agent id to get policies from
-    :param q: Defines query to filter in DB.
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
-    :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-    :param filters: Define field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
-    :return: AffectedItemsWazuhResult
+    Parameters
+    ----------
+    agent_list : list
+        Agent ids to get policies from.
+    q : str
+        Defines query to filter in DB.
+    offset : int
+        First item to return.
+    limit : int
+        Maximum number of items to return.
+    sort : str
+        Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    search : str
+        Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+    select : str
+        Select fields to return. Format: {"fields":["field1","field2"]}.
+    filters : str
+        Define field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
     """
     result = AffectedItemsWazuhResult(all_msg='All selected sca information was returned',
                                       some_msg='Some sca information was not returned',
@@ -56,16 +70,30 @@ def get_sca_checks(policy_id=None, agent_list=None, q="", offset=0, limit=common
                    select=None, filters=None):
     """ Get a list of checks analyzed for a policy
 
-    :param policy_id: policy id to get the checks from
-    :param agent_list: agent id to get the policies from
-    :param q: Defines query to filter in DB.
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
-    :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-    :param filters: Define field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
-    :return: AffectedItemsWazuhResult
+    Parameters
+    ----------
+    policy_id : str
+        Policy id to get the checks from.
+    agent_list : list
+        Agent id to get the policies from
+    q : str
+        Defines query to filter in DB.
+    offset : int
+        First item to return.
+    limit : int
+        Maximum number of items to return.
+    sort : str
+        Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    search : str
+        Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+    select : str
+        Select fields to return. Format: {"fields":["field1","field2"]}.
+    filters : str
+        Define field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
     """
     result = AffectedItemsWazuhResult(all_msg='All selected sca/policy information was returned',
                                       some_msg='Some sca/policy information was not returned',
@@ -82,11 +110,11 @@ def get_sca_checks(policy_id=None, agent_list=None, q="", offset=0, limit=common
                            list(fields_translation_sca_check_rule.keys())
                            )
 
-            db_query = WazuhDBQuerySCA(agent_id=agent_list[0], offset=offset, limit=limit, sort=sort, search=search,
-                                       select=full_select, count=True, get_data=True,
-                                       query=f"policy_id={policy_id}" if q == "" else f"policy_id={policy_id};{q}",
-                                       filters=filters, default_query=default_query_sca_check,
-                                       default_sort_field='policy_id', fields=fields_translation, count_field='id')
+            db_query = WazuhDBQuerySCACheck(agent_id=agent_list[0], offset=offset, limit=limit, sort=sort,
+                                            search=search, select=full_select, count=True, get_data=True,
+                                            query=f"policy_id={policy_id}" if q == "" else f"policy_id={policy_id};{q}",
+                                            filters=filters, default_query=default_query_sca_check,
+                                            default_sort_field='policy_id', fields=fields_translation, count_field='id')
 
             result_dict = db_query.run()
 

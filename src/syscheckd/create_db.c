@@ -151,7 +151,13 @@ void fim_scan() {
     else {
         // In the first scan, the fim inicialization is different between Linux and Windows.
         // Realtime watches are set after the first scan in Windows.
-        mdebug2(FIM_NUM_WATCHES, count_watches());
+        if (syscheck.realtime != NULL) {
+            if (syscheck.realtime->queue_overflow) {
+                realtime_sanitize_watch_map();
+                syscheck.realtime->queue_overflow = false;
+            }
+            mdebug2(FIM_NUM_WATCHES, syscheck.realtime->dirtb->elements);
+        }
     }
 
     minfo(FIM_FREQUENCY_ENDED);
