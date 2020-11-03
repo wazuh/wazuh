@@ -26,21 +26,21 @@ class SysInfoNetworkBSDWrapperMock: public INetworkInterfaceWrapper
 public:
     SysInfoNetworkBSDWrapperMock() = default;
     virtual ~SysInfoNetworkBSDWrapperMock() = default;
-    MOCK_METHOD(int, family, (), (override));
-    MOCK_METHOD(std::string, name, (), (override));
-    MOCK_METHOD(std::string, address, (), (override));
-    MOCK_METHOD(std::string, netmask, (), (override));
-    MOCK_METHOD(std::string, broadcast, (), (override));
-    MOCK_METHOD(std::string, addressV6, (), (override));
-    MOCK_METHOD(std::string, netmaskV6, (), (override));
-    MOCK_METHOD(std::string, broadcastV6, (), (override));
-    MOCK_METHOD(std::string, gateway, (), (override));
-    MOCK_METHOD(std::string, dhcp, (), (override));
-    MOCK_METHOD(std::string, mtu, (), (override));
-    MOCK_METHOD(LinkStats, stats, (), (override));
-    MOCK_METHOD(std::string, type, (), (override));
-    MOCK_METHOD(std::string, state, (), (override));
-    MOCK_METHOD(std::string, MAC, (), (override));
+    MOCK_METHOD(int, family, (), (const override));
+    MOCK_METHOD(std::string, name, (), (const override));
+    MOCK_METHOD(std::string, address, (), (const override));
+    MOCK_METHOD(std::string, netmask, (), (const override));
+    MOCK_METHOD(std::string, broadcast, (), (const override));
+    MOCK_METHOD(std::string, addressV6, (), (const override));
+    MOCK_METHOD(std::string, netmaskV6, (), (const override));
+    MOCK_METHOD(std::string, broadcastV6, (), (const override));
+    MOCK_METHOD(std::string, gateway, (), (const override));
+    MOCK_METHOD(std::string, dhcp, (), (const override));
+    MOCK_METHOD(std::string, mtu, (), (const override));
+    MOCK_METHOD(LinkStats, stats, (), (const override));
+    MOCK_METHOD(std::string, type, (), (const override));
+    MOCK_METHOD(std::string, state, (), (const override));
+    MOCK_METHOD(std::string, MAC, (), (const override));
 };
 
 TEST_F(SysInfoNetworkBSDTest, Test_AF_INET_THROW)

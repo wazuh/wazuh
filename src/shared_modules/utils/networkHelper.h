@@ -30,7 +30,7 @@ namespace Utils
         {
             std::string retVal { "unknown" };
 
-            auto it 
+            const auto it 
             { 
                 std::find_if(interfaceTypeData.begin(), interfaceTypeData.end(),
                 [value](const std::pair<std::pair<int, int>, std::string>& paramValue)
@@ -45,12 +45,12 @@ namespace Utils
             }
             return retVal;
         }
-        
+
         template <class T>
         static std::string IAddressToBinary(const int family, const T address)
         {
             std::string retVal;
-            auto broadcastAddrPlain { std::make_unique<char[]>(NI_MAXHOST) };
+            const auto broadcastAddrPlain { std::make_unique<char[]>(NI_MAXHOST) };
             if (inet_ntop(family, address, broadcastAddrPlain.get(), NI_MAXHOST))
             {
                 retVal = broadcastAddrPlain.get();
@@ -60,7 +60,9 @@ namespace Utils
 
         static std::string getBroadcast(const std::string& ipAddress, const std::string& netmask)
         {    
-            struct in_addr host, mask, broadcast;
+            struct in_addr host;
+            struct in_addr mask;
+            struct in_addr broadcast;
 
             std::string broadcastAddr { "unknown" };
 
@@ -77,4 +79,4 @@ namespace Utils
 
 #pragma GCC diagnostic pop
 
-#endif // _NETWORK_UNIX_HELPER_H
+#endif // _NETWORK_HELPER_H

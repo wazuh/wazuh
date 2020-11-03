@@ -59,7 +59,7 @@ namespace Utils
     static std::string getFileContent(const std::string& filePath)
     {
         std::stringstream content;
-        std::ifstream file(filePath, std::ios_base::in);
+        std::ifstream file { filePath, std::ios_base::in };
 
         if (file.is_open())
         {

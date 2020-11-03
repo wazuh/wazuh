@@ -49,29 +49,29 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
             throw std::runtime_error { "Nullptr instances of network interface" };
         }
     }
-    std::string name() override
+    std::string name() const override
     {
         return m_interfaceAddress->ifa_name ? m_interfaceAddress->ifa_name : "unknown";
     }
-    int family() override
+    int family() const override
     {
         return m_interfaceAddress->ifa_addr ? m_interfaceAddress->ifa_addr->sa_family : AF_UNSPEC;
     }
-    std::string address() override
+    std::string address() const override
     {
         return m_interfaceAddress->ifa_addr ? 
             Utils::NetworkHelper::IAddressToBinary(
                 this->family(), 
                 &(reinterpret_cast<sockaddr_in *>(m_interfaceAddress->ifa_addr))->sin_addr) : "";
     }
-    std::string netmask() override
+    std::string netmask() const override
     {
         return m_interfaceAddress->ifa_netmask ? 
             Utils::NetworkHelper::IAddressToBinary(
                 m_interfaceAddress->ifa_netmask->sa_family, 
                 &(reinterpret_cast<sockaddr_in *>(m_interfaceAddress->ifa_netmask))->sin_addr) : "";
     }
-    std::string broadcast() override
+    std::string broadcast() const override
     {
         return m_interfaceAddress->ifa_dstaddr ? 
             Utils::NetworkHelper::IAddressToBinary(
@@ -79,28 +79,28 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
                 &(reinterpret_cast<sockaddr_in *>(m_interfaceAddress->ifa_dstaddr))->sin_addr) : "";
     }
 
-    std::string addressV6() override
+    std::string addressV6() const override
     {
         return m_interfaceAddress->ifa_addr ?
             Utils::NetworkHelper::IAddressToBinary(
                 m_interfaceAddress->ifa_addr->sa_family, 
                 &(reinterpret_cast<sockaddr_in6 *>(m_interfaceAddress->ifa_addr))->sin6_addr) : "";
     }
-    std::string netmaskV6() override
+    std::string netmaskV6() const override
     {
         return m_interfaceAddress->ifa_netmask ?
             Utils::NetworkHelper::IAddressToBinary(
                     m_interfaceAddress->ifa_netmask->sa_family, 
                     &(reinterpret_cast<sockaddr_in6 *>(m_interfaceAddress->ifa_netmask))->sin6_addr) : "";
     }
-    std::string broadcastV6() override
+    std::string broadcastV6() const override
     {
         return m_interfaceAddress->ifa_dstaddr ?
             Utils::NetworkHelper::IAddressToBinary(
                     m_interfaceAddress->ifa_dstaddr->sa_family, 
                     &(reinterpret_cast<sockaddr_in6 *>(m_interfaceAddress->ifa_dstaddr))->sin6_addr) : "";
     }
-    std::string gateway() override
+    std::string gateway() const override
     {
         std::string retVal = "unknown";
         size_t tableSize { 0 };
@@ -137,16 +137,16 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
         return retVal;
     }
 
-    std::string dhcp() override
+    std::string dhcp() const override
     {
         return "unknown";
     }
-    std::string mtu() override
+    std::string mtu() const override
     {
         return m_interfaceAddress ? std::to_string(reinterpret_cast<if_data *>(m_interfaceAddress->ifa_data)->ifi_mtu) : "";
     }
 
-    LinkStats stats() override
+    LinkStats stats() const override
     {
         const auto stats { reinterpret_cast<if_data *>(m_interfaceAddress->ifa_data) };
         LinkStats retVal {};
@@ -165,7 +165,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
         return retVal;
     }
     
-    std::string type() override
+    std::string type() const override
     {
         std::string retVal;
         if (m_interfaceAddress->ifa_addr)
@@ -175,11 +175,11 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
         }
         return retVal;
     }
-    std::string state() override
+    std::string state() const override
     {
         return m_interfaceAddress->ifa_flags & IFF_UP ? "up" : "down";
     }
-    std::string MAC() override
+    std::string MAC() const override
     {
         std::string retVal { "00:00:00:00:00:00" };
         auto sdl { reinterpret_cast<struct sockaddr_dl *>(m_interfaceAddress->ifa_addr) };

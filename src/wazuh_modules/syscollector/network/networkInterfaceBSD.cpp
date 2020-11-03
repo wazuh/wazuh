@@ -16,7 +16,7 @@ std::shared_ptr<IOSNetwork> FactoryBSDNetwork::create(const std::shared_ptr<INet
 {
     std::shared_ptr<IOSNetwork> ret;
 
-    if (interface.get())
+    if (interface)
     {
         const auto family { interface->family() };
         if(AF_INET == family)
@@ -33,12 +33,12 @@ std::shared_ptr<IOSNetwork> FactoryBSDNetwork::create(const std::shared_ptr<INet
         }
         else
         {
-            throw std::runtime_error("Error creating BSD network data retriever.");
+            throw std::runtime_error { "Error creating BSD network data retriever." };
         }
     }
     else
     {
-        throw std::runtime_error("Error nullptr interface instance.");
+        throw std::runtime_error { "Error nullptr interface instance." };
     }
     return ret;
 }
@@ -67,7 +67,7 @@ void BSDNetworkImpl<AF_INET>::buildNetworkData(nlohmann::json& network)
     }
     else
     {
-        throw std::runtime_error("Invalid IpV4 address.");
+        throw std::runtime_error { "Invalid IpV4 address." };
     }
 }
 template <>
@@ -93,7 +93,7 @@ void BSDNetworkImpl<AF_INET6>::buildNetworkData(nlohmann::json& network)
     }
     else
     {
-        throw std::runtime_error("Invalid IpV4 address.");
+        throw std::runtime_error { "Invalid IpV4 address." };
     }
 }
 template <>

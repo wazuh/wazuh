@@ -44,7 +44,7 @@ namespace Utils
                 interfacesAddress.reset(ifaddr);
                 for (auto ifa = ifaddr; ifa; ifa = ifa->ifa_next)
                 {
-                    if (!(ifa->ifa_flags & IFF_LOOPBACK))
+                    if (ifa && !(ifa->ifa_flags & IFF_LOOPBACK))
                     {
                         networkInterfaces[ifa->ifa_name].push_back(ifa); 
                     }

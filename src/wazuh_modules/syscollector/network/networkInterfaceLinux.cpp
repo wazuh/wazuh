@@ -17,7 +17,7 @@ std::shared_ptr<IOSNetwork> FactoryLinuxNetwork::create(const std::shared_ptr<IN
 {
     std::shared_ptr<IOSNetwork> ret;
 
-    if (interface.get())
+    if (interface)
     {
         const auto family { interface->family() };
 
@@ -35,12 +35,12 @@ std::shared_ptr<IOSNetwork> FactoryLinuxNetwork::create(const std::shared_ptr<IN
         }
         else
         {
-            throw std::runtime_error("Error creating linux network data retriever.");
+            throw std::runtime_error { "Error creating linux network data retriever." };
         }
     }
     else
     {
-        throw std::runtime_error("Error nullptr interface instance.");
+        throw std::runtime_error { "Error nullptr interface instance." };
     }
     return ret;
 }
@@ -69,7 +69,7 @@ void LinuxNetworkImpl<AF_INET>::buildNetworkData(nlohmann::json& network)
     }
     else
     {
-        throw std::runtime_error("Invalid IpV4 address.");
+        throw std::runtime_error { "Invalid IpV4 address." };
     }
 }
 template <>
@@ -95,7 +95,7 @@ void LinuxNetworkImpl<AF_INET6>::buildNetworkData(nlohmann::json& network)
     }
     else
     {
-        throw std::runtime_error("Invalid IpV6 address.");
+        throw std::runtime_error { "Invalid IpV6 address." };
     }
 }
 template <>
