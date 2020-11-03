@@ -30,6 +30,10 @@ typedef struct __Config {
     u_int8_t logfw;
     int decoder_order_size;
 
+    /* Agent's disconnection global parameters */
+    long agents_disconnection_time;
+    long agents_disconnection_alert_time;
+
     /* Prelude support */
     u_int8_t prelude;
     /* which min. level the alert must be sent to prelude */

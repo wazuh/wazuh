@@ -192,10 +192,9 @@ int wdbc_parse_result(char *result, char **payload) {
     return retval;
 }
 
-
 /**
  * @brief Combine wdbc_query_ex and wdbc_parse_result functions and return a JSON item.
- * 
+ *
  * @param[in] sock Pointer to the client socket descriptor.
  * @param[in] query Query to be sent to Wazuh-DB.
  * @param[out] response Char pointer where the response from Wazuh-DB will be stored.
@@ -229,6 +228,42 @@ cJSON * wdbc_query_parse_json(int *sock, const char *query, char *response, cons
 
     root = cJSON_Parse(arg);
     return root;
+}
+
+/**
+ * @brief Combine wdbc_query_ex and wdbc_parse_result functions.
+ *
+ * @param[in] sock Pointer to the client socket descriptor.
+ * @param[in] query Query to be sent to Wazuh-DB.
+ * @param[out] response Char pointer where the response from Wazuh-DB will be stored.
+ * @param[in] len Lenght of the response param.
+ * @param[out] payload Char pointer where the payload from Wazuh-DB will be stored.
+ * @return Enum wdbc_result.
+ */
+
+wdbc_result wdbc_query_parse(int *sock, const char *query, char *response, const int len, char** payload) {
+    wdbc_result status = WDBC_ERROR;
+    char* _payload = NULL;
+
+    int result = wdbc_query_ex(sock, query, response, len);
+    if (OS_SUCCESS == result) {
+        status = wdbc_parse_result(response, &_payload);
+        if (status == WDBC_ERROR){
+            merror("Bad response from wazuh-db: %s", _payload);
+        }
+    }
+    else if (-2 == result) {
+        merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
+    }
+    else if (-1 == result) {
+        merror("No response from wazuh-db.");
+    }
+
+    if (payload) {
+        *payload = _payload;
+    }
+
+    return status;
 }
 
 int wdbc_close(int* sock) {

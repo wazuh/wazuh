@@ -13,8 +13,6 @@
 #include "shared_download.h"
 #include <unistd.h>
 
-
-
 /* Prototypes */
 static void help_remoted(void) __attribute__((noreturn));
 
@@ -133,7 +131,7 @@ int main(int argc, char **argv)
     switch (w_is_worker()){
         case 0:
             logr.worker_node = false;
-            mdebug1("This is not a worker");            
+            mdebug1("This is not a worker");
             break;
         case 1:
             logr.worker_node = true;

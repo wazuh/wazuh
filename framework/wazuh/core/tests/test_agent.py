@@ -74,11 +74,7 @@ class InitAgent:
 
         :return: None
         """
-        db_path = os.path.join(data_path, 'global.db')
-        if os.path.isfile(db_path):
-            os.remove(db_path)
-
-        self.global_db = sqlite3.connect(db_path)
+        self.global_db = sqlite3.connect(':memory:')
         self.global_db.row_factory = sqlite3.Row
         self.cur = self.global_db.cursor()
         with open(os.path.join(data_path, 'schema_global_test.sql')) as f:
@@ -98,16 +94,6 @@ def send_msg_to_wdb(msg, raw=False):
     query = ' '.join(msg.split(' ')[2:])
     result = test_data.cur.execute(query).fetchall()
     return list(map(remove_nones_to_dict, map(dict, result)))
-
-
-@pytest.fixture(scope='module', autouse=True)
-def mock_ossec_path():
-    with patch('wazuh.common.ossec_path', new=test_data_path):
-        yield
-        # Delete db after all tests are run
-        db_path = os.path.join(test_data_path, 'global.db')
-        if os.path.isfile(db_path):
-            os.remove(db_path)
 
 
 def get_manager_version():
