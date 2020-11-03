@@ -1843,7 +1843,6 @@ void test_wdb_parse_global_insert_agent_group_success(void **state)
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     char query[OS_BUFFER_SIZE] = "global insert-agent-group test_group";
-    cJSON *j_object = NULL;
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent-group test_group");
