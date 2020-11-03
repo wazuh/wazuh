@@ -3347,85 +3347,6 @@ void test_wdb_set_agent_status_success_updated(void **state)
     assert_int_equal(OS_SUCCESS, ret);
 }
 
-/* Tests wdb_get_agents_by_keepalive */
-
-void test_wdb_get_agents_by_keepalive_wdbc_query_error(void **state) {
-    const char *condition = ">";
-    int keepalive = 10;
-
-    const char *query_str = "global get-agents-by-keepalive condition > 10 last_id 0";
-    const char *response = "err";
-
-    // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, sock);
-    expect_string(__wrap_wdbc_query_ex, query, query_str);
-    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, response);
-    will_return(__wrap_wdbc_query_ex, OS_INVALID);
-
-    int *array = wdb_get_agents_by_keepalive(condition, keepalive, false, NULL);
-
-    assert_null(array);
-}
-
-void test_wdb_get_agents_by_keepalive_wdbc_parse_error(void **state) {
-    const char *condition = ">";
-    int keepalive = 10;
-
-    const char *query_str = "global get-agents-by-keepalive condition > 10 last_id 0";
-    const char *response = "err";
-
-    // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, sock);
-    expect_string(__wrap_wdbc_query_ex, query, query_str);
-    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, response);
-    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
-
-    // Parsing Wazuh DB result
-    expect_any(__wrap_wdbc_parse_result, result);
-    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
-
-    int *array = wdb_get_agents_by_keepalive(condition, keepalive, false, NULL);
-
-    assert_null(array);
-}
-
-void test_wdb_get_agents_by_keepalive_success(void **state) {
-    const char *condition = ">";
-    int keepalive = 10;
-
-    const char *query_str = "global get-agents-by-keepalive condition > 10 last_id 0";
-
-    // Setting the payload
-    set_payload = 1;
-    strncpy(test_payload, "ok 1,2,3", 8);
-
-    // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, sock);
-    expect_string(__wrap_wdbc_query_ex, query, query_str);
-    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, test_payload);
-    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
-
-    // Parsing Wazuh DB result
-    expect_any(__wrap_wdbc_parse_result, result);
-    will_return(__wrap_wdbc_parse_result, WDBC_OK);
-
-    int *array = wdb_get_agents_by_keepalive(condition, keepalive, false, NULL);
-
-    assert_int_equal(1, array[0]);
-    assert_int_equal(2, array[1]);
-    assert_int_equal(3, array[2]);
-    assert_int_equal(-1, array[3]);
-
-    os_free(array);
-
-    // Cleaning payload
-    set_payload = 0;
-    memset(test_payload, '\0', OS_MAXSTR);
-}
-
 /* Tests wdb_get_all_agents */
 
 void test_wdb_get_all_agents_wdbc_query_error(void **state) {
@@ -5577,10 +5498,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_status_success_empty, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_status_success_pending, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_status_success_updated, setup_wdb_agent, teardown_wdb_agent),
-        /* Tests wdb_get_agents_by_keepalive */
-        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_keepalive_wdbc_query_error, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_keepalive_wdbc_parse_error, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_keepalive_success, setup_wdb_agent, teardown_wdb_agent),
         /* Tests wdb_get_all_agents */
         cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_wdbc_query_error, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_wdbc_parse_error, setup_wdb_agent, teardown_wdb_agent),
