@@ -5816,7 +5816,7 @@ paths:
     get:
       tags:
         - Agents
-      summary: "Get agents upgrade results"
+      summary: "Get upgrade results"
       description: "Return the upgrade results after updating agents"
       operationId: api.controllers.agents_controller.get_agent_upgrade
       x-rbac-actions:
