@@ -28,17 +28,6 @@
 #include "headers/shared.h"
 #include "config/config.h"
 
-/*
-#include "wazuh_db/wdb.h"
-#include "wazuhdb_op.h"
-#include "hash_op.h"
-
-#include "../wrappers/posix/pthread_wrappers.h"
-#include "../wrappers/wazuh/shared/hash_op_wrappers.h"
-#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
-#include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
-*/
-
 time_t __wrap_time(__attribute__((unused)) time_t *t) {
     return mock_type(time_t);
 }
@@ -56,21 +45,12 @@ int __wrap_auth_connect() {
     return mock();
 }
 
-typedef struct test_struct {
-    monitor_config mond;
-    monitor_time_control mond_time_control;
-} test_struct_t;
-
 extern monitor_time_control mond_time_control;
 
 /* setup/teardown */
 
 int setup_monitord(void **state) {
     test_mode = 1;
-    test_struct_t *init_data = NULL;
-    os_calloc(1,sizeof(test_struct_t),init_data);
-    *state = init_data;
-
     mond.global.agents_disconnection_alert_time = 0;
     mond.global.agents_disconnection_time = 0;
 
@@ -89,8 +69,7 @@ int setup_monitord(void **state) {
 
 int teardown_monitord(void **state) {
     test_mode = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    os_free(data);
+
     mond.global.agents_disconnection_alert_time = 0;
     mond.global.agents_disconnection_time = 0;
 
@@ -245,7 +224,7 @@ void test_monitor_agents_alert_active() {
     cJSON *j_agent_info = cJSON_Parse("[{\"connection_status\":\"active\",\"last_keepalive\":100,\"name\":\"Agent1\",\"register_ip\":\"any\"}]");
     OSHashNode *current_node = NULL;
 
-    os_calloc(1, sizeof(OSHashNode*), current_node);
+    os_calloc(1, sizeof(OSHashNode), current_node);
     current_node->next = NULL;
     current_node->key = "1";
 
@@ -271,7 +250,7 @@ void test_monitor_agents_alert_agent_info_fail() {
     cJSON *j_agent_info = NULL;
     OSHashNode *current_node = NULL;
 
-    os_calloc(1, sizeof(OSHashNode*), current_node);
+    os_calloc(1, sizeof(OSHashNode), current_node);
     current_node->next = NULL;
     current_node->key = "1";
 
@@ -302,7 +281,7 @@ void test_monitor_agents_alert_message_sent() {
     char msg_to_send[OS_SIZE_1024];
     char header[OS_SIZE_256];
 
-    os_calloc(1, sizeof(OSHashNode*), current_node);
+    os_calloc(1, sizeof(OSHashNode), current_node);
     current_node->next = NULL;
     current_node->key = "1";
 
@@ -376,6 +355,7 @@ void test_monitor_agents_deletion_success() {
     expect_string(__wrap_SendMSG, locmsg, ARGV0);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 1);
+    int not_used;
 
     monitor_agents_deletion();
 }
