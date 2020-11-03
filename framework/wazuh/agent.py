@@ -737,7 +737,8 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
                 error = WazuhError(code=1810 + agent_result['error'], cmd_error=True,
                                    extra_message=agent_result['message'])
                 result.add_failed_item(id_=str(agent_result['agent']).zfill(3), error=error)
-
+    result.affected_items = sorted(result.affected_items, key=lambda k: k['agent'])
+    
     return result
 
 
