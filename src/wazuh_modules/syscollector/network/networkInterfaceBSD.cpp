@@ -16,21 +16,29 @@ std::shared_ptr<IOSNetwork> FactoryBSDNetwork::create(const std::shared_ptr<INet
 {
     std::shared_ptr<IOSNetwork> ret;
 
-    if(AF_INET == interface->family())
+    if (interface.get())
     {
-        ret = std::make_shared<BSDNetworkImpl<AF_INET>>(interface);
-    }
-    else if (AF_INET6 == interface->family())
-    {
-        ret = std::make_shared<BSDNetworkImpl<AF_INET6>>(interface);
-    }
-    else if (AF_LINK == interface->family())
-    {
-        ret = std::make_shared<BSDNetworkImpl<AF_LINK>>(interface);
+        const auto family { interface->family() };
+        if(AF_INET == family)
+        {
+            ret = std::make_shared<BSDNetworkImpl<AF_INET>>(interface);
+        }
+        else if (AF_INET6 == family)
+        {
+            ret = std::make_shared<BSDNetworkImpl<AF_INET6>>(interface);
+        }
+        else if (AF_LINK == family)
+        {
+            ret = std::make_shared<BSDNetworkImpl<AF_LINK>>(interface);
+        }
+        else
+        {
+            throw std::runtime_error("Error creating BSD network data retriever.");
+        }
     }
     else
     {
-        throw std::runtime_error("Error creating BSD network data retriever.");
+        throw std::runtime_error("Error nullptr interface instance.");
     }
     return ret;
 }
@@ -55,7 +63,7 @@ void BSDNetworkImpl<AF_INET>::buildNetworkData(nlohmann::json& network)
         {
             network["IPv4"]["broadcast"] = broadcast;
         }
-        network["IPv4"]["DHCP"] = "unknown";
+        network["IPv4"]["dhcp"] = "unknown";
     }
     else
     {
@@ -81,7 +89,7 @@ void BSDNetworkImpl<AF_INET6>::buildNetworkData(nlohmann::json& network)
         {
             network["IPv6"]["broadcast"] = broadcast;
         }
-        network["IPv6"]["DHCP"] = "unknown";
+        network["IPv6"]["dhcp"] = "unknown";
     }
     else
     {
