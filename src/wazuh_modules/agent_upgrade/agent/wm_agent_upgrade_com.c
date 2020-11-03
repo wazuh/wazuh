@@ -432,10 +432,14 @@ STATIC int _unsign(const char * source, char dest[PATH_MAX + 1]) {
         return -1;
     }
 
+    // Skipping coverage: In the linux case, the difference between TMP_DIR and INCOMING_DIR is exactly 10
+    // which causes an error in the _jailfile instead of here
+    // LCOV_EXCL_START
     if (length = strlen(dest), length + 10 > PATH_MAX) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TOO_LONG_TEMP_FILE, "unsign()");
         return -1;
     }
+    // LCOV_EXCL_STOP
 
     memcpy(dest + length, TEMPLATE, sizeof(TEMPLATE));
     mode_t old_mask = umask(0022);

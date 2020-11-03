@@ -53,6 +53,30 @@ int setup_jailfile(void **state) {
     return 0;
 }
 
+#ifdef TEST_WINAGENT
+int setup_jailfile_long_name(void **state) {
+    char *filename = malloc(sizeof(char) * OS_MAXSTR);
+    const unsigned int length = PATH_MAX - strlen(DEFAULTDIR) - strlen(INCOMING_DIR) - 2;
+    for(int i=0; i < length; i++) {
+        sprintf(&filename[i], "a");
+    }
+    *state = filename;
+    test_mode = 1;
+    return 0;
+}
+#endif
+
+int setup_jailfile_long_name2(void **state) {
+    char *filename = malloc(sizeof(char) * OS_MAXSTR);
+    const unsigned int length = PATH_MAX - strlen(DEFAULTDIR) - strlen(TMP_DIR) - 2;
+    for(int i=0; i < length; i++) {
+        sprintf(&filename[i], "a");
+    }
+    *state = filename;
+    test_mode = 1;
+    return 0;
+}
+
 int teardown_jailfile(void **state) {
     char *filename = *state;
     test_mode = 0;
@@ -121,6 +145,7 @@ void test_unsign_invalid_source_temp(void **state) {
     assert_int_equal(ret, -1);
 }
 
+#ifdef TEST_WINAGENT
 void test_unsign_invalid_source_len(void **state) {
     char finalpath[PATH_MAX + 1];
     char *source =  *state;
@@ -130,18 +155,13 @@ void test_unsign_invalid_source_len(void **state) {
     expect_string(__wrap_w_ref_parent_folder, path, source);
     will_return(__wrap_w_ref_parent_folder, 0);
 
-#ifdef TEST_WINAGENT
-    expect_string(__wrap_strlen, s, "tmp\\test_filename");
-#else
-    expect_string(__wrap_strlen, s, "/var/ossec/tmp/test_filename");
-#endif
-    will_return(__wrap_strlen, PATH_MAX);
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8137): At unsign(): Too long temp file.");
 
     int ret = _unsign(source, finalpath);
     assert_int_equal(ret, -1);
 }
+#endif
 
 void test_unsign_temp_file_fail(void **state) {
     char finalpath[PATH_MAX + 1];
@@ -153,14 +173,10 @@ void test_unsign_temp_file_fail(void **state) {
     will_return(__wrap_w_ref_parent_folder, 0);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_strlen, s, "tmp\\test_filename");
-    will_return(__wrap_strlen, strlen("tmp\\test_filename"));
     expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_filename");
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8139): At unsign(): Could not unsign package file 'incoming\\test_filename'");
 #else
-    expect_string(__wrap_strlen, s, "/var/ossec/tmp/test_filename");
-    will_return(__wrap_strlen, strlen("/var/ossec/tmp/test_filename"));
     expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_filename");
     will_return(__wrap_mkstemp, 8);
     expect_any(__wrap_chmod, path);
@@ -187,12 +203,8 @@ void test_unsign_success(void **state) {
     will_return(__wrap_w_ref_parent_folder, 0);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_strlen, s, "tmp\\test_filename");
-    will_return(__wrap_strlen, strlen("tmp\\test_filename"));
     expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_filename");
 #else
-    expect_string(__wrap_strlen, s, "/var/ossec/tmp/test_filename");
-    will_return(__wrap_strlen, strlen("/var/ossec/tmp/test_filename"));
     expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_filename");
 
     will_return(__wrap_mkstemp, 8);
@@ -230,14 +242,6 @@ void test_uncompress_invalid_file_len(void **state) {
     expect_string(__wrap_w_ref_parent_folder, path, package);
     will_return(__wrap_w_ref_parent_folder, 0);
 
-
-#ifdef TEST_WINAGENT
-    expect_string(__wrap_strlen, s, "tmp\\test_filename");
-    will_return(__wrap_strlen, PATH_MAX);
-#else
-    expect_string(__wrap_strlen, s, "/var/ossec/tmp/test_filename");
-    will_return(__wrap_strlen, PATH_MAX);
-#endif
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8137): At uncompress(): Too long temp file.");
 
@@ -251,14 +255,6 @@ void test_uncompress_gzopen_fail(void **state) {
 
     expect_string(__wrap_w_ref_parent_folder, path, package);
     will_return(__wrap_w_ref_parent_folder, 0);
-
-#ifdef TEST_WINAGENT
-    expect_string(__wrap_strlen, s, "tmp\\test_filename");
-    will_return(__wrap_strlen, strlen("tmp\\test_filename"));
-#else
-    expect_string(__wrap_strlen, s, "/var/ossec/tmp/test_filename");
-    will_return(__wrap_strlen, strlen("/var/ossec/tmp/test_filename"));
-#endif
 
     expect_string(__wrap_gzopen, path, "compressed_test");
     expect_string(__wrap_gzopen, mode, "rb");
@@ -276,14 +272,6 @@ void test_uncompress_fopen_fail(void **state) {
 
     expect_string(__wrap_w_ref_parent_folder, path, package);
     will_return(__wrap_w_ref_parent_folder, 0);
-
-#ifdef TEST_WINAGENT
-    expect_string(__wrap_strlen, s, "tmp\\test_filename");
-    will_return(__wrap_strlen, strlen("tmp\\test_filename"));
-#else
-    expect_string(__wrap_strlen, s, "/var/ossec/tmp/test_filename");
-    will_return(__wrap_strlen, strlen("/var/ossec/tmp/test_filename"));
-#endif
 
     expect_string(__wrap_gzopen, path, "compressed_test");
     expect_string(__wrap_gzopen, mode, "rb");
@@ -312,14 +300,6 @@ void test_uncompress_fwrite_fail(void **state) {
 
     expect_string(__wrap_w_ref_parent_folder, path, package);
     will_return(__wrap_w_ref_parent_folder, 0);
-
-#ifdef TEST_WINAGENT
-    expect_string(__wrap_strlen, s, "tmp\\test_filename");
-    will_return(__wrap_strlen, strlen("tmp\\test_filename"));
-#else
-    expect_string(__wrap_strlen, s, "/var/ossec/tmp/test_filename");
-    will_return(__wrap_strlen, strlen("/var/ossec/tmp/test_filename"));
-#endif
 
     expect_string(__wrap_gzopen, path, "compressed_test");
     expect_string(__wrap_gzopen, mode, "rb");
@@ -358,14 +338,6 @@ void test_uncompress_gzread_fail(void **state) {
     expect_string(__wrap_w_ref_parent_folder, path, package);
     will_return(__wrap_w_ref_parent_folder, 0);
 
-#ifdef TEST_WINAGENT
-    expect_string(__wrap_strlen, s, "tmp\\test_filename");
-    will_return(__wrap_strlen, strlen("tmp\\test_filename"));
-#else
-    expect_string(__wrap_strlen, s, "/var/ossec/tmp/test_filename");
-    will_return(__wrap_strlen, strlen("/var/ossec/tmp/test_filename"));
-#endif
-
     expect_string(__wrap_gzopen, path, "compressed_test");
     expect_string(__wrap_gzopen, mode, "rb");
     will_return(__wrap_gzopen, 4);
@@ -399,14 +371,6 @@ void test_uncompress_success(void **state) {
 
     expect_string(__wrap_w_ref_parent_folder, path, package);
     will_return(__wrap_w_ref_parent_folder, 0);
-
-#ifdef TEST_WINAGENT
-    expect_string(__wrap_strlen, s, "tmp\\test_filename");
-    will_return(__wrap_strlen, strlen("tmp\\test_filename"));
-#else
-    expect_string(__wrap_strlen, s, "/var/ossec/tmp/test_filename");
-    will_return(__wrap_strlen, strlen("/var/ossec/tmp/test_filename"));
-#endif
 
     expect_string(__wrap_gzopen, path, "compressed_test");
     expect_string(__wrap_gzopen, mode, "rb");
@@ -630,9 +594,6 @@ void test_wm_agent_upgrade_com_write_error(void **state) {
 
     will_return(__wrap_fwrite, -1);
 
-    expect_string(__wrap_strlen, s, "ABCDABCD");
-    will_return(__wrap_strlen, __real_strlen("ABCDABCD"));
-
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
 #ifdef TEST_WINAGENT
     expect_string(__wrap__mterror, formatted_msg, "(8129): At write: Cannot write on 'incoming\\test_filename'");
@@ -659,9 +620,6 @@ void test_wm_agent_upgrade_com_write_success(void **state) {
     will_return(__wrap_w_ref_parent_folder, 0);
 
     will_return(__wrap_fwrite, 8);
-
-    expect_string(__wrap_strlen, s, "ABCDABCD");
-    will_return(__wrap_strlen, __real_strlen("ABCDABCD"));
 
     char *response = wm_agent_upgrade_com_write(command);
     cJSON *response_object = cJSON_Parse(response);
@@ -859,12 +817,8 @@ void test_wm_agent_upgrade_com_upgrade_uncompress_error(void **state) {
         will_return(__wrap_w_ref_parent_folder, 0);
 
         #ifdef TEST_WINAGENT
-            expect_string(__wrap_strlen, s, "tmp\\test_file");
-            will_return(__wrap_strlen, strlen("tmp\\test_file"));
             expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
         #else
-            expect_string(__wrap_strlen, s, "/var/ossec/tmp/test_file");
-            will_return(__wrap_strlen, strlen("/var/ossec/tmp/test_file"));
             expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_file");
 
             will_return(__wrap_mkstemp, 8);
@@ -911,12 +865,8 @@ void test_wm_agent_upgrade_com_upgrade_clean_directory_error(void **state) {
         will_return(__wrap_w_ref_parent_folder, 0);
 
         #ifdef TEST_WINAGENT
-            expect_string(__wrap_strlen, s, "tmp\\test_file");
-            will_return(__wrap_strlen, strlen("tmp\\test_file"));
             expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
         #else
-            expect_string(__wrap_strlen, s, "/var/ossec/tmp/test_file");
-            will_return(__wrap_strlen, strlen("/var/ossec/tmp/test_file"));
             expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_file");
 
             will_return(__wrap_mkstemp, 8);
@@ -932,14 +882,6 @@ void test_wm_agent_upgrade_com_upgrade_clean_directory_error(void **state) {
     {
         expect_any(__wrap_w_ref_parent_folder, path);
         will_return(__wrap_w_ref_parent_folder, 0);
-
-    #ifdef TEST_WINAGENT
-        expect_string(__wrap_strlen, s, "tmp\\test_file");
-        will_return(__wrap_strlen, strlen("tmp\\test_file"));
-    #else
-        expect_string(__wrap_strlen, s, "/var/ossec/tmp/test_file");
-        will_return(__wrap_strlen, strlen("/var/ossec/tmp/test_file"));
-    #endif
 
         expect_any(__wrap_gzopen, path);
         expect_string(__wrap_gzopen, mode, "rb");
@@ -993,12 +935,8 @@ void test_wm_agent_upgrade_com_unmerge_error(void **state) {
         will_return(__wrap_w_ref_parent_folder, 0);
 
         #ifdef TEST_WINAGENT
-            expect_string(__wrap_strlen, s, "tmp\\test_file");
-            will_return(__wrap_strlen, strlen("tmp\\test_file"));
             expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
         #else
-            expect_string(__wrap_strlen, s, "/var/ossec/tmp/test_file");
-            will_return(__wrap_strlen, strlen("/var/ossec/tmp/test_file"));
             expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_file");
 
             will_return(__wrap_mkstemp, 8);
@@ -1014,14 +952,6 @@ void test_wm_agent_upgrade_com_unmerge_error(void **state) {
     {
         expect_any(__wrap_w_ref_parent_folder, path);
         will_return(__wrap_w_ref_parent_folder, 0);
-
-    #ifdef TEST_WINAGENT
-        expect_string(__wrap_strlen, s, "tmp\\test_file");
-        will_return(__wrap_strlen, strlen("tmp\\test_file"));
-    #else
-        expect_string(__wrap_strlen, s, "/var/ossec/tmp/test_file");
-        will_return(__wrap_strlen, strlen("/var/ossec/tmp/test_file"));
-    #endif
 
         expect_any(__wrap_gzopen, path);
         expect_string(__wrap_gzopen, mode, "rb");
@@ -1082,12 +1012,8 @@ void test_wm_agent_upgrade_com_installer_error(void **state) {
         will_return(__wrap_w_ref_parent_folder, 0);
 
         #ifdef TEST_WINAGENT
-            expect_string(__wrap_strlen, s, "tmp\\test_file");
-            will_return(__wrap_strlen, strlen("tmp\\test_file"));
             expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
         #else
-            expect_string(__wrap_strlen, s, "/var/ossec/tmp/test_file");
-            will_return(__wrap_strlen, strlen("/var/ossec/tmp/test_file"));
             expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_file");
 
             will_return(__wrap_mkstemp, 8);
@@ -1102,14 +1028,6 @@ void test_wm_agent_upgrade_com_installer_error(void **state) {
     {
         expect_any(__wrap_w_ref_parent_folder, path);
         will_return(__wrap_w_ref_parent_folder, 0);
-
-    #ifdef TEST_WINAGENT
-        expect_string(__wrap_strlen, s, "tmp\\test_file");
-        will_return(__wrap_strlen, strlen("tmp\\test_file"));
-    #else
-        expect_string(__wrap_strlen, s, "/var/ossec/tmp/test_file");
-        will_return(__wrap_strlen, strlen("/var/ossec/tmp/test_file"));
-    #endif
 
         expect_any(__wrap_gzopen, path);
         expect_string(__wrap_gzopen, mode, "rb");
@@ -1174,12 +1092,8 @@ void test_wm_agent_upgrade_com_chmod_error(void **state) {
         will_return(__wrap_w_ref_parent_folder, 0);
 
         #ifdef TEST_WINAGENT
-            expect_string(__wrap_strlen, s, "tmp\\test_file");
-            will_return(__wrap_strlen, strlen("tmp\\test_file"));
             expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
         #else
-            expect_string(__wrap_strlen, s, "/var/ossec/tmp/test_file");
-            will_return(__wrap_strlen, strlen("/var/ossec/tmp/test_file"));
             expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_file");
 
             will_return(__wrap_mkstemp, 8);
@@ -1194,14 +1108,6 @@ void test_wm_agent_upgrade_com_chmod_error(void **state) {
     {
         expect_any(__wrap_w_ref_parent_folder, path);
         will_return(__wrap_w_ref_parent_folder, 0);
-
-    #ifdef TEST_WINAGENT
-        expect_string(__wrap_strlen, s, "tmp\\test_file");
-        will_return(__wrap_strlen, strlen("tmp\\test_file"));
-    #else
-        expect_string(__wrap_strlen, s, "/var/ossec/tmp/test_file");
-        will_return(__wrap_strlen, strlen("/var/ossec/tmp/test_file"));
-    #endif
 
         expect_any(__wrap_gzopen, path);
         expect_string(__wrap_gzopen, mode, "rb");
@@ -1272,12 +1178,8 @@ void test_wm_agent_upgrade_com_execute_error(void **state) {
         will_return(__wrap_w_ref_parent_folder, 0);
 
         #ifdef TEST_WINAGENT
-            expect_string(__wrap_strlen, s, "tmp\\test_file");
-            will_return(__wrap_strlen, strlen("tmp\\test_file"));
             expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
         #else
-            expect_string(__wrap_strlen, s, "/var/ossec/tmp/test_file");
-            will_return(__wrap_strlen, strlen("/var/ossec/tmp/test_file"));
             expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_file");
 
             will_return(__wrap_mkstemp, 8);
@@ -1292,14 +1194,6 @@ void test_wm_agent_upgrade_com_execute_error(void **state) {
     {
         expect_any(__wrap_w_ref_parent_folder, path);
         will_return(__wrap_w_ref_parent_folder, 0);
-
-    #ifdef TEST_WINAGENT
-        expect_string(__wrap_strlen, s, "tmp\\test_file");
-        will_return(__wrap_strlen, strlen("tmp\\test_file"));
-    #else
-        expect_string(__wrap_strlen, s, "/var/ossec/tmp/test_file");
-        will_return(__wrap_strlen, strlen("/var/ossec/tmp/test_file"));
-    #endif
 
         expect_any(__wrap_gzopen, path);
         expect_string(__wrap_gzopen, mode, "rb");
@@ -1387,12 +1281,8 @@ void test_wm_agent_upgrade_com_success(void **state) {
         will_return(__wrap_w_ref_parent_folder, 0);
 
         #ifdef TEST_WINAGENT
-            expect_string(__wrap_strlen, s, "tmp\\test_file");
-            will_return(__wrap_strlen, strlen("tmp\\test_file"));
             expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
         #else
-            expect_string(__wrap_strlen, s, "/var/ossec/tmp/test_file");
-            will_return(__wrap_strlen, strlen("/var/ossec/tmp/test_file"));
             expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_file");
 
             will_return(__wrap_mkstemp, 8);
@@ -1407,14 +1297,6 @@ void test_wm_agent_upgrade_com_success(void **state) {
     {
         expect_any(__wrap_w_ref_parent_folder, path);
         will_return(__wrap_w_ref_parent_folder, 0);
-
-    #ifdef TEST_WINAGENT
-        expect_string(__wrap_strlen, s, "tmp\\test_file");
-        will_return(__wrap_strlen, strlen("tmp\\test_file"));
-    #else
-        expect_string(__wrap_strlen, s, "/var/ossec/tmp/test_file");
-        will_return(__wrap_strlen, strlen("/var/ossec/tmp/test_file"));
-    #endif
 
         expect_any(__wrap_gzopen, path);
         expect_string(__wrap_gzopen, mode, "rb");
@@ -1525,11 +1407,13 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_jailfile_valid_path, setup_jailfile, teardown_jailfile),
         cmocka_unit_test_setup_teardown(test_unsign_invalid_source_incomming, setup_jailfile, teardown_jailfile),
         cmocka_unit_test_setup_teardown(test_unsign_invalid_source_temp, setup_jailfile, teardown_jailfile),
-        cmocka_unit_test_setup_teardown(test_unsign_invalid_source_len, setup_jailfile, teardown_jailfile),
+        #ifdef TEST_WINAGENT
+        cmocka_unit_test_setup_teardown(test_unsign_invalid_source_len, setup_jailfile_long_name, teardown_jailfile),
+        #endif
         cmocka_unit_test_setup_teardown(test_unsign_temp_file_fail, setup_jailfile, teardown_jailfile),
         cmocka_unit_test_setup_teardown(test_unsign_success, setup_jailfile, teardown_jailfile),
         cmocka_unit_test_setup_teardown(test_uncompress_invalid_filename, setup_jailfile, teardown_jailfile),
-        cmocka_unit_test_setup_teardown(test_uncompress_invalid_file_len, setup_jailfile, teardown_jailfile),
+        cmocka_unit_test_setup_teardown(test_uncompress_invalid_file_len, setup_jailfile_long_name2, teardown_jailfile),
         cmocka_unit_test_setup_teardown(test_uncompress_gzopen_fail, setup_jailfile, teardown_jailfile),
         cmocka_unit_test_setup_teardown(test_uncompress_fopen_fail, setup_jailfile, teardown_jailfile),
         cmocka_unit_test_setup_teardown(test_uncompress_fwrite_fail, setup_jailfile, teardown_jailfile),
