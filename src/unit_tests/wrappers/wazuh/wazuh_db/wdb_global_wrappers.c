@@ -264,18 +264,6 @@ int __wrap_wdb_global_sync_agent_info_set(__attribute__((unused)) wdb_t *wdb,
     return mock();
 }
 
-wdbc_result __wrap_wdb_global_get_agents_by_keepalive(__attribute__((unused)) wdb_t *wdb,
-                                                      int* last_agent_id,
-                                                      char comparator,
-                                                      int keep_alive,
-                                                      char **output) {
-    check_expected(*last_agent_id);
-    check_expected(comparator);
-    check_expected(keep_alive);
-    os_strdup(mock_ptr_type(char*), *output);
-    return mock();
-}
-
 wdbc_result __wrap_wdb_global_get_all_agents(   __attribute__((unused)) wdb_t *wdb,
                                                 int* last_agent_id,
                                                 char **output) {
