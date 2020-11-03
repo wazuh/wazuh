@@ -1904,6 +1904,49 @@ static void test_fim_db_read_line_from_file_memory_line_read(void **state) {
 }
 
 /**********************************************************************************************************************\
+ * fim_db_process_read_file()
+\**********************************************************************************************************************/
+static void test_fim_db_process_read_file_fail_to_read_line(void **state) {
+    fdb_t fim_sql;
+    fim_tmp_file file = { .elements = 1, .path = "/some/random/path" };
+    int retval;
+
+    expect_fim_db_read_line_from_file_fail();
+
+    retval = fim_db_process_read_file(&fim_sql, &file, 0, &syscheck.fim_entry_mutex, read_file_callback, FIM_DB_DISK,
+                                      NULL, NULL, NULL);
+
+    assert_int_equal(retval, FIMDB_ERR);
+}
+
+static void test_fim_db_process_read_file_success(void **state) {
+    fdb_t fim_sql;
+    fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
+    fim_file_data data = DEFAULT_FILE_DATA;
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = "/media/some/path", .file_entry.data = &data };
+    int retval;
+
+    if (file == NULL) {
+        fail();
+    }
+
+    file->elements = 1;
+    file->path = strdup("/some/random/path");
+    file->fd = (FILE *)1234;
+
+    expect_fim_db_read_line_from_file_disk_success(0, file->fd, "/media/some/path\n");
+
+    expect_fim_db_get_path_success("/media/some/path", &entry);
+
+    expect_fim_db_clean_file(file->fd, file->path, FIM_DB_DISK);
+
+    retval = fim_db_process_read_file(&fim_sql, file, 0, &syscheck.fim_entry_mutex, read_file_callback, FIM_DB_DISK,
+                                      NULL, NULL, NULL);
+
+    assert_int_equal(retval, FIMDB_OK);
+}
+
+/**********************************************************************************************************************\
  * fim_db_get_count_entries()
 \**********************************************************************************************************************/
 #ifdef TEST_WINAGENT
@@ -2067,6 +2110,9 @@ int main(void) {
         cmocka_unit_test_teardown(test_fim_db_read_line_from_file_disk_line_read, teardown_string),
         cmocka_unit_test(test_fim_db_read_line_from_file_memory_attempt_to_read_out_of_bounds),
         cmocka_unit_test(test_fim_db_read_line_from_file_memory_line_read),
+        // fim_db_process_read_file
+        cmocka_unit_test(test_fim_db_process_read_file_fail_to_read_line),
+        cmocka_unit_test(test_fim_db_process_read_file_success),
         // fim_db_get_count_entries
 #ifdef TEST_WINAGENT
         cmocka_unit_test(test_fim_db_get_count_entries_query_failed),

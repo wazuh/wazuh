@@ -30,10 +30,14 @@ typedef struct _test_fim_db_ctx_s {
 /* fim_db.c */
 void expect_fim_db_check_transaction();
 void expect_fim_db_decode_full_row();
+void expect_fim_db_decode_full_row_from_entry(const fim_entry *entry);
 void expect_fim_db_exec_simple_wquery();
 void expect_fim_db_clean_stmt();
 void expect_fim_db_get_count_entries(int retval);
 void expect_fim_db_force_commit();
+void expect_fim_db_read_line_from_file_fail();
+void expect_fim_db_read_line_from_file_disk_success(int index, FILE *fd, const char *line);
+void expect_fim_db_get_path_success(const char *path, const fim_entry *entry);
 
 /* fim_db_files.c */
 void expect_fim_db_bind_insert_data(int text_count);
@@ -55,5 +59,7 @@ int test_fim_db_setup(void **state);
 int test_fim_db_teardown(void **state);
 int test_fim_tmp_file_setup_disk(void **state);
 int test_fim_tmp_file_teardown_disk(void **state);
+
+extern const fim_file_data DEFAULT_FILE_DATA;
 
 #endif // __TEST_FIM_DB_H

@@ -15,6 +15,34 @@
 #include "test_fim_db.h"
 
 /**********************************************************************************************************************\
+ * Auxiliar constants and variables
+\**********************************************************************************************************************/
+const fim_file_data DEFAULT_FILE_DATA = {
+    // Checksum attributes
+    .size = 0,
+    .perm = "rw-rw-r--",
+    .attributes = NULL,
+    .uid = "1000",
+    .gid = "1000",
+    .user_name = "root",
+    .group_name = "root",
+    .mtime = 123456789,
+    .inode = 1,
+    .hash_md5 = "0123456789abcdef0123456789abcdef",
+    .hash_sha1 = "0123456789abcdef0123456789abcdef01234567",
+    .hash_sha256 = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+
+    // Options
+    .mode = FIM_REALTIME,
+    .last_event = 0,
+    .dev = 100,
+    .scanned = 0,
+    .options = (CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE | CHECK_MD5SUM |
+                CHECK_SHA1SUM | CHECK_SHA256SUM),
+    .checksum = "0123456789abcdef0123456789abcdef01234567",
+};
+
+/**********************************************************************************************************************\
  * Auxiliar expect functions
 \**********************************************************************************************************************/
 /**
@@ -24,50 +52,6 @@ void expect_fim_db_check_transaction() {
     expect_fim_db_exec_simple_wquery("END;");
     expect_string(__wrap__mdebug1, formatted_msg, "Database transaction completed.");
     expect_fim_db_exec_simple_wquery("BEGIN;");
-}
-
-/**
- * Successfully wrappes a fim_db_decode_full_row() call
- * */
-void expect_fim_db_decode_full_row() {
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, "/some/random/path"); // path
-    expect_value(__wrap_sqlite3_column_int, iCol, 2);
-    will_return(__wrap_sqlite3_column_int, 1); // mode
-    expect_value(__wrap_sqlite3_column_int, iCol, 3);
-    will_return(__wrap_sqlite3_column_int, 1000000); // last_event
-    expect_value(__wrap_sqlite3_column_int, iCol, 4);
-    will_return(__wrap_sqlite3_column_int, 1000001); // scanned
-    expect_value(__wrap_sqlite3_column_int, iCol, 5);
-    will_return(__wrap_sqlite3_column_int, 1000002); // options
-    expect_value(__wrap_sqlite3_column_text, iCol, 6);
-    will_return(__wrap_sqlite3_column_text, "checksum"); // checksum
-    expect_value(__wrap_sqlite3_column_int, iCol, 7);
-    will_return(__wrap_sqlite3_column_int, 111); // dev
-    expect_value(__wrap_sqlite3_column_int64, iCol, 8);
-    will_return(__wrap_sqlite3_column_int64, 1024); // inode
-    expect_value(__wrap_sqlite3_column_int, iCol, 9);
-    will_return(__wrap_sqlite3_column_int, 4096); // size
-    expect_value_count(__wrap_sqlite3_column_text, iCol, 10, 2);
-    will_return_count(__wrap_sqlite3_column_text, "perm", 2); // perm
-    expect_value_count(__wrap_sqlite3_column_text, iCol, 11, 2);
-    will_return_count(__wrap_sqlite3_column_text, "attributes", 2); // attributes
-    expect_value_count(__wrap_sqlite3_column_text, iCol, 12, 2);
-    will_return_count(__wrap_sqlite3_column_text, "uid", 2); // uid
-    expect_value_count(__wrap_sqlite3_column_text, iCol, 13, 2);
-    will_return_count(__wrap_sqlite3_column_text, "gid", 2); // gid
-    expect_value_count(__wrap_sqlite3_column_text, iCol, 14, 2);
-    will_return_count(__wrap_sqlite3_column_text, "user_name", 2); // user_name
-    expect_value_count(__wrap_sqlite3_column_text, iCol, 15, 2);
-    will_return_count(__wrap_sqlite3_column_text, "group_name", 2); // group_name
-    expect_value(__wrap_sqlite3_column_text, iCol, 16);
-    will_return(__wrap_sqlite3_column_text, "hash_md5"); // hash_md5
-    expect_value(__wrap_sqlite3_column_text, iCol, 17);
-    will_return(__wrap_sqlite3_column_text, "hash_sha1"); // hash_sha1
-    expect_value(__wrap_sqlite3_column_text, iCol, 18);
-    will_return(__wrap_sqlite3_column_text, "hash_sha256"); // hash_sha256
-    expect_value(__wrap_sqlite3_column_int, iCol, 19);
-    will_return(__wrap_sqlite3_column_int, 12345678); // mtime
 }
 
 /**
@@ -99,6 +83,31 @@ void expect_fim_db_get_count_entries(int retval) {
 
 void expect_fim_db_force_commit() {
     expect_fim_db_check_transaction();
+}
+
+void expect_fim_db_read_line_from_file_fail() {
+    will_return(__wrap_fseek, -1);
+
+    expect_any(__wrap__merror, formatted_msg);
+}
+
+void expect_fim_db_read_line_from_file_disk_success(int index, FILE *fd, const char *line) {
+    if (index == 0) {
+        will_return(__wrap_fseek, 0);
+    }
+
+    expect_value(__wrap_fgets, __stream, fd);
+    will_return(__wrap_fgets, line);
+}
+
+void expect_fim_db_get_path_success(const char *path, const fim_entry *entry) {
+    expect_fim_db_clean_stmt();
+    expect_fim_db_bind_path(path);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_fim_db_decode_full_row_from_entry(entry);
 }
 
 /**********************************************************************************************************************\
