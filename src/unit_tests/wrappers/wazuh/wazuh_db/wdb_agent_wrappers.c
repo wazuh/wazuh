@@ -17,3 +17,9 @@ cJSON* __wrap_wdb_get_agent_labels(int id,__attribute__((unused)) int *sock) {
     check_expected(id);
     return mock_ptr_type(cJSON*);
 }
+
+int __wrap_wdb_find_agent(const char *name, const char *ip, __attribute__((unused)) int *sock) {
+    check_expected(name);
+    check_expected(ip);
+    return mock();
+}
