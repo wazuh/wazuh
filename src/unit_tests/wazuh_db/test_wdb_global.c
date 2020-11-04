@@ -913,7 +913,6 @@ void test_wdb_global_insert_agent_transaction_fail(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 0;
     char *name = NULL;
     char *ip = NULL;
     char *register_ip = NULL;
@@ -924,7 +923,7 @@ void test_wdb_global_insert_agent_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_insert_agent(data->wdb, agent_id, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -933,7 +932,6 @@ void test_wdb_global_insert_agent_cache_fail(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 0;
     char *name = NULL;
     char *ip = NULL;
     char *register_ip = NULL;
@@ -945,7 +943,7 @@ void test_wdb_global_insert_agent_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_insert_agent(data->wdb, agent_id, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -954,7 +952,6 @@ void test_wdb_global_insert_agent_bind1_fail(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
     char *name = "test_name";
     char *ip = "test_ip";
     char *register_ip = "0.0.0.0";
@@ -965,13 +962,13 @@ void test_wdb_global_insert_agent_bind1_fail(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent(data->wdb, agent_id, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -980,7 +977,6 @@ void test_wdb_global_insert_agent_bind2_fail(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
     char *name = "test_name";
     char *ip = "test_ip";
     char *register_ip = "0.0.0.0";
@@ -991,7 +987,7 @@ void test_wdb_global_insert_agent_bind2_fail(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_value(__wrap_sqlite3_bind_text, buffer, name);
@@ -1000,7 +996,7 @@ void test_wdb_global_insert_agent_bind2_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent(data->wdb, agent_id, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -1009,7 +1005,6 @@ void test_wdb_global_insert_agent_bind3_fail(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
     char *name = "test_name";
     char *ip = "test_ip";
     char *register_ip = "0.0.0.0";
@@ -1020,7 +1015,7 @@ void test_wdb_global_insert_agent_bind3_fail(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_value(__wrap_sqlite3_bind_text, buffer, name);
@@ -1032,7 +1027,7 @@ void test_wdb_global_insert_agent_bind3_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent(data->wdb, agent_id, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -1041,7 +1036,6 @@ void test_wdb_global_insert_agent_bind4_fail(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
     char *name = "test_name";
     char *ip = "test_ip";
     char *register_ip = "0.0.0.0";
@@ -1052,7 +1046,7 @@ void test_wdb_global_insert_agent_bind4_fail(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_value(__wrap_sqlite3_bind_text, buffer, name);
@@ -1067,7 +1061,7 @@ void test_wdb_global_insert_agent_bind4_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent(data->wdb, agent_id, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -1076,7 +1070,6 @@ void test_wdb_global_insert_agent_bind5_fail(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
     char *name = "test_name";
     char *ip = "test_ip";
     char *register_ip = "0.0.0.0";
@@ -1087,7 +1080,7 @@ void test_wdb_global_insert_agent_bind5_fail(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_value(__wrap_sqlite3_bind_text, buffer, name);
@@ -1105,7 +1098,7 @@ void test_wdb_global_insert_agent_bind5_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent(data->wdb, agent_id, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -1114,7 +1107,6 @@ void test_wdb_global_insert_agent_bind6_fail(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
     char *name = "test_name";
     char *ip = "test_ip";
     char *register_ip = "0.0.0.0";
@@ -1125,7 +1117,7 @@ void test_wdb_global_insert_agent_bind6_fail(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_value(__wrap_sqlite3_bind_text, buffer, name);
@@ -1146,7 +1138,7 @@ void test_wdb_global_insert_agent_bind6_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent(data->wdb, agent_id, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -1155,7 +1147,6 @@ void test_wdb_global_insert_agent_bind7_fail(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
     char *name = "test_name";
     char *ip = "test_ip";
     char *register_ip = "0.0.0.0";
@@ -1166,7 +1157,7 @@ void test_wdb_global_insert_agent_bind7_fail(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_value(__wrap_sqlite3_bind_text, buffer, name);
@@ -1190,7 +1181,7 @@ void test_wdb_global_insert_agent_bind7_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent(data->wdb, agent_id, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -1199,7 +1190,6 @@ void test_wdb_global_insert_agent_step_fail(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
     char *name = "test_name";
     char *ip = "test_ip";
     char *register_ip = "0.0.0.0";
@@ -1210,7 +1200,7 @@ void test_wdb_global_insert_agent_step_fail(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_value(__wrap_sqlite3_bind_text, buffer, name);
@@ -1235,7 +1225,7 @@ void test_wdb_global_insert_agent_step_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
-    result = wdb_global_insert_agent(data->wdb, agent_id, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -1244,7 +1234,6 @@ void test_wdb_global_insert_agent_success(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
     char *name = "test_name";
     char *ip = "test_ip";
     char *register_ip = "0.0.0.0";
@@ -1255,7 +1244,7 @@ void test_wdb_global_insert_agent_success(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_value(__wrap_sqlite3_bind_text, buffer, name);
@@ -1278,7 +1267,7 @@ void test_wdb_global_insert_agent_success(void **state)
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
-    result = wdb_global_insert_agent(data->wdb, agent_id, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
 
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -1289,13 +1278,12 @@ void test_wdb_global_update_agent_name_transaction_fail(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
     char *name = NULL;
 
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_update_agent_name(data->wdb, agent_id, name);
+    result = wdb_global_update_agent_name(data->wdb, 1, name);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -1304,14 +1292,13 @@ void test_wdb_global_update_agent_name_cache_fail(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
     char *name = NULL;
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_update_agent_name(data->wdb, agent_id, name);
+    result = wdb_global_update_agent_name(data->wdb, 1, name);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -1320,7 +1307,6 @@ void test_wdb_global_update_agent_name_bind1_fail(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
     char *name = "test_name";
 
     will_return(__wrap_wdb_begin2, 1);
@@ -1332,7 +1318,7 @@ void test_wdb_global_update_agent_name_bind1_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_name(data->wdb, agent_id, name);
+    result = wdb_global_update_agent_name(data->wdb, 1, name);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -1341,7 +1327,6 @@ void test_wdb_global_update_agent_name_bind2_fail(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
     char *name = "test_name";
 
     will_return(__wrap_wdb_begin2, 1);
@@ -1351,13 +1336,13 @@ void test_wdb_global_update_agent_name_bind2_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_name(data->wdb, agent_id, name);
+    result = wdb_global_update_agent_name(data->wdb, 1, name);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -1366,7 +1351,6 @@ void test_wdb_global_update_agent_name_step_fail(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
     char *name = "test_name";
 
     will_return(__wrap_wdb_begin2, 1);
@@ -1376,14 +1360,14 @@ void test_wdb_global_update_agent_name_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
-    result = wdb_global_update_agent_name(data->wdb, agent_id, name);
+    result = wdb_global_update_agent_name(data->wdb, 1, name);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -1392,7 +1376,6 @@ void test_wdb_global_update_agent_name_success(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
     char *name = "test_name";
 
     will_return(__wrap_wdb_begin2, 1);
@@ -1402,12 +1385,12 @@ void test_wdb_global_update_agent_name_success(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 2);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
-    result = wdb_global_update_agent_name(data->wdb, agent_id, name);
+    result = wdb_global_update_agent_name(data->wdb, 1, name);
 
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -2864,14 +2847,13 @@ void test_wdb_global_update_agent_keepalive_transaction_fail(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
     const char *connection_status = "active";
     const char *status = "synced";
 
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_update_agent_keepalive(data->wdb, agent_id, connection_status, status);
+    result = wdb_global_update_agent_keepalive(data->wdb, 1, connection_status, status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2880,7 +2862,6 @@ void test_wdb_global_update_agent_keepalive_cache_fail(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
     const char *connection_status = "active";
     const char *status = "synced";
 
@@ -2888,7 +2869,7 @@ void test_wdb_global_update_agent_keepalive_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_update_agent_keepalive(data->wdb, agent_id, connection_status, status);
+    result = wdb_global_update_agent_keepalive(data->wdb, 1, connection_status, status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2897,7 +2878,6 @@ void test_wdb_global_update_agent_keepalive_bind1_fail(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
     const char *connection_status = "active";
     const char *status = "synced";
 
@@ -2911,7 +2891,7 @@ void test_wdb_global_update_agent_keepalive_bind1_fail(void **state)
 
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_keepalive(data->wdb, agent_id, connection_status, status);
+    result = wdb_global_update_agent_keepalive(data->wdb, 1, connection_status, status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2920,7 +2900,6 @@ void test_wdb_global_update_agent_keepalive_bind2_fail(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
     const char *connection_status = "active";
     const char *status = "synced";
 
@@ -2937,7 +2916,7 @@ void test_wdb_global_update_agent_keepalive_bind2_fail(void **state)
 
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_keepalive(data->wdb, agent_id, connection_status, status);
+    result = wdb_global_update_agent_keepalive(data->wdb, 1, connection_status, status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2946,7 +2925,6 @@ void test_wdb_global_update_agent_keepalive_bind3_fail(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
     const char *connection_status = "active";
     const char *status = "synced";
 
@@ -2960,13 +2938,13 @@ void test_wdb_global_update_agent_keepalive_bind3_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 3);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
 
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_keepalive(data->wdb, agent_id, connection_status, status);
+    result = wdb_global_update_agent_keepalive(data->wdb, 1, connection_status, status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2975,7 +2953,6 @@ void test_wdb_global_update_agent_keepalive_step_fail(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
     const char *connection_status = "active";
     const char *status = "synced";
 
@@ -2989,14 +2966,14 @@ void test_wdb_global_update_agent_keepalive_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 3);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
-    result = wdb_global_update_agent_keepalive(data->wdb, agent_id, connection_status, status);
+    result = wdb_global_update_agent_keepalive(data->wdb, 1, connection_status, status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -3005,7 +2982,6 @@ void test_wdb_global_update_agent_keepalive_success(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
     const char *connection_status = "active";
     const char *status = "synced";
 
@@ -3019,11 +2995,11 @@ void test_wdb_global_update_agent_keepalive_success(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 3);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
-    result = wdb_global_update_agent_keepalive(data->wdb, agent_id, connection_status, status);
+    result = wdb_global_update_agent_keepalive(data->wdb, 1, connection_status, status);
 
     assert_int_equal(result, OS_SUCCESS);
 }
