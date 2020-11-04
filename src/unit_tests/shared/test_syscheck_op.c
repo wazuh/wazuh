@@ -309,21 +309,30 @@ static void test_remove_empty_folders_success(void **state) {
 #ifndef TEST_WINAGENT
     char *input = "/var/ossec/queue/diff/local/test-dir/";
     char *first_subdir = "/var/ossec/queue/diff/local/test-dir";
+    char *second_subdir = "/var/ossec/queue/diff/local";
 #else
     char *input = "queue/diff\\local\\test-dir\\";
     char *first_subdir = "queue/diff\\local\\test-dir";
+    char *second_subdir = "queue/diff\\local";
 #endif
     int ret = -1;
     char message[OS_SIZE_1024];
+    char **not_null;
 
-    expect_string(__wrap_wreaddir, name, first_subdir);
-    will_return(__wrap_wreaddir, NULL);
+    if(not_null = calloc(2, sizeof(char*)), !not_null)
+        fail();
+
+    not_null[0] = strdup("some-file.tmp");
+    not_null[1] = NULL;
+
+    expect_wreaddir_call(first_subdir, NULL);
 
     snprintf(message, OS_SIZE_1024, "Removing empty directory '%s'.", first_subdir);
     expect_string(__wrap__mdebug1, formatted_msg, message);
 
-    expect_string(__wrap_rmdir_ex, name, first_subdir);
-    will_return(__wrap_rmdir_ex, 0);
+    expect_rmdir_ex_call(first_subdir, 0);
+
+    expect_wreaddir_call(second_subdir, not_null);
 
     ret = remove_empty_folders(input);
 
@@ -335,38 +344,45 @@ static void test_remove_empty_folders_recursive_success(void **state) {
     char *input = "/var/ossec/queue/diff/local/dir1/dir2/";
     static const char *parent_dirs[] = {
         "/var/ossec/queue/diff/local/dir1/dir2",
-        "/var/ossec/queue/diff/local/dir1"
+        "/var/ossec/queue/diff/local/dir1",
+        "/var/ossec/queue/diff/local"
     };
 #else
     char *input = "queue/diff\\local\\dir1\\dir2\\";
     static const char *parent_dirs[] = {
         "queue/diff\\local\\dir1\\dir2",
-        "queue/diff\\local\\dir1"
+        "queue/diff\\local\\dir1",
+        "queue/diff\\local"
     };
 #endif
-    char messages[2][OS_SIZE_1024];
+    char messages[3][OS_SIZE_1024];
     int ret = -1;
+    char **not_null;
+
+    if(not_null = calloc(2, sizeof(char*)), !not_null)
+        fail();
+
+    not_null[0] = strdup("some-file.tmp");
+    not_null[1] = NULL;
 
     snprintf(messages[0], OS_SIZE_1024, "Removing empty directory '%s'.", parent_dirs[0]);
     snprintf(messages[1], OS_SIZE_1024, "Removing empty directory '%s'.", parent_dirs[1]);
 
     // Remove dir2
-    expect_string(__wrap_wreaddir, name, parent_dirs[0]);
-    will_return(__wrap_wreaddir, NULL);
+    expect_wreaddir_call(parent_dirs[0], NULL);
 
     expect_string(__wrap__mdebug1, formatted_msg, messages[0]);
 
-    expect_string(__wrap_rmdir_ex, name, parent_dirs[0]);
-    will_return(__wrap_rmdir_ex, 0);
+    expect_rmdir_ex_call(parent_dirs[0], 0);
 
     // Remove dir1
-    expect_string(__wrap_wreaddir, name, parent_dirs[1]);
-    will_return(__wrap_wreaddir, NULL);
+    expect_wreaddir_call(parent_dirs[1], NULL);
 
     expect_string(__wrap__mdebug1, formatted_msg, messages[1]);
 
-    expect_string(__wrap_rmdir_ex, name, parent_dirs[1]);
-    will_return(__wrap_rmdir_ex, 0);
+    expect_rmdir_ex_call(parent_dirs[1], 0);
+
+    expect_wreaddir_call(parent_dirs[2], not_null);
 
     ret = remove_empty_folders(input);
 
@@ -393,19 +409,17 @@ static void test_remove_empty_folders_relative_path(void **state) {
     snprintf(messages[1], OS_SIZE_1024, "Removing empty directory '%s'.", parent_dirs[1]);
     snprintf(messages[2], OS_SIZE_1024, "Removing empty directory '%s'.", parent_dirs[2]);
 
-    expect_string(__wrap_wreaddir, name, parent_dirs[0]);
-    expect_string(__wrap_wreaddir, name, parent_dirs[1]);
-    expect_string(__wrap_wreaddir, name, parent_dirs[2]);
-    will_return_always(__wrap_wreaddir, NULL);
+    expect_wreaddir_call(parent_dirs[0], NULL);
+    expect_wreaddir_call(parent_dirs[1], NULL);
+    expect_wreaddir_call(parent_dirs[2], NULL);
 
     expect_string(__wrap__mdebug1, formatted_msg, messages[0]);
     expect_string(__wrap__mdebug1, formatted_msg, messages[1]);
     expect_string(__wrap__mdebug1, formatted_msg, messages[2]);
 
-    expect_string(__wrap_rmdir_ex, name, parent_dirs[0]);
-    expect_string(__wrap_rmdir_ex, name, parent_dirs[1]);
-    expect_string(__wrap_rmdir_ex, name, parent_dirs[2]);
-    will_return_always(__wrap_rmdir_ex, 0);
+    expect_rmdir_ex_call(parent_dirs[0], 0);
+    expect_rmdir_ex_call(parent_dirs[1], 0);
+    expect_rmdir_ex_call(parent_dirs[2], 0);
 
     ret = remove_empty_folders(input);
 
@@ -436,19 +450,17 @@ static void test_remove_empty_folders_absolute_path(void **state) {
     snprintf(messages[1], OS_SIZE_1024, "Removing empty directory '%s'.", parent_dirs[1]);
     snprintf(messages[2], OS_SIZE_1024, "Removing empty directory '%s'.", parent_dirs[2]);
 
-    expect_string(__wrap_wreaddir, name, parent_dirs[0]);
-    expect_string(__wrap_wreaddir, name, parent_dirs[1]);
-    expect_string(__wrap_wreaddir, name, parent_dirs[2]);
-    will_return_always(__wrap_wreaddir, NULL);
+    expect_wreaddir_call(parent_dirs[0], NULL);
+    expect_wreaddir_call(parent_dirs[1], NULL);
+    expect_wreaddir_call(parent_dirs[2], NULL);
 
     expect_string(__wrap__mdebug1, formatted_msg, messages[0]);
     expect_string(__wrap__mdebug1, formatted_msg, messages[1]);
     expect_string(__wrap__mdebug1, formatted_msg, messages[2]);
 
-    expect_string(__wrap_rmdir_ex, name, parent_dirs[0]);
-    expect_string(__wrap_rmdir_ex, name, parent_dirs[1]);
-    expect_string(__wrap_rmdir_ex, name, parent_dirs[2]);
-    will_return_always(__wrap_rmdir_ex, 0);
+    expect_rmdir_ex_call(parent_dirs[0], 0);
+    expect_rmdir_ex_call(parent_dirs[1], 0);
+    expect_rmdir_ex_call(parent_dirs[2], 0);
 
     ret = remove_empty_folders(input);
 
@@ -472,8 +484,7 @@ static void test_remove_empty_folders_non_empty_dir(void **state) {
     subdir[0] = strdup("some-file.tmp");
     subdir[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, parent_dir);
-    will_return(__wrap_wreaddir, subdir);
+    expect_wreaddir_call(parent_dir, subdir);
 
     ret = remove_empty_folders(input);
 
@@ -492,14 +503,12 @@ static void test_remove_empty_folders_error_removing_dir(void **state) {
     char remove_dir_message[OS_SIZE_1024];
     char dir_not_deleted_message[OS_SIZE_1024];
 
-    expect_string(__wrap_wreaddir, name, parent_dir);
-    will_return(__wrap_wreaddir, NULL);
+    expect_wreaddir_call(parent_dir, NULL);
 
     snprintf(remove_dir_message, OS_SIZE_1024, "Removing empty directory '%s'.", parent_dir);
     expect_string(__wrap__mdebug1, formatted_msg, remove_dir_message);
 
-    expect_string(__wrap_rmdir_ex, name, parent_dir);
-    will_return(__wrap_rmdir_ex, -1);
+    expect_rmdir_ex_call(parent_dir, -1);
 
     snprintf(dir_not_deleted_message, OS_SIZE_1024,
         "Empty directory '%s' couldn't be deleted. ('Directory not empty')", parent_dir);
@@ -507,7 +516,7 @@ static void test_remove_empty_folders_error_removing_dir(void **state) {
 
     ret = remove_empty_folders(input);
 
-    assert_int_equal(ret, 1);
+    assert_int_equal(ret, -1);
 }
 
 #if defined(TEST_SERVER)
@@ -3727,13 +3736,13 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test(test_normalize_path_null_input),
 
         /* remove_empty_folders tests */
-        // cmocka_unit_test(test_remove_empty_folders_success),
-        // cmocka_unit_test(test_remove_empty_folders_recursive_success),
+        cmocka_unit_test(test_remove_empty_folders_success),
+        cmocka_unit_test(test_remove_empty_folders_recursive_success),
         cmocka_unit_test(test_remove_empty_folders_null_input),
         cmocka_unit_test(test_remove_empty_folders_relative_path),
         cmocka_unit_test(test_remove_empty_folders_absolute_path),
         cmocka_unit_test(test_remove_empty_folders_non_empty_dir),
-        // cmocka_unit_test(test_remove_empty_folders_error_removing_dir),
+        cmocka_unit_test(test_remove_empty_folders_error_removing_dir),
 
 #if defined(TEST_SERVER)
         /* sk_decode_sum tests */

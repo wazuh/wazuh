@@ -34,6 +34,8 @@ int __wrap_IsSocket(const char * sock);
 
 int __wrap_rmdir_ex(const char *name);
 
+void expect_rmdir_ex_call(const char *dir, int ret);
+
 int __wrap_w_compress_gzfile(const char *filesrc, const char *filedst);
 
 int __wrap_w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst);
@@ -41,6 +43,8 @@ int __wrap_w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst);
 FILE *__wrap_wfopen(const char * __filename, const char * __modes);
 
 char ** __wrap_wreaddir(const char * name);
+
+void expect_wreaddir_call(const char *dir, char **files);
 
 #ifndef WIN32
 off_t __wrap_FileSize(const char * path);
