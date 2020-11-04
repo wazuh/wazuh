@@ -1,0 +1,728 @@
+---
+test_name: GET /rootcheck/001
+
+marks:
+  - base_tests
+
+stages:
+
+  # GET /rootcheck/001
+  - name: Try to get rootcheck scan results for agent 001
+    request: &get_rootcheck_agent
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/001"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        # We get totalItems number of arrays in items, using !anything to check items key is in the response
+        error: !anyint
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
+
+  # GET /rootcheck/001?limit=1
+  - name: Try to get rootcheck scan results for agent 001 with a set limit of 1 answer
+    request:
+      verify: False
+      <<: *get_rootcheck_agent
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          # We define this items answer as a common one array full answer
+          affected_items: &full_items_array
+            - status: !anystr
+              log: !anystr
+              date_first: !anystr
+              date_last: !anystr
+              cis: !anystr
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
+
+  # GET /rootcheck/002?limit=1
+  - name: Try to get rootcheck scan results for agent 002 with a set limit of 1 answer
+    request:
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/002"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          # We define this items answer as a common one array full answer
+          affected_items:
+            - <<: *full_items_array
+          failed_items: [ ]
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
+
+  # GET /rootcheck/001?limit=2&offset=0
+  - name: Try to get rootcheck scan results for agent 001 using limit and offset parameter
+    request:
+      verify: False
+      <<: *get_rootcheck_agent
+      params:
+        limit: 2
+        offset: 0
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - <<: *full_items_array
+            - <<: *full_items_array
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+      # Save second item to check offset in next stage
+      save:
+        json:
+          offset_item: data.affected_items[1]
+
+  # GET /rootcheck/000?limit=1&offset=1
+  - name: Try to get rootcheck scan results for agent 001 using limit and offset parameter
+    request:
+      verify: False
+      <<: *get_rootcheck_agent
+      params:
+        limit: 1
+        offset: 1
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+              # Save second item to check offset in next stage
+            - status: "{offset_item.status}"
+              date_last: "{offset_item.date_last}"
+              date_first: "{offset_item.date_first}"
+              cis: "{offset_item.cis}"
+              log: "{offset_item.log}"
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  # GET /rootcheck/001?q=log=5.2 (perfect match)
+  - name: Filters by composed query
+    request:
+      verify: False
+      <<: *get_rootcheck_agent
+      params:
+        q: log=5.2
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
+  # GET /rootcheck/001?q=log~5.2 (LIKE ~)
+  - name: Filters by composed query
+    request:
+      verify: False
+      <<: *get_rootcheck_agent
+      params:
+        q: log~5.2
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - status: "outstanding"
+              log: "System Audit: CIS - Debian Linux - 5.2 - Network parameters - IP Forwarding enabled {{CIS: 5.2
+              Debian Linux}}. File: /proc/sys/net/ipv4/ip_forward. Reference: https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf ."
+              date_first: !anystr
+              date_last: !anystr
+              cis: "5.2 Debian Linux"
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+      # Save some data for future use in the test
+      save:
+        json:
+          returned_status: data.affected_items[0].status
+          returned_log: data.affected_items[0].log
+          returned_date_first: data.affected_items[0].date_first
+          returned_date_last: data.affected_items[0].date_last
+          returned_cis: data.affected_items[0].cis
+          returned_total: data.total_affected_items
+
+  # GET /rootcheck/001?q=log~5.2;cis=5.2 Debian Linux
+  - name: Filters by composed query
+    request:
+      verify: False
+      <<: *get_rootcheck_agent
+      params:
+        q: log~5.2;cis=5.2 Debian Linux
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - status: "{returned_status}"
+              log: "{returned_log}"
+              date_first: "{returned_date_first}"
+              date_last: "{returned_date_last}"
+              cis: "{returned_cis}"
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  # GET /rootcheck/001?q=(log=test,status=outstanding);cis=5.2 Debian Linux,pci_dss=2
+  - name: Filters by composed query
+    request:
+      verify: False
+      <<: *get_rootcheck_agent
+      params:
+        q: (log=test,status=outstanding);cis=5.2 Debian Linux,pci_dss=2
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - status: "{returned_status}"
+              log: "{returned_log}"
+              date_first: "{returned_date_first}"
+              date_last: "{returned_date_last}"
+              cis: "{returned_cis}"
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  # GET /rootcheck/001?limit=1&search=/tmp
+  - name: Try to get limited rootcheck scan results for agent 001 using search parameter
+    request:
+      verify: False
+      <<: *get_rootcheck_agent
+      params:
+        limit: 1
+        search: /tmp
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - <<: *full_items_array
+              log: "System Audit: CIS - Debian Linux - 1.4 - Robust partition scheme - /tmp is not on its own partition
+               {{CIS: 1.4 Debian Linux}}. File: /etc/fstab. Reference: https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf ."
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  # GET /rootcheck/001?limit=1&search=random
+  - name: Try to get limited rootcheck scan results for agent 001 using search parameter
+    request:
+      verify: False
+      <<: *get_rootcheck_agent
+      params:
+        limit: 1
+        search: random
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
+  # GET /rootcheck/001?cis=1.4 Debian Linux
+  - name: Filter by CIS parameter
+    request:
+      verify: False
+      <<: *get_rootcheck_agent
+      params:
+        cis: 1.4 Debian Linux
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "cis"
+            expected_values: "1.4 Debian Linux"
+
+  # GET /rootcheck/001?cis=2.0 Debian Linux (does not exist)
+  - name: Filter by CIS parameter
+    request:
+      verify: False
+      <<: *get_rootcheck_agent
+      params:
+        cis: 2.0 Debian Linux
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
+  # GET /rootcheck/001?pci_dss=2 (does not exist)
+  - name: Filter by PCI_DSS parameter
+    request:
+      verify: False
+      <<: *get_rootcheck_agent
+      params:
+        pci_dss: 2
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
+  # GET /rootcheck/001?status=outstanding
+  - name: Filter by status parameter
+    request:
+      verify: False
+      <<: *get_rootcheck_agent
+      params:
+        status: outstanding
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "status"
+            expected_values: "outstanding"
+
+  # GET /rootcheck/001?status=all
+  - name: Filter by status parameter
+    request:
+      verify: False
+      <<: *get_rootcheck_agent
+      params:
+        status: all
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "status"
+            expected_values: "outstanding"
+
+  # GET /rootcheck/001?status=solved (does not exist)
+  - name: Filter by status parameter
+    request:
+      verify: False
+      <<: *get_rootcheck_agent
+      params:
+        status: solved
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
+  # GET /rootcheck/001?select=log
+  - name: Filter by select parameter
+    request:
+      verify: False
+      <<: *get_rootcheck_agent
+      params:
+        select: log
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'log'
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          total_affected_items: !anyint
+          failed_items: []
+          total_failed_items: 0
+
+# GET /rootcheck/001?select=log,status,date_last
+  - name: Filter by select parameter
+    request:
+      verify: False
+      <<: *get_rootcheck_agent
+      params:
+        select: log,status,date_last
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'log,status,date_last'
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          total_affected_items: !anyint
+          failed_items: []
+          total_failed_items: 0
+
+  # GET /rootcheck/001?select=cis,distinct=true
+  - name: Filter by select parameter and distinct
+    request:
+      verify: False
+      <<: *get_rootcheck_agent
+      params:
+        select: cis
+        distinct: true
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - cis: "1.4 Debian Linux"
+            - cis: "5.2 Debian Linux"
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+
+  # GET /rootcheck/001?select=status,distinct=true
+  - name: Filter by select parameter and distinct
+    request:
+      verify: False
+      <<: *get_rootcheck_agent
+      params:
+        select: status
+        distinct: true
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - status: "outstanding"
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  # GET /rootcheck/001?sort=+log
+  - name: Sort response
+    request:
+      verify: False
+      <<: *get_rootcheck_agent
+      params:
+        sort: +log
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+      save:
+        json:
+          affected_items: data.affected_items
+
+  # GET /rootcheck/001?sort=-log
+  - name: Sort response
+    request:
+      verify: False
+      <<: *get_rootcheck_agent
+      params:
+        sort: -log
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            affected_items: "{affected_items}"
+
+
+---
+test_name: GET /rootcheck/001/last_scan
+
+stages:
+
+  # GET /rootcheck/001/last_scan
+  - name: Try to get when the last scan for agent 001 started and ended
+    request:
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/001/last_scan"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - end: !anything
+              start: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+
+---
+test_name: DELETE /roothceck
+
+stages:
+
+  # DELETE /rootcheck
+  - name: Try to delete roothceck scans in agent 001
+    request:
+      verify: False
+      method: DELETE
+      url: "{protocol:s}://{host:s}:{port:d}/rootcheck"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "001"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - "001"
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  # GET /rootcheck/001
+  - name: Check if data has been deleted in agent 001.
+    request:
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/001"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+        message: !anystr
+
+  # GET /rootcheck/002
+  - name: Check if agent 002 has data.
+    request:
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/002"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: 5
+          total_failed_items: 0
+        message: !anystr
+
+  # DELETE /rootcheck
+  - name: Try to delete roothceck scans in all agents
+    request:
+      verify: False
+      method: DELETE
+      url: "{protocol:s}://{host:s}:{port:d}/rootcheck"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - "000"
+            - "001"
+            - "002"
+            - "003"
+            - "004"
+            - "005"
+            - "006"
+            - "007"
+            - "008"
+            - "009"
+            - "010"
+            - "011"
+            - "012"
+          failed_items: []
+          total_affected_items: 13
+          total_failed_items: 0
+
+  # GET /rootcheck/002
+  - name: Check if data has been deleted in agent 002.
+    request:
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/002"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+        message: !anystr
+
+
+---
+test_name: PUT /roothceck
+
+stages:
+
+  # GET /rootcheck/001
+  - name: Check that agent 001 has no data
+    request:
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/001"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+        message: !anystr
+
+  # PUT /rootcheck?agents_list=001
+  - name: Run roothceck scan in agent 001
+    request:
+      verify: False
+      method: PUT
+      url: "{protocol:s}://{host:s}:{port:d}/rootcheck"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "001"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - "001"
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+    delay_after: !float "{global_db_delay}"
+
+  # GET /rootcheck/001
+  - name: Check that agent 001 has data again
+    request:
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/001"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: 5
+          total_failed_items: 0
+        message: !anystr
+
+  # PUT /rootcheck
+  - name: Run roothceck scan in agent 001
+    request:
+      verify: False
+      method: PUT
+      url: "{protocol:s}://{host:s}:{port:d}/rootcheck"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - "000"
+            - "001"
+            - "002"
+            - "003"
+            - "004"
+            - "005"
+            - "006"
+            - "007"
+            - "008"
+          failed_items:
+            - error:
+                code: 1601
+              id:
+                - "009"
+                - "010"
+            - error:
+                code: 1601
+              id:
+                - "011"
+                - "012"
+          total_affected_items: 9
+          total_failed_items: 4
+    delay_after: !float "{global_db_delay}"
+
+  # GET /rootcheck/001
+  - name: Check that agent 002 has data again
+    request:
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/002"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: 5
+          total_failed_items: 0
+        message: !anystr
