@@ -162,24 +162,24 @@ size_t wm_agent_upgrade_process_command(const char *buffer, char **output) {
             const char* command = command_obj->valuestring;
 
             if (strcmp(command, "clear_upgrade_result") == 0) {
-                os_strdup(wm_agent_upgrade_com_clear_result(), *output);
+                *output = wm_agent_upgrade_com_clear_result();
             } else if (allow_upgrades) {
                 const cJSON *parameters = cJSON_GetObjectItem(buffer_obj, task_manager_json_keys[WM_TASK_PARAMETERS]);
                 if (!parameters) {
-                    os_strdup(wm_agent_upgrade_command_ack(ERROR_PARAMETERS_NOT_FOUND, error_messages[ERROR_PARAMETERS_NOT_FOUND]), *output);
+                    *output = wm_agent_upgrade_command_ack(ERROR_PARAMETERS_NOT_FOUND, error_messages[ERROR_PARAMETERS_NOT_FOUND]);
                 } else if (strcmp(command, "open") == 0) {
-                    os_strdup(wm_agent_upgrade_com_open(parameters), *output);
+                    *output = wm_agent_upgrade_com_open(parameters);
                 } else if(strcmp(command, "write") == 0) {
-                    os_strdup(wm_agent_upgrade_com_write(parameters), *output);
+                    *output = wm_agent_upgrade_com_write(parameters);
                 } else if(strcmp(command, "close") == 0) {
-                    os_strdup(wm_agent_upgrade_com_close(parameters), *output);
+                    *output = wm_agent_upgrade_com_close(parameters);
                 } else if(strcmp(command, "sha1") == 0) {
-                    os_strdup(wm_agent_upgrade_com_sha1(parameters), *output);
+                    *output = wm_agent_upgrade_com_sha1(parameters);
                 } else if(strcmp(command, "upgrade") == 0) {
-                    os_strdup(wm_agent_upgrade_com_upgrade(parameters), *output);
+                    *output = wm_agent_upgrade_com_upgrade(parameters);
                 }
             } else {
-                os_strdup(wm_agent_upgrade_command_ack(ERROR_UPGRADES_NOT_ALLOWED, error_messages[ERROR_UPGRADES_NOT_ALLOWED]), *output);
+                *output = wm_agent_upgrade_command_ack(ERROR_UPGRADES_NOT_ALLOWED, error_messages[ERROR_UPGRADES_NOT_ALLOWED]);
             }
         }
 
@@ -187,7 +187,7 @@ size_t wm_agent_upgrade_process_command(const char *buffer, char **output) {
     }
 
     if (!(*output)) {
-        os_strdup(wm_agent_upgrade_command_ack(ERROR_UNKNOWN_COMMAND, error_messages[ERROR_UNKNOWN_COMMAND]), *output);
+       *output = wm_agent_upgrade_command_ack(ERROR_UNKNOWN_COMMAND, error_messages[ERROR_UNKNOWN_COMMAND]);
     }
 
     return strlen(*output);
