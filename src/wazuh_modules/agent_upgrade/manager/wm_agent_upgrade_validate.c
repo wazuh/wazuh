@@ -67,7 +67,7 @@ STATIC int wm_agent_upgrade_validate_system(const char *platform, const char *os
  * @retval WM_UPGRADE_URL_NOT_FOUND
  * @retval WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST
  * */
-STATIC int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, char *wpk_version, const char *wpk_repository_config) __attribute__((nonnull));
+STATIC int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, char *wpk_version, const char *wpk_repository_config) __attribute__((nonnull(1, 2, 3)));
 
 static const char* invalid_platforms[] = {
     "darwin",
@@ -266,7 +266,13 @@ STATIC int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info
     os_calloc(OS_SIZE_4096, sizeof(char), versions_url);
 
     if (!task->wpk_repository) {
-        os_strdup(wpk_repository_config, task->wpk_repository);
+        if (wpk_repository_config) {
+            os_strdup(wpk_repository_config, task->wpk_repository);
+        } else if (wm_agent_upgrade_compare_versions(wpk_version, "v4.0.0") < 0) {
+            os_strdup(WM_UPGRADE_WPK_REPO_URL_3_X, task->wpk_repository);
+        } else {
+            os_strdup(WM_UPGRADE_WPK_REPO_URL_4_X, task->wpk_repository);
+        }
     }
 
     // Set protocol

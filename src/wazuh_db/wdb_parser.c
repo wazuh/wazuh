@@ -663,8 +663,8 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_global_sync_agent_info_set(wdb, next, output);
             }
-        } 
-        else if (strcmp(query, "get-agents-by-keepalive") == 0) { 
+        }
+        else if (strcmp(query, "get-agents-by-keepalive") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for get-agents-by-keepalive.");
                 mdebug2("Global DB query error near: %s", query);
@@ -674,7 +674,7 @@ int wdb_parse(char * input, char * output) {
                 result = wdb_parse_global_get_agents_by_keepalive(wdb, next, output);
             }
         }
-        else if (strcmp(query, "get-all-agents") == 0) { 
+        else if (strcmp(query, "get-all-agents") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for get-all-agents.");
                 mdebug2("Global DB query error near: %s", query);
@@ -693,7 +693,7 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_global_get_agent_info(wdb, next, output);
             }
-        } 
+        }
         else {
             mdebug1("Invalid DB query syntax.");
             mdebug2("Global DB query error near: %s", query);
@@ -4070,13 +4070,12 @@ int wdb_parse_rootcheck(wdb_t * wdb, char * input, char * output) {
     char * next;
     int result = 0;
     next = wstr_chr(input, ' ');
-    
+
     if (next) {
         *next++ = '\0';
     }
 
     curr = input;
-    
 
     if (strcmp(curr, "delete") == 0) {
         result = wdb_rootcheck_delete(wdb);
@@ -4089,7 +4088,7 @@ int wdb_parse_rootcheck(wdb_t * wdb, char * input, char * output) {
         }
     } else if (strcmp(curr, "save") == 0) {
         rk_event_t event;
-        
+
         if (!next) {
             mdebug2("DB(%s) Invalid rootcheck query syntax: %s", wdb->id, input);
             snprintf(output, OS_MAXSTR + 1, "err Invalid rootcheck query syntax, near '%.32s'", input);
@@ -4097,6 +4096,13 @@ int wdb_parse_rootcheck(wdb_t * wdb, char * input, char * output) {
         }
 
         char *ptr = wstr_chr(next, ' ');
+
+        if (!ptr) {
+            mdebug2("DB(%s) Invalid rootcheck query syntax: %s", wdb->id, input);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid rootcheck query syntax, near '%.32s'", input);
+            return -1;
+        }
+
         *ptr++ = '\0';
 
         event.date_last = strtol(next, NULL, 10);
@@ -4124,7 +4130,7 @@ int wdb_parse_rootcheck(wdb_t * wdb, char * input, char * output) {
                     snprintf(output, OS_MAXSTR + 1, "ok 2");
                 }
                 break;
-            default: 
+            default:
                 snprintf(output, OS_MAXSTR + 1, "ok 1");
                 break;
         }
@@ -4985,7 +4991,7 @@ int wdb_parse_global_select_groups(wdb_t * wdb, char * output) {
 int wdb_parse_global_select_agent_keepalive(wdb_t * wdb, char * input, char * output) {
    char *out = NULL;
    char *next = NULL;
-   
+
    if (next = wstr_chr(input, ' '), !next) {
         mdebug1("Invalid DB query syntax.");
         mdebug2("DB query error near: %s", input);
@@ -5049,12 +5055,12 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
     cJSON *json_value = NULL;
     cJSON *json_id = NULL;
 
-    /* 
+    /*
     * The cJSON_GetErrorPtr() method is not thread safe, using cJSON_ParseWithOpts() instead,
     * error indicates where the string caused an error.
-    * The third arguments is TRUE and it will give an error if the input string 
+    * The third arguments is TRUE and it will give an error if the input string
     * contains data after the JSON command
-    */ 
+    */
     root = cJSON_ParseWithOpts(input, &error, TRUE);
     if (!root) {
         mdebug1("Global DB Invalid JSON syntax updating unsynced agents.");
@@ -5098,7 +5104,7 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
                     json_value = cJSON_GetObjectItem(json_label, "value");
                     json_id = cJSON_GetObjectItem(json_label, "id");
 
-                    if(cJSON_IsString(json_key) && json_key->valuestring != NULL && cJSON_IsString(json_value) && 
+                    if(cJSON_IsString(json_key) && json_key->valuestring != NULL && cJSON_IsString(json_value) &&
                         json_value->valuestring != NULL && cJSON_IsNumber(json_id)){
                         // Inserting labels in the database
                         if (OS_SUCCESS != wdb_global_set_agent_label(wdb, json_id->valueint, json_key->valuestring, json_value->valuestring)) {
@@ -5170,7 +5176,7 @@ int wdb_parse_global_get_agents_by_keepalive(wdb_t* wdb, char* input, char* outp
         return OS_INVALID;
     }
     keep_alive = atoi(next);
-    
+
     /* Get last_id*/
     next = strtok_r(NULL, delim, &savedptr);
     if (next == NULL || strcmp(next, "last_id") != 0) {
@@ -5185,7 +5191,7 @@ int wdb_parse_global_get_agents_by_keepalive(wdb_t* wdb, char* input, char* outp
         return OS_INVALID;
     }
     last_id = atoi(next);
-    
+
     wdbc_result status = wdb_global_get_agents_by_keepalive(wdb, &last_id, comparator, keep_alive, &out);
     snprintf(output, OS_MAXSTR + 1, "%s %s", WDBC_RESULT[status], out);
 
@@ -5200,7 +5206,7 @@ int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output) {
     char *next = NULL;
     const char delim[2] = " ";
     char *savedptr = NULL;
-    
+
     /* Get last_id*/
     next = strtok_r(input, delim, &savedptr);
     if (next == NULL || strcmp(next, "last_id") != 0) {
@@ -5215,10 +5221,10 @@ int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output) {
         return OS_INVALID;
     }
     last_id = atoi(next);
-    
+
     wdbc_result status = wdb_global_get_all_agents(wdb, &last_id, &out);
     snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], out);
-    
+
     os_free(out)
 
     return OS_SUCCESS;

@@ -532,6 +532,200 @@ void test_invalid_command(void **state){
     os_free(query);
 }
 
+
+void test_wdb_parse_rootcheck_badquery(void **state)
+{
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = strdup("badquery ");
+    expect_string(__wrap__mdebug2, formatted_msg, "DB(000) Invalid rootcheck query syntax: badquery");
+    ret = wdb_parse_rootcheck(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid rootcheck query syntax, near 'badquery'");
+    assert_int_equal(ret, -1);
+    os_free(query);
+}
+
+void test_wdb_parse_rootcheck_delete_error(void **state)
+{
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = strdup("delete");
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__merror, formatted_msg, "DB(000) Cannot cache statement");
+
+    ret = wdb_parse_rootcheck(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Error deleting rootcheck PM tuple");
+    assert_int_equal(ret, -1);
+    os_free(query);
+}
+
+void test_wdb_parse_rootcheck_delete_ok(void **state)
+{
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = strdup("delete");
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 10);
+
+    ret = wdb_parse_rootcheck(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok 0");
+    assert_int_equal(ret, 0);
+    os_free(query);
+}
+
+void test_wdb_parse_rootcheck_save_invalid_no_next(void **state)
+{
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = strdup("save");
+    expect_string(__wrap__mdebug2, formatted_msg, "DB(000) Invalid rootcheck query syntax: save");
+    ret = wdb_parse_rootcheck(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid rootcheck query syntax, near 'save'");
+    assert_int_equal(ret, -1);
+    os_free(query);
+}
+
+void test_wdb_parse_rootcheck_save_no_ptr(void **state)
+{
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = strdup("save ");
+    expect_string(__wrap__mdebug2, formatted_msg, "DB(000) Invalid rootcheck query syntax: save");
+    ret = wdb_parse_rootcheck(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid rootcheck query syntax, near 'save'");
+    assert_int_equal(ret, -1);
+    os_free(query);
+}
+
+void test_wdb_parse_rootcheck_save_date_max_long(void **state)
+{
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = strdup("save 9223372036854775807 asdasd");
+    expect_string(__wrap__mdebug2, formatted_msg, "DB(000) Invalid rootcheck date timestamp: 9223372036854775807");
+    ret = wdb_parse_rootcheck(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid rootcheck query syntax, near 'save'");
+    assert_int_equal(ret, -1);
+    os_free(query);
+}
+
+void test_wdb_parse_rootcheck_save_update_cache_error(void **state)
+{
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = strdup("save 123456789 Test");
+
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__merror, formatted_msg, "DB(000) Cannot cache statement");
+
+    expect_string(__wrap__merror, formatted_msg, "DB(000) Error updating rootcheck PM tuple on SQLite database");
+
+    ret = wdb_parse_rootcheck(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Error updating rootcheck PM tuple");
+    assert_int_equal(ret, -1);
+    os_free(query);
+}
+
+void test_wdb_parse_rootcheck_save_update_success(void **state)
+{
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = strdup("save 123456789 Test");
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 123456789);
+    will_return_always(__wrap_sqlite3_bind_int, 1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "Test");
+    will_return(__wrap_sqlite3_bind_text, 1);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 10);
+
+    ret = wdb_parse_rootcheck(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok 1");
+    assert_int_equal(ret, 0);
+    os_free(query);
+}
+
+void test_wdb_parse_rootcheck_save_update_insert_cache_error(void **state)
+{
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = strdup("save 123456789 Test");
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 123456789);
+    will_return_always(__wrap_sqlite3_bind_int, 1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "Test");
+    will_return(__wrap_sqlite3_bind_text, 1);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 0);
+
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__merror, formatted_msg, "DB(000) Cannot cache statement");
+
+    expect_string(__wrap__merror, formatted_msg, "DB(000) Error inserting rootcheck PM tuple on SQLite database for agent");
+
+    ret = wdb_parse_rootcheck(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Error updating rootcheck PM tuple");
+    assert_int_equal(ret, -1);
+    os_free(query);
+}
+
+void test_wdb_parse_rootcheck_save_update_insert_success(void **state)
+{
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = strdup("save 123456789 Test");
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 123456789);
+    will_return_always(__wrap_sqlite3_bind_int, 1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "Test");
+    will_return(__wrap_sqlite3_bind_text, 1);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 0);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 123456789);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, 123456789);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "Test");
+    will_return(__wrap_sqlite3_bind_text, 1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4);
+    will_return(__wrap_sqlite3_bind_text, 1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 5);
+    will_return(__wrap_sqlite3_bind_text, 1);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_last_insert_rowid, 10);
+
+    ret = wdb_parse_rootcheck(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok 2");
+    assert_int_equal(ret, 0);
+    os_free(query);
+}
+
+
+
 int main()
 {
     const struct CMUnitTest tests[] =
@@ -567,7 +761,17 @@ int main()
         cmocka_unit_test_setup_teardown(test_integrity_check_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_integrity_clear_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_integrity_clear_ok, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_invalid_command, test_setup, test_teardown)
+        cmocka_unit_test_setup_teardown(test_invalid_command, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_badquery, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_delete_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_delete_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_invalid_no_next, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_no_ptr, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_date_max_long, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_update_cache_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_update_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_update_insert_cache_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_update_insert_success, test_setup, test_teardown)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
