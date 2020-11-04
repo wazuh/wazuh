@@ -74,6 +74,7 @@ static int teardown_fim_db_entry(void **state) {
     return 0;
 }
 
+#ifndef TEST_WINAGENT
 static int test_fim_db_paths_teardown(void **state) {
     teardown_fim_db(state);
     char **paths = state[1];
@@ -86,6 +87,7 @@ static int test_fim_db_paths_teardown(void **state) {
     }
     return 0;
 }
+#endif
 
 /**********************************************************************************************************************\
  * fim_db_insert_data()
@@ -793,7 +795,7 @@ void test_fim_db_remove_path_no_entry_realtime_file(void **state) {
 void test_fim_db_remove_path_no_entry_scheduled_file(void **state) {
     fim_file_data data = DEFAULT_FILE_DATA;
 #ifndef TEST_WINAGENT
-    char *entry_path = "/media/some/path";
+    char *entry_path = "/root/some/path";
 #else
     char *entry_path = "c:\\windows\\sysnative\\drivers\\etc\\some\\path";
 #endif
@@ -958,6 +960,8 @@ void test_fim_db_get_not_scanned_success(void **state) {
     assert_int_equal(ret, FIMDB_OK);
 }
 
+#ifndef TEST_WINAGENT
+/* fim_db_get_paths_from_inode() is only used in *nix systems */
 /*----------fim_db_get_paths_from_inode()------------------*/
 void test_fim_db_get_paths_from_inode_none_path(void **state) {
     test_fim_db_insert_data *test_data = *state;
@@ -1049,6 +1053,7 @@ void test_fim_db_get_paths_from_inode_multiple_path(void **state) {
     assert_null(paths[5]);
 }
 
+#endif
 /**
  * Test error message when number of iterated rows is larger than count
  * */
@@ -1468,10 +1473,16 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_get_not_scanned_failed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_get_not_scanned_success, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_get_paths_from_inode
-        cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_none_path, test_fim_db_setup, test_fim_db_paths_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_single_path, test_fim_db_setup, test_fim_db_paths_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_multiple_path, test_fim_db_setup, test_fim_db_paths_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_multiple_unamatched_rows, test_fim_db_setup, test_fim_db_paths_teardown),
+#ifndef TEST_WINAGENT
+        cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_none_path, test_fim_db_setup,
+                                        test_fim_db_paths_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_single_path, test_fim_db_setup,
+                                        test_fim_db_paths_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_multiple_path, test_fim_db_setup,
+                                        test_fim_db_paths_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_multiple_unamatched_rows, test_fim_db_setup,
+                                        test_fim_db_paths_teardown),
+#endif
         // fim_db_delete_range
         cmocka_unit_test_setup_teardown(test_fim_db_delete_range_success, test_fim_tmp_file_setup_disk, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_delete_range_error, test_fim_tmp_file_setup_disk, test_fim_db_teardown),
@@ -1485,7 +1496,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_get_count_file_data_error, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_get_count_file_entry
         cmocka_unit_test_setup_teardown(test_fim_db_get_count_file_entry, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_get_count_file_entry_error, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_get_count_file_entry_error, test_fim_db_setup,
+                                        test_fim_db_teardown),
         // fim_db_decode_full_row
         cmocka_unit_test_teardown(test_fim_db_decode_full_row, test_fim_db_teardown),
         // fim_db_set_scanned

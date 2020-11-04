@@ -42,6 +42,7 @@ const fim_file_data DEFAULT_FILE_DATA = {
     .checksum = "0123456789abcdef0123456789abcdef01234567",
 };
 
+#ifdef TEST_WINAGENT
 const fim_registry_key DEFAULT_REGISTRY_KEY = {
     .id = 1,
     .path = "HKEY_LOCAL_MACHINE\\software\\some:\\key",
@@ -70,6 +71,7 @@ const fim_registry_value_data DEFAULT_REGISTRY_VALUE = {
     .checksum = "0123456789abcdef0123456789abcdef01234567",
     .mode = FIM_SCHEDULED
 };
+#endif
 
 /**********************************************************************************************************************\
  * Auxiliar expect functions
