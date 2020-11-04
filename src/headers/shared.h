@@ -201,6 +201,10 @@ extern const char *__local_name;
 
 #define w_strlen(x) ({ size_t ret = 0; if (x) ret = strlen(x); ret;})
 
+// Calculate the number of elements within an array. 
+// Only static arrays allowed.
+#define array_size(array) (sizeof(array)/sizeof(array[0]))
+
 #ifdef CLIENT
 #define isAgent 1
 #else

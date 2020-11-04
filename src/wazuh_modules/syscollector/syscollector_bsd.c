@@ -87,6 +87,13 @@ const char * discarded_packages [] = {
     NULL
 };
 
+// Valid package version keys. 
+// The custom versions take priority over the default one.
+const char * plist_versions [] = {
+    "CFBundleShortVersionString", //default
+    "CliVersion" 
+};
+
 STATIC int sys_read_apps(const char * app_folder, const char * timestamp, int random_id, int queue_fd, const char* LOCATION);
 STATIC int sys_read_homebrew_apps(const char * app_folder, const char * timestamp, int random_id, int queue_fd, const char* LOCATION);
 STATIC cJSON* sys_parse_pkg(const char * app_folder);
@@ -231,6 +238,25 @@ int sys_read_apps(const char * app_folder, const char * timestamp, int random_id
 }
 
 /**
+ * @brief Check whether the given plist string contains a
+ * valid and supported 'version' key.
+ *
+ * @param line String with version key.
+ * @return True if it's valid, False otherwise.
+ **/
+bool sys_valid_plist_pkg_version (const char *line) {
+    int8_t dic_size = array_size(plist_versions);
+
+    for (int8_t i = 0; i < dic_size; i++) {
+        if (strstr(line, plist_versions[i])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
  * @brief Read macOS plist files
  *
  * @param app_folder Path to the directory where the plist file is located.
@@ -326,15 +352,28 @@ cJSON* sys_parse_pkg(const char * app_folder) {
                         os_free(parts);
                         read_name = 1;
                     }
-                } else if (strstr(read_buff, "CFBundleShortVersionString")){
-                    if (strstr(read_buff, "<string>")){
-                        char ** parts = OS_StrBreak('>', read_buff, 4);
-                        char ** _parts = OS_StrBreak('<', parts[3], 2);
-                        char * delim = strstr(_parts[0], " (");
-                        if (delim) {
-                            *delim = '\0';
-                        }
-                        
+                } else if (sys_valid_plist_pkg_version(read_buff) == true) {
+                    char ** parts = NULL;
+                    char ** _parts = NULL;
+                    char * delim = NULL;
+
+                    if (strstr(read_buff, "<string>")) {
+                        parts = OS_StrBreak('>', read_buff, 4);
+                        _parts =  OS_StrBreak('<', parts[3], 2);
+
+                    } else if ((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && 
+                        strstr(read_buff, "<string>")) {
+                        parts = OS_StrBreak('>', read_buff, 2);
+                        _parts = OS_StrBreak('<', parts[1], 2);
+                    }
+
+                    if (_parts && (delim = strstr(_parts[0], " ("), delim)) {
+                        *delim = '\0';
+                    }
+
+                    if (parts && _parts) {
+                        // Save only the last pkg version available
+                        cJSON_DeleteItemFromObject(package, "version");
                         cJSON_AddStringToObject(package, "version", _parts[0]);
 
                         for (i = 0; _parts[i]; i++) {
@@ -347,26 +386,7 @@ cJSON* sys_parse_pkg(const char * app_folder) {
                         }
                         os_free(parts);
                     }
-                    else if ((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
-                        char ** parts = OS_StrBreak('>', read_buff, 2);
-                        char ** _parts = OS_StrBreak('<', parts[1], 2);
-                        char * delim = strstr(_parts[0], " (");
-                        if (delim) {
-                            *delim = '\0';
-                        }
-
-                        cJSON_AddStringToObject(package, "version", _parts[0]);
-
-                        for (i = 0; _parts[i]; i++) {
-                            os_free(_parts[i]);
-                        }
-                        os_free(_parts);
-
-                        for (i = 0; parts[i]; i++) {
-                            os_free(parts[i]);
-                        }
-                        os_free(parts);
-                    }
+                    
                 } else if (strstr(read_buff, "LSApplicationCategoryType")){
                     if (strstr(read_buff, "<string>")){
                         char ** parts = OS_StrBreak('>', read_buff, 4);
@@ -405,7 +425,12 @@ cJSON* sys_parse_pkg(const char * app_folder) {
                         char ** parts = OS_StrBreak('>', read_buff, 4);
                         char ** _parts = OS_StrBreak('<', parts[3], 2);
 
-                        cJSON_AddStringToObject(package, "description", _parts[0]);
+                            vendor_name = get_vendor_mac(_parts[0]);
+                            if (vendor_name) {
+                                cJSON_AddStringToObject(package, "vendor", vendor_name);
+                                os_free(vendor_name);
+                            }
+                            cJSON_AddStringToObject(package, "description", _parts[0]);
 
                         for (i = 0; _parts[i]; i++) {
                             os_free(_parts[i]);
@@ -421,7 +446,12 @@ cJSON* sys_parse_pkg(const char * app_folder) {
                         char ** parts = OS_StrBreak('>', read_buff, 2);
                         char ** _parts = OS_StrBreak('<', parts[1], 2);
 
-                        cJSON_AddStringToObject(package, "description", _parts[0]);
+                            vendor_name = get_vendor_mac(_parts[0]);
+                            if (vendor_name) {
+                                cJSON_AddStringToObject(package, "vendor", vendor_name);
+                                os_free(vendor_name);
+                            }
+                            cJSON_AddStringToObject(package, "description", _parts[0]);
 
                         for (i = 0; _parts[i]; i++) {
                             os_free(_parts[i]);
@@ -1883,24 +1913,58 @@ int normalize_mac_package_name(const char * source_package, char ** vendor_name,
     int i;
     char * next = NULL;
     char * package_cpy = NULL;
+    char * package = NULL;
     char * vendor_in_package[] = {
         "Microsoft",
-        "VMware"
+        "VMware",
+        "Symantec",
+        "McAfee",
+        "QuickHeal",
+        "Quick",
     };
     char * version_in_package[] = {
         "1Password"
     };
-    int array_size_vendor = sizeof(vendor_in_package) / sizeof(vendor_in_package[0]);
-    int array_size_version = sizeof(version_in_package) / sizeof(version_in_package[0]);
+    int array_size_vendor = array_size(vendor_in_package);
+    int array_size_version = array_size(version_in_package);
 
     if (!source_package) {
         return 0;
     }
-    os_strdup(source_package, package_cpy);
+    w_strdup(source_package, package_cpy);
+
+    if (strstr(package_cpy, "For Mac") && strstr(package_cpy, "Kaspersky")) {
+        package = package_cpy;
+        package = w_remove_substr(package, " For Mac");
+        w_strdup(package, *package_name);
+        os_free(package_cpy);
+        return 1;
+    }
 
     if (next = wstr_chr(package_cpy, ' '), !next) {
-        if (!strcmp(package_cpy, "zoom.us")) {
-            os_strdup("zoom", *package_name);
+        package = package_cpy;
+        if (!strcmp(package, "zoom.us")) {
+            w_strdup("zoom", *package_name);
+        } else if (strstr(package, "TotalDefense")) {
+            w_strdup("TotalDefense", *vendor_name);
+            package = w_remove_substr(package, "TotalDefense");
+            package = w_remove_substr(package, "forMac");
+            if (!strcmp(package, "Antivirus")) {
+                w_strdup("Anti-Virus", *package_name);
+            } else {
+                w_strdup(package, *package_name);
+            }
+        } else if (strstr(package, "AVG")) {
+            w_strdup("AVG", *vendor_name);
+            package = w_remove_substr(package, "AVG");
+            if (!strcmp(package, "Antivirus")) {
+                w_strdup("Anti-Virus", *package_name);
+            } else {
+                w_strdup(package, *package_name);
+            }
+        } else if (!strcmp(package, "AntivirusforMac")) {
+            package = w_remove_substr(package, "forMac");
+            w_strdup(package, *package_name);
         } else {
             result = 0;
         }
@@ -1908,15 +1972,26 @@ int normalize_mac_package_name(const char * source_package, char ** vendor_name,
         *next++ = '\0';
         for (i = 0; i < array_size_vendor; i++) {
             if (!strcmp(package_cpy, vendor_in_package[i])) {
-                os_strdup(package_cpy, *vendor_name);
-                os_strdup(next, *package_name);
+                if (!strcmp(package_cpy, "Quick")) {
+                    package = next;
+                    next = wstr_chr(package, ' ');
+                    *next++ = '\0';
+                    w_strdup("Quick Heal", *vendor_name);
+                    w_strdup(next, *package_name);
+                } else {
+                    if (!strcmp(package_cpy, "McAfee")) {
+                        next = w_remove_substr(next, " for Mac");
+                    }
+                    w_strdup(package_cpy, *vendor_name);
+                    w_strdup(next, *package_name);
+                }
                 os_free(package_cpy);
                 return 1;
             }
         }
         for (i = 0; i < array_size_version; i++) {
             if (!strcmp(package_cpy, version_in_package[i])) {
-                os_strdup(package_cpy, *package_name);
+                w_strdup(package_cpy, *package_name);
                 os_free(package_cpy);
                 return 1;
             }
@@ -1926,6 +2001,57 @@ int normalize_mac_package_name(const char * source_package, char ** vendor_name,
 
     os_free(package_cpy);
     return result;
+}
+
+char * get_vendor_mac(const char * string) {
+    char * vendor = NULL;
+    char* token = NULL;
+    char * string_cpy = NULL;
+    char * vendors[] = {
+        "google",
+        "apple",
+        "microsoft",
+        "adobe",
+        "atlassian",
+        "oracle",
+        "sophos",
+        "symantec",
+        "kaspersky",
+        "mcafee",
+        "bitdefender",
+        "k7computing",
+        "avg",
+        "avast",
+        "simplexsolutionsinc",
+        "liquid",
+        "foxit-software"
+    };
+    char * save_ptr = NULL;
+    int size_vendors = array_size(vendors);
+    int i;
+
+    if (!string) {
+        return NULL;
+    }
+
+    os_strdup(string, string_cpy);
+    token = strtok_r(string_cpy, ".", &save_ptr);
+    while (token != NULL && vendor == NULL) {
+        for (i = 0; i < size_vendors; i++) {
+            if (!strcmp(token, vendors[i])) {
+                if (!strcmp(token, "foxit-software")) {
+                    w_remove_substr(token, "-");
+                }
+                token[0] = toupper(token[0]);
+                os_strdup(token, vendor);
+                break;
+            }
+        }
+        token = strtok_r(NULL, ".", &save_ptr);
+    }
+
+    os_free(string_cpy);
+    return vendor;
 }
 
 #endif
