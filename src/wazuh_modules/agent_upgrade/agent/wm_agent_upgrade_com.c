@@ -169,13 +169,13 @@ size_t wm_agent_upgrade_process_command(const char *buffer, char **output) {
                     os_strdup(wm_agent_upgrade_command_ack(ERROR_PARAMETERS_NOT_FOUND, error_messages[ERROR_PARAMETERS_NOT_FOUND]), *output);
                 } else if (strcmp(command, "open") == 0) {
                     os_strdup(wm_agent_upgrade_com_open(parameters), *output);
-                } else if(strcmp(command, "write") == 0) {
+                } else if (strcmp(command, "write") == 0) {
                     os_strdup(wm_agent_upgrade_com_write(parameters), *output);
-                } else if(strcmp(command, "close") == 0) {
+                } else if (strcmp(command, "close") == 0) {
                     os_strdup(wm_agent_upgrade_com_close(parameters), *output);
-                } else if(strcmp(command, "sha1") == 0) {
+                } else if (strcmp(command, "sha1") == 0) {
                     os_strdup(wm_agent_upgrade_com_sha1(parameters), *output);
-                } else if(strcmp(command, "upgrade") == 0) {
+                } else if (strcmp(command, "upgrade") == 0) {
                     os_strdup(wm_agent_upgrade_com_upgrade(parameters), *output);
                 }
             } else {

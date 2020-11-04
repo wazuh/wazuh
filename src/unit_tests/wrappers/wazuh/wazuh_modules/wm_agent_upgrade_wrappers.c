@@ -101,6 +101,16 @@ int __wrap_wm_agent_upgrade_parse_agent_response(const char* agent_response, cha
     return mock();
 }
 
+int __wrap_wm_agent_upgrade_parse_agent_upgrade_command_response(const char* agent_response, char **data) {
+    check_expected(agent_response);
+
+    if (data) {
+        *data = mock_type(char *);
+    }
+
+    return mock();
+}
+
 OSHashNode* __wrap_wm_agent_upgrade_get_first_node(unsigned int *index) {
     if (mock()) {
         return mock_type(OSHashNode *);
