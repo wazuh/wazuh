@@ -2554,31 +2554,27 @@ static int doesRuleExist(int sid, RuleNode *r_node)
 
 bool w_check_attr_negate(xml_node *node, int rule_id) {
 
-    const char * xml_negate = "negate";
-
     if (!node->attributes) {
         return false;
     }
 
-    for(int i = 0; node->attributes[i]; i++) {
-        if (strcasecmp(node->attributes[i], xml_negate) == 0) {
+    const char * xml_negate = "negate";
+    const char * negate_value = w_get_attr_val_by_name(node, xml_negate);
 
-            if (strcasecmp(node->values[i], "yes") == 0) {
-                return true;
-            }
-            else if (strcasecmp(node->values[i], "no") == 0) {
-                return false;
-            }
-            else {
-                mwarn(ANALYSISD_INV_VALUE_RULE, node->values[i],
-                      node->attributes[i], rule_id);
-            }
-        }
+    if (!negate_value) {
+        return false;
+    }
+
+    if (strcasecmp(negate_value, "yes") == 0) {
+        return true;
+    } else if (strcasecmp(negate_value, "no") == 0) {
+        return false;
+    } else {
+        mwarn(ANALYSISD_INV_VALUE_RULE, negate_value, xml_negate, rule_id);
     }
 
     return false;
 }
-
 
 bool w_check_attr_field_name(xml_node * node, FieldInfo ** field, int rule_id) {
 
@@ -2587,65 +2583,57 @@ bool w_check_attr_field_name(xml_node * node, FieldInfo ** field, int rule_id) {
     }
 
     const char * xml_name = "name";
+    const char * name_value = w_get_attr_val_by_name(node, xml_name);
+
+    if (!name_value) {
+        merror("Failure to read rule %d. No such attribute '%s' for field.", rule_id, xml_name);
+        return false;
+    }
 
     char *static_fields[18] = {"srcip", "dstip", "srcgeoip", "dstgeoip", "srcport", "dstport",
                                "user", "srcuser", "dstuser", "url", "id", "data", "extra_data",
                                "status", "protocol", "system_name", "action", NULL};
 
-    for(int i = 0; node->attributes[i]; i++) {
-        if (strcasecmp(node->attributes[i], xml_name) == 0) {
-
-            // Avoid static fields
-            for (int j = 0; static_fields[j]; j++) {
-                if (strcasecmp(node->values[i], static_fields[j]) == 0) {
-                    merror("Failure to read rule %d. Field '%s' is static.", rule_id, node->values[i]);
-                    return false;
-                }
-            }
-
-            // Save in struct and return true if it's valid value
-            os_calloc(1, sizeof(FieldInfo), *field);
-            (*field)->name = loadmemory((*field)->name, node->values[i]);
-
-            return true;
+    // Avoid static fields
+    for (int j = 0; static_fields[j]; j++) {
+        if (strcasecmp(name_value, static_fields[j]) == 0) {
+            merror("Failure to read rule %d. Field '%s' is static.", rule_id, name_value);
+            return false;
         }
     }
 
-    merror("Failure to read rule %d. No such attribute '%s' for field.", rule_id, xml_name);
+    // Save in struct and return true if it's valid value
+    os_calloc(1, sizeof(FieldInfo), *field);
+    (*field)->name = loadmemory((*field)->name, name_value);
 
-    return false;
+    return true;
 }
 
 w_exp_type_t w_check_attr_type(xml_node * node, w_exp_type_t default_type, int rule_id) {
-
-    const char * xml_osregex_type = OSREGEX_STR;
-    const char * xml_osmatch_type = OSMATCH_STR;
-    const char * xml_pcre2_type = PCRE2_STR;
-
-    const char * xml_type = "type";
-    char * str_type = NULL;
 
     if (!node || !node->attributes) {
         return default_type;
     }
 
-    for (int i = 0; node->attributes[i]; i++) {
-        if (strcasecmp(node->attributes[i], xml_type) == 0) {
-            str_type = node->values[i];
-            break;
-        }
-    }
+    const char * xml_type = "type";
+    const char * str_type = w_get_attr_val_by_name(node, xml_type);
 
     if (!str_type) { 
         return default_type;
-    } else if (strcasecmp(str_type, xml_osregex_type) == 0) {
+    }
+
+    const char * xml_osregex_type = OSREGEX_STR;
+    const char * xml_osmatch_type = OSMATCH_STR;
+    const char * xml_pcre2_type = PCRE2_STR;
+
+    if (strcasecmp(str_type, xml_osregex_type) == 0) {
         return EXP_TYPE_OSREGEX;
     } else if (strcasecmp(str_type, xml_osmatch_type) == 0) {
         return EXP_TYPE_OSMATCH;
     } else if (strcasecmp(str_type, xml_pcre2_type) == 0) {
         return EXP_TYPE_PCRE2;
     } else {
-        mwarn(ANALYSISD_INV_VALUE_RULE, str_type, "type", rule_id);
+        mwarn(ANALYSISD_INV_VALUE_RULE, str_type, xml_type, rule_id);
     }
 
     return default_type;

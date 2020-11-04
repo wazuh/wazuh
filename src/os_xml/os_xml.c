@@ -606,3 +606,18 @@ static int _getattributes(unsigned int parent, OS_XML *_lxml)
     xml_error(_lxml, "XMLERR: End of file while reading an attribute.");
     return (-1);
 }
+
+const char * w_get_attr_val_by_name(xml_node * node, const char * name) {
+
+    if (!node || !node->attributes || !name) {
+        return NULL;
+    }
+
+    for (int i = 0; node->attributes[i]; i++) {
+        if (strcmp(node->attributes[i], name) == 0) {
+            return node->values[i];
+        }
+    }
+
+    return NULL;
+}

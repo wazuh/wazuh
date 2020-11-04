@@ -51,14 +51,6 @@ STATIC int w_get_attr_offset(xml_node * node);
  */
 STATIC bool w_get_attr_regex_type(xml_node * node, w_exp_type_t * type);
 
-/**
- * @brief Get value of an attribute of a node
- * @param node node to find value of attribute
- * @param name name of the attribute
- * @return value of attribute on success. NULL otherwise
- */
-STATIC const char * w_get_attr_val_by_name(xml_node * node, const char * name);
-
 int getDecoderfromlist(const char *name)
 {
     if (os_decoder_store) {
@@ -962,19 +954,4 @@ STATIC bool w_get_attr_regex_type(xml_node * node, w_exp_type_t * type) {
     }
 
     return retval;
-}
-
-STATIC const char * w_get_attr_val_by_name(xml_node * node, const char * name) {
-
-    if (!node || !node->attributes || !name) {
-        return NULL;
-    }
-
-    for (int i = 0; node->attributes[i]; i++) {
-        if (strcmp(node->attributes[i], name) == 0) {
-            return node->values[i];
-        }
-    }
-
-    return NULL;
 }

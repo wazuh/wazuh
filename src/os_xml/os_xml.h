@@ -108,4 +108,12 @@ int OS_ApplyVariables(OS_XML *_lxml) __attribute__((nonnull));
 int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
                 const char *oldval, const char *newval) __attribute__((nonnull(1, 2, 3, 5)));
 
+/**
+ * @brief Get value of an attribute of a node
+ * @param node node to find value of attribute
+ * @param name name of the attribute
+ * @return value of attribute on success. NULL otherwise
+ */
+const char * w_get_attr_val_by_name(xml_node * node, const char * name);
+
 #endif /* OS_XML_H */
