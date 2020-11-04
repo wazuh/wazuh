@@ -50,6 +50,11 @@ void expect_fim_db_insert_data_success(int row_id);
 void expect_fim_db_bind_path(const char *path);
 void expect_fim_db_get_paths_from_inode(char **paths);
 
+/* fim_db_registries.c */
+void expect_fim_db_get_registry_key(const fim_registry_key *key);
+void expect_fim_db_get_registry_data_fail(const char *name, int key_id);
+void expect_fim_db_get_registry_data(const char *name, int key_id, const fim_registry_value_data *data);
+
 /**********************************************************************************************************************\
  * Setup and teardown functions
 \**********************************************************************************************************************/
@@ -59,7 +64,10 @@ int test_fim_db_setup(void **state);
 int test_fim_db_teardown(void **state);
 int test_fim_tmp_file_setup_disk(void **state);
 int test_fim_tmp_file_teardown_disk(void **state);
+int teardown_fim_entry(void **state);
 
 extern const fim_file_data DEFAULT_FILE_DATA;
+extern const fim_registry_key DEFAULT_REGISTRY_KEY;
+extern const fim_registry_value_data DEFAULT_REGISTRY_VALUE;
 
 #endif // __TEST_FIM_DB_H

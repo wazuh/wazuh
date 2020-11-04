@@ -64,7 +64,8 @@ include_directories((${SRC_FOLDER}/config))
 add_library(fim_shared STATIC expect_run_check.c
                               expect_fim_diff_changes.c
                               db/expect_fim_db.c
-                              db/expect_fim_db_files.c)
+                              db/expect_fim_db_files.c
+                              db/expect_fim_db_registries.c)
 
 set_target_properties(fim_shared PROPERTIES LINKER_LANGUAGE C )
 

@@ -42,6 +42,35 @@ const fim_file_data DEFAULT_FILE_DATA = {
     .checksum = "0123456789abcdef0123456789abcdef01234567",
 };
 
+const fim_registry_key DEFAULT_REGISTRY_KEY = {
+    .id = 1,
+    .path = "HKEY_LOCAL_MACHINE\\software\\some:\\key",
+    .perm = "perm",
+    .uid = "",
+    .gid = "",
+    .user_name = "",
+    .group_name = "",
+    .mtime = 12345678,
+    .arch = ARCH_64BIT,
+    .scanned = 1,
+    .last_event = 12345679,
+    .checksum = "0123456789abcdef0123456789abcdef01234567"
+};
+
+const fim_registry_value_data DEFAULT_REGISTRY_VALUE = {
+    .id = 1,
+    .name = "some:value",
+    .type = REG_SZ,
+    .size = 10,
+    .hash_md5 = "0123456789abcdef0123456789abcdef",
+    .hash_sha1 = "0123456789abcdef0123456789abcdef01234567",
+    .hash_sha256 = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    .scanned = 1,
+    .last_event = 123456487,
+    .checksum = "0123456789abcdef0123456789abcdef01234567",
+    .mode = FIM_SCHEDULED
+};
+
 /**********************************************************************************************************************\
  * Auxiliar expect functions
 \**********************************************************************************************************************/
@@ -203,4 +232,10 @@ int test_fim_tmp_file_teardown_disk(void **state) {
     free(test_data->tmp_file->path);
     free(test_data->tmp_file);
     return test_fim_db_teardown((void **)&test_data);
+}
+
+int teardown_fim_entry(void **state) {
+    free_entry((fim_entry *)*state);
+
+    return 0;
 }

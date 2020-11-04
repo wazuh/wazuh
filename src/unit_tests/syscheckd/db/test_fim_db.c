@@ -1946,10 +1946,10 @@ static void test_fim_db_process_read_file_success(void **state) {
     assert_int_equal(retval, FIMDB_OK);
 }
 
+#ifdef TEST_WINAGENT
 /**********************************************************************************************************************\
  * fim_db_get_count_entries()
 \**********************************************************************************************************************/
-#ifdef TEST_WINAGENT
 static void test_fim_db_get_count_entries_query_failed(void **state) {
     fdb_t fim_sql;
     int retval;
@@ -1984,6 +1984,96 @@ static void test_fim_db_get_count_entries_success(void **state) {
 
     assert_int_equal(retval, 1);
 }
+
+/**********************************************************************************************************************\
+ * fim_db_get_entry_from_sync_msg()
+\**********************************************************************************************************************/
+void test_fim_db_get_entry_from_sync_msg_get_file(void **state) {
+    fdb_t fim_sql;
+    fim_file_data data = DEFAULT_FILE_DATA;
+    fim_entry base_entry = { .type = FIM_TYPE_FILE,
+                             .file_entry.path = "c:\\windows\\system32\\windowspowershell\\v1.0",
+                             .file_entry.data = &data };
+    fim_entry *entry;
+
+    expect_fim_db_clean_stmt();
+    expect_fim_db_bind_path("c:\\windows\\system32\\windowspowershell\\v1.0");
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_fim_db_decode_full_row_from_entry(&base_entry);
+
+    entry = fim_db_get_entry_from_sync_msg(&fim_sql, FIM_TYPE_FILE, "c:\\windows\\system32\\windowspowershell\\v1.0");
+
+    *state = entry;
+
+    assert_non_null(entry);
+    assert_int_equal(entry->type, FIM_TYPE_FILE);
+    assert_string_equal(entry->file_entry.path, "c:\\windows\\system32\\windowspowershell\\v1.0");
+    assert_non_null(entry->file_entry.data);
+}
+
+void test_fim_db_get_entry_from_sync_msg_get_registry_key(void **state) {
+    fdb_t fim_sql;
+    fim_registry_key data = DEFAULT_REGISTRY_KEY;
+    fim_entry *entry;
+
+    expect_fim_db_get_registry_key(&data);
+
+    entry =
+    fim_db_get_entry_from_sync_msg(&fim_sql, FIM_TYPE_REGISTRY, "[x64] HKEY_LOCAL_MACHINE\\software\\some::\\key");
+
+    *state = entry;
+
+    assert_non_null(entry);
+    assert_int_equal(entry->type, FIM_TYPE_REGISTRY);
+    assert_non_null(entry->registry_entry.key);
+    assert_string_equal(entry->registry_entry.key->path, "HKEY_LOCAL_MACHINE\\software\\some:\\key");
+    assert_int_equal(entry->registry_entry.key->arch, ARCH_64BIT);
+    assert_null(entry->registry_entry.value);
+}
+
+void test_fim_db_get_entry_from_sync_msg_get_registry_value_fail_to_get_data(void **state) {
+    fdb_t fim_sql;
+    fim_registry_key key_data = DEFAULT_REGISTRY_KEY;
+    fim_entry *entry;
+
+    expect_fim_db_get_registry_key(&key_data);
+    expect_fim_db_get_registry_data_fail("some:value", key_data.id);
+
+    entry = fim_db_get_entry_from_sync_msg(&fim_sql, FIM_TYPE_REGISTRY,
+                                           "[x64] HKEY_LOCAL_MACHINE\\software\\some::\\key:some::value");
+
+    *state = entry;
+
+    assert_null(entry);
+}
+
+void test_fim_db_get_entry_from_sync_msg_get_registry_value_success(void **state) {
+    fdb_t fim_sql;
+    fim_registry_key key_data = DEFAULT_REGISTRY_KEY;
+    fim_registry_value_data value_data = DEFAULT_REGISTRY_VALUE;
+    fim_entry *entry;
+
+    expect_fim_db_get_registry_key(&key_data);
+    expect_fim_db_get_registry_data("some:value", key_data.id, &value_data);
+
+    entry = fim_db_get_entry_from_sync_msg(&fim_sql, FIM_TYPE_REGISTRY,
+                                           "[x64] HKEY_LOCAL_MACHINE\\software\\some::\\key:some::value");
+
+    *state = entry;
+
+    assert_non_null(entry);
+    assert_int_equal(entry->type, FIM_TYPE_REGISTRY);
+    assert_non_null(entry->registry_entry.key);
+    assert_string_equal(entry->registry_entry.key->path, "HKEY_LOCAL_MACHINE\\software\\some:\\key");
+    assert_int_equal(entry->registry_entry.key->arch, ARCH_64BIT);
+    assert_non_null(entry->registry_entry.value);
+    assert_string_equal(entry->registry_entry.value->name, "some:value");
+    assert_int_equal(entry->registry_entry.value->id, entry->registry_entry.key->id);
+}
+
 #endif
 
 /**********************************************************************************************************************\
@@ -2113,10 +2203,15 @@ int main(void) {
         // fim_db_process_read_file
         cmocka_unit_test(test_fim_db_process_read_file_fail_to_read_line),
         cmocka_unit_test(test_fim_db_process_read_file_success),
-        // fim_db_get_count_entries
 #ifdef TEST_WINAGENT
+        // fim_db_get_count_entries
         cmocka_unit_test(test_fim_db_get_count_entries_query_failed),
         cmocka_unit_test(test_fim_db_get_count_entries_success),
+        // fim_db_get_entry_from_sync_msg
+        cmocka_unit_test_teardown(test_fim_db_get_entry_from_sync_msg_get_file, teardown_fim_entry),
+        cmocka_unit_test_teardown(test_fim_db_get_entry_from_sync_msg_get_registry_key, teardown_fim_entry),
+        cmocka_unit_test_teardown(test_fim_db_get_entry_from_sync_msg_get_registry_value_fail_to_get_data, teardown_fim_entry),
+        cmocka_unit_test_teardown(test_fim_db_get_entry_from_sync_msg_get_registry_value_success, teardown_fim_entry),
 #endif
     };
     return cmocka_run_group_tests(tests, setup_fim_db_group, teardown_fim_db_group);
