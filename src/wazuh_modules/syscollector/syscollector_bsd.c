@@ -87,11 +87,11 @@ const char * discarded_packages [] = {
     NULL
 };
 
-// Valid package version keys. 
+// Valid package version keys.
 // The custom versions take priority over the default one.
 const char * plist_versions [] = {
     "CFBundleShortVersionString", //default
-    "CliVersion" 
+    "CliVersion"
 };
 
 STATIC int sys_read_apps(const char * app_folder, const char * timestamp, int random_id, int queue_fd, const char* LOCATION);
@@ -361,7 +361,7 @@ cJSON* sys_parse_pkg(const char * app_folder) {
                         parts = OS_StrBreak('>', read_buff, 4);
                         _parts =  OS_StrBreak('<', parts[3], 2);
 
-                    } else if ((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && 
+                    } else if ((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) &&
                         strstr(read_buff, "<string>")) {
                         parts = OS_StrBreak('>', read_buff, 2);
                         _parts = OS_StrBreak('<', parts[1], 2);
@@ -386,7 +386,7 @@ cJSON* sys_parse_pkg(const char * app_folder) {
                         }
                         os_free(parts);
                     }
-                    
+
                 } else if (strstr(read_buff, "LSApplicationCategoryType")){
                     if (strstr(read_buff, "<string>")){
                         char ** parts = OS_StrBreak('>', read_buff, 4);
@@ -666,6 +666,7 @@ bool sys_convert_bin_plist(FILE **fp, char *magic_bytes, char *filepath) {
 clean:
     if (root_node) plist_free(root_node);
     if (bin != MAP_FAILED) munmap(bin, filestats.st_size);
+    os_free(xml);
     return status;
 }
 
