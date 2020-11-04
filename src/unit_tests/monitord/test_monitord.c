@@ -29,6 +29,8 @@
 #include "config/config.h"
 #include "os_err.h"
 
+/* redefinitons/wrapping */
+
 time_t __wrap_time(__attribute__((unused)) time_t *t) {
     return mock_type(time_t);
 }
@@ -142,6 +144,7 @@ void test_monitor_step_time_success(void **state) {
     localtime_r(&tm, &test_time);
 
     mond.delete_old_agents = 1;
+    mond.monitor_agents = 1;
     mond_time_control.disconnect_counter = 0;
     mond_time_control.alert_counter = 0;
     mond_time_control.delete_counter = 0;
@@ -168,6 +171,7 @@ void test_monitor_step_time_no_old_agents_success(void **state) {
     localtime_r(&tm, &test_time);
 
     mond.delete_old_agents = 0;
+    mond.monitor_agents = 1;
     mond_time_control.disconnect_counter = 0;
     mond_time_control.alert_counter = 0;
     mond_time_control.delete_counter = 0;
@@ -233,6 +237,7 @@ void test_check_alert_trigger_true(void **state) {
     int result = 0;
     mond_time_control.alert_counter = 100;
     mond.global.agents_disconnection_alert_time = 10;
+    mond.monitor_agents = 1;
 
     result = check_alert_trigger();
 
@@ -255,6 +260,7 @@ void test_check_deletion_trigger_true(void **state) {
     int result = 0;
     mond_time_control.delete_counter = 200;
     mond.delete_old_agents = 2;
+    mond.monitor_agents = 1;
 
     result = check_deletion_trigger();
 
@@ -496,19 +502,14 @@ void test_MonitordConfig_fail(void **state) {
     char *cfg = "/config_path";
     int no_agents = 0;
     short day_wait = -1;
-    char error_message[OS_SIZE_128];
 
     will_return_count(__wrap_getDefine_Int, 1, -1);
 
     expect_value(__wrap_ReadConfig, modules, CREPORTS);
     expect_string(__wrap_ReadConfig, cfgfile, cfg);
-    will_return(__wrap_ReadConfig, 0);
-    expect_value(__wrap_ReadConfig, modules, CGLOBAL);
-    expect_string(__wrap_ReadConfig, cfgfile, cfg);
     will_return(__wrap_ReadConfig, -1);
 
-    snprintf(error_message, OS_SIZE_128, CONFIG_ERROR, cfg);
-    expect_string(__wrap__merror_exit, formatted_msg, error_message);
+    expect_string(__wrap__merror_exit, formatted_msg, "(1202): Configuration error at '/config_path'.");
 
     MonitordConfig(cfg, &mond, no_agents, day_wait);
 }

@@ -23,6 +23,8 @@
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/wazuh//monitord/monitord_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
+#include "../wrappers/wazuh/shared/auth_client_wrappers.h"
+#include "../wrappers/wazuh/shared/agent_op_wrappers.h"
 
 #include "config/client-config.h"
 #include "headers/store_op.h"
@@ -31,21 +33,10 @@
 #include "headers/shared.h"
 #include "config/config.h"
 
+/* redefinitons/wrapping */
+
 time_t __wrap_time(__attribute__((unused)) time_t *t) {
     return mock_type(time_t);
-}
-
-char* __wrap_get_agent_id_from_name(__attribute__((unused)) char *agent_name) {
-    return mock_type(char*);
-}
-
-int __wrap_auth_remove_agent(__attribute__((unused)) int sock, const char *id, __attribute__((unused)) int json_format) {
-    check_expected(id);
-    return mock();
-}
-
-int __wrap_auth_connect() {
-    return mock();
 }
 
 extern monitor_time_control mond_time_control;
