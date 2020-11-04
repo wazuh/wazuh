@@ -38,8 +38,8 @@ namespace Utils
     }
 
     static bool replaceFirst(std::string& data,
-                           const std::string& toSearch,
-                           const std::string& toReplace)
+                             const std::string& toSearch,
+                             const std::string& toReplace)
     {
         auto pos { data.find(toSearch) };
         auto ret { false };
@@ -62,6 +62,24 @@ namespace Utils
             tokens.push_back(token);
         }
         return tokens;
+    }
+
+    static std::string splitIndex(const std::string& str,
+                                  const char delimiter,
+                                  const size_t index)
+    {
+        std::string retVal;
+        const auto& splitResult { split(str, delimiter) };
+
+        if(index < splitResult.size())
+        {
+            retVal = splitResult.at(index);
+        }
+        else
+        {
+            throw std::runtime_error("Invalid index to get values.");
+        }
+        return retVal;
     }
 
     static std::vector<std::string> splitNullTerminatedStrings(const char* buffer)

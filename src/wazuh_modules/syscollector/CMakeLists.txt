@@ -43,22 +43,26 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   file(GLOB SYSCOLLECTOR_SRC
       "${CMAKE_SOURCE_DIR}/*Linux.cpp"
+      "${CMAKE_SOURCE_DIR}/network/*Linux.cpp"
       "${CMAKE_SOURCE_DIR}/sysOsParsers.cpp")
 else()
   if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     file(GLOB SYSCOLLECTOR_SRC
         "${CMAKE_SOURCE_DIR}/*Mac.cpp"
         "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp"
+        "${CMAKE_SOURCE_DIR}/network/*BSD.cpp"
         "${CMAKE_SOURCE_DIR}/sysOsParsers.cpp")
   elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
     file(GLOB SYSCOLLECTOR_SRC
         "${CMAKE_SOURCE_DIR}/*FreeBSD.cpp"
         "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp"
+        "${CMAKE_SOURCE_DIR}/network/*BSD.cpp"
         "${CMAKE_SOURCE_DIR}/sysOsParsers.cpp")
   elseif(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
     file(GLOB SYSCOLLECTOR_SRC
         "${CMAKE_SOURCE_DIR}/*OpenBSD.cpp"
         "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp"
+        "${CMAKE_SOURCE_DIR}/network/*BSD.cpp"
         "${CMAKE_SOURCE_DIR}/sysOsParsers.cpp")
   endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -85,6 +89,12 @@ endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
     COMMAND ${CMAKE_COMMAND} -E copy
     ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/syscollector.dir/*.o*
     ${CMAKE_SOURCE_DIR}/
+    DEPENDS syscollector
+    )
+add_custom_target(copy-files-network ALL
+    COMMAND ${CMAKE_COMMAND} -E copy
+    ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/syscollector.dir/network/*.o*
+    ${CMAKE_SOURCE_DIR}/network/
     DEPENDS syscollector
     )
 

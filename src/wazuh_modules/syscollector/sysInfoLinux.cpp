@@ -10,6 +10,7 @@
  */
 #include <fstream>
 #include <iostream>
+#include "sharedDefs.h"
 #include "stringHelper.h"
 #include "filesystemHelper.h"
 #include "cmdHelper.h"
@@ -17,12 +18,10 @@
 #include "sysInfo.hpp"
 #include "shared.h"
 #include "readproc.h"
-
-constexpr auto WM_SYS_HW_DIR{"/sys/class/dmi/id/board_serial"};
-constexpr auto WM_SYS_CPU_DIR{"/proc/cpuinfo"};
-constexpr auto WM_SYS_MEM_DIR{"/proc/meminfo"};
-constexpr auto DPKG_PATH {"/var/lib/dpkg/"};
-constexpr auto DPKG_STATUS_PATH {"/var/lib/dpkg/status"};
+#include "networkUnixHelper.h"
+#include "networkHelper.h"
+#include "network/networkLinuxWrapper.h"
+#include "network/networkFamilyDataAFactory.h"
 
 struct ProcTableDeleter
 {
@@ -467,4 +466,26 @@ nlohmann::json SysInfo::getProcessesInfo() const
         spProcInfo.reset(readproc(spProcTable.get(), nullptr));
     }
     return jsProcessesList;
+}
+
+nlohmann::json SysInfo::getNetworks() const
+{
+    nlohmann::json networks;
+    
+    std::unique_ptr<ifaddrs, Utils::IfAddressSmartDeleter> interfacesAddress;
+    std::map<std::string, std::vector<ifaddrs*>> networkInterfaces;
+    Utils::NetworkUnixHelper::getNetworks(interfacesAddress, networkInterfaces);
+
+    for(const auto& interface : networkInterfaces)
+    {
+        nlohmann::json ifaddr {};
+
+        for (auto addr : interface.second)
+        {
+            FactoryNetworkFamilyCreator<OSType::LINUX>::create(std::make_shared<NetworkLinuxInterface>(addr))->buildNetworkData(ifaddr);
+        }
+        networks["iface"].push_back(ifaddr);
+    }
+    
+    return networks;
 }

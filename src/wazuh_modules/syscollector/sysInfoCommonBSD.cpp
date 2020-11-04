@@ -8,10 +8,15 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include <sys/types.h>
+#include <sys/sysctl.h>
 #include "sysInfo.hpp"
 #include "cmdHelper.h"
 #include "stringHelper.h"
-#include <sys/sysctl.h>
+#include "filesystemHelper.h"
+#include "networkUnixHelper.h"
+#include "network/networkBSDWrapper.h"
+#include "network/networkFamilyDataAFactory.h"
 
 int SysInfo::getCpuCores() const
 {
@@ -65,4 +70,25 @@ std::string SysInfo::getCpuName() const
     }
     spBuff.get()[len] = 0;
     return std::string{reinterpret_cast<const char*>(spBuff.get())};
+}
+
+nlohmann::json SysInfo::getNetworks() const
+{
+    nlohmann::json networks;
+    
+    std::unique_ptr<ifaddrs, Utils::IfAddressSmartDeleter> interfacesAddress;
+    std::map<std::string, std::vector<ifaddrs*>> networkInterfaces;
+    Utils::NetworkUnixHelper::getNetworks(interfacesAddress, networkInterfaces);
+    
+    for(const auto& interface : networkInterfaces)
+    {
+        nlohmann::json ifaddr {};
+        for (const auto addr : interface.second)
+        {
+            FactoryNetworkFamilyCreator<OSType::BSDBASED>::create(std::make_shared<NetworkBSDInterface>(addr))->buildNetworkData(ifaddr);
+        }
+        networks["iface"].push_back(ifaddr);
+    }
+    
+    return networks;
 }
