@@ -386,6 +386,10 @@ int main(int argc, char **argv)
             agt_info = get_agent_info(keys.keyentries[agt_id]->name,
                                       keys.keyentries[agt_id]->ip->ip,
                                       agent_id);
+            if (!agt_info) {
+                printf("\n Unable to get agent info\n\n");
+                exit(0);
+            }
 
             /* Get netmask from IP */
             getNetmask(keys.keyentries[agt_id]->ip->netmask, final_mask, 128);
@@ -411,6 +415,10 @@ int main(int argc, char **argv)
             }
         } else {
             agt_info = get_agent_info(NULL, "127.0.0.1", "000");
+            if (!agt_info) {
+                printf("\n Unable to get agent info\n\n");
+                exit(0);
+            }
 
             if (!csv_output && !json_output) {
                 printf("\n   Agent ID:   000 (local instance)\n");
