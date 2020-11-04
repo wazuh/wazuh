@@ -44,6 +44,7 @@ int __wrap_stat(const char * __file, struct stat * __buf) {
     if (test_mode) {
         check_expected(__file);
         __buf->st_mode = mock();
+        __buf->st_size = __buf->st_mode;
         return mock_type(int);
     }
     return __real_stat(__file, __buf);

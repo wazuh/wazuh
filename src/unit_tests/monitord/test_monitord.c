@@ -19,15 +19,24 @@
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/mq_op_wrappers.h"
+#include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 
+#include "../external/cJSON/cJSON.h"
 #include "headers/store_op.h"
 #include "monitord/monitord.h"
 #include "headers/defs.h"
 #include "headers/shared.h"
 #include "config/config.h"
+#include "os_err.h"
 
 time_t __wrap_time(__attribute__((unused)) time_t *t) {
     return mock_type(time_t);
+}
+
+int __wrap_ReadConfig(int modules, const char *cfgfile, __attribute__((unused)) void *d1, __attribute__((unused)) void *d2) {
+    check_expected(modules);
+    check_expected(cfgfile);
+    return mock();
 }
 
 extern monitor_time_control mond_time_control;
@@ -42,6 +51,15 @@ int setup_monitord(void **state) {
 
     mond.delete_old_agents = 0;
     mond.a_queue = -1;
+    mond.day_wait = 0;
+    mond.compress = 0;
+    mond.sign = 0;
+    mond.monitor_agents = 0;
+    mond.keep_log_days = 0;
+    mond.rotate_log = 0;
+    mond.size_rotate = 0;
+    mond.daily_rotations = 0;
+    mond.delete_old_agents = 0;
 
     mond_time_control.disconnect_counter = 0;
     mond_time_control.alert_counter = 0;
@@ -61,6 +79,15 @@ int teardown_monitord(void **state) {
 
     mond.delete_old_agents = 0;
     mond.a_queue = -1;
+    mond.day_wait = 0;
+    mond.compress = 0;
+    mond.sign = 0;
+    mond.monitor_agents = 0;
+    mond.keep_log_days = 0;
+    mond.rotate_log = 0;
+    mond.size_rotate = 0;
+    mond.daily_rotations = 0;
+    mond.delete_old_agents = 0;
 
     mond_time_control.disconnect_counter = 0;
     mond_time_control.alert_counter = 0;
@@ -317,6 +344,175 @@ void test_monitor_queue_connect_msg_fail(void **state) {
     assert_int_equal(mond.a_queue, -1);
 }
 
+/* Tests getMonitorInternalOptions */
+
+void test_getMonitorInternalOptions_success(void **state) {
+    cJSON *root = NULL;
+    cJSON *object = NULL;
+
+    // Arbitrary configuration
+    mond.day_wait = 2;
+    mond.compress = 1;
+    mond.sign = 0;
+    mond.monitor_agents = 1;
+    mond.keep_log_days = 10;
+    mond.rotate_log = 1;
+    mond.size_rotate = 0;
+    mond.daily_rotations = 100;
+    mond.delete_old_agents = 3;
+
+    root = getMonitorInternalOptions();
+
+    if (root) {
+        object = cJSON_GetObjectItem(root->child, "day_wait");
+        assert_int_equal(object->valueint, mond.day_wait);
+        object = cJSON_GetObjectItem(root->child, "compress");
+        assert_int_equal(object->valueint, mond.compress);
+        object = cJSON_GetObjectItem(root->child, "sign");
+        assert_int_equal(object->valueint, mond.sign);
+        object = cJSON_GetObjectItem(root->child, "monitor_agents");
+        assert_int_equal(object->valueint, mond.monitor_agents);
+        object = cJSON_GetObjectItem(root->child, "keep_log_days");
+        assert_int_equal(object->valueint, mond.keep_log_days);
+        object = cJSON_GetObjectItem(root->child, "rotate_log");
+        assert_int_equal(object->valueint, mond.rotate_log);
+        object = cJSON_GetObjectItem(root->child, "size_rotate");
+        assert_int_equal(object->valueint, mond.size_rotate);
+        object = cJSON_GetObjectItem(root->child, "daily_rotations");
+        assert_int_equal(object->valueint, mond.daily_rotations);
+        object = cJSON_GetObjectItem(root->child, "delete_old_agents");
+        assert_int_equal(object->valueint, mond.delete_old_agents);
+    }
+
+    cJSON_Delete(root);
+}
+
+/* Tests getMonitorGlobalOptions */
+
+void test_getMonitorGlobalOptions_success(void **state) {
+    cJSON *root = NULL;
+    cJSON *object = NULL;
+
+    // Arbitrary configuration
+    mond.global.agents_disconnection_time = 200;
+    mond.global.agents_disconnection_alert_time = 100;
+
+    root = getMonitorGlobalOptions();
+
+    if (root) {
+        object = cJSON_GetObjectItem(root->child, "agents_disconnection_time");
+        assert_int_equal(object->valueint, mond.global.agents_disconnection_time);
+        object = cJSON_GetObjectItem(root->child, "agents_disconnection_alert_time");
+        assert_int_equal(object->valueint, mond.global.agents_disconnection_alert_time);
+    }
+
+    cJSON_Delete(root);
+}
+
+/* Tests getReportsOptions */
+
+void test_getReportsOptions_success(void **state) {
+    cJSON *root = NULL;
+    report_config **reports_array = NULL;
+    report_config *report = NULL;
+    char **email_array = NULL;
+    char *expected_output = "{\"reports\":[{\"title\":\"Title\",\"group\":\"Group\",\"rule\":\"Rule\",\
+\"level\":\"Level\",\"srcip\":\"SourceIP\",\"user\":\"User\",\"showlogs\":\"yes\",\"email_to\":[\"emailto_test\"]}]}";
+    char *result = NULL;
+
+    os_calloc(2, sizeof(report_config*), reports_array);
+    os_calloc(1, sizeof(report_config), report);
+    os_calloc(2, sizeof(char*), email_array);
+
+    reports_array[0] = report;
+    reports_array[1] = NULL;
+    os_strdup("emailto_test", email_array[0]);
+    email_array[1] = NULL;
+
+    // Arbitrary configuration
+    report->title = "Title";
+    report->r_filter.group = "Group";
+    report->r_filter.rule = "Rule";
+    report->r_filter.level = "Level";
+    report->r_filter.srcip = "SourceIP";
+    report->r_filter.user = "User";
+    report->r_filter.show_alerts = 1;
+    report->emailto = email_array;
+    mond.reports = reports_array;
+
+    root = getReportsOptions();
+
+    result = cJSON_PrintUnformatted(root);
+    assert_string_equal(expected_output, result);
+
+    cJSON_Delete(root);
+    os_free(report);
+    os_free(reports_array);
+    os_free(email_array[0]);
+    os_free(email_array);
+    os_free(result);
+}
+
+/* Tests ReadConfig */
+
+void test_MonitordConfig_success(void **state) {
+    int result = 0;
+    char *cfg = "/config_path";
+    int no_agents = 0;
+    short day_wait = -1;
+
+    will_return_count(__wrap_getDefine_Int, 1, -1);
+
+    expect_value(__wrap_ReadConfig, modules, CREPORTS);
+    expect_string(__wrap_ReadConfig, cfgfile, cfg);
+    will_return(__wrap_ReadConfig, 0);
+    expect_value(__wrap_ReadConfig, modules, CGLOBAL);
+    expect_string(__wrap_ReadConfig, cfgfile, cfg);
+    will_return(__wrap_ReadConfig, 0);
+
+    result = MonitordConfig(cfg, &mond, no_agents, day_wait);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_int_equal(mond.global.agents_disconnection_time, 20);
+    assert_int_equal(mond.global.agents_disconnection_alert_time, 120);
+
+    assert_null(mond.agents);
+    assert_null(mond.smtpserver);
+    assert_null(mond.emailfrom);
+    assert_null(mond.emailidsname);
+
+    assert_int_equal(mond.day_wait, 1);
+    assert_int_equal(mond.compress, 1);
+    assert_int_equal(mond.sign, 1);
+    assert_int_equal(mond.monitor_agents, 1);
+    assert_int_equal(mond.rotate_log, 1);
+    assert_int_equal(mond.keep_log_days, 1);
+    assert_int_equal(mond.size_rotate, 1 * 1024 * 1024);
+    assert_int_equal(mond.daily_rotations, 1);
+    assert_int_equal(mond.delete_old_agents, 1);
+}
+
+void test_MonitordConfig_fail(void **state) {
+    char *cfg = "/config_path";
+    int no_agents = 0;
+    short day_wait = -1;
+    char error_message[OS_SIZE_128];
+
+    will_return_count(__wrap_getDefine_Int, 1, -1);
+
+    expect_value(__wrap_ReadConfig, modules, CREPORTS);
+    expect_string(__wrap_ReadConfig, cfgfile, cfg);
+    will_return(__wrap_ReadConfig, 0);
+    expect_value(__wrap_ReadConfig, modules, CGLOBAL);
+    expect_string(__wrap_ReadConfig, cfgfile, cfg);
+    will_return(__wrap_ReadConfig, -1);
+
+    snprintf(error_message, OS_SIZE_128, CONFIG_ERROR, cfg);
+    expect_string(__wrap__merror_exit, formatted_msg, error_message);
+
+    MonitordConfig(cfg, &mond, no_agents, day_wait);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] =
@@ -345,6 +541,16 @@ int main()
         cmocka_unit_test_setup_teardown(test_monitor_queue_connect_fail, setup_monitord, teardown_monitord),
         cmocka_unit_test_setup_teardown(test_monitor_queue_connect_success, setup_monitord, teardown_monitord),
         cmocka_unit_test_setup_teardown(test_monitor_queue_connect_msg_fail, setup_monitord, teardown_monitord),
+        /* Tests getMonitorInternalOptions */
+        cmocka_unit_test_setup_teardown(test_getMonitorInternalOptions_success, setup_monitord, teardown_monitord),
+        /* Tests getMonitorGlobalOptions */
+        cmocka_unit_test_setup_teardown(test_getMonitorGlobalOptions_success, setup_monitord, teardown_monitord),
+        /* Tests getReportsOptions */
+        cmocka_unit_test_setup_teardown(test_getReportsOptions_success, setup_monitord, teardown_monitord),
+        /* Tests MonitordConfig */
+        cmocka_unit_test_setup_teardown(test_MonitordConfig_success, setup_monitord, teardown_monitord),
+        cmocka_unit_test_setup_teardown(test_MonitordConfig_fail, setup_monitord, teardown_monitord),
+
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
