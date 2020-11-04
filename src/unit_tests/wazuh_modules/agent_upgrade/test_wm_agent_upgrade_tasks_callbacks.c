@@ -219,11 +219,11 @@ void test_wm_agent_upgrade_update_status_success_callback_ok(void **state)
     int error = 0;
     int agent = 15;
     cJSON *input = cJSON_CreateObject();
-    char *cmd = "015 com clear_upgrade_result -1";
+    char *cmd = "015 upgrade {\"command\":\"clear_upgrade_result\",\"parameters\":{}}";
     char *agent_res = NULL;
 
-    os_calloc(4, sizeof(char), agent_res);
-    snprintf(agent_res, 4, "ok ");
+    os_calloc(37, sizeof(char), agent_res);
+    snprintf(agent_res, 37, "{\"error\":0,\"message\":\"ok\",\"data\":[]}");
 
     expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, input, sizeof(input));
     will_return(__wrap_wm_agent_upgrade_validate_task_status_message, agent);
@@ -233,8 +233,8 @@ void test_wm_agent_upgrade_update_status_success_callback_ok(void **state)
     expect_value(__wrap_wm_agent_upgrade_send_command_to_agent, command_size, strlen(cmd));
     will_return(__wrap_wm_agent_upgrade_send_command_to_agent, agent_res);
 
-    expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
-    will_return(__wrap_wm_agent_upgrade_parse_agent_response, 0);
+    expect_string(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, agent_response, agent_res);
+    will_return(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, 0);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8167): Upgrade result file has been successfully erased from the agent.");
@@ -253,11 +253,11 @@ void test_wm_agent_upgrade_update_status_success_callback_delete_error(void **st
     int error = 0;
     int agent = 15;
     cJSON *input = cJSON_CreateObject();
-    char *cmd = "015 com clear_upgrade_result -1";
+    char *cmd = "015 upgrade {\"command\":\"clear_upgrade_result\",\"parameters\":{}}";
     char *agent_res = NULL;
 
-    os_calloc(4, sizeof(char), agent_res);
-    snprintf(agent_res, 4, "ok ");
+    os_calloc(37, sizeof(char), agent_res);
+    snprintf(agent_res, 37, "{\"error\":0,\"message\":\"ok\",\"data\":[]}");
 
     expect_memory(__wrap_wm_agent_upgrade_validate_task_status_message, input_json, input, sizeof(input));
     will_return(__wrap_wm_agent_upgrade_validate_task_status_message, agent);
@@ -267,8 +267,8 @@ void test_wm_agent_upgrade_update_status_success_callback_delete_error(void **st
     expect_value(__wrap_wm_agent_upgrade_send_command_to_agent, command_size, strlen(cmd));
     will_return(__wrap_wm_agent_upgrade_send_command_to_agent, agent_res);
 
-    expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
-    will_return(__wrap_wm_agent_upgrade_parse_agent_response, OS_INVALID);
+    expect_string(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, agent_response, agent_res);
+    will_return(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, OS_INVALID);
 
     cJSON *result = wm_agent_upgrade_update_status_success_callback(&error, input);
 

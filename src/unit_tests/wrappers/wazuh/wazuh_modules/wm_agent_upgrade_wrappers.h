@@ -37,6 +37,8 @@ int __wrap_wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJS
 
 int __wrap_wm_agent_upgrade_parse_agent_response(const char* agent_response, char **data);
 
+int __wrap_wm_agent_upgrade_parse_agent_upgrade_command_response(const char* agent_response, char **data);
+
 OSHashNode* __wrap_wm_agent_upgrade_get_first_node(unsigned int *index);
 
 OSHashNode* __wrap_wm_agent_upgrade_get_next_node(unsigned int *index, OSHashNode *current);

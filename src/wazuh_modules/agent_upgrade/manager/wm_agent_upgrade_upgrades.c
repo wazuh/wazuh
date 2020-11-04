@@ -393,7 +393,9 @@ STATIC int wm_agent_upgrade_send_open(int agent_id, int wpk_message_format, cons
         cJSON_AddStringToObject(params, "mode", "wb");
         cJSON_AddStringToObject(params, "file", wpk_file);
         cJSON_AddItemToObject(command_info, task_manager_json_keys[WM_TASK_PARAMETERS], params);
-        snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
+        char *command_string = cJSON_PrintUnformatted(command_info);
+        snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, command_string);
+        os_free(command_string);
         cJSON_Delete(command_info);
     } else {
         snprintf(command, OS_MAXSTR, "%.3d com open wb %s", agent_id, wpk_file);
@@ -420,7 +422,7 @@ STATIC int wm_agent_upgrade_send_open(int agent_id, int wpk_message_format, cons
     return result;
 }
 
-STATIC int wm_agent_upgrade_send_write(int agent_id,  int wpk_message_format, const char *wpk_file, const char *file_path, int chunk_size) {
+STATIC int wm_agent_upgrade_send_write(int agent_id, int wpk_message_format, const char *wpk_file, const char *file_path, int chunk_size) {
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;
@@ -442,7 +444,9 @@ STATIC int wm_agent_upgrade_send_write(int agent_id,  int wpk_message_format, co
                 cJSON_AddNumberToObject(params, "length", bytes);
                 cJSON_AddStringToObject(params, "file", wpk_file);
                 cJSON_AddItemToObject(command_info, task_manager_json_keys[WM_TASK_PARAMETERS], params);
-                snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
+                char *command_string = cJSON_PrintUnformatted(command_info);
+                snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, command_string);
+                os_free(command_string);
                 command_size = strlen(command);
                 cJSON_Delete(command_info);
             } else {
@@ -473,7 +477,7 @@ STATIC int wm_agent_upgrade_send_write(int agent_id,  int wpk_message_format, co
     return result;
 }
 
-STATIC int wm_agent_upgrade_send_close(int agent_id,  int wpk_message_format, const char *wpk_file) {
+STATIC int wm_agent_upgrade_send_close(int agent_id, int wpk_message_format, const char *wpk_file) {
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;
@@ -486,7 +490,9 @@ STATIC int wm_agent_upgrade_send_close(int agent_id,  int wpk_message_format, co
         cJSON *params = cJSON_CreateObject();
         cJSON_AddStringToObject(params, "file", wpk_file);
         cJSON_AddItemToObject(command_info, task_manager_json_keys[WM_TASK_PARAMETERS], params);
-        snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
+        char *command_string = cJSON_PrintUnformatted(command_info);
+        snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, command_string);
+        os_free(command_string);
         cJSON_Delete(command_info);
     } else {
         snprintf(command, OS_MAXSTR, "%.3d com close %s", agent_id, wpk_file);
@@ -506,7 +512,7 @@ STATIC int wm_agent_upgrade_send_close(int agent_id,  int wpk_message_format, co
     return result;
 }
 
-STATIC int wm_agent_upgrade_send_sha1(int agent_id,  int wpk_message_format, const char *wpk_file, const char *file_sha1) {
+STATIC int wm_agent_upgrade_send_sha1(int agent_id, int wpk_message_format, const char *wpk_file, const char *file_sha1) {
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;
@@ -520,7 +526,9 @@ STATIC int wm_agent_upgrade_send_sha1(int agent_id,  int wpk_message_format, con
         cJSON *params = cJSON_CreateObject();
         cJSON_AddStringToObject(params, "file", wpk_file);
         cJSON_AddItemToObject(command_info, task_manager_json_keys[WM_TASK_PARAMETERS], params);
-        snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
+        char *command_string = cJSON_PrintUnformatted(command_info);
+        snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, command_string);
+        os_free(command_string);
         cJSON_Delete(command_info);
     } else {
         snprintf(command, OS_MAXSTR, "%.3d com sha1 %s", agent_id, wpk_file);
@@ -547,7 +555,7 @@ STATIC int wm_agent_upgrade_send_sha1(int agent_id,  int wpk_message_format, con
     return result;
 }
 
-STATIC int wm_agent_upgrade_send_upgrade(int agent_id,  int wpk_message_format, const char *wpk_file, const char *installer) {
+STATIC int wm_agent_upgrade_send_upgrade(int agent_id, int wpk_message_format, const char *wpk_file, const char *installer) {
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;
@@ -562,7 +570,9 @@ STATIC int wm_agent_upgrade_send_upgrade(int agent_id,  int wpk_message_format, 
         cJSON_AddStringToObject(params, "file", wpk_file);
         cJSON_AddStringToObject(params, "installer", installer);
         cJSON_AddItemToObject(command_info, task_manager_json_keys[WM_TASK_PARAMETERS], params);
-        snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
+        char *command_string = cJSON_PrintUnformatted(command_info);
+        snprintf(command, OS_MAXSTR, "%.3d upgrade %s", agent_id, command_string);
+        os_free(command_string);
         cJSON_Delete(command_info);
     } else {
         snprintf(command, OS_MAXSTR, "%.3d com upgrade %s %s", agent_id, wpk_file, installer);

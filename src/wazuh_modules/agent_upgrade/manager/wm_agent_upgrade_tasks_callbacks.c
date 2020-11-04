@@ -141,7 +141,9 @@ cJSON* wm_agent_upgrade_update_status_success_callback(int *error, cJSON* input_
         cJSON_AddStringToObject(command_info, task_manager_json_keys[WM_TASK_COMMAND], "clear_upgrade_result");
         cJSON *params = cJSON_CreateObject();
         cJSON_AddItemToObject(command_info, task_manager_json_keys[WM_TASK_PARAMETERS], params);
-        snprintf(buffer, OS_MAXSTR, "%.3d upgrade %s", agent_id, cJSON_PrintUnformatted(command_info));
+        char *command_string = cJSON_PrintUnformatted(command_info);
+        snprintf(buffer, OS_MAXSTR, "%.3d upgrade %s", agent_id, command_string);
+        os_free(command_string);
         cJSON_Delete(command_info);
 
         char *agent_response = wm_agent_upgrade_send_command_to_agent(buffer, strlen(buffer));
