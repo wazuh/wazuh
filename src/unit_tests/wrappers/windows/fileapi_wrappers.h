@@ -30,6 +30,8 @@ HANDLE wrap_CreateFile(LPCSTR lpFileName,
                        DWORD dwFlagsAndAttributes,
                        HANDLE hTemplateFile);
 
+void expect_CreateFile_call(const char *filename, HANDLE ret);
+
 DWORD wrap_GetFileAttributesA(LPCSTR lpFileName);
 
 WINBOOL wrap_GetVolumePathNamesForVolumeNameW(LPCWSTR lpszVolumeName,

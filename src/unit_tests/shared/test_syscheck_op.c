@@ -29,6 +29,8 @@
 #include "../wrappers/windows/winreg_wrappers.h"
 #include "../wrappers/windows/aclapi_wrappers.h"
 #include "../wrappers/windows/winbase_wrappers.h"
+#include "../wrappers/windows/fileapi_wrappers.h"
+#include "../wrappers/windows/handleapi_wrappers.h"
 #include "../wrappers/windows/errhandlingapi_wrappers.h"
 #include "../wrappers/windows/securitybaseapi_wrappers.h"
 #else
@@ -2814,163 +2816,159 @@ static void test_win_perm_to_json_error_splitting_permissions(void **state) {
 }
 
 #ifdef TEST_WINAGENT
-/*
-static void test_get_user_CreateFile_error_access_denied(void **state) {
+
+static void test_get_file_user_CreateFile_error_access_denied(void **state) {
     char **array = *state;
 
-    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
-    will_return(wrap_CreateFile, INVALID_HANDLE_VALUE);
+    expect_CreateFile_call("C:\\a\\path", INVALID_HANDLE_VALUE);
 
-    will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
+    expect_GetLastError_call(ERROR_ACCESS_DENIED);
 
-    will_return(wrap_FormatMessage, "An error message");
+    expect_FormatMessage_call("An error message");
 
     expect_string(__wrap__mdebug1, formatted_msg, "At get_user(C:\\a\\path): CreateFile(): An error message (5)");
 
-    array[0] = get_user("C:\\a\\path", &array[1]);
+    expect_CloseHandle_call(INVALID_HANDLE_VALUE, 1);
+
+    array[0] = get_file_user("C:\\a\\path", &array[1]);
 
     assert_string_equal(array[0], "");
 }
 
-static void test_get_user_CreateFile_error_sharing_violation(void **state) {
+static void test_get_file_user_CreateFile_error_sharing_violation(void **state) {
     char **array = *state;
 
-    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
-    will_return(wrap_CreateFile, INVALID_HANDLE_VALUE);
+    expect_CreateFile_call("C:\\a\\path", INVALID_HANDLE_VALUE);
 
-    will_return(wrap_GetLastError, ERROR_SHARING_VIOLATION);
+    expect_GetLastError_call(ERROR_SHARING_VIOLATION);
 
-    will_return(wrap_FormatMessage, "An error message");
+    expect_FormatMessage_call("An error message");
 
     expect_string(__wrap__mdebug1, formatted_msg, "At get_user(C:\\a\\path): CreateFile(): An error message (32)");
 
-    array[0] = get_user("C:\\a\\path", &array[1]);
+    expect_CloseHandle_call(INVALID_HANDLE_VALUE, 1);
+
+    array[0] = get_file_user("C:\\a\\path", &array[1]);
 
     assert_string_equal(array[0], "");
 }
 
-static void test_get_user_CreateFile_error_generic(void **state) {
+static void test_get_file_user_CreateFile_error_generic(void **state) {
     char **array = *state;
 
-    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
-    will_return(wrap_CreateFile, INVALID_HANDLE_VALUE);
+    expect_CreateFile_call("C:\\a\\path", INVALID_HANDLE_VALUE);
 
-    will_return(wrap_GetLastError, 127);
+    expect_GetLastError_call(127);
 
-    will_return(wrap_FormatMessage, "An error message");
+    expect_FormatMessage_call("An error message");
 
     expect_string(__wrap__mwarn, formatted_msg, "At get_user(C:\\a\\path): CreateFile(): An error message (127)");
 
-    array[0] = get_user("C:\\a\\path", &array[1]);
+    expect_CloseHandle_call(INVALID_HANDLE_VALUE, 1);
+
+    array[0] = get_file_user("C:\\a\\path", &array[1]);
 
     assert_string_equal(array[0], "");
 }
 
-static void test_get_user_GetSecurityInfo_error(void **state) {
+static void test_get_file_user_GetSecurityInfo_error(void **state) {
     char **array = *state;
 
-    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
-    will_return(wrap_CreateFile, (HANDLE)123456);
+    expect_CreateFile_call("C:\\a\\path", (HANDLE)1234);
 
-    will_return(wrap_GetSecurityInfo, ERROR_PATH_NOT_FOUND);
+    expect_CloseHandle_call((HANDLE)1234, 1);
 
-    expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
-    will_return(wrap_CloseHandle, 0);
+    expect_GetSecurityInfo_call(NULL, (PSID)"", ERROR_ACCESS_DENIED);
 
-    will_return(wrap_ConvertSidToStringSid, NULL);
-    will_return(wrap_ConvertSidToStringSid, 0);
+    expect_GetLastError_call(ERROR_ACCESS_DENIED);
+
+    expect_ConvertSidToStringSid_call("dummy", FALSE);
 
     expect_string(__wrap__mdebug1, formatted_msg, "The user's SID could not be extracted.");
 
-    will_return(wrap_GetLastError, ERROR_INVALID_SID);
+    char error_msg[OS_SIZE_1024];
 
-    expect_string(__wrap__merror, formatted_msg, "GetSecurityInfo error = 1337");
+    snprintf(error_msg,
+             OS_SIZE_1024,
+             "GetSecurityInfo error = %lu",
+             ERROR_ACCESS_DENIED);
 
-    array[0] = get_user("C:\\a\\path", &array[1]);
+    expect_string(__wrap__merror, formatted_msg, error_msg);
+
+    array[0] = get_file_user("C:\\a\\path", &array[1]);
 
     assert_string_equal(array[0], "");
 }
 
-static void test_get_user_LookupAccountSid_error(void **state) {
+static void test_get_file_user_LookupAccountSid_error(void **state) {
     char **array = *state;
 
-    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
-    will_return(wrap_CreateFile, (HANDLE)123456);
+    expect_CreateFile_call("C:\\a\\path", (HANDLE)1234);
 
-    will_return(wrap_GetSecurityInfo, ERROR_SUCCESS);
+    expect_CloseHandle_call((HANDLE)1234, 1);
 
-    expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
-    will_return(wrap_CloseHandle, 0);
+    expect_GetSecurityInfo_call(NULL, (PSID)"", ERROR_SUCCESS);
 
-    will_return(wrap_ConvertSidToStringSid, "sid");
-    will_return(wrap_ConvertSidToStringSid, 1);
+    expect_ConvertSidToStringSid_call("sid", TRUE);
 
-    will_return(wrap_LookupAccountSid, "accountName");
-    will_return(wrap_LookupAccountSid, "domainName");
-    will_return(wrap_LookupAccountSid, 0);
-
-    will_return(wrap_GetLastError, ERROR_INVALID_SID);
+    expect_LookupAccountSid_call("", "domainname", FALSE);
+    expect_GetLastError_call(ERROR_ACCESS_DENIED);
 
     expect_string(__wrap__merror, formatted_msg, "Error in LookupAccountSid.");
 
-    array[0] = get_user("C:\\a\\path", &array[1]);
+    array[0] = get_file_user("C:\\a\\path", &array[1]);
 
     assert_string_equal(array[0], "");
     assert_string_equal(array[1], "sid");
 }
 
-static void test_get_user_LookupAccountSid_error_none_mapped(void **state) {
+static void test_get_file_user_LookupAccountSid_error_none_mapped(void **state) {
     char **array = *state;
 
-    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
-    will_return(wrap_CreateFile, (HANDLE)123456);
+    expect_CreateFile_call("C:\\a\\path", (HANDLE)1234);
 
-    will_return(wrap_GetSecurityInfo, ERROR_SUCCESS);
+    expect_CloseHandle_call((HANDLE)1234, 1);
 
-    expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
-    will_return(wrap_CloseHandle, 0);
+    expect_GetSecurityInfo_call(NULL, (PSID)"", ERROR_SUCCESS);
 
-    will_return(wrap_ConvertSidToStringSid, "sid");
-    will_return(wrap_ConvertSidToStringSid, 1);
+    expect_ConvertSidToStringSid_call("sid", TRUE);
 
-    will_return(wrap_LookupAccountSid, "accountName");
-    will_return(wrap_LookupAccountSid, "domainName");
-    will_return(wrap_LookupAccountSid, 0);
+    expect_LookupAccountSid_call("", "domainname", FALSE);
+    expect_GetLastError_call(ERROR_NONE_MAPPED);
 
-    will_return(wrap_GetLastError, ERROR_NONE_MAPPED);
+    char error_msg[OS_SIZE_1024];
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Account owner not found for file 'C:\\a\\path'");
+    snprintf(error_msg,
+             OS_SIZE_1024,
+             "Account owner not found for '%s'",
+             "C:\\a\\path");
 
-    array[0] = get_user("C:\\a\\path", &array[1]);
+    expect_string(__wrap__mdebug1, formatted_msg, error_msg);
+
+    array[0] = get_file_user("C:\\a\\path", &array[1]);
 
     assert_string_equal(array[0], "");
     assert_string_equal(array[1], "sid");
 }
 
-static void test_get_user_success(void **state) {
+static void test_get_file_user_success(void **state) {
     char **array = *state;
 
-    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
-    will_return(wrap_CreateFile, (HANDLE)123456);
+    expect_CreateFile_call("C:\\a\\path", (HANDLE)1234);
 
-    will_return(wrap_GetSecurityInfo, ERROR_SUCCESS);
+    expect_CloseHandle_call((HANDLE)1234, 1);
 
-    expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
-    will_return(wrap_CloseHandle, 0);
+    expect_GetSecurityInfo_call(NULL, (PSID)"", ERROR_SUCCESS);
 
-    will_return(wrap_ConvertSidToStringSid, "sid");
-    will_return(wrap_ConvertSidToStringSid, 1);
+    expect_ConvertSidToStringSid_call("sid", TRUE);
 
-    will_return(wrap_LookupAccountSid, "accountName");
-    will_return(wrap_LookupAccountSid, "domainName");
-    will_return(wrap_LookupAccountSid, 1);
+    expect_LookupAccountSid_call("accountName", "domainname", TRUE);
 
-    array[0] = get_user("C:\\a\\path", &array[1]);
+    array[0] = get_file_user("C:\\a\\path", &array[1]);
 
     assert_string_equal(array[0], "accountName");
     assert_string_equal(array[1], "sid");
 }
- */
 
 void test_w_get_account_info_LookupAccountSid_error_insufficient_buffer(void **state) {
     char **array = *state;
@@ -3877,14 +3875,14 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_teardown(test_win_perm_to_json_error_splitting_permissions, teardown_cjson),
 
 #ifdef TEST_WINAGENT
-        /* get_user tests */
-        // cmocka_unit_test_setup_teardown(test_get_user_CreateFile_error_access_denied, setup_string_array, teardown_string_array),
-        // cmocka_unit_test_setup_teardown(test_get_user_CreateFile_error_sharing_violation, setup_string_array, teardown_string_array),
-        // cmocka_unit_test_setup_teardown(test_get_user_CreateFile_error_generic, setup_string_array, teardown_string_array),
-        // cmocka_unit_test_setup_teardown(test_get_user_GetSecurityInfo_error, setup_string_array, teardown_string_array),
-        // cmocka_unit_test_setup_teardown(test_get_user_LookupAccountSid_error, setup_string_array, teardown_string_array),
-        // cmocka_unit_test_setup_teardown(test_get_user_LookupAccountSid_error_none_mapped, setup_string_array, teardown_string_array),
-        // cmocka_unit_test_setup_teardown(test_get_user_success, setup_string_array, teardown_string_array),
+        /* get_file_user tests */
+        cmocka_unit_test_setup_teardown(test_get_file_user_CreateFile_error_access_denied, setup_string_array, teardown_string_array),
+        cmocka_unit_test_setup_teardown(test_get_file_user_CreateFile_error_sharing_violation, setup_string_array, teardown_string_array),
+        cmocka_unit_test_setup_teardown(test_get_file_user_CreateFile_error_generic, setup_string_array, teardown_string_array),
+        cmocka_unit_test_setup_teardown(test_get_file_user_GetSecurityInfo_error, setup_string_array, teardown_string_array),
+        cmocka_unit_test_setup_teardown(test_get_file_user_LookupAccountSid_error, setup_string_array, teardown_string_array),
+        cmocka_unit_test_setup_teardown(test_get_file_user_LookupAccountSid_error_none_mapped, setup_string_array, teardown_string_array),
+        cmocka_unit_test_setup_teardown(test_get_file_user_success, setup_string_array, teardown_string_array),
 
         /* w_get_account_info tests */
         cmocka_unit_test_setup_teardown(test_w_get_account_info_LookupAccountSid_error_insufficient_buffer, setup_string_array, teardown_string_array),

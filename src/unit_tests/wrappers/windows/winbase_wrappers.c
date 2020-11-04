@@ -24,6 +24,10 @@ DWORD wrap_FormatMessage(__UNUSED_PARAM(DWORD dwFlags),
     return 0;
 }
 
+void expect_FormatMessage_call(char *buffer) {
+    will_return(wrap_FormatMessage, buffer);
+}
+
 HLOCAL wrap_LocalFree(__UNUSED_PARAM(HLOCAL hMem)) {
     return NULL;
 }

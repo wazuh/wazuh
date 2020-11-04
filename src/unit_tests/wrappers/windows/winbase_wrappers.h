@@ -32,6 +32,8 @@ DWORD wrap_FormatMessage(DWORD dwFlags,
                          DWORD nSize,
                          va_list *Arguments);
 
+void expect_FormatMessage_call(char *buffer);
+
 HLOCAL wrap_LocalFree(HLOCAL hMem);
 
 WINBOOL wrap_GetFileSecurity(LPCSTR lpFileName,
