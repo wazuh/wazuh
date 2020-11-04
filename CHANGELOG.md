@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 # [v4.1.0]
 
+### Added
+
+- Added endpoints to query and manage Rootcheck data.  ([#6495](https://github.com/wazuh/wazuh/pull/6495))
+
+
 ## [v4.0.0] -
 
 ### Added
