@@ -1913,8 +1913,8 @@ static void test_fim_db_process_read_file_fail_to_read_line(void **state) {
 
     expect_fim_db_read_line_from_file_fail();
 
-    retval = fim_db_process_read_file(&fim_sql, &file, 0, &syscheck.fim_entry_mutex, read_file_callback, FIM_DB_DISK,
-                                      NULL, NULL, NULL);
+    retval = fim_db_process_read_file(&fim_sql, &file, FIM_TYPE_FILE, &syscheck.fim_entry_mutex, read_file_callback,
+                                      FIM_DB_DISK, NULL, NULL, NULL);
 
     assert_int_equal(retval, FIMDB_ERR);
 }
@@ -1940,13 +1940,90 @@ static void test_fim_db_process_read_file_success(void **state) {
 
     expect_fim_db_clean_file(file->fd, file->path, FIM_DB_DISK);
 
-    retval = fim_db_process_read_file(&fim_sql, file, 0, &syscheck.fim_entry_mutex, read_file_callback, FIM_DB_DISK,
-                                      NULL, NULL, NULL);
+    retval = fim_db_process_read_file(&fim_sql, file, FIM_TYPE_FILE, &syscheck.fim_entry_mutex, read_file_callback,
+                                      FIM_DB_DISK, NULL, NULL, NULL);
 
     assert_int_equal(retval, FIMDB_OK);
 }
 
 #ifdef TEST_WINAGENT
+void test_fim_db_process_read_file_fail_to_read_registry_entry(void **state) {
+    fdb_t fim_sql;
+    fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
+    int retval;
+
+    if (file == NULL) {
+        fail();
+    }
+
+    file->elements = 1;
+    file->path = strdup("/some/random/path");
+    file->fd = (FILE *)1234;
+
+    expect_fim_db_read_line_from_file_disk_success(0, file->fd, "HKEY_WRONG_FORMAT\\\n");
+
+    expect_string(__wrap__merror, formatted_msg, "Temporary path file '/some/random/path' is corrupt: Wrong format");
+
+    expect_fim_db_clean_file(file->fd, file->path, FIM_DB_DISK);
+
+    retval = fim_db_process_read_file(&fim_sql, file, FIM_TYPE_REGISTRY, &syscheck.fim_entry_mutex, read_file_callback,
+                                      FIM_DB_DISK, NULL, NULL, NULL);
+
+    assert_int_equal(retval, FIMDB_OK);
+}
+
+void test_fim_db_process_read_registry_entry_fail_to_get_key(void **state) {
+    fdb_t fim_sql;
+    fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
+    fim_registry_key data = DEFAULT_REGISTRY_KEY;
+    int retval;
+
+    if (file == NULL) {
+        fail();
+    }
+
+    file->elements = 1;
+    file->path = strdup("/some/random/path");
+    file->fd = (FILE *)1234;
+
+    expect_fim_db_read_line_from_file_disk_success(0, file->fd, "1 HKEY_LOCAL_MACHINE\\software\\some:\\key\n");
+
+    expect_fim_db_get_registry_key_fail(&data);
+
+    expect_fim_db_clean_file(file->fd, file->path, FIM_DB_DISK);
+
+    retval = fim_db_process_read_file(&fim_sql, file, FIM_TYPE_REGISTRY, &syscheck.fim_entry_mutex, read_file_callback,
+                                      FIM_DB_DISK, NULL, NULL, NULL);
+
+    assert_int_equal(retval, FIMDB_OK);
+}
+
+void test_fim_db_process_read_registry_entry_success(void **state) {
+    fdb_t fim_sql;
+    fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
+    fim_registry_key data = DEFAULT_REGISTRY_KEY;
+    int retval;
+
+    if (file == NULL) {
+        fail();
+    }
+
+    file->elements = 1;
+    file->path = strdup("/some/random/path");
+    file->fd = (FILE *)1234;
+
+    expect_fim_db_read_line_from_file_disk_success(0, file->fd, "1 HKEY_LOCAL_MACHINE\\software\\some:\\key\n");
+
+    expect_fim_db_get_registry_key(&data);
+
+    expect_fim_db_clean_file(file->fd, file->path, FIM_DB_DISK);
+
+    retval = fim_db_process_read_file(&fim_sql, file, FIM_TYPE_REGISTRY, &syscheck.fim_entry_mutex, read_file_callback,
+                                      FIM_DB_DISK, NULL, NULL, NULL);
+
+    assert_int_equal(retval, FIMDB_OK);
+}
+
 /**********************************************************************************************************************\
  * fim_db_get_count_entries()
 \**********************************************************************************************************************/
@@ -2204,6 +2281,9 @@ int main(void) {
         cmocka_unit_test(test_fim_db_process_read_file_fail_to_read_line),
         cmocka_unit_test(test_fim_db_process_read_file_success),
 #ifdef TEST_WINAGENT
+        cmocka_unit_test(test_fim_db_process_read_file_fail_to_read_registry_entry),
+        cmocka_unit_test(test_fim_db_process_read_registry_entry_fail_to_get_key),
+        cmocka_unit_test(test_fim_db_process_read_registry_entry_success),
         // fim_db_get_count_entries
         cmocka_unit_test(test_fim_db_get_count_entries_query_failed),
         cmocka_unit_test(test_fim_db_get_count_entries_success),

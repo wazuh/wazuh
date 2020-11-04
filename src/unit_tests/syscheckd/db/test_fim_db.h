@@ -51,6 +51,7 @@ void expect_fim_db_bind_path(const char *path);
 void expect_fim_db_get_paths_from_inode(char **paths);
 
 /* fim_db_registries.c */
+void expect_fim_db_get_registry_key_fail(const fim_registry_key *key);
 void expect_fim_db_get_registry_key(const fim_registry_key *key);
 void expect_fim_db_get_registry_data_fail(const char *name, int key_id);
 void expect_fim_db_get_registry_data(const char *name, int key_id, const fim_registry_value_data *data);
