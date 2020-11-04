@@ -1,4 +1,5 @@
 import json
+import re
 import time
 from base64 import b64decode
 from json import loads
@@ -205,3 +206,19 @@ def test_validate_syscollector_hotfix(response, hotfix_filter=None, experimental
             assert set(item.keys()) == hotfixes_keys
             if hotfix_filter:
                 assert item['hotfix'] == hotfix_filter
+
+
+def test_validate_group_configuration(response, expected_field, expected_value):
+    response_json = response.json()
+    assert len(response_json['data']['affected_items']) > 0 and\
+           'config' in response_json['data']['affected_items'][0] and \
+           'localfile' in response_json['data']['affected_items'][0]['config'],\
+           'No config or localfile fields were found in the affected_items. Response: {}'.format(response_json)
+
+    response_config = response_json['data']['affected_items'][0]['config']['localfile'][0]
+    assert expected_field in set(response_config.keys()), \
+        'The expected config key is not present in the received response.'
+
+    assert response_config[expected_field] == expected_value, \
+        'The received value for query does not match with the expected one. ' \
+        'Received: {}. Expected: {}'.format(response_config[expected_field], expected_value)

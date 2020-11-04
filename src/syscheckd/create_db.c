@@ -74,12 +74,13 @@ void fim_scan() {
         os_calloc(1, sizeof(fim_element), item);
         item->mode = FIM_SCHEDULED;
         item->index = it;
+
+        fim_checker(syscheck.dir[it], item, NULL, 1);
 #ifndef WIN32
         if (syscheck.opts[it] & REALTIME_ACTIVE) {
             realtime_adddir(syscheck.dir[it], 0, (syscheck.opts[it] & CHECK_FOLLOW) ? 1 : 0);
         }
 #endif
-        fim_checker(syscheck.dir[it], item, NULL, 1);
         it++;
         os_free(item);
     }

@@ -11,21 +11,19 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from wazuh.core import common, exception
-from wazuh.tests.util import InitWDBSocketMock
-
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
-        sys.modules['api'] = MagicMock()
         import wazuh.rbac.decorators
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.sca import get_sca_list, fields_translation_sca, \
             get_sca_checks, fields_translation_sca_check, fields_translation_sca_check_compliance
+        from wazuh.core import common, exception
         from wazuh.core.results import AffectedItemsWazuhResult
         from wazuh.core.exception import WazuhResourceNotFound
+        from wazuh.tests.util import InitWDBSocketMock
 
         del sys.modules['wazuh.rbac.orm']
 

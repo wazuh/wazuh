@@ -48,7 +48,7 @@ def create_memory_db(sql_file, session):
 
 @pytest.fixture(scope='function')
 def db_setup():
-    with patch('wazuh.common.ossec_uid'), patch('wazuh.common.ossec_gid'):
+    with patch('wazuh.core.common.ossec_uid'), patch('wazuh.core.common.ossec_gid'):
         with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
             with patch('shutil.chown'), patch('os.chmod'):
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
@@ -62,7 +62,7 @@ def db_setup():
                     from wazuh.core.results import WazuhResult
                     from wazuh.core import security as core_security
     try:
-        create_memory_db('schema_security_test.sql', orm._Session)
+        create_memory_db('schema_security_test.sql', orm._Session())
     except OperationalError:
         pass
 
