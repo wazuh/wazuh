@@ -56,7 +56,7 @@ int setup_jailfile(void **state) {
 #ifdef TEST_WINAGENT
 int setup_jailfile_long_name(void **state) {
     char *filename = malloc(sizeof(char) * OS_MAXSTR);
-    const unsigned int length = PATH_MAX - strlen(DEFAULTDIR) - strlen(INCOMING_DIR) - 2;
+    const unsigned int length = PATH_MAX - strlen(INCOMING_DIR) - 2;
     for(int i=0; i < length; i++) {
         sprintf(&filename[i], "a");
     }
@@ -68,7 +68,11 @@ int setup_jailfile_long_name(void **state) {
 
 int setup_jailfile_long_name2(void **state) {
     char *filename = malloc(sizeof(char) * OS_MAXSTR);
+    #ifdef TEST_WINAGENT
+    const unsigned int length = PATH_MAX - strlen(TMP_DIR) - 2;
+    #else
     const unsigned int length = PATH_MAX - strlen(DEFAULTDIR) - strlen(TMP_DIR) - 2;
+    #endif
     for(int i=0; i < length; i++) {
         sprintf(&filename[i], "a");
     }
@@ -584,7 +588,7 @@ void test_wm_agent_upgrade_com_write_different_file_name(void **state) {
 void test_wm_agent_upgrade_com_write_error(void **state) {
     cJSON * command = *state;
 #ifdef TEST_WINAGENT
-    sprintf(file.path, "incoming\\test_filename");
+    sprintf(file.path, "incoming\\test_file");
 #else
     sprintf(file.path, "/var/ossec//var/incoming/test_file");
 #endif
@@ -596,7 +600,7 @@ void test_wm_agent_upgrade_com_write_error(void **state) {
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
 #ifdef TEST_WINAGENT
-    expect_string(__wrap__mterror, formatted_msg, "(8129): At write: Cannot write on 'incoming\\test_filename'");
+    expect_string(__wrap__mterror, formatted_msg, "(8129): At write: Cannot write on 'incoming\\test_file'");
 #else
     expect_string(__wrap__mterror, formatted_msg, "(8129): At write: Cannot write on '/var/ossec//var/incoming/test_file'");
 #endif
@@ -611,7 +615,7 @@ void test_wm_agent_upgrade_com_write_error(void **state) {
 void test_wm_agent_upgrade_com_write_success(void **state) {
     cJSON * command = *state;
 #ifdef TEST_WINAGENT
-    sprintf(file.path, "incoming\\test_filename");
+    sprintf(file.path, "incoming\\test_file");
 #else
     sprintf(file.path, "/var/ossec//var/incoming/test_file");
 #endif
@@ -1244,7 +1248,7 @@ void test_wm_agent_upgrade_com_execute_error(void **state) {
     expect_string(__wrap_wm_exec, command, "/var/ossec//var/upgrade/install.sh");
 
     #else
-    expect_string(__wrap_wm_exec, command, "upgrade/install.sh");
+    expect_string(__wrap_wm_exec, command, "upgrade\\install.sh");
     #endif
 
 
@@ -1259,7 +1263,7 @@ void test_wm_agent_upgrade_com_execute_error(void **state) {
     #ifndef TEST_WINAGENT
     expect_string(__wrap__mterror, formatted_msg, "(8135): At upgrade: Error executing command [/var/ossec//var/upgrade/install.sh]");
     #else
-    expect_string(__wrap__mterror, formatted_msg, "(8135): At upgrade: Error executing command [upgrade/install.sh]");
+    expect_string(__wrap__mterror, formatted_msg, "(8135): At upgrade: Error executing command [upgrade\\install.sh]");
     #endif
 
     char *response = wm_agent_upgrade_com_upgrade(command);
@@ -1347,7 +1351,7 @@ void test_wm_agent_upgrade_com_success(void **state) {
     expect_string(__wrap_wm_exec, command, "/var/ossec//var/upgrade/install.sh");
 
     #else
-    expect_string(__wrap_wm_exec, command, "upgrade/install.sh");
+    expect_string(__wrap_wm_exec, command, "upgrade\\install.sh");
     #endif
 
 
@@ -1376,7 +1380,7 @@ void test_wm_agent_upgrade_com_clear_result_failed(void **state) {
     #ifndef TEST_WINAGENT
         expect_string(__wrap__mtdebug1, formatted_msg,  "(8136): At clear_upgrade_result: Could not erase file '/var/ossec/var/upgrade/upgrade_result'");
     #else
-        expect_string(__wrap__mtdebug1, formatted_msg,  "(8136): At clear_upgrade_result: Could not erase file 'upgrade\\upgrade_result'.");
+        expect_string(__wrap__mtdebug1, formatted_msg,  "(8136): At clear_upgrade_result: Could not erase file 'upgrade\\upgrade_result'");
     #endif
 
     char *response = wm_agent_upgrade_com_clear_result();
