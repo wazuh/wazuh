@@ -25,7 +25,7 @@ target_link_libraries(UPGRADE_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 # Generate agent upgrade tests
 list(APPEND upgrade_names "test_wm_agent_upgrade")
-list(APPEND upgrade_flags "-Wl,--wrap,_mtinfo -Wl,--wrap,pthread_exit -Wl,--wrap,wm_agent_upgrade_check_status -Wl,--wrap,wm_agent_upgrade_listen_messages")
+list(APPEND upgrade_flags "-Wl,--wrap,_mtinfo -Wl,--wrap,pthread_exit -Wl,--wrap,wm_agent_upgrade_check_status -Wl,--wrap,wm_agent_upgrade_listen_messages -Wl,--wrap,wm_agent_upgrade_start_agent_module")
 
 if(${TARGET} STREQUAL "server")
 

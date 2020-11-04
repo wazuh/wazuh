@@ -16,13 +16,14 @@
 #include "../../wrappers/posix/pthread_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_agent_upgrade_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_modules/wm_agent_upgrade_agent_wrappers.h"
 
 #include "../../wazuh_modules/wmodules.h"
 #include "../../wazuh_modules/agent_upgrade/wm_agent_upgrade.h"
 #include "../../headers/shared.h"
 
-void* wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config);    
-void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config);  
+void* wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config);
+void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config);
 cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config);
 
 // Setup / teardown
@@ -127,9 +128,8 @@ void test_wm_agent_upgrade_main_ok(void **state)
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "(8153): Module Agent Upgrade started.");
 
-    #ifdef TEST_SERVER
     will_return(__wrap_wm_agent_upgrade_listen_messages, 1);
-    #else
+    #ifndef TEST_SERVER
     will_return(__wrap_wm_agent_upgrade_check_status, 1);
     #endif
 
@@ -150,9 +150,8 @@ void test_wm_agent_upgrade_main_disabled(void **state)
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "(8153): Module Agent Upgrade started.");
 
-    #ifdef TEST_SERVER
     will_return(__wrap_wm_agent_upgrade_listen_messages, 1);
-    #else
+    #ifndef TEST_SERVER
     will_return(__wrap_wm_agent_upgrade_check_status, 1);
     #endif
 
