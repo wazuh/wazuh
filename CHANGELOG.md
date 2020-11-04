@@ -14,10 +14,19 @@ All notable changes to this project will be documented in this file.
 
 - **API:**
   - Added missing agent:group resource to RBAC's catalog. ([6427](https://github.com/wazuh/wazuh/issues/6427))
+  - Changed `limit` parameter behaviour in `GET sca/{agent_id}/checks/{policy_id}` endpoint and fixed some loss of information when paginating `wdb`. ([#6464](https://github.com/wazuh/wazuh/pull/6464))
 - **Framework:**
   - Fixed zip files compression and handling in cluster integrity synchronization. ([#6367](https://github.com/wazuh/wazuh/issues/6367))
 
 ### Removed
+
+
+## [v4.0.0] -
+
+### Fixed
+
+- Clean invalid real-time inotify watches from FIM module. ([#6445](https://github.com/wazuh/wazuh/pull/6445))
+
 
 ## [v4.0.0] -
 
