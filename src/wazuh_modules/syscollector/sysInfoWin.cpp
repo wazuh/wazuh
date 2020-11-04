@@ -600,3 +600,9 @@ nlohmann::json SysInfo::getPackages() const
     getHotFixFromRegNT(HKEY_LOCAL_MACHINE, VISTA_REG_HOTFIX, ret);
     return ret;
 }
+
+nlohmann::json SysInfo::getOsInfo() const
+{
+    // Currently not supported for this OS
+    return {};
+}

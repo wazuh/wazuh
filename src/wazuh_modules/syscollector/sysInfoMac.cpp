@@ -12,12 +12,14 @@
 #include "cmdHelper.h"
 #include "stringHelper.h"
 #include "filesystemHelper.h"
+#include "sysOsParsers.h"
 #include <libproc.h>
 #include <pwd.h>
 #include <grp.h>
 #include <sys/proc.h>
 #include <sys/proc_info.h>
 #include <sys/sysctl.h>
+#include <sys/utsname.h>
 #include <fstream>
 
 const std::string MAC_APPS_PATH{"/Applications"};
@@ -251,4 +253,22 @@ nlohmann::json SysInfo::getProcessesInfo() const
     }
 
     return jsProcessesList;
+}
+
+nlohmann::json SysInfo::getOsInfo() const
+{
+    nlohmann::json ret;
+    struct utsname uts{};
+    MacOsParser parser;
+    parser.parseSwVersion(Utils::exec("sw_vers"), ret);
+    parser.parseUname(Utils::exec("uname -r"), ret);
+    if (uname(&uts) >= 0)
+    {
+        ret["sysname"] = uts.sysname;
+        ret["host_name"] = uts.nodename;
+        ret["version"] = uts.version;
+        ret["architecture"] = uts.machine;
+        ret["release"] = uts.release;
+    }
+    return ret;
 }

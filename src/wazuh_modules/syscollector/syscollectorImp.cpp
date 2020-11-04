@@ -36,10 +36,12 @@ void Syscollector::start()
         const auto& packages{m_info.packages()};
         const auto& processes{m_info.processes()};    
         const auto& networks{m_info.networks()};       
+        const auto& os{m_info.os()};
         std::cout << packages.dump() << std::endl;
         std::cout << hw.dump() << std::endl;
         std::cout << processes.dump() << std::endl;
         std::cout << networks.dump() << std::endl;
+        std::cout << os.dump() << std::endl;
         std::this_thread::sleep_for(m_timeout);
     }
 }

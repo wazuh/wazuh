@@ -10,8 +10,10 @@
  */
 #include "sysInfo.hpp"
 #include "cmdHelper.h"
+#include "sysOsParsers.h"
 #include "stringHelper.h"
 #include <sys/sysctl.h>
+#include <sys/utsname.h>
 
 void SysInfo::getMemory(nlohmann::json& info) const
 {
@@ -92,4 +94,32 @@ nlohmann::json SysInfo::getProcessesInfo() const
 {
     // Currently not supported for this OS
     return {};
+}
+
+nlohmann::json SysInfo::getPackages() const
+{
+    // Currently not supported for this OS
+    return {};
+}
+
+nlohmann::json SysInfo::getOsInfo() const
+{
+    nlohmann::json ret;
+    struct utsname uts{};
+    const auto spParser{FactorySysOsParser::create("bsd")};
+    if(!spParser->parseUname(Utils::exec("uname -r"), ret))
+    {
+        ret["os_name"] = "BSD";
+        ret["os_platform"] = "bsd";
+        ret["os_version"] = "unknown";
+    }
+    if (uname(&uts) >= 0)
+    {
+        ret["sysname"] = uts.sysname;
+        ret["host_name"] = uts.nodename;
+        ret["version"] = uts.version;
+        ret["architecture"] = uts.machine;
+        ret["release"] = uts.release;
+    }
+    return ret;
 }
