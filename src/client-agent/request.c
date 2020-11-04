@@ -20,6 +20,7 @@
 #include "../syscheckd/syscheck.h"
 #include "../wazuh_modules/wmodules.h"
 #include "../logcollector/logcollector.h"
+#include "../wazuh_modules/agent_upgrade/agent/wm_agent_upgrade_agent.h"
 #endif
 
 static OSHash * req_table;
