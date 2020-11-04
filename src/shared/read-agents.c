@@ -886,10 +886,12 @@ const char *print_agent_status(agent_status_t status)
         return "Active";
     case GA_STATUS_NACTIVE:
         return "Disconnected";
-    case GA_STATUS_INV:
+    case GA_STATUS_NEVER:
         return "Never connected";
     case GA_STATUS_PENDING:
         return "Pending";
+    case GA_STATUS_UNKNOWN:
+        return "Unknown";
     default:
         return "(undefined)";
     }
@@ -1138,6 +1140,25 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const c
         os_strdup(keepalive_str, agt_info->last_keepalive);
     }
 
+    json_field = cJSON_GetObjectItem(json_agt_info->child, "connection_status");
+    if (cJSON_IsString(json_field)) {
+        if (0 == strcmp(json_field->valuestring, AGENT_CS_PENDING)) {
+            agt_info->connection_status = GA_STATUS_PENDING;
+        }
+        else if (0 == strcmp(json_field->valuestring, AGENT_CS_ACTIVE)) {
+            agt_info->connection_status = GA_STATUS_ACTIVE;
+        }
+        else if (0 == strcmp(json_field->valuestring, AGENT_CS_DISCONNECTED)) {
+            agt_info->connection_status = GA_STATUS_NACTIVE;
+        }
+        else if (0 == strcmp(json_field->valuestring, AGENT_CS_NEVER_CONNECTED)) {
+            agt_info->connection_status = GA_STATUS_NEVER;
+        }
+        else {
+            agt_info->connection_status = GA_STATUS_UNKNOWN;
+        }
+    }
+
     _get_time_rkscan(agent_name, agent_ip, agt_info, agent_id);
 
     cJSON_Delete(json_agt_info);
@@ -1149,7 +1170,7 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const c
 agent_status_t get_agent_status(int agent_id){
     cJSON *json_agt_info = NULL;
     cJSON *json_field = NULL;
-    agent_status_t status = GA_STATUS_INV;
+    agent_status_t status = GA_STATUS_UNKNOWN;
 
     json_agt_info = wdb_get_agent_info(agent_id, NULL);
 
@@ -1168,6 +1189,9 @@ agent_status_t get_agent_status(int agent_id){
         }
         else if (0 == strcmp(json_field->valuestring, AGENT_CS_DISCONNECTED)) {
             status = GA_STATUS_NACTIVE;
+        }
+        else if (0 == strcmp(json_field->valuestring, AGENT_CS_NEVER_CONNECTED)) {
+            status = GA_STATUS_NEVER;
         }
     }
 
@@ -1196,7 +1220,7 @@ char **get_agents(int flag){
     }
 
     for (i = 0; id_array[i] != -1; i++){
-        agent_status_t status = GA_STATUS_INV;
+        agent_status_t status = GA_STATUS_UNKNOWN;
         char agent_name_ip[OS_SIZE_512] = "";
 
         json_agt_info = wdb_get_agent_info(id_array[i], &sock);
@@ -1222,7 +1246,8 @@ char **get_agents(int flag){
 
         status = !strcmp(json_field->valuestring, AGENT_CS_PENDING) ? GA_STATUS_PENDING :
                  !strcmp(json_field->valuestring, AGENT_CS_ACTIVE) ? GA_STATUS_ACTIVE :
-                 !strcmp(json_field->valuestring, AGENT_CS_DISCONNECTED) ? GA_STATUS_NACTIVE : GA_STATUS_INV;
+                 !strcmp(json_field->valuestring, AGENT_CS_DISCONNECTED) ? GA_STATUS_NACTIVE :
+                 !strcmp(json_field->valuestring, AGENT_CS_NEVER_CONNECTED) ? GA_STATUS_NEVER : GA_STATUS_UNKNOWN;
         cJSON_Delete(json_agt_info);
 
         switch (flag) {
