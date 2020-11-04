@@ -185,7 +185,7 @@ void test_monitor_send_disconnection_msg_agent_removed(void **state) {
     expect_string(__wrap_wdb_find_agent, ip, "any");
     will_return(__wrap_wdb_find_agent, -2);
 
-    // monitor_send_deletion_msg()
+    // monitor_send_deletion_msg
     snprintf(msg_to_send, OS_SIZE_1024, OS_AG_REMOVED, agent);
     expect_string(__wrap_SendMSG, message, msg_to_send);
     expect_string(__wrap_SendMSG, locmsg, ARGV0);
