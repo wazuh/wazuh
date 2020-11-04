@@ -13,6 +13,15 @@
 
 #include <external/cJSON/cJSON.h>
 
+/* Status */
+typedef enum agent_status_t {
+    GA_STATUS_ACTIVE = 12,
+    GA_STATUS_NACTIVE,
+    GA_STATUS_NEVER,
+    GA_STATUS_PENDING,
+    GA_STATUS_UNKNOWN
+} agent_status_t;
+
 /* Unique key for each agent */
 typedef struct _agent_info {
     char *last_keepalive;
@@ -24,16 +33,8 @@ typedef struct _agent_info {
     char *version;
     char *config_sum;
     char *merged_sum;
+    agent_status_t connection_status;
 } agent_info;
-
-/* Status */
-
-typedef enum agent_status_t {
-    GA_STATUS_ACTIVE = 12,
-    GA_STATUS_NACTIVE,
-    GA_STATUS_INV,
-    GA_STATUS_PENDING
-} agent_status_t;
 
 /* Print syscheck db (of modified files) */
 int print_syscheck(const char *sk_name, const char *sk_ip, const char *fname, int print_registry,
