@@ -492,6 +492,31 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - GET /mitre
+      rootcheck:clear:
+        description: Clear the agents rootcheck database
+        resources:
+          - agent:id
+        example:
+          actions:
+            - rootcheck:clear
+          resources:
+            - agent:id:*
+          effect: deny
+        related_endpoints:
+          - DELETE /rootcheck
+      rootcheck:read:
+        description: Access information from agents rootcheck database
+        resources:
+          - agent:id
+        example:
+          actions:
+            - rootcheck:read
+          resources:
+            - agent:id:011
+          effect: allow
+        related_endpoints:
+          - GET /rootcheck/{agent_id}
+          - GET /rootcheck/{agent_id}/last_scan
       rules:read:
         description: Read rules files
         resources:
@@ -532,6 +557,7 @@ get_rbac_actions:
             - agent:id:*
           effect: allow
         related_endpoints:
+          - PUT /rootcheck
           - PUT /syscheck
       syscheck:read:
         description: Access information from agents syscheck database
