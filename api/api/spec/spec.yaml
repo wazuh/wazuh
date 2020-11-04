@@ -10366,7 +10366,7 @@ paths:
                 data:
                   affected_items:
                     - 002
-                      003
+                    - 003
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
@@ -10411,9 +10411,9 @@ paths:
                 data:
                   affected_items:
                     - 000
-                      001
-                      002
-                      003
+                    - 001
+                    - 002
+                    - 003
                   total_affected_items: 4
                   failed_items: []
                   total_failed_items: 0
