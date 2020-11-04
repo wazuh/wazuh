@@ -8,7 +8,6 @@ import json
 import operator
 import os
 import random
-import re
 import shutil
 from calendar import timegm
 from datetime import datetime
@@ -16,10 +15,10 @@ from typing import Tuple, Dict, Callable
 
 import wazuh.core.cluster.cluster
 from wazuh.core import cluster as metadata, common, exception, utils
+from wazuh.core.agent import Agent
 from wazuh.core.cluster import server, common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
-from wazuh.core.agent import Agent
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
@@ -363,7 +362,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         files_checksums, decompressed_files_path = await wazuh.core.cluster.cluster.decompress_files(received_filename)
         logger.info("Analyzing worker files: Received {} files to check.".format(len(files_checksums)))
-        await self.process_files_from_worker(files_checksums, decompressed_files_path, logger)
+        try:
+            await self.process_files_from_worker(files_checksums, decompressed_files_path, logger)
+        finally:
+            shutil.rmtree(decompressed_files_path)
 
     async def sync_extra_valid(self, task_name: str, received_file: asyncio.Event):
         """
@@ -404,6 +406,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger.debug("Received file from worker: '{}'".format(received_filename))
 
         files_checksums, decompressed_files_path = await wazuh.core.cluster.cluster.decompress_files(received_filename)
+        shutil.rmtree(decompressed_files_path)
         logger.info("Analyzing worker integrity: Received {} files to check.".format(len(files_checksums)))
 
         # classify files in shared, missing, extra and extra valid.
@@ -411,7 +414,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         # health check
         self.sync_integrity_status['total_files'] = counts
-        shutil.rmtree(decompressed_files_path)
 
         if not functools.reduce(operator.add, map(len, worker_files_ko.values())):
             logger.info("Analyzing worker integrity: Files checked. There are no KO files.")
@@ -568,9 +570,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         try:
             for filename, data in files_checksums.items():
                 await update_file(data=data, name=filename)
-
-            shutil.rmtree(decompressed_files_path)
-
         except Exception as e:
             self.logger.error("Error updating worker files: '{}'.".format(e))
             raise e

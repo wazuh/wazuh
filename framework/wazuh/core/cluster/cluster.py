@@ -5,6 +5,7 @@ import itertools
 import json
 import logging
 import os
+import shutil
 import zipfile
 from datetime import datetime, timedelta
 from functools import reduce
@@ -172,7 +173,49 @@ def get_files_status(node_type, node_name, get_md5=True):
     return final_items
 
 
+def update_cluster_control_with_failed(failed_files, ko_files):
+    """Check if file paths inside 'shared' and 'missing' do really exist.
+
+    Sometimes, files that no longer exist are still listed in cluster_control.json. Two situations can occur:
+        - A missing file on a worker no longer exists on the master. It is removed from the list of missing files.
+        - A shared file no longer exists on the master. It is deleted from 'shared' and added to 'extra'.
+
+    Parameters
+    ----------
+    failed_files : list
+        List of files to update
+    ko_files : dict
+        KO files dict with 'missing', 'shared' and 'extra' keys.
+    """
+    for f in failed_files:
+        if 'missing' in ko_files.keys() and f in ko_files['missing'].keys():
+            ko_files['missing'].pop(f, None)
+        elif 'shared' in ko_files.keys() and 'extra' in ko_files.keys() and f in ko_files['shared'].keys():
+            ko_files['extra'][f] = ko_files['shared'][f]
+            ko_files['shared'].pop(f, None)
+
+
 def compress_files(name, list_path, cluster_control_json=None):
+    """Create a zip with cluster_control.json and the files listed in list_path.
+
+    Iterate the list of files and groups them in the zip. If a file does not
+    exist, the cluster_control_json dictionary is updated.
+
+    Parameters
+    ----------
+    name : str
+        Name of the node to which the zip will be sent.
+    list_path : list
+        List of file paths to be zipped
+    cluster_control_json : dict
+        KO files (path-metadata) to be zipped as a json.
+
+    Returns
+    -------
+    zip_file_path : str
+        Path where the zip file has been saved.
+    """
+    failed_files = list()
     zip_file_path = "{0}/queue/cluster/{1}/{1}-{2}-{3}.zip".format(common.ossec_path, name, time(), str(random())[2:])
     if not os.path.exists(os.path.dirname(zip_file_path)):
         mkdir_with_mode(os.path.dirname(zip_file_path))
@@ -185,9 +228,11 @@ def compress_files(name, list_path, cluster_control_json=None):
                 except zipfile.LargeZipFile as e:
                     raise WazuhError(3001, str(e))
                 except Exception as e:
-                    logger.error("[Cluster] {}".format(str(WazuhException(3001, str(e)))))
-
+                    logger.debug("[Cluster] {}".format(str(WazuhException(3001, str(e)))))
+                    failed_files.append(f)
         try:
+            if cluster_control_json and failed_files:
+                update_cluster_control_with_failed(failed_files, cluster_control_json)
             zf.writestr("cluster_control.json", json.dumps(cluster_control_json))
         except Exception as e:
             raise WazuhError(3001, str(e))
@@ -196,18 +241,23 @@ def compress_files(name, list_path, cluster_control_json=None):
 
 
 async def decompress_files(zip_path, ko_files_name="cluster_control.json"):
-    ko_files = ""
-    zip_dir = zip_path + 'dir'
-    mkdir_with_mode(zip_dir)
-    with zipfile.ZipFile(zip_path) as zipf:
-        zipf.extractall(path=zip_dir)
+    try:
+        ko_files = ""
+        zip_dir = zip_path + 'dir'
+        mkdir_with_mode(zip_dir)
+        with zipfile.ZipFile(zip_path) as zipf:
+            zipf.extractall(path=zip_dir)
 
-    if os.path.exists("{}/{}".format(zip_dir, ko_files_name)):
-        with open("{}/{}".format(zip_dir, ko_files_name)) as ko:
-            ko_files = json.loads(ko.read())
-
-    # once read all files, remove the zipfile
-    remove(zip_path)
+        if os.path.exists("{}/{}".format(zip_dir, ko_files_name)):
+            with open("{}/{}".format(zip_dir, ko_files_name)) as ko:
+                ko_files = json.loads(ko.read())
+    except Exception as e:
+        if os.path.exists(zip_dir):
+            shutil.rmtree(zip_dir)
+        raise e
+    finally:
+        # once read all files, remove the zipfile
+        remove(zip_path)
     return ko_files, zip_dir
 
 
