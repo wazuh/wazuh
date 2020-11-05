@@ -223,27 +223,6 @@ int Rules_OP_ReadRules(const char *rulefile)
     size_t i;
     default_timeframe = 360;
 
-    /* Default regex types */
-    const w_exp_type_t match_default_type = EXP_TYPE_OSMATCH;
-    const w_exp_type_t regex_default_type = EXP_TYPE_OSREGEX;
-    const w_exp_type_t extra_data_default_type = EXP_TYPE_OSMATCH;
-    const w_exp_type_t hostname_default_type = EXP_TYPE_OSMATCH;
-    const w_exp_type_t location_default_type = EXP_TYPE_OSMATCH;
-    const w_exp_type_t program_name_default_type = EXP_TYPE_OSMATCH;
-    const w_exp_type_t protocol_default_type = EXP_TYPE_OSMATCH;
-    const w_exp_type_t user_default_type = EXP_TYPE_OSMATCH;
-    const w_exp_type_t url_default_type = EXP_TYPE_OSMATCH;
-    const w_exp_type_t srcport_default_type = EXP_TYPE_OSMATCH;
-    const w_exp_type_t dstport_default_type = EXP_TYPE_OSMATCH;
-    const w_exp_type_t status_default_type = EXP_TYPE_OSMATCH;
-    const w_exp_type_t system_name_default_type = EXP_TYPE_OSMATCH;
-    const w_exp_type_t data_default_type = EXP_TYPE_OSMATCH;
-    const w_exp_type_t srcgeoip_default_type = EXP_TYPE_OSMATCH;
-    const w_exp_type_t dstgeoip_default_type = EXP_TYPE_OSMATCH;
-    const w_exp_type_t id_default_type = EXP_TYPE_OSMATCH;
-    const w_exp_type_t field_default_type = EXP_TYPE_OSREGEX;
-    const w_exp_type_t action_default_type = EXP_TYPE_STRING;
-
     /* If no directory in the rulefile, add the default */
     if ((strchr(rulefile, '/')) == NULL) {
         /* Build the rule file name + path */
@@ -505,13 +484,13 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         regex =loadmemory(regex, rule_opt[k]->content);
                         negate_regex = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
-                        regex_type = w_check_attr_type(rule_opt[k], regex_default_type, config_ruleinfo->sigid);
+                        regex_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSREGEX, config_ruleinfo->sigid);
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_match) == 0) {
 
                         match = loadmemory(match, rule_opt[k]->content);
                         negate_match = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
-                        match_type = w_check_attr_type(rule_opt[k], match_default_type, config_ruleinfo->sigid);
+                        match_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid);
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_decoded) == 0) {
                         config_ruleinfo->decoded_as =
@@ -654,7 +633,7 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         user = loadmemory(user, rule_opt[k]->content);
                         negate_user = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
-                        user_type = w_check_attr_type(rule_opt[k], user_default_type, config_ruleinfo->sigid);
+                        user_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid);
 
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
@@ -664,7 +643,7 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         srcgeoip = loadmemory(srcgeoip, rule_opt[k]->content);
                         negate_srcgeoip = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
-                        srcgeoip_type = w_check_attr_type(rule_opt[k], srcgeoip_default_type, config_ruleinfo->sigid);
+                        srcgeoip_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid);
 
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
@@ -674,7 +653,7 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         dstgeoip = loadmemory(dstgeoip, rule_opt[k]->content);
                         negate_dstgeoip = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
-                        dstgeoip_type = w_check_attr_type(rule_opt[k], dstgeoip_default_type, config_ruleinfo->sigid);
+                        dstgeoip_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid);
 
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
@@ -684,13 +663,13 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         id = loadmemory(id, rule_opt[k]->content);
                         negate_id = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
-                        id_type = w_check_attr_type(rule_opt[k], id_default_type, config_ruleinfo->sigid);
+                        id_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid);
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_srcport) == 0) {
 
                         srcport = loadmemory(srcport, rule_opt[k]->content);
                         negate_srcport = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
-                        srcport_type = w_check_attr_type(rule_opt[k], srcport_default_type, config_ruleinfo->sigid);
+                        srcport_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid);
 
                         if (!(config_ruleinfo->alert_opts & DO_PACKETINFO)) {
                             config_ruleinfo->alert_opts |= DO_PACKETINFO;
@@ -700,7 +679,7 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         dstport = loadmemory(dstport, rule_opt[k]->content);
                         negate_dstport = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
-                        dstport_type = w_check_attr_type(rule_opt[k], dstport_default_type, config_ruleinfo->sigid);
+                        dstport_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid);
 
                         if (!(config_ruleinfo->alert_opts & DO_PACKETINFO)) {
                             config_ruleinfo->alert_opts |= DO_PACKETINFO;
@@ -710,7 +689,7 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         status = loadmemory(status, rule_opt[k]->content);
                         negate_status = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
-                        status_type = w_check_attr_type(rule_opt[k], status_default_type, config_ruleinfo->sigid);
+                        status_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid);
 
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
@@ -720,7 +699,7 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         hostname = loadmemory(hostname, rule_opt[k]->content);
                         negate_hostname = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
-                        hostname_type = w_check_attr_type(rule_opt[k], hostname_default_type, config_ruleinfo->sigid);
+                        hostname_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid);
 
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
@@ -730,7 +709,7 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         data = loadmemory(data, rule_opt[k]->content);
                         negate_data = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
-                        data_type = w_check_attr_type(rule_opt[k], data_default_type, config_ruleinfo->sigid);
+                        data_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid);
 
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
@@ -740,8 +719,7 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         extra_data = loadmemory(extra_data, rule_opt[k]->content);
                         negate_extra_data = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
-                        extra_data_type = w_check_attr_type(rule_opt[k], extra_data_default_type,
-                                                            config_ruleinfo->sigid);
+                        extra_data_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid);
 
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
@@ -751,33 +729,31 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         program_name = loadmemory(program_name, rule_opt[k]->content);
                         negate_program_name = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
-                        program_name_type = w_check_attr_type(rule_opt[k], program_name_default_type,
-                                                              config_ruleinfo->sigid);
+                        program_name_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid);
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_action) == 0) {
 
                         action = loadmemory(action, rule_opt[k]->content);
                         negate_action = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
-                        action_type = w_check_attr_type(rule_opt[k], action_default_type, config_ruleinfo->sigid);
+                        action_type = w_check_attr_type(rule_opt[k], EXP_TYPE_STRING, config_ruleinfo->sigid);
 
                     } else if(strcasecmp(rule_opt[k]->element, xml_system_name) == 0){
 
                         system_name = loadmemory(system_name, rule_opt[k]->content);
                         negate_system_name = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
-                        system_name_type = w_check_attr_type(rule_opt[k], system_name_default_type,
-                                                             config_ruleinfo->sigid);
+                        system_name_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid);
 
                     } else if(strcasecmp(rule_opt[k]->element, xml_protocol) == 0){
 
                         protocol = loadmemory(protocol, rule_opt[k]->content);
                         negate_protocol = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
-                        protocol_type = w_check_attr_type(rule_opt[k], protocol_default_type, config_ruleinfo->sigid);
+                        protocol_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid);
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_location) == 0) {
 
                         location = loadmemory(location, rule_opt[k]->content);
                         negate_location = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
-                        location_type = w_check_attr_type(rule_opt[k], location_default_type, config_ruleinfo->sigid);
+                        location_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid);
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_field) == 0) {
 
@@ -788,7 +764,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                         }
 
                         w_exp_type_t type;
-                        type = w_check_attr_type(rule_opt[k], field_default_type, config_ruleinfo->sigid);
+                        type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSREGEX, config_ruleinfo->sigid);
 
                         bool negate = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
 
@@ -922,7 +898,7 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         url = loadmemory(url, rule_opt[k]->content);
                         negate_url = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid);
-                        url_type = w_check_attr_type(rule_opt[k], url_default_type, config_ruleinfo->sigid);
+                        url_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid);
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_compiled) == 0) {
                         int it_id = 0;
