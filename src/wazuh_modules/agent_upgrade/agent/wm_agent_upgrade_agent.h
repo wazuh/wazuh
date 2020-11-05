@@ -33,7 +33,7 @@ extern bool allow_upgrades;
 /**
  * Start main loop of the upgrade module for the agent
  * @param agent_config Agent configuration parameters
- * @param enabled  Whetever the module will allow or not upgrades
+ * @param enabled Wheter the module will allow or not upgrades
  * */
 void wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config, const int enabled) __attribute__((nonnull));
 

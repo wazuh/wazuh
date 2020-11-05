@@ -1767,7 +1767,7 @@ void test_wm_agent_upgrade_process_upgrade_not_allowed(void **state) {
 
     size_t length = wm_agent_upgrade_process_command(buffer, &output);
     cJSON *response = cJSON_Parse(output);
-    assert_string_equal(cJSON_GetObjectItem(response, "message")->valuestring, "Upgrade module is not ready yet");
+    assert_string_equal(cJSON_GetObjectItem(response, "message")->valuestring, "Upgrade module is disabled or not ready yet");
     assert_int_not_equal(cJSON_GetObjectItem(response, "error")->valueint, 0);
     assert_int_equal(strlen(output), length);
     cJSON_Delete(response);

@@ -42,20 +42,10 @@ const wm_context WM_AGENT_UPGRADE_CONTEXT = {
 
 STATIC void *wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
 
-    #ifndef CLIENT
-    // Check if module is enabled
-    if (!upgrade_config->enabled) {
-        mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_DISABLED);
-        pthread_exit(NULL);
-    }
-    #endif
-
-    mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_STARTED);
-
     #ifdef CLIENT
         wm_agent_upgrade_start_agent_module(&upgrade_config->agent_config, upgrade_config->enabled);
     #else
-        wm_agent_upgrade_listen_messages(&upgrade_config->manager_config);
+        wm_agent_upgrade_start_manager_module(&upgrade_config->manager_config, upgrade_config->enabled);
     #endif
 
     return NULL;

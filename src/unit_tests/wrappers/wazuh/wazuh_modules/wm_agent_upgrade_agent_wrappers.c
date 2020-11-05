@@ -7,10 +7,14 @@
  * Foundation
  */
 
+#include "../../common.h"
 #include "wm_agent_upgrade_agent_wrappers.h"
+#include <stddef.h>
+#include <stdarg.h>
+#include <setjmp.h>
+#include <cmocka.h>
 
-void __wrap_wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config) {
-    // This methods should also be wrapped
-    wm_agent_upgrade_listen_messages();
-    wm_agent_upgrade_check_status(agent_config);
+void __wrap_wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config, const int enabled) {
+    check_expected(agent_config);
+    check_expected(enabled);
 }

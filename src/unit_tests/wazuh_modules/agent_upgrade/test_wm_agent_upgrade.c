@@ -125,34 +125,12 @@ void test_wm_agent_upgrade_main_ok(void **state)
 
     config->enabled = 1;
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mtinfo, formatted_msg, "(8153): Module Agent Upgrade started.");
-
-    will_return(__wrap_wm_agent_upgrade_listen_messages, 1);
-    #ifndef TEST_SERVER
-    will_return(__wrap_wm_agent_upgrade_check_status, 1);
-    #endif
-
-    wm_agent_upgrade_main(config);
-}
-
-void test_wm_agent_upgrade_main_disabled(void **state)
-{
-    wm_agent_upgrade *config = *state;
-
-    config->enabled = 0;
-
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mtinfo, formatted_msg, "(8152): Module Agent Upgrade disabled. Exiting...");
-
-    will_return(__wrap_pthread_exit, OS_INVALID);
-
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mtinfo, formatted_msg, "(8153): Module Agent Upgrade started.");
-
-    will_return(__wrap_wm_agent_upgrade_listen_messages, 1);
-    #ifndef TEST_SERVER
-    will_return(__wrap_wm_agent_upgrade_check_status, 1);
+    #ifdef TEST_SERVER
+    expect_memory(__wrap_wm_agent_upgrade_start_manager_module, manager_configs, &config->manager_config, sizeof(&config->manager_config));
+    expect_value(__wrap_wm_agent_upgrade_start_manager_module, enabled, config->enabled);
+    #else
+    expect_memory(__wrap_wm_agent_upgrade_start_agent_module, agent_config, &config->agent_config, sizeof(&config->agent_config));
+    expect_value(__wrap_wm_agent_upgrade_start_agent_module, enabled, config->enabled);
     #endif
 
     wm_agent_upgrade_main(config);
@@ -166,8 +144,7 @@ int main(void) {
         // wm_task_manager_destroy
         cmocka_unit_test(test_wm_agent_upgrade_destroy),
         // wm_agent_upgrade_main
-        cmocka_unit_test(test_wm_agent_upgrade_main_ok),
-        cmocka_unit_test(test_wm_agent_upgrade_main_disabled)
+        cmocka_unit_test(test_wm_agent_upgrade_main_ok)
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

@@ -23,6 +23,8 @@
 #include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_manager.h"
 #include "../../headers/shared.h"
 
+void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs);
+
 // Setup / teardown
 
 static int setup_group(void **state) {

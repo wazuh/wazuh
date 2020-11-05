@@ -73,15 +73,25 @@ STATIC bool wm_upgrade_agent_search_upgrade_result(int *queue_fd);
 
 /**
  * Listen to the upgrade socket in order to receive commands
+ * @return only on errors, socket will be closed
  * */
 STATIC void* wm_agent_upgrade_listen_messages(__attribute__((unused)) void *arg);
 
 #endif
 
 void wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config, const int enabled) {
+
+    // Check if module is enabled
+    if (!enabled) {
+        allow_upgrades = false;
+    } else {
+        mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_STARTED);
+    }
+
     #ifndef WIN32
         w_create_thread(wm_agent_upgrade_listen_messages, NULL);
     #endif
+
     if (enabled) {
         wm_agent_upgrade_check_status(agent_config);
     }

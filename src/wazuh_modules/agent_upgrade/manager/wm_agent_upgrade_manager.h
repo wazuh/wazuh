@@ -121,11 +121,11 @@ typedef struct _wm_agent_task {
 extern const char* upgrade_error_codes[];
 
 /**
- * Start listening loop, exits only on error
- * @param manager_configs manager configuration parameters
- * @return only on errors, socket will be closed
+ * Start main loop of the upgrade module for the manager
+ * @param manager_configs Manager configuration parameters
+ * @param enabled Wheter the module will allow or not upgrades
  * */
-void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs) __attribute__((nonnull));
+void wm_agent_upgrade_start_manager_module(const wm_manager_configs* manager_configs, const int enabled) __attribute__((nonnull));
 
 /**
  * Process an upgrade_cancel_tasks command

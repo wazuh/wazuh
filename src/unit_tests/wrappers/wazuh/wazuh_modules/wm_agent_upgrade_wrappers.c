@@ -33,8 +33,9 @@ int __wrap_wm_agent_upgrade_check_status(__attribute__((unused)) const wm_agent_
     return mock();
 }
 
-int __wrap_wm_agent_upgrade_listen_messages(__attribute__((unused)) const wm_manager_configs* manager_configs) {
-    return mock();
+void __wrap_wm_agent_upgrade_start_manager_module(const wm_manager_configs* manager_configs, const int enabled) {
+    check_expected(manager_configs);
+    check_expected(enabled);
 }
 
 int __wrap_wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_ids, char** error) {

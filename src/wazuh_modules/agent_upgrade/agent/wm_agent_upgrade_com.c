@@ -55,7 +55,7 @@ typedef enum _command_error_codes {
 
 STATIC const char * error_messages[] = {
     [ERROR_OK] = "ok",
-    [ERROR_UPGRADES_NOT_ALLOWED] = "Upgrade module is not ready yet",
+    [ERROR_UPGRADES_NOT_ALLOWED] = "Upgrade module is disabled or not ready yet",
     [ERROR_UNKNOWN_COMMAND] = "Command not found",
     [ERROR_PARAMETERS_NOT_FOUND] = "Required parameters were not found",
     [ERROR_UNSOPPORTED_MODE] = "Unsupported file mode",
@@ -169,13 +169,13 @@ size_t wm_agent_upgrade_process_command(const char *buffer, char **output) {
                     *output = wm_agent_upgrade_command_ack(ERROR_PARAMETERS_NOT_FOUND, error_messages[ERROR_PARAMETERS_NOT_FOUND]);
                 } else if (strcmp(command, "open") == 0) {
                     *output = wm_agent_upgrade_com_open(parameters);
-                } else if(strcmp(command, "write") == 0) {
+                } else if (strcmp(command, "write") == 0) {
                     *output = wm_agent_upgrade_com_write(parameters);
-                } else if(strcmp(command, "close") == 0) {
+                } else if (strcmp(command, "close") == 0) {
                     *output = wm_agent_upgrade_com_close(parameters);
-                } else if(strcmp(command, "sha1") == 0) {
+                } else if (strcmp(command, "sha1") == 0) {
                     *output = wm_agent_upgrade_com_sha1(parameters);
-                } else if(strcmp(command, "upgrade") == 0) {
+                } else if (strcmp(command, "upgrade") == 0) {
                     *output = wm_agent_upgrade_com_upgrade(parameters);
                 }
             } else {
