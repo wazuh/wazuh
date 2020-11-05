@@ -16,6 +16,7 @@
 #include "../../wrappers/common.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_db/wdb_agent_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_agent_upgrade_wrappers.h"
 
 #include "../../wazuh_modules/wmodules.h"
@@ -139,7 +140,6 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_ok(void **state)
     (void) state;
 
     int agent = 44;
-    int keep_alive = 2345678;
     wm_upgrade_task *upgrade_task = NULL;
 
     wm_manager_configs *config = state[0];
@@ -148,7 +148,7 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_ok(void **state)
     config->chunk_size = 5;
 
     agent_task->agent_info->agent_id = agent;
-    agent_task->agent_info->last_keep_alive = keep_alive;
+    os_strdup(AGENT_CS_ACTIVE, agent_task->agent_info->connection_status);
     upgrade_task = wm_agent_upgrade_init_upgrade_task();
     agent_task->task_info->command = WM_UPGRADE_UPGRADE;
     agent_task->task_info->task = upgrade_task;
@@ -179,7 +179,7 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_ok(void **state)
 
     // wm_agent_upgrade_validate_status
 
-    expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, keep_alive);
+    expect_string(__wrap_wm_agent_upgrade_validate_status, connection_status, AGENT_CS_ACTIVE);
     will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -216,7 +216,6 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_custom_ok(void **state)
     (void) state;
 
     int agent = 44;
-    int keep_alive = 2345678;
     wm_upgrade_custom_task *upgrade_custom_task = NULL;
 
     wm_manager_configs *config = state[0];
@@ -225,7 +224,7 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_custom_ok(void **state)
     config->chunk_size = 5;
 
     agent_task->agent_info->agent_id = agent;
-    agent_task->agent_info->last_keep_alive = keep_alive;
+    os_strdup(AGENT_CS_ACTIVE, agent_task->agent_info->connection_status);
     upgrade_custom_task = wm_agent_upgrade_init_upgrade_custom_task();
     agent_task->task_info->command = WM_UPGRADE_UPGRADE_CUSTOM;
     agent_task->task_info->task = upgrade_custom_task;
@@ -256,7 +255,7 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_custom_ok(void **state)
 
     // wm_agent_upgrade_validate_status
 
-    expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, keep_alive);
+    expect_string(__wrap_wm_agent_upgrade_validate_status, connection_status, AGENT_CS_ACTIVE);
     will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -291,7 +290,6 @@ void test_wm_agent_upgrade_validate_agent_task_in_progress_err(void **state)
     (void) state;
 
     int agent = 44;
-    int keep_alive = 2345678;
     wm_upgrade_task *upgrade_task = NULL;
 
     wm_manager_configs *config = state[0];
@@ -300,7 +298,7 @@ void test_wm_agent_upgrade_validate_agent_task_in_progress_err(void **state)
     config->chunk_size = 5;
 
     agent_task->agent_info->agent_id = agent;
-    agent_task->agent_info->last_keep_alive = keep_alive;
+    os_strdup(AGENT_CS_ACTIVE, agent_task->agent_info->connection_status);
     upgrade_task = wm_agent_upgrade_init_upgrade_task();
     agent_task->task_info->command = WM_UPGRADE_UPGRADE;
     agent_task->task_info->task = upgrade_task;
@@ -331,7 +329,7 @@ void test_wm_agent_upgrade_validate_agent_task_in_progress_err(void **state)
 
     // wm_agent_upgrade_validate_status
 
-    expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, keep_alive);
+    expect_string(__wrap_wm_agent_upgrade_validate_status, connection_status, AGENT_CS_ACTIVE);
     will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -368,7 +366,6 @@ void test_wm_agent_upgrade_validate_agent_task_task_manager_err(void **state)
     (void) state;
 
     int agent = 44;
-    int keep_alive = 2345678;
     wm_upgrade_task *upgrade_task = NULL;
 
     wm_manager_configs *config = state[0];
@@ -377,7 +374,7 @@ void test_wm_agent_upgrade_validate_agent_task_task_manager_err(void **state)
     config->chunk_size = 5;
 
     agent_task->agent_info->agent_id = agent;
-    agent_task->agent_info->last_keep_alive = keep_alive;
+    os_strdup(AGENT_CS_ACTIVE, agent_task->agent_info->connection_status);
     upgrade_task = wm_agent_upgrade_init_upgrade_task();
     agent_task->task_info->command = WM_UPGRADE_UPGRADE;
     agent_task->task_info->task = upgrade_task;
@@ -408,7 +405,7 @@ void test_wm_agent_upgrade_validate_agent_task_task_manager_err(void **state)
 
     // wm_agent_upgrade_validate_status
 
-    expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, keep_alive);
+    expect_string(__wrap_wm_agent_upgrade_validate_status, connection_status, AGENT_CS_ACTIVE);
     will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -445,7 +442,6 @@ void test_wm_agent_upgrade_validate_agent_task_version_err(void **state)
     (void) state;
 
     int agent = 44;
-    int keep_alive = 2345678;
     wm_upgrade_task *upgrade_task = NULL;
 
     wm_manager_configs *config = state[0];
@@ -454,7 +450,7 @@ void test_wm_agent_upgrade_validate_agent_task_version_err(void **state)
     config->chunk_size = 5;
 
     agent_task->agent_info->agent_id = agent;
-    agent_task->agent_info->last_keep_alive = keep_alive;
+    os_strdup(AGENT_CS_ACTIVE, agent_task->agent_info->connection_status);
     upgrade_task = wm_agent_upgrade_init_upgrade_task();
     agent_task->task_info->command = WM_UPGRADE_UPGRADE;
     agent_task->task_info->task = upgrade_task;
@@ -466,7 +462,7 @@ void test_wm_agent_upgrade_validate_agent_task_version_err(void **state)
 
     // wm_agent_upgrade_validate_status
 
-    expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, keep_alive);
+    expect_string(__wrap_wm_agent_upgrade_validate_status, connection_status, AGENT_CS_ACTIVE);
     will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -486,7 +482,6 @@ void test_wm_agent_upgrade_validate_agent_task_status_err(void **state)
     (void) state;
 
     int agent = 44;
-    int keep_alive = 2345678;
     wm_upgrade_task *upgrade_task = NULL;
 
     wm_manager_configs *config = state[0];
@@ -495,7 +490,7 @@ void test_wm_agent_upgrade_validate_agent_task_status_err(void **state)
     config->chunk_size = 5;
 
     agent_task->agent_info->agent_id = agent;
-    agent_task->agent_info->last_keep_alive = keep_alive;
+    os_strdup(AGENT_CS_DISCONNECTED, agent_task->agent_info->connection_status);AGENT_CS_DISCONNECTED;
     upgrade_task = wm_agent_upgrade_init_upgrade_task();
     agent_task->task_info->command = WM_UPGRADE_UPGRADE;
     agent_task->task_info->task = upgrade_task;
@@ -507,7 +502,7 @@ void test_wm_agent_upgrade_validate_agent_task_status_err(void **state)
 
     // wm_agent_upgrade_validate_status
 
-    expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, keep_alive);
+    expect_string(__wrap_wm_agent_upgrade_validate_status, connection_status, AGENT_CS_DISCONNECTED);
     will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_AGENT_IS_NOT_ACTIVE);
 
     int ret = wm_agent_upgrade_validate_agent_task(agent_task, config);
@@ -520,7 +515,6 @@ void test_wm_agent_upgrade_validate_agent_task_agent_id_err(void **state)
     (void) state;
 
     int agent = 44;
-    int keep_alive = 2345678;
     wm_upgrade_task *upgrade_task = NULL;
 
     wm_manager_configs *config = state[0];
@@ -529,7 +523,7 @@ void test_wm_agent_upgrade_validate_agent_task_agent_id_err(void **state)
     config->chunk_size = 5;
 
     agent_task->agent_info->agent_id = agent;
-    agent_task->agent_info->last_keep_alive = keep_alive;
+    os_strdup(AGENT_CS_NEVER_CONNECTED, agent_task->agent_info->connection_status);
     upgrade_task = wm_agent_upgrade_init_upgrade_task();
     agent_task->task_info->command = WM_UPGRADE_UPGRADE;
     agent_task->task_info->task = upgrade_task;
@@ -550,12 +544,12 @@ void test_wm_agent_upgrade_analyze_agent_ok(void **state)
 
     wm_upgrade_error_code error_code = WM_UPGRADE_SUCCESS;
     int agent = 119;
-    int keep_alive = 123456789;
     char *platform = "ubuntu";
     char *major = "18";
     char *minor = "04";
     char *arch = "x86_64";
     char *version = "v3.13.1";
+    const char *connection_status = AGENT_CS_ACTIVE;
     wm_upgrade_task *upgrade_task = NULL;
 
     wm_manager_configs *config = state[0];
@@ -574,7 +568,7 @@ void test_wm_agent_upgrade_analyze_agent_ok(void **state)
     cJSON_AddStringToObject(agent_info, "os_minor", minor);
     cJSON_AddStringToObject(agent_info, "os_arch", arch);
     cJSON_AddStringToObject(agent_info, "version", version);
-    cJSON_AddNumberToObject(agent_info, "last_keepalive", keep_alive);
+    cJSON_AddStringToObject(agent_info, "connection_status", connection_status);
     cJSON_AddItemToArray(agent_info_array, agent_info);
 
     cJSON *request_status = cJSON_CreateObject();
@@ -608,7 +602,7 @@ void test_wm_agent_upgrade_analyze_agent_ok(void **state)
 
     // wm_agent_upgrade_validate_status
 
-    expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, keep_alive);
+    expect_string(__wrap_wm_agent_upgrade_validate_status, connection_status, connection_status);
     will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -648,7 +642,7 @@ void test_wm_agent_upgrade_analyze_agent_ok(void **state)
     assert_string_equal(agent_task->agent_info->minor_version, minor);
     assert_string_equal(agent_task->agent_info->architecture, arch);
     assert_string_equal(agent_task->agent_info->wazuh_version, version);
-    assert_int_equal(agent_task->agent_info->last_keep_alive, keep_alive);
+    assert_string_equal(agent_task->agent_info->connection_status, connection_status);
 }
 
 void test_wm_agent_upgrade_analyze_agent_duplicated_err(void **state)
@@ -657,12 +651,12 @@ void test_wm_agent_upgrade_analyze_agent_duplicated_err(void **state)
 
     wm_upgrade_error_code error_code = WM_UPGRADE_SUCCESS;
     int agent = 120;
-    int keep_alive = 123456789;
     char *platform = "ubuntu";
     char *major = "18";
     char *minor = "04";
     char *arch = "x86_64";
     char *version = "v3.13.1";
+    const char *connection_status = AGENT_CS_ACTIVE;
     wm_upgrade_task *upgrade_task = NULL;
 
     wm_manager_configs *config = state[0];
@@ -681,7 +675,7 @@ void test_wm_agent_upgrade_analyze_agent_duplicated_err(void **state)
     cJSON_AddStringToObject(agent_info, "os_minor", minor);
     cJSON_AddStringToObject(agent_info, "os_arch", arch);
     cJSON_AddStringToObject(agent_info, "version", version);
-    cJSON_AddNumberToObject(agent_info, "last_keepalive", keep_alive);
+    cJSON_AddStringToObject(agent_info, "connection_status", connection_status);
     cJSON_AddItemToArray(agent_info_array, agent_info);
 
     cJSON *request_status = cJSON_CreateObject();
@@ -714,7 +708,7 @@ void test_wm_agent_upgrade_analyze_agent_duplicated_err(void **state)
 
     // wm_agent_upgrade_validate_status
 
-    expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, keep_alive);
+    expect_string(__wrap_wm_agent_upgrade_validate_status, connection_status, connection_status);
     will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -754,7 +748,7 @@ void test_wm_agent_upgrade_analyze_agent_duplicated_err(void **state)
     assert_string_equal(agent_task->agent_info->minor_version, minor);
     assert_string_equal(agent_task->agent_info->architecture, arch);
     assert_string_equal(agent_task->agent_info->wazuh_version, version);
-    assert_int_equal(agent_task->agent_info->last_keep_alive, keep_alive);
+    assert_string_equal(agent_task->agent_info->connection_status, connection_status);
 }
 
 void test_wm_agent_upgrade_analyze_agent_unknown_err(void **state)
@@ -763,12 +757,12 @@ void test_wm_agent_upgrade_analyze_agent_unknown_err(void **state)
 
     wm_upgrade_error_code error_code = WM_UPGRADE_SUCCESS;
     int agent = 121;
-    int keep_alive = 123456789;
     char *platform = "ubuntu";
     char *major = "18";
     char *minor = "04";
     char *arch = "x86_64";
     char *version = "v3.13.1";
+    const char *connection_status = AGENT_CS_ACTIVE;
     wm_upgrade_task *upgrade_task = NULL;
 
     wm_manager_configs *config = state[0];
@@ -787,7 +781,7 @@ void test_wm_agent_upgrade_analyze_agent_unknown_err(void **state)
     cJSON_AddStringToObject(agent_info, "os_minor", minor);
     cJSON_AddStringToObject(agent_info, "os_arch", arch);
     cJSON_AddStringToObject(agent_info, "version", version);
-    cJSON_AddNumberToObject(agent_info, "last_keepalive", keep_alive);
+    cJSON_AddStringToObject(agent_info, "connection_status", connection_status);
     cJSON_AddItemToArray(agent_info_array, agent_info);
 
     cJSON *request_status = cJSON_CreateObject();
@@ -820,7 +814,7 @@ void test_wm_agent_upgrade_analyze_agent_unknown_err(void **state)
 
     // wm_agent_upgrade_validate_status
 
-    expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, keep_alive);
+    expect_string(__wrap_wm_agent_upgrade_validate_status, connection_status, connection_status);
     will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -860,7 +854,7 @@ void test_wm_agent_upgrade_analyze_agent_unknown_err(void **state)
     assert_string_equal(agent_task->agent_info->minor_version, minor);
     assert_string_equal(agent_task->agent_info->architecture, arch);
     assert_string_equal(agent_task->agent_info->wazuh_version, version);
-    assert_int_equal(agent_task->agent_info->last_keep_alive, keep_alive);
+    assert_string_equal(agent_task->agent_info->connection_status, connection_status);
 }
 
 void test_wm_agent_upgrade_analyze_agent_validate_err(void **state)
@@ -869,12 +863,12 @@ void test_wm_agent_upgrade_analyze_agent_validate_err(void **state)
 
     wm_upgrade_error_code error_code = WM_UPGRADE_SUCCESS;
     int agent = 119;
-    int keep_alive = 123456789;
     char *platform = "ubuntu";
     char *major = "18";
     char *minor = "04";
     char *arch = "x86_64";
     char *version = "v3.13.1";
+    const char *connection_status = AGENT_CS_NEVER_CONNECTED;
     wm_upgrade_task *upgrade_task = NULL;
 
     wm_manager_configs *config = state[0];
@@ -893,7 +887,7 @@ void test_wm_agent_upgrade_analyze_agent_validate_err(void **state)
     cJSON_AddStringToObject(agent_info, "os_minor", minor);
     cJSON_AddStringToObject(agent_info, "os_arch", arch);
     cJSON_AddStringToObject(agent_info, "version", version);
-    cJSON_AddNumberToObject(agent_info, "last_keepalive", keep_alive);
+    cJSON_AddStringToObject(agent_info, "connection_status", connection_status);
     cJSON_AddItemToArray(agent_info_array, agent_info);
 
     // wdb_agent_info
@@ -915,7 +909,7 @@ void test_wm_agent_upgrade_analyze_agent_validate_err(void **state)
     assert_string_equal(agent_task->agent_info->minor_version, minor);
     assert_string_equal(agent_task->agent_info->architecture, arch);
     assert_string_equal(agent_task->agent_info->wazuh_version, version);
-    assert_int_equal(agent_task->agent_info->last_keep_alive, keep_alive);
+    assert_string_equal(agent_task->agent_info->connection_status, connection_status);
 }
 
 void test_wm_agent_upgrade_analyze_agent_global_db_err(void **state)
@@ -1124,7 +1118,7 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
     cJSON_AddStringToObject(agent_info1, "os_minor", "04");
     cJSON_AddStringToObject(agent_info1, "os_arch", "x86_64");
     cJSON_AddStringToObject(agent_info1, "version", "v3.13.1");
-    cJSON_AddNumberToObject(agent_info1, "last_keepalive", 123456789);
+    cJSON_AddStringToObject(agent_info1, "connection_status", AGENT_CS_ACTIVE);
     cJSON_AddItemToArray(agent_info_array1, agent_info1);
 
     cJSON *status_request1 = cJSON_CreateObject();
@@ -1190,7 +1184,7 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
 
     // wm_agent_upgrade_validate_status
 
-    expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, 123456789);
+    expect_string(__wrap_wm_agent_upgrade_validate_status, connection_status, AGENT_CS_ACTIVE);
     will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -1391,7 +1385,7 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
     cJSON_AddStringToObject(agent_info1, "os_minor", "04");
     cJSON_AddStringToObject(agent_info1, "os_arch", "x86_64");
     cJSON_AddStringToObject(agent_info1, "version", "v3.13.1");
-    cJSON_AddNumberToObject(agent_info1, "last_keepalive", 123456789);
+    cJSON_AddStringToObject(agent_info1, "connection_status", AGENT_CS_ACTIVE);
     cJSON_AddItemToArray(agent_info_array1, agent_info1);
 
     cJSON *status_request1 = cJSON_CreateObject();
@@ -1457,7 +1451,7 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
 
     // wm_agent_upgrade_validate_status
 
-    expect_value(__wrap_wm_agent_upgrade_validate_status, last_keep_alive, 123456789);
+    expect_string(__wrap_wm_agent_upgrade_validate_status, connection_status, AGENT_CS_ACTIVE);
     will_return(__wrap_wm_agent_upgrade_validate_status, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
