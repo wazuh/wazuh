@@ -69,7 +69,7 @@ def get_agents_summary_status(agent_list=None):
     if len(agent_list) != 0:
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
-        db_query = WazuhDBQueryAgents(limit=None, select=['status'], **rbac_filters)
+        db_query = WazuhDBQueryAgents(limit=None, select=['status'], query="id!=000", **rbac_filters)
         data = db_query.run()
 
         for agent in data['items']:
