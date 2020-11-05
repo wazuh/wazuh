@@ -5,9 +5,9 @@
 import logging
 
 from aiohttp import web
-
 from api.encoder import dumps, prettify
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
+
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.syscheck import run, clear, files, last_scan
 
@@ -41,9 +41,9 @@ async def put_syscheck(request, agents_list='*', pretty=False, wait_for_complete
 
 async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=False, offset=0,
                              limit=None, select=None, sort=None, search=None, distinct=False,
-                             summary=False, md5=None, sha1=None, sha256=None, q=None):
-
-    """
+                             summary=False, md5=None, sha1=None, sha256=None, q=None, arch=None, value_name=None,
+                             value_type=None):
+    """ TODO actualizar esto
     :param agent_id: Agent ID
     :type agent_id: str
     :param pretty: Show results in human-readable format 
@@ -82,7 +82,8 @@ async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=
     file_ = request.query.get('file', None)
 
     filters = {'type': type_, 'md5': md5, 'sha1': sha1,
-               'sha256': sha256, 'hash': hash_, 'file': file_}
+               'sha256': sha256, 'hash': hash_, 'file': file_, 'arch': arch, 'value_name': value_name,
+               'value_type': value_type}
 
     f_kwargs = {'agent_list': [agent_id], 'offset': offset, 'limit': limit,
                 'select': select, 'sort': parse_api_param(sort, 'sort'), 'search': parse_api_param(search, 'search'),
