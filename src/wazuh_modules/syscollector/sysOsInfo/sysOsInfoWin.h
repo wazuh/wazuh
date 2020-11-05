@@ -17,7 +17,7 @@
 class SysOsInfoProviderWindows final : public ISysOsInfoProvider
 {
 public:
-	SysOsInfoProviderWindows();
+    SysOsInfoProviderWindows();
     ~SysOsInfoProviderWindows() = default;
     std::string name() const override;
     std::string version() const override;
@@ -28,14 +28,14 @@ public:
     std::string machine() const override;
     std::string nodeName() const override;
 private:
-	const std::string m_majorVersion;
-	const std::string m_minorVersion;
-	const std::string m_build;
-	const std::string m_version;
-	const std::string m_release;
-	const std::string m_name;
-	const std::string m_machine;
-	const std::string m_nodeName;
+    const std::string m_majorVersion;
+    const std::string m_minorVersion;
+    const std::string m_build;
+    const std::string m_version;
+    const std::string m_release;
+    const std::string m_name;
+    const std::string m_machine;
+    const std::string m_nodeName;
 };
 
 
