@@ -178,7 +178,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: !anyint 
         data:
           affected_items: *full_items_array
           failed_items: []
@@ -203,14 +203,32 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-    # GET /syscheck/000?limit=1&type=registry
-  - name: Try to get limited syscheck scan results for agent 000 using type filtering (registry)
+    # GET /syscheck/000?limit=1&type=registry_key
+  - name: Try to get limited syscheck scan results for agent 000 using type filtering (registry_key)
     request:
       verify: False
       <<: *get_syscheck_agent
       params:
         limit: 1
-        type: registry
+        type: registry_key
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+    # GET /syscheck/000?limit=1&type=registry_value
+  - name: Try to get limited syscheck scan results for agent 000 using type filtering (registry_value)
+    request:
+      verify: False
+      <<: *get_syscheck_agent
+      params:
+        limit: 1
+        type: registry_value
     response:
       status_code: 200
       json:
@@ -747,14 +765,32 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-    # GET /syscheck/002?limit=1&type=registry
-  - name: Try to get limited syscheck scan results for agent 002 using type filtering (registry)
+    # GET /syscheck/002?limit=1&type=registry_key
+  - name: Try to get limited syscheck scan results for agent 002 using type filtering (registry_key)
     request:
       verify: False
       <<: *get_syscheck_agent_002
       params:
         limit: 1
-        type: registry
+        type: registry_key
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+    # GET /syscheck/002?limit=1&type=registry_value
+  - name: Try to get limited syscheck scan results for agent 002 using type filtering (registry_value)
+    request:
+      verify: False
+      <<: *get_syscheck_agent_002
+      params:
+        limit: 1
+        type: registry_value
     response:
       status_code: 200
       json:
@@ -1071,7 +1107,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: !anyint 
         data:
           affected_items: !anything
           failed_items:
