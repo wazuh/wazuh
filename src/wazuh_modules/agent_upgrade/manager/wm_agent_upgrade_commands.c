@@ -264,10 +264,10 @@ STATIC int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_tas
             os_strdup(value->valuestring, agent_task->agent_info->wazuh_version);
         }
 
-        // Last keep alive
-        value = cJSON_GetObjectItem(agent_info->child, "last_keepalive");
-        if(cJSON_IsNumber(value)){
-            agent_task->agent_info->last_keep_alive = value->valueint;
+        // Connection status
+        value = cJSON_GetObjectItem(agent_info->child, "connection_status");
+        if(cJSON_IsString(value) && value->valuestring != NULL){
+            os_strdup(value->valuestring, agent_task->agent_info->connection_status);
         }
 
         // Validate agent and task information
@@ -307,7 +307,7 @@ STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task,
     }
 
     // Validate agent status
-    validate_result = wm_agent_upgrade_validate_status(agent_task->agent_info->last_keep_alive);
+    validate_result = wm_agent_upgrade_validate_status(agent_task->agent_info->connection_status);
 
     if (validate_result != WM_UPGRADE_SUCCESS) {
         return validate_result;

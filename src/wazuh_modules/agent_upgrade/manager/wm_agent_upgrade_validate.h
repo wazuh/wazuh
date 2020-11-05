@@ -24,12 +24,12 @@ int wm_agent_upgrade_validate_id(int agent_id);
 
 /**
  * Check if agent status is active
- * @param keep_alive last keep-alive of agent to validate
+ * @param connection_status connection status of the agent to validate
  * @return return_code
  * @retval WM_UPGRADE_SUCCESS
  * @retval WM_UPGRADE_AGENT_IS_NOT_ACTIVE
  * */
-int wm_agent_upgrade_validate_status(int last_keep_alive);
+int wm_agent_upgrade_validate_status(const char* connection_status);
 
 /**
  * Check if agent is valid to upgrade
