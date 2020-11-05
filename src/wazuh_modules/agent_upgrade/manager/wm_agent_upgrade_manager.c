@@ -15,6 +15,13 @@
 #include "wm_agent_upgrade_upgrades.h"
 #include "os_net/os_net.h"
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 const char* upgrade_error_codes[] = {
     [WM_UPGRADE_SUCCESS] = "Success",
     [WM_UPGRADE_PARSING_ERROR] = "Could not parse message JSON",
@@ -44,7 +51,22 @@ const char* upgrade_error_codes[] = {
     [WM_UPGRADE_UNKNOWN_ERROR] "Upgrade procedure could not start"
 };
 
-void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs) {
+/**
+ * Start listening loop, exits only on error
+ * @param manager_configs manager configuration parameters
+ * @return only on errors, socket will be closed
+ * */
+STATIC void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs) __attribute__((nonnull));
+
+void wm_agent_upgrade_start_manager_module(const wm_manager_configs* manager_configs, const int enabled) {
+
+    // Check if module is enabled
+    if (!enabled) {
+        mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_DISABLED);
+        pthread_exit(NULL);
+    }
+
+    mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_STARTED);
 
     // Initialize task hashmap
     wm_agent_upgrade_init_task_map();
@@ -52,12 +74,22 @@ void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs)
     // Initialize upgrade queue
     wm_agent_upgrade_init_upgrade_queue();
 
+    // Start listener
+    wm_agent_upgrade_listen_messages(manager_configs);
+
+    // Destroy task hashmap
+    wm_agent_upgrade_destroy_task_map();
+
+    // Destroy upgrade queue
+    wm_agent_upgrade_destroy_upgrade_queue();
+}
+
+STATIC void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs) {
+
     // Initialize socket
     int sock = OS_BindUnixDomain(WM_UPGRADE_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
     if (sock < 0) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_BIND_SOCK_ERROR, WM_UPGRADE_SOCK_PATH, strerror(errno));
-        wm_agent_upgrade_destroy_task_map();
-        wm_agent_upgrade_destroy_upgrade_queue();
         return;
     }
 
@@ -81,8 +113,6 @@ void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs)
             if (errno != EINTR) {
                 mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_SELECT_ERROR, strerror(errno));
                 close(sock);
-                wm_agent_upgrade_destroy_task_map();
-                wm_agent_upgrade_destroy_upgrade_queue();
                 return;
             }
             continue;
@@ -174,10 +204,4 @@ void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs)
     }
 
     close(sock);
-
-    // Destroy task hashmap
-    wm_agent_upgrade_destroy_task_map();
-
-    // Destroy upgrade queue
-    wm_agent_upgrade_destroy_upgrade_queue();
 }

@@ -21,7 +21,7 @@ int teardown_hash_table();
 
 int __wrap_wm_agent_upgrade_check_status(const wm_agent_configs* agent_config);
 
-int __wrap_wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs);
+void __wrap_wm_agent_upgrade_start_manager_module(const wm_manager_configs* manager_configs, const int enabled);
 
 int __wrap_wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_ids, char** error);
 
