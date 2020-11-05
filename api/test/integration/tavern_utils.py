@@ -1,4 +1,5 @@
 import json
+import re
 import time
 from base64 import b64decode
 from json import loads
@@ -97,9 +98,9 @@ def test_validate_data_dict_field(response, fields_dict):
 
 
 def test_validate_upgrade(response):
-    # We accept the test as passed if it either ugprades correctly or the version is not available
+    # We accept the test as passed if it either upgrades correctly or the version is not available
     assert response.json().get('message', None) == "Upgrade procedure started" \
-           or response.json().get('code', None) == 1718
+           or response.json().get('error', None) == 1718
     if response.json().get('message', None) == "Upgrade procedure started":
         time.sleep(45)
         return Box({"upgraded": 1})
@@ -113,11 +114,11 @@ def test_validate_upgrade_result(response, upgraded):
         assert response.json().get('message', None) == "Agent was successfully upgraded"
     else:
         # If upgrade didnt work because no version was available, we expect an empty upgrade_result with error 1716
-        assert response.json().get('code', None) == 1716
+        assert response.json().get('error', None) == 1716
 
 
 def test_validate_update_latest_version(response):
-    assert response.json().get('code', None) == 1749 or response.json().get('code', None) == 1718
+    assert response.json().get('error', None) == 1749 or response.json().get('error', None) == 1718
 
 
 def test_count_elements(response, n_expected_items):
@@ -177,7 +178,7 @@ def test_validate_restart_by_node_rbac(response, permitted_agents):
             assert data['total_affected_items'] == 0
     else:
         assert response.status_code == 403
-        assert response.json()['code'] == 4000
+        assert response.json()['error'] == 4000
         assert 'agent:id' in response.json()['detail']
 
 
@@ -190,7 +191,7 @@ def test_validate_auth_context(response, expected_roles=None):
     expected_roles : list
         List of expected roles after checking the authorization context
     """
-    token = response.json()['token'].split('.')[1]
+    token = response.json()['data']['token'].split('.')[1]
     payload = loads(b64decode(token + '===').decode())
     assert payload['rbac_roles'] == expected_roles
 
@@ -205,3 +206,19 @@ def test_validate_syscollector_hotfix(response, hotfix_filter=None, experimental
             assert set(item.keys()) == hotfixes_keys
             if hotfix_filter:
                 assert item['hotfix'] == hotfix_filter
+
+
+def test_validate_group_configuration(response, expected_field, expected_value):
+    response_json = response.json()
+    assert len(response_json['data']['affected_items']) > 0 and\
+           'config' in response_json['data']['affected_items'][0] and \
+           'localfile' in response_json['data']['affected_items'][0]['config'],\
+           'No config or localfile fields were found in the affected_items. Response: {}'.format(response_json)
+
+    response_config = response_json['data']['affected_items'][0]['config']['localfile'][0]
+    assert expected_field in set(response_config.keys()), \
+        'The expected config key is not present in the received response.'
+
+    assert response_config[expected_field] == expected_value, \
+        'The received value for query does not match with the expected one. ' \
+        'Received: {}. Expected: {}'.format(response_config[expected_field], expected_value)

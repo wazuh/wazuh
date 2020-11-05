@@ -30,16 +30,18 @@ int timeout;    //timeout in seconds waiting for a server reply
 static ssize_t receive_message(char *buffer, unsigned int max_lenght);
 static void w_agentd_keys_init (void);
 static bool agent_handshake_to_server(int server_id, bool is_startup);
+static bool agent_ping_to_server(int server_id);
 static void send_msg_on_startup(void);
 
 /**
  * @brief Connects to a specified server
  * @param server_id index of the specified server from agt servers list
+ * @param verbose Be verbose or not.
  * @post The remote IP id (rip_id) is set to server_id if and only if this function succeeds.
  * @retval true on success
  * @retval false when failed
  * */
-bool connect_server(int server_id)
+bool connect_server(int server_id, bool verbose)
 {
     timeout = getDefine_Int("agent", "recv_timeout", 1, 600);
 
@@ -49,10 +51,12 @@ bool connect_server(int server_id)
         agt->sock = -1;
 
         if (agt->server[agt->rip_id].rip) {
-            minfo("Closing connection to server (%s:%d/%s).",
+            if (verbose) {
+                minfo("Closing connection to server (%s:%d/%s).",
                     agt->server[agt->rip_id].rip,
                     agt->server[agt->rip_id].port,
                     agt->server[agt->rip_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
+            }
         }
     }
 
@@ -84,11 +88,12 @@ bool connect_server(int server_id)
         return false;
     }
 
-    minfo("Trying to connect to server (%s:%d/%s).",
+    if (verbose) {
+        minfo("Trying to connect to server (%s:%d/%s).",
             agt->server[server_id].rip,
             agt->server[server_id].port,
             agt->server[server_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
-
+    }
     if (agt->server[server_id].protocol == IPPROTO_UDP) {
         agt->sock = OS_ConnectUDP(agt->server[server_id].port, tmp_str, strchr(tmp_str, ':') != NULL);
     } else {
@@ -97,11 +102,14 @@ bool connect_server(int server_id)
 
     if (agt->sock < 0) {
         agt->sock = -1;
-        #ifdef WIN32
-            merror(CONNS_ERROR, tmp_str, win_strerror(WSAGetLastError()));
-        #else
-            merror(CONNS_ERROR, tmp_str, strerror(errno));
-        #endif
+
+        if (verbose) {
+            #ifdef WIN32
+                merror(CONNS_ERROR, tmp_str, agt->server[server_id].port, agt->server[server_id].protocol == IPPROTO_UDP ? "udp" : "tcp", win_strerror(WSAGetLastError()));
+            #else
+                merror(CONNS_ERROR, tmp_str, agt->server[server_id].port, agt->server[server_id].protocol == IPPROTO_UDP ? "udp" : "tcp", strerror(errno));
+            #endif
+        }
     } else {
         #ifdef WIN32
             if (agt->server[server_id].protocol == IPPROTO_UDP) {
@@ -130,7 +138,9 @@ void start_agent(int is_startup)
     #endif
     int current_server_id = agt->rip_id;
     while (1) {
-        for (int attempts = 0; attempts < agt->server[current_server_id].max_retries; attempts++) {
+        // (max_retries - 1) attempts
+
+        for (int attempts = 0; attempts < agt->server[current_server_id].max_retries - 1; attempts++) {
             if (agent_handshake_to_server(current_server_id, is_startup)) {
                 return;
             }
@@ -138,13 +148,27 @@ void start_agent(int is_startup)
             sleep(agt->server[current_server_id].retry_interval);
         }
 
-        if (agt->enrollment_cfg && agt->enrollment_cfg->enabled && try_enroll_to_server(agt->server[current_server_id].rip) == 0) {
-            if (agent_handshake_to_server(current_server_id, is_startup)) {
-                return;
-            }
+        // Last attempt
 
-            sleep(agt->server[current_server_id].retry_interval);
+        if (agent_handshake_to_server(current_server_id, is_startup)) {
+            return;
         }
+
+        // Try to enroll and extra attempt
+
+        if (agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
+            if (agent_ping_to_server(current_server_id)) {
+                if (try_enroll_to_server(agt->server[current_server_id].rip) == 0) {
+                    if (agent_handshake_to_server(current_server_id, is_startup)) {
+                        return;
+                    }
+                }
+            } else {
+                mwarn("Polling server '%s' failed. Skipping enrollment.", agt->server[current_server_id].rip);
+            }
+        }
+
+        sleep(agt->server[current_server_id].retry_interval);
 
         /* Wait for server reply */
         mwarn(AG_WAIT_SERVER, agt->server[current_server_id].rip);
@@ -182,7 +206,11 @@ static void w_agentd_keys_init (void) {
 
                 /* Try to enroll to server list */
                 while (agt->server[rc].rip && (registration_status != 0)) {
-                    registration_status = try_enroll_to_server(agt->server[rc].rip);
+                    if (agent_ping_to_server(rc)) {
+                        registration_status = try_enroll_to_server(agt->server[rc].rip);
+                    } else {
+                        mwarn("Polling server '%s' failed. Skipping enrollment.", agt->server[rc].rip);
+                    }
                     rc++;
                 }
 
@@ -277,7 +305,42 @@ static ssize_t receive_message(char *buffer, unsigned int max_lenght) {
     }
     return 0;
 }
+/**
+ * @brief Check the server health using ping/pong operation.
+ * @param server_id index of the specified server from agt servers list
+ * @retval true on good health
+ * @retval false when no response
+ * */
+static bool agent_ping_to_server(int server_id) {
+    ssize_t recv_b = 0;
+    char *msg = "#ping";
+    char buffer[OS_MAXSTR + 1] = { '\0' };
 
+    if (connect_server(server_id, false)) {
+        /* Send the ping message */
+
+        if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
+            recv_b = OS_SendUDPbySize(agt->sock, strlen(msg), msg);
+        } else {
+            recv_b = OS_SendSecureTCP(agt->sock, strlen(msg), msg);
+        }
+
+        if (recv_b != 0) {
+            return false;
+        }
+
+        /* Read until our reply comes back */
+        recv_b = receive_message(buffer, OS_MAXSTR);
+
+        if (recv_b > 0) {
+            if (strncmp(buffer, "#pong", 5) == 0) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
 int try_enroll_to_server(const char * server_rip) {
     int enroll_result = w_enrollment_request_key(agt->enrollment_cfg, server_rip);
     if (enroll_result == 0) {
@@ -291,7 +354,6 @@ int try_enroll_to_server(const char * server_rip) {
     }
     return enroll_result;
 }
-
 /**
  * @brief Holds handshake logic for an attempt to connect to server
  * @param server_id index of the specified server from agt servers list
@@ -311,7 +373,7 @@ static bool agent_handshake_to_server(int server_id, bool is_startup) {
 
     snprintf(msg, OS_MAXSTR, "%s%s", CONTROL_HEADER, HC_STARTUP);
 
-    if (connect_server(server_id)) {
+    if (connect_server(server_id, true)) {
         /* Send start up message */
         send_msg(msg, -1);
 

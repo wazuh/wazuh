@@ -31,7 +31,6 @@
 
 typedef struct pending_data_t {
     char *message;
-    char *keep_alive;
     int changed;
 } pending_data_t;
 
@@ -101,8 +100,11 @@ void *wait_for_msgs(void *none);
 /* Update shared files */
 void *update_shared_files(void *none);
 
+/* Parse control messages */
+void parse_agent_controlmsg(const keyentry * key, char *msg, size_t msg_length);
+
 /* Save control messages */
-void save_controlmsg(const keyentry * key, char *msg, size_t msg_length);
+void save_controlmsg(const keyentry * key, char *msg, size_t msg_length, int *wdb_sock);
 
 // Request listener thread entry point
 void * req_main(void * arg);

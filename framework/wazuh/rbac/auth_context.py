@@ -1,12 +1,12 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
 import re
+from collections import defaultdict
 
 from wazuh.rbac import orm
-from collections import defaultdict
 
 
 class RBAChecker:
@@ -288,15 +288,15 @@ class RBAChecker:
         list_roles = list()
         for role in self.roles_list:
             for rule in role['rules']:
-                if (rule['id'] not in orm.required_rules_for_role[1] or self.user_id in orm.admin_user_ids) and \
-                        self.check_rule(rule['rule']):
+                # wazuh-wui has id 2
+                if (rule['id'] > orm.max_id_reserved or self.user_id == 2) and self.check_rule(rule['rule']):
                     list_roles.append(role['id'])
                     break
 
         return list_roles
 
     def run_auth_context(self):
-        """This function will return the final policies of an user according to the roles matching the authorization
+        """This function will return the final policies of a user according to the roles matching the authorization
         context"""
         user_roles = self.get_user_roles()
         user_roles_policies = defaultdict(list)
@@ -308,9 +308,15 @@ class RBAChecker:
 
         return user_roles_policies
 
+    def run_auth_context_roles(self):
+        """This function will return the roles of a user matching the authorization context"""
+        user_roles = self.get_user_roles()
+
+        return user_roles
+
     @staticmethod
     def run_user_role_link(user_id):
-        """This function will return the final policies of an user according to its roles in the RBAC database"""
+        """This function will return the final policies of a user according to its roles in the RBAC database"""
         with orm.UserRolesManager() as urm:
             user_roles = list(role for role in urm.get_all_roles_from_user(user_id=user_id))
         user_roles_policies = defaultdict(list)
@@ -321,3 +327,22 @@ class RBAChecker:
                 user_roles_policies['roles'].append(role.id)
 
         return user_roles_policies
+
+    @staticmethod
+    def run_user_role_link_roles(user_id):
+        """This function will return the roles in the RBAC database for a user"""
+        with orm.UserRolesManager() as urm:
+            user_roles = list(role.id for role in urm.get_all_roles_from_user(user_id=user_id))
+
+        return user_roles
+
+
+def get_policies_from_roles(roles=None):
+    """This function will return the final policies of a user according to its roles"""
+    policies = list()
+    with orm.RolesPoliciesManager() as rpm:
+        for role in roles:
+            for policy in rpm.get_all_policies_from_role(role):
+                policies.append(json.loads(policy.policy))
+
+    return policies

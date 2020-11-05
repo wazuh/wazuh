@@ -12,6 +12,7 @@
 #include "read-agents.h"
 #include "os_net/os_net.h"
 #include "wazuhdb_op.h"
+#include "wazuh_db/wdb.h"
 
 #ifndef WIN32
 static int _do_print_attrs_syscheck(const char *prev_attrs, const char *attrs, int csv_output, cJSON *json_output,
@@ -23,8 +24,6 @@ static void _do_get_rootcheckscan(FILE *fp, time_t values[2]) __attribute__((non
 static int _do_print_rootcheck(FILE *fp, int resolved, const time_t time_last_scan[2],
                                int csv_output, cJSON *json_output, int show_last) __attribute__((nonnull(1)));
 static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_info *agt_info, const char* agent_id) __attribute__((nonnull(2, 3)));
-static char *_get_agent_keepalive(const char *agent_name, const char *agent_ip) __attribute__((nonnull(2)));
-static int _get_agent_os(const char *agent_name, const char *agent_ip, agent_info *agt_info) __attribute__((nonnull(2, 3)));
 #endif /* !WIN32*/
 
 /* Free the agent list in memory */
@@ -844,7 +843,7 @@ void delete_diff(const char *name)
     snprintf(tmp_folder, 512, "%s/%s",
              DIFF_DIR,
              name);
-    
+
     rmdir_ex(tmp_folder);
 }
 
@@ -853,13 +852,6 @@ int delete_agentinfo(const char *id, const char *name)
 {
     const char *sk_name;
     char *sk_ip;
-    char tmp_file[513];
-
-    tmp_file[512] = '\0';
-
-    /* Delete agent info */
-    snprintf(tmp_file, 512, "%s/%s", AGENTINFO_DIR, name);
-    unlink(tmp_file);
 
     /* Delete syscheck */
     sk_name = name;
@@ -1102,182 +1094,89 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
     return (0);
 }
 
-
-/* Internal function. Extract last time of scan from rootcheck/syscheck. */
-static char *_get_agent_keepalive(const char *agent_name, const char *agent_ip)
-{
-    char buf[1024 + 1];
-    struct stat file_status;
-    char buf_ptr[26];
-
-    /* No keepalive for the server */
-    if (!agent_name) {
-        return (strdup("Not available"));
-    }
-
-    snprintf(buf, 1024, "%s/%s-%s", AGENTINFO_DIR, agent_name, agent_ip);
-    if (stat(buf, &file_status) < 0) {
-        return (strdup("Unknown"));
-    }
-    return (strdup(w_ctime(&file_status.st_mtime, buf_ptr, sizeof(buf_ptr))));
-}
-
-/* Internal function. Extract operating system. */
-static int _get_agent_os(const char *agent_name, const char *agent_ip, agent_info *agt_info)
-{
-    FILE *fp;
-    char buf[1024 + 1];
-    char *merged_sum;
-    char *end;
-
-    /* Get server info */
-    if (!agent_name) {
-        char *ossec_version = NULL;
-        agt_info->os = strdup(getuname());
-        os_strdup(__ossec_name " " __ossec_version, agt_info->version);
-
-        /* Remove newline */
-        ossec_version = strchr(agt_info->os, '\n');
-        if (ossec_version) {
-            *ossec_version = '\0';
-        }
-
-        ossec_version = strstr(agt_info->os, " - ");
-        if (ossec_version) {
-            *ossec_version = '\0';
-        }
-
-        return (0);
-    }
-
-    snprintf(buf, 1024, "%s/%s-%s", AGENTINFO_DIR, agent_name, agent_ip);
-    fp = fopen(buf, "r");
-    if (!fp) {
-        os_strdup("Unknown", agt_info->os);
-        os_strdup("Unknown", agt_info->version);
-        os_strdup("Unknown", agt_info->merged_sum);
-        return (0);
-    }
-
-    if (fgets(buf, 1024, fp)) {
-        char *ossec_version = NULL;
-
-        /* Remove newline */
-        ossec_version = strchr(buf, '\n');
-        if (ossec_version) {
-            *ossec_version = '\0';
-        }
-
-        ossec_version = strstr(buf, " - ");
-        if (ossec_version) {
-            *ossec_version = '\0';
-            ossec_version += 3;
-
-            os_calloc(1024 + 1, sizeof(char), agt_info->version);
-            strncpy(agt_info->version, ossec_version, 1024);
-        }
-
-        os_strdup(buf, agt_info->os);
-
-        // Search for merged.mg sum
-
-        while (end = NULL, merged_sum = fgets(buf, 1024, fp), merged_sum) {
-            if (*merged_sum != '\"' && *merged_sum != '!' && (end = strchr(merged_sum, ' '), end)) {
-                *end = '\0';
-
-                if (strcmp(end + 1, SHAREDCFG_FILENAME "\n") == 0) {
-                    break;
-                }
-            }
-        }
-
-        os_strdup(end ? merged_sum : "Unknown", agt_info->merged_sum);
-        fclose(fp);
-
-        return (1);
-    }
-
-    fclose(fp);
-
-    os_strdup("Unknown", agt_info->os);
-    os_strdup("Unknown", agt_info->version);
-    os_strdup("Unknown", agt_info->merged_sum);
-
-    return (0);
-}
-
-
 /* Get information from an agent */
-agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const char *agent_id)
-{
-    char *agent_ip_pt = NULL;
-    char *tmp_str = NULL;
-
+agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const char *agent_id){
+    cJSON *json_agt_info = NULL;
+    cJSON *json_field = NULL;
     agent_info *agt_info = NULL;
+    char keepalive_str[OS_SIZE_512] = "";
 
-    /* Remove the "/", since it is not present on the file */
-    if ((agent_ip_pt = strchr(agent_ip, '/'))) {
-        *agent_ip_pt = '\0';
+    /* Getting all the information of the agent */
+    json_agt_info = wdb_get_agent_info(atoi(agent_id), NULL);
+
+    if (!json_agt_info) {
+        mdebug1("Failed to get agent '%s' information from Wazuh DB.",agent_id);
+        return NULL;
     }
 
-    /* Allocate memory for the info structure */
+    /* Allocate memory for the info structure */   
     os_calloc(1, sizeof(agent_info), agt_info);
 
-    /* Get information about the OS */
-    _get_agent_os(agent_name, agent_ip, agt_info);
+    json_field = cJSON_GetObjectItem(json_agt_info->child, "os_uname");
+    if(cJSON_IsString(json_field) && json_field->valuestring != NULL){
+        os_strdup(json_field->valuestring, agt_info->os);
+    }
+
+    json_field = cJSON_GetObjectItem(json_agt_info->child, "version");
+    if(cJSON_IsString(json_field) && json_field->valuestring != NULL){
+        os_strdup(json_field->valuestring, agt_info->version);
+    }
+
+    json_field = cJSON_GetObjectItem(json_agt_info->child, "config_sum");
+    if(cJSON_IsString(json_field) && json_field->valuestring != NULL){
+        os_strdup(json_field->valuestring, agt_info->config_sum);
+    }
+
+    json_field = cJSON_GetObjectItem(json_agt_info->child, "merged_sum");
+    if(cJSON_IsString(json_field) && json_field->valuestring != NULL){
+        os_strdup(json_field->valuestring, agt_info->merged_sum);
+    }
+
+    json_field = cJSON_GetObjectItem(json_agt_info->child, "last_keepalive");
+    if(cJSON_IsNumber(json_field)){
+        snprintf(keepalive_str, sizeof(keepalive_str), "%d", json_field->valueint);
+        os_strdup(keepalive_str, agt_info->last_keepalive);
+    }
+
     _get_time_rkscan(agent_name, agent_ip, agt_info, agent_id);
-    agt_info->last_keepalive = _get_agent_keepalive(agent_name, agent_ip);
 
-    /* Remove newline from keepalive */
-    tmp_str = strchr(agt_info->last_keepalive, '\n');
-    if (tmp_str) {
-        *tmp_str = '\0';
-    }
-
-    /* Set back the IP address */
-    if (agent_ip_pt) {
-        *agent_ip_pt = '/';
-    }
-
+    cJSON_Delete(json_agt_info);
     return (agt_info);
 }
 #endif
 
-/* Gets the status of an agent, based on the name / IP address */
-agent_status_t get_agent_status(const char *agent_name, const char *agent_ip)
-{
-    char tmp_file[513];
-    char *agent_ip_pt = NULL;
-    struct stat file_status;
+/* Gets the status of an agent, based on the  agent ID*/
+agent_status_t get_agent_status(int agent_id){
+    cJSON *json_agt_info = NULL;
+    cJSON *json_field = NULL;
+    int last_keepalive = -1;
 
-    tmp_file[512] = '\0';
+    json_agt_info = wdb_get_agent_info(agent_id, NULL);
 
-    /* Server info */
-    if (agent_name == NULL) {
-        return (GA_STATUS_ACTIVE);
+    if (!json_agt_info) {
+        mdebug1("Failed to get agent '%d' information from Wazuh DB.", agent_id);
+        return GA_STATUS_INV;
+    }
+    
+    json_field = cJSON_GetObjectItem(json_agt_info->child, "last_keepalive");
+    if (cJSON_IsNumber(json_field)) {
+        last_keepalive = json_field->valueint;
+        cJSON_Delete(json_agt_info);
+    
+    } else {
+        cJSON_Delete(json_agt_info);
+        return GA_STATUS_INV;
     }
 
-    /* Remove the  "/", since it is not present on the file */
-    if ((agent_ip_pt = strchr(agent_ip, '/'))) {
-        *agent_ip_pt = '\0';
-    }
-
-    snprintf(tmp_file, 512, "%s/%s-%s", AGENTINFO_DIR, agent_name, agent_ip);
-
-    /* Set back the IP address */
-    if (agent_ip_pt) {
-        *agent_ip_pt = '/';
-    }
-
-    if (stat(tmp_file, &file_status) < 0) {
+    if (last_keepalive < 0) {
         return (GA_STATUS_INV);
     }
 
-    if (file_status.st_mtime < (time(0) - DISCON_TIME)) {
+    if (last_keepalive < (time(0) - DISCON_TIME)) {
         return (GA_STATUS_NACTIVE);
     }
 
-    if (file_status.st_size == 0) {
+    if (last_keepalive == 0) {
         return GA_STATUS_PENDING;
     }
 
@@ -1285,79 +1184,154 @@ agent_status_t get_agent_status(const char *agent_name, const char *agent_ip)
 }
 
 /* List available agents */
-char **get_agents(int flag,int mon_time)
-{
-    size_t f_size = 0;
-    char **f_files = NULL;
-    DIR *dp;
-    struct dirent *entry = NULL;
+char **get_agents(int flag){
+    size_t array_size = 0;
+    char **agents_array = NULL;
+    int *id_array = NULL;
+    int i = 0;
+    cJSON *json_agt_info = NULL;
+    cJSON *json_field = NULL;
+    cJSON *json_name = NULL;
+    cJSON *json_ip = NULL;
 
-    /* Open the directory */
-    dp = opendir(AGENTINFO_DIR);
-    if (!dp) {
-        merror("Error opening directory: '%s': %s ", AGENTINFO_DIR, strerror(errno));
+    int sock = -1;
+    id_array = wdb_get_all_agents(FALSE, &sock);
+
+    if(!id_array){
+        mdebug1("Failed getting agent's ID array.");
+        wdbc_close(&sock);
         return (NULL);
     }
 
-    /* Read directory */
-    while ((entry = readdir(dp)) != NULL) {
+    for (i = 0; id_array[i] != -1; i++){
         int status = 0;
-        char tmp_file[513];
-        tmp_file[512] = '\0';
+        int last_keepalive = -1;
+        char agent_name_ip[OS_SIZE_512] = "";
 
-        /* Ignore . and ..  */
-        if ((strcmp(entry->d_name, ".") == 0) ||
-                (strcmp(entry->d_name, "..") == 0)) {
+        json_agt_info = wdb_get_agent_info(id_array[i], &sock);
+        if (!json_agt_info) {
+            mdebug1("Failed to get agent '%d' information from Wazuh DB.", id_array[i]);
             continue;
         }
 
-        snprintf(tmp_file, 512, "%s/%s", AGENTINFO_DIR, entry->d_name);
+        json_name= cJSON_GetObjectItem(json_agt_info->child, "name");
+        json_ip = cJSON_GetObjectItem(json_agt_info->child, "register_ip");
 
-        if (flag != GA_ALL) {
-            struct stat file_status;
+        /* Keeping the same name structure than plain text files in AGENTINFO_DIR */
+        if(cJSON_IsString(json_name) && json_name->valuestring != NULL && 
+            cJSON_IsString(json_ip) && json_ip->valuestring != NULL){
+            snprintf(agent_name_ip, sizeof(agent_name_ip), "%s-%s", json_name->valuestring, json_ip->valuestring);
+        }
 
-            if (stat(tmp_file, &file_status) < 0) {
-                continue;
-            }
+        json_field = cJSON_GetObjectItem(json_agt_info->child, "last_keepalive");
+        if(cJSON_IsNumber(json_field)){
+            last_keepalive = json_field->valueint;
+        }
+        cJSON_Delete(json_agt_info);
+    
+        status = last_keepalive > (time(0) - DISCON_TIME) ? 1 : 0;
 
-            if( !(flag == GA_NOTACTIVE && (file_status.st_mtime < (time(0) - (mon_time * 60)) && mon_time > 0))) {
-                if (file_status.st_mtime > (time(0) - DISCON_TIME)) {
-                    status = 1;
-                    if (flag == GA_NOTACTIVE) {
-                        continue;
-                    }
-                } else {
-                    if (flag == GA_ACTIVE) {
-                        continue;
-                    }
+        switch (flag) {
+            case GA_ALL:
+            case GA_ALL_WSTATUS:
+                break;
+            case GA_ACTIVE:
+                if(status == 0){
+                    continue;
                 }
-            }
+                break;
+            case GA_NOTACTIVE:
+                if(status == 1){
+                    continue;
+                }
+                break;
+            default:
+                mwarn("Invalid flag '%d' trying to get all agents.", flag);
+                wdbc_close(&sock);
+                os_free(id_array);
+                return NULL;
         }
 
-        f_files = (char **)realloc(f_files, (f_size + 2) * sizeof(char *));
-        if (!f_files) {
-            merror_exit(MEM_ERROR, errno, strerror(errno));
-        }
+        os_realloc(agents_array, (array_size + 2) * sizeof(char *), agents_array);
 
         /* Add agent entry */
         if (flag == GA_ALL_WSTATUS) {
-            char agt_stat[512];
+            char agt_stat[1024];
 
             snprintf(agt_stat, sizeof(agt_stat) - 1, "%s %s",
-                     entry->d_name, status == 1 ? "active" : "disconnected");
+                     agent_name_ip, status == 1 ? "active" : "disconnected");
 
-            os_strdup(agt_stat, f_files[f_size]);
+            os_strdup(agt_stat, agents_array[array_size]);
         } else {
-            os_strdup(entry->d_name, f_files[f_size]);
+            os_strdup(agent_name_ip, agents_array[array_size]);
         }
 
-        f_files[f_size + 1] = NULL;
+        agents_array[array_size + 1] = NULL;
 
-        f_size++;
+        array_size++;
     }
 
-    closedir(dp);
-    return (f_files);
+    wdbc_close(&sock);
+    os_free(id_array);
+    return (agents_array);
+}
+
+char **get_agents_by_last_keepalive(int flag, int delta){
+    size_t array_size = 0;
+    char **agents_array = NULL;
+    int *id_array = NULL;
+    int i = 0;
+    cJSON *json_agt_info = NULL;
+    cJSON *json_name = NULL;
+    cJSON *json_ip = NULL;
+    int sock = -1;
+
+    switch (flag) {
+        case GA_NOTACTIVE:
+            id_array = wdb_get_agents_by_keepalive("<", time(0)-delta, FALSE, &sock);
+            break;
+        case GA_ACTIVE:
+            id_array = wdb_get_agents_by_keepalive(">", time(0)-delta, FALSE, &sock);
+            break;
+        default:
+            mdebug1("Invalid flag '%d' trying to get agents.", flag);
+            return NULL;
+    }
+
+    if (!id_array) {
+        mdebug1("Failed getting agent's ID array.");
+        wdbc_close(&sock);
+        return (NULL);
+    }
+
+    for (i = 0; id_array[i] != -1; i++){
+        char agent_name_ip[OS_SIZE_512] = "";
+
+        json_agt_info = wdb_get_agent_info(id_array[i], &sock);
+        if (!json_agt_info) {
+            mdebug1("Failed to get agent '%d' information from Wazuh DB.", id_array[i]);
+            continue;
+        }
+
+        json_name= cJSON_GetObjectItem(json_agt_info->child, "name");
+        json_ip = cJSON_GetObjectItem(json_agt_info->child, "register_ip");
+
+        /* Keeping the same name structure than plain text files in AGENTINFO_DIR */
+        if(cJSON_IsString(json_name) && json_name->valuestring != NULL && 
+            cJSON_IsString(json_ip) && json_ip->valuestring != NULL){
+            snprintf(agent_name_ip, sizeof(agent_name_ip), "%s-%s", json_name->valuestring, json_ip->valuestring);
+            os_realloc(agents_array, (array_size + 2) * sizeof(char *), agents_array);
+            os_strdup(agent_name_ip, agents_array[array_size]);
+            agents_array[array_size + 1] = NULL;
+            array_size++;
+        }
+
+        cJSON_Delete(json_agt_info);
+    }
+
+    wdbc_close(&sock);
+    os_free(id_array);
+    return agents_array;
 }
 
 #ifndef WIN32

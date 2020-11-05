@@ -5,8 +5,7 @@ aiohttp-swagger==1.0.14
 aiohttp==3.6.2
 asn1crypto==1.3.0
 azure-common==1.1.25
-azure_core==1.5.0
-azure-storage-blob==12.3.1
+azure-storage-blob==2.1.0
 azure-storage-common==2.1.0
 boto3==1.13.1
 botocore==1.16.1
@@ -17,7 +16,7 @@ chardet==3.0.4
 Click==7.0
 clickclick==1.2.2
 connexion==2.6.0
-cryptography==2.9.2
+cryptography==3.2.1
 defusedxml==0.6.0
 docker-pycreds==0.4.0
 docker==4.2.0

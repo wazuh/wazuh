@@ -48,7 +48,7 @@ def find_nth(string, substring, n):
 
     start = string.find(substring)
     while start >= 0 and n > 1:
-        start = string.find(substring, start+len(substring))
+        start = string.find(substring, start + len(substring))
         n -= 1
     return start
 
@@ -296,6 +296,7 @@ def select_array(array, select=None, required_fields=None):
     result_list : list
         Filtered array of dicts with only the selected (and required) fields as keys.
     """
+
     def get_nested_fields(dikt, select_field):
         split_select = select_field.split('.')
         if len(split_select) == 1:
@@ -636,7 +637,8 @@ def load_wazuh_xml(xml_path):
         good_comment = comment.group(2).replace('--', '..')
         data = data.replace(comment.group(2), good_comment)
 
-    # < characters should be scaped as &lt; unless < is starting a <tag> or a comment
+    # Replace &lt; and &gt; currently present in the config
+    data = data.replace('&lt;', '_custom_amp_lt_').replace('&gt;', '_custom_amp_gt_')
 
     custom_entities = {
         'backslash': '\\'
@@ -646,18 +648,19 @@ def load_wazuh_xml(xml_path):
     for character, replacement in custom_entities.items():
         data = re.sub(replacement.replace('\\', '\\\\'), f'&{character};', data)
 
+    # < characters should be escaped as &lt; unless < is starting a <tag> or a comment
     data = re.sub(r"<(?!/?\w+.+>|!--)", "&lt;", data)
 
     # replace \< by &lt;
-    data = re.sub(r'\\<', '&lt;', data)
+    data = re.sub(r'&backslash;<', '&backslash;&lt;', data)
 
     # replace \> by &gt;
-    data = re.sub(r'\\>', '&gt;', data)
+    data = re.sub(r'&backslash;>', '&backslash;&gt;', data)
 
     # default entities
     default_entities = ['amp', 'lt', 'gt', 'apos', 'quot']
 
-    # & characters should be scaped if they don't represent an &entity;
+    # & characters should be escaped if they don't represent an &entity;
     data = re.sub(f"&(?!({'|'.join(default_entities + list(custom_entities))});)", "&amp;", data)
 
     entities = '<!DOCTYPE xmlfile [\n' + \
@@ -768,6 +771,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
     :return: list with processed query
     """
+
     def check_clause(value1: typing.Union[str, int], op: str, value2: str) -> bool:
         """
         Checks an operation between value1 and value2. 'value1' could be an
@@ -799,7 +803,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
             return False
 
     # compile regular expression only one time when function is called
-    re_get_elements = re.compile(r'([\w\-]+)(?:\.?)((?:[\w\-]*))(=|!=|<|>|~)([\w\-./:]+)') # get elements in a clause
+    re_get_elements = re.compile(r'([\w\-]+)(?:\.?)((?:[\w\-]*))(=|!=|<|>|~)([\w\-./:]+)')  # get elements in a clause
     # get a list with OR clauses
     or_clauses = q.split(',')
     output_array = []
@@ -895,13 +899,29 @@ class WazuhDBBackend(AbstractDatabaseBackend):
         parameters by itself.
         """
         for k, v in request.items():
-            query = query.replace(f':{k}', f"{v}" if isinstance(v, int) else f"'{v}'")
+            if isinstance(v, list):
+                values = list()
+                for element in v:
+                    if isinstance(element, (int, float)) or (isinstance(element, str) and element.isnumeric()):
+                        values.append(element)
+                    else:
+                        values.append(f"'{element}'")
+                value = f"{','.join(values)}"
+            elif isinstance(v, (int, float)):
+                value = f"{v}"
+            elif isinstance(v, str):
+                value = f"'{v}'"
+            else:
+                raise TypeError(f'Invalid type for request parameters: {type(v)}')
+            query = re.sub(r':\b' + re.escape(str(k)) + r'\b', value, query)
         return query
 
     def _render_query(self, query):
         """Render query attending the format."""
         if self.query_format == 'mitre':
             return f'mitre sql {query}'
+        elif self.query_format == 'global':
+            return f'global sql {query}'
         else:
             return f'agent {self.agent_id} sql {query}'
 
@@ -917,7 +937,7 @@ class WazuhDBQuery(object):
 
     def __init__(self, offset, limit, table, sort, search, select, query, fields, default_sort_field, count,
                  get_data, backend, default_sort_order='ASC', filters={}, min_select_fields=set(), date_fields=set(),
-                 extra_fields=set(), distinct=False):
+                 extra_fields=set(), distinct=False, rbac_negate=True):
         """
         Wazuh DB Query constructor
 
@@ -941,6 +961,7 @@ class WazuhDBQuery(object):
         :param distinct: Look for distinct values.
         :param agent_id: Agent to fetch information about.
         :param distinct: Look for distinct values
+        :param rbac_negate: Whether to use IN or NOT IN on RBAC resources
         """
         self.offset = offset
         self.limit = limit
@@ -983,6 +1004,7 @@ class WazuhDBQuery(object):
         self.legacy_filters = filters
         self.inverse_fields = {v: k for k, v in self.fields.items()}
         self.backend = backend
+        self.rbac_negate = rbac_negate
 
     def _clean_filter(self, query_filter):
         # Replace special characters with wildcards
@@ -1131,6 +1153,9 @@ class WazuhDBQuery(object):
             # Filter a date, but only if it is in string (YYYY-MM-DD hh:mm:ss) format.
             # If it matches the same format as DB (timestamp integer), filter directly by value (next if cond).
             self._filter_date(q_filter, field_name)
+        elif 'rbac' in field_name:
+            self.query += f"{field_name.lstrip('rbac_')} {q_filter['operator']} (:{field_filter})"
+            self.request[field_filter] = q_filter['value']
         else:
             if q_filter['value'] is not None:
                 self.request[field_filter] = q_filter['value'] if field_name != "version" else re.sub(
@@ -1198,7 +1223,7 @@ class WazuhDBQuery(object):
         else:
             raise WazuhError(1412, date_filter['value'])
 
-    def run(self):
+    def general_run(self):
         """Builds the query and runs it on the database"""
         self._add_select_to_query()
         self._add_filters_to_query()
@@ -1212,6 +1237,67 @@ class WazuhDBQuery(object):
         if self.data:
             self._execute_data_query()
             return self._format_data_into_dictionary()
+
+    def oversized_run(self):
+        """Method used when the size of the query exceeds the maximum available in the communication.
+        Builds the query and runs it on the database"""
+        self._add_select_to_query()
+        original_select = self.select
+        rbac_ids = set(self.legacy_filters.pop('rbac_ids', set()))
+        self._add_filters_to_query()
+        self._add_search_to_query()
+        self._add_sort_to_query()
+
+        resource = None
+        final_ids = list()
+        resources = list()
+        if self.__class__.__name__ == 'WazuhDBQueryAgents':
+            resource = 'id'
+        elif self.__class__.__name__ == 'WazuhDBQueryGroups':
+            resource = 'name'
+        else:
+            raise WazuhInternalError(1123)
+        self.select = [resource]
+        self._add_select_to_query()
+        self._execute_data_query()
+        try:
+            resources = list(map(lambda d: str(d[resource]).zfill(3), self._data))
+            maximum_value = min(self.limit, len(resources)) if self.limit is not None else len(resources)
+            for item in resources:
+                if self.rbac_negate:
+                    if item.zfill(3) not in rbac_ids:
+                        final_ids.append(item)
+                else:
+                    if item.zfill(3) in rbac_ids:
+                        final_ids.append(item)
+                if len(final_ids) >= maximum_value:
+                    break
+        except NameError:
+            pass
+
+        count = len(resources) - len(set(rbac_ids).intersection(set(resources))) if self.rbac_negate else \
+            len(set(rbac_ids).intersection(set(resources)))
+
+        self.select = original_select
+        self.reset()
+        self.legacy_filters['rbac_ids'] = final_ids
+        original_count = self.count
+        self.count = False
+        result = self.general_run()
+        if original_count:
+            result['totalItems'] = count
+
+        return result
+
+    def run(self):
+        """Generic function that will redirect the information
+        to the function that needs to be used for the specific case"""
+        if self.legacy_filters is None:
+            return self.general_run()
+
+        rbac_ids = set(self.legacy_filters.get('rbac_ids', set()))
+        return self.general_run() if len(str(rbac_ids)) < common.MAX_QUERY_FILTERS_RESERVED_SIZE else \
+            self.oversized_run()
 
     def reset(self):
         """Resets query to its initial value. Useful when doing several requests to the same DB."""

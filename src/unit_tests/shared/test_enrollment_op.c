@@ -10,6 +10,7 @@
 #include "os_auth/auth.h"
 
 #include "../wrappers/common.h"
+#include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../wrappers/externals/openssl/bio_wrappers.h"
@@ -554,7 +555,7 @@ void test_w_enrollment_send_message_fix_invalid_hostname(void **state) {
     expect_string(__wrap_SSL_write, buf, "OSSEC A:'InvalidHostname'\n");
     will_return(__wrap_SSL_write, -1);
     expect_string(__wrap__merror, formatted_msg, "SSL write error (unable to send message.)");
-    expect_string(__wrap__merror, formatted_msg, "If Agent verification is enabled, agent key and certifiates are required!");
+    expect_string(__wrap__merror, formatted_msg, "If Agent verification is enabled, agent key and certificates are required!");
     int ret = w_enrollment_send_message(cfg);
     assert_int_equal(ret, -1);
 }
@@ -573,7 +574,7 @@ void test_w_enrollment_send_message_ssl_error(void **state) {
     expect_string(__wrap_SSL_write, buf, "OSSEC A:'host.name'\n");
     will_return(__wrap_SSL_write, -1);
     expect_string(__wrap__merror, formatted_msg, "SSL write error (unable to send message.)");
-    expect_string(__wrap__merror, formatted_msg, "If Agent verification is enabled, agent key and certifiates are required!");
+    expect_string(__wrap__merror, formatted_msg, "If Agent verification is enabled, agent key and certificates are required!");
     int ret = w_enrollment_send_message(cfg);
     assert_int_equal(ret, -1);
 
@@ -618,6 +619,29 @@ void test_w_enrollment_store_key_entry_cannot_open(void **state) {
     assert_int_equal(ret, -1);
 }
 
+#ifndef WIN32
+void test_w_enrollment_store_key_entry_chmod_fail(void **state) {
+    FILE file;
+    const char* key_string = "KEY EXAMPLE STRING";
+    char key_file[1024];
+
+    expect_string(__wrap_TempFile, source, KEYSFILE_PATH);
+    expect_value(__wrap_TempFile, copy, 0);
+    will_return(__wrap_TempFile, strdup("client.keys.temp"));
+    will_return(__wrap_TempFile, 6);
+    will_return(__wrap_TempFile, 0);
+
+    expect_string(__wrap_chmod, path, "client.keys.temp");
+    will_return(__wrap_chmod, -1);
+
+    snprintf(key_file, 1024, "(1127): Could not chmod object '%s' due to [(2)-(No such file or directory)].", "client.keys.temp");
+    expect_string(__wrap__merror, formatted_msg, key_file);
+
+    int ret = w_enrollment_store_key_entry(key_string);
+    assert_int_equal(ret, -1);
+}
+#endif
+
 void test_w_enrollment_store_key_entry_success(void **state) {
     FILE file;
     const char* key_string = "KEY EXAMPLE STRING";
@@ -635,6 +659,9 @@ void test_w_enrollment_store_key_entry_success(void **state) {
     will_return(__wrap_TempFile, strdup("client.keys.temp"));
     will_return(__wrap_TempFile, 6);
     will_return(__wrap_TempFile, 0);
+
+    expect_string(__wrap_chmod, path, "client.keys.temp");
+    will_return(__wrap_chmod, 0);
 
     expect_value(__wrap_fprintf, stream, 6);
     expect_string(__wrap_fprintf, formatted_msg, "KEY EXAMPLE STRING\n");
@@ -692,6 +719,9 @@ void test_w_enrollment_process_agent_key_valid_key(void **state) {
     will_return(__wrap_TempFile, 4);
     will_return(__wrap_TempFile, 0);
 
+    expect_string(__wrap_chmod, path, "client.keys.temp");
+    will_return(__wrap_chmod, 0);
+
     expect_value(__wrap_fprintf, stream, 4);
     expect_string(__wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
 
@@ -722,7 +752,7 @@ void test_w_enrollment_process_response_ssl_error(void **state) {
     will_return(__wrap_SSL_get_error, SSL_ERROR_WANT_READ);
 
     expect_string(__wrap__merror, formatted_msg, "SSL read (unable to receive message)");
-    expect_string(__wrap__merror, formatted_msg, "If Agent verification is enabled, agent key and certifiates may be incorrect!");
+    expect_string(__wrap__merror, formatted_msg, "If Agent verification is enabled, agent key and certificates may be incorrect!");
 
     int ret = w_enrollment_process_response(ssl);
     assert_int_equal(ret, -1);
@@ -785,6 +815,9 @@ void test_w_enrollment_process_response_success(void **state) {
         will_return(__wrap_TempFile, strdup("client.keys.temp"));
         will_return(__wrap_TempFile, 4);
         will_return(__wrap_TempFile, 0);
+
+        expect_string(__wrap_chmod, path, "client.keys.temp");
+        will_return(__wrap_chmod, 0);
 
         expect_value(__wrap_fprintf, stream, 4);
         expect_string(__wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
@@ -888,6 +921,9 @@ void test_w_enrollment_request_key(void **state) {
             will_return(__wrap_TempFile, strdup("client.keys.temp"));
             will_return(__wrap_TempFile, 4);
             will_return(__wrap_TempFile, 0);
+
+            expect_string(__wrap_chmod, path, "client.keys.temp");
+            will_return(__wrap_chmod, 0);
 
             expect_value(__wrap_fprintf, stream, 4);
             expect_string(__wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
@@ -1028,6 +1064,9 @@ int main()
         // w_enrollment_store_key_entry
         cmocka_unit_test_setup_teardown(test_w_enrollment_store_key_entry_null_key, setup_file_ops, teardown_file_ops),
         cmocka_unit_test_setup_teardown(test_w_enrollment_store_key_entry_cannot_open, setup_file_ops, teardown_file_ops),
+#ifndef WIN32
+        cmocka_unit_test_setup_teardown(test_w_enrollment_store_key_entry_chmod_fail, setup_file_ops, teardown_file_ops),
+#endif
         cmocka_unit_test_setup_teardown(test_w_enrollment_store_key_entry_success, setup_file_ops, teardown_file_ops),
         // w_enrollment_process_agent_key
         cmocka_unit_test(test_w_enrollment_process_agent_key_empty_buff),

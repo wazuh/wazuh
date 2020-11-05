@@ -7,7 +7,9 @@ if(NOT ${TARGET} STREQUAL "winagent")
                             -Wl,--wrap,fopen,--wrap,_mferror,--wrap,fflush,--wrap,fclose \
                             -Wl,--wrap,fread,--wrap,fseek,--wrap,fwrite,--wrap,remove \
                             -Wl,--wrap,fprintf,--wrap,fgets,--wrap,File_DateofChange \
-                            -Wl,--wrap,bzip2_uncompress,--wrap,mdebug1")
+                            -Wl,--wrap,bzip2_uncompress,--wrap,mdebug1,--wrap,lstat \
+                            -Wl,--wrap,gzopen,--wrap,gzread,--wrap,gzclose \
+                            -Wl,--wrap,gzeof,--wrap,gzerror,--wrap,gzwrite")
     list(APPEND shared_tests_flags "${FILE_OP_BASE_FLAGS}")
 endif()
 
@@ -42,7 +44,8 @@ set(ENROLLMENT_OP_BASE_FLAGS "-Wl,--wrap=OS_IsValidIP,--wrap=_merror,--wrap=_mwa
 if(${TARGET} STREQUAL "winagent")
     list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS}")
 else()
-    list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS} -Wl,--wrap=fprintf,--wrap=gethostname,--wrap=getpid")
+    list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS} -Wl,--wrap=fprintf,--wrap=gethostname,--wrap=getpid \
+                                -Wl,--wrap=fgets,--wrap=chmod,--wrap=stat")
 endif()
 
 list(APPEND shared_tests_names "test_time_op")
@@ -91,6 +94,9 @@ list(APPEND shared_tests_flags "-Wl,--wrap=sysconf,--wrap=getpwnam_r,--wrap=getg
 list(APPEND shared_tests_names "test_mq_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,sleep \
                                 -Wl,--wrap,_mdebug1 -Wl,--wrap,OS_getsocketsize -Wl,--wrap,_merror")
+
+list(APPEND shared_tests_names "test_remoted_op")
+list(APPEND shared_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mwarn -Wl,--wrap,_merror")
 endif()
 
 

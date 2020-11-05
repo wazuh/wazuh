@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -9,18 +9,19 @@ import logging
 import os
 from secrets import token_urlsafe
 from shutil import chown
-from importlib import reload
 from time import time
 
 from jose import JWTError, jwt
 from werkzeug.exceptions import Unauthorized
 
-import api.configuration as configuration
+import api.configuration as conf
+from api.constants import SECURITY_CONFIG_PATH
 from api.constants import SECURITY_PATH
 from api.util import raise_if_exc
 from wazuh import WazuhInternalError
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.rbac.orm import AuthenticationManager, TokenManager, UserRolesManager, Roles
+from wazuh.rbac.preprocessor import optimize_resources
 
 pool = concurrent.futures.ThreadPoolExecutor()
 
@@ -110,25 +111,23 @@ def change_secret():
         jwt_secret.write(new_secret)
 
 
-def get_api_conf():
-    reload(configuration)
-    return copy.deepcopy(configuration.api_conf)
-
-
 def get_security_conf():
-    reload(configuration)
-    return copy.deepcopy(configuration.security_conf)
+    conf.security_conf.update(conf.read_yaml_config(config_file=SECURITY_CONFIG_PATH,
+                                                    default_conf=conf.default_security_configuration))
+    return copy.deepcopy(conf.security_conf)
 
 
-def generate_token(user_id=None, rbac_policies=None):
+def generate_token(user_id=None, data=None, run_as=False):
     """Generate an encoded jwt token. This method should be called once a user is properly logged on.
 
     Parameters
     ----------
     user_id : str
         Unique username
-    rbac_policies : dict
-        Permissions for the user
+    data : dict
+        Roles permissions for the user
+    run_as : bool
+        Indicate if the user has logged in with run_as or not
 
     Returns
     -------
@@ -142,23 +141,22 @@ def generate_token(user_id=None, rbac_policies=None):
                           )
     result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).dikt
     timestamp = int(time())
-    roles = rbac_policies['roles']
-    rbac_policies = rbac_policies['policies']
-    rbac_policies['rbac_mode'] = result['rbac_mode']
+
     payload = {
         "iss": JWT_ISSUER,
         "aud": "Wazuh API REST",
         "nbf": int(timestamp),
         "exp": int(timestamp + result['auth_token_exp_timeout']),
         "sub": str(user_id),
-        "rbac_roles": roles,
-        "rbac_policies": rbac_policies
+        "run_as": run_as,
+        "rbac_roles": data['roles'],
+        "rbac_mode": result['rbac_mode']
     }
 
     return jwt.encode(payload, generate_secret(), algorithm=JWT_ALGORITHM)
 
 
-def check_token(username, roles, token_nbf_time):
+def check_token(username, roles, token_nbf_time, run_as):
     """Check the validity of a token with the current time and the generation time of the token.
 
     Parameters
@@ -169,6 +167,9 @@ def check_token(username, roles, token_nbf_time):
         List of roles related with the current token
     token_nbf_time : int
         Issued at time of the current token
+    run_as : bool
+        Indicate if the token has been granted through run_as endpoint
+
     Returns
     -------
     Dict with the result
@@ -186,14 +187,17 @@ def check_token(username, roles, token_nbf_time):
                 return {'valid': False}
             with TokenManager() as tm:
                 for role in user_roles:
-                    if not tm.is_token_valid(role_id=role, user_id=user_id, token_nbf_time=int(token_nbf_time)):
+                    if not tm.is_token_valid(role_id=role, user_id=user_id, token_nbf_time=int(token_nbf_time),
+                                             run_as=run_as):
                         return {'valid': False}
 
-    return {'valid': True}
+    policies = optimize_resources(roles)
+
+    return {'valid': True, 'policies': policies}
 
 
 def decode_token(token):
-    """Decode a jwt formatted token. Raise an Unauthorized exception in case validation fails.
+    """Decode a jwt formatted token and add processed policies. Raise an Unauthorized exception in case validation fails.
 
     Parameters
     ----------
@@ -205,19 +209,25 @@ def decode_token(token):
     Dict payload ot the token
     """
     try:
+        # Decode JWT token with local secret
         payload = jwt.decode(token, generate_secret(), algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
+
+        # Check token and add processed policies in the Master node
         dapi = DistributedAPI(f=check_token,
                               f_kwargs={'username': payload['sub'],
-                                        'roles': payload['rbac_roles'], 'token_nbf_time': payload['nbf']},
+                                        'roles': payload['rbac_roles'], 'token_nbf_time': payload['nbf'],
+                                        'run_as': payload['run_as']},
                               request_type='local_master',
                               is_async=False,
                               wait_for_complete=True,
                               logger=logging.getLogger('wazuh')
                               )
-        data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
+        data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).to_dict()
 
-        if not data.to_dict()['result']['valid']:
+        if not data['result']['valid']:
             raise Unauthorized
+        payload['rbac_policies'] = data['result']['policies']
+        payload['rbac_policies']['rbac_mode'] = payload.pop('rbac_mode')
 
         # Detect local changes
         dapi = DistributedAPI(f=get_security_conf,
@@ -227,10 +237,11 @@ def decode_token(token):
                               logger=logging.getLogger('wazuh')
                               )
         result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
+
         current_rbac_mode = result['rbac_mode']
         current_expiration_time = result['auth_token_exp_timeout']
-        if payload['rbac_policies']['rbac_mode'] != current_rbac_mode or \
-                (payload['exp'] - payload['nbf']) != current_expiration_time:
+        if payload['rbac_policies']['rbac_mode'] != current_rbac_mode \
+                or (payload['exp'] - payload['nbf']) != current_expiration_time:
             raise Unauthorized
 
         return payload

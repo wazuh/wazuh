@@ -4,17 +4,14 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
-import sys
-from unittest.mock import patch, mock_open, MagicMock, ANY
+from unittest.mock import patch, mock_open, ANY
 
 import pytest
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
-        sys.modules['api'] = MagicMock()
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         from wazuh.core.manager import *
         from wazuh.core.exception import WazuhException
-        del sys.modules['api']
 
 ossec_cdb_list = "172.16.19.:\n172.16.19.:\n192.168.:"
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'manager')
@@ -285,7 +282,7 @@ def test_upload_list_ko(mock_chmod, mock_random, mock_time, test_manager):
     'input_decoders_file',
     'input_lists_file'
 ])
-@patch('wazuh.common.ossec_path', test_data_path)
+@patch('wazuh.core.common.ossec_path', test_data_path)
 def test_validate_xml(input_file, test_manager):
     """Tests validate_xml function works
 
@@ -461,9 +458,8 @@ def test_update_api_conf(mock_open, mock_yaml):
     with patch('wazuh.core.manager.configuration.api_conf', new=old_config):
         update_api_conf(new_config=new_config)
 
-        assert old_config == {'experimental_features': True, 'cache': {'enabled': True, 'time': 0.75}}
         mock_open.assert_called_once(), '"Open" should be called, but it was not.'
-        mock_yaml.assert_called_once_with(old_config, ANY), '"Yaml.dump" should be called with updated config.'
+        mock_yaml.assert_called_once_with(new_config, ANY), '"Yaml.dump" should be called with updated config.'
 
 
 def test_update_api_conf_ko():

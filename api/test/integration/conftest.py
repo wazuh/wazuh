@@ -4,14 +4,17 @@ import re
 import shutil
 import subprocess
 import time
+import uuid
 from base64 import b64encode
 
 import pytest
 import requests
 import urllib3
 import yaml
+from py.xml import html
 
 current_path = os.path.dirname(os.path.abspath(__file__))
+results = dict()
 
 with open('common.yaml', 'r') as stream:
     common = yaml.safe_load(stream)['variables']
@@ -31,7 +34,7 @@ def get_token_login_api():
     """
     response = requests.get(login_url, headers=login_headers, verify=False)
     if response.status_code == 200:
-        return json.loads(response.content.decode())['token']
+        return json.loads(response.content.decode())['data']['token']
     else:
         raise Exception(f"Error obtaining login token: {response.json()}")
 
@@ -275,3 +278,112 @@ def api_test(request):
             values['retries'] += 1
     clean_tmp_folder()
     down_env()
+
+
+# HTML report
+class HTMLStyle(html):
+    class body(html.body):
+        style = html.Style(background_color='#F0F0EE')
+
+    class table(html.table):
+        style = html.Style(border='2px solid #005E8C', margin='16px 0px', color='#005E8C',
+                           font_size='15px')
+
+    class colored_td(html.td):
+        style = html.Style(color='#005E8C', padding='5px', border='2px solid #005E8C', text_align='left',
+                           white_space='pre-wrap', font_size='14px')
+
+    class td(html.td):
+        style = html.Style(padding='5px', border='2px solid #005E8C', text_align='left',
+                           white_space='pre-wrap', font_size='14px')
+
+    class th(html.th):
+        style = html.Style(color='#0094ce', padding='5px', border='2px solid #005E8C', text_align='left',
+                           font_weight='bold', font_size='15px')
+
+    class h1(html.h1):
+        style = html.Style(color='#0094ce')
+
+    class h2(html.h2):
+        style = html.Style(color='#0094ce')
+
+    class h3(html.h3):
+        style = html.Style(color='#0094ce')
+
+
+def pytest_html_results_table_header(cells):
+    cells.insert(2, html.th('Stages'))
+    # Remove links
+    cells.pop()
+
+
+def pytest_html_results_table_row(report, cells):
+    try:
+        # Replace the original full name for the test case name
+        cells[1] = HTMLStyle.colored_td(report.test_name)
+        # Insert test stages
+        cells.insert(2, HTMLStyle.colored_td(report.stages))
+        # Replace duration with the colored_td style
+        cells[3] = HTMLStyle.colored_td(cells[3][0])
+        # Remove link rows
+        cells.pop()
+    except AttributeError:
+        pass
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    # Define HTML style
+    pytest_html = item.config.pluginmanager.getplugin('html')
+    pytest_html.html.body = HTMLStyle.body
+    pytest_html.html.table = HTMLStyle.table
+    pytest_html.html.th = HTMLStyle.th
+    pytest_html.html.td = HTMLStyle.td
+    pytest_html.html.h1 = HTMLStyle.h1
+    pytest_html.html.h2 = HTMLStyle.h2
+    pytest_html.html.h3 = HTMLStyle.h3
+
+    outcome = yield
+    report = outcome.get_result()
+
+    # Store the test case name
+    report.test_name = item.spec['test_name']
+
+    # Store the test case stages
+    report.stages = list()
+    for stage in item.spec['stages']:
+        report.stages.extend((stage['name'], html.br()))
+
+    if report.location[0] not in results:
+        results[report.location[0]] = {'passed': 0, 'failed': 0, 'skipped': 0, 'xfailed': 0, 'error': 0}
+
+    if report.when == 'call':
+        if report.longrepr is not None and report.longreprtext.split()[-1] == 'XFailed':
+            results[report.location[0]]['xfailed'] += 1
+        else:
+            results[report.location[0]][report.outcome] += 1
+
+    elif report.outcome == 'failed':
+        results[report.location[0]]['error'] += 1
+
+
+def pytest_html_results_summary(prefix, summary, postfix):
+    postfix.extend([HTMLStyle.table(
+        html.thead(
+            html.tr([
+                HTMLStyle.th("Tests"),
+                HTMLStyle.th("Success"),
+                HTMLStyle.th("Failed"),
+                HTMLStyle.th("XFail"),
+                HTMLStyle.th("Error")]
+            ),
+        ),
+        [html.tbody(
+            html.tr([
+                HTMLStyle.td(k),
+                HTMLStyle.td(v['passed']),
+                HTMLStyle.td(v['failed']),
+                HTMLStyle.td(v['xfailed']),
+                HTMLStyle.td(v['error']),
+            ])
+        ) for k, v in results.items()])])

@@ -11,7 +11,7 @@ from pwd import getpwnam
     ('/my/fake/path', '')
 ])
 def test_find_wazuh_path(fake_path, expected):
-    with patch('wazuh.common.__file__', new=fake_path):
+    with patch('wazuh.core.common.__file__', new=fake_path):
         assert(find_wazuh_path() == expected)
 
 
@@ -21,12 +21,12 @@ def test_find_wazuh_path_relative_path():
 
 
 def test_ossec_uid():
-    with patch('wazuh.common.getpwnam', return_value=getpwnam("root")):
+    with patch('wazuh.core.common.getpwnam', return_value=getpwnam("root")):
         ossec_uid()
 
 
 def test_ossec_gid():
-    with patch('wazuh.common.getgrnam', return_value=getgrnam("root")):
+    with patch('wazuh.core.common.getgrnam', return_value=getgrnam("root")):
         ossec_gid()
 
 

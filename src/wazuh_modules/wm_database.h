@@ -24,6 +24,8 @@ typedef struct wm_database {
     int max_queued_events;
 } wm_database;
 
+extern int wdb_wmdb_sock;
+
 // Read configuration and return a module (if enabled) or NULL (if disabled)
 wmodule* wm_database_read();
 

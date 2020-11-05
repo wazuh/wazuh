@@ -20,8 +20,8 @@
 ; general
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
-!define VERSION "4.0.0"
-!define REVISION "40000"
+!define VERSION "4.1.0"
+!define REVISION "40101"
 !define NAME "Wazuh"
 !define SERVICE "OssecSvc"
 
@@ -196,13 +196,13 @@ Section "Wazuh Agent (required)" MainSec
     File setup-iis.exe
     File doc.html
     File favicon.ico
-    File /oname=shared\rootkit_trojans.txt ../rootcheck/db/rootkit_trojans.txt
-    File /oname=shared\rootkit_files.txt ../rootcheck/db/rootkit_files.txt
+    File /oname=shared\rootkit_trojans.txt ..\rootcheck\db\rootkit_trojans.txt
+    File /oname=shared\rootkit_files.txt ..\rootcheck\db\rootkit_files.txt
     File add-localfile.exe
     File LICENSE.txt
-    File /oname=shared\win_applications_rcl.txt ../rootcheck\db\win_applications_rcl.txt
-    File /oname=shared\win_malware_rcl.txt ../rootcheck\db\win_malware_rcl.txt
-    File /oname=shared\win_audit_rcl.txt ../rootcheck\db\win_audit_rcl.txt
+    File /oname=shared\win_applications_rcl.txt ..\rootcheck\db\win_applications_rcl.txt
+    File /oname=shared\win_malware_rcl.txt ..\rootcheck\db\win_malware_rcl.txt
+    File /oname=shared\win_audit_rcl.txt ..\rootcheck\db\win_audit_rcl.txt
     File /oname=help.txt help_win.txt
     File vista_sec.txt
     File /oname=active-response\bin\route-null.cmd route-null.cmd
@@ -212,10 +212,10 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=active-response\bin\netsh.cmd netsh.cmd
     File /oname=libwinpthread-1.dll libwinpthread-1.dll
     File agent-auth.exe
-    File /oname=wpk_root.pem ../../etc/wpk_root.pem
-    File ../wazuh_modules/syscollector/syscollector_win_ext.dll
-    File /oname=libwazuhext.dll ../libwazuhext.dll
-    File /oname=ruleset\sca\sca_win_audit.yml ../../etc/sca/windows/sca_win_audit.yml
+    File /oname=wpk_root.pem ..\..\etc\wpk_root.pem
+    File ../wazuh_modules/syscollector\syscollector_win_ext.dll
+    File /oname=libwazuhext.dll ..\libwazuhext.dll
+    File /oname=ruleset\sca\sca_win_audit.yml ..\..\etc\sca\windows\sca_win_audit.yml
     File VERSION
     File REVISION
 
@@ -410,9 +410,9 @@ Section "Scan and monitor IIS logs (recommended)" IISLogs
     nsExec::ExecToLog '"$INSTDIR\setup-iis.exe" "$INSTDIR"'
 SectionEnd
 
-; add integrity checking
-Section "Enable integrity checking (recommended)" IntChecking
-    nsExec::ExecToLog '"$INSTDIR\setup-syscheck.exe" "$INSTDIR" "enable"'
+; Disable integrity checking
+Section /o "Disable integrity checking (not recommended)" IntChecking
+    nsExec::ExecToLog '"$INSTDIR\setup-syscheck.exe" "$INSTDIR" "disable"'
 SectionEnd
 
 ; uninstall section

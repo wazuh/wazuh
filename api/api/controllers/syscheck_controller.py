@@ -14,16 +14,16 @@ from wazuh.syscheck import run, clear, files, last_scan
 logger = logging.getLogger('wazuh')
 
 
-async def put_syscheck(request, list_agents='*', pretty=False, wait_for_complete=False):
+async def put_syscheck(request, agents_list='*', pretty=False, wait_for_complete=False):
     """Run a syscheck scan over the agent_ids
 
-    :type list_agents: List of agent ids
+    :type agents_list: List of agent ids
     :param pretty: Show results in human-readable format 
     :type pretty: bool
     :param wait_for_complete: Disable timeout response 
     :type wait_for_complete: bool
     """
-    f_kwargs = {'agent_list': list_agents}
+    f_kwargs = {'agent_list': agents_list}
 
     dapi = DistributedAPI(f=run,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -31,7 +31,7 @@ async def put_syscheck(request, list_agents='*', pretty=False, wait_for_complete
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          broadcasting=list_agents == '*',
+                          broadcasting=agents_list == '*',
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())

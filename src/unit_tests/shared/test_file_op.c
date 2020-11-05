@@ -15,23 +15,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include "headers/defs.h"
-
+#include "../headers/file_op.h"
 #include "../wrappers/common.h"
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
-#include "../headers/file_op.h"
-
-
-#ifdef TEST_SERVER
-int __wrap_bzip2_uncompress(const char *filebz2, const char *file) {
-
-    check_expected_ptr(filebz2);
-    check_expected_ptr(file);
-    return mock();
-}
-#endif
+#include "../wrappers/externals/zlib/zlib_wrappers.h"
 
 
 /* setups/teardowns */
@@ -246,6 +236,312 @@ void test_w_uncompress_bz2_gz_file_bz2(void **state) {
 
 #endif
 
+// w_compress_gzfile
+
+void test_w_compress_gzfile_wfopen_fail(void **state){
+
+    int ret;
+    char *srcfile = "testfilesrc";
+    char *dstfile = "testfiledst.gz";
+
+    expect_string(__wrap_fopen, path, srcfile);
+    expect_string(__wrap_fopen, mode, "rb");
+    will_return(__wrap_fopen, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "in w_compress_gzfile(): fopen error testfilesrc (0):'Success'");
+
+    ret = w_compress_gzfile(srcfile, dstfile);
+    assert_int_equal(ret, -1);
+
+}
+
+void test_w_compress_gzfile_gzopen_fail(void **state){
+
+    int ret;
+    char *srcfile = "testfilesrc";
+    char *dstfile = "testfiledst.gz";
+
+    expect_string(__wrap_fopen, path, srcfile);
+    expect_string(__wrap_fopen, mode, "rb");
+    will_return(__wrap_fopen, 1);
+
+    expect_string(__wrap_gzopen, path, dstfile);
+    expect_string(__wrap_gzopen, mode, "w");
+    will_return(__wrap_gzopen, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    expect_string(__wrap__merror, formatted_msg, "in w_compress_gzfile(): gzopen error testfiledst.gz (0):'Success'");
+
+    ret = w_compress_gzfile(srcfile, dstfile);
+    assert_int_equal(ret, -1);
+
+}
+
+void test_w_compress_gzfile_write_error(void **state){
+
+    int ret;
+    char *srcfile = "testfilesrc";
+    char *dstfile = "testfiledst.gz";
+
+    expect_string(__wrap_fopen, path, srcfile);
+    expect_string(__wrap_fopen, mode, "rb");
+    will_return(__wrap_fopen, 1);
+
+    expect_string(__wrap_gzopen, path, dstfile);
+    expect_string(__wrap_gzopen, mode, "w");
+    will_return(__wrap_gzopen, 2);
+
+    will_return(__wrap_fread, "teststring");
+    will_return(__wrap_fread, 10);
+
+    expect_value(__wrap_gzwrite, file, 2);
+    expect_string(__wrap_gzwrite, buf, "teststring");
+    expect_value(__wrap_gzwrite, len, 10);
+    will_return(__wrap_gzwrite, Z_ERRNO);
+
+    expect_value(__wrap_gzerror, file, 2);
+    will_return(__wrap_gzerror, Z_ERRNO);
+    will_return(__wrap_gzerror, "Test error");
+    expect_string(__wrap__merror, formatted_msg, "in w_compress_gzfile(): Compression error: Test error");
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+    expect_value(__wrap_gzclose, file, 2);
+    will_return(__wrap_gzclose, 1);
+
+    ret = w_compress_gzfile(srcfile, dstfile);
+    assert_int_equal(ret, -1);
+
+}
+
+void test_w_compress_gzfile_success(void **state){
+
+    int ret;
+    char *srcfile = "testfilesrc";
+    char *dstfile = "testfiledst.gz";
+
+    expect_string(__wrap_fopen, path, srcfile);
+    expect_string(__wrap_fopen, mode, "rb");
+    will_return(__wrap_fopen, 1);
+
+    expect_string(__wrap_gzopen, path, dstfile);
+    expect_string(__wrap_gzopen, mode, "w");
+    will_return(__wrap_gzopen, 2);
+
+    will_return(__wrap_fread, "teststring");
+    will_return(__wrap_fread, 10);
+
+    expect_value(__wrap_gzwrite, file, 2);
+    expect_string(__wrap_gzwrite, buf, "teststring");
+    expect_value(__wrap_gzwrite, len, 10);
+    will_return(__wrap_gzwrite, 10);
+
+    will_return(__wrap_fread, "");
+    will_return(__wrap_fread, 0);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+    expect_value(__wrap_gzclose, file, 2);
+    will_return(__wrap_gzclose, 1);
+
+    ret = w_compress_gzfile(srcfile, dstfile);
+    assert_int_equal(ret, 0);
+
+}
+
+// w_uncompress_gzfile
+
+void test_w_uncompress_gzfile_lstat_fail(void **state) {
+
+    int ret;
+    char *srcfile = "testfile.gz";
+    char *dstfile = "testfiledst";
+
+    expect_string(__wrap_lstat, filename, srcfile);
+    will_return(__wrap_lstat, S_IFREG);
+    will_return(__wrap_lstat, -1);
+
+    ret = w_uncompress_gzfile(srcfile, dstfile);
+    assert_int_equal(ret, -1);
+
+}
+
+void test_w_uncompress_gzfile_fopen_fail(void **state) {
+
+    int ret;
+    char *srcfile = "testfile.gz";
+    char *dstfile = "testfiledst";
+
+    expect_string(__wrap_lstat, filename, srcfile);
+    will_return(__wrap_lstat, S_IFREG);
+    will_return(__wrap_lstat, 0);
+
+    expect_string(__wrap_fopen, path, dstfile);
+    expect_string(__wrap_fopen, mode, "wb");
+    will_return(__wrap_fopen, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "in w_uncompress_gzfile(): fopen error testfiledst (0):'Success'");
+
+    ret = w_uncompress_gzfile(srcfile, dstfile);
+    assert_int_equal(ret, -1);
+
+}
+
+void test_w_uncompress_gzfile_gzopen_fail(void **state) {
+
+    int ret;
+    char *srcfile = "testfile.gz";
+    char *dstfile = "testfiledst";
+
+    expect_string(__wrap_lstat, filename, srcfile);
+    will_return(__wrap_lstat, S_IFREG);
+    will_return(__wrap_lstat, 0);
+
+    expect_string(__wrap_fopen, path, dstfile);
+    expect_string(__wrap_fopen, mode, "wb");
+    will_return(__wrap_fopen, 1);
+
+    expect_string(__wrap_gzopen, path, srcfile);
+    expect_string(__wrap_gzopen, mode, "rb");
+    will_return(__wrap_gzopen, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "in w_uncompress_gzfile(): gzopen error testfile.gz (0):'Success'");
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = w_uncompress_gzfile(srcfile, dstfile);
+    assert_int_equal(ret, -1);
+
+}
+
+void test_w_uncompress_gzfile_first_read_fail(void **state) {
+
+    int ret;
+    char *srcfile = "testfile.gz";
+    char *dstfile = "testfiledst";
+
+    expect_string(__wrap_lstat, filename, srcfile);
+    will_return(__wrap_lstat, S_IFREG);
+    will_return(__wrap_lstat, 0);
+
+    expect_string(__wrap_fopen, path, dstfile);
+    expect_string(__wrap_fopen, mode, "wb");
+    will_return(__wrap_fopen, 1);
+
+    expect_string(__wrap_gzopen, path, srcfile);
+    expect_string(__wrap_gzopen, mode, "rb");
+    will_return(__wrap_gzopen, 2);
+
+    expect_value(__wrap_gzread, gz_fd, 2);
+    will_return(__wrap_gzread, 0);
+    will_return(__wrap_gzread, "failstring");
+
+    expect_value(__wrap_gzeof, file, 2);
+    will_return(__wrap_gzeof, 0);
+
+    expect_value(__wrap_gzerror, file, 2);
+    will_return(__wrap_gzerror, Z_BUF_ERROR);
+    will_return(__wrap_gzerror, "Test error");
+
+    expect_string(__wrap__merror, formatted_msg, "in w_uncompress_gzfile(): gzread error: 'Test error'");
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+    expect_value(__wrap_gzclose, file, 2);
+    will_return(__wrap_gzclose, 1);
+
+    ret = w_uncompress_gzfile(srcfile, dstfile);
+    assert_int_equal(ret, -1);
+
+}
+
+void test_w_uncompress_gzfile_first_read_success(void **state) {
+
+    int ret;
+    char *srcfile = "testfile.gz";
+    char *dstfile = "testfiledst";
+
+    expect_string(__wrap_lstat, filename, srcfile);
+    will_return(__wrap_lstat, S_IFREG);
+    will_return(__wrap_lstat, 0);
+
+    expect_string(__wrap_fopen, path, dstfile);
+    expect_string(__wrap_fopen, mode, "wb");
+    will_return(__wrap_fopen, 1);
+
+    expect_string(__wrap_gzopen, path, srcfile);
+    expect_string(__wrap_gzopen, mode, "rb");
+    will_return(__wrap_gzopen, 2);
+
+    expect_value(__wrap_gzread, gz_fd, 2);
+    will_return(__wrap_gzread, OS_SIZE_8192);
+    will_return(__wrap_gzread, "teststring");
+
+    will_return(__wrap_fwrite, OS_SIZE_8192);
+
+    expect_value(__wrap_gzread, gz_fd, 2);
+    will_return(__wrap_gzread, 0);
+    will_return(__wrap_gzread, "failstring");
+
+    expect_value(__wrap_gzeof, file, 2);
+    will_return(__wrap_gzeof, 0);
+
+    expect_value(__wrap_gzerror, file, 2);
+    will_return(__wrap_gzerror, Z_BUF_ERROR);
+    will_return(__wrap_gzerror, "Test error");
+
+    expect_string(__wrap__merror, formatted_msg, "in w_uncompress_gzfile(): gzread error: 'Test error'");
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+    expect_value(__wrap_gzclose, file, 2);
+    will_return(__wrap_gzclose, 1);
+
+    ret = w_uncompress_gzfile(srcfile, dstfile);
+    assert_int_equal(ret, -1);
+
+}
+
+void test_w_uncompress_gzfile_success(void **state) {
+
+    int ret;
+    char *srcfile = "testfile.gz";
+    char *dstfile = "testfiledst";
+
+    expect_string(__wrap_lstat, filename, srcfile);
+    will_return(__wrap_lstat, S_IFREG);
+    will_return(__wrap_lstat, 0);
+
+    expect_string(__wrap_fopen, path, dstfile);
+    expect_string(__wrap_fopen, mode, "wb");
+    will_return(__wrap_fopen, 1);
+
+    expect_string(__wrap_gzopen, path, srcfile);
+    expect_string(__wrap_gzopen, mode, "rb");
+    will_return(__wrap_gzopen, 2);
+
+    expect_value(__wrap_gzread, gz_fd, 2);
+    will_return(__wrap_gzread, 10);
+    will_return(__wrap_gzread, "teststring");
+
+    will_return(__wrap_fwrite, 10);
+
+    expect_value(__wrap_gzeof, file, 2);
+    will_return(__wrap_gzeof, 1);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+    expect_value(__wrap_gzclose, file, 2);
+    will_return(__wrap_gzclose, 1);
+
+    ret = w_uncompress_gzfile(srcfile, dstfile);
+    assert_int_equal(ret, 0);
+
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_CreatePID_success),
@@ -257,8 +553,20 @@ int main(void) {
         cmocka_unit_test(test_w_is_compressed_bz2_file_compressed),
         cmocka_unit_test(test_w_is_compressed_bz2_file_uncompressed),
 #ifdef TEST_SERVER
-        cmocka_unit_test(test_w_uncompress_bz2_gz_file_bz2)
+        cmocka_unit_test(test_w_uncompress_bz2_gz_file_bz2),
 #endif
+        // w_compress_gzfile
+        cmocka_unit_test(test_w_compress_gzfile_wfopen_fail),
+        cmocka_unit_test(test_w_compress_gzfile_gzopen_fail),
+        cmocka_unit_test(test_w_compress_gzfile_write_error),
+        cmocka_unit_test(test_w_compress_gzfile_success),
+        // w_uncompress_gzfile
+        cmocka_unit_test(test_w_uncompress_gzfile_lstat_fail),
+        cmocka_unit_test(test_w_uncompress_gzfile_fopen_fail),
+        cmocka_unit_test(test_w_uncompress_gzfile_gzopen_fail),
+        cmocka_unit_test(test_w_uncompress_gzfile_first_read_fail),
+        cmocka_unit_test(test_w_uncompress_gzfile_first_read_success),
+        cmocka_unit_test(test_w_uncompress_gzfile_success)
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

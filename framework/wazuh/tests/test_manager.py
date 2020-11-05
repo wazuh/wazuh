@@ -5,32 +5,30 @@
 import os
 import socket
 import sys
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import patch, MagicMock, mock_open, ANY
 import json
 
 import pytest
 
-from wazuh.core.tests.test_manager import get_logs
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
-        sys.modules['api'] = MagicMock()
         import wazuh.rbac.decorators
-        del sys.modules['wazuh.rbac.orm']
-
         from wazuh.tests.util import RBAC_bypasser
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh.manager import *
-        del sys.modules['api']
 
+        del sys.modules['wazuh.rbac.orm']
+        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+
+        from wazuh.manager import *
+        from wazuh.core.tests.test_manager import get_logs
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
 
 @pytest.fixture(scope='module', autouse=True)
 def mock_ossec_path():
-    with patch('wazuh.common.ossec_path', new=test_data_path):
+    with patch('wazuh.core.common.ossec_path', new=test_data_path):
         yield
 
 
@@ -263,7 +261,7 @@ def test_get_api_config():
     assert result['data']['affected_items'][0]['node_name'] == 'manager', 'Not expected node name'
 
 
-@patch('wazuh.core.manager.yaml')
+@patch('wazuh.core.manager.yaml.dump')
 @patch('wazuh.core.manager.open')
 def test_update_api_config(mock_open, mock_yaml):
     """Checks that update_api_config method is updating current api_conf dict and returning expected result."""
@@ -275,7 +273,8 @@ def test_update_api_config(mock_open, mock_yaml):
 
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type.'
         assert result.render()['data']['total_failed_items'] == 0, 'Total_failed_items should be 0.'
-        assert old_config == new_config, 'Old configuration should be equal to new configuration.'
+        assert old_config != new_config, 'Old configuration should be equal to new configuration.'
+        mock_yaml.assert_called_once_with(new_config, ANY)
 
 
 def test_update_api_config_ko():

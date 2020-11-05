@@ -11,21 +11,19 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from wazuh.core import common, exception
-from wazuh.tests.util import InitWDBSocketMock
-
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
-        sys.modules['api'] = MagicMock()
         import wazuh.rbac.decorators
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.sca import get_sca_list, fields_translation_sca, \
             get_sca_checks, fields_translation_sca_check, fields_translation_sca_check_compliance
+        from wazuh.core import common, exception
         from wazuh.core.results import AffectedItemsWazuhResult
         from wazuh.core.exception import WazuhResourceNotFound
+        from wazuh.tests.util import InitWDBSocketMock
 
         del sys.modules['wazuh.rbac.orm']
 
@@ -61,9 +59,9 @@ cols_returned_from_db_sca_check = [field.replace('`', '').replace('sca.', '')
                                    for field in fields_translation_sca_check.keys()]
 
 
-@patch("wazuh.sca.common.database_path_global",
-       new=os.path.join(test_data_path, 'var', 'db', 'sca', 'global.db'))
-def test_get_sca_list():
+@patch("wazuh.core.sca.Agent.get_basic_information")
+@patch("wazuh.sca.get_agents_info", return_value={'000'})
+def test_get_sca_list(mock_agent, mock_sca_agent):
     """
     Checks data are properly loaded from database
     """
@@ -92,9 +90,9 @@ def test_get_sca_list():
         assert failed[list(failed.keys())[0]] == {'999'}
 
 
-@patch("wazuh.sca.common.database_path_global",
-       new=os.path.join(test_data_path, 'var', 'db', 'sca', 'global.db'))
-def test_get_sca_list_select_param():
+@patch("wazuh.core.sca.Agent.get_basic_information")
+@patch("wazuh.sca.get_agents_info", return_value={'000'})
+def test_get_sca_list_select_param(mock_agent, mock_sca_agent):
     """
     Checks only selected fields are loaded from database
     """
@@ -111,9 +109,9 @@ def test_get_sca_list_select_param():
         assert set(sca.keys()) == set(fields)
 
 
-@patch("wazuh.sca.common.database_path_global",
-       new=os.path.join(test_data_path, 'var', 'db', 'sca', 'global.db'))
-def test_get_sca_list_search_param():
+@patch("wazuh.core.sca.Agent.get_basic_information")
+@patch("wazuh.sca.get_agents_info", return_value={'000'})
+def test_get_sca_list_search_param(mock_agent, mock_sca_agent):
     """
     Checks only selected fields are loaded from database
     """
@@ -141,9 +139,9 @@ def test_get_sca_list_search_param():
         assert len(result['affected_items']) > 0
 
 
-@patch("wazuh.sca.common.database_path_global",
-       new=os.path.join(test_data_path, 'var', 'db', 'sca', 'global.db'))
-def test_get_sca_checks():
+@patch("wazuh.core.sca.Agent.get_basic_information")
+@patch("wazuh.sca.get_agents_info", return_value={'000'})
+def test_get_sca_checks(mock_agent, mock_sca_agent):
     """
     Checks sca checks data are properly loaded from database
     """
@@ -186,9 +184,9 @@ def test_get_sca_checks():
         assert failed[list(failed.keys())[0]] == {'999'}
 
 
-@patch("wazuh.sca.common.database_path_global",
-       new=os.path.join(test_data_path, 'var', 'db', 'sca', 'global.db'))
-def test_sca_checks_select_and_q():
+@patch("wazuh.core.sca.Agent.get_basic_information")
+@patch("wazuh.sca.get_agents_info", return_value={'000'})
+def test_sca_checks_select_and_q(mock_agent, mock_sca_agent):
     """
     Tests filtering using q parameter and selecting multiple fields
     """
@@ -200,9 +198,9 @@ def test_sca_checks_select_and_q():
         assert set(result['affected_items'][0].keys()).issubset({'compliance', 'policy_id', 'result', 'rules'})
 
 
-@patch("wazuh.sca.common.database_path_global",
-       new=os.path.join(test_data_path, 'var', 'db', 'sca', 'global.db'))
-def test_sca_failed_limit():
+@patch("wazuh.core.sca.Agent.get_basic_information")
+@patch("wazuh.sca.get_agents_info", return_value={'000'})
+def test_sca_failed_limit(mock_agent, mock_sca_agent):
     """
     Test failing using not correct limits
     """
@@ -215,9 +213,9 @@ def test_sca_failed_limit():
             get_sca_list(agent_list=['000'], limit=0)
 
 
-@patch("wazuh.sca.common.database_path_global",
-       new=os.path.join(test_data_path, 'var', 'db', 'sca', 'global.db'))
-def test_sca_response_without_result():
+@patch("wazuh.core.sca.Agent.get_basic_information")
+@patch("wazuh.sca.get_agents_info", return_value={'000'})
+def test_sca_response_without_result(mock_agent, mock_sca_agent):
     """
     Test failing when WazuhDB don't return 'items' key into result
     """

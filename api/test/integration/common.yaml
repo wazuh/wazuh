@@ -22,7 +22,7 @@ variables:
   global_db_delay: 20
   active_reponse_delay: 5
 
-  custom_wpk_path: "/var/ossec/test_custom_upgrade_3.10.2.wpk"
+  custom_wpk_path: "/var/ossec/test_custom_upgrade_3.12.2.wpk"
 
   new_rules:
     "<!-- Local rules -->\n <group name=\"local,\">\n    <!--   NEW RULE    -->\n    <rule id=\"111111\" level=\"5\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
@@ -132,4 +132,19 @@ variables:
 
     </syscheck>
 
+    </agent_config>
+
+  query_list_xml:
+    <agent_config>
+    <localfile>
+    <location>System</location>
+    <log_format>eventchannel</log_format>
+    <query>
+    \<QueryList>
+    \<Query Id='0' Path='System'>
+    \<Select Path='System'>*[System[(Level&lt;=3)]]\</Select>
+    \</Query>
+    \</QueryList>
+    </query>
+    </localfile>
     </agent_config>
