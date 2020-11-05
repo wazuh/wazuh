@@ -51,10 +51,10 @@ void monitor_agents_disconnection(){
     char str_agent_id[12];
 
     agents_array = wdb_disconnect_agents(time(0) - mond.global.agents_disconnection_time, &sock);
-    if (agents_array) {
+    if (mond.monitor_agents != 0 && agents_array) {
         for (int i = 0; agents_array[i] != -1; i++) {
             snprintf(str_agent_id, 12, "%d", agents_array[i]);
-            if (mond.monitor_agents != 0 && OSHash_Add(agents_to_alert_hash, str_agent_id, (void*)time(0)) == 0) {
+            if (OSHash_Add(agents_to_alert_hash, str_agent_id, (void*)time(0)) == 0) {
                 mdebug1("Can't add agent ID '%d' to the alerts hash table",agents_array[i]);
             }
         }
