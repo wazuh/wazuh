@@ -78,11 +78,13 @@ STATIC void* wm_agent_upgrade_listen_messages(__attribute__((unused)) void *arg)
 
 #endif
 
-void wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config) {
+void wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config, const int enabled) {
     #ifndef WIN32
         w_create_thread(wm_agent_upgrade_listen_messages, NULL);
     #endif
-    wm_agent_upgrade_check_status(agent_config);
+    if (enabled) {
+        wm_agent_upgrade_check_status(agent_config);
+    }
 }
 
 #ifndef WIN32
