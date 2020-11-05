@@ -34,7 +34,7 @@ def currentDirPathBuild(moduleName):
     :return Lib dir path build folder
     """
     currentDir = ""
-    if str(moduleName) == 'utils':
+    if str(moduleName) == 'shared_modules/utils':
         currentDir = currentBuildDir + str(moduleName) + "/tests/build/"
     else:
         currentDir = currentBuildDir + str(moduleName) + "/build/"
@@ -48,7 +48,7 @@ def currentDirPath(moduleName):
     :return Lib dir path
     """
     currentDir = ""
-    if str(moduleName) == 'utils':
+    if str(moduleName) == 'shared_modules/utils':
         currentDir = currentBuildDir + str(moduleName) + "/tests/"
     else:
         currentDir = currentBuildDir + str(moduleName)
@@ -80,7 +80,7 @@ def runTests(moduleName):
     tests = []
     reg = re.compile(".*unit_test|.*unit_test.exe|.*integration_test|.*integration_test.exe")
     currentDir = ""
-    if moduleName == 'utils':
+    if moduleName == 'shared_modules/utils':
         currentDir = currentDirPathBuild(moduleName)
     else:
         currentDir = currentDirPathBuild(moduleName) + "bin/"
@@ -138,7 +138,7 @@ def runValgrind(moduleName):
     tests = []
     reg = re.compile(".*unit_test|.*unit_test.exe|.*integration_test|.*integration_test.exe")
     currentDir = ""
-    if str(moduleName) == 'utils':
+    if str(moduleName) == 'shared_modules/utils':
         currentDir = currentBuildDir + str(moduleName) + "/tests/build/"
     else:
         currentDir = currentBuildDir + str(moduleName) + "/build/bin/"
@@ -169,7 +169,7 @@ def runCoverage(moduleName):
 
     moduleCMakeFiles = ""
     excludeTests = ""
-    if moduleName == 'utils':
+    if moduleName == 'shared_modules/utils':
         moduleCMakeFiles = currentDir + "/tests/*/CMakeFiles/*.dir"
     else:
         moduleCMakeFiles = currentDir + "/build/tests/*/CMakeFiles/*.dir"
@@ -182,7 +182,8 @@ def runCoverage(moduleName):
 
     for dir in glob.glob(moduleCMakeFiles):
         folders += '--directory ' + dir + ' '
-    coverageCommand = 'lcov ' + folders + ' --capture --output-file ' + reportFolder + '/code_coverage.info -rc lcov_branch_coverage=0 '+excludeTests+' --include "*/'+moduleName+'/*" -q'
+    includeDir = currentDir.replace("ci/../","")
+    coverageCommand = 'lcov ' + folders + ' --capture --output-file ' + reportFolder + '/code_coverage.info -rc lcov_branch_coverage=0 --exclude="*/tests/*" --include "'+includeDir+'/*" -q'
     out = subprocess.run(coverageCommand, stdout=subprocess.PIPE, shell=True)
     if out.returncode == 0:
         printGreen('[lcov info: GENERATED]')
