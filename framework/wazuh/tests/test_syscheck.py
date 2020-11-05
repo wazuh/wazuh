@@ -12,14 +12,12 @@ import pytest
 
 from wazuh.tests.util import InitWDBSocketMock
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
-        sys.modules['api'] = MagicMock()
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
 
         del sys.modules['wazuh.rbac.orm']
-        del sys.modules['api']
 
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -244,7 +242,7 @@ def test_syscheck_last_scan_internal_error(glob_mock, version):
     (['001'], None, {'date': '2019-05-21 12:10:20'}, True)
 ])
 @patch('socket.socket.connect')
-@patch('wazuh.common.wdb_path', new=test_data_path)
+@patch('wazuh.core.common.wdb_path', new=test_data_path)
 def test_syscheck_files(socket_mock, agent_id, select, filters, distinct):
     """Test function `files` from syscheck module.
 

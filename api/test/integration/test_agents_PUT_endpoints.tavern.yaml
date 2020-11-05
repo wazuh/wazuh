@@ -290,6 +290,41 @@ stages:
       json:
         error: 1114
 
+  - name: Try to update configuration using a complex configuration file
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups/group1/configuration"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        '{query_list_xml:s}'
+    response:
+      status_code: 200
+
+  - name: Ensure the config now has the expected value
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups/group1/configuration"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_validate_group_configuration
+        extra_kwargs:
+          expected_field: "query"
+          expected_value: " <QueryList> <Query Id='0' Path='System'> <Select Path='System'>*[System[(Level&lt;=3)]]</Select> </Query> </QueryList> "
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - filters: !anything
+              config: !anything
+          total_affected_items: !anyint
+
 ---
 test_name: PUT /agents/group/{group_id}/restart
 

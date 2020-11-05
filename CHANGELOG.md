@@ -1,7 +1,26 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-# [v4.1.0]
+## [v4.1.0] -
+
+### Fixed
+- Fixed an error with `/groups/{group_id}/config` Wazuh API endpoints (GET and PUT) when using complex `localfile` configurations. ([#6276](https://github.com/wazuh/wazuh/pull/6383))
+
+## [v4.0.1] -
+
+### Added
+
+### Changed
+
+- **Framework:**
+  - Update Python's cryptography library to version 3.2.1 ([#6442](https://github.com/wazuh/wazuh/issues/6442))
+
+### Fixed
+
+- **API:**
+  - Added missing agent:group resource to RBAC's catalog. ([6427](https://github.com/wazuh/wazuh/issues/6427))
+
+### Removed
 
 ## [v4.0.0] -
 
@@ -9,7 +28,7 @@ All notable changes to this project will be documented in this file.
 
 - Added **enrollment capability**. Agents are now able to request a key from the manager if current key is missing or wrong. ([#5609](https://github.com/wazuh/wazuh/pull/5609))
 - Migrated the agent-info data to Wazuh DB. ([#5541](https://github.com/wazuh/wazuh/pull/5541))
-- **Wazuh API:**
+- **API:**
   - Embedded Wazuh API with Wazuh Manager, there is no need to install Wazuh API. ([9860823](https://github.com/wazuh/wazuh/commit/9860823d568f5e6d93550d9b139507c04d2c2eb9))
   - Migrated Wazuh API server from nodejs to python. ([#2640](https://github.com/wazuh/wazuh/pull/2640))
   - Added asynchronous aiohttp server for the Wazuh API. ([#4474](https://github.com/wazuh/wazuh/issues/4474))
