@@ -17,11 +17,19 @@ logger = logging.getLogger('wazuh')
 async def put_syscheck(request, agents_list='*', pretty=False, wait_for_complete=False):
     """Run a syscheck scan over the agent_ids
 
-    :type agents_list: List of agent ids
-    :param pretty: Show results in human-readable format 
-    :type pretty: bool
-    :param wait_for_complete: Disable timeout response 
-    :type wait_for_complete: bool
+    Parameters
+    ----------
+    list_agents : str
+        List of agent ids.
+    pretty : bool
+        Show results in human-readable format .
+    wait_for_complete : bool
+        Disable timeout response .
+
+    Returns
+    -------
+    result : json_response
+        Json response with the API response.
     """
     f_kwargs = {'agent_list': agents_list}
 
@@ -43,35 +51,43 @@ async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=
                              limit=None, select=None, sort=None, search=None, distinct=False,
                              summary=False, md5=None, sha1=None, sha256=None, q=None, arch=None, value_name=None,
                              value_type=None):
-    """ TODO actualizar esto
-    :param agent_id: Agent ID
-    :type agent_id: str
-    :param pretty: Show results in human-readable format 
-    :type pretty: bool
-    :param wait_for_complete: Disable timeout response 
-    :type wait_for_complete: bool
-    :param offset: First element to return in the collection
-    :type offset: int
-    :param limit: Maximum number of elements to return
-    :type limit: int
-    :param select: Select which fields to return (separated by comma)
-    :type select: List[str]
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order. 
-    :type sort: str
-    :param search: Looks for elements with the specified string
-    :type search: str
-    :param summary: Returns a summary grouping by filename.
-    :type summary: bool
-    :param md5: Filters files with the specified MD5 checksum.
-    :type md5: str
-    :param sha1: Filters files with the specified SHA1 checksum.
-    :type sha1: str
-    :param sha256: Filters files with the specified SHA256 checksum.
-    :type sha256: str
-    :param distinct: Look for distinct values.
-    :type distinct: bool
-    :param q: Query to filter results by.
-    :type q: str
+    """Get file integrity monitoring scan result from an agent.
+
+    Parameters
+    ----------
+    agent_list : str
+        Agent ID.
+    pretty : bool
+        Show results in human-readable format .
+    wait_for_complete : bool
+        Disable timeout response .
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    select : list[str]
+        Select which fields to return (separated by comma).
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
+    search : str
+        Looks for elements with the specified string.
+    summary : bool
+        Returns a summary grouping by filename.
+    md5 : str
+        Filters files with the specified MD5 checksum.
+    sha1 : str
+        Filters files with the specified SHA1 checksum.
+    sha256 : str
+        Filters files with the specified SHA256 checksum.
+    distinct : bool
+        Look for distinct values.
+    q : str
+        Query to filter results by.
+
+    Returns
+    -------
+    result : json_response
+        Json response with the API response.
     """
 
     # get type parameter from query
@@ -103,13 +119,21 @@ async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=
 
 
 async def delete_syscheck_agent(request, agent_id='*', pretty=False, wait_for_complete=False):
-    """
-    :param pretty: Show results in human-readable format 
-    :type pretty: bool
-    :param wait_for_complete: Disable timeout response 
-    :type wait_for_complete: bool
-    :param agent_id: Agent ID
-    :type agent_id: str
+    """Run a syscheck scan over the agent_ids
+
+    Parameters
+    ----------
+    agent_id : str
+        Agent ID.
+    pretty : bool
+        Show results in human-readable format .
+    wait_for_complete : bool
+        Disable timeout response .
+
+    Returns
+    -------
+    result : json_response
+        Json response with the API response.
     """
     f_kwargs = {'agent_list': [agent_id]}
 
@@ -127,14 +151,21 @@ async def delete_syscheck_agent(request, agent_id='*', pretty=False, wait_for_co
 
 
 async def get_last_scan_agent(request, agent_id, pretty=False, wait_for_complete=False):
-    """
+    """Run a syscheck scan over the agent_ids
 
-    :param pretty: Show results in human-readable format 
-    :type pretty: bool
-    :param wait_for_complete: Disable timeout response 
-    :type wait_for_complete: bool
-    :param agent_id: Agent ID
-    :type agent_id: str
+    Parameters
+    ----------
+    agent_id : str
+        Agent ID.
+    pretty : bool
+        Show results in human-readable format .
+    wait_for_complete : bool
+        Disable timeout response .
+
+    Returns
+    -------
+    result : json_response
+        Json response with the API response.
     """
     f_kwargs = {'agent_list': [agent_id]}
 
