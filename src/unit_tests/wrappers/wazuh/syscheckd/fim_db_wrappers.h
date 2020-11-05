@@ -36,6 +36,7 @@ int __wrap_fim_db_delete_range(fdb_t * fim_sql,
 int __wrap_fim_db_get_count_file_entry(fdb_t * fim_sql);
 
 int __wrap_fim_db_get_count_range(fdb_t *fim_sql,
+                                  fim_type type,
                                   char *start,
                                   char *top,
                                   int *count);
@@ -51,6 +52,7 @@ fim_entry *__wrap_fim_db_get_path(fdb_t *fim_sql,
                                   const char *file_path);
 
 int __wrap_fim_db_get_path_range(fdb_t *fim_sql,
+                                 int type,
                                  char *start,
                                  char *top,
                                  fim_tmp_file **file,
@@ -92,4 +94,17 @@ int __wrap_fim_db_sync_path_range(fdb_t *fim_sql,
                                   fim_tmp_file *file,
                                   int storage);
 
+#ifndef WIN32
+fim_entry *__wrap_fim_db_get_entry_from_sync_msg(fdb_t *fim_sql,
+                                          __attribute__((unused)) fim_type type,
+                                          const char *path);
+
+#else
+fim_entry *__wrap_fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const char *path);
 #endif
+
+#endif
+
+int __wrap_fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **buffer);
+
+void __wrap_fim_db_clean_file(fim_tmp_file **file, int storage);

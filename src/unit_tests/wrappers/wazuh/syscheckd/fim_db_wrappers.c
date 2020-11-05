@@ -20,13 +20,14 @@ int __wrap_fim_db_get_checksum_range(fdb_t *fim_sql,
                                      int n,
                                      __attribute__ ((__unused__)) EVP_MD_CTX *ctx_left,
                                      __attribute__ ((__unused__)) EVP_MD_CTX *ctx_right,
-                                     __attribute__ ((__unused__)) char **str_pathlh,
-                                     __attribute__ ((__unused__)) char **str_pathuh){
+                                     char **str_pathlh,
+                                     char **str_pathuh){
     check_expected_ptr(fim_sql);
     check_expected(start);
     check_expected(top);
     check_expected(n);
-
+    *str_pathlh = mock();
+    *str_pathuh = mock();
     return mock();
 }
 
@@ -55,10 +56,12 @@ int __wrap_fim_db_get_count_file_entry(__attribute__((unused)) fdb_t * fim_sql){
 }
 
 int __wrap_fim_db_get_count_range(fdb_t *fim_sql,
+                                  fim_type type,
                                   char *start,
                                   char *top,
                                   int *count) {
     check_expected_ptr(fim_sql);
+    check_expected(type);
     check_expected(start);
     check_expected(top);
 
@@ -91,13 +94,32 @@ fim_entry *__wrap_fim_db_get_path(fdb_t *fim_sql,
 
     return mock_type(fim_entry*);
 }
+int __wrap_fim_db_get_last_path(fdb_t * fim_sql, int type, char **path) {
+    check_expected_ptr(fim_sql);
+    check_expected(type);
+
+    *path = mock();
+
+    return mock_type(int);
+}
+
+int __wrap_fim_db_get_first_path(fdb_t * fim_sql, int type, char **path) {
+    check_expected_ptr(fim_sql);
+    check_expected(type);
+
+    *path = mock();
+
+    return mock_type(int);
+}
 
 int __wrap_fim_db_get_path_range(fdb_t *fim_sql,
+                                 int type,
                                  char *start,
                                  char *top,
                                  fim_tmp_file **file,
                                  int storage) {
     check_expected_ptr(fim_sql);
+    check_expected(type);
     check_expected(start);
     check_expected(top);
     check_expected(storage);
@@ -189,4 +211,40 @@ int __wrap_fim_db_sync_path_range(fdb_t *fim_sql,
     check_expected_ptr(fim_sql);
 
     return mock();
+}
+
+#ifndef WIN32
+fim_entry *__wrap_fim_db_get_entry_from_sync_msg(fdb_t *fim_sql,
+                                          __attribute__((unused)) fim_type type,
+                                          const char *path) {
+    check_expected_ptr(fim_sql);
+    check_expected(path);
+
+    return mock();
+}
+
+#else
+fim_entry *__wrap_fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const char *path) {
+    check_expected_ptr(fim_sql);
+    check_expected(type);
+    check_expected(path);
+
+    return mock_type(fim_entry *);
+}
+#endif
+
+int __wrap_fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **buffer) {
+    check_expected_ptr(file);
+    check_expected(storage);
+    check_expected(it);
+
+    *buffer = mock_type(char *);
+
+    return mock();
+
+}
+
+void __wrap_fim_db_clean_file(fim_tmp_file **file, int storage) {
+    check_expected_ptr(file);
+    check_expected(storage);
 }

@@ -178,16 +178,19 @@ endif()
 set(FIM_SYNC_BASE_FLAGS "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 \
                          -Wl,--wrap,_merror -Wl,--wrap,_mdebug2 -Wl,--wrap,queue_push_ex \
                          -Wl,--wrap,fim_db_get_row_path -Wl,--wrap,fim_db_get_data_checksum \
-                         -Wl,--wrap,dbsync_check_msg -Wl,--wrap,fim_send_sync_msg -Wl,--wrap,fim_db_get_count_range \
-                         -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_entry_json -Wl,--wrap,fim_db_get_checksum_range \
+                         -Wl,--wrap,dbsync_check_msg -Wl,--wrap,fim_db_get_count_range \
+                         -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_get_checksum_range \
                          -Wl,--wrap,dbsync_state_msg -Wl,--wrap,fim_db_sync_path_range \
-                         -Wl,--wrap,fim_db_get_path_range")
+                         -Wl,--wrap,fim_db_get_path_range -Wl,--wrap,fim_db_get_first_path \
+                         -Wl,--wrap,fim_db_get_last_path -Wl,--wrap,fim_db_get_entry_from_sync_msg \
+                         -Wl,--wrap,fim_db_read_line_from_file -Wl,--wrap,fim_db_clean_file \
+                         -Wl,--wrap,free_entry")
 
 list(APPEND syscheckd_tests_names "test_fim_sync")
 if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${FIM_SYNC_BASE_FLAGS} -Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock")
 else()
-  list(APPEND syscheckd_tests_flags "${FIM_SYNC_BASE_FLAGS} -Wl,--wrap,time")
+  list(APPEND syscheckd_tests_flags "${FIM_SYNC_BASE_FLAGS} -Wl,--wrap,time -Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock")
 endif()
 
 set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 \
