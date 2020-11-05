@@ -50,6 +50,10 @@ endif()
 list(APPEND shared_tests_names "test_time_op")
 list(APPEND shared_tests_flags " ")
 
+list(APPEND shared_tests_names "test_expression")
+list(APPEND shared_tests_flags "-Wl,--wrap,OS_IsValidIP -Wl,--wrap,OSMatch_Execute -Wl,--wrap,OSRegex_Compile \
+                                -Wl,--wrap,OSRegex_Execute -Wl,--wrap,OSRegex_Execute_ex -Wl,--wrap,OSMatch_Compile")
+
 if(${TARGET} STREQUAL "server")
 list(APPEND shared_tests_names "test_bzip2_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=fopen,--wrap=fread,--wrap=fclose,--wrap=fwrite,--wrap=BZ2_bzWriteOpen \

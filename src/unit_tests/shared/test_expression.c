@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <cmocka.h>
 
-#include "../../analysisd/expression.h"
+#include "../../shared/expression.h"
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/os_regex/os_regex_wrappers.h"

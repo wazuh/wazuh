@@ -14,7 +14,7 @@
 #define MAX_LAST_EVENTS 11
 
 #include "shared.h"
-#include "expression.h"
+#include "../shared/expression.h"
 #include "active-response.h"
 #include "lists.h"
 

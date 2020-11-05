@@ -14,6 +14,7 @@
 #define OS_RULESOP_H
 
 #include "shared.h"
+#include "../shared/expression.h"
 
 /* Event fields - stored on a u_int32_t */
 #define FIELD_DSTIP      0x01
@@ -76,6 +77,11 @@
 #define FTS_DATA        000020
 #define FTS_SYSTEMNAME  000040
 
+typedef struct _FieldInfo {
+    char *name;
+    w_expression_t *regex;
+} FieldInfo;
+
 typedef struct _RuleInfo {
     int sigid;  /* id attribute -- required */
     int level;  /* level attribute --required */
@@ -126,26 +132,32 @@ typedef struct _RuleInfo {
     void *(*event_search)(void *lf, void *rule, void *rule_match);
 
     char *group;
-    OSMatch *match;
-    OSRegex *regex;
+    w_expression_t *match;
+    w_expression_t *regex;
 
     /* Policy-based rules */
     char *day_time;
     char *week_day;
 
-    os_ip **srcip;
-    os_ip **dstip;
-    OSMatch *srcport;
-    OSMatch *dstport;
-    OSMatch *user;
-    OSMatch *url;
-    OSMatch *id;
-    OSMatch *status;
-    OSMatch *hostname;
-    OSMatch *program_name;
-    OSMatch *extra_data;
-    OSMatch *location;
-    char *action;
+    w_expression_t *srcip;
+    w_expression_t *dstip;
+    w_expression_t *srcport;
+    w_expression_t *dstport;
+    w_expression_t *srcgeoip;
+    w_expression_t *dstgeoip;
+    w_expression_t *user;
+    w_expression_t *url;
+    w_expression_t *id;
+    w_expression_t *status;
+    w_expression_t *hostname;
+    w_expression_t *program_name;
+    w_expression_t *extra_data;
+    w_expression_t *location;
+    w_expression_t *action;
+    w_expression_t *system_name;
+    w_expression_t *data;
+    w_expression_t *protocol;
+    FieldInfo **fields;
 
     char *comment; /* Description in the xml */
     char *info;

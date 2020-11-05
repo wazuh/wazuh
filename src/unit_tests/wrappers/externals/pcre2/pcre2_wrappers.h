@@ -14,7 +14,7 @@
 #define PCRE2_CODE_UNIT_WIDTH 8
 
 #include "../../../../external/libpcre2/include/pcre2.h"
-#include "../../../../analysisd/expression.h"
+#include "../../../../shared/expression.h"
 
 #undef pcre2_match_data_create_from_pattern
 #define pcre2_match_data_create_from_pattern wrap_pcre2_match_data_create_from_pattern
