@@ -9,6 +9,10 @@
 
 #include "wm_agent_upgrade_agent_wrappers.h"
 
+#ifdef WIN32
+extern void wm_agent_upgrade_listen_messages();
+#endif
+
 void __wrap_wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config) {
     // This methods should also be wrapped
     wm_agent_upgrade_listen_messages();

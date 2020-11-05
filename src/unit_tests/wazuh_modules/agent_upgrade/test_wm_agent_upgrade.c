@@ -142,10 +142,12 @@ void test_wm_agent_upgrade_main_disabled(void **state)
 
     config->enabled = 0;
 
+    #ifdef TEST_SERVER
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "(8152): Module Agent Upgrade disabled. Exiting...");
 
     will_return(__wrap_pthread_exit, OS_INVALID);
+    #endif
 
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "(8153): Module Agent Upgrade started.");

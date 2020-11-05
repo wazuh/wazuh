@@ -11,6 +11,11 @@
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
 #define STATIC
+
+#ifdef WIN32
+#include "unit_tests/wrappers/windows/io_wrappers.h"
+#endif
+
 #else
 #define STATIC static
 #endif
@@ -462,7 +467,7 @@ STATIC int _unsign(const char * source, char dest[PATH_MAX + 1]) {
         output = -1;
     }
 
-    if (w_wpk_unsign(source_j, dest, (const char **)wcom_ca_store) < 0) {
+    if ((output == 0) && w_wpk_unsign(source_j, dest, (const char **)wcom_ca_store) < 0) {
         unlink(dest);
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNSIGN_FILE_ERROR, "unsign()", source_j);
         output = -1;

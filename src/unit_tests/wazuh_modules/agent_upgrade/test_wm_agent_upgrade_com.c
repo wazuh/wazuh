@@ -180,6 +180,31 @@ void test_unsign_temp_file_fail(void **state) {
     will_return(__wrap_w_ref_parent_folder, 0);
 
 #ifdef TEST_WINAGENT
+    will_return(wrap_mktemp_s, 1);
+#else
+    will_return(__wrap_mkstemp, -1);
+#endif
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8138): At unsign(): Could not create temporary compressed file.");
+
+    expect_any(__wrap_unlink, file);
+    will_return(__wrap_unlink, 0);
+
+    int ret = _unsign(source, finalpath);
+    assert_int_equal(ret, -1);
+}
+
+void test_unsign_wpk_using_fail(void **state) {
+    char finalpath[PATH_MAX + 1];
+    char *source =  *state;
+
+    expect_string(__wrap_w_ref_parent_folder, path, source);
+    will_return(__wrap_w_ref_parent_folder, 0);
+    expect_string(__wrap_w_ref_parent_folder, path, source);
+    will_return(__wrap_w_ref_parent_folder, 0);
+
+#ifdef TEST_WINAGENT
+    will_return(wrap_mktemp_s,  NULL);
     expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_filename");
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8139): At unsign(): Could not unsign package file 'incoming\\test_filename'");
@@ -200,6 +225,29 @@ void test_unsign_temp_file_fail(void **state) {
     assert_int_equal(ret, -1);
 }
 
+void test_unsign_temp_chmod_fail(void **state) {
+    char finalpath[PATH_MAX + 1];
+    char *source =  *state;
+
+    expect_string(__wrap_w_ref_parent_folder, path, source);
+    will_return(__wrap_w_ref_parent_folder, 0);
+    expect_string(__wrap_w_ref_parent_folder, path, source);
+    will_return(__wrap_w_ref_parent_folder, 0);
+
+    will_return(__wrap_mkstemp, 8);
+    expect_any(__wrap_chmod, path);
+    will_return(__wrap_chmod, -1);
+
+    expect_any_count(__wrap_unlink, file, 2);
+    will_return_count(__wrap_unlink, 0, 2);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8134): At unsign(): Could not chmod '/var/ossec/tmp/test_filename.gz.XXXXXX'");
+
+    int ret = _unsign(source, finalpath);
+    assert_int_equal(ret, -1);
+}
+
 void test_unsign_success(void **state) {
     char finalpath[PATH_MAX + 1];
     char *source =  *state;
@@ -210,6 +258,7 @@ void test_unsign_success(void **state) {
     will_return(__wrap_w_ref_parent_folder, 0);
 
 #ifdef TEST_WINAGENT
+    will_return(wrap_mktemp_s,  NULL);
     expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_filename");
 #else
     expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_filename");
@@ -824,6 +873,7 @@ void test_wm_agent_upgrade_com_upgrade_uncompress_error(void **state) {
         will_return(__wrap_w_ref_parent_folder, 0);
 
         #ifdef TEST_WINAGENT
+            will_return(wrap_mktemp_s,  NULL);
             expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
         #else
             expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_file");
@@ -872,6 +922,7 @@ void test_wm_agent_upgrade_com_upgrade_clean_directory_error(void **state) {
         will_return(__wrap_w_ref_parent_folder, 0);
 
         #ifdef TEST_WINAGENT
+            will_return(wrap_mktemp_s,  NULL);
             expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
         #else
             expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_file");
@@ -942,6 +993,7 @@ void test_wm_agent_upgrade_com_unmerge_error(void **state) {
         will_return(__wrap_w_ref_parent_folder, 0);
 
         #ifdef TEST_WINAGENT
+            will_return(wrap_mktemp_s,  NULL);
             expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
         #else
             expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_file");
@@ -1019,6 +1071,7 @@ void test_wm_agent_upgrade_com_installer_error(void **state) {
         will_return(__wrap_w_ref_parent_folder, 0);
 
         #ifdef TEST_WINAGENT
+            will_return(wrap_mktemp_s,  NULL);
             expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
         #else
             expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_file");
@@ -1099,6 +1152,7 @@ void test_wm_agent_upgrade_com_chmod_error(void **state) {
         will_return(__wrap_w_ref_parent_folder, 0);
 
         #ifdef TEST_WINAGENT
+            will_return(wrap_mktemp_s,  NULL);
             expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
         #else
             expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_file");
@@ -1185,6 +1239,7 @@ void test_wm_agent_upgrade_com_execute_error(void **state) {
         will_return(__wrap_w_ref_parent_folder, 0);
 
         #ifdef TEST_WINAGENT
+            will_return(wrap_mktemp_s,  NULL);
             expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
         #else
             expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_file");
@@ -1288,6 +1343,7 @@ void test_wm_agent_upgrade_com_success(void **state) {
         will_return(__wrap_w_ref_parent_folder, 0);
 
         #ifdef TEST_WINAGENT
+            will_return(wrap_mktemp_s,  NULL);
             expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
         #else
             expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_file");
@@ -1423,6 +1479,7 @@ int teardown_process(void **state) {
     char *buffer = *state;
     os_free(buffer);
     allow_upgrades = true;
+    test_mode = 0;
     return 0;
 }
 
@@ -1675,6 +1732,7 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state) {
             will_return(__wrap_w_ref_parent_folder, 0);
 
             #ifdef TEST_WINAGENT
+                will_return(wrap_mktemp_s,  NULL);
                 expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
             #else
                 expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_file");
@@ -1797,6 +1855,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_unsign_invalid_source_len, setup_jailfile_long_name, teardown_jailfile),
         #endif
         cmocka_unit_test_setup_teardown(test_unsign_temp_file_fail, setup_jailfile, teardown_jailfile),
+        cmocka_unit_test_setup_teardown(test_unsign_wpk_using_fail, setup_jailfile, teardown_jailfile),
+        #ifndef TEST_WINAGENT
+        cmocka_unit_test_setup_teardown(test_unsign_temp_chmod_fail, setup_jailfile, teardown_jailfile),
+        #endif
         cmocka_unit_test_setup_teardown(test_unsign_success, setup_jailfile, teardown_jailfile),
         cmocka_unit_test_setup_teardown(test_uncompress_invalid_filename, setup_jailfile, teardown_jailfile),
         cmocka_unit_test_setup_teardown(test_uncompress_invalid_file_len, setup_jailfile_long_name2, teardown_jailfile),
