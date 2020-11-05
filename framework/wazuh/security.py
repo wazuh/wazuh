@@ -37,7 +37,7 @@ def get_user_me(token):
     result = AffectedItemsWazuhResult(all_msg='Current user information was returned')
     affected_items = list()
     with AuthenticationManager() as auth:
-        user_info = auth.get_user(token['iss'])
+        user_info = auth.get_user(token['sub'])
         user_info['roles'] = list()
     roles = token['rbac_roles']
     for role in roles:
