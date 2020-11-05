@@ -53,6 +53,7 @@ int setup_monitord(void **state) {
     mond.day_wait = 0;
     mond.rotate_log = 1;
     mond.size_rotate = 0;
+    mond.monitor_agents = 0;
 
     mond_time_control.disconnect_counter = 0;
     mond_time_control.alert_counter = 0;
@@ -75,6 +76,7 @@ int teardown_monitord(void **state) {
     mond.day_wait = 0;
     mond.rotate_log = 1;
     mond.size_rotate = 0;
+    mond.monitor_agents = 0;
 
     mond_time_control.disconnect_counter = 0;
     mond_time_control.alert_counter = 0;
@@ -227,6 +229,7 @@ void test_monitor_agents_disconnection(void **state) {
     agents_array_test[2] = -1;
 
     mond.global.agents_disconnection_time = 100;
+    mond.monitor_agents = 1;
 
     expect_value(__wrap_wdb_disconnect_agents, keepalive, last_keepalive - mond.global.agents_disconnection_time);
     will_return(__wrap_wdb_disconnect_agents, agents_array_test);
