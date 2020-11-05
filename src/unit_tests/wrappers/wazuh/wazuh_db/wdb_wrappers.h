@@ -61,8 +61,6 @@ void __wrap_wdb_leave(wdb_t *wdb);
 
 int __wrap_wdb_sql_exec(wdb_t *wdb, const char *sql_exec);
 
-cJSON* __wrap_wdb_get_agent_info(int id);
-
 wdb_t* __wrap_wdb_init(sqlite3* db, const char* id);
 
 int __wrap_wdb_close(wdb_t * wdb, bool commit);
