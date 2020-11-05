@@ -146,6 +146,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define CLUSTER_SOCK "/queue/cluster/c-internal.sock"
 #define CONTROL_SOCK "/queue/ossec/control"
 
+// Tasks socket
+#define TASK_QUEUE "/queue/tasks/task"
+
 // Absolute path local requests socket
 #define CONTROL_SOCK_PATH DEFAULTDIR CONTROL_SOCK
 
@@ -163,6 +166,13 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 #define WM_KEY_REQUEST_SOCK "/queue/ossec/krequest"
 #define WM_KEY_REQUEST_SOCK_PATH DEFAULTDIR WM_KEY_REQUEST_SOCK
+
+// Tasks socket
+#define WM_UPGRADE_SOCK "/queue/tasks/upgrade"
+#define WM_UPGRADE_SOCK_PATH DEFAULTDIR WM_UPGRADE_SOCK
+
+#define WM_TASK_MODULE_SOCK "/queue/tasks/task"
+#define WM_TASK_MODULE_SOCK_PATH DEFAULTDIR WM_TASK_MODULE_SOCK
 
 /* Active Response files */
 #define DEFAULTAR_FILE  "ar.conf"

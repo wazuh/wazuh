@@ -54,7 +54,8 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *ossca = "sca";                          /* Security Configuration Assessment */
     const char *osvulndet = "vulnerability-detector";   /* Vulnerability Detector Config */
     const char *osgcp = "gcp-pubsub";                   /* Google Cloud - Wazuh Module */
-
+    const char *agent_upgrade = "agent-upgrade";        /* Agent Upgrade Module */
+    const char *task_manager = "task-manager";          /* Task Manager Module */
 #ifndef WIN32
     const char *osfluent_forward = "fluent-forward";     /* Fluent forwarder */
 #endif
@@ -186,6 +187,18 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CSOCKET) && (Read_Socket(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
+        } else if (chld_node && (strcmp(node[i]->element, agent_upgrade) == 0)) {
+            if ((modules & CWMODULE) && (Read_AgentUpgrade(xml, node[i], d1) < 0)) {
+                goto fail;
+            }
+        } else if (chld_node && (strcmp(node[i]->element, task_manager) == 0)) {
+            #if !defined(WIN32) && !defined(CLIENT)  
+                if ((modules & CWMODULE) && (Read_TaskManager(xml, node[i], d1) < 0)) {
+                    goto fail;
+                }
+            #else
+                mwarn("%s configuration is only set in the manager.", node[i]->element);
+            #endif
         } else {
             merror(XML_INVELEM, node[i]->element);
             goto fail;

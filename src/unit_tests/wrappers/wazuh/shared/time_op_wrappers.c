@@ -22,3 +22,9 @@ void __wrap_w_sleep_until(const time_t new_time){
 void __wrap_w_time_delay(unsigned long int msec){
     current_time += (msec/1000);
 }
+
+char* __wrap_w_get_timestamp(time_t time) {
+    check_expected(time);
+
+    return mock_type(char*);
+}

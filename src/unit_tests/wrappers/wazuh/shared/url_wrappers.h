@@ -13,4 +13,6 @@
 
 int __wrap_wurl_request(const char * url, const char * dest, const char *header, const char *data, const long timeout);
 
+char* __wrap_wurl_http_get(const char * url);
+
 #endif

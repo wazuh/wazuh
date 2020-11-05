@@ -17,6 +17,8 @@ void __wrap_w_sleep_until(const time_t new_time);
 
 void __wrap_w_time_delay(unsigned long int msec);
 
+char* __wrap_w_get_timestamp(time_t time);
+
 extern time_t current_time;
 
 #endif

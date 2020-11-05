@@ -923,6 +923,9 @@ InstallLocal()
     ${INSTALL} -d -m 0440 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/vulnerabilities/dictionaries
     ${INSTALL} -m 0440 -o root -g ${OSSEC_GROUP} wazuh_modules/vulnerability_detector/cpe_helper.json ${PREFIX}/queue/vulnerabilities/dictionaries
 
+    # Install Task Manager files
+    ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/tasks
+
     ### Install Python
     ${MAKEBIN} wpython PREFIX=${PREFIX} TARGET=${INSTYPE}
 

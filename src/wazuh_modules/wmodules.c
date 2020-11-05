@@ -21,6 +21,28 @@ int wm_kill_timeout;        // Time for a process to quit before killing it
 int wm_debug_level;
 
 
+/**
+ * List of modules that will be initialized by default
+ * last position should be NULL
+ * */
+static const void *default_modules[] = {
+    wm_agent_upgrade_read,
+#ifndef CLIENT
+    wm_task_manager_read,
+#endif
+    NULL
+};
+
+/**
+ * Initializes the default wmodules (will be enabled even if the wodle section for that module)
+ * is not defined
+ * @param wmodules pointer to wmodules array structure
+ * @return a status flag
+ * @retval OS_SUCCESS if all reading methods are executed successfully
+ * @retval OS_INVALID if there is an error
+ * */
+static int wm_initialize_default_modules(wmodule **wmodules);
+
 // Read XML configuration and internal options
 
 int wm_config() {
@@ -32,6 +54,11 @@ int wm_config() {
     wm_task_nice = getDefine_Int("wazuh_modules", "task_nice", -20, 19);
     wm_max_eps = getDefine_Int("wazuh_modules", "max_eps", 1, 1000);
     wm_kill_timeout = getDefine_Int("wazuh_modules", "kill_timeout", 0, 3600);
+
+    if(wm_initialize_default_modules(&wmodules) < 0) {
+        return OS_INVALID;
+    }
+
 
     // Read configuration: ossec.conf
 
@@ -472,3 +499,28 @@ void freegate(gateway *gate){
     os_free(gate);
 }
 #endif
+
+static int wm_initialize_default_modules(wmodule **wmodules) {
+    wmodule *cur_wmodule = *wmodules;
+    int i=0;
+    while (default_modules[i]) {
+        if(!cur_wmodule) {
+            *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
+        } else {
+            os_calloc(1, sizeof(wmodule), cur_wmodule->next);
+            cur_wmodule = cur_wmodule->next;
+            if (!cur_wmodule) {
+                merror(MEM_ERROR, errno, strerror(errno));
+                return (OS_INVALID);
+            }
+        }
+        // Point to read function
+        int (*function_ptr)(xml_node **nodes, wmodule *module) = default_modules[i];
+        
+        if(function_ptr(NULL, cur_wmodule) == OS_INVALID) {
+            return OS_INVALID;
+        }
+        i++;
+    }
+    return OS_SUCCESS;
+}

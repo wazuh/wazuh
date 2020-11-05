@@ -40,3 +40,9 @@ int __wrap_wurl_request(const char * url,
 
     return mock();
 }
+
+char* __wrap_wurl_http_get(const char * url) {
+    check_expected(url);
+
+    return mock_type(char *);
+}
