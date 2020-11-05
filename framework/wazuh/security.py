@@ -22,8 +22,13 @@ from wazuh.rbac.orm import SecurityError
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$')
 
 
-def get_user_me():
+def get_user_me(token):
     """Get the information of the current user
+
+    Parameters
+    ----------
+    token : dict
+        Current token information
 
     Returns
     -------
@@ -32,23 +37,25 @@ def get_user_me():
     result = AffectedItemsWazuhResult(all_msg='Current user information was returned')
     affected_items = list()
     with AuthenticationManager() as auth:
-        user = auth.get_user(common.current_user.get())
-        for index, role_id in enumerate(user['roles']):
-            with RolesManager() as rm:
-                role = rm.get_role_id(role_id=int(role_id))
-                role.pop('users')
-                for index_r, rule_id in enumerate(role['rules']):
-                    with RulesManager() as rum:
-                        role['rules'][index_r] = rum.get_rule(rule_id=int(rule_id))
-                        role['rules'][index_r].pop('roles')
-                for index_p, policy_id in enumerate(role['policies']):
-                    with PoliciesManager() as pm:
-                        role['policies'][index_p] = pm.get_policy_id(policy_id=int(policy_id))
-                        role['policies'][index_p].pop('roles')
-                user['roles'][index] = role
-        affected_items.append(user) if user else result.add_failed_item(id_=common.current_user.get(),
-                                                                        error=WazuhError(5001))
+        user_info = auth.get_user(token['iss'])
+        user_info['roles'] = list()
+    roles = token['rbac_roles']
+    for role in roles:
+        with RolesManager() as rm:
+            role = rm.get_role_id(role_id=role)
+            role.pop('users')
+            for index_r, rule_id in enumerate(role['rules']):
+                with RulesManager() as rum:
+                    role['rules'][index_r] = rum.get_rule(rule_id=int(rule_id))
+                    role['rules'][index_r].pop('roles')
+            for index_p, policy_id in enumerate(role['policies']):
+                with PoliciesManager() as pm:
+                    role['policies'][index_p] = pm.get_policy_id(policy_id=int(policy_id))
+                    role['policies'][index_p].pop('roles')
+            user_info['roles'].append(role)
 
+    affected_items.append(user_info) if user_info else result.add_failed_item(id_=common.current_user.get(),
+                                                                              error=WazuhError(5001))
     data = process_array(affected_items)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
