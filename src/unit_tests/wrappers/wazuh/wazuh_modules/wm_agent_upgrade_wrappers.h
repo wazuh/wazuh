@@ -47,7 +47,7 @@ bool __wrap_wm_agent_upgrade_validate_task_status_message(const cJSON *input_jso
 
 int __wrap_wm_agent_upgrade_validate_id(int agent_id);
 
-int __wrap_wm_agent_upgrade_validate_status(int last_keep_alive);
+int __wrap_wm_agent_upgrade_validate_status(const char* connection_status);
 
 int __wrap_wm_agent_upgrade_validate_version(const wm_agent_info *agent_info, void *task, wm_upgrade_command command, const wm_manager_configs* manager_configs);
 

@@ -138,8 +138,8 @@ int __wrap_wm_agent_upgrade_validate_id(int agent_id) {
     return mock();
 }
 
-int __wrap_wm_agent_upgrade_validate_status(int last_keep_alive) {
-    check_expected(last_keep_alive);
+int __wrap_wm_agent_upgrade_validate_status(const char* connection_status) {
+    check_expected(connection_status);
 
     return mock();
 }
