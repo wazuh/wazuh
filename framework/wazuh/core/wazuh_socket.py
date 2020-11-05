@@ -269,8 +269,11 @@ async def wazuh_sendsync(daemon_name=None, message=None, wait_for_response=True)
         if isinstance(message, dict):
             message = dumps(message)
         sock.send(msg_bytes=message.encode(), header_format=daemons[daemon_name]['header_format'])
-        data = sock.receive(header_format=daemons[daemon_name]['header_format'],
-                            header_size=daemons[daemon_name]['size']).decode()
+        if wait_for_response:
+            data = sock.receive(header_format=daemons[daemon_name]['header_format'],
+                                header_size=daemons[daemon_name]['size'])
+        else:
+            data = b'ok'
         sock.close()
     except WazuhException as e:
         raise e
