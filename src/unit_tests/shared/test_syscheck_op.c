@@ -3822,9 +3822,9 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_setup_teardown(test_unescape_syscheck_empty_string, setup_unescape_syscheck_field, teardown_unescape_syscheck_field),
 
         /* get_user tests */
-        // cmocka_unit_test_teardown(test_get_user_success, teardown_string),
-        // cmocka_unit_test_teardown(test_get_user_uid_not_found, teardown_string),
-        // cmocka_unit_test_teardown(test_get_user_error, teardown_string),
+        cmocka_unit_test_teardown(test_get_user_success, teardown_string),
+        cmocka_unit_test_teardown(test_get_user_uid_not_found, teardown_string),
+        cmocka_unit_test_teardown(test_get_user_error, teardown_string),
 
         /* get_group tests */
         cmocka_unit_test(test_get_group_success),
