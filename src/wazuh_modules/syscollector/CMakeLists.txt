@@ -30,6 +30,7 @@ include_directories(${SRC_FOLDER}/external/procps/)
 include_directories(${SRC_FOLDER}/external/bzip2/)
 include_directories(${SRC_FOLDER}/shared_modules/utils)
 include_directories(${CMAKE_SOURCE_DIR}/)
+include_directories(${CMAKE_SOURCE_DIR}/sysOsInfo/)
 
 link_directories(${SRC_FOLDER}/external/sqlite/)
 link_directories(${SRC_FOLDER}/external/cJSON/)
@@ -38,28 +39,29 @@ link_directories(${SRC_FOLDER}/external/bzip2/)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   file(GLOB SYSCOLLECTOR_SRC
-      "${CMAKE_SOURCE_DIR}/*Win.cpp")
+      "${CMAKE_SOURCE_DIR}/*Win.cpp"
+      "${CMAKE_SOURCE_DIR}/sysOsInfo/sysOsInfoWin.cpp")
   add_definitions(-DWIN32=1)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   file(GLOB SYSCOLLECTOR_SRC
       "${CMAKE_SOURCE_DIR}/*Linux.cpp"
-      "${CMAKE_SOURCE_DIR}/sysOsParsers.cpp")
+      "${CMAKE_SOURCE_DIR}/sysOsInfo/sysOsParsers.cpp")
 else()
   if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     file(GLOB SYSCOLLECTOR_SRC
         "${CMAKE_SOURCE_DIR}/*Mac.cpp"
         "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp"
-        "${CMAKE_SOURCE_DIR}/sysOsParsers.cpp")
+        "${CMAKE_SOURCE_DIR}/sysOsInfo/sysOsParsers.cpp")
   elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
     file(GLOB SYSCOLLECTOR_SRC
         "${CMAKE_SOURCE_DIR}/*FreeBSD.cpp"
         "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp"
-        "${CMAKE_SOURCE_DIR}/sysOsParsers.cpp")
+        "${CMAKE_SOURCE_DIR}/sysOsInfo/sysOsParsers.cpp")
   elseif(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
     file(GLOB SYSCOLLECTOR_SRC
         "${CMAKE_SOURCE_DIR}/*OpenBSD.cpp"
         "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp"
-        "${CMAKE_SOURCE_DIR}/sysOsParsers.cpp")
+        "${CMAKE_SOURCE_DIR}/sysOsInfo/sysOsParsers.cpp")
   endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
@@ -85,6 +87,13 @@ endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
     COMMAND ${CMAKE_COMMAND} -E copy
     ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/syscollector.dir/*.o*
     ${CMAKE_SOURCE_DIR}/
+    DEPENDS syscollector
+    )
+
+add_custom_target(copy-files-sysosinfo ALL
+    COMMAND ${CMAKE_COMMAND} -E copy
+    ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/syscollector.dir/sysOsInfo/*.o*
+    ${CMAKE_SOURCE_DIR}/sysOsInfo/
     DEPENDS syscollector
     )
 

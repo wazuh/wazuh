@@ -9,7 +9,7 @@ file(GLOB sysinfo_UNIT_TEST_SRC
 
 file(GLOB SYSINFO_SRC
     "${CMAKE_SOURCE_DIR}/sysInfo.cpp"
-    "${CMAKE_SOURCE_DIR}/sysOsParsers.cpp")
+    "${CMAKE_SOURCE_DIR}/sysOsInfo/sysOsParsers.cpp")
 
 add_executable(sysinfo_unit_test 
     ${sysinfo_UNIT_TEST_SRC}

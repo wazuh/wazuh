@@ -25,6 +25,7 @@
 #include "registryHelper.h"
 #include "defs.h"
 #include "debug_op.h"
+#include "sysOsInfoWin.h"
 
 constexpr auto BASEBOARD_INFORMATION_TYPE{2};
 constexpr auto CENTRAL_PROCESSOR_REGISTRY{"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
@@ -611,6 +612,11 @@ nlohmann::json SysInfo::getPackages() const
 
 nlohmann::json SysInfo::getOsInfo() const
 {
-    // Currently not supported for this OS
-    return {};
+    nlohmann::json ret;
+    const std::shared_ptr<ISysOsInfoProvider> spOsInfoProvider
+    {
+        new SysOsInfoProviderWindows
+    };
+    SysOsInfo::setOsInfo(spOsInfoProvider, ret);
+    return ret;
 }

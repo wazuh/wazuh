@@ -8,6 +8,7 @@ include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/rsync/include/)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
+include_directories(${CMAKE_SOURCE_DIR}/sysOsInfo/)
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
 link_directories(${SRC_FOLDER}/shared_modules/rsync/build/lib)
 
@@ -20,28 +21,29 @@ set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virt
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     file(GLOB SYSCOLLECTOR_TESTTOOL_SRC
-        "${CMAKE_SOURCE_DIR}/*Win.cpp")
+        "${CMAKE_SOURCE_DIR}/*Win.cpp"
+        "${CMAKE_SOURCE_DIR}/sysOsInfo/sysOsInfoWin.cpp")
     add_definitions(-DWIN32=1)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   file(GLOB SYSCOLLECTOR_TESTTOOL_SRC
       "${CMAKE_SOURCE_DIR}/*Linux.cpp"
-      "${CMAKE_SOURCE_DIR}/sysOsParsers.cpp")
+      "${CMAKE_SOURCE_DIR}/sysOsInfo/sysOsParsers.cpp")
 else()
   if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     file(GLOB SYSCOLLECTOR_TESTTOOL_SRC
         "${CMAKE_SOURCE_DIR}/*Mac.cpp"
         "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp"
-        "${CMAKE_SOURCE_DIR}/sysOsParsers.cpp")
+        "${CMAKE_SOURCE_DIR}/sysOsInfo/sysOsParsers.cpp")
   elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
     file(GLOB SYSCOLLECTOR_TESTTOOL_SRC
         "${CMAKE_SOURCE_DIR}/*FreeBSD.cpp"
         "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp"
-        "${CMAKE_SOURCE_DIR}/sysOsParsers.cpp")
+        "${CMAKE_SOURCE_DIR}/sysOsInfo/sysOsParsers.cpp")
   elseif(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
     file(GLOB SYSCOLLECTOR_TESTTOOL_SRC
         "${CMAKE_SOURCE_DIR}/*OpenBSD.cpp"
         "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp"
-        "${CMAKE_SOURCE_DIR}/sysOsParsers.cpp")
+        "${CMAKE_SOURCE_DIR}/sysOsInfo/sysOsParsers.cpp")
   endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
