@@ -30,9 +30,18 @@ static std::string getVersion(const bool isMinor = false)
         }
         else
         {
+            enum OS_VERSION
+            {
+                MAJOR_VERSION,
+                MINOR_VERSION,
+                MAX_VERSION
+            };
             const auto fullVersion{currentVersion.string("CurrentVersion")};
             const auto majorAndMinor{Utils::split(fullVersion, '.')};
-            version = isMinor ? majorAndMinor[1] : majorAndMinor[0];
+            if (majorAndMinor.size() == MAX_VERSION)
+            {
+                version = isMinor ? majorAndMinor[MINOR_VERSION] : majorAndMinor[MAJOR_VERSION];
+            }
         }
     }
     else
@@ -192,16 +201,20 @@ static std::string getName()
 
 static std::string getMachine()
 {
+    static const std::map<std::string, std::string> ARCH_MAP
+    {
+        {"AMD64",   "x86_64"},
+        {"IA64",    "x86_64"},
+        {"ARM64",   "x86_64"},
+        {"x86",     "i686"},
+    };
     std::string machine{"unknown"};
     Utils::Registry environment{HKEY_LOCAL_MACHINE, R"(System\CurrentControlSet\Control\Session Manager\Environment)"};
     const auto arch{environment.string("PROCESSOR_ARCHITECTURE")};
-    if (arch == "AMD64" || arch == "IA64" || arch == "ARM64")
+    const auto it{ARCH_MAP.find(arch)};
+    if (it != ARCH_MAP.end())
     {
-        machine = "x86_64";
-    }
-    else if(arch == "x86")
-    {
-        machine = "i686";
+        machine = it->second;
     }
     return machine;
 }

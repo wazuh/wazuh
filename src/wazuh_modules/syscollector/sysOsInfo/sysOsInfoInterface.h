@@ -19,6 +19,7 @@
 class ISysOsInfoProvider
 {
 public:
+    // LCOV_EXCL_START
     virtual ~ISysOsInfoProvider() = default;
     virtual std::string name() const = 0;
     virtual std::string version() const = 0;
@@ -28,6 +29,7 @@ public:
     virtual std::string release() const = 0;
     virtual std::string machine() const = 0;
     virtual std::string nodeName() const = 0;
+    // LCOV_EXCL_STOP
 };
 
 

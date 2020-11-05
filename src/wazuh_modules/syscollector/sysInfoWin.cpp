@@ -605,9 +605,9 @@ nlohmann::json SysInfo::getPackages() const
 nlohmann::json SysInfo::getOsInfo() const
 {
     nlohmann::json ret;
-    const std::shared_ptr<ISysOsInfoProvider> spOsInfoProvider
+    const auto spOsInfoProvider
     {
-        new SysOsInfoProviderWindows
+        std::make_shared<SysOsInfoProviderWindows>()
     };
     SysOsInfo::setOsInfo(spOsInfoProvider, ret);
     return ret;
