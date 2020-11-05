@@ -107,7 +107,7 @@ typedef struct _wm_agent_info {
     char *minor_version;         ///> OS minor version of the agent
     char *architecture;          ///> architecture of the agent
     char *wazuh_version;         ///> wazuh version of the agent
-    int last_keep_alive;         ///> last_keep_alive of the agent
+    char *connection_status;     ///> connection_status of the agent
 } wm_agent_info;
 
 /**
@@ -121,7 +121,7 @@ typedef struct _wm_agent_task {
 extern const char* upgrade_error_codes[];
 
 /**
- * Start listening loop, exits only on error 
+ * Start listening loop, exits only on error
  * @param timeout_sec timeout in seconds
  * @param manager_configs manager configuration parameters
  * @return only on errors, socket will be closed
