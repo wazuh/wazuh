@@ -733,7 +733,7 @@ endif
 #### libplist ##########
 
 ${LIBPLIST_LIB}:
-	cd ${EXTERNAL_LIBPLIST} && ./autogen.sh --prefix=${PWD}/${EXTERNAL_LIBPLIST}bin && ${MAKE} && ${MAKE} install
+	cd ${EXTERNAL_LIBPLIST} && ./autogen.sh --prefix=${ROUTE_PATH}/${EXTERNAL_LIBPLIST}bin && ${MAKE} && ${MAKE} install
 
 #### libffi ##########
 
