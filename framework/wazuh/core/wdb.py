@@ -224,7 +224,7 @@ class WazuhDBConnection:
 
         # if the query has already a parameter limit / offset, divide using it
         offset = 0
-        if 'offset' in query_without_where:
+        if re.search(r'offset \d+', query_without_where):
             offset = int(re.compile(r".* offset (\d+)").match(query_lower).group(1))
             # Replace offset with a wildcard
             query_lower = query_lower.replace(" offset {}".format(offset), " :offset")
@@ -256,6 +256,11 @@ class WazuhDBConnection:
 
             response = []
             step = limit if limit < self.request_slice and limit > 0 else self.request_slice
+            if ':limit' not in query_lower:
+                query_lower += ' :limit'
+            if ':offset' not in query_lower:
+                query_lower += ' :offset'
+
             try:
                 for off in range(offset, limit + offset, step):
                     send_request_to_wdb(query_lower, step, off, response)

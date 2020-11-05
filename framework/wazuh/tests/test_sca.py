@@ -223,6 +223,6 @@ def test_sca_response_without_result(mock_agent, mock_sca_agent):
     """
     with patch('wazuh.core.sca.WazuhDBBackend') as mock_wdb:
         mock_wdb.return_value.connect_to_db.return_value.execute.side_effect = get_fake_sca_data
-        with patch('wazuh.core.sca.WazuhDBQuerySCACheck.run', return_value={}):
+        with patch('wazuh.core.sca.WazuhDBQuerySCA.run', return_value={}):
             with pytest.raises(exception.WazuhException, match=".* 2007 .*"):
                 get_sca_checks('not_exists', agent_list=['000'])
