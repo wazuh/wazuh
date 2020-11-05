@@ -153,9 +153,11 @@ def files(agent_list=None, offset=0, limit=common.database_limit, sort=None, sea
     """
     if filters is None:
         filters = {}
-    parameters = {"date": "date", "mtime": "mtime", "file": "file", "size": "size", "perm": "perm", "uname": "uname",
-                  "gname": "gname", "md5": "md5", "sha1": "sha1", "sha256": "sha256", "inode": "inode", "gid": "gid",
-                  "uid": "uid", "type": "type", "changes": "changes", "attributes": "attributes"}
+    parameters = {"date": "date", "arch": "arch", "value_type": "value_type", "value_name": "value_name",
+                  "mtime": "mtime", "file": "file", "size": "size", "perm": "perm",
+                  "uname": "uname", "gname": "gname", "md5": "md5", "sha1": "sha1", "sha256": "sha256",
+                  "inode": "inode", "gid": "gid", "uid": "uid", "type": "type", "changes": "changes",
+                  "attributes": "attributes"}
     summary_parameters = {"date": "date", "mtime": "mtime", "file": "file"}
     result = AffectedItemsWazuhResult(all_msg='FIM findings of the agent were returned',
                                       none_msg='No FIM information was returned')
