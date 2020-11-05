@@ -8,6 +8,7 @@ get_rbac_actions:
           Access agents information (id, name, group, last keep alive, etc)
         resources:
           - "agent:id"
+          - "agent:group"
         example:
           actions:
             - agent:read
@@ -23,11 +24,13 @@ get_rbac_actions:
         description: Change the group of agents
         resources:
           - "agent:id"
+          - "agent:group"
         example:
           actions:
             - agent:modify_group
           resources:
-            - agent:id:*
+            - agent:id:004
+            - agent:group:us-east
           effect: allow
         related_endpoints:
           - DELETE /agents/{agent_id}/group
@@ -53,11 +56,13 @@ get_rbac_actions:
         description: Execute active response commands in the agents
         resources:
           - agent:id
+          - agent:group
         example:
           actions:
             - active-response:command
           resources:
             - agent:id:001
+            - agent:group:atlantic
           effect: allow
         related_endpoints:
           - PUT /active-response
@@ -65,11 +70,13 @@ get_rbac_actions:
         description: Delete agents
         resources:
           - agent:id
+          - agent:group
         example:
           actions:
             - agent:delete
           resources:
             - agent:id:010
+            - agent:group:pacific
           effect: allow
         related_endpoints:
           - DELETE /agents
@@ -77,6 +84,7 @@ get_rbac_actions:
         description: Access agents information (id, name, group, last keep alive, etc)
         resources:
           - agent:id
+          - agent:group
         example:
           actions:
             - agent:read
@@ -113,11 +121,13 @@ get_rbac_actions:
         description: Change the group of agents
         resources:
           - agent:id
+          - agent:group
         example:
           actions:
             - agent:modify_group
           resources:
-            - agent:id:*
+            - agent:id:004
+            - agent:group:us-east
           effect: allow
         related_endpoints:
           - DELETE /agents/{agent_id}/group
@@ -147,6 +157,7 @@ get_rbac_actions:
         description: Restart agents
         resources:
           - agent:id
+          - agent:group
         example:
           actions:
             - agent:restart
@@ -163,11 +174,13 @@ get_rbac_actions:
         description: Upgrade the version of the agents
         resources:
           - agent:id
+          - agent:group
         example:
           actions:
             - agent:upgrade
           resources:
-            - agent:id:*
+            - agent:id:001
+            - agent:group:mediterranean
           effect: allow
         related_endpoints:
           - PUT /agents/{agent_id}/upgrade
@@ -264,12 +277,14 @@ get_rbac_actions:
         description: Access CIS-CAT results for agents
         resources:
           - agent:id
+          - agent:group
         example:
           actions:
             - ciscat:read
           resources:
             - agent:id:001
             - agent:id:003
+            - agent:group:default
           effect: deny
         related_endpoints:
           - GET /ciscat/{agent_id}/results
@@ -512,6 +527,7 @@ get_rbac_actions:
         description: Access agents security configuration assessment
         resources:
           - agent:id
+          - agent:group
         example:
           actions:
             - sca:read
@@ -525,6 +541,7 @@ get_rbac_actions:
         description: Run agents syscheck scan
         resources:
           - agent:id
+          - agent:group
         example:
           actions:
             - syscheck:run
@@ -537,11 +554,13 @@ get_rbac_actions:
         description: Access information from agents syscheck database
         resources:
           - agent:id
+          - agent:group
         example:
           actions:
             - syscheck:read
           resources:
             - agent:id:011
+            - agent:group:us-west
           effect: allow
         related_endpoints:
           - GET /syscheck/{agent_id}
@@ -550,6 +569,7 @@ get_rbac_actions:
         description: Clear the agents syscheck database
         resources:
           - agent:id
+          - agent:group
         example:
           actions:
             - syscheck:clear
@@ -578,6 +598,7 @@ get_rbac_actions:
         description: Access agents syscollector information
         resources:
           - agent:id
+          - agent:group
         example:
           actions:
             - syscollector:read
