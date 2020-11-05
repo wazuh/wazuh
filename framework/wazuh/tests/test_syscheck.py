@@ -20,6 +20,7 @@ with patch('wazuh.core.common.ossec_uid'):
         del sys.modules['wazuh.rbac.orm']
 
         from wazuh.tests.util import RBAC_bypasser
+
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.syscheck import run, clear, last_scan, files
         from wazuh.syscheck import AffectedItemsWazuhResult
@@ -191,7 +192,7 @@ def test_syscheck_clear_exception(execute_mock, wdb_init_mock, agent_list, expec
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch("wazuh.syscheck.WazuhDBConnection.execute", return_value=[{'end': '', 'start': ''}])
 @patch('socket.socket.connect')
-def test_syscheck_last_scan(socket_mock, wdb_conn_mock, is_file_mock,  db_mock, agent_id, wazuh_version):
+def test_syscheck_last_scan(socket_mock, wdb_conn_mock, is_file_mock, db_mock, agent_id, wazuh_version):
     """Test function `last_scan` from syscheck module.
 
     Parameters
@@ -239,7 +240,8 @@ def test_syscheck_last_scan_internal_error(glob_mock, version):
     (['001'], ['file', 'size', 'mtime'], None, False),
     (['001'], None, {'inode': '15470536'}, True),
     (['001'], ['file', 'size'], {'hash': '15470536'}, False),
-    (['001'], None, {'date': '2019-05-21 12:10:20'}, True)
+    (['001'], None, {'date': '2019-05-21 12:10:20'}, True),
+    (['001'], ['file', 'arch', 'value_type', 'value_name'], None, True)
 ])
 @patch('socket.socket.connect')
 @patch('wazuh.core.common.wdb_path', new=test_data_path)
@@ -257,7 +259,8 @@ def test_syscheck_files(socket_mock, agent_id, select, filters, distinct):
     distinct : bool
         True if all response items must be unique
     """
-    select_list = ['date', 'mtime', 'file', 'size', 'perm', 'uname', 'gname', 'md5', 'sha1', 'sha256', 'inode', 'gid', 'uid', 'type', 'changes', 'attributes']
+    select_list = ['date', 'mtime', 'file', 'size', 'perm', 'uname', 'gname', 'md5', 'sha1', 'sha256', 'inode', 'gid',
+                   'uid', 'type', 'changes', 'attributes', 'arch', 'value_type', 'value_name']
     with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_syscheck_test.sql')
         result = files(agent_id, select=select, filters=filters)
