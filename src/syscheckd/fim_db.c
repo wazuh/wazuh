@@ -571,7 +571,8 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
     void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
     int storage, void * alert, void * mode, void * w_evt) {
 
-    char line[PATH_MAX + 1];
+    char *line;
+    char path_length[OS_SIZE_32 + 1];
     char *path = NULL;
     int i = 0;
 
@@ -579,23 +580,31 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
         fseek(file->fd, SEEK_SET, 0);
     }
 
-    do {
+    for (i = 0; i < file->elements; i++) {
 
         if (storage == FIM_DB_DISK) {
+            /* First 32 bytes hold the path length includig the line break */
+            if (fgets(path_length, OS_SIZE_32 + 1, file->fd) == NULL) {
+                continue;
+            }
+
+            size_t len = atoi(path_length);
+            os_malloc(len + 1, line);
+
             /* fgets() adds \n(newline) to the end of the string,
              So it must be removed. */
-            if (fgets(line, sizeof(line), file->fd)) {
-                size_t len = strlen(line);
-
-                if (len > 2 && line[len - 1] == '\n') {
-                    line[len - 1] = '\0';
-                } else {
-                    merror("Temporary path file '%s' is corrupt: missing line end.", file->path);
-                    continue;
-                }
-
-                path = wstr_unescape_json(line);
+            if (fgets(line, len + 1, file->fd) == NULL) {
+                continue;
             }
+
+            if (len > 2 && line[len - 1] == '\n') {
+                line[len - 1] = '\0';
+            } else {
+                merror("Temporary path file '%s' is corrupt: missing line end.", file->path);
+                break;
+            }
+
+            path = wstr_unescape_json(line);
         } else {
             path = wstr_unescape_json((char *) W_Vector_get(file->list, i));
         }
@@ -610,9 +619,7 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
             }
             os_free(path);
         }
-
-        i++;
-    } while (i < file->elements);
+    }
 
     fim_db_clean_file(&file, storage);
 
@@ -1203,7 +1210,7 @@ void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry
     }
 
     if (storage == FIM_DB_DISK) { // disk storage enabled
-        if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", base) != (strlen(base) + sizeof(char))) {
+        if (fprintf(((fim_tmp_file *) arg)->fd, "%032d%s\n", strlen(base) + 1, base) < 0) {
             merror("%s - %s", entry->path, strerror(errno));
             goto end;
         }
