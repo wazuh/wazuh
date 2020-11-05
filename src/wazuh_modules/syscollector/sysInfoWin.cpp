@@ -612,3 +612,10 @@ nlohmann::json SysInfo::getOsInfo() const
     SysOsInfo::setOsInfo(spOsInfoProvider, ret);
     return ret;
 }
+
+nlohmann::json SysInfo::getNetworks() const
+{
+    //not implemented for this os yet.
+    nlohmann::json ret;
+    return ret;
+}

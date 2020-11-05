@@ -93,12 +93,15 @@ endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
     ${CMAKE_SOURCE_DIR}/
     DEPENDS syscollector
     )
-add_custom_target(copy-files-network ALL
-    COMMAND ${CMAKE_COMMAND} -E copy
-    ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/syscollector.dir/network/*.o*
-    ${CMAKE_SOURCE_DIR}/network/
-    DEPENDS syscollector
-    )
+
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    add_custom_target(copy-files-network ALL
+        COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/syscollector.dir/network/*.o*
+        ${CMAKE_SOURCE_DIR}/network/
+        DEPENDS syscollector
+        )
+endif(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_custom_target(copy-files-sysosinfo ALL
     COMMAND ${CMAKE_COMMAND} -E copy
