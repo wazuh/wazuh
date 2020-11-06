@@ -48,6 +48,7 @@ async def login_user(request, user: str, raw=False):
     try:
         # Add authorization context in case there is body in request
         f_kwargs['auth_context'] = await request.json()
+        logger.info(f_kwargs['auth_context'])
     except JSONDecodeError:
         pass
 
