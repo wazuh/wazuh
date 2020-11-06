@@ -206,44 +206,35 @@ bool BSDOsParser::parseUname(const std::string& in, nlohmann::json& output)
 
 bool RedHatOsParser::parseFile(std::istream& in, nlohmann::json& output)
 {
-    constexpr auto PATTERN_MATCH{R"([0-9].*\.[0-9]*)"};
+    static const std::string FIRST_DELIMITER{"release"};
+    static const std::string SECOND_DELIMITER{"("};
     bool ret{false};
-    std::string line;
-    std::regex pattern{PATTERN_MATCH};
-    while(std::getline(in, line))
+    std::string data;
+    if(std::getline(in, data))
     {
-        std::string data;
-        line = Utils::trim(line);
-        ret |= findRegexInString(line, data, pattern);
-        if (ret)
+        //format is: OSNAME release VERSION (CODENAME)
+        auto pos{data.find(FIRST_DELIMITER)};
+        if(pos != std::string::npos)
         {
-            output["os_version"] = data;
-            findMajorMinorVersionInString(data, output);
+            output["os_name"] = Utils::trim(data.substr(0, pos));
+            data = data.substr(pos + FIRST_DELIMITER.size());
+            pos = data.find(SECOND_DELIMITER);
+            ret = true;
         }
-        if (line.find("CentOS") != std::string::npos)
+        if (pos != std::string::npos)
         {
-            output["os_name"] = "Centos Linux";
-            output["os_platform"] = "centos";
+            const auto fullVersion{Utils::trim(data.substr(0, pos))};
+            const auto versions{Utils::split(fullVersion, '.')};
+            output["os_version"] = fullVersion;
+            output["os_major"] = versions[0];
+            if (versions.size() > 1)
+            {
+                output["os_minor"] = versions[1];
+            }
+            output["os_codename"] = Utils::trim(data.substr(pos), " ()");
         }
-        else if (line.find("Fedora") != std::string::npos)
-        {
-            output["os_name"] = "Fedora";
-            output["os_platform"] = "fedora";
-        }
-        else if (line.find("Server") != std::string::npos)
-        {
-            output["os_name"] = "Red Hat Enterprise Linux Server";
-            output["os_platform"] = "rhel";
-        }
-        else
-        {
-            output["os_name"] = "Red Hat Enterprise Linux";
-            output["os_platform"] = "rhel";
-        }
-        if (findCodeNameInString(line, data))
-        {
-            output["os_codename"] = data;
-        }
+        output["os_platform"] = "rhel";
+
     }
     return ret;
 }
