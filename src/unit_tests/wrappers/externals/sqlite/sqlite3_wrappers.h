@@ -17,15 +17,21 @@ int __wrap_sqlite3_bind_int(sqlite3_stmt *stmt,
                             int index,
                             int value);
 
+void expect_sqlite3_bind_int_call(int idx, int val, int ret);
+
 int __wrap_sqlite3_bind_int64(sqlite3_stmt *stmt,
                               int index,
                               sqlite3_int64 value);
+
+void expect_sqlite3_bind_int64_call(int idx, double val, int ret);
 
 int __wrap_sqlite3_bind_text(sqlite3_stmt* pStmt,
                              int pos,
                              const char* buffer,
                              int length,
                              void *mem_callback);
+
+void expect_sqlite3_bind_text_call(int position, const char *buf, int ret);
 
 int __wrap_sqlite3_bind_parameter_index(__attribute__((unused)) sqlite3_stmt * stmt,
                                         const char *zName);
@@ -74,5 +80,7 @@ int __wrap_sqlite3_prepare_v2(sqlite3 *db,            /* Database handle */
 int __wrap_sqlite3_reset(sqlite3_stmt *pStmt);
 
 int __wrap_sqlite3_step(sqlite3_stmt * stmt);
+
+void expect_sqlite3_step_call(int ret);
 
 #endif

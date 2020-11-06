@@ -35,6 +35,8 @@ int __wrap_wdb_scan_info_update(wdb_t *socket, const char *module, char *field, 
 
 int __wrap_wdb_stmt_cache(wdb_t wdb, int index);
 
+void expect_wdb_stmt_cache_call(int ret);
+
 int __wrap_wdb_syscheck_load(wdb_t *wdb, const char *file, char *output, size_t size);
 
 int __wrap_wdb_syscheck_save(wdb_t *wdb, int ftype, char *checksum, const char *file);

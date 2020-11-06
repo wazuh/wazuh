@@ -81,16 +81,32 @@ cJSON * __wrap_cJSON_GetObjectItem(__attribute__ ((__unused__)) const cJSON * co
     return mock_type(cJSON *);
 }
 
+void expect_cJSON_GetObjectItem_call(cJSON *object) {
+    will_return(__wrap_cJSON_GetObjectItem, object);
+}
+
 char* __wrap_cJSON_GetStringValue(__attribute__ ((__unused__)) cJSON * item) {
     return mock_type(char*);
+}
+
+void expect_cJSON_GetStringValue_call(char *str) {
+    will_return(__wrap_cJSON_GetStringValue, str);
 }
 
 cJSON_bool __wrap_cJSON_IsNumber(__attribute__ ((__unused__)) cJSON * item) {
     return mock_type(cJSON_bool);
 }
 
+void expect_cJSON_IsNumber_call(int ret) {
+    will_return(__wrap_cJSON_IsNumber, ret);
+}
+
 cJSON_bool __wrap_cJSON_IsObject(__attribute__ ((__unused__)) cJSON * item) {
     return mock_type(cJSON_bool);
+}
+
+void expect_cJSON_IsObject_call(int ret) {
+    will_return(__wrap_cJSON_IsObject, ret);
 }
 
 cJSON * __wrap_cJSON_Parse(__attribute__ ((__unused__)) const char *value) {
