@@ -580,9 +580,14 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
     char path_length[OS_SIZE_32 + 1];
     char *path = NULL;
     int i = 0;
+    int retval = FIMDB_OK;
 
     if (storage == FIM_DB_DISK) {
-        fseek(file->fd, SEEK_SET, 0);
+        if (fseek(file->fd, 0, SEEK_SET)) {
+            mwarn(FIM_DB_TEMPORARY_FILE_POSITION, errno, strerror(errno));
+            fim_db_clean_file(&file, storage);
+            return FIMDB_ERR;
+        }
     }
 
     for (i = 0; i < file->elements; i++) {
@@ -590,7 +595,9 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
         if (storage == FIM_DB_DISK) {
             /* First 32 bytes hold the path length includig the line break */
             if (fgets(path_length, OS_SIZE_32 + 1, file->fd) == NULL) {
-                continue;
+                mdebug1(FIM_UNABLE_TO_READ_TEMP_FILE);
+                retval = FIMDB_ERR;
+                break;
             }
 
             size_t len = atoi(path_length);
@@ -599,13 +606,16 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
             /* fgets() adds \n(newline) to the end of the string,
              So it must be removed. */
             if (fgets(line, len + 1, file->fd) == NULL) {
-                continue;
+                mdebug1(FIM_UNABLE_TO_READ_TEMP_FILE);
+                retval = FIMDB_ERR;
+                break;
             }
 
             if (len > 2 && line[len - 1] == '\n') {
                 line[len - 1] = '\0';
             } else {
                 merror("Temporary path file '%s' is corrupt: missing line end.", file->path);
+                retval = FIMDB_ERR;
                 break;
             }
 
@@ -628,7 +638,7 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
 
     fim_db_clean_file(&file, storage);
 
-    return FIMDB_OK;
+    return retval;
 }
 
 fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt) {
@@ -1215,7 +1225,7 @@ void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry
     }
 
     if (storage == FIM_DB_DISK) { // disk storage enabled
-        if (fprintf(((fim_tmp_file *) arg)->fd, "%032d%s\n", strlen(base) + 1, base) < 0) {
+        if (fprintf(((fim_tmp_file *) arg)->fd, "%032ld%s\n", strlen(base) + 1, base) < 0) {
             merror("%s - %s", entry->path, strerror(errno));
             goto end;
         }
