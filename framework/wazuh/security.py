@@ -130,7 +130,9 @@ def create_user(username: str = None, password: str = None, allow_run_as: bool =
     result : AffectedItemsWazuhResult
         Status message
     """
-    if not _user_password.match(password):
+    if len(password) > 64 or len(password) < 8:
+        raise WazuhError(5009)
+    elif not _user_password.match(password):
         raise WazuhError(5007)
 
     result = AffectedItemsWazuhResult(none_msg='User could not be created',
@@ -168,8 +170,11 @@ def update_user(user_id: str = None, password: str = None, allow_run_as: bool = 
     """
     if password is None and allow_run_as is None:
         raise WazuhError(4001)
-    if password and not _user_password.match(password):
-        raise WazuhError(5007)
+    if password:
+        if len(password) > 64 or len(password) < 8:
+            raise WazuhError(5009)
+        elif not _user_password.match(password):
+            raise WazuhError(5007)
     result = AffectedItemsWazuhResult(all_msg='User was successfully updated',
                                       none_msg='User could not be updated')
     with AuthenticationManager() as auth:
