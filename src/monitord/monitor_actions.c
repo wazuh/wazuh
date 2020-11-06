@@ -55,11 +55,11 @@ void monitor_agents_disconnection(){
         for (int i = 0; agents_array[i] != -1; i++) {
             snprintf(str_agent_id, 12, "%d", agents_array[i]);
             if (OSHash_Add(agents_to_alert_hash, str_agent_id, (void*)time(0)) == 0) {
-                mdebug1("Can't add agent ID '%d' to the alerts hash table",agents_array[i]);
+                mdebug1("Can't add agent ID '%d' to the alerts hash table", agents_array[i]);
             }
         }
-        os_free(agents_array);
     }
+    os_free(agents_array);
 }
 
 void monitor_agents_alert(){
