@@ -272,6 +272,7 @@ int main(int argc, char **argv)
     /* List available agents */
     if (list_agents) {
         cJSON *agents = NULL;
+        const char* server_status = print_agent_status(get_agent_status(0));
 
         if (!csv_output && !json_output) {
             printf("\n%s %s. List of available agents:",
@@ -280,7 +281,7 @@ int main(int argc, char **argv)
             if (inactive_only) {
                 puts("");
             } else {
-                printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, Active/Local\n", shost);
+                printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, %s/Local\n", shost, server_status);
             }
         } else if(json_output){
                 cJSON *first;
@@ -297,11 +298,11 @@ int main(int argc, char **argv)
                     cJSON_AddStringToObject(first, "id", "000");
                     cJSON_AddStringToObject(first, "name", shost);
                     cJSON_AddStringToObject(first, "ip", "127.0.0.1");
-                    cJSON_AddStringToObject(first, "status", "Active");
+                    cJSON_AddStringToObject(first, "status", server_status);
                     cJSON_AddItemToArray(agents, first);
                 }
         } else if (!inactive_only) {
-            printf("000,%s (server),127.0.0.1,Active/Local,\n", shost);
+            printf("000,%s (server),127.0.0.1,%s/Local,\n", shost, server_status);
         }
 
         print_agents(1, active_only, inactive_only, csv_output, agents);
@@ -370,7 +371,6 @@ int main(int argc, char **argv)
 
     /* Print information from an agent */
     if (info_agent) {
-        agent_status_t agt_status = 0;
         char final_ip[128 + 1];
         char final_mask[128 + 1];
         agent_info *agt_info;
@@ -383,11 +383,13 @@ int main(int argc, char **argv)
         }
 
         if (agt_id != -1) {
-            agt_status = get_agent_status(atoi(keys.keyentries[agt_id]->id));
-
             agt_info = get_agent_info(keys.keyentries[agt_id]->name,
                                       keys.keyentries[agt_id]->ip->ip,
                                       agent_id);
+            if (!agt_info) {
+                printf("\n Unable to get agent info\n\n");
+                exit(0);
+            }
 
             /* Get netmask from IP */
             getNetmask(keys.keyentries[agt_id]->ip->netmask, final_mask, 128);
@@ -398,37 +400,38 @@ int main(int argc, char **argv)
                 printf("\n   Agent ID:   %s\n", keys.keyentries[agt_id]->id);
                 printf("   Agent Name: %s\n", keys.keyentries[agt_id]->name);
                 printf("   IP address: %s\n", final_ip);
-                printf("   Status:     %s\n\n", print_agent_status(agt_status));
+                printf("   Status:     %s\n\n", print_agent_status(agt_info->connection_status));
             } else if (json_output) {
                 cJSON_AddStringToObject(json_data, "id", keys.keyentries[agt_id]->id);
                 cJSON_AddStringToObject(json_data, "name", keys.keyentries[agt_id]->name);
                 cJSON_AddStringToObject(json_data, "ip", final_ip);
-                cJSON_AddStringToObject(json_data, "status", print_agent_status(agt_status));
+                cJSON_AddStringToObject(json_data, "status", print_agent_status(agt_info->connection_status));
             } else {
                 printf("%s,%s,%s,%s,",
                        keys.keyentries[agt_id]->id,
                        keys.keyentries[agt_id]->name,
                        final_ip,
-                       print_agent_status(agt_status));
+                       print_agent_status(agt_info->connection_status));
             }
         } else {
-            agt_status = GA_STATUS_ACTIVE;
             agt_info = get_agent_info(NULL, "127.0.0.1", "000");
+            if (!agt_info) {
+                printf("\n Unable to get agent info\n\n");
+                exit(0);
+            }
 
             if (!csv_output && !json_output) {
                 printf("\n   Agent ID:   000 (local instance)\n");
                 printf("   Agent Name: %s\n", shost);
                 printf("   IP address: 127.0.0.1\n");
-                printf("   Status:     %s/Local\n\n", print_agent_status(agt_status));
+                printf("   Status:     %s/Local\n\n", print_agent_status(agt_info->connection_status));
             } else if (json_output) {
                 cJSON_AddStringToObject(json_data, "id", "000");
                 cJSON_AddStringToObject(json_data, "name", shost);
                 cJSON_AddStringToObject(json_data, "ip", "127.0.0.1");
-                cJSON_AddStringToObject(json_data, "status", print_agent_status(agt_status));
+                cJSON_AddStringToObject(json_data, "status", print_agent_status(agt_info->connection_status));
             } else {
-                printf("000,%s,127.0.0.1,%s/Local,",
-                       shost,
-                       print_agent_status(agt_status));
+                printf("000,%s,127.0.0.1,%s/Local,", shost, print_agent_status(agt_info->connection_status));
             }
         }
 

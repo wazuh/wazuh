@@ -31,7 +31,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,
                              -Wl,--wrap,wdb_global_update_agent_status -Wl,--wrap,wdb_global_update_agent_group -Wl,--wrap,wdb_global_find_group \
                              -Wl,--wrap,wdb_global_insert_agent_group -Wl,--wrap,wdb_global_insert_agent_belong -Wl,--wrap,wdb_global_delete_group_belong \
                              -Wl,--wrap,wdb_global_delete_group -Wl,--wrap,wdb_global_select_groups -Wl,--wrap,wdb_global_select_agent_keepalive \
-                             -Wl,--wrap,wdb_global_sync_agent_info_get -Wl,--wrap,wdb_global_sync_agent_info_set -Wl,--wrap,wdb_global_get_agents_by_keepalive \
+                             -Wl,--wrap,wdb_global_sync_agent_info_get -Wl,--wrap,wdb_global_sync_agent_info_set \
                              -Wl,--wrap,wdb_global_get_all_agents -Wl,--wrap,wdb_global_get_agent_info -Wl,--wrap,wdb_global_reset_agents_connection \
                              -Wl,--wrap,wdb_global_get_agents_by_connection_status -Wl,--wrap,wdb_global_get_agents_to_disconnect")
 
@@ -70,6 +70,8 @@ list(APPEND wdb_tests_names "test_wdb_metadata")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,sqlite3_prepare_v2 -Wl,--wrap,sqlite3_errmsg \
                              -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_finalize -Wl,--wrap,sqlite3_column_int")
 
+# Add extra compiling flags
+add_compile_options(-Wall)
 
 # Compilig tests
 list(LENGTH wdb_tests_names count)

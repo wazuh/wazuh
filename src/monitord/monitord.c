@@ -230,11 +230,12 @@ void monitor_step_time() {
     localtime_r(&tm, &mond_time_control.current_time);
 
     mond_time_control.disconnect_counter++;
-    mond_time_control.alert_counter++;
-    if(mond.delete_old_agents != 0){
+    if (mond.monitor_agents != 0) {
+        mond_time_control.alert_counter++;
+    }
+    if(mond.delete_old_agents != 0 && mond.monitor_agents != 0){
         mond_time_control.delete_counter++;
     }
-
 }
 
 void monitor_update_date() {
@@ -252,7 +253,7 @@ int check_disconnection_trigger() {
 }
 
 int check_alert_trigger() {
-    if (mond_time_control.alert_counter >= mond.global.agents_disconnection_alert_time) {
+    if (mond.monitor_agents != 0 && mond_time_control.alert_counter >= mond.global.agents_disconnection_alert_time) {
         mond_time_control.alert_counter = 0;
         return 1;
     }
@@ -260,7 +261,7 @@ int check_alert_trigger() {
 }
 
 int check_deletion_trigger() {
-    if (mond.delete_old_agents != 0 && mond_time_control.delete_counter >= mond.delete_old_agents * 60 ) {
+    if (mond.monitor_agents != 0 && mond.delete_old_agents != 0 && mond_time_control.delete_counter >= mond.delete_old_agents * 60 ) {
         mond_time_control.delete_counter = 0;
         return 1;
     }

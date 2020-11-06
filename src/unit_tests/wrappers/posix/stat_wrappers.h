@@ -15,6 +15,8 @@
 
 int __wrap_chmod(const char *path);
 
+int __wrap_chown(const char *__file, int __owner, int __group);
+
 int __wrap_lstat(const char *filename, struct stat *buf);
 
 #ifndef WIN32

@@ -366,7 +366,6 @@ void test_wdb_upgrade_global_fail_backup_fail(void **state)
 void test_wdb_create_backup_global_success(void **state)
 {
     int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
 
     expect_any_always(__wrap_fopen, path);
     expect_any_always(__wrap_fopen, mode);
@@ -388,7 +387,6 @@ void test_wdb_create_backup_global_success(void **state)
 void test_wdb_create_backup_global_dst_fopen_fail(void **state)
 {
     int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
 
     expect_any_always(__wrap_fopen, path);
     expect_any_always(__wrap_fopen, mode);
@@ -403,7 +401,6 @@ void test_wdb_create_backup_global_dst_fopen_fail(void **state)
 void test_wdb_create_backup_global_src_fopen_fail(void **state)
 {
     int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
 
     expect_any_always(__wrap_fopen, path);
     expect_any_always(__wrap_fopen, mode);
@@ -421,7 +418,6 @@ void test_wdb_create_backup_global_src_fopen_fail(void **state)
 void test_wdb_create_backup_global_fwrite_fail(void **state)
 {
     int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
 
     expect_any_always(__wrap_fopen, path);
     expect_any_always(__wrap_fopen, mode);
@@ -445,7 +441,6 @@ void test_wdb_create_backup_global_fwrite_fail(void **state)
 void test_wdb_create_backup_global_fclose_fail(void **state)
 {
     int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
 
     expect_any_always(__wrap_fopen, path);
     expect_any_always(__wrap_fopen, mode);
@@ -468,7 +463,6 @@ void test_wdb_create_backup_global_fclose_fail(void **state)
 void test_wdb_create_backup_global_chmod_fail(void **state)
 {
     int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
 
     expect_any_always(__wrap_fopen, path);
     expect_any_always(__wrap_fopen, mode);

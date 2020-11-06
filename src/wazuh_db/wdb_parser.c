@@ -674,16 +674,6 @@ int wdb_parse(char * input, char * output) {
                 result = wdb_parse_global_disconnect_agents(wdb, next, output);
             }
         }
-        else if (strcmp(query, "get-agents-by-keepalive") == 0) {
-            if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for get-agents-by-keepalive.");
-                mdebug2("Global DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                result = wdb_parse_global_get_agents_by_keepalive(wdb, next, output);
-            }
-        }
         else if (strcmp(query, "get-all-agents") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for get-all-agents.");
@@ -5134,60 +5124,6 @@ int wdb_parse_global_get_agent_info(wdb_t* wdb, char* input, char* output) {
     snprintf(output, OS_MAXSTR + 1, "ok %s", out);
     os_free(out);
     cJSON_Delete(agent_info);
-
-    return OS_SUCCESS;
-}
-
-int wdb_parse_global_get_agents_by_keepalive(wdb_t* wdb, char* input, char* output) {
-    static int last_id = 0;
-    char* out = NULL;
-    char *next = NULL;
-    char comparator = '<';
-    int keep_alive = 0;
-    const char delim[2] = " ";
-    char *savedptr = NULL;
-
-    /* Get keepalive condition */
-    next = strtok_r(input, delim, &savedptr);
-    if (next == NULL || strcmp(next, "condition") != 0) {
-        mdebug1("Invalid arguments 'condition' not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'condition' not found");
-        return OS_INVALID;
-    }
-    next = strtok_r(NULL, delim, &savedptr);
-    if (next == NULL) {
-        mdebug1("Invalid arguments 'condition' not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'condition' not found");
-        return OS_INVALID;
-    }
-    comparator = *next;
-    next = strtok_r(NULL, delim, &savedptr);
-    if (next == NULL) {
-        mdebug1("Invalid arguments 'condition' not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'condition' not found");
-        return OS_INVALID;
-    }
-    keep_alive = atoi(next);
-
-    /* Get last_id*/
-    next = strtok_r(NULL, delim, &savedptr);
-    if (next == NULL || strcmp(next, "last_id") != 0) {
-        mdebug1("Invalid arguments 'last_id' not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'last_id' not found");
-        return OS_INVALID;
-    }
-    next = strtok_r(NULL, delim, &savedptr);
-    if (next == NULL) {
-        mdebug1("Invalid arguments 'last_id' not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'last_id' not found");
-        return OS_INVALID;
-    }
-    last_id = atoi(next);
-
-    wdbc_result status = wdb_global_get_agents_by_keepalive(wdb, &last_id, comparator, keep_alive, &out);
-    snprintf(output, OS_MAXSTR + 1, "%s %s", WDBC_RESULT[status], out);
-
-    os_free(out)
 
     return OS_SUCCESS;
 }

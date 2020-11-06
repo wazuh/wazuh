@@ -48,7 +48,7 @@ def create_memory_db(sql_file, session):
 
 @pytest.fixture(scope='function')
 def db_setup():
-    with patch('wazuh.common.ossec_uid'), patch('wazuh.common.ossec_gid'):
+    with patch('wazuh.core.common.ossec_uid'), patch('wazuh.core.common.ossec_gid'):
         with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
             with patch('shutil.chown'), patch('os.chmod'):
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):

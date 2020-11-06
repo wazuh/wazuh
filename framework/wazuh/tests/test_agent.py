@@ -12,21 +12,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from api.util import remove_nones_to_dict
-from wazuh.core.exception import WazuhResourceNotFound
-
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..'))
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
-        sys.modules['api'] = MagicMock()
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         from wazuh.tests.util import RBAC_bypasser
 
         del sys.modules['wazuh.rbac.orm']
-        del sys.modules['api']
-
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh.agent import add_agent, assign_agents_to_group, create_group, delete_agents, delete_groups, \
@@ -39,6 +33,8 @@ with patch('wazuh.common.ossec_uid'):
         from wazuh import WazuhError, WazuhException, WazuhInternalError
         from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
         from wazuh.core.tests.test_agent import InitAgent
+        from api.util import remove_nones_to_dict
+        from wazuh.core.exception import WazuhResourceNotFound
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_agent_path = os.path.join(test_data_path, 'agent')
@@ -312,7 +308,7 @@ def test_agent_delete_agents_different_status(socket_mock, send_mock):
     ('a' * 129, '002', 'f304f582f2417a3fddad69d9ae2b4f3b6e6fda788229668af9a6934d454ef44d')
 ])
 @patch('wazuh.core.agent.fcntl.lockf')
-@patch('wazuh.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
+@patch('wazuh.core.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.agent.chown')
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.copyfile')
@@ -347,8 +343,8 @@ def test_agent_add_agent(socket_mock, send_mock, open_mock, safe_move_mock, comm
     (['group-1', 'group-2'], ['group-1', 'group-2']),
     (['invalid_group'], [])
 ])
-@patch('wazuh.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
-@patch('wazuh.common.shared_path', new=test_shared_path)
+@patch('wazuh.core.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
+@patch('wazuh.core.common.shared_path', new=test_shared_path)
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_agent_groups(socket_mock, send_mock, group_list, expected_result):
@@ -383,7 +379,7 @@ def test_agent_get_agent_groups_exceptions(socket_mock, send_mock, mock_get_grou
 
     """
     mock_get_groups.return_value = {'valid-group'}
-    with patch('wazuh.common.database_path_global', new=db_global):
+    with patch('wazuh.core.common.database_path_global', new=db_global):
         try:
             group_result = get_agent_groups(group_list=[system_groups])
             assert group_result.failed_items
@@ -396,9 +392,9 @@ def test_agent_get_agent_groups_exceptions(socket_mock, send_mock, mock_get_grou
     ['group-1'],
     ['invalid-group']
 ])
-@patch('wazuh.common.database_path_global', new=test_global_bd_path)
-@patch('wazuh.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
-@patch('wazuh.common.shared_path', new=test_shared_path)
+@patch('wazuh.core.common.database_path_global', new=test_global_bd_path)
+@patch('wazuh.core.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
+@patch('wazuh.core.common.shared_path', new=test_shared_path)
 def test_agent_get_group_files(group_list):
     """Test `get_group_files` from agent module.
 
@@ -443,7 +439,7 @@ def test_agent_get_group_files_exceptions(mock_group_exists, mock_process_array,
     expected_exception : Exception
         Exception expected to be raised by `get_group_files` with the given parameters.
     """
-    with patch('wazuh.common.shared_path', new=shared_path):
+    with patch('wazuh.core.common.shared_path', new=shared_path):
         mock_group_exists.return_value = group_exists
         mock_process_array.side_effect = side_effect
         try:
@@ -457,9 +453,9 @@ def test_agent_get_group_files_exceptions(mock_group_exists, mock_process_array,
     'non-existant-group',
     'invalid-group'
 ])
-@patch('wazuh.common.shared_path', new=test_shared_path)
-@patch('wazuh.common.ossec_gid', return_value=getgrnam('root'))
-@patch('wazuh.common.ossec_uid', return_value=getpwnam('root'))
+@patch('wazuh.core.common.shared_path', new=test_shared_path)
+@patch('wazuh.core.common.ossec_gid', return_value=getgrnam('root'))
+@patch('wazuh.core.common.ossec_uid', return_value=getpwnam('root'))
 @patch('wazuh.agent.chown_r')
 def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
     """Test `create_group` function from agent module.
@@ -495,7 +491,7 @@ def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
     ('invalid!', WazuhError, 1722),
     ('delete-me', WazuhInternalError, 1005)
 ])
-@patch('wazuh.common.shared_path', new=test_shared_path)
+@patch('wazuh.core.common.shared_path', new=test_shared_path)
 def test_create_group_exceptions(group_id, exception, exception_code):
     """Test `create_group` function from agent module raises the expected exceptions if an invalid `group_id` is
     specified.
@@ -588,8 +584,8 @@ def test_agent_delete_groups_permission_exception(socket_mock, send_mock, mock_g
     (['none-1', 'none-2'], [WazuhResourceNotFound(1710)]),
     (['default', 'none-1'], [WazuhError(1712), WazuhResourceNotFound(1710)]),
 ])
-@patch('wazuh.common.shared_path', new=test_shared_path)
-@patch('wazuh.common.database_path_global', new=test_global_bd_path)
+@patch('wazuh.core.common.shared_path', new=test_shared_path)
+@patch('wazuh.core.common.database_path_global', new=test_global_bd_path)
 @patch('wazuh.agent.get_groups')
 def test_agent_delete_groups_other_exceptions(mock_get_groups, group_list, expected_errors):
     """Test `delete_groups` function from agent module returns the expected exceptions when using invalid group lists.
@@ -617,7 +613,7 @@ def test_agent_delete_groups_other_exceptions(mock_get_groups, group_list, expec
     (['group-1'], ['001', '002', '003'], 0),
     (['group-1'], ['001', '002', '003', '100'], 1),
 ])
-@patch('wazuh.common.shared_path', new=test_shared_path)
+@patch('wazuh.core.common.shared_path', new=test_shared_path)
 @patch('wazuh.agent.Agent.add_group_to_agent')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
@@ -696,7 +692,7 @@ def test_agent_assign_agents_to_group_exceptions(socket_mock, send_mock, mock_ad
     ('default', '001'),
     ('group-1', '005')
 ])
-@patch('wazuh.common.database_path_global', new=test_global_bd_path)
+@patch('wazuh.core.common.database_path_global', new=test_global_bd_path)
 @patch('wazuh.core.agent.Agent.unset_single_group_agent')
 @patch('wazuh.agent.get_groups')
 @patch('wazuh.agent.get_agents_info')
@@ -1069,8 +1065,8 @@ def test_agent_get_agent_config_exceptions(socket_mock, send_mock, agent_list):
 @pytest.mark.parametrize('agent_list', [
     full_agent_list[1:]
 ])
-@patch('wazuh.common.shared_path', new=test_shared_path)
-@patch('wazuh.common.multi_groups_path', new=test_multigroup_path)
+@patch('wazuh.core.common.shared_path', new=test_shared_path)
+@patch('wazuh.core.common.multi_groups_path', new=test_multigroup_path)
 @patch('wazuh.agent.get_agents_info', return_value=full_agent_list)
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
@@ -1117,8 +1113,8 @@ def test_agent_get_agents_sync_group_exceptions(socket_mock, send_mock, agent_li
 @pytest.mark.parametrize('filename, group_list', [
     ('agent.conf', ['default'])
 ])
-@patch('wazuh.common.database_path_global', new=test_global_bd_path)
-@patch('wazuh.common.shared_path', new=test_shared_path)
+@patch('wazuh.core.common.database_path_global', new=test_global_bd_path)
+@patch('wazuh.core.common.shared_path', new=test_shared_path)
 def test_agent_get_file_conf(filename, group_list):
     """Test `get_file_conf` from agent module.
 
@@ -1140,8 +1136,8 @@ def test_agent_get_file_conf(filename, group_list):
 @pytest.mark.parametrize('group_list', [
     ['default']
 ])
-@patch('wazuh.common.database_path_global', new=test_global_bd_path)
-@patch('wazuh.common.shared_path', new=test_shared_path)
+@patch('wazuh.core.common.database_path_global', new=test_global_bd_path)
+@patch('wazuh.core.common.shared_path', new=test_shared_path)
 def test_agent_get_agent_conf(group_list):
     """Test `get_agent_agent_conf` function from agent module.
 
@@ -1159,7 +1155,7 @@ def test_agent_get_agent_conf(group_list):
 @pytest.mark.parametrize('group_list', [
     ['default']
 ])
-@patch('wazuh.common.shared_path', new=test_shared_path)
+@patch('wazuh.core.common.shared_path', new=test_shared_path)
 @patch('wazuh.core.configuration.upload_group_configuration')
 def test_agent_upload_group_file(mock_upload, group_list):
     """Test `upload_group_file` function from agent module.
@@ -1184,7 +1180,7 @@ def test_agent_upload_group_file(mock_upload, group_list):
     (full_agent_list, ['group-1'], False, '004'),
     (full_agent_list, ['group-1'], True, None)
 ])
-@patch('wazuh.common.shared_path', new=test_shared_path)
+@patch('wazuh.core.common.shared_path', new=test_shared_path)
 @patch('wazuh.agent.get_distinct_agents')
 @patch('wazuh.agent.get_agent_groups')
 @patch('wazuh.agent.get_agents_summary_status')
