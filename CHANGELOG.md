@@ -1,6 +1,14 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v4.1.0]
+
+## Added
+
+- Allow negation of expressions in rules ([#6258](https://github.com/wazuh/wazuh/pull/6258))
+- Support for PCRE2 regular expressions in rules and decoders ([#6480](https://github.com/wazuh/wazuh/pull/6480))
+
+
 ## [v4.1.0] -
 
 ### Fixed
@@ -25,9 +33,9 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - **Wazuh API:**
-  - Changed upgrade endpoints to accept a list of agents, maximum 100 agents per request. ([#5336](https://github.com/wazuh/wazuh/issues/5536)) 
+  - Changed upgrade endpoints to accept a list of agents, maximum 100 agents per request. ([#5336](https://github.com/wazuh/wazuh/issues/5536))
 
-- **Framework:**  
+- **Framework:**
   - Refactored agent upgrade module. ([#5537](https://github.com/wazuh/wazuh/issues/5537))
 
 ## [v4.0.0] -
