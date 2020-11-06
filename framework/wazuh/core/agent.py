@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
-import copy
 import fcntl
 import hashlib
 import ipaddress
@@ -10,9 +9,11 @@ from base64 import b64encode
 from datetime import date, datetime, timedelta, timezone
 from json import dumps, loads
 from os import chown, chmod, path, makedirs, urandom, stat, remove
-from platform import platform
 from shutil import copyfile, rmtree
 from time import time
+
+import copy
+from platform import platform
 
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator

@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 from unittest.mock import patch, MagicMock
 
@@ -162,7 +163,11 @@ def test_ClusterFilter():
 
 def test_ClusterLogger():
     """Verify that ClusterLogger defines the logger used by wazuh-clusterd."""
-    cluster_logger = utils.ClusterLogger(foreground_mode=False, log_path='remove.log', tag='{asctime} {levelname}: [{tag}] [{subtag}] {message}', debug_level=1)
+    current_logger_path = os.path.join(os.path.dirname(__file__), 'testing.log')
+    cluster_logger = utils.ClusterLogger(foreground_mode=False, log_path=current_logger_path,
+                                         tag='{asctime} {levelname}: [{tag}] [{subtag}] {message}', debug_level=1)
     cluster_logger.setup_logger()
 
     assert cluster_logger.logger.level == logging.DEBUG
+
+    os.path.exists(current_logger_path) and os.remove(current_logger_path)
