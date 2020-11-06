@@ -227,14 +227,14 @@ class WazuhDBConnection:
         if re.search(r'offset \d+', query_without_where):
             offset = int(re.compile(r".* offset (\d+)").match(query_lower).group(1))
             # Replace offset with a wildcard
-            query_lower = query_lower.replace(" offset {}".format(offset), " :offset")
+            query_lower = ' :offset'.join(query_lower.rsplit((' offset {}'.format(offset)), 1))
 
         if not re.search(r'.?select count\([\w \*]+\)( as [^,]+)? from', query_without_where):
             lim = 0
-            if 'limit' in query_lower:
+            if re.search(r'limit \d+', query_without_where):
                 lim = int(re.compile(r".* limit (\d+)").match(query_lower).group(1))
                 # Replace limit with a wildcard
-                query_lower = query_lower.replace(" limit {}".format(lim), " :limit")
+                query_lower = ' :limit'.join(query_lower.rsplit((' limit {}'.format(lim)), 1))
 
             regex = re.compile(r"\w+(?: \d*|)? sql select ([A-Z a-z0-9,*_` \.\-%\(\):\']+) from")
             select = regex.match(query_lower).group(1)
