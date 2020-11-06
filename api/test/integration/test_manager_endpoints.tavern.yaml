@@ -1642,7 +1642,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: PUT
-      error: !anyint
       data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n  <rule id=\"111111\" level=\"XXX\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1651,6 +1650,8 @@ stages:
         path: etc/rules/new-rules_corrupted.xml
     response:
       status_code: 200
+      json:
+        error: !anyint
 
   # GET /manager/configuration/validation
   - name: Request validation
