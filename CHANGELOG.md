@@ -20,11 +20,13 @@ All notable changes to this project will be documented in this file.
   - Fixed zip files compression and handling in cluster integrity synchronization. ([#6367](https://github.com/wazuh/wazuh/issues/6367))
 - **Core**
   - Fixed version matching when assigning feed in Vulnerability Detector. ([#6505](https://github.com/wazuh/wazuh/pull/6505))
+  - Prevent unprivileged users from accessing the Wazuh Agent folder in Windows. ([#3593](https://github.com/wazuh/wazuh/pull/3593))
+  - Fix a bug that may lead the agent to crash when reading an invalid Logcollector configuration. ([#6463](https://github.com/wazuh/wazuh/pull/6463))
 
 ### Removed
 
 
-## [v4.0.0] -
+## [v4.0.0] - 2020-10-23
 
 ### Added
 
