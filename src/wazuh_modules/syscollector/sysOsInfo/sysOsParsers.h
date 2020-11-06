@@ -17,7 +17,9 @@
 
 struct ISysOsParser
 {
+    // LCOV_EXCL_START
     virtual ~ISysOsParser() = default;
+    // LCOV_EXCL_STOP
     virtual bool parseFile(std::istream& /*in*/, nlohmann::json& /*output*/) {return false;}
     virtual bool parseUname(const std::string& /*in*/, nlohmann::json& /*output*/) {return false;}
 };
