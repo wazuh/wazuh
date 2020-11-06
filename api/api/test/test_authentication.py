@@ -8,14 +8,14 @@ from unittest.mock import patch, MagicMock, ANY, call
 from copy import deepcopy
 from werkzeug.exceptions import Unauthorized
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         from wazuh.core.results import WazuhResult
 
 import pytest
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         from api import authentication
 

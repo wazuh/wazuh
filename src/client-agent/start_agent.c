@@ -138,7 +138,9 @@ void start_agent(int is_startup)
     #endif
     int current_server_id = agt->rip_id;
     while (1) {
-        for (int attempts = 0; attempts < agt->server[current_server_id].max_retries; attempts++) {
+        // (max_retries - 1) attempts
+
+        for (int attempts = 0; attempts < agt->server[current_server_id].max_retries - 1; attempts++) {
             if (agent_handshake_to_server(current_server_id, is_startup)) {
                 return;
             }
@@ -146,19 +148,27 @@ void start_agent(int is_startup)
             sleep(agt->server[current_server_id].retry_interval);
         }
 
+        // Last attempt
+
+        if (agent_handshake_to_server(current_server_id, is_startup)) {
+            return;
+        }
+
+        // Try to enroll and extra attempt
+
         if (agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
             if (agent_ping_to_server(current_server_id)) {
                 if (try_enroll_to_server(agt->server[current_server_id].rip) == 0) {
                     if (agent_handshake_to_server(current_server_id, is_startup)) {
                         return;
                     }
-
-                    sleep(agt->server[current_server_id].retry_interval);
                 }
             } else {
                 mwarn("Polling server '%s' failed. Skipping enrollment.", agt->server[current_server_id].rip);
             }
         }
+
+        sleep(agt->server[current_server_id].retry_interval);
 
         /* Wait for server reply */
         mwarn(AG_WAIT_SERVER, agt->server[current_server_id].rip);
