@@ -398,9 +398,17 @@ fim_tmp_file *fim_db_create_temp_file(int storage) {
                     getpid(),
                     os_random());
 
-        file->fd = fopen(file->path, "w+");
+        file->fd = wfopen(file->path, "w+");
         if (file->fd == NULL) {
             merror("Failed to create temporal storage '%s': %s (%d)", file->path, strerror(errno), errno);
+            os_free(file->path);
+            os_free(file);
+            return NULL;
+        }
+
+        // Have the file removed on close.
+        if (remove(file->path) < 0) {
+            merror("Failed to remove '%s': %s (%d)", file->path, strerror(errno), errno);
             os_free(file->path);
             os_free(file);
             return NULL;
@@ -415,9 +423,6 @@ fim_tmp_file *fim_db_create_temp_file(int storage) {
 void fim_db_clean_file(fim_tmp_file **file, int storage) {
     if (storage == FIM_DB_DISK) {
         fclose((*file)->fd);
-        if (remove((*file)->path) < 0) {
-            merror("Failed to remove '%s': %s (%d)", (*file)->path, strerror(errno), errno);
-        }
         os_free((*file)->path);
     } else {
         W_Vector_free((*file)->list);
