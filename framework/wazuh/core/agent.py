@@ -2,23 +2,22 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
-import copy
 import fcntl
 import hashlib
 import ipaddress
 from base64 import b64encode
 from datetime import date, datetime, timedelta, timezone
-from glob import glob
 from json import dumps, loads
 from os import chown, chmod, path, makedirs, urandom, stat, remove
-from platform import platform
 from shutil import copyfile, rmtree
 from time import time
+
+import copy
+from platform import platform
 
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
-from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.ossec_queue import OssecQueue
 from wazuh.core.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
@@ -1203,8 +1202,7 @@ def get_rbac_filters(system_resources=None, permitted_resources=None, filters=No
 
 
 def agents_padding(result, agent_list):
-    """This function remove agent 000 from agent_list and
-    it transforms the format of the agent ids to the general format
+    """Remove agent 000 from agent_list and transform the format of the agent ids to the general format
 
     Parameters
     ----------
@@ -1224,12 +1222,28 @@ def agents_padding(result, agent_list):
     return agent_list
 
 
-def core_upgrade_agents(command, get_result=False):
+def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, version=None,
+                        force=False, use_http=False, file_path=None, installer=None, get_result=False):
     """Send command to upgrade module / task module
 
     Parameters
     ----------
-    command
+    agents_chunk : list
+        List of agents ID's.
+    command : str
+        Command sent to the socket.
+    wpk_repo : str
+        URL for WPK download.
+    version : str
+        Version to upgrade to.
+    force : bool
+        force the update even if it is a downgrade.
+    use_http : bool
+        False for HTTPS protocol, True for HTTP protocol.
+    file_path : str
+        Path to the installation file.
+    installer : str
+        Selected installer.
     get_result : bool
         Get the result of an update (True -> Task module), Create new upgrade task (False -> Upgrade module)
 
@@ -1237,9 +1251,29 @@ def core_upgrade_agents(command, get_result=False):
     -------
     Message received from the socket (Task module or Upgrade module)
     """
+    if not get_result:
+        msg = {'version': 1,
+               'origin': {'module': 'api'},
+               'command': command,
+               'parameters': {
+                   'agents': agents_chunk,
+                   'version': version,
+                   'force_upgrade': force,
+                   'use_http': use_http,
+                   'wpk_repo': wpk_repo,
+                   'file_path': file_path,
+                   'installer': installer
+               }
+               }
+    else:
+        msg = {'version': 1, 'origin': {'module': 'api'}, 'command': command,
+               'module': 'api', 'parameters': {'agents': agents_chunk}}
+
+    msg['parameters'] = {k: v for k, v in msg['parameters'].items() if v is not None}
+
     # Send upgrading command
     s = OssecSocket(common.UPGRADE_SOCKET) if not get_result else OssecSocket(common.TASKS_SOCKET)
-    s.send(dumps(command).encode())
+    s.send(dumps(msg).encode())
     data = loads(s.receive().decode())
     s.close()
 

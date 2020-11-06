@@ -636,7 +636,7 @@ stages:
  - name: Try get upgrade result agents 003 and 004 (Denied)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result?wait_for_complete=true"
+     url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"

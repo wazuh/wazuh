@@ -36,7 +36,7 @@ int wm_agent_upgrade_read(xml_node **nodes, wmodule *module) {
         #else
         data->manager_config.max_threads = WM_UPGRADE_MAX_THREADS;
         data->manager_config.chunk_size = WM_UPGRADE_CHUNK_SIZE;
-        data->manager_config.wpk_repository = strdup(WM_UPGRADE_WPK_REPO_URL);
+        data->manager_config.wpk_repository = NULL;
         #endif
         module->data = data;
     }

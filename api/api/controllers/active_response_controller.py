@@ -19,7 +19,7 @@ logger = logging.getLogger('wazuh')
 async def run_command(request, agents_list='*', pretty=False, wait_for_complete=False):
     """Runs an Active Response command on a specified agent
 
-    :param agents_list: List of Agents IDs. All possible values since 000 onwards
+    :param agents_list: List of Agents IDs. All possible values from 000 onwards
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :return: message
