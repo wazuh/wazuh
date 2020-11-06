@@ -5,7 +5,7 @@ project(unit_tests)
 include_directories(${CMAKE_SOURCE_DIR})
 
 add_subdirectory(sysInfo)
-
+add_subdirectory(sysInfoPorts)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_subdirectory(sysInfoNetworkLinux)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")

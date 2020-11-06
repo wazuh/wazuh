@@ -40,3 +40,8 @@ nlohmann::json SysInfo::networks()
 {
     return getNetworks();
 }
+
+nlohmann::json SysInfo::ports()
+{
+    return getPorts();
+}
