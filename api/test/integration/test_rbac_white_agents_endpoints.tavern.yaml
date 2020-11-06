@@ -636,21 +636,6 @@ stages:
          failed_items: []
 
 ---
-test_name: GET /agents/{agent_id}/upgrade_result
-
-stages:
-
- - name: Try get upgrade result agent 001 (Denied)
-   request:
-     verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/agents/001/upgrade_result?wait_for_complete=true"
-     method: GET
-     headers:
-       Authorization: "Bearer {test_login_token}"
-   response:
-      <<: *permission_denied
-
----
 test_name: DELETE /agents/{agent_id}/group/{group_id}
 
 stages:
@@ -1649,32 +1634,96 @@ stages:
     delay_after: !float "{restart_delay}"
 
 ---
-test_name: PUT /agents/{agent_id}/upgrade
+test_name: PUT /agents/upgrade
 
 stages:
 
-  - name: Try to upgrade agent 004 (Denied)
+  - name: Upgrade agents (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/004/upgrade"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        version: v3.9.3
+        force: true
+        wait_for_complete: 'true'
+        agents_list: '001,002'
+    response:
+      status_code: 200
+    delay_after: !float "{upgrade_delay}"
+
+  - name: Try to upgrade agents 003 and 004 (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "003,004"
     response:
       <<: *permission_denied
 
 ---
-test_name: PUT /agents/{agent_id}/upgrade_custom
+test_name: PUT /agents/upgrade_custom
 
 stages:
 
-  - name: Try to customly upgrade agent 004 (Denied)
+  - name: Customly upgrade agents 001 and 002 using default installer (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/004/upgrade_custom?installer=agent_upgrade.py&file_path=/var/ossec"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "001,002"
+        file_path: "{custom_wpk_path:s}"
+        wait_for_complete: 'true'
+    response:
+      status_code: 200
+    delay_after: !float "{upgrade_delay}"
+
+  - name: Try to customly upgrade agents 003 and 004 (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom?installer=agent_upgrade.py&file_path=/var/ossec"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "003,004"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /agents/upgrade_result
+
+stages:
+
+  - name: Get upgrade result agents 001 and 002 (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "001,002"
+    response:
+      status_code: 200
+
+  - name: Try get upgrade result agents 003 and 004 (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "003,004"
     response:
       <<: *permission_denied
 

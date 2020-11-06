@@ -22,6 +22,14 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 
+### Changed
+
+- **Wazuh API:**
+  - Changed upgrade endpoints to accept a list of agents, maximum 100 agents per request. ([#5336](https://github.com/wazuh/wazuh/issues/5536)) 
+
+- **Framework:**  
+  - Refactored agent upgrade module. ([#5537](https://github.com/wazuh/wazuh/issues/5537))
+
 ## [v4.0.0] -
 
 ### Added
