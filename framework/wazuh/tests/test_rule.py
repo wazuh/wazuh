@@ -8,13 +8,11 @@ from unittest.mock import patch, mock_open, MagicMock
 
 import pytest
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
-        sys.modules['api'] = MagicMock()
         import wazuh.rbac.decorators
         del sys.modules['wazuh.rbac.orm']
-        del sys.modules['api']
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
@@ -65,13 +63,13 @@ rule_contents = '''
 
 @pytest.fixture(scope='module', autouse=True)
 def mock_ossec_path():
-    with patch('wazuh.common.ossec_path', new=parent_directory):
+    with patch('wazuh.core.common.ossec_path', new=parent_directory):
         yield
 
 
 @pytest.fixture(scope='module', autouse=True)
 def mock_rules_path():
-    with patch('wazuh.common.ruleset_rules_path', new=data_path):
+    with patch('wazuh.core.common.ruleset_rules_path', new=data_path):
         yield
 
 

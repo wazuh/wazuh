@@ -22,6 +22,7 @@
 #include "../scheduling/wmodules_scheduling_helpers.h"
 
 #include "../../wrappers/common.h"
+#include "../../wrappers/posix/dirent_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
@@ -78,6 +79,7 @@ static int setup_module() {
         "</policies>\n";
     lxml = malloc(sizeof(OS_XML));
 
+    will_return(__wrap_opendir, 0);
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_any(__wrap__mtinfo, formatted_msg);
     expect_string(__wrap_IsFile, file, "/var/ossec/etc/shared/your_policy_file.yml");
@@ -177,6 +179,7 @@ void test_fake_tag(void **state) {
 
     expect_string(__wrap__mterror, tag, "sca");
     expect_string(__wrap__mterror, formatted_msg, "No such tag 'fake' at module 'sca'.");
+    will_return(__wrap_opendir, 0);
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_any(__wrap__mtinfo, formatted_msg);
     expect_string(__wrap_IsFile, file, "/var/ossec/etc/shared/your_policy_file.yml");
@@ -197,6 +200,7 @@ void test_read_scheduling_monthday_configuration(void **state) {
     test_structure *test = *state;
 
     expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one month. New interval value: 1M");
+    will_return(__wrap_opendir, 0);
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_any(__wrap__mtinfo, formatted_msg);
     expect_string(__wrap_IsFile, file, "/var/ossec/etc/shared/your_policy_file.yml");
@@ -224,6 +228,7 @@ void test_read_scheduling_weekday_configuration(void **state) {
     test_structure *test = *state;
 
     expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one week. New interval value: 1w");
+    will_return(__wrap_opendir, 0);
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_any(__wrap__mtinfo, formatted_msg);
     expect_string(__wrap_IsFile, file, "/var/ossec/etc/shared/your_policy_file.yml");
@@ -249,6 +254,7 @@ void test_read_scheduling_daytime_configuration(void **state) {
         "</policies>\n";
     test_structure *test = *state;
 
+    will_return(__wrap_opendir, 0);
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_any(__wrap__mtinfo, formatted_msg);
     expect_string(__wrap_IsFile, file, "/var/ossec/etc/shared/your_policy_file.yml");
@@ -274,6 +280,7 @@ void test_read_scheduling_interval_configuration(void **state) {
         "</policies>\n";
     test_structure *test = *state;
 
+    will_return(__wrap_opendir, 0);
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_any(__wrap__mtinfo, formatted_msg);
     expect_string(__wrap_IsFile, file, "/var/ossec/etc/shared/your_policy_file.yml");

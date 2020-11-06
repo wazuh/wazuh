@@ -20,6 +20,14 @@ int __wrap_chmod(const char *path) {
     return mock();
 }
 
+int __wrap_chown(const char *__file, int __owner, int __group) {
+    check_expected(__file);
+    check_expected(__owner);
+    check_expected(__group);
+
+    return mock();
+}
+
 int __wrap_lstat(const char *filename, struct stat *buf) {
     check_expected(filename);
     buf->st_mode = mock();
