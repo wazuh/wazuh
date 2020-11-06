@@ -28,6 +28,12 @@ static const char* VALID_ENTRY = "{"
     "\"attributes\": {}\n"
     "}";
 
+static const char *VALID_REGISTRY = "{"
+    "\"path\": \"HKEY_LOCAL_MACHINE\\System\\TEST\\clave\",\n"
+    "\"timestamp\": 10,\n"
+    "\"attributes\": {}\n"
+    "}";
+
 static cJSON *prepare_valid_entry(sqlite3_int64 inode) {
     cJSON* data = cJSON_Parse(VALID_ENTRY);
     cJSON *object = cJSON_CreateObject();
@@ -97,7 +103,10 @@ static int setup_wdb_t(void **state) {
         return -1;
     }
 
+    data->id = strdup("000");
+
     *state = data;
+
     return 0;
 }
 
@@ -129,8 +138,6 @@ static void test_wdb_syscheck_save2_payload_null(void **state) {
     int ret;
     wdb_t * wdb = *state;
 
-    wdb->id = strdup("000");
-
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000): cannot parse FIM payload: '(null)'");
 
     ret = wdb_syscheck_save2(wdb, NULL);
@@ -140,10 +147,7 @@ static void test_wdb_syscheck_save2_payload_null(void **state) {
 
 static void test_wdb_syscheck_save2_data_null(void **state) {
     int ret;
-
     wdb_t * wdb = *state;
-
-    wdb->id = strdup("000");
 
     will_return(__wrap_wdb_begin2, 0);
 
@@ -159,7 +163,6 @@ static void test_wdb_syscheck_save2_fail_transaction(void **state) {
     int ret;
     wdb_t * wdb = *state;
 
-    wdb->id = strdup("000");
     wdb->transaction = 0;
 
     will_return(__wrap_wdb_begin2, -1);
@@ -173,10 +176,8 @@ static void test_wdb_syscheck_save2_fail_transaction(void **state) {
 
 static void test_wdb_syscheck_save2_fail_file_entry(void **state) {
     int ret;
-
     wdb_t * wdb = *state;
 
-    wdb->id = strdup("000");
     wdb->transaction = 1;
 
     expect_string(__wrap__merror, formatted_msg, "DB(000) fim/save request with no file path argument.");
@@ -194,12 +195,10 @@ static void test_wdb_syscheck_save2_fail_file_entry(void **state) {
 
 static void test_wdb_syscheck_save2_success(void **state) {
     int ret;
-
     wdb_t * wdb = *state;
     cJSON *data = prepare_valid_entry(2);
     char *unformatted_data = cJSON_PrintUnformatted(data);
 
-    wdb->id = strdup("000");
     wdb->transaction = 1;
 
     expect_wdb_fim_insert_entry2_success(2);
@@ -230,8 +229,6 @@ static void test_wdb_fim_insert_entry2_data_null(void **state) {
 
     wdb_t * wdb = *state;
 
-    wdb->id = strdup("000");
-
     expect_string(__wrap__merror, formatted_msg, "DB(000) fim/save request with no file path argument.");
 
     ret = wdb_fim_insert_entry2(wdb, NULL);
@@ -243,8 +240,6 @@ static void test_wdb_fim_insert_entry2_path_null(void **state) {
     int ret;
     wdb_t * wdb = *state;
     cJSON* data = cJSON_CreateObject();
-
-    wdb->id = strdup("000");
 
     expect_string(__wrap__merror, formatted_msg, "DB(000) fim/save request with no file path argument.");
 
@@ -258,8 +253,6 @@ static void test_wdb_fim_insert_entry2_timestamp_null(void **state) {
     int ret;
     cJSON* data = cJSON_Parse(VALID_ENTRY);
     wdb_t * wdb = *state;
-
-    wdb->id = strdup("000");
 
     will_return(__wrap_cJSON_GetStringValue, "/test");
     will_return(__wrap_cJSON_IsNumber, false);
@@ -279,8 +272,6 @@ static void test_wdb_fim_insert_entry2_attributes_null(void **state) {
     cJSON* data = cJSON_Parse(VALID_ENTRY);
     wdb_t * wdb = *state;
 
-    wdb->id = strdup("000");
-
     will_return(__wrap_cJSON_GetStringValue, "/test");
     will_return(__wrap_cJSON_IsNumber, true);
     will_return(__wrap_cJSON_IsObject, false);
@@ -299,8 +290,6 @@ static void test_wdb_fim_insert_entry2_fail_cache(void **state) {
     int ret;
     wdb_t * wdb = *state;
     cJSON *data = cJSON_Parse(VALID_ENTRY);
-
-    wdb->id = strdup("000");
 
     expect_cJSON_GetStringValue_call("/test");
     expect_cJSON_IsNumber_call(true);
@@ -322,8 +311,6 @@ static void test_wdb_fim_insert_entry2_fail_element_null(void **state) {
     wdb_t * wdb = *state;
     cJSON* data = cJSON_Parse(VALID_ENTRY);
     cJSON *array = cJSON_CreateObject();
-
-    wdb->id = strdup("000");
 
     cJSON_AddItemToObject(array, "inode", cJSON_CreateObject());
     cJSON_ReplaceItemInObject(data, "attributes", array);
@@ -354,8 +341,6 @@ static void test_wdb_fim_insert_entry2_fail_element_string(void **state) {
     wdb_t * wdb = *state;
     cJSON* data = cJSON_Parse(VALID_ENTRY);
     cJSON *array = cJSON_CreateObject();
-
-    wdb->id = strdup("000");
 
     cJSON_AddItemToObject(array, "invalid_attribute", cJSON_CreateString("sasssss"));
     cJSON_ReplaceItemInObject(data, "attributes", array);
@@ -388,8 +373,6 @@ static void test_wdb_fim_insert_entry2_fail_element_number(void **state) {
     cJSON* data = cJSON_Parse(VALID_ENTRY);
     cJSON *array = cJSON_CreateObject();
 
-    wdb->id = strdup("000");
-
     cJSON_AddItemToObject(array, "invalid_attribute", cJSON_CreateNumber(1000));
     cJSON_ReplaceItemInObject(data, "attributes", array);
 
@@ -420,8 +403,6 @@ static void test_wdb_fim_insert_entry2_fail_sqlite3_stmt(void **state) {
     wdb_t * wdb = *state;
     cJSON* data = cJSON_Parse(VALID_ENTRY);
 
-    wdb->id = strdup("000");
-
     expect_cJSON_GetStringValue_call("/test");
     expect_cJSON_IsNumber_call(true);
     expect_cJSON_IsObject_call(true);
@@ -446,12 +427,112 @@ static void test_wdb_fim_insert_entry2_fail_sqlite3_stmt(void **state) {
     assert_int_equal(ret, -1);
 }
 
+static void test_wdb_fim_insert_entry2_registry_arch_null(void **state) {
+    int ret;
+    wdb_t * wdb = *state;
+    cJSON* data = cJSON_Parse(VALID_ENTRY);
+
+    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\clave"));
+    cJSON_AddItemToObject(data, "arch", cJSON_CreateObject());
+
+    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\clave");
+    expect_cJSON_IsNumber_call(true);
+    expect_cJSON_IsObject_call(true);
+    expect_cJSON_GetStringValue_call("registry_value");
+    expect_cJSON_GetStringValue_call(NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "DB(000) fim/save registry request with no arch argument.");
+
+    ret = wdb_fim_insert_entry2(wdb, data);
+
+    cJSON_Delete(data);
+    assert_int_equal(ret, -1);
+}
+
+static void test_wdb_fim_insert_entry2_registry_value_name_null(void **state) {
+    int ret;
+    wdb_t * wdb = *state;
+    cJSON* data = cJSON_Parse(VALID_ENTRY);
+
+    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\clave"));
+    cJSON_AddItemToObject(data, "arch", cJSON_CreateString("[x32]"));
+    cJSON_AddItemToObject(data, "value_name", cJSON_CreateObject());
+
+    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\clave");
+    expect_cJSON_IsNumber_call(true);
+    expect_cJSON_IsObject_call(true);
+    expect_cJSON_GetStringValue_call("registry_value");
+    expect_cJSON_GetStringValue_call("[x32]");
+    expect_cJSON_GetStringValue_call(NULL);
+
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "DB(000) fim/save registry value request with no value name argument.");
+
+    ret = wdb_fim_insert_entry2(wdb, data);
+
+    cJSON_Delete(data);
+    assert_int_equal(ret, -1);
+}
+
+static void test_wdb_fim_insert_entry2_registry_item_type_null(void **state) {
+    int ret;
+    wdb_t * wdb = *state;
+    cJSON* data = cJSON_Parse(VALID_ENTRY);
+
+    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\clave"));
+    cJSON_ReplaceItemInObject(data, "type", cJSON_CreateObject());
+
+    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\clave");
+    expect_cJSON_IsNumber_call(true);
+    expect_cJSON_IsObject_call(true);
+    expect_cJSON_GetStringValue_call(NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "DB(000) fim/save request with no type attribute.");
+
+    ret = wdb_fim_insert_entry2(wdb, data);
+
+    cJSON_Delete(data);
+    assert_int_equal(ret, -1);
+}
+
+static void test_wdb_fim_insert_entry2_registry_value_succesful(void **state) {
+    int ret;
+    wdb_t * wdb = *state;
+    cJSON* data = cJSON_Parse(VALID_ENTRY);
+
+    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\clave"));
+    cJSON_AddItemToObject(data, "arch", cJSON_CreateString("[x32]"));
+    cJSON_AddItemToObject(data, "value_name", cJSON_CreateObject());
+
+    expect_wdb_stmt_cache_call(1);
+
+    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\clave");
+    expect_cJSON_IsNumber_call(true);
+    expect_cJSON_IsObject_call(true);
+    expect_cJSON_GetStringValue_call("registry_value");
+    expect_cJSON_GetStringValue_call("[x32]");
+    expect_cJSON_GetStringValue_call("testname");
+
+    expect_sqlite3_bind_text_call(1, "HKEY_LOCAL_MACHINE\\System\\TEST\\clave", 1);
+    expect_sqlite3_bind_text_call(2, "registry_value", 1);
+    expect_sqlite3_bind_int64_call(3, 10, 0);
+    expect_sqlite3_bind_text_call(18, "[x32]", 1);
+    expect_sqlite3_bind_text_call(19, "testname", 1);
+    expect_sqlite3_bind_text_call(21, "[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\clave:testname", 1);
+
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    ret = wdb_fim_insert_entry2(wdb, data);
+
+    cJSON_Delete(data);
+    assert_int_equal(ret, 0);
+}
+
 static void test_wdb_fim_insert_entry2_success(void **state) {
     int ret;
     wdb_t * wdb = *state;
     cJSON* data = prepare_valid_entry(2);
-
-    wdb->id = strdup("000");
 
     expect_wdb_fim_insert_entry2_success(2);
 
@@ -465,7 +546,6 @@ static void test_wdb_fim_insert_entry2_large_inode(void **state) {
     int ret;
 
     wdb_t * wdb = *state;
-    wdb->id = strdup("000");
     cJSON* data = prepare_valid_entry(2311061769);
 
     expect_wdb_fim_insert_entry2_success(2311061769);
@@ -479,7 +559,7 @@ static void test_wdb_fim_insert_entry2_large_inode(void **state) {
 int main(void) {
     const struct CMUnitTest tests[] = {
         //Test wdb_syscheck_save2
-        cmocka_unit_test_setup_teardown(test_wdb_syscheck_save2_wbs_null, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test(test_wdb_syscheck_save2_wbs_null),
         cmocka_unit_test_setup_teardown(test_wdb_syscheck_save2_payload_null, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdb_syscheck_save2_data_null, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdb_syscheck_save2_fail_transaction, setup_wdb_t, teardown_wdb_t),
@@ -487,7 +567,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wdb_syscheck_save2_success, setup_wdb_t, teardown_wdb_t),
 
         //Test wdb_fim_insert_entry2
-        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_wdb_null, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_wdb_null),
         cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_data_null, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_path_null, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_timestamp_null, setup_wdb_t, teardown_wdb_t),
@@ -497,6 +577,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_fail_element_string, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_fail_element_number, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_fail_sqlite3_stmt, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_registry_arch_null, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_registry_value_name_null, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_registry_item_type_null, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_registry_value_succesful, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_success, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_large_inode, setup_wdb_t, teardown_wdb_t),
     };
