@@ -81,3 +81,11 @@ TEST_F(SysInfoTest, networks)
     const auto result {info.networks()};
     EXPECT_FALSE(result.empty());    
 }
+
+TEST_F(SysInfoTest, os)
+{
+    SysInfoWrapper info;
+    EXPECT_CALL(info, getOsInfo());
+    const auto result {info.os()};
+    EXPECT_FALSE(result.empty());
+}
