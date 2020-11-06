@@ -366,8 +366,6 @@ static void expect_read_line(fim_tmp_file *file, char *line, fim_entry *entry, i
     expect_value(__wrap_fim_db_clean_file, storage, storage);
 }
 
-
-
 /* tests */
 /* fim_sync_push_msg */
 static void test_fim_sync_push_msg_success(void **state) {
@@ -565,6 +563,7 @@ static void test_fim_sync_send_list_success(void **state) {
     file.elements = 1;
 
     fim_entry entry;
+    entry.type = FIM_TYPE_FILE;
     entry.file_entry.path = "/some/path";
     entry.file_entry.data = &DEFAULT_FILE_DATA;
 
@@ -675,6 +674,7 @@ static void test_fim_sync_dispatch_no_data(void **state) {
 
 
     fim_entry entry;
+    entry.type = FIM_TYPE_FILE;
     entry.file_entry.path = "/some/path";
     entry.file_entry.data = &DEFAULT_FILE_DATA;
 

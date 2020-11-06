@@ -29,8 +29,8 @@ set_target_properties(
 target_link_libraries(ANALYSISD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 # Generate Analysisd tests
-#list(APPEND analysisd_names "test_analysisd_syscheck")
-#list(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -Wl,--wrap,_merror -Wl,--wrap,_mdebug1")
+list(APPEND analysisd_names "test_analysisd_syscheck")
+list(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -Wl,--wrap,_merror -Wl,--wrap,_mdebug1")
 
 list(APPEND analysisd_names "test_dbsync")
 list(APPEND analysisd_flags "-Wl,--wrap,_merror -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP \
