@@ -93,8 +93,3 @@ nlohmann::json SysInfo::getNetworks() const
     return networks;
 }
 
-nlohmann::json SysInfo::getPorts() const
-{
-    // Currently not supported for this OS
-    return {};
-}

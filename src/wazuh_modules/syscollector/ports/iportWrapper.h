@@ -44,5 +44,7 @@ public:
     virtual int32_t rxQueue() const = 0;
     virtual int32_t inode() const = 0;
     virtual std::string state() const = 0;
+    virtual int32_t pid() const = 0;
+    virtual std::string processName() const = 0;
 };
 #endif // _PORT_WRAPPER_H

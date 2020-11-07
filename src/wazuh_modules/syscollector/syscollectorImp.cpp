@@ -35,7 +35,7 @@ void Syscollector::start()
         const auto& hw{m_info.hardware()};
         const auto& packages{m_info.packages()};
         const auto& processes{m_info.processes()};    
-        const auto& networks{m_info.networks()};       
+        const auto& networks{m_info.networks()};
         const auto& os{m_info.os()};
         const auto& ports{m_info.ports()};
         std::cout << packages.dump() << std::endl;

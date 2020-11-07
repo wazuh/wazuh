@@ -208,15 +208,32 @@ class LinuxPortWrapper final : public IPortWrapper
     std::string state() const override
     {
         std::string retVal { "unknown" };
-        if (PROTOCOL_TYPE.at(m_type) == TCP)
+        const auto it { PROTOCOL_TYPE.find(m_type) };
+
+        if (PROTOCOL_TYPE.end() != it && TCP && it->second)
         {
             std::stringstream ss;
             int32_t state { 0 };
             ss << std::hex << m_fields.at(STATE);
             ss >> state;
-            retVal = STATE_TYPE.at(state);
+
+            const auto itState { STATE_TYPE.find(state) };
+
+            if (STATE_TYPE.end() != itState)
+            {
+                retVal = itState->second;
+            }
         }
         return retVal;
+    }
+    std::string processName() const override
+    {
+        return {};
+    }
+
+    int32_t pid() const override
+    {
+        return {};
     }
 };
 
