@@ -664,7 +664,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             if (Config) {
                 long time = w_parse_time(node[i]->content);
 
-                if (time < 20) {
+                if (time < 1) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
                 } else {
@@ -677,7 +677,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             if (Config) {
                 long time = w_parse_time(node[i]->content);
 
-                if (time < 120) {
+                if (time < 0) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
                 } else {
