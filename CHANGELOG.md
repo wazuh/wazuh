@@ -3,8 +3,22 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.1.0] -
 
+### Added
+
+### Changed
+
+- **Wazuh API:**
+  - Changed upgrade endpoints to accept a list of agents, maximum 100 agents per request. ([#5336](https://github.com/wazuh/wazuh/issues/5536)) 
+
+- **Framework:**  
+  - Refactored agent upgrade module. ([#5537](https://github.com/wazuh/wazuh/issues/5537))
+  - Refactored agent upgrade CLI. ([#5675](https://github.com/wazuh/wazuh/issues/5675))
+
 ### Fixed
+
 - Fixed an error with `/groups/{group_id}/config` Wazuh API endpoints (GET and PUT) when using complex `localfile` configurations. ([#6276](https://github.com/wazuh/wazuh/pull/6383))
+
+### Removed
 
 ## [v4.0.1] -
 
@@ -21,25 +35,6 @@ All notable changes to this project will be documented in this file.
   - Added missing agent:group resource to RBAC's catalog. ([6427](https://github.com/wazuh/wazuh/issues/6427))
 
 ### Removed
-
-### Changed
-
-- **Wazuh API:**
-  - Changed upgrade endpoints to accept a list of agents, maximum 100 agents per request. ([#5336](https://github.com/wazuh/wazuh/issues/5536)) 
-
-- **Framework:**  
-  - Refactored agent upgrade module. ([#5537](https://github.com/wazuh/wazuh/issues/5537))
-
-### Added
-
-### Changed
-
-- Agent upgrade module refactored. ([#5387](https://github.com/wazuh/wazuh/issues/5387))
-
-### Fixed
-
-### Removed
-
 
 ## [v4.0.0] -
 
