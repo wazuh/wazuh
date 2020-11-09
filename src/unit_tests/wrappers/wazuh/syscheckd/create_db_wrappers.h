@@ -32,4 +32,8 @@ int __wrap_fim_registry_event(char *key, fim_file_data *data, int pos);
 
 int __wrap_fim_whodata_event(whodata_evt * w_evt);
 
+void expect_fim_configuration_directory_call(const char *path, const char *file, int ret);
+
+void expect_fim_checker_call(const char *path, int w_evt, int report);
+
 #endif

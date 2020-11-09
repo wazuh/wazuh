@@ -37,4 +37,5 @@ BOOL wrap_OpenProcessToken(HANDLE ProcessHandle,
                            DWORD DesiredAccess,
                            PHANDLE TokenHandle);
 
+void expect_SetThreadPriority_call(HANDLE handle, int priority, int ret);
 #endif

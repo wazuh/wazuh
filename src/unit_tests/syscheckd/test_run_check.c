@@ -158,37 +158,8 @@ static int teardown_tmp_file(void **state) {
 }
 #endif
 
-/* Auxiliar functions */
 /**
- * @brief This function load the expect and will_return calls for the wrapper of fim_db_get_path_range
-*/
-static void expect_w_fim_db_get_path_range(const fdb_t *db,
-                                           const char *start_str,
-                                           const char *top_str,
-                                           int storage,
-                                           fim_tmp_file *tmp_file,
-                                           int ret) {
-
-    expect_value(__wrap_fim_db_get_path_range, fim_sql, db);
-    expect_value(__wrap_fim_db_get_path_range, type, FIM_TYPE_FILE);
-    expect_string(__wrap_fim_db_get_path_range, start, start_str);
-    expect_string(__wrap_fim_db_get_path_range, top, top_str);
-    expect_value(__wrap_fim_db_get_path_range, storage, storage);
-    will_return(__wrap_fim_db_get_path_range, tmp_file);
-    will_return(__wrap_fim_db_get_path_range, ret);
-}
-
-/**
- * @brief This function load the expect and will_return calls for the wrapper of realtime_adddir
-*/
-static void expect_w_realtime_adddir(const char *path, int whodata, int ret) {
-    expect_string(__wrap_realtime_adddir, dir, path);
-    expect_value(__wrap_realtime_adddir, whodata, whodata);
-    will_return(__wrap_realtime_adddir, ret);
-}
-
-/**
- * @brief This function load the expect and will_return calls for the function send_sync_msg
+ * @brief This function loads expect and will_return calls for the function send_sync_msg
 */
 static void expect_w_send_sync_msg(const char *msg, const char *locmsg, int ret, int location) {
     expect_string(__wrap_SendMSG, message, msg);
@@ -196,57 +167,6 @@ static void expect_w_send_sync_msg(const char *msg, const char *locmsg, int ret,
     expect_value(__wrap_SendMSG, loc, location);
     will_return(__wrap_SendMSG, ret);
 }
-
-/**
- * @brief This function load the expect and will_return calls for the function StartMQ
-*/
-static void expect_w_StartMQ(const char *qpath, int type, int ret) {
-    expect_string(__wrap_StartMQ, path, qpath);
-    expect_value(__wrap_StartMQ, type, type);
-    will_return(__wrap_StartMQ, ret);
-}
-
-#ifndef TEST_WINAGENT
-/**
- * @brief This function load the expect and will_return calls for the wrapper of fim_configuration_directory
-*/
-static void expect_w_fim_configuration_directory(const char *path, const char *file, int ret) {
-    expect_string(__wrap_fim_configuration_directory, path, path);
-    expect_string(__wrap_fim_configuration_directory, entry, file);
-    will_return(__wrap_fim_configuration_directory, ret);
-}
-
-/**
- * @brief This function load the expect and will_return calls for the wrapper of fim_db_delete_range
-*/
-static void expect_w_fim_db_delete_range(const fdb_t *db, int storage, const fim_tmp_file *file, int ret){
-    expect_value(__wrap_fim_db_delete_range, fim_sql, db);
-    expect_value(__wrap_fim_db_delete_range, storage, storage);
-    expect_memory(__wrap_fim_db_delete_range, file, file, sizeof(file));
-    will_return(__wrap_fim_db_delete_range, ret);
-
-}
-
-/**
- * @brief This function load the expect and will_return calls for the wrapper of fim_checker
-*/
-static void expect_w_fim_checker(const char *path, int w_evt, int report) {
-    expect_string(__wrap_fim_checker, path, path);
-    expect_value(__wrap_fim_checker, w_evt, w_evt);
-    expect_value(__wrap_fim_checker, report, report);
-}
-
-#else
-/**
- * @brief This function load the expect and will_return calls for the wrapper of SetThreadPriority
-*/
-static void expect_w_SetThreadPriority(HANDLE handle, int priority, bool ret) {
-    expect_value(wrap_SetThreadPriority, hThread, handle);
-    expect_value(wrap_SetThreadPriority, nPriority, priority);
-    will_return(wrap_SetThreadPriority, ret);
-}
-#endif
-
 /* tests */
 
 void test_fim_whodata_initialize(void **state)
@@ -261,7 +181,7 @@ void test_fim_whodata_initialize(void **state)
     char expanded_dirs[1][OS_SIZE_1024];
     will_return(wrap_GetCurrentThread, (HANDLE)123456);
 
-    expect_w_SetThreadPriority((HANDLE)123456, THREAD_PRIORITY_LOWEST, true);
+    expect_SetThreadPriority_call((HANDLE)123456, THREAD_PRIORITY_LOWEST, true);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
 
@@ -271,12 +191,12 @@ void test_fim_whodata_initialize(void **state)
             fail();
 
         str_lowercase(expanded_dirs[i]);
-        expect_w_realtime_adddir(expanded_dirs[i], 10, 0);
+        expect_realtime_adddir_call(expanded_dirs[i], 10, 0);
     }
 #else
-    expect_w_realtime_adddir("/etc", 2, 0);
-    expect_w_realtime_adddir("/usr/bin", 5, 0);
-    expect_w_realtime_adddir("/usr/sbin", 6, 0);
+    expect_realtime_adddir_call("/etc", 2, 0);
+    expect_realtime_adddir_call("/usr/bin", 5, 0);
+    expect_realtime_adddir_call("/usr/sbin", 6, 0);
 #endif
 
     ret = fim_whodata_initialize();
@@ -314,10 +234,9 @@ void test_fim_send_msg_retry(void **state) {
 
     expect_w_send_sync_msg("test", SYSCHECK, -1, SYSCHECK_MQ);
 
-
     expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
 
-    expect_w_StartMQ(DEFAULTQPATH, WRITE, 0);
+    expect_StartMQ_call(DEFAULTQPATH, WRITE, 0);
 
     expect_w_send_sync_msg("test", SYSCHECK, -1, SYSCHECK_MQ);
 
@@ -330,7 +249,7 @@ void test_fim_send_msg_retry_error(void **state) {
     expect_w_send_sync_msg("test", SYSCHECK, -1, SYSCHECK_MQ);
     expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
 
-    expect_w_StartMQ(DEFAULTQPATH, WRITE, -1);
+    expect_StartMQ_call(DEFAULTQPATH, WRITE, -1);
 
     expect_string(__wrap__merror_exit, formatted_msg, "(1211): Unable to access queue: '/var/ossec/queue/ossec/queue'. Giving up.");
 
@@ -354,7 +273,7 @@ void test_fim_whodata_initialize_fail_set_policies(void **state)
 
     will_return(wrap_GetCurrentThread, (HANDLE)123456);
 
-    expect_w_SetThreadPriority((HANDLE)123456, THREAD_PRIORITY_LOWEST, true);
+    expect_SetThreadPriority_call((HANDLE)123456, THREAD_PRIORITY_LOWEST, true);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
 
@@ -364,7 +283,7 @@ void test_fim_whodata_initialize_fail_set_policies(void **state)
             fail();
 
         str_lowercase(expanded_dirs[i]);
-        expect_w_realtime_adddir(expanded_dirs[i], 10, 0);
+        expect_realtime_adddir_call(expanded_dirs[i], 10, 0);
     }
 
     will_return(__wrap_run_whodata_scan, 1);
@@ -385,7 +304,7 @@ void test_set_priority_windows_thread_highest(void **state) {
 
     will_return(wrap_GetCurrentThread, (HANDLE)123456);
 
-    expect_w_SetThreadPriority((HANDLE)123456, THREAD_PRIORITY_HIGHEST, true);
+    expect_SetThreadPriority_call((HANDLE)123456, THREAD_PRIORITY_HIGHEST, true);
 
     set_priority_windows_thread();
 }
@@ -396,7 +315,7 @@ void test_set_priority_windows_thread_above_normal(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '-8'");
 
     will_return(wrap_GetCurrentThread, (HANDLE)123456);
-    expect_w_SetThreadPriority((HANDLE)123456, THREAD_PRIORITY_ABOVE_NORMAL, true);
+    expect_SetThreadPriority_call((HANDLE)123456, THREAD_PRIORITY_ABOVE_NORMAL, true);
 
     set_priority_windows_thread();
 }
@@ -407,7 +326,7 @@ void test_set_priority_windows_thread_normal(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '0'");
 
     will_return(wrap_GetCurrentThread, (HANDLE)123456);
-    expect_w_SetThreadPriority((HANDLE)123456, THREAD_PRIORITY_NORMAL, true);
+    expect_SetThreadPriority_call((HANDLE)123456, THREAD_PRIORITY_NORMAL, true);
 
     set_priority_windows_thread();
 }
@@ -418,7 +337,7 @@ void test_set_priority_windows_thread_below_normal(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '2'");
 
     will_return(wrap_GetCurrentThread, (HANDLE)123456);
-    expect_w_SetThreadPriority((HANDLE)123456, THREAD_PRIORITY_BELOW_NORMAL, true);
+    expect_SetThreadPriority_call((HANDLE)123456, THREAD_PRIORITY_BELOW_NORMAL, true);
 
     set_priority_windows_thread();
 }
@@ -429,7 +348,7 @@ void test_set_priority_windows_thread_lowest(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '7'");
 
     will_return(wrap_GetCurrentThread, (HANDLE)123456);
-    expect_w_SetThreadPriority((HANDLE)123456, THREAD_PRIORITY_LOWEST, true);
+    expect_SetThreadPriority_call((HANDLE)123456, THREAD_PRIORITY_LOWEST, true);
 
     set_priority_windows_thread();
 }
@@ -440,7 +359,7 @@ void test_set_priority_windows_thread_idle(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '20'");
 
     will_return(wrap_GetCurrentThread, (HANDLE)123456);
-    expect_w_SetThreadPriority((HANDLE)123456, THREAD_PRIORITY_IDLE, true);
+    expect_SetThreadPriority_call((HANDLE)123456, THREAD_PRIORITY_IDLE, true);
 
     set_priority_windows_thread();
 }
@@ -451,7 +370,7 @@ void test_set_priority_windows_thread_error(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
 
     will_return(wrap_GetCurrentThread, (HANDLE)123456);
-    expect_w_SetThreadPriority((HANDLE)123456, THREAD_PRIORITY_LOWEST, false);
+    expect_SetThreadPriority_call((HANDLE)123456, THREAD_PRIORITY_LOWEST, false);
 
     will_return(wrap_GetLastError, 2345);
 
@@ -485,7 +404,7 @@ void test_set_whodata_mode_changes(void **state) {
             fail();
 
         str_lowercase(expanded_dirs[i]);
-        expect_w_realtime_adddir(expanded_dirs[i], 0, i % 2 == 0);
+        expect_realtime_adddir_call(expanded_dirs[i], 0, i % 2 == 0);
     }
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6225): The 'c:\\programdata\\microsoft\\windows\\start menu\\programs\\startup' directory starts to be monitored in real-time mode.");
@@ -505,7 +424,7 @@ void test_fim_whodata_initialize_eventchannel(void **state) {
     char expanded_dirs[1][OS_SIZE_1024];
 
     will_return(wrap_GetCurrentThread, (HANDLE)123456);
-    expect_w_SetThreadPriority((HANDLE)123456, THREAD_PRIORITY_LOWEST, true);
+    expect_SetThreadPriority_call((HANDLE)123456, THREAD_PRIORITY_LOWEST, true);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
 
@@ -515,7 +434,7 @@ void test_fim_whodata_initialize_eventchannel(void **state) {
             fail();
 
         str_lowercase(expanded_dirs[i]);
-        expect_w_realtime_adddir(expanded_dirs[i], 10, 0);
+        expect_realtime_adddir_call(expanded_dirs[i], 10, 0);
 
     }
 
@@ -615,10 +534,10 @@ void test_fim_link_update(void **state) {
     int pos = 0;
     char *link_path = "/folder/test";
 
-    expect_w_fim_db_get_path_range(syscheck.database, "/boot/", "/boot0", FIM_DB_DISK, NULL, FIMDB_OK);
-    expect_w_realtime_adddir(link_path, 0, 0);
+    expect_fim_db_get_path_range_call(syscheck.database, "/boot/", "/boot0", FIM_DB_DISK, NULL, FIMDB_OK);
+    expect_realtime_adddir_call(link_path, 0, 0);
 
-    expect_w_fim_checker(link_path, 0, 0);
+    expect_fim_checker_call(link_path, 0, 0);
 
     fim_link_update(pos, link_path);
 
@@ -631,7 +550,7 @@ void test_fim_link_update_already_added(void **state) {
     int pos = 0;
     char *link_path = "/folder/test";
 
-    expect_w_fim_db_get_path_range(syscheck.database, "/folder/test/", "/folder/test0", FIM_DB_DISK, NULL, FIMDB_OK);
+    expect_fim_db_get_path_range_call(syscheck.database, "/folder/test/", "/folder/test0", FIM_DB_DISK, NULL, FIMDB_OK);
     expect_string(__wrap__mdebug1, formatted_msg, "(6234): Directory '/folder/test' already monitored, ignoring link '(null)'");
 
     fim_link_update(pos, link_path);
@@ -649,8 +568,8 @@ void test_fim_link_check_delete(void **state) {
     will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, 0);
 
-    expect_w_fim_db_get_path_range(syscheck.database, "/etc/", "/etc0", FIM_DB_DISK, NULL, FIMDB_OK);
-    expect_w_fim_configuration_directory("/etc", "file", -1);
+    expect_fim_db_get_path_range_call(syscheck.database, "/etc/", "/etc0", FIM_DB_DISK, NULL, FIMDB_OK);
+    expect_fim_configuration_directory_call("/etc", "file", -1);
 
     fim_link_check_delete(pos);
 
@@ -699,8 +618,8 @@ void test_fim_delete_realtime_watches(void **state) {
 
     unsigned int pos = 1;
 
-    expect_w_fim_configuration_directory("", "file", 0);
-    expect_w_fim_configuration_directory("data", "file", 0);
+    expect_fim_configuration_directory_call("", "file", 0);
+    expect_fim_configuration_directory_call("data", "file", 0);
 
     will_return(__wrap_inotify_rm_watch, 1);
 
@@ -714,8 +633,8 @@ void test_fim_link_delete_range(void **state) {
 
     fim_tmp_file *tmp_file = *state;
 
-    expect_w_fim_db_get_path_range(syscheck.database, "/media/", "/media0", FIM_DB_DISK, tmp_file, FIMDB_OK);
-    expect_w_fim_db_delete_range(syscheck.database, FIM_DB_DISK, tmp_file, FIMDB_OK);
+    expect_fim_db_get_path_range_call(syscheck.database, "/media/", "/media0", FIM_DB_DISK, tmp_file, FIMDB_OK);
+    expect_fim_db_delete_range_call(syscheck.database, FIM_DB_DISK, tmp_file, FIMDB_OK);
 
     fim_link_delete_range(pos);
 }
@@ -725,10 +644,10 @@ void test_fim_link_delete_range_error(void **state) {
 
     fim_tmp_file *tmp_file = *state;
 
-    expect_w_fim_db_get_path_range(syscheck.database, "/media/", "/media0", FIM_DB_DISK, tmp_file, FIMDB_ERR);
+    expect_fim_db_get_path_range_call(syscheck.database, "/media/", "/media0", FIM_DB_DISK, tmp_file, FIMDB_ERR);
     expect_string(__wrap__merror, formatted_msg, "(6708): Failed to delete a range of paths between '/media/' and '/media0'");
 
-    expect_w_fim_db_delete_range(syscheck.database, FIM_DB_DISK, tmp_file, FIMDB_ERR);
+    expect_fim_db_delete_range_call(syscheck.database, FIM_DB_DISK, tmp_file, FIMDB_ERR);
     expect_string(__wrap__merror, formatted_msg, "(6708): Failed to delete a range of paths between '/media/' and '/media0'");
 
     fim_link_delete_range(pos);
@@ -740,8 +659,8 @@ void test_fim_link_silent_scan(void **state) {
     int pos = 3;
     char *link_path = "/folder/test";
 
-    expect_w_realtime_adddir(link_path, 0, 0);
-    expect_w_fim_checker(link_path, 0, 0);
+    expect_realtime_adddir_call(link_path, 0, 0);
+    expect_fim_checker_call(link_path, 0, 0);
 
     fim_link_silent_scan(link_path, pos);
 }
@@ -765,7 +684,7 @@ void test_fim_link_reload_broken_link_reload_broken(void **state) {
     int pos = 5;
     char *link_path = "/test";
 
-    expect_w_fim_checker(link_path, 0, 0);
+    expect_fim_checker_call(link_path, 0, 0);
 
     fim_link_reload_broken_link(link_path, pos);
 

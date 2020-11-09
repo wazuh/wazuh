@@ -25,3 +25,12 @@ int __wrap_StartMQ(const char *path, short int type,__attribute__((unused)) shor
     check_expected(type);
     return mock();
 }
+
+/**
+ * @brief This function load the expect and will_return calls for the function StartMQ
+*/
+void expect_StartMQ_call(const char *qpath, int type, int ret) {
+    expect_string(__wrap_StartMQ, path, qpath);
+    expect_value(__wrap_StartMQ, type, type);
+    will_return(__wrap_StartMQ, ret);
+}

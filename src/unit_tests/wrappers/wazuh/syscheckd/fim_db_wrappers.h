@@ -93,4 +93,17 @@ int __wrap_fim_db_sync_path_range(fdb_t *fim_sql,
                                   fim_tmp_file *file,
                                   int storage);
 
+/* Auxiliar functions */
+/**
+ * @brief This function load the expect and will_return calls for the wrapper of fim_db_get_path_range
+*/
+void expect_fim_db_get_path_range_call(const fdb_t *db,
+                                    const char *start_str,
+                                    const char *top_str,
+                                    int storage,
+                                    fim_tmp_file *tmp_file,
+                                    int ret);
+
+void expect_fim_db_delete_range_call(const fdb_t *db, int storage, const fim_tmp_file *file, int ret);
+
 #endif
