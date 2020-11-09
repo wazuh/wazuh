@@ -44,9 +44,6 @@ BOOL wrap_OpenProcessToken(__UNUSED_PARAM (HANDLE  ProcessHandle),
     return mock();
 }
 
-/**
- * @brief This function load the expect and will_return calls for the wrapper of SetThreadPriority
-*/
 void expect_SetThreadPriority_call(HANDLE handle, int priority, int ret) {
     expect_value(wrap_SetThreadPriority, hThread, handle);
     expect_value(wrap_SetThreadPriority, nPriority, priority);

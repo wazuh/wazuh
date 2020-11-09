@@ -31,9 +31,6 @@ int __wrap_realtime_start() {
     return 0;
 }
 
-/**
- * @brief This function load the expect and will_return calls for the wrapper of realtime_adddir
-*/
 void expect_realtime_adddir_call(const char *path, int whodata, int ret) {
     expect_string(__wrap_realtime_adddir, dir, path);
     expect_value(__wrap_realtime_adddir, whodata, whodata);

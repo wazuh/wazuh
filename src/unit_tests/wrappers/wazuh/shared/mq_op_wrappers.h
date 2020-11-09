@@ -15,5 +15,13 @@ int __wrap_SendMSG(int queue, const char *message, const char *locmsg, char loc)
 
 int __wrap_StartMQ(const char *path, short int type, short int n_attempts);
 
+/**
+ * @brief This function loads the expect and will_return calls for the function StartMQ
+ */
 void expect_StartMQ_call(const char *qpath, int type, int ret);
+
+/**
+ * @brief This function loads the expect and will_return calls for the function SendMSG
+ */
+void expect_SendMSG_call(const char *message, const char *locmsg, char loc, int ret);
 #endif

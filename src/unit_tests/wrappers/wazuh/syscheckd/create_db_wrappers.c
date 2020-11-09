@@ -65,18 +65,12 @@ int __wrap_fim_whodata_event(whodata_evt * w_evt)
     return 1;
 }
 
-/**
- * @brief This function load the expect and will_return calls for the wrapper of fim_checker
-*/
 void expect_fim_checker_call(const char *path, int w_evt, int report) {
     expect_string(__wrap_fim_checker, path, path);
     expect_value(__wrap_fim_checker, w_evt, w_evt);
     expect_value(__wrap_fim_checker, report, report);
 }
 
-/**
- * @brief This function load the expect and will_return calls for the wrapper of fim_configuration_directory
-*/
 void expect_fim_configuration_directory_call(const char *path, const char *file, int ret) {
     expect_string(__wrap_fim_configuration_directory, path, path);
     expect_string(__wrap_fim_configuration_directory, entry, file);

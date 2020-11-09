@@ -161,11 +161,8 @@ static int teardown_tmp_file(void **state) {
 /**
  * @brief This function loads expect and will_return calls for the function send_sync_msg
 */
-static void expect_w_send_sync_msg(const char *msg, const char *locmsg, int ret, int location) {
-    expect_string(__wrap_SendMSG, message, msg);
-    expect_string(__wrap_SendMSG, locmsg, locmsg);
-    expect_value(__wrap_SendMSG, loc, location);
-    will_return(__wrap_SendMSG, ret);
+static void expect_w_send_sync_msg(const char *msg, const char *locmsg, char location, int ret) {
+    expect_SendMSG_call(msg, locmsg, location, ret);
 }
 /* tests */
 
@@ -225,20 +222,20 @@ void test_log_realtime_status(void **state)
 void test_fim_send_msg(void **state) {
     (void) state;
 
-    expect_w_send_sync_msg("test", SYSCHECK, 0, SYSCHECK_MQ);
+    expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, 0);
     fim_send_msg(SYSCHECK_MQ, SYSCHECK, "test");
 }
 
 void test_fim_send_msg_retry(void **state) {
     (void) state;
 
-    expect_w_send_sync_msg("test", SYSCHECK, -1, SYSCHECK_MQ);
+    expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, -1);
 
     expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
 
     expect_StartMQ_call(DEFAULTQPATH, WRITE, 0);
 
-    expect_w_send_sync_msg("test", SYSCHECK, -1, SYSCHECK_MQ);
+    expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, -1);
 
     fim_send_msg(SYSCHECK_MQ, SYSCHECK, "test");
 }
@@ -246,7 +243,7 @@ void test_fim_send_msg_retry(void **state) {
 void test_fim_send_msg_retry_error(void **state) {
     (void) state;
 
-    expect_w_send_sync_msg("test", SYSCHECK, -1, SYSCHECK_MQ);
+    expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, -1);
     expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
 
     expect_StartMQ_call(DEFAULTQPATH, WRITE, -1);
@@ -254,7 +251,7 @@ void test_fim_send_msg_retry_error(void **state) {
     expect_string(__wrap__merror_exit, formatted_msg, "(1211): Unable to access queue: '/var/ossec/queue/ossec/queue'. Giving up.");
 
     // This code shouldn't run
-    expect_w_send_sync_msg("test", SYSCHECK, -1, SYSCHECK_MQ);
+    expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, -1);
 
     fim_send_msg(SYSCHECK_MQ, SYSCHECK, "test");
 }
@@ -452,13 +449,13 @@ void test_fim_whodata_initialize_eventchannel(void **state) {
 void test_fim_send_sync_msg_10_eps(void ** state) {
     (void) state;
     syscheck.sync_max_eps = 10;
-    char location[10] = "fim_file\0";
+    char location[10] = "fim_file";
 
     // We must not sleep the first 9 times
 
     for (int i = 1; i < syscheck.sync_max_eps; i++) {
         expect_string(__wrap__mdebug2, formatted_msg, "(6317): Sending integrity control message: ");
-        expect_w_send_sync_msg("",location, 0, DBSYNC_MQ);
+        expect_w_send_sync_msg("", location, DBSYNC_MQ, 0);
         fim_send_sync_msg( location, "");
     }
 
@@ -470,17 +467,17 @@ void test_fim_send_sync_msg_10_eps(void ** state) {
 
     // After 10 times, sleep one second
     expect_string(__wrap__mdebug2, formatted_msg, "(6317): Sending integrity control message: ");
-    expect_w_send_sync_msg("", location, 0, DBSYNC_MQ);
+    expect_w_send_sync_msg("", location, DBSYNC_MQ, 0);
     fim_send_sync_msg( location, "");
 }
 
 void test_fim_send_sync_msg_0_eps(void ** state) {
     (void) state;
     syscheck.sync_max_eps = 0;
-    char location[10] = "fim_file\0";
+    char location[10] = "fim_file";
     // We must not sleep
     expect_string(__wrap__mdebug2, formatted_msg, "(6317): Sending integrity control message: ");
-    expect_w_send_sync_msg("", location, 0, DBSYNC_MQ);
+    expect_w_send_sync_msg("", location, DBSYNC_MQ, 0);
     fim_send_sync_msg(location, "");
 }
 
@@ -492,7 +489,7 @@ void test_send_syscheck_msg_10_eps(void ** state) {
 
     for (int i = 1; i < syscheck.max_eps; i++) {
         expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: ");
-        expect_w_send_sync_msg("", SYSCHECK, 0, SYSCHECK_MQ);
+        expect_w_send_sync_msg("", SYSCHECK, SYSCHECK_MQ, 0);
         send_syscheck_msg("");
     }
 
@@ -504,7 +501,7 @@ void test_send_syscheck_msg_10_eps(void ** state) {
 
     // After 10 times, sleep one second
     expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: ");
-    expect_w_send_sync_msg("", SYSCHECK, 0, SYSCHECK_MQ);
+    expect_w_send_sync_msg("", SYSCHECK, SYSCHECK_MQ, 0);
 
     send_syscheck_msg("");
 }
@@ -515,7 +512,7 @@ void test_send_syscheck_msg_0_eps(void ** state) {
 
     // We must not sleep
     expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: ");
-    expect_w_send_sync_msg("", SYSCHECK, 0, SYSCHECK_MQ);
+    expect_w_send_sync_msg("", SYSCHECK, SYSCHECK_MQ, 0);
     send_syscheck_msg("");
 }
 
@@ -523,7 +520,7 @@ void test_fim_send_scan_info(void **state) {
     (void) state;
     const char *msg = "{\"type\":\"scan_start\",\"data\":{\"timestamp\":1}}";
     expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {\"type\":\"scan_start\",\"data\":{\"timestamp\":1}}");
-    expect_w_send_sync_msg(msg, SYSCHECK, 0, SYSCHECK_MQ);
+    expect_w_send_sync_msg(msg, SYSCHECK, SYSCHECK_MQ, 0);
     fim_send_scan_info(FIM_SCAN_START);
 }
 
