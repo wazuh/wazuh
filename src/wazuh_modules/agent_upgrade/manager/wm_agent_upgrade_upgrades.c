@@ -551,6 +551,7 @@ STATIC int wm_agent_upgrade_send_sha1(int agent_id, int wpk_message_format, cons
 
     os_free(command);
     os_free(response);
+    os_free(data);
 
     return result;
 }
@@ -594,6 +595,7 @@ STATIC int wm_agent_upgrade_send_upgrade(int agent_id, int wpk_message_format, c
 
     os_free(command);
     os_free(response);
+    os_free(data);
 
     return result;
 }

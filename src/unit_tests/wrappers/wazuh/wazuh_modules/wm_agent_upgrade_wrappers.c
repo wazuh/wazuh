@@ -96,7 +96,7 @@ int __wrap_wm_agent_upgrade_parse_agent_response(const char* agent_response, cha
     check_expected(agent_response);
 
     if (data && strchr(agent_response, ' ')) {
-        *data = strchr(agent_response, ' ') + 1;
+        os_strdup(strchr(agent_response, ' ') + 1, *data);
     }
 
     return mock();
@@ -106,7 +106,7 @@ int __wrap_wm_agent_upgrade_parse_agent_upgrade_command_response(const char* age
     check_expected(agent_response);
 
     if (data) {
-        *data = mock_type(char *);
+        os_strdup(mock_type(char *), *data);
     }
 
     return mock();
