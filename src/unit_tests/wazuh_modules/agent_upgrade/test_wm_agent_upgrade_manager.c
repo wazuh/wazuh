@@ -13,6 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 
+#include "../../wrappers/posix/pthread_wrappers.h"
 #include "../../wrappers/posix/select_wrappers.h"
 #include "../../wrappers/posix/unistd_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
@@ -724,6 +725,47 @@ void test_wm_agent_upgrade_listen_messages_bind_error(void **state)
     wm_agent_upgrade_listen_messages(config);
 }
 
+void test_wm_agent_upgrade_start_manager_module_enabled(void **state)
+{
+    wm_manager_configs *config = *state;
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, formatted_msg, "(8153): Module Agent Upgrade started.");
+
+    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK_PATH);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_BindUnixDomain, -1);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket '/var/ossec/queue/tasks/upgrade': 'Operation not permitted'");
+
+    wm_agent_upgrade_start_manager_module(config, 1);
+}
+
+void test_wm_agent_upgrade_start_manager_module_disabled(void **state)
+{
+    wm_manager_configs *config = *state;
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, formatted_msg, "(8152): Module Agent Upgrade disabled. Exiting...");
+
+    will_return(__wrap_pthread_exit, OS_INVALID);
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, formatted_msg, "(8153): Module Agent Upgrade started.");
+
+    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK_PATH);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_BindUnixDomain, -1);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket '/var/ossec/queue/tasks/upgrade': 'Operation not permitted'");
+
+    wm_agent_upgrade_start_manager_module(config, 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // wm_agent_upgrade_listen_messages
@@ -740,7 +782,10 @@ int main(void) {
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_select_zero),
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_select_error_eintr),
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_select_error),
-        cmocka_unit_test(test_wm_agent_upgrade_listen_messages_bind_error)
+        cmocka_unit_test(test_wm_agent_upgrade_listen_messages_bind_error),
+        // wm_agent_upgrade_start_manager_module
+        cmocka_unit_test(test_wm_agent_upgrade_start_manager_module_enabled),
+        cmocka_unit_test(test_wm_agent_upgrade_start_manager_module_disabled)
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
