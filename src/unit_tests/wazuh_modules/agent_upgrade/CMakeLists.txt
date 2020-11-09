@@ -68,8 +68,9 @@ if(${TARGET} STREQUAL "server")
 else()
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_agent")
-    list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mterror_exit -Wl,--wrap,_mtdebug1 -Wl,--wrap,wm_sendmsg -Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose -Wl,--wrap,StartMQ -Wl,--wrap,sleep -Wl,--wrap,close \
-                               -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,getpid")
+    list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mterror_exit -Wl,--wrap,_mtinfo -Wl,--wrap,_mtdebug1 -Wl,--wrap,wm_sendmsg -Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose -Wl,--wrap,StartMQ -Wl,--wrap,sleep -Wl,--wrap,close \
+                               -Wl,--wrap,isChroot -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,wm_agent_upgrade_process_command \
+                               -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,getpid -Wl,--wrap,CreateThread")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_com")
     list(APPEND upgrade_flags "-Wl,--wrap,w_ref_parent_folder -Wl,--wrap,_merror -Wl,--wrap,w_wpk_unsign -Wl,--wrap,unlink -Wl,--wrap,getpid -Wl,--wrap,gzopen \

@@ -18,3 +18,10 @@ void __wrap_wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_co
     check_expected(agent_config);
     check_expected(enabled);
 }
+
+size_t __wrap_wm_agent_upgrade_process_command(const char *buffer, char **output) {
+    check_expected(buffer);
+    *output = mock_type(char*);
+
+    return mock();
+}

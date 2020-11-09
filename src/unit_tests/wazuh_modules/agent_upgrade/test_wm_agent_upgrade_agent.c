@@ -15,9 +15,11 @@
 
 #include "../../wrappers/common.h"
 #include "../../wrappers/libc/stdio_wrappers.h"
+#include "../../wrappers/posix/select_wrappers.h"
 #include "../../wrappers/posix/unistd_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
+#include "../../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wmodules_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_agent_upgrade_wrappers.h"
 
@@ -25,8 +27,10 @@
 #include "../../wazuh_modules/agent_upgrade/agent/wm_agent_upgrade_agent.h"
 #include "../../headers/shared.h"
 
-void wm_upgrade_agent_send_ack_message(int *queue_fd, wm_upgrade_agent_state state);
+void wm_agent_upgrade_listen_messages(const wm_agent_configs* agent_configs);
+void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config);
 bool wm_upgrade_agent_search_upgrade_result(int *queue_fd);
+void wm_upgrade_agent_send_ack_message(int *queue_fd, wm_upgrade_agent_state state);
 
 // Setup / teardown
 
@@ -50,6 +54,17 @@ static int setup_test_executions(void **state) {
     return 0;
 }
 
+// Wrappers
+
+int __wrap_accept() {
+    return mock();
+}
+
+int __wrap_CreateThread(void * (*function_pointer)(void *), void *data) {
+    check_expected_ptr(function_pointer);
+    return 1;
+}
+
 // Tests
 
 void test_wm_upgrade_agent_send_ack_message_successful(void **state)
@@ -62,7 +77,7 @@ void test_wm_upgrade_agent_send_ack_message_successful(void **state)
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue);
     expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
-                                               "\"parameters\":{\"error\":0," 
+                                               "\"parameters\":{\"error\":0,"
                                                            "\"message\":\"Upgrade was successful\","
                                                            "\"status\":\"Done\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
@@ -73,7 +88,7 @@ void test_wm_upgrade_agent_send_ack_message_successful(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
                                                    "'{\"command\":\"upgrade_update_status\","
-                                                     "\"parameters\":{\"error\":0," 
+                                                     "\"parameters\":{\"error\":0,"
                                                                  "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
@@ -214,7 +229,7 @@ void test_wm_upgrade_agent_search_upgrade_result_successful(void **state)
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue);
     expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
-                                               "\"parameters\":{\"error\":0," 
+                                               "\"parameters\":{\"error\":0,"
                                                            "\"message\":\"Upgrade was successful\","
                                                            "\"status\":\"Done\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
@@ -225,7 +240,7 @@ void test_wm_upgrade_agent_search_upgrade_result_successful(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
                                                    "'{\"command\":\"upgrade_update_status\","
-                                                     "\"parameters\":{\"error\":0," 
+                                                     "\"parameters\":{\"error\":0,"
                                                                  "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
@@ -365,7 +380,7 @@ void test_wm_agent_upgrade_check_status_successful(void **state)
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue);
     expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
-                                               "\"parameters\":{\"error\":0," 
+                                               "\"parameters\":{\"error\":0,"
                                                            "\"message\":\"Upgrade was successful\","
                                                            "\"status\":\"Done\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
@@ -376,7 +391,7 @@ void test_wm_agent_upgrade_check_status_successful(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
                                                    "'{\"command\":\"upgrade_update_status\","
-                                                     "\"parameters\":{\"error\":0," 
+                                                     "\"parameters\":{\"error\":0,"
                                                                  "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
@@ -432,7 +447,7 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue);
     expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
-                                               "\"parameters\":{\"error\":0," 
+                                               "\"parameters\":{\"error\":0,"
                                                            "\"message\":\"Upgrade was successful\","
                                                            "\"status\":\"Done\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
@@ -443,7 +458,7 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
                                                    "'{\"command\":\"upgrade_update_status\","
-                                                     "\"parameters\":{\"error\":0," 
+                                                     "\"parameters\":{\"error\":0,"
                                                                  "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
@@ -471,7 +486,7 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue);
     expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
-                                               "\"parameters\":{\"error\":0," 
+                                               "\"parameters\":{\"error\":0,"
                                                            "\"message\":\"Upgrade was successful\","
                                                            "\"status\":\"Done\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
@@ -482,7 +497,7 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
                                                    "'{\"command\":\"upgrade_update_status\","
-                                                     "\"parameters\":{\"error\":0," 
+                                                     "\"parameters\":{\"error\":0,"
                                                                  "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
@@ -510,7 +525,7 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue);
     expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
-                                               "\"parameters\":{\"error\":0," 
+                                               "\"parameters\":{\"error\":0,"
                                                            "\"message\":\"Upgrade was successful\","
                                                            "\"status\":\"Done\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
@@ -521,7 +536,7 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
                                                    "'{\"command\":\"upgrade_update_status\","
-                                                     "\"parameters\":{\"error\":0," 
+                                                     "\"parameters\":{\"error\":0,"
                                                                  "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
@@ -549,7 +564,7 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue);
     expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
-                                               "\"parameters\":{\"error\":0," 
+                                               "\"parameters\":{\"error\":0,"
                                                            "\"message\":\"Upgrade was successful\","
                                                            "\"status\":\"Done\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
@@ -560,7 +575,7 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
                                                    "'{\"command\":\"upgrade_update_status\","
-                                                     "\"parameters\":{\"error\":0," 
+                                                     "\"parameters\":{\"error\":0,"
                                                                  "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
@@ -604,6 +619,375 @@ void test_wm_agent_upgrade_check_status_queue_error(void **state)
     wm_agent_upgrade_check_status(config);
 }
 
+void test_wm_agent_upgrade_listen_messages_ok(void **state)
+{
+    int socket = 0;
+    int peer = 1111;
+
+    char *input = "{"
+                  "   \"command\": \"upgrade\","
+                  "   \"parameters\": {"
+                  "        \"file\":\"test.wpk\","
+                  "        \"installer\":\"test.sh\""
+                  "    }"
+                  "}";
+
+    size_t input_size = strlen(input) + 1;
+    char *response = NULL;
+    os_calloc(OS_SIZE_256, sizeof(char), response);
+
+    sprintf(response, "{"
+                      "    \"error\":0,"
+                      "    \"data\":[],"
+                      "    \"message\":\"ok\""
+                      "}");
+
+    will_return(__wrap_isChroot, 1);
+
+    expect_string(__wrap_OS_BindUnixDomain, path, AGENT_UPGRADE_SOCK);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_BindUnixDomain, socket);
+
+    will_return(__wrap_select, 1);
+
+    will_return(__wrap_accept, peer);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, peer);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, input);
+    will_return(__wrap_OS_RecvSecureTCP, input_size);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8155): Incomming message: '{"
+                                                                               "   \"command\": \"upgrade\","
+                                                                               "   \"parameters\": {"
+                                                                               "        \"file\":\"test.wpk\","
+                                                                               "        \"installer\":\"test.sh\""
+                                                                               "    }"
+                                                                               "}'");
+
+    expect_memory(__wrap_wm_agent_upgrade_process_command, buffer, input, sizeof(input));
+    will_return(__wrap_wm_agent_upgrade_process_command, response);
+    will_return(__wrap_wm_agent_upgrade_process_command, strlen(response));
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8156): Response message: '{"
+                                                                              "    \"error\":0,"
+                                                                              "    \"data\":[],"
+                                                                              "    \"message\":\"ok\""
+                                                                              "}'");
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, peer);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(response));
+    expect_string(__wrap_OS_SendSecureTCP, msg, response);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    wm_agent_upgrade_listen_messages(NULL);
+}
+
+void test_wm_agent_upgrade_listen_messages_receive_empty(void **state)
+{
+    int socket = 0;
+    int peer = 1111;
+    char *input = "Bad JSON";
+
+    will_return(__wrap_isChroot, 0);
+
+    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR AGENT_UPGRADE_SOCK);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_BindUnixDomain, socket);
+
+    will_return(__wrap_select, 1);
+
+    will_return(__wrap_accept, peer);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, peer);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, input);
+    will_return(__wrap_OS_RecvSecureTCP, 0);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8159): Empty message from local client.");
+
+    wm_agent_upgrade_listen_messages(NULL);
+}
+
+void test_wm_agent_upgrade_listen_messages_receive_error(void **state)
+{
+    int socket = 0;
+    int peer = 1111;
+    char *input = "Bad JSON";
+
+    will_return(__wrap_isChroot, 0);
+
+    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR AGENT_UPGRADE_SOCK);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_BindUnixDomain, socket);
+
+    will_return(__wrap_select, 1);
+
+    will_return(__wrap_accept, peer);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, peer);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, input);
+    will_return(__wrap_OS_RecvSecureTCP, -1);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8111): Error in recv(): 'Success'");
+
+    wm_agent_upgrade_listen_messages(NULL);
+}
+
+void test_wm_agent_upgrade_listen_messages_receive_sock_error(void **state)
+{
+    int socket = 0;
+    int peer = 1111;
+    char *input = "Bad JSON";
+
+    will_return(__wrap_isChroot, 0);
+
+    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR AGENT_UPGRADE_SOCK);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_BindUnixDomain, socket);
+
+    will_return(__wrap_select, 1);
+
+    will_return(__wrap_accept, peer);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, peer);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, input);
+    will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8112): Response size is bigger than expected.");
+
+    wm_agent_upgrade_listen_messages(NULL);
+}
+
+void test_wm_agent_upgrade_listen_messages_accept_error_eintr(void **state)
+{
+    int socket = 0;
+    int peer = 1111;
+    char *input = "Bad JSON";
+    errno = EINTR;
+
+    will_return(__wrap_isChroot, 0);
+
+    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR AGENT_UPGRADE_SOCK);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_BindUnixDomain, socket);
+
+    will_return(__wrap_select, 1);
+
+    will_return(__wrap_accept, -1);
+
+    will_return(__wrap_select, 1);
+
+    will_return(__wrap_accept, peer);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, peer);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, input);
+    will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8112): Response size is bigger than expected.");
+
+    wm_agent_upgrade_listen_messages(NULL);
+}
+
+void test_wm_agent_upgrade_listen_messages_accept_error(void **state)
+{
+    int socket = 0;
+    int peer = 1111;
+    char *input = "Bad JSON";
+    errno = 1;
+
+    will_return(__wrap_isChroot, 0);
+
+    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR AGENT_UPGRADE_SOCK);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_BindUnixDomain, socket);
+
+    will_return(__wrap_select, 1);
+
+    will_return(__wrap_accept, -1);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8110): Error in accept(): 'Operation not permitted'");
+
+    will_return(__wrap_select, 1);
+
+    will_return(__wrap_accept, peer);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, peer);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, input);
+    will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8112): Response size is bigger than expected.");
+
+    wm_agent_upgrade_listen_messages(NULL);
+}
+
+void test_wm_agent_upgrade_listen_messages_select_zero(void **state)
+{
+    int socket = 0;
+    int peer = 1111;
+    char *input = "Bad JSON";
+
+    will_return(__wrap_isChroot, 0);
+
+    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR AGENT_UPGRADE_SOCK);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_BindUnixDomain, socket);
+
+    will_return(__wrap_select, 0);
+
+    will_return(__wrap_select, 1);
+
+    will_return(__wrap_accept, peer);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, peer);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, input);
+    will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8112): Response size is bigger than expected.");
+
+    wm_agent_upgrade_listen_messages(NULL);
+}
+
+void test_wm_agent_upgrade_listen_messages_select_error_eintr(void **state)
+{
+    int socket = 0;
+    int peer = 1111;
+    char *input = "Bad JSON";
+    errno = EINTR;
+
+    will_return(__wrap_isChroot, 0);
+
+    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR AGENT_UPGRADE_SOCK);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_BindUnixDomain, socket);
+
+    will_return(__wrap_select, -1);
+
+    will_return(__wrap_select, 1);
+
+    will_return(__wrap_accept, peer);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, peer);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, input);
+    will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8112): Response size is bigger than expected.");
+
+    wm_agent_upgrade_listen_messages(NULL);
+}
+
+void test_wm_agent_upgrade_listen_messages_select_error(void **state)
+{
+    int socket = 0;
+    errno = 1;
+
+    will_return(__wrap_isChroot, 0);
+
+    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR AGENT_UPGRADE_SOCK);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_BindUnixDomain, socket);
+
+    will_return(__wrap_select, -1);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8109): Error in select(): 'Operation not permitted'. Exiting...");
+
+    wm_agent_upgrade_listen_messages(NULL);
+}
+
+void test_wm_agent_upgrade_listen_messages_bind_error(void **state)
+{
+    will_return(__wrap_isChroot, 0);
+
+    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR AGENT_UPGRADE_SOCK);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_BindUnixDomain, -1);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket '/queue/ossec/upgrade': 'Operation not permitted'");
+
+    wm_agent_upgrade_listen_messages(NULL);
+}
+
+void test_wm_agent_upgrade_start_agent_module_enabled(void **state)
+{
+    int queue = -1;
+    int result = 0;
+    wm_upgrade_agent_state upgrade_state = WM_UPGRADE_SUCCESSFUL;
+    wm_agent_configs *config = *state;
+
+    config->upgrade_wait_start = 1;
+    config->upgrade_wait_max = 10;
+    config->upgrade_wait_factor_increase = 3;
+
+    allow_upgrades = false;
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, formatted_msg, "(8153): Module Agent Upgrade started.");
+
+#ifndef TEST_WINAGENT
+    expect_memory(__wrap_CreateThread, function_pointer, wm_agent_upgrade_listen_messages, sizeof(wm_agent_upgrade_listen_messages));
+#endif
+
+    expect_string(__wrap_StartMQ, path, DEFAULTQPATH);
+    expect_value(__wrap_StartMQ, type, WRITE);
+    will_return(__wrap_StartMQ, queue);
+
+#ifdef TEST_WINAGENT
+    expect_value(wrap_Sleep, dwMilliseconds, WM_AGENT_UPGRADE_RESULT_WAIT_TIME  * 1000);
+#else
+    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_RESULT_WAIT_TIME);
+#endif
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8113): Could not open default queue to send upgrade notification.");
+
+    wm_agent_upgrade_start_agent_module(config, 1);
+
+    assert_int_equal(allow_upgrades, true);
+}
+
+void test_wm_agent_upgrade_start_agent_module_disabled(void **state)
+{
+    wm_agent_configs *config = *state;
+
+    allow_upgrades = false;
+
+#ifndef TEST_WINAGENT
+    expect_memory(__wrap_CreateThread, function_pointer, wm_agent_upgrade_listen_messages, sizeof(wm_agent_upgrade_listen_messages));
+#endif
+
+    wm_agent_upgrade_start_agent_module(config, 0);
+
+    assert_int_equal(allow_upgrades, false);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // wm_upgrade_agent_send_ack_message
@@ -619,7 +1003,21 @@ int main(void) {
         // wm_agent_upgrade_check_status
         cmocka_unit_test_setup(test_wm_agent_upgrade_check_status_successful, setup_test_executions),
         cmocka_unit_test_setup(test_wm_agent_upgrade_check_status_time_limit, setup_test_executions),
-        cmocka_unit_test_setup(test_wm_agent_upgrade_check_status_queue_error, setup_test_executions)
+        cmocka_unit_test_setup(test_wm_agent_upgrade_check_status_queue_error, setup_test_executions),
+        // wm_agent_upgrade_listen_messages
+        cmocka_unit_test(test_wm_agent_upgrade_listen_messages_ok),
+        cmocka_unit_test(test_wm_agent_upgrade_listen_messages_receive_empty),
+        cmocka_unit_test(test_wm_agent_upgrade_listen_messages_receive_error),
+        cmocka_unit_test(test_wm_agent_upgrade_listen_messages_receive_sock_error),
+        cmocka_unit_test(test_wm_agent_upgrade_listen_messages_accept_error_eintr),
+        cmocka_unit_test(test_wm_agent_upgrade_listen_messages_accept_error),
+        cmocka_unit_test(test_wm_agent_upgrade_listen_messages_select_zero),
+        cmocka_unit_test(test_wm_agent_upgrade_listen_messages_select_error_eintr),
+        cmocka_unit_test(test_wm_agent_upgrade_listen_messages_select_error),
+        cmocka_unit_test(test_wm_agent_upgrade_listen_messages_bind_error),
+        // wm_agent_upgrade_start_agent_module
+        cmocka_unit_test_setup(test_wm_agent_upgrade_start_agent_module_enabled, setup_test_executions),
+        cmocka_unit_test(test_wm_agent_upgrade_start_agent_module_disabled)
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

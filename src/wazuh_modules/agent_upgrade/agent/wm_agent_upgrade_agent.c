@@ -44,6 +44,34 @@ static const char *task_statuses_map[] = {
 // CA certificates
 char **wcom_ca_store = NULL;
 
+#ifndef WIN32
+
+/**
+ * Listen to the upgrade socket in order to receive commands
+ * @return only on errors, socket will be closed
+ * */
+STATIC void* wm_agent_upgrade_listen_messages(__attribute__((unused)) void *arg);
+
+#endif
+
+/**
+ * Checks if an agent has been recently upgraded, by reading upgrade_results file
+ * If there has been an upgrade, dispatchs a message to notificate the manager.
+ * This method will block the thread if the agent is not connected to the manager
+ * @param agent_config Agent configuration parameters
+ * */
+STATIC void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config) __attribute__((nonnull));
+
+/**
+ * Checks in the upgrade_results file for a code that determines the result
+ * of the upgrade operation, then sends it to the current manager
+ * @param queue_fd file descriptor of the queue where the notification will be sent
+ * @return a flag indicating if any result was found
+ * @retval true information was found on the upgrade_result file
+ * @retval either the upgrade_result file does not exist or contains invalid information
+ * */
+STATIC bool wm_upgrade_agent_search_upgrade_result(int *queue_fd);
+
 /**
  * Reads the upgrade_result file if it is present and sends the upgrade result message to the manager.
  * Example message:
@@ -58,26 +86,6 @@ char **wcom_ca_store = NULL;
  * @param state upgrade result state
  * */
 STATIC void wm_upgrade_agent_send_ack_message(int *queue_fd, wm_upgrade_agent_state state);
-
-/**
- * Checks in the upgrade_results file for a code that determines the result
- * of the upgrade operation, then sends it to the current manager
- * @param queue_fd file descriptor of the queue where the notification will be sent
- * @return a flag indicating if any result was found
- * @retval true information was found on the upgrade_result file
- * @retval either the upgrade_result file does not exist or contains invalid information
- * */
-STATIC bool wm_upgrade_agent_search_upgrade_result(int *queue_fd);
-
-#ifndef WIN32
-
-/**
- * Listen to the upgrade socket in order to receive commands
- * @return only on errors, socket will be closed
- * */
-STATIC void* wm_agent_upgrade_listen_messages(__attribute__((unused)) void *arg);
-
-#endif
 
 void wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config, const int enabled) {
 
@@ -163,9 +171,11 @@ STATIC void* wm_agent_upgrade_listen_messages(__attribute__((unused)) void *arg)
 
             mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_RESPONSE_MESSAGE, message);
             OS_SendSecureTCP(peer, length, message);
+            os_free(message);
             break;
         }
 
+        os_free(buffer);
         close(peer);
 
     #ifdef WAZUH_UNIT_TESTING
@@ -180,7 +190,7 @@ STATIC void* wm_agent_upgrade_listen_messages(__attribute__((unused)) void *arg)
 
 #endif
 
-void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config) {
+STATIC void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config) {
     /**
      *  StartMQ will wait until agent connection which is when the pkg_install.sh will write
      *  the upgrade result
@@ -222,6 +232,28 @@ void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config) {
     }
 }
 
+STATIC bool wm_upgrade_agent_search_upgrade_result(int *queue_fd) {
+    char buffer[20];
+    const char * PATH = WM_AGENT_UPGRADE_RESULT_FILE;
+
+    FILE *result_file = fopen(PATH, "r");
+    if (result_file) {
+        fgets(buffer, 20, result_file);
+        fclose(result_file);
+
+        wm_upgrade_agent_state state;
+        for (state = 0; state < WM_UPGRADE_MAX_STATE; state++) {
+            // File can either be "0\n" or "2\n", so we are expecting a positive match
+            if (strstr(buffer, upgrade_values[state]) != NULL) {
+                // Matched value, send message
+                wm_upgrade_agent_send_ack_message(queue_fd, state);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 STATIC void wm_upgrade_agent_send_ack_message(int *queue_fd, wm_upgrade_agent_state state) {
     int msg_delay = 1000000 / wm_max_eps;
     cJSON* root = cJSON_CreateObject();
@@ -248,26 +280,4 @@ STATIC void wm_upgrade_agent_send_ack_message(int *queue_fd, wm_upgrade_agent_st
     mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_ACK_MESSAGE, msg_string);
     os_free(msg_string);
     cJSON_Delete(root);
-}
-
-STATIC bool wm_upgrade_agent_search_upgrade_result(int *queue_fd) {
-    char buffer[20];
-    const char * PATH = WM_AGENT_UPGRADE_RESULT_FILE;
-
-    FILE *result_file = fopen(PATH, "r");
-    if (result_file) {
-        fgets(buffer, 20, result_file);
-        fclose(result_file);
-
-        wm_upgrade_agent_state state;
-        for (state = 0; state < WM_UPGRADE_MAX_STATE; state++) {
-            // File can either be "0\n" or "2\n", so we are expecting a positive match
-            if (strstr(buffer, upgrade_values[state]) != NULL) {
-                // Matched value, send message
-                wm_upgrade_agent_send_ack_message(queue_fd, state);
-                return true;
-            }
-        }
-    }
-    return false;
 }
