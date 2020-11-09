@@ -39,6 +39,13 @@ static int teardown_group(void **state) {
     wm_agent_upgrade *config = *state;
     #ifdef TEST_SERVER
     os_free(config->manager_config.wpk_repository);
+    #else
+    if (wcom_ca_store) {
+        for (int i=0; wcom_ca_store[i]; i++) {
+            os_free(wcom_ca_store[i]);
+        }
+        os_free(wcom_ca_store);
+    }
     #endif
     os_free(config);
     return 0;
@@ -64,6 +71,11 @@ void test_wm_agent_upgrade_dump_enabled(void **state)
     os_strdup("wazuh.com/packages", config->manager_config.wpk_repository);
     config->manager_config.chunk_size = 512;
     config->manager_config.max_threads = 8;
+    #else
+    config->agent_config.enable_ca_verification = 1;
+    os_calloc(2, sizeof(char*), wcom_ca_store);
+    os_strdup(DEF_CA_STORE, wcom_ca_store[0]);
+    wcom_ca_store[1] = NULL;
     #endif
 
     cJSON *ret = wm_agent_upgrade_dump(config);
@@ -80,6 +92,14 @@ void test_wm_agent_upgrade_dump_enabled(void **state)
     assert_int_equal(cJSON_GetObjectItem(conf, "chunk_size")->valueint, 512);
     assert_non_null(cJSON_GetObjectItem(conf, "wpk_repository"));
     assert_string_equal(cJSON_GetObjectItem(conf, "wpk_repository")->valuestring, "wazuh.com/packages");
+    #else
+    assert_non_null(cJSON_GetObjectItem(conf, "ca_verification"));
+    assert_string_equal(cJSON_GetObjectItem(conf, "ca_verification")->valuestring, "yes");
+    cJSON *certs = cJSON_GetObjectItem(conf, "ca_store");
+    assert_non_null(certs);
+    assert_int_equal(cJSON_GetArraySize(certs), 1);
+    assert_string_equal(cJSON_GetArrayItem(certs, 0)->valuestring, DEF_CA_STORE);
+    assert_null(cJSON_GetArrayItem(certs, 1));
     #endif
 }
 
@@ -91,6 +111,14 @@ void test_wm_agent_upgrade_dump_disabled(void **state)
 
     #ifdef TEST_SERVER
     os_free(config->manager_config.wpk_repository);
+    #else
+    config->agent_config.enable_ca_verification = 0;
+    if (wcom_ca_store) {
+        for (int i=0; wcom_ca_store[i]; i++) {
+            os_free(wcom_ca_store[i]);
+        }
+        os_free(wcom_ca_store);
+    }
     #endif
 
     cJSON *ret = wm_agent_upgrade_dump(config);
@@ -102,6 +130,12 @@ void test_wm_agent_upgrade_dump_disabled(void **state)
     assert_non_null(conf);
     assert_non_null(cJSON_GetObjectItem(conf, "enabled"));
     assert_string_equal(cJSON_GetObjectItem(conf, "enabled")->valuestring, "no");
+    #ifndef TEST_SERVER
+    assert_non_null(cJSON_GetObjectItem(conf, "ca_verification"));
+    assert_string_equal(cJSON_GetObjectItem(conf, "ca_verification")->valuestring, "no");
+    cJSON *certs = cJSON_GetObjectItem(conf, "ca_store");
+    assert_null(certs);
+    #endif
 }
 
 void test_wm_agent_upgrade_destroy(void **state)
