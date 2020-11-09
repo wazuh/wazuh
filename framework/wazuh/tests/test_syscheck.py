@@ -241,6 +241,7 @@ def test_syscheck_last_scan_internal_error(glob_mock, version):
     (['001'], None, {'inode': '15470536'}, True),
     (['001'], ['file', 'size'], {'hash': '15470536'}, False),
     (['001'], None, {'date': '2019-05-21 12:10:20'}, True),
+    (['001'], None, {'type': 'registry_key'}, True),
     (['001'], ['file', 'arch', 'value_type', 'value_name'], None, True)
 ])
 @patch('socket.socket.connect')
