@@ -1,4 +1,5 @@
 import json
+import re
 import time
 from base64 import b64decode
 from json import loads
@@ -96,30 +97,6 @@ def test_validate_data_dict_field(response, fields_dict):
                 assert isinstance(element['count'], int)
 
 
-def test_validate_upgrade(response):
-    # We accept the test as passed if it either upgrades correctly or the version is not available
-    assert response.json().get('message', None) == "Upgrade procedure started" \
-           or response.json().get('error', None) == 1718
-    if response.json().get('message', None) == "Upgrade procedure started":
-        time.sleep(45)
-        return Box({"upgraded": 1})
-    else:
-        return Box({"upgraded": 0})
-
-
-def test_validate_upgrade_result(response, upgraded):
-    upgraded = int(upgraded, 10)
-    if upgraded == 1:
-        assert response.json().get('message', None) == "Agent was successfully upgraded"
-    else:
-        # If upgrade didnt work because no version was available, we expect an empty upgrade_result with error 1716
-        assert response.json().get('error', None) == 1716
-
-
-def test_validate_update_latest_version(response):
-    assert response.json().get('error', None) == 1749 or response.json().get('error', None) == 1718
-
-
 def test_count_elements(response, n_expected_items):
     """
     :param response: Request response
@@ -205,3 +182,19 @@ def test_validate_syscollector_hotfix(response, hotfix_filter=None, experimental
             assert set(item.keys()) == hotfixes_keys
             if hotfix_filter:
                 assert item['hotfix'] == hotfix_filter
+
+
+def test_validate_group_configuration(response, expected_field, expected_value):
+    response_json = response.json()
+    assert len(response_json['data']['affected_items']) > 0 and\
+           'config' in response_json['data']['affected_items'][0] and \
+           'localfile' in response_json['data']['affected_items'][0]['config'],\
+           'No config or localfile fields were found in the affected_items. Response: {}'.format(response_json)
+
+    response_config = response_json['data']['affected_items'][0]['config']['localfile'][0]
+    assert expected_field in set(response_config.keys()), \
+        'The expected config key is not present in the received response.'
+
+    assert response_config[expected_field] == expected_value, \
+        'The received value for query does not match with the expected one. ' \
+        'Received: {}. Expected: {}'.format(response_config[expected_field], expected_value)

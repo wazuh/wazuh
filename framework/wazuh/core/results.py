@@ -55,8 +55,8 @@ class AbstractWazuhResult(collections.abc.MutableMapping):
         del self.dikt[key]
 
     def __deepcopy__(self, memodict=None):
-        obj = self.__class__({})
-        obj.__dict__ = deepcopy(dict(self.__dict__))
+        obj = type(self)(self.__dict__)
+        obj.__dict__.update(self.__dict__)
         return obj
 
     def __eq__(self, other):
