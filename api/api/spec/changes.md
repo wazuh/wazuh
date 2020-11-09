@@ -131,8 +131,23 @@ This agent will use **any** as IP.
 ### POST    /agents/restart
 * Endpoint removed. Use `PUT /agents/restart` instead.
 
+### PUT     /agents/upgrade
+* New endpoint. Upgrade all agents or a list of them to a different Wazuh version.
+
+### PUT     /agents/upgrade_custom
+* New endpoint. Upgrade all agents or a list of them to a different Wazuh version using a local WPK file.
+
+### GET     /agents/upgrade_result
+* New endpoint.  Get upgrade results from all agents or a list of them.
+
 ### PUT     /agents/{agent_id}/upgrade
-* Changed parameter type **force** in request body from integer to boolean.
+* Endpoint removed. Use `PUT /agents/upgrade` instead.
+
+### PUT     /agents/{agent_id}/upgrade_custom
+* Endpoint removed. Use `PUT /agents/upgrade_custom` instead.
+
+### GET     /agents/{agent_id}/upgrade_result
+* Endpoint removed. Use `GET /agents/upgrade_result` instead.
 
 ### PUT     /agents/{agent_name}
 * Endpoint removed. Use `POST /agents/insert/quick?agent_name=name`.
