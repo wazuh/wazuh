@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.1.0] -
 
+### Changed
+
+- **Framework:**
+  - Changed access to agent's status ([#6326](https://github.com/wazuh/wazuh/issues/6326))
+
+
 ### Fixed
 - Fixed an error with `/groups/{group_id}/config` Wazuh API endpoints (GET and PUT) when using complex `localfile` configurations. ([#6276](https://github.com/wazuh/wazuh/pull/6383))
 
@@ -13,7 +19,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - **Framework:**
-  - Update Python's cryptography library to version 3.2.1 ([#6442](https://github.com/wazuh/wazuh/issues/6442))
+  - Updated Python's cryptography library to version 3.2.1 ([#6442](https://github.com/wazuh/wazuh/issues/6442))
 
 ### Fixed
 
