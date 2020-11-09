@@ -4,18 +4,17 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
+import stat
 import sys
 from unittest.mock import patch, MagicMock
 
 import pytest
 
-with patch('wazuh.common.getgrnam'):
-    with patch('wazuh.common.getpwnam'):
+with patch('wazuh.core.common.getgrnam'):
+    with patch('wazuh.core.common.getpwnam'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
-        sys.modules['api'] = MagicMock()
         import wazuh.rbac.decorators
         del sys.modules['wazuh.rbac.orm']
-        del sys.modules['api']
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
@@ -46,7 +45,7 @@ decoder_ossec_conf_2 = {
 
 @pytest.fixture(scope='module', autouse=True)
 def mock_ossec_path():
-    with patch('wazuh.common.ossec_path', new=test_data_path):
+    with patch('wazuh.core.common.ossec_path', new=test_data_path):
         with patch('wazuh.core.configuration.get_ossec_conf', return_value=decoder_ossec_conf):
             yield
 
@@ -151,10 +150,12 @@ def test_get_file_exceptions():
             # UUT 2nd call forcing en error opening decoder file
             decoder.get_file(filename='test1_decoders.xml')
     with pytest.raises(WazuhError, match=r'.* 1502 .*'):
+        filename = 'test2_decoders.xml'
+        old_permissions = stat.S_IMODE(os.lstat(os.path.join(
+            test_data_path, 'core/tests/data/decoders', filename)).st_mode)
         try:
-            filename = 'test2_decoders.xml'
             os.chmod(os.path.join(test_data_path, 'core/tests/data/decoders', filename), 000)
             # UUT 3rd call forcing a permissions error opening decoder file
             decoder.get_file(filename=filename)
         finally:
-            os.chmod(os.path.join(test_data_path, 'core/tests/data/decoders', filename), 777)
+            os.chmod(os.path.join(test_data_path, 'core/tests/data/decoders', filename), old_permissions)

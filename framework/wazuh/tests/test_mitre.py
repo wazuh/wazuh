@@ -15,19 +15,16 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from wazuh.tests.util import InitWDBSocketMock
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
-        sys.modules['api'] = MagicMock()
         import wazuh.rbac.decorators
         del sys.modules['wazuh.rbac.orm']
 
-        from wazuh.tests.util import RBAC_bypasser
+        from wazuh.tests.util import RBAC_bypasser, InitWDBSocketMock
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.mitre import get_attack, WazuhDBQueryMitre
-        del sys.modules['api']
 
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
