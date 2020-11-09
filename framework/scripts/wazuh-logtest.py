@@ -210,7 +210,7 @@ class WazuhSocket:
 
 
 class WazuhLogtest:
-    def __init__(self, location="master->/var/log/syslog", log_format="syslog"):
+    def __init__(self, location="stdin", log_format="syslog"):
         """Top level class to interact with wazuh-logtest feature, part of ossec-analysisd
 
         Args:
