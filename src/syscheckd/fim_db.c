@@ -576,8 +576,6 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
     void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
     int storage, void * alert, void * mode, void * w_evt) {
 
-    char *line;
-    char path_length[OS_SIZE_32 + 1];
     char *path = NULL;
     int i = 0;
     int retval = FIMDB_OK;
@@ -593,6 +591,9 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
     for (i = 0; i < file->elements; i++) {
 
         if (storage == FIM_DB_DISK) {
+            char *line;
+            char path_length[OS_SIZE_32 + 1];
+
             /* First 32 bytes hold the path length includig the line break */
             if (fgets(path_length, OS_SIZE_32 + 1, file->fd) == NULL) {
                 mdebug1(FIM_UNABLE_TO_READ_TEMP_FILE);
@@ -607,6 +608,7 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
              So it must be removed. */
             if (fgets(line, len + 1, file->fd) == NULL) {
                 mdebug1(FIM_UNABLE_TO_READ_TEMP_FILE);
+                os_free(line);
                 retval = FIMDB_ERR;
                 break;
             }
@@ -615,11 +617,13 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
                 line[len - 1] = '\0';
             } else {
                 merror("Temporary path file '%s' is corrupt: missing line end.", file->path);
+                os_free(line);
                 retval = FIMDB_ERR;
                 break;
             }
-
             path = wstr_unescape_json(line);
+
+            os_free(line);
         } else {
             path = wstr_unescape_json((char *) W_Vector_get(file->list, i));
         }
@@ -1225,7 +1229,7 @@ void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry
     }
 
     if (storage == FIM_DB_DISK) { // disk storage enabled
-        if (fprintf(((fim_tmp_file *) arg)->fd, "%032ld%s\n", strlen(base) + 1, base) < 0) {
+        if (fprintf(((fim_tmp_file *) arg)->fd, "%032ld%s\n", (unsigned long) strlen(base) + 1, base) < 0) {
             merror("%s - %s", entry->path, strerror(errno));
             goto end;
         }
