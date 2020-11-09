@@ -481,7 +481,9 @@ int wm_agent_upgrade_parse_agent_upgrade_command_response(const char* agent_resp
         } else {
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_AGENT_RESPONSE_UNKNOWN_ERROR);
         }
-        os_free(*data);
+        if (data) {
+            os_free(*data);
+        }
     }
 
     cJSON_Delete(json_response);
