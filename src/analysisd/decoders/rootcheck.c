@@ -18,8 +18,6 @@
 #include "rootcheck_op.h"
 #include <pthread.h>
 
-#define ROOTCHECK_DIR    "/queue/rootcheck"
-
 /* Rootcheck decoder */
 static OSDecoderInfo *rootcheck_dec = NULL;
 

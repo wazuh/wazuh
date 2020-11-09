@@ -867,7 +867,7 @@ wmodule* wm_database_read() {
 
     data.sync_agents = getDefine_Int("wazuh_database", "sync_agents", 0, 1);
     data.sync_syscheck = 0; //getDefine_Int("wazuh_database", "sync_syscheck", 0, 1);
-    data.sync_rootcheck = getDefine_Int("wazuh_database", "sync_rootcheck", 0, 1);
+    data.sync_rootcheck = 0; //getDefine_Int("wazuh_database", "sync_rootcheck", 0, 1);
     data.full_sync = getDefine_Int("wazuh_database", "full_sync", 0, 1);
     data.real_time = getDefine_Int("wazuh_database", "real_time", 0, 1);
     data.interval = getDefine_Int("wazuh_database", "interval", 0, 86400);
