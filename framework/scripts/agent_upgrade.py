@@ -134,7 +134,7 @@ def print_result(agents_versions, failed_agents):
         print(f"\tAgent {agent_id} status: {error}")
 
 
-def check_status(affected_agents, result_dict, failed_agents):
+def check_status(affected_agents, result_dict, failed_agents, silent):
     """Check the agent's upgrade status
 
     Parameters
@@ -145,6 +145,8 @@ def check_status(affected_agents, result_dict, failed_agents):
         Dictionary with the previous version and the new one
     failed_agents : dict
         Contain the error's information
+    silent : bool
+        Do not show output if it is True
     """
     affected_agents = set(affected_agents)
     len(affected_agents) and print('\nUpgrading...')
@@ -165,7 +167,7 @@ def check_status(affected_agents, result_dict, failed_agents):
                 affected_agents.discard(task_result['agent'])
         sleep(3)
 
-    print_result(agents_versions=result_dict, failed_agents=failed_agents)
+    not silent and print_result(agents_versions=result_dict, failed_agents=failed_agents)
 
 
 def main():
@@ -181,20 +183,19 @@ def main():
         arg_parser.print_help()
         exit(0)
 
-    if args.silent:
-        args.debug = False
-
     result = send_command(function=upgrade_agents, command=create_command())
 
-    len(result.failed_items.keys()) > 0 and print("Agents that cannot be upgraded:")
-    for agent_result, agent_ids in result.failed_items.items():
-        print(f"\tAgent {', '.join(agent_ids)} upgrade failed. Status: {agent_result}")
+    not args.silent and len(result.failed_items.keys()) > 0 and print("Agents that cannot be upgraded:")
+    if not args.silent:
+        for agent_result, agent_ids in result.failed_items.items():
+            print(f"\tAgent {', '.join(agent_ids)} upgrade failed. Status: {agent_result}")
 
     result.affected_items = [task["agent"] for task in result.affected_items]
     agents_versions = get_agents_versions(agents=result.affected_items)
 
     failed_agents = dict()
-    check_status(affected_agents=result.affected_items, result_dict=agents_versions, failed_agents=failed_agents)
+    check_status(affected_agents=result.affected_items, result_dict=agents_versions,
+                 failed_agents=failed_agents, silent=args.silent)
 
 
 if __name__ == "__main__":
@@ -207,7 +208,6 @@ if __name__ == "__main__":
     arg_parser.add_argument("-F", "--force", action="store_true",
                             help="Allows reinstall same version and downgrade version.")
     arg_parser.add_argument("-s", "--silent", action="store_true", help="Do not show output.")
-    arg_parser.add_argument("-d", "--debug", action="store_true", help="Debug mode.")
     arg_parser.add_argument("-l", "--list_outdated", action="store_true",
                             help="Generates a list with all outdated agents.")
     arg_parser.add_argument("-f", "--file", type=str, help="Custom WPK filename.")
