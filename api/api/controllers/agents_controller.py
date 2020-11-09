@@ -430,7 +430,6 @@ async def put_upgrade_agents(request, agents_list=None, pretty=False, wait_for_c
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          broadcasting=agents_list == '*',
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
@@ -470,7 +469,6 @@ async def put_upgrade_custom_agents(request, agents_list=None, pretty=False, wai
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          broadcasting=agents_list == '*',
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
@@ -501,7 +499,7 @@ async def get_agent_upgrade(request, agents_list=None, pretty=False, wait_for_co
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
-                          wait_for_complete=True,
+                          wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )

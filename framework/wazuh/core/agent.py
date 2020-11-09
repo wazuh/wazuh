@@ -21,7 +21,7 @@ from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.ossec_queue import OssecQueue
 from wazuh.core.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
-    WazuhDBQueryDistinct, WazuhDBQueryGroupBy, SQLiteBackend, WazuhDBBackend, safe_move
+    WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, safe_move
 from wazuh.core.wazuh_socket import OssecSocket, OssecSocketJSON
 from wazuh.core.wdb import WazuhDBConnection
 
@@ -1147,28 +1147,6 @@ def expand_group(group_name):
             agents_ids.add(str(agent['id']).zfill(3))
 
     return agents_ids
-
-
-def core_upgrade_agents(command, get_result=False):
-    """Send command to upgrade module / task module
-
-    Parameters
-    ----------
-    command
-    get_result : bool
-        Get the result of an update (True -> Task module), Create new upgrade task (False -> Upgrade module)
-
-    Returns
-    -------
-    Message received from the socket (Task module or Upgrade module)
-    """
-    # Send upgrading command
-    s = OssecSocket(common.UPGRADE_SOCKET) if not get_result else OssecSocket(common.TASKS_SOCKET)
-    s.send(dumps(command).encode())
-    data = loads(s.receive().decode())
-    s.close()
-
-    return data
 
 
 def get_rbac_filters(system_resources=None, permitted_resources=None, filters=None):
