@@ -1,7 +1,23 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.1.0] -
+## [v4.1.0]
+
+## Added
+
+- Allow negation of expressions in rules ([#6258](https://github.com/wazuh/wazuh/pull/6258))
+- Support for PCRE2 regular expressions in rules and decoders ([#6480](https://github.com/wazuh/wazuh/pull/6480))
+
+- Added new **upgrade module**. WPK upgrade feature has been moved to this module, which offers support for cluster architecture and simultaneous upgrades. ([#5387](https://github.com/wazuh/wazuh/issues/5387))
+- Added new **task module**. This module stores and manages all the tasks that are executed in the agents. ([#5386](https://github.com/wazuh/wazuh/issues/5386))
+
+### Changed
+
+- **Wazuh API:**
+  - Changed upgrade endpoints to accept a list of agents, maximum 100 agents per request. ([#5336](https://github.com/wazuh/wazuh/issues/5536))
+
+- **Framework:**
+  - Refactored agent upgrade module. ([#5537](https://github.com/wazuh/wazuh/issues/5537))
 
 ### Added
 
