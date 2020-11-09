@@ -8,11 +8,11 @@
  */
 
 
-#ifndef SEECHANGES_WRAPPERS_H
-#define SEECHANGES_WRAPPERS_H
+#ifndef DIFF_CHANGES_WRAPPERS_H
+#define DIFF_CHANGES_WRAPPERS_H
 
 char *__wrap_seechanges_addfile(const char *filename);
 
 char *__wrap_seechanges_get_diff_path(char *path);
 
-#endif
+#endif /* DIFF_CHANGES_WRAPPERS_H */

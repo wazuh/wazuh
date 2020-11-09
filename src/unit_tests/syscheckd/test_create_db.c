@@ -25,7 +25,7 @@
 #include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/run_check_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/run_realtime_wrappers.h"
-#include "../wrappers/wazuh/syscheckd/seechanges_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/fim_diff_changes_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/win-registry_wrappers.h"
 #include "../wrappers/wazuh/os_crypto/md5_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"

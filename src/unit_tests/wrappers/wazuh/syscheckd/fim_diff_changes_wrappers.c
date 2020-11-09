@@ -7,7 +7,7 @@
  * Foundation
  */
 
-#include "seechanges_wrappers.h"
+#include "fim_diff_changes_wrappers.h"
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
