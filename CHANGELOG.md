@@ -18,9 +18,13 @@ All notable changes to this project will be documented in this file.
 
 - **Framework:**
   - Refactored agent upgrade module. ([#5537](https://github.com/wazuh/wazuh/issues/5537))
+  - Refactored agent upgrade CLI. ([#5675](https://github.com/wazuh/wazuh/issues/5675))
 
 ### Fixed
+
 - Fixed an error with `/groups/{group_id}/config` Wazuh API endpoints (GET and PUT) when using complex `localfile` configurations. ([#6276](https://github.com/wazuh/wazuh/pull/6383))
+
+### Removed
 
 ## [v4.0.1] -
 
