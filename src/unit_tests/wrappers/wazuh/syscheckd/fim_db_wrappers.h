@@ -96,8 +96,8 @@ int __wrap_fim_db_sync_path_range(fdb_t *fim_sql,
 
 #ifndef WIN32
 fim_entry *__wrap_fim_db_get_entry_from_sync_msg(fdb_t *fim_sql,
-                                          __attribute__((unused)) fim_type type,
-                                          const char *path);
+                                                 __attribute__((unused)) fim_type type,
+                                                 const char *path);
 
 #else
 fim_entry *__wrap_fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const char *path);

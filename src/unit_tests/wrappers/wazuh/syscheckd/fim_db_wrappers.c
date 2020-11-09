@@ -26,8 +26,8 @@ int __wrap_fim_db_get_checksum_range(fdb_t *fim_sql,
     check_expected(start);
     check_expected(top);
     check_expected(n);
-    *str_pathlh = mock();
-    *str_pathuh = mock();
+    *str_pathlh = mock_type(char *);
+    *str_pathuh = mock_type(char *);
     return mock();
 }
 
@@ -98,7 +98,7 @@ int __wrap_fim_db_get_last_path(fdb_t * fim_sql, int type, char **path) {
     check_expected_ptr(fim_sql);
     check_expected(type);
 
-    *path = mock();
+    *path = mock_type(char *);
 
     return mock_type(int);
 }
@@ -107,7 +107,7 @@ int __wrap_fim_db_get_first_path(fdb_t * fim_sql, int type, char **path) {
     check_expected_ptr(fim_sql);
     check_expected(type);
 
-    *path = mock();
+    *path = mock_type(char *);
 
     return mock_type(int);
 }
@@ -215,12 +215,12 @@ int __wrap_fim_db_sync_path_range(fdb_t *fim_sql,
 
 #ifndef WIN32
 fim_entry *__wrap_fim_db_get_entry_from_sync_msg(fdb_t *fim_sql,
-                                          __attribute__((unused)) fim_type type,
-                                          const char *path) {
+                                                 __attribute__((unused)) fim_type type,
+                                                 const char *path) {
     check_expected_ptr(fim_sql);
     check_expected(path);
 
-    return mock();
+    return mock_type(char *);
 }
 
 #else

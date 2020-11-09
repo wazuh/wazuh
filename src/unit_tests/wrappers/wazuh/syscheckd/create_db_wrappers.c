@@ -65,4 +65,6 @@ int __wrap_fim_whodata_event(whodata_evt * w_evt)
     return 1;
 }
 
-void __wrap_free_entry(fim_entry *entry) {}
+void __wrap_free_entry(__attribute__((unused)) fim_entry *entry) {
+    return;
+}

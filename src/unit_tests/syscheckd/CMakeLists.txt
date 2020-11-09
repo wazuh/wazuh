@@ -190,7 +190,8 @@ list(APPEND syscheckd_tests_names "test_fim_sync")
 if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${FIM_SYNC_BASE_FLAGS} -Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock")
 else()
-  list(APPEND syscheckd_tests_flags "${FIM_SYNC_BASE_FLAGS} -Wl,--wrap,time -Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock")
+  list(APPEND syscheckd_tests_flags "${FIM_SYNC_BASE_FLAGS} -Wl,--wrap,time -Wl,--wrap=pthread_mutex_lock \
+                                     -Wl,--wrap=pthread_mutex_unlock")
 endif()
 
 set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 \

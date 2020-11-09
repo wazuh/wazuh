@@ -30,7 +30,7 @@
 extern long fim_sync_cur_id;
 extern w_queue_t * fim_sync_queue;
 
-const fim_file_data DEFAULT_FILE_DATA = {
+fim_file_data DEFAULT_FILE_DATA = {
     // Checksum attributes
     .size = 0,
     .perm = "rw-rw-r--",
@@ -65,11 +65,6 @@ typedef struct __str_pair_s {
     char *first;
     char *last;
 } str_pair_t;
-
-typedef struct __pair_entry_str_s {
-    fim_entry *entry;
-    char *str;
-} pair_entry_str_t;
 
 /* redefinitons/wrapping */
 #ifndef TEST_WINAGENT
@@ -160,76 +155,42 @@ static int teardown_json_payload(void **state) {
 }
 
 static int setup_str_pair(void **state) {
-    str_pair_t *new;
-    os_calloc(1, sizeof(str_pair_t), new);
-    os_strdup("first", new->first);
-    os_strdup("last", new->last);
+    str_pair_t *new = malloc(sizeof(str_pair_t));
+    if (new == NULL) {
+        return -1;
+    }
+
+    new->first = strdup("first");
+    new->last = strdup("last");
 
     *state = new;
-    return 0;
+    return new->first == NULL || new->last == NULL;
 }
 
 
 static int teardown_str_pair(void **state) {
     str_pair_t *new = *state;
 
-    os_free(new->first);
-    os_free(new->last);
-    os_free(new);
+    free(new->first);
+    free(new->last);
+    free(new);
 
     return 0;
 }
 
-static int setup_fim_entry(void **state) {
-    pair_entry_str_t *data = NULL;
-
-
-    data = malloc(sizeof(pair_entry_str_t));
-    data->entry = malloc(sizeof(fim_entry));
-    data->entry->file_entry.data = malloc(sizeof(fim_file_data));
-
-    data->entry->type = FIM_TYPE_FILE;
-    data->entry->file_entry.path = strdup("start");
-
-    data->entry->file_entry.data->size = 1501;
-    data->entry->file_entry.data->perm = strdup("0666");
-    data->entry->file_entry.data->attributes = strdup("rw-rw-rw-");
-    data->entry->file_entry.data->uid = strdup("101");
-    data->entry->file_entry.data->gid = strdup("1001");
-    data->entry->file_entry.data->user_name = strdup("test1");
-    data->entry->file_entry.data->group_name = strdup("testing1");
-    data->entry->file_entry.data->mtime = 1570184224;
-    data->entry->file_entry.data->inode = 606061;
-    strcpy(data->entry->file_entry.data->hash_md5, "3691689a513ace7e508297b583d7550d");
-    strcpy(data->entry->file_entry.data->hash_sha1, "07f05add1049244e7e75ad0f54f24d8094cd8f8b");
-    strcpy(data->entry->file_entry.data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e9959643c6262667b61fbe57694df224d40");
-    data->entry->file_entry.data->mode = FIM_REALTIME;
-    data->entry->file_entry.data->last_event = 1570184221;
-    data->entry->file_entry.data->dev = 12345678;
-    data->entry->file_entry.data->scanned = 123456;
-    data->entry->file_entry.data->options = 511;
-    strcpy(data->entry->file_entry.data->checksum, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-
-    cJSON *json  = fim_entry_json("start", data->entry);
-    data->str = cJSON_PrintUnformatted(json);
-
-    free(json);
-
-    *state = data;
-
-    return data == NULL;
-}
-
-static int teardown_fim_entry(void **state) {
-    pair_entry_str_t *data = *state;
-    // data->str and data->entry should be freed
+static int teardown_str(void **state) {
+    char *data = *state;
     free(data);
+
     return 0;
 }
 
 /* Auxiliar functions */
 
 static void expect_fim_db_get_first_row_error(const fdb_t *db, int type, char *path) {
+    char buffer[1024];
+
+    snprintf(buffer, 1024, FIM_DB_ERROR_GET_ROW_PATH, "FIRST","FILE");
     expect_function_call(__wrap_pthread_mutex_lock);
 
     expect_value(__wrap_fim_db_get_first_path, fim_sql, db);
@@ -237,7 +198,7 @@ static void expect_fim_db_get_first_row_error(const fdb_t *db, int type, char *p
     will_return(__wrap_fim_db_get_first_path, path);
     will_return(__wrap_fim_db_get_first_path, FIMDB_ERR);
 
-    expect_string(__wrap__merror, formatted_msg, "(6706): Couldn't get FIRST FILE row's path.");
+    expect_string(__wrap__merror, formatted_msg, buffer);
     expect_function_call(__wrap_pthread_mutex_unlock);
 }
 
@@ -258,6 +219,9 @@ static void expect_fim_db_get_last_row_success(const fdb_t *db, int type, char *
 }
 
 static void expect_fim_db_last_row_error(const fdb_t *db, int type, char *first_path) {
+    char buffer[1024];
+    snprintf(buffer, 1024, FIM_DB_ERROR_GET_ROW_PATH, "LAST","FILE");
+
     expect_fim_db_get_first_row_success(db, type, first_path);
 
     expect_value(__wrap_fim_db_get_last_path, fim_sql, db);
@@ -265,7 +229,7 @@ static void expect_fim_db_last_row_error(const fdb_t *db, int type, char *first_
     will_return(__wrap_fim_db_get_last_path, NULL);
     will_return(__wrap_fim_db_get_last_path, FIMDB_ERR);
 
-    expect_string(__wrap__merror, formatted_msg, "(6706): Couldn't get LAST FILE row's path.");
+    expect_string(__wrap__merror, formatted_msg, buffer);
     expect_function_call(__wrap_pthread_mutex_unlock);
 }
 
@@ -301,14 +265,8 @@ static void expect_fim_db_get_data_checksum_success(const fdb_t *db, char *first
     expect_value(__wrap_fim_db_get_data_checksum, fim_sql, db);
     will_return(__wrap_fim_db_get_data_checksum, FIMDB_OK);
     expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_string(__wrap_dbsync_check_msg, component, "fim_file");
-    expect_value(__wrap_dbsync_check_msg, msg, INTEGRITY_CHECK_GLOBAL);
-    expect_value(__wrap_dbsync_check_msg, id, 1572521857);
-    expect_string(__wrap_dbsync_check_msg, start, first);
-    expect_string(__wrap_dbsync_check_msg, top, last);
-    expect_value(__wrap_dbsync_check_msg, tail, NULL);
-    will_return(__wrap_dbsync_check_msg, strdup("A mock message"));
+    expect_dbsync_check_msg_call("fim_file",INTEGRITY_CHECK_GLOBAL, 1572521857, first, last, NULL,
+                                 strdup("A mock message"));
 
     expect_string(__wrap_fim_send_sync_msg, msg, "A mock message");
 }
@@ -326,7 +284,13 @@ static void expect_fim_db_get_entry_from_sync_msg(char *path, int type, fim_entr
     expect_function_call(__wrap_pthread_mutex_unlock);
 }
 
-static void expect_fim_db_get_path_range(fdb_t *db, fim_type type, char *start, char *top, int storage, fim_tmp_file *file, int ret) {
+static void expect_fim_db_get_path_range(fdb_t *db,
+                                        fim_type type,
+                                        char *start,
+                                        char *top,
+                                        int storage,
+                                        fim_tmp_file *file,
+                                        int ret) {
 
     expect_function_call(__wrap_pthread_mutex_lock);
 
@@ -432,14 +396,7 @@ static void test_fim_sync_checksum_empty_db(void **state) {
     will_return(__wrap_fim_db_get_data_checksum, FIMDB_OK);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap_dbsync_check_msg, component, "fim_file");
-
-    expect_value(__wrap_dbsync_check_msg, msg, INTEGRITY_CLEAR);
-    expect_value(__wrap_dbsync_check_msg, id, 1572521857);
-    expect_value(__wrap_dbsync_check_msg, start, NULL);
-    expect_value(__wrap_dbsync_check_msg, top, NULL);
-    expect_value(__wrap_dbsync_check_msg, tail, NULL);
-    will_return(__wrap_dbsync_check_msg, strdup("A mock message"));
+    expect_dbsync_check_msg_call("fim_file", INTEGRITY_CLEAR, 1572521857, NULL, NULL, NULL, strdup("A mock message"));
 
     expect_string(__wrap_fim_send_sync_msg, msg, "A mock message");
     fim_sync_checksum(FIM_TYPE_FILE, mutex);
@@ -463,7 +420,9 @@ static void test_fim_sync_checksum_split_get_count_range_error(void **state) {
 
     char *first = pair->first;
     char *last = pair->last;
+    char buffer[256];
 
+    snprintf(buffer, 256, FIM_DB_ERROR_COUNT_RANGE, first, last);
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_value(__wrap_fim_db_get_count_range, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_count_range, type, FIM_TYPE_FILE);
@@ -473,7 +432,7 @@ static void test_fim_sync_checksum_split_get_count_range_error(void **state) {
     will_return(__wrap_fim_db_get_count_range, FIMDB_ERR);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap__merror, formatted_msg, "(6703): Couldn't get range size between 'first' and 'last'");
+    expect_string(__wrap__merror, formatted_msg, buffer);
 
     fim_sync_checksum_split(first, last, 1234);
 }
@@ -484,26 +443,35 @@ static void test_fim_sync_checksum_split_range_size_0(void **state) {
 }
 
 static void test_fim_sync_checksum_split_range_size_1(void **state) {
-    pair_entry_str_t *data = *state;
+    fim_entry entry;
+    entry.type = FIM_TYPE_FILE;
+    entry.file_entry.path = "/some/path";
+    entry.file_entry.data = &DEFAULT_FILE_DATA;
+
+    char *str = strdup("some message");
 
     expect_fim_db_get_count_range_n("start", "top", 1);
 
-    expect_fim_db_get_entry_from_sync_msg("start", FIM_TYPE_FILE, data->entry);
+    expect_fim_db_get_entry_from_sync_msg("start", FIM_TYPE_FILE, &entry);
 
     expect_any(__wrap_dbsync_state_msg, data);
     expect_string(__wrap_dbsync_state_msg, component, "fim_file");
-    will_return(__wrap_dbsync_state_msg, data->str);
+    will_return(__wrap_dbsync_state_msg, str);
 
     expect_any(__wrap_fim_send_sync_msg, msg);
 
     fim_sync_checksum_split("start", "top", 1234);
+    // str is freed at this point.
 }
 
 static void test_fim_sync_checksum_split_range_size_1_get_path_error(void **state) {
+    char buffer[38];
+    snprintf(buffer, 38, FIM_DB_ERROR_GET_PATH, "start");
+
     expect_fim_db_get_count_range_n("start", "top", 1);
     expect_fim_db_get_entry_from_sync_msg("start", FIM_TYPE_FILE, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "(6704): Couldn't get path of 'start'");
+    expect_string(__wrap__merror, formatted_msg, buffer);
 
     fim_sync_checksum_split("start", "top", 1234);
 }
@@ -523,23 +491,13 @@ static void test_fim_sync_checksum_split_range_size_default(void **state) {
     will_return(__wrap_fim_db_get_checksum_range, FIMDB_OK);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_dbsync_check_msg_call("fim_file", INTEGRITY_CHECK_LEFT, 1234, "start", "path1", "path2",
+                                 strdup("plain_text"));
 
-    expect_string(__wrap_dbsync_check_msg, component, "fim_file");
-    expect_any(__wrap_dbsync_check_msg, msg);
-    expect_value(__wrap_dbsync_check_msg, id, 1234);
-    expect_string(__wrap_dbsync_check_msg, start, "start");
-    expect_string(__wrap_dbsync_check_msg, top, strdup("path1"));
-    expect_string(__wrap_dbsync_check_msg, tail, strdup("path2"));
-    will_return(__wrap_dbsync_check_msg, strdup("plain_text"));
     expect_string(__wrap_fim_send_sync_msg, msg, "plain_text");
 
-    expect_string(__wrap_dbsync_check_msg, component, "fim_file");
-    expect_any(__wrap_dbsync_check_msg, msg);
-    expect_value(__wrap_dbsync_check_msg, id, 1234);
-    expect_string(__wrap_dbsync_check_msg, start, "path2");
-    expect_string(__wrap_dbsync_check_msg, top, strdup("top"));
-    expect_string(__wrap_dbsync_check_msg, tail, strdup(""));
-    will_return(__wrap_dbsync_check_msg, strdup("plain_text"));
+    expect_dbsync_check_msg_call("fim_file", INTEGRITY_CHECK_RIGHT, 1234, "path2", "top", "", strdup("plain_text"));
+
     expect_string(__wrap_fim_send_sync_msg, msg, "plain_text");
 
     fim_sync_checksum_split("start", "top", 1234);
@@ -713,17 +671,17 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_sync_push_msg_queue_full, setup_fim_sync_queue, teardown_fim_sync_queue),
         cmocka_unit_test(test_fim_sync_push_msg_no_response),
 
-        // /* fim_sync_checksum */
+        /* fim_sync_checksum */
         cmocka_unit_test(test_fim_sync_checksum_first_row_error),
         cmocka_unit_test(test_fim_sync_checksum_last_row_error),
         cmocka_unit_test(test_fim_sync_checksum_checksum_error),
         cmocka_unit_test(test_fim_sync_checksum_empty_db),
         cmocka_unit_test_setup_teardown(test_fim_sync_checksum_success, setup_str_pair, teardown_str_pair),
 
-        // /* fim_sync_checksum_split */
+        /* fim_sync_checksum_split */
         cmocka_unit_test_setup_teardown(test_fim_sync_checksum_split_get_count_range_error, setup_str_pair, teardown_str_pair),
         cmocka_unit_test(test_fim_sync_checksum_split_range_size_0),
-        cmocka_unit_test_setup_teardown(test_fim_sync_checksum_split_range_size_1, setup_fim_entry, teardown_fim_entry),
+        cmocka_unit_test(test_fim_sync_checksum_split_range_size_1),
         cmocka_unit_test(test_fim_sync_checksum_split_range_size_1_get_path_error),
         cmocka_unit_test(test_fim_sync_checksum_split_range_size_default),
 

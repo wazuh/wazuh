@@ -31,3 +31,34 @@ char * __wrap_dbsync_state_msg(const char * component, cJSON * data) {
 
     return mock_type(char*);
 }
+
+void expect_dbsync_check_msg_call(const char *component,
+                                         dbsync_msg msg,
+                                         int id,
+                                         const char *start,
+                                         const char *top,
+                                         const char *tail,
+                                         char *ret) {
+
+    expect_string(__wrap_dbsync_check_msg, component, component);
+    expect_value(__wrap_dbsync_check_msg, msg, msg);
+    expect_value(__wrap_dbsync_check_msg, id, id);
+
+    if (start == NULL) {
+        expect_value(__wrap_dbsync_check_msg, start, 0);
+    } else {
+        expect_string(__wrap_dbsync_check_msg, start, start);
+
+    }
+    if (top == NULL) {
+        expect_value(__wrap_dbsync_check_msg, top, 0);
+    } else {
+        expect_string(__wrap_dbsync_check_msg, top, top);
+    }
+    if (tail == NULL) {
+        expect_value(__wrap_dbsync_check_msg, tail, 0);
+    } else {
+        expect_string(__wrap_dbsync_check_msg, tail, tail);
+    }
+    will_return(__wrap_dbsync_check_msg, ret);
+}
