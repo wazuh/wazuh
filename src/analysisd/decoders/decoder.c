@@ -43,8 +43,7 @@ void DecodeEvent(struct _Eventinfo *lf, OSHash *rules_hash, regex_matching *deco
 
         /* First check program name */
         if (lf->program_name) {
-            if (!OSMatch_Execute(lf->program_name, lf->p_name_size,
-                                 nnode->program_name)) {
+            if (!w_expression_match(nnode->program_name, lf->program_name, NULL, NULL)) {
                 continue;
             }
             pmatch = lf->log;
@@ -52,7 +51,7 @@ void DecodeEvent(struct _Eventinfo *lf, OSHash *rules_hash, regex_matching *deco
 
         /* If prematch fails, go to the next osdecoder in the list */
         if (nnode->prematch) {
-            if (!(pmatch = OSRegex_Execute_ex(lf->log, nnode->prematch, decoder_match))) {
+            if (!w_expression_match(nnode->prematch, lf->log, &pmatch, decoder_match)) {
                 continue;
             }
 
@@ -98,7 +97,8 @@ void DecodeEvent(struct _Eventinfo *lf, OSHash *rules_hash, regex_matching *deco
                         llog2 = lf->log;
                     }
 
-                    if ((cmatch = OSRegex_Execute_ex(llog2, nnode->prematch, decoder_match))) {
+                    if (w_expression_match(nnode->prematch, llog2, &cmatch, decoder_match)) {
+
                         if (*cmatch != '\0') {
                             cmatch++;
                         }
@@ -172,8 +172,7 @@ void DecodeEvent(struct _Eventinfo *lf, OSHash *rules_hash, regex_matching *deco
                 }
 
                 /* If Regex does not match, return */
-                if (!(result = OSRegex_Execute_ex(llog, nnode->regex, decoder_match))) {
-
+                if (!w_expression_match(nnode->regex, llog, &result, decoder_match)) {
                     if (nnode->get_next) {
                         child_node = child_node->next;
                         nnode = child_node->osdecoder;

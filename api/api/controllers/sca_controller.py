@@ -20,7 +20,7 @@ async def get_sca_agent(request, agent_id=None, pretty=False, wait_for_complete=
                         references=None, offset=0, limit=database_limit, sort=None, search=None, q=None):
     """Get security configuration assessment (SCA) database of an agent
 
-    :param agent_id: Agent ID. All possible values since 000 onwards.
+    :param agent_id: Agent ID. All possible values from 000 onwards.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param name: Filters by policy name
@@ -65,7 +65,7 @@ async def get_sca_checks(request, agent_id=None, pretty=False, wait_for_complete
                          condition=None, offset=0, limit=database_limit, sort=None, search=None, q=None):
     """Get policy monitoring alerts for a given policy
 
-    :param agent_id: Agent ID. All possible values since 000 onwards
+    :param agent_id: Agent ID. All possible values from 000 onwards
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param policy_id: Filters by policy id

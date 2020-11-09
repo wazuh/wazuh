@@ -23,7 +23,7 @@ char *loadmemory(char *at, const char *str, OSList* log_msg);
 int get_info_attributes(char **attributes, char **values, OSList* log_msg);
 bool w_check_attr_negate(xml_node *node, int rule_id, OSList* log_msg);
 bool w_check_attr_field_name(xml_node * node, FieldInfo ** field, int rule_id, OSList* log_msg);
-
+w_exp_type_t w_check_attr_type(xml_node *node, w_exp_type_t default_type, int rule_id, OSList* log_msg);
 
 /* setup/teardown */
 
@@ -478,7 +478,7 @@ void w_check_attr_negate_attr_unknow_val(void **state)
     char expected_msg[OS_SIZE_2048];
     snprintf(expected_msg, OS_SIZE_2048, "(7600): Invalid value 'hello' for attribute 'negate' in rule 1234");
 
-    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_ERROR);
+    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_WARNING);
     expect_value(__wrap__os_analysisd_add_logmsg, list, &log_msg);
     expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, expected_msg);
 
@@ -618,6 +618,150 @@ void w_check_attr_field_name_dynamic_field(void **state)
     os_free(field);
 }
 
+// w_check_attr_type
+
+void w_check_attr_type_non_attr(void **state)
+{
+    xml_node node = {0, NULL, NULL, NULL, NULL};
+    int rule_id = 1234;
+    w_exp_type_t ret_val;
+    OSList log_msg = {0};
+
+    ret_val = w_check_attr_type(&node, EXP_TYPE_OSMATCH, rule_id, &log_msg);
+
+    assert_int_equal(ret_val, EXP_TYPE_OSMATCH);
+}
+
+void w_check_attr_type_non_type_attr(void **state)
+{
+    xml_node node;
+    int rule_id = 1234;
+    w_exp_type_t ret_val;
+    OSList log_msg = {0};
+
+    node.key = 0;
+    node.element = NULL;
+    os_calloc(2, sizeof(char*), node.attributes);
+    os_strdup("non_type", node.attributes[0]);
+    node.attributes[1] = NULL;
+    os_calloc(1, sizeof(char*), node.values);
+    os_strdup("osmatch", node.values[0]);
+
+    ret_val = w_check_attr_type(&node, EXP_TYPE_OSREGEX, rule_id, &log_msg);
+
+    os_free(node.attributes[0]);
+    os_free(node.values[0]);
+    os_free(node.attributes);
+    os_free(node.values);
+
+    assert_int_equal(ret_val, EXP_TYPE_OSREGEX);
+}
+
+void w_check_attr_type_attr_to_osmatch(void **state)
+{
+    xml_node node;
+    int rule_id = 1234;
+    w_exp_type_t ret_val;
+    OSList log_msg = {0};
+
+    node.key = 0;
+    node.element = NULL;
+    os_calloc(2, sizeof(char*), node.attributes);
+    os_strdup("type", node.attributes[0]);
+    node.attributes[1] = NULL;
+    os_calloc(1, sizeof(char*), node.values);
+    os_strdup("osmatch", node.values[0]);
+
+    ret_val = w_check_attr_type(&node, EXP_TYPE_OSREGEX, rule_id, &log_msg);
+
+    os_free(node.attributes[0]);
+    os_free(node.values[0]);
+    os_free(node.attributes);
+    os_free(node.values);
+
+    assert_int_equal(ret_val, EXP_TYPE_OSMATCH);
+}
+
+void w_check_attr_type_attr_to_osregex(void **state)
+{
+    xml_node node;
+    int rule_id = 1234;
+    w_exp_type_t ret_val;
+    OSList log_msg = {0};
+
+    node.key = 0;
+    node.element = NULL;
+    os_calloc(2, sizeof(char*), node.attributes);
+    os_strdup("type", node.attributes[0]);
+    node.attributes[1] = NULL;
+    os_calloc(1, sizeof(char*), node.values);
+    os_strdup("osregex", node.values[0]);
+
+    ret_val = w_check_attr_type(&node, EXP_TYPE_OSMATCH, rule_id, &log_msg);
+
+    os_free(node.attributes[0]);
+    os_free(node.values[0]);
+    os_free(node.attributes);
+    os_free(node.values);
+
+    assert_int_equal(ret_val, EXP_TYPE_OSREGEX);
+}
+
+void w_check_attr_type_attr_to_pcre2(void **state)
+{
+    xml_node node;
+    int rule_id = 1234;
+    w_exp_type_t ret_val;
+    OSList log_msg = {0};
+
+    node.key = 0;
+    node.element = NULL;
+    os_calloc(2, sizeof(char*), node.attributes);
+    os_strdup("type", node.attributes[0]);
+    node.attributes[1] = NULL;
+    os_calloc(1, sizeof(char*), node.values);
+    os_strdup("pcre2", node.values[0]);
+
+    ret_val = w_check_attr_type(&node, EXP_TYPE_OSMATCH, rule_id, &log_msg);
+
+    os_free(node.attributes[0]);
+    os_free(node.values[0]);
+    os_free(node.attributes);
+    os_free(node.values);
+
+    assert_int_equal(ret_val, EXP_TYPE_PCRE2);
+}
+
+void w_check_attr_type_attr_unknow_val(void **state)
+{
+    xml_node node;
+    int rule_id = 1234;
+    w_exp_type_t ret_val;
+
+    node.key = 0;
+    node.element = NULL;
+    os_calloc(2, sizeof(char*), node.attributes);
+    os_strdup("type", node.attributes[0]);
+    node.attributes[1] = NULL;
+    os_calloc(1, sizeof(char*), node.values);
+    os_strdup("hello", node.values[0]);
+
+    OSList log_msg = {0};
+    char excpect_msg[70] = "(7600): Invalid value 'hello' for attribute 'type' in rule 1234";
+
+    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_WARNING);
+    expect_value(__wrap__os_analysisd_add_logmsg, list, &log_msg);
+    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, excpect_msg);
+
+    ret_val = w_check_attr_type(&node, EXP_TYPE_OSMATCH, rule_id, &log_msg);
+
+    os_free(node.attributes[0]);
+    os_free(node.values[0]);
+    os_free(node.attributes);
+    os_free(node.values);
+
+    assert_int_equal(ret_val, EXP_TYPE_OSMATCH);
+}
 
 int main(void)
 {
@@ -648,6 +792,13 @@ int main(void)
         cmocka_unit_test(w_check_attr_field_name_static_field),
         cmocka_unit_test(w_check_attr_field_name_non_name_attr),
         cmocka_unit_test(w_check_attr_field_name_dynamic_field),
+        // Test w_check_attr_type
+        cmocka_unit_test(w_check_attr_type_non_attr),
+        cmocka_unit_test(w_check_attr_type_non_type_attr),
+        cmocka_unit_test(w_check_attr_type_attr_to_osmatch),
+        cmocka_unit_test(w_check_attr_type_attr_to_osregex),
+        cmocka_unit_test(w_check_attr_type_attr_to_pcre2),
+        cmocka_unit_test(w_check_attr_type_attr_unknow_val),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

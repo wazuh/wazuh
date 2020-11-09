@@ -15,7 +15,6 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-
 #include "../../headers/shared.h"
 #include "os_regex/os_regex.h"
 #include "os_xml/os_xml.h"
@@ -26,10 +25,11 @@
 #include "../../analysisd/config.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
-
 void FreeDecoderInfo(OSDecoderInfo *pi);
 char *_loadmemory(char *at, char *str, OSList* log_msg);
 int addDecoder2list(const char *name, OSStore **decoder_store);
+bool w_get_attr_regex_type(xml_node * node, w_exp_type_t * type);
+int w_get_attr_offset(xml_node * node);
 
 /* setup/teardown */
 
@@ -80,9 +80,9 @@ void test_FreeDecoderInfo_OK(void **state)
     os_calloc(1, sizeof(char*), info->fields);
     os_calloc(1, sizeof(char), info->fields[0]);
 
-    os_calloc(1, sizeof(OSRegex), info->regex);
-    os_calloc(1, sizeof(OSRegex), info->prematch);
-    os_calloc(1, sizeof(OSRegex), info->program_name);
+    w_calloc_expression_t(&info->regex, EXP_TYPE_OSREGEX);
+    w_calloc_expression_t(&info->prematch, EXP_TYPE_OSMATCH);
+    w_calloc_expression_t(&info->program_name, EXP_TYPE_OSREGEX);
 
     os_calloc(1, sizeof(void*), info->order);
 
@@ -279,22 +279,204 @@ void test_addDecoder2list_push_ok(void ** state)
     os_free(decoder_store);
 }
 
-int main(void)
-{
+void w_get_attr_regex_type_not_found(void ** state) {
+
+    xml_node node = {0};
+    char * attributes[] = {"attr_name_1", "attr_name_2", NULL};
+    char * values[] = {"attr_val_1", "attr_val_2", NULL};
+    node.attributes = attributes;
+    node.values = values;
+
+    w_exp_type_t type = -2;
+
+    bool retval;
+
+    retval = w_get_attr_regex_type(&node, &type);
+
+    assert_false(retval);
+    assert_int_equal(type, -2);
+}
+
+void w_get_attr_regex_type_osregex(void ** state) {
+
+    xml_node node = {0};
+    char * attributes[] = {"attr_name_1", "type", "attr_name_3", NULL};
+    char * values[] = {"attr_val_1", "osregex", "attr_val_3", NULL};
+    node.attributes = attributes;
+    node.values = values;
+
+    w_exp_type_t type = -2;
+
+    bool retval;
+
+    retval = w_get_attr_regex_type(&node, &type);
+
+    assert_true(retval);
+    assert_int_equal(type, EXP_TYPE_OSREGEX);
+}
+
+void w_get_attr_regex_type_osmatch(void ** state) {
+
+    xml_node node = {0};
+    char * attributes[] = {"attr_name_1", "type", "attr_name_3", NULL};
+    char * values[] = {"attr_val_1", "osmatch", "attr_val_3", NULL};
+    node.attributes = attributes;
+    node.values = values;
+
+    w_exp_type_t type = -2;
+
+    bool retval;
+
+    retval = w_get_attr_regex_type(&node, &type);
+
+    assert_true(retval);
+    assert_int_equal(type, EXP_TYPE_OSMATCH);
+}
+
+void w_get_attr_regex_type_pcre2(void ** state) {
+
+    xml_node node = {0};
+    char * attributes[] = {"attr_name_1", "type", "attr_name_3", NULL};
+    char * values[] = {"attr_val_1", "PCRE2", "attr_val_3", NULL};
+    node.attributes = attributes;
+    node.values = values;
+
+    w_exp_type_t type = -2;
+
+    bool retval;
+
+    retval = w_get_attr_regex_type(&node, &type);
+
+    assert_true(retval);
+    assert_int_equal(type, EXP_TYPE_PCRE2);
+}
+
+void w_get_attr_regex_type_invalid(void ** state) {
+
+    xml_node node = {0};
+    char * attributes[] = {"attr_name_1", "type", "attr_name_3", NULL};
+    char * values[] = {"attr_val_1", "invalid type", "attr_val_3", NULL};
+    node.attributes = attributes;
+    node.values = values;
+
+    w_exp_type_t type = -2;
+
+    bool retval;
+
+    retval = w_get_attr_regex_type(&node, &type);
+
+    assert_true(retval);
+    assert_int_equal(type, EXP_TYPE_INVALID);
+}
+
+// w_get_attr_offset
+
+void w_get_attr_offset_not_found(void ** state) {
+
+    xml_node node = {0};
+    char * attributes[] = {"attr_name_1", "attr_name_2", "attr_name_3", NULL};
+    char * values[] = {"attr_val_1", "attr_val_2", "attr_val_3", NULL};
+    node.attributes = attributes;
+    node.values = values;
+
+    int retval;
+
+    retval = w_get_attr_offset(&node);
+
+    assert_int_equal(retval, 0);
+}
+
+void w_get_attr_offset_after_parent(void ** state) {
+
+    xml_node node = {0};
+    char * attributes[] = {"attr_name_1", "offset", "attr_name_3", NULL};
+    char * values[] = {"attr_val_1", "after_parent", "attr_val_3", NULL};
+    node.attributes = attributes;
+    node.values = values;
+
+    int retval;
+
+    retval = w_get_attr_offset(&node);
+
+    assert_int_equal(retval, AFTER_PARENT);
+}
+
+void w_get_attr_offset_after_prematch(void ** state) {
+
+    xml_node node = {0};
+    char * attributes[] = {"attr_name_1", "offset", "attr_name_3", NULL};
+    char * values[] = {"attr_val_1", "after_prematch", "attr_val_3", NULL};
+    node.attributes = attributes;
+    node.values = values;
+
+    int retval;
+
+    retval = w_get_attr_offset(&node);
+
+    assert_int_equal(retval, AFTER_PREMATCH);
+}
+void w_get_attr_offset_after_after_regex(void ** state) {
+
+    xml_node node = {0};
+    char * attributes[] = {"attr_name_1", "offset", "attr_name_3", NULL};
+    char * values[] = {"attr_val_1", "after_regex", "attr_val_3", NULL};
+    node.attributes = attributes;
+    node.values = values;
+
+    int retval;
+
+    retval = w_get_attr_offset(&node);
+
+    assert_int_equal(retval, AFTER_PREVREGEX);
+}
+
+void w_get_attr_offset_error(void ** state) {
+
+    xml_node node = {0};
+    char * attributes[] = {"attr_name_1", "offset", "attr_name_3", NULL};
+    char * values[] = {"attr_val_1", "bad_value", "attr_val_3", NULL};
+    node.attributes = attributes;
+    node.values = values;
+
+    int retval;
+
+    retval = w_get_attr_offset(&node);
+
+    assert_int_equal(retval, AFTER_ERROR);
+}
+
+int main(void) {
     const struct CMUnitTest tests[] = {
+
         // Tests FreeDecoderInfo
         cmocka_unit_test(test_FreeDecoderInfo_NULL),
         cmocka_unit_test(test_FreeDecoderInfo_OK),
+
         // Tests _loadmemory
         cmocka_unit_test(test__loadmemory_null_append_ok),
         cmocka_unit_test(test__loadmemory_null_append_oversize),
         cmocka_unit_test(test__loadmemory_append_oversize),
         cmocka_unit_test(test__loadmemory_append_ok),
+
         // Tests addDecoder2list
         cmocka_unit_test(test_addDecoder2list_empty_list_deco_error),
         cmocka_unit_test(test_addDecoder2list_empty_list_deco_ok),
         cmocka_unit_test(test_addDecoder2list_fail_push),
-        cmocka_unit_test(test_addDecoder2list_push_ok)
+        cmocka_unit_test(test_addDecoder2list_push_ok),
+
+        // Test w_get_attr_regex_type
+        cmocka_unit_test(w_get_attr_regex_type_not_found),
+        cmocka_unit_test(w_get_attr_regex_type_osregex),
+        cmocka_unit_test(w_get_attr_regex_type_osmatch),
+        cmocka_unit_test(w_get_attr_regex_type_pcre2),
+        cmocka_unit_test(w_get_attr_regex_type_invalid),
+
+        // w_get_attr_offset
+        cmocka_unit_test(w_get_attr_offset_not_found),
+        cmocka_unit_test(w_get_attr_offset_after_parent),
+        cmocka_unit_test(w_get_attr_offset_after_prematch),
+        cmocka_unit_test(w_get_attr_offset_after_after_regex),
+        cmocka_unit_test(w_get_attr_offset_error),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

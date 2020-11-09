@@ -78,6 +78,8 @@ int Read_Authd(XML_NODE node, void *d1, void *d2);
 int Read_Cluster(XML_NODE node, void *d1, void *d2);
 int Read_Socket(XML_NODE node, void *d1, void *d2);
 int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2);
+int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1);
+int Read_TaskManager(const OS_XML *xml, xml_node *node, void *d1);
 
 /**
  * @brief Read the configuration for logtest thread

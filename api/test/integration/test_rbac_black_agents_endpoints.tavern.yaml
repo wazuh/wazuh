@@ -629,19 +629,21 @@ stages:
          failed_items: []
 
 ---
-test_name: GET /agents/{agent_id}/upgrade_result
+test_name: GET /agents/upgrade_result
 
 stages:
 
- - name: Try get upgrade result agent 002 (Denied)
+ - name: Try get upgrade result agents 003 and 004 (Denied)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/agents/002/upgrade_result?wait_for_complete=true"
+     url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
+     params:
+       agents_list: "003,004"
    response:
-      <<: *permission_denied
+     <<: *permission_denied
 
 ---
 test_name: DELETE /agents/{agent_id}/group/{group_id}
@@ -1467,32 +1469,36 @@ stages:
     delay_after: !float "{restart_delay}"
 
 ---
-test_name: PUT /agents/{agent_id}/upgrade
+test_name: PUT /agents/upgrade
 
 stages:
 
-  - name: Try to upgrade agent 004 (Denied)
+  - name: Try to upgrade agents 003 and 004 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/004/upgrade"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "003,004"
     response:
       <<: *permission_denied
 
 ---
-test_name: PUT /agents/{agent_id}/upgrade_custom
+test_name: PUT /agents/upgrade_custom
 
 stages:
 
-  - name: Try to customly upgrade agent 004 (Denied)
+  - name: Try to customly upgrade agents 003 and 004 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/004/upgrade_custom?installer=agent_upgrade.py&file_path=/var/ossec"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom?installer=agent_upgrade.py&file_path=/var/ossec"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "003,004"
     response:
       <<: *permission_denied
 

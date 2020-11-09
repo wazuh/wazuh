@@ -36,7 +36,7 @@ info:
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
-    url: 'https://github.com/wazuh/wazuh/blob/master/LICENSE'
+    url: 'https://github.com/wazuh/wazuh/blob/4.1/LICENSE'
 
 servers:
   - url: '{protocol}://{host}:{port}'
@@ -85,9 +85,10 @@ x-rbac-catalog:
       description: "Execute active response commands in the agents"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['active-response:command']
-        resources: ['agent:id:001']
+        resources: ['agent:id:001', 'agent:group:atlantic']
         effect: "allow"
     'agent:create':
       description: "Create new agents"
@@ -101,6 +102,7 @@ x-rbac-catalog:
       description: "Access agents information (id, name, group, last keep alive, etc)"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['agent:read']
         resources: ['agent:id:*']
@@ -109,17 +111,19 @@ x-rbac-catalog:
       description: "Delete agents"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['agent:delete']
-        resources: ['agent:id:010']
+        resources: ['agent:id:010', 'agent:group:pacific']
         effect: "allow"
     'agent:modify_group':
       description: "Change the group of agents"
       resources:
        - $ref: '#/x-rbac-catalog/resources/agent:id'
+       - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['agent:modify_group']
-        resources: ['agent:id:*']
+        resources: ['agent:id:004', 'agent:group:us-east']
         effect: "allow"
     'group:modify_assignments':
       description: "Change the agents assigned to the group"
@@ -133,14 +137,16 @@ x-rbac-catalog:
       description: "Upgrade the version of the agents"
       resources:
        - $ref: '#/x-rbac-catalog/resources/agent:id'
+       - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['agent:upgrade']
-        resources: ['agent:id:*']
+        resources: ['agent:id:001', 'agent:group:mediterranean']
         effect: "allow"
     'agent:restart':
       description: "Restart agents"
       resources:
        - $ref: '#/x-rbac-catalog/resources/agent:id'
+       - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['agent:restart']
         resources: ['agent:id:050', 'agent:id:049']
@@ -181,9 +187,10 @@ x-rbac-catalog:
       description: "Access CIS-CAT results for agents"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['ciscat:read']
-        resources: ['agent:id:001', 'agent:id:003']
+        resources: ['agent:id:001', 'agent:id:003', 'agent:group:default']
         effect: "deny"
     'cluster:read':
       description: "Read Wazuh's cluster nodes configuration"
@@ -351,6 +358,7 @@ x-rbac-catalog:
       description: "Access agents security configuration assessment"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['sca:read']
         resources: ['agent:id:*']
@@ -424,14 +432,16 @@ x-rbac-catalog:
       description: "Access information from agents syscheck database"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['syscheck:read']
-        resources: ['agent:id:011']
+        resources: ['agent:id:011', 'agent:group:us-west']
         effect: "allow"
     'syscheck:clear':
       description: "Clear the agents syscheck database"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['syscheck:clear']
         resources: ['agent:id:*']
@@ -440,6 +450,7 @@ x-rbac-catalog:
       description: "Run agents syscheck scan"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['syscheck:run']
         resources: ['agent:id:*']
@@ -448,6 +459,7 @@ x-rbac-catalog:
       description: "Access agents syscollector information"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: ['syscollector:read']
         resources: ['agent:id:*']
@@ -478,7 +490,7 @@ components:
             detail: "Permission denied: Resource type: *:*"
             remediation: "Please, make sure you have permissions to execute the current request. For more information
             on how to set up permissions, please visit
-            https://documentation.wazuh.com/4.0/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/4.1/user-manual/api/rbac/configuration.html"
             error: 4000
             dapi_errors:
               unknown-node:
@@ -545,7 +557,7 @@ components:
             title: "Wazuh Error"
             detail: "Maximum number of request per minute reached"
             remediation: "This limit can be changed in security.yaml file. More information here:
-            https://documentation.wazuh.com/4.0/user-manual/api/security/configuration.html"
+            https://documentation.wazuh.com/4.1/user-manual/api/security/configuration.html"
             code: 6001
 
     ResourceNotFoundResponse:
@@ -558,7 +570,7 @@ components:
             title: "Resource Not Found"
             detail: "The group does not exist"
             remediation: "Please, use `GET /groups` to find all available groups:
-            https://documentation.wazuh.com/4.0/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/4.1/user-manual/api/rbac/configuration.html"
             code: 1710
             dapi_errors:
               unknown-node:
@@ -1653,6 +1665,10 @@ components:
       type: string
       format: numbers_delete
       description: "Security rule ID|all"
+    Task_id:
+      type: string
+      format: numbers
+      description: "Task ID"
     Policy_id:
       type: string
       format: numbers
@@ -2114,7 +2130,7 @@ components:
           type: number
           format: float
           description: "Same as `alerts_written` but focusing in [FTS alerts]
-          (https://documentation.wazuh.com/4.0/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts
+          (https://documentation.wazuh.com/4.1/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts
           #fts)"
         hostinfo_edps:
           type: number
@@ -3842,6 +3858,16 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/AgentID'
+    agents_list_upgrade:
+      in: query
+      name: agents_list
+      description: "List of agent IDs (separated by comma), select a list of agents with size less or equal than 100"
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/AgentID'
+        maxItems: 100
     agents_list_delete:
       in: query
       name: agents_list
@@ -4153,6 +4179,14 @@ components:
       schema:
         type: integer
         minimum: 0
+    task_ids:
+      in: query
+      name: 'task_ids'
+      description: "List of task IDs (separated by comma)"
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Task_id'
     reason:
       in: query
       name: reason
@@ -5122,10 +5156,10 @@ paths:
                     $ref: '#/components/schemas/BasicInfo'
               example:
                 title: "Wazuh API"
-                api_version: "v4.0.0"
-                revision: 4000
+                api_version: "v4.1.0"
+                revision: '40100'
                 license_name: "GPL 2.0"
-                license_url: "https://github.com/wazuh/wazuh/blob/master/LICENSE"
+                license_url: "https://github.com/wazuh/wazuh/blob/4.1/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11+0000"
 
@@ -5760,32 +5794,41 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /agents/{agent_id}/upgrade:
+  /agents/upgrade:
     put:
       tags:
         - Agents
-      summary: "Upgrade agent"
-      description: "Upgrade the agent using a WPK file from online repository"
-      operationId: api.controllers.agents_controller.put_upgrade_agent
+      summary: "Upgrade agents"
+      description: "Upgrade agents using a WPK file from online repository"
+      operationId: api.controllers.agents_controller.put_upgrade_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/agents_list_upgrade'
         - $ref: '#/components/parameters/wpk_repo'
         - $ref: '#/components/parameters/upgrade_version'
         - $ref: '#/components/parameters/use_http'
         - $ref: '#/components/parameters/force'
       responses:
         '200':
-          description: "Agent upgraded"
+          description: "Agents upgraded"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "Upgrade procedure started"
+                data:
+                  affected_items:
+                    - agent: "001"
+                      task_id: 1
+                    - agent: "002"
+                      task_id: 2
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: [ ]
+                message: "All upgrade tasks have been created"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -5798,30 +5841,39 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /agents/{agent_id}/upgrade_custom:
+  /agents/upgrade_custom:
     put:
       tags:
         - Agents
-      summary: "Upgrade agent custom"
-      description: "Upgrade the agent using a local WPK file"
-      operationId: api.controllers.agents_controller.put_upgrade_custom_agent
+      summary: "Upgrade agents custom"
+      description: "Upgrade the agents using a local WPK file"
+      operationId: api.controllers.agents_controller.put_upgrade_custom_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/agents_list_upgrade'
         - $ref: '#/components/parameters/file_path'
         - $ref: '#/components/parameters/installer'
       responses:
         '200':
-          description: "Agent upgraded"
+          description: "Agents upgraded"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "Installation started"
+                data:
+                  affected_items:
+                    - agent: "005"
+                      task_id: 3
+                    - agent: "006"
+                      task_id: 4
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: [ ]
+                message: "All upgrade tasks have been created"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -5834,34 +5886,42 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /agents/{agent_id}/upgrade_result:
+  /agents/upgrade_result:
     get:
       tags:
         - Agents
-      summary: "Get upgrade result"
-      description: "Return the upgrade result after updating an agent"
+      summary: "Get upgrade results"
+      description: "Return the agents upgrade results"
       operationId: api.controllers.agents_controller.get_agent_upgrade
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - in: query
-          name: timeout
-          description: "Seconds to wait for the agent to respond"
-          schema:
-            type: integer
-            format: int32
+        - $ref: '#/components/parameters/agents_list'
       responses:
         '200':
-          description: "Get agent upgrade result"
+          description: "Get agent upgrade results"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: Agent was successfully upgraded
+                data:
+                  affected_items:
+                    - message: "Success"
+                      agent: "001"
+                      task_id: 1
+                      node: "worker1"
+                      module: "upgrade_module"
+                      command: "upgrade"
+                      status: "Legacy upgrade: check the result manually since the agent cannot report the result of the task"
+                      create_time: "2020/11/03 15:59:32"
+                      update_time: "2020/11/03 16:01:55"
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: [ ]
+                message: "All agents have been updated"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -13219,8 +13279,6 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/InvalidCredentialsResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -15074,4 +15132,4 @@ paths:
 
 externalDocs:
   description: "Find more about Wazuh API usage"
-  url: 'https://documentation.wazuh.com/4.0/user-manual/api/index.html'
+  url: 'https://documentation.wazuh.com/4.1/user-manual/api/index.html'

@@ -10,7 +10,7 @@ from api.models.base_model_ import Body
 
 class AgentAddedModel(Body):
 
-    def __init__(self, name: str = None, ip: str = None, force_time: int = -1):
+    def __init__(self, name: str = None, ip: str = None, force_time: int = None):
         """AgentAddedModel body model
         :param name: Agent name.
         :type name: str

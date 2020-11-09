@@ -1,7 +1,42 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-# [v4.1.0]
+## [v4.1.0]
+
+## Added
+
+- Allow negation of expressions in rules ([#6258](https://github.com/wazuh/wazuh/pull/6258))
+- Support for PCRE2 regular expressions in rules and decoders ([#6480](https://github.com/wazuh/wazuh/pull/6480))
+
+- Added new **upgrade module**. WPK upgrade feature has been moved to this module, which offers support for cluster architecture and simultaneous upgrades. ([#5387](https://github.com/wazuh/wazuh/issues/5387))
+- Added new **task module**. This module stores and manages all the tasks that are executed in the agents. ([#5386](https://github.com/wazuh/wazuh/issues/5386))
+
+### Changed
+
+- **Wazuh API:**
+  - Changed upgrade endpoints to accept a list of agents, maximum 100 agents per request. ([#5336](https://github.com/wazuh/wazuh/issues/5536))
+
+- **Framework:**
+  - Refactored agent upgrade module. ([#5537](https://github.com/wazuh/wazuh/issues/5537))
+
+### Fixed
+- Fixed an error with `/groups/{group_id}/config` Wazuh API endpoints (GET and PUT) when using complex `localfile` configurations. ([#6276](https://github.com/wazuh/wazuh/pull/6383))
+
+## [v4.0.1] -
+
+### Added
+
+### Changed
+
+- **Framework:**
+  - Update Python's cryptography library to version 3.2.1 ([#6442](https://github.com/wazuh/wazuh/issues/6442))
+
+### Fixed
+
+- **API:**
+  - Added missing agent:group resource to RBAC's catalog. ([6427](https://github.com/wazuh/wazuh/issues/6427))
+
+### Removed
 
 ### Added
 
@@ -15,7 +50,7 @@ All notable changes to this project will be documented in this file.
 
 - Added **enrollment capability**. Agents are now able to request a key from the manager if current key is missing or wrong. ([#5609](https://github.com/wazuh/wazuh/pull/5609))
 - Migrated the agent-info data to Wazuh DB. ([#5541](https://github.com/wazuh/wazuh/pull/5541))
-- **Wazuh API:**
+- **API:**
   - Embedded Wazuh API with Wazuh Manager, there is no need to install Wazuh API. ([9860823](https://github.com/wazuh/wazuh/commit/9860823d568f5e6d93550d9b139507c04d2c2eb9))
   - Migrated Wazuh API server from nodejs to python. ([#2640](https://github.com/wazuh/wazuh/pull/2640))
   - Added asynchronous aiohttp server for the Wazuh API. ([#4474](https://github.com/wazuh/wazuh/issues/4474))
