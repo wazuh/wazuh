@@ -879,12 +879,11 @@ def test_WazuhDBQuery_parse_filters(mock_query, mock_filter, mock_socket_conn, m
 
 
 @pytest.mark.parametrize('field_name, field_filter, q_filter', [
-    ('status', None, None),
+    ('status', 'field', {'value': 'active', 'operator': 'LIKE', 'field': 'status$0'}),
     ('date1', None, {'value': '1', 'operator': None}),
     ('os.name', 'field', {'value': '2019-07-16 09:21:56', 'operator': 'LIKE', 'field': 'status$0'}),
     ('os.name', None, {'value': None, 'operator': 'LIKE', 'field': 'status$0'}),
-    ('os.name', 'field', {'value': '2019-07-16 09:21:56', 'operator': 'LIKE', 'field': 'status$0'}),
-
+    ('os.name', 'field', {'value': '2019-07-16 09:21:56', 'operator': 'LIKE', 'field': 'status$0'})
 ])
 @patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
@@ -897,7 +896,7 @@ def test_WazuhDBQuery_protected_process_filter(mock_date, mock_status, mock_sock
     """Tests WazuhDBQuery._process_filter."""
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                          search=None, select=None,
-                         fields={'os.name': 'ubuntu', 'os.version': '18.04'},
+                         fields={'os.name': 'ubuntu', 'os.version': '18.04', 'status': 'active'},
                          default_sort_field=None, query=None,
                          backend=WazuhDBBackend(agent_id=0), count=5,
                          get_data=None, date_fields=['date1', 'date2'])
@@ -905,9 +904,7 @@ def test_WazuhDBQuery_protected_process_filter(mock_date, mock_status, mock_sock
     query._process_filter(field_name, field_filter, q_filter)
 
     mock_conn_db.assert_called_once_with()
-    if field_name == 'status':
-        mock_status.assert_any_call(q_filter)
-    elif field_name in ['date1', 'date2']:
+    if field_name in ['date1', 'date2']:
         mock_date.assert_any_call(q_filter, field_name)
 
 
