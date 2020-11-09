@@ -28,6 +28,58 @@ with patch('wazuh.common.ossec_uid'):
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_data = InitRootcheck()
+callable_list = list()
+
+
+# Retrieve used parameters in mocked method
+def set_callable_list(*params, **kwargs):
+    callable_list.append((params, kwargs))
+
+
+test_result = [
+    {'affected_items': ['001', '002'], 'total_affected_items': 2, 'failed_items': {}, 'total_failed_items': 0},
+    {'affected_items': ['003', '008'], 'total_affected_items': 2, 'failed_items': {'001'}, 'total_failed_items': 1},
+    {'affected_items': ['001'], 'total_affected_items': 1, 'failed_items': {'002', '003'},
+     'total_failed_items': 2},
+    # This result is used for exceptions
+    {'affected_items': [], 'total_affected_items': 0, 'failed_items': {'001'}, 'total_failed_items': 1},
+]
+
+
+@pytest.mark.parametrize('agent_list, status_list, expected_result', [
+    (['002', '001'], [{'status': status} for status in ['active', 'active']], test_result[0]),
+    (['003', '001', '008'], [{'status': status} for status in ['active', 'disconnected', 'active']], test_result[1]),
+    (['001', '002', '003'], [{'status': status} for status in ['active', 'disconnected', 'disconnected']],
+     test_result[2]),
+])
+@patch('wazuh.syscheck.OssecQueue._connect')
+@patch('wazuh.syscheck.OssecQueue.send_msg_to_agent', side_effect=set_callable_list)
+@patch('wazuh.syscheck.OssecQueue.close')
+def test_rootcheck_run(close_mock, send_mock, connect_mock, agent_list, status_list, expected_result):
+    """Test function `run` from rootcheck module.
+
+    Parameters
+    ----------
+    agent_list : list
+        List of agent IDs.
+    status_list : list
+        List of agent statuses.
+    expected_result : list
+        List of dicts with expected results for every test.
+    """
+    with patch('wazuh.rootcheck.Agent.get_basic_information', side_effect=status_list):
+        result = rootcheck.run(agent_list=agent_list)
+        for args, kwargs in callable_list:
+            assert (isinstance(a, str) for a in args)
+            assert (isinstance(k, str) for k in kwargs)
+        assert isinstance(result, rootcheck.AffectedItemsWazuhResult)
+        assert result.affected_items == expected_result['affected_items']
+        assert result.total_affected_items == expected_result['total_affected_items']
+        if result.failed_items:
+            assert next(iter(result.failed_items.values())) == expected_result['failed_items']
+        else:
+            assert result.failed_items == expected_result['failed_items']
+        assert result.total_failed_items == expected_result['total_failed_items']
 
 
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=[None, None, WazuhError(2004)])

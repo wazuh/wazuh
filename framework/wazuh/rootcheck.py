@@ -3,12 +3,50 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh import common
-from wazuh.core.agent import get_agents_info
+from wazuh.core.agent import Agent, get_agents_info
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
+from wazuh.core.ossec_queue import OssecQueue
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rootcheck import WazuhDBQueryRootcheck, last_scan
 from wazuh.core.wdb import WazuhDBConnection
 from wazuh.rbac.decorators import expose_resources
+
+
+@expose_resources(actions=["rootcheck:run"], resources=["agent:id:{agent_list}"])
+def run(agent_list=None):
+    """Run rootcheck scan.
+
+    Parameters
+    ----------
+    agent_list : list
+         Run rootcheck in a list of agents.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        JSON containing the affected agents.
+    """
+    result = AffectedItemsWazuhResult(all_msg='Rootcheck scan was restarted on returned agents',
+                                      some_msg='Rootcheck scan was not restarted on some agents',
+                                      none_msg='No rootcheck scan was restarted')
+    for agent_id in agent_list:
+        try:
+            agent_info = Agent(agent_id).get_basic_information()
+            agent_status = agent_info.get('status', 'N/A')
+            if agent_status.lower() != 'active':
+                result.add_failed_item(
+                    id_=agent_id, error=WazuhError(1601, extra_message='Status - {}'.format(agent_status)))
+            else:
+                oq = OssecQueue(common.ARQUEUE)
+                oq.send_msg_to_agent(OssecQueue.HC_SK_RESTART, agent_id)
+                result.affected_items.append(agent_id)
+                oq.close()
+        except WazuhError as e:
+            result.add_failed_item(id_=agent_id, error=e)
+    result.affected_items = sorted(result.affected_items, key=int)
+    result.total_affected_items = len(result.affected_items)
+
+    return result
 
 
 @expose_resources(actions=["rootcheck:clear"], resources=["agent:id:{agent_list}"])

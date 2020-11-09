@@ -160,7 +160,7 @@ default_policies:
         actions:
           - rootcheck:clear
           - rootcheck:read
-          - syscheck:run
+          - rootcheck:run
         resources:
           - agent:id:*
         effect: allow

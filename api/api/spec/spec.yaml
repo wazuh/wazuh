@@ -347,6 +347,14 @@ x-rbac-catalog:
         actions: [ 'rootcheck:clear' ]
         resources: [ 'agent:id:*' ]
         effect: "deny"
+    'rootcheck:run':
+      description: "Run agents rootcheck scan"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+      example:
+        actions: [ 'rootcheck:run' ]
+        resources: [ 'agent:id:*' ]
+        effect: "allow"
     'rules:read':
       description: "Read rules files"
       resources:
@@ -10387,10 +10395,10 @@ paths:
       tags:
         - Rootcheck
       summary: "Run scan"
-      description: "Run rootcheck and syscheck scans in all agents or a list of them"
+      description: "Run rootcheck scan in all agents or a list of them"
       operationId: api.controllers.rootcheck_controller.put_rootcheck
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/syscheck:run'
+        - $ref: '#/x-rbac-catalog/actions/rootcheck:run'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10417,7 +10425,7 @@ paths:
                   total_affected_items: 4
                   failed_items: []
                   total_failed_items: 0
-                message: "Syscheck and rootcheck scans were restarted on returned agents"
+                message: "Rootcheck scan was restarted on returned agents"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -10497,7 +10505,7 @@ paths:
       tags:
       - Rootcheck
       summary: "Get last scan datetime"
-      description: "Return the timestamp of the last rootcheck scan of an agent."
+      description: "Return the timestamp of the last rootcheck scan of an agent"
       operationId: api.controllers.rootcheck_controller.get_last_scan_agent
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/rootcheck:read'
@@ -10507,7 +10515,7 @@ paths:
         - $ref: '#/components/parameters/agent_id'
       responses:
         '200':
-          description: "Return the timestamp of the last rootcheck scan of an agent."
+          description: "Return the timestamp of the last rootcheck scan of an agent"
           content:
             application/json:
               schema:
@@ -11101,7 +11109,7 @@ paths:
                   failed_items: []
                   total_affected_items: 4
                   total_failed_items: 0
-                message: "Syscheck and rootcheck scans were restarted on returned agents"
+                message: "Syscheck scan was restarted on returned agents"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'

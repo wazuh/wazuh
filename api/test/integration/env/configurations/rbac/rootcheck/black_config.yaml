@@ -20,13 +20,13 @@
   effect: allow
 
 - actions:
-  - syscheck:run
+  - rootcheck:run
   resources:
   - agent:id:*
   effect: deny
 
 - actions:
-  - syscheck:run
+  - rootcheck:run
   resources:
   - agent:id:002
   - agent:id:004

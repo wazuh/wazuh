@@ -8,14 +8,14 @@ from aiohttp import web
 
 from api.encoder import dumps, prettify
 from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc
-from wazuh import rootcheck, syscheck
+from wazuh import rootcheck
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 logger = logging.getLogger('wazuh')
 
 
 async def put_rootcheck(request, pretty=False, wait_for_complete=False, agents_list='*'):
-    """Run a syscheck and rootcheck scan over the agent_ids
+    """Run rootcheck scan over the agent_ids.
 
     Parameters
     ----------
@@ -28,7 +28,7 @@ async def put_rootcheck(request, pretty=False, wait_for_complete=False, agents_l
     """
     f_kwargs = {'agent_list': agents_list}
 
-    dapi = DistributedAPI(f=syscheck.run,
+    dapi = DistributedAPI(f=rootcheck.run,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
@@ -73,7 +73,7 @@ async def delete_rootcheck(request, pretty=False, wait_for_complete=False, agent
 async def get_rootcheck_agent(request, pretty=False, wait_for_complete=False, agent_id=None, offset=0, limit=None,
                               sort=None, search=None, select=None, q='', distinct=None, status='all', pci_dss=None,
                               cis=None):
-    """Returns a list of events from the rootcheck database.
+    """Return a list of events from the rootcheck database.
 
     Parameters
     ----------
@@ -88,10 +88,10 @@ async def get_rootcheck_agent(request, pretty=False, wait_for_complete=False, ag
     limit : int
         Maximum number of elements to return.
     sort : str
-        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        Sort the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
         ascending or descending order.
     search : str
-        Looks for elements with the specified string.
+        Look for elements with the specified string.
     select : str
         Select which fields to return (separated by comma).
     q : str
@@ -101,9 +101,9 @@ async def get_rootcheck_agent(request, pretty=False, wait_for_complete=False, ag
     status : str
         Filter by scan status.
     pci_dss : str
-        Filters by PCI requirement.
+        Filter by PCI requirement.
     cis : str
-        Filters by CIS requirement.
+        Filter by CIS requirement.
     """
     f_kwargs = {'agent_list': [agent_id],
                 'offset': offset,
@@ -134,7 +134,7 @@ async def get_rootcheck_agent(request, pretty=False, wait_for_complete=False, ag
 
 
 async def get_last_scan_agent(request, pretty=False, wait_for_complete=False, agent_id=None):
-    """Gets the last rootcheck scan of an agent.
+    """Get the last rootcheck scan of an agent.
 
     Parameters
     ----------

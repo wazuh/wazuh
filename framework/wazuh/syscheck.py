@@ -17,14 +17,13 @@ from wazuh.rbac.decorators import expose_resources
 
 @expose_resources(actions=["syscheck:run"], resources=["agent:id:{agent_list}"])
 def run(agent_list=None):
-    """Run syscheck and rootcheck scan.
-
-    :param agent_list: Run scan in the agent.
+    """Run syscheck scan.
+    :param agent_list: Run syscheck in the agent.
     :return: AffectedItemsWazuhResult.
     """
-    result = AffectedItemsWazuhResult(all_msg='Syscheck and rootcheck scans were restarted on returned agents',
-                                      some_msg='Syscheck and rootcheck scans were not restarted on some agents',
-                                      none_msg='No syscheck and rootcheck scans were restarted')
+    result = AffectedItemsWazuhResult(all_msg='Syscheck scan was restarted on returned agents',
+                                      some_msg='Syscheck scan was not restarted on some agents',
+                                      none_msg='No syscheck scan was restarted')
     for agent_id in agent_list:
         try:
             agent_info = Agent(agent_id).get_basic_information()
