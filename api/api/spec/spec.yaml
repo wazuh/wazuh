@@ -2744,12 +2744,6 @@ components:
           type: string
           format: names_or_empty
           description: "File permissions"
-        type:
-          type: string
-          description: "File type. Registry type only available in Windows agents"
-          enum:
-          - file
-          - registry
         gname:
           type: string
           format: names_or_empty
@@ -4547,7 +4541,7 @@ components:
     filetype:
       in: query
       name: type
-      description: "Filter by file type"
+      description: "Filter by file type. Registry_key and registry_value types are only available in Windows agents"
       schema:
         type: string
         enum:
