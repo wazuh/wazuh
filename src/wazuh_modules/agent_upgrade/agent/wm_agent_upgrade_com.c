@@ -113,7 +113,7 @@ STATIC char* wm_agent_upgrade_com_open(const cJSON* json_object) __attribute__((
  * @param json_obj expected json format
  * {
  *    "file":    "file_path",
- *    "buffer" : "binary_data",
+ *    "buffer" : "base64_data",
  *    "length" : {data_length}
  * }
  * */
