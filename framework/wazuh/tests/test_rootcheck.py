@@ -22,7 +22,7 @@ with patch('wazuh.common.ossec_uid'):
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh import rootcheck
-        from wazuh.core.rootcheck import fields
+        from wazuh.core.rootcheck import WazuhDBQueryRootcheck
         from wazuh.core.tests.test_rootcheck import InitRootcheck, send_msg_to_wdb, remove_db, \
             test_data_path as core_data
 
@@ -80,7 +80,7 @@ def test_get_rootcheck_agent(mock_connect, mock_send, mock_info, limit):
     # Check returned keys are allowed (they exist in core/rootcheck -> fields)
     for item in result['affected_items']:
         for key in item.keys():
-            assert key in fields
+            assert key in WazuhDBQueryRootcheck.fields
 
 
 @pytest.mark.parametrize('select', [
@@ -98,7 +98,7 @@ def test_get_rootcheck_agent_select(mock_connect, mock_send, mock_info, select):
         Fields to be returned.
     """
     result = rootcheck.get_rootcheck_agent(agent_list=['001'], select=select, filters={'status': 'all'}).render()['data']
-    select = select if select else list(fields.keys())
+    select = select if select else list(WazuhDBQueryRootcheck.fields.keys())
 
     # Check returned keys are specified inside 'select' field
     for item in result['affected_items']:

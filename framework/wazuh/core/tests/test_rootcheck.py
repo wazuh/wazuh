@@ -154,7 +154,8 @@ def test_WazuhDBQueryRootcheck_format_data_into_dictionary(mock_info, mock_backe
     """Test if format_data_into_dictionary() returns expected element"""
     test = rootcheck.WazuhDBQueryRootcheck(agent_id='100', offset=1, limit=1, sort=None, search='test',
                                            select=['log', 'date_first', 'status', 'date_last', 'cis', 'pci_dss'],
-                                           query='', count=True, get_data=True, distinct=False, fields=rootcheck.fields,
+                                           query='', count=True, get_data=True, distinct=False,
+                                           fields=rootcheck.WazuhDBQueryRootcheck.fields,
                                            filters={'status': 'all', 'pci_dss': None, 'cis': None})
     test._add_select_to_query()
     test._data = [{'log': 'Testing', 'date_first': 1603645251, 'status': 'solved', 'date_last': 1603648851,

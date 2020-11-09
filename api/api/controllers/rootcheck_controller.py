@@ -8,9 +8,8 @@ from aiohttp import web
 
 from api.encoder import dumps, prettify
 from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc
-from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh import rootcheck, syscheck
-from wazuh.core.exception import WazuhException
+from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 logger = logging.getLogger('wazuh')
 
@@ -18,9 +17,14 @@ logger = logging.getLogger('wazuh')
 async def put_rootcheck(request, pretty=False, wait_for_complete=False, agents_list='*'):
     """Run a syscheck and rootcheck scan over the agent_ids
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param agents_list: List of agent ids
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    agents_list : list
+        List of agent's IDs.
     """
     f_kwargs = {'agent_list': agents_list}
 
@@ -41,9 +45,14 @@ async def put_rootcheck(request, pretty=False, wait_for_complete=False, agents_l
 async def delete_rootcheck(request, pretty=False, wait_for_complete=False, agents_list='*'):
     """Clear the rootcheck database for a list of agents.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param agents_list: List of agent's IDs.
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    agents_list : list
+        List of agent's IDs.
     """
     f_kwargs = {'agent_list': agents_list}
 
@@ -66,20 +75,35 @@ async def get_rootcheck_agent(request, pretty=False, wait_for_complete=False, ag
                               cis=None):
     """Returns a list of events from the rootcheck database.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param agent_id: Agent ID
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order
-    :param search: Looks for elements with the specified string
-    :param select: Select which fields to return (separated by comma)
-    :param q: Query to filter results by.
-    :param distinct: Look for distinct values
-    :param status: Filter by scan status.
-    :param pci_dss: Filters by PCI requirement.
-    :param cis: Filters by CIS requirement.
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    agent_id : str
+        ID of the agent's rootcheck info to retrieve.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+    search : str
+        Looks for elements with the specified string.
+    select : str
+        Select which fields to return (separated by comma).
+    q : str
+        Query to filter results by.
+    distinct : bool
+        Look for distinct values.
+    status : str
+        Filter by scan status.
+    pci_dss : str
+        Filters by PCI requirement.
+    cis : str
+        Filters by CIS requirement.
     """
     f_kwargs = {'agent_list': [agent_id],
                 'offset': offset,
@@ -112,9 +136,14 @@ async def get_rootcheck_agent(request, pretty=False, wait_for_complete=False, ag
 async def get_last_scan_agent(request, pretty=False, wait_for_complete=False, agent_id=None):
     """Gets the last rootcheck scan of an agent.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param agent_id: Agent id to get rootcheck last scan from
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    agent_id : str
+        ID of the agent's rootcheck info to retrieve.
     """
     f_kwargs = {'agent_list': [agent_id]}
 

@@ -9,13 +9,14 @@ from wazuh.core.exception import WazuhException
 from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend
 from wazuh.core.wdb import WazuhDBConnection
 
-fields = {
-    'status': 'status', 'log': 'log', 'date_first': 'date_first', 'date_last': 'date_last', 'pci_dss': 'pci_dss',
-    'cis': 'cis'
-}
-
 
 class WazuhDBQueryRootcheck(WazuhDBQuery):
+    """Rootcheck WazuhDBQuery object."""
+    fields = {
+        'status': 'status', 'log': 'log', 'date_first': 'date_first', 'date_last': 'date_last', 'pci_dss': 'pci_dss',
+        'cis': 'cis'
+    }
+
     def __init__(self, agent_id, offset, limit, sort, search, select, query, count, get_data, distinct,
                  default_sort_field='date_last', filters=None, fields=fields):
 

@@ -144,9 +144,9 @@ default_policies:
         effect: allow
 
   rootcheck_read:
-    description: Allow read rootcheck information
+    description: Allow read rootcheck information.
     policies:
-      syscheck:
+      rootcheck:
         actions:
           - rootcheck:read
         resources:
@@ -154,9 +154,9 @@ default_policies:
         effect: allow
 
   rootcheck_all:
-    description: Allow read, run and clear rootcheck information
+    description: Allow read, run and clear rootcheck information.
     policies:
-      syscheck:
+      rootcheck:
         actions:
           - rootcheck:clear
           - rootcheck:read

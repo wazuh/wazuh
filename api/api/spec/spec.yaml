@@ -10387,7 +10387,7 @@ paths:
       tags:
         - Rootcheck
       summary: "Run scan"
-      description: "Run rootcheck scan in all agents or a list of them"
+      description: "Run rootcheck and syscheck scans in all agents or a list of them"
       operationId: api.controllers.rootcheck_controller.put_rootcheck
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/syscheck:run'

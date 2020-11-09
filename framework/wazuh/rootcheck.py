@@ -15,8 +15,15 @@ from wazuh.rbac.decorators import expose_resources
 def clear(agent_list=None):
     """Clear the rootcheck database for a list of agents.
 
-    :param agent_list: List of agent ids
-    :return: AffectedItemsWazuhResult.
+    Parameters
+    ----------
+    agent_list : list
+        List of agent ids.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        JSON containing the affected agents.
     """
     result = AffectedItemsWazuhResult(all_msg='Rootcheck database was cleared on returned agents',
                                       some_msg='Rootcheck database was not cleared on some agents',
@@ -41,10 +48,17 @@ def clear(agent_list=None):
 
 @expose_resources(actions=["rootcheck:read"], resources=["agent:id:{agent_list}"])
 def get_last_scan(agent_list):
-    """Gets the last rootcheck scan of the agent.
+    """Get the last rootcheck scan of the agent.
 
-    :param agent_list: Agent ID to get the last scan date from
-    :return: WazuhResult
+    Parameters
+    ----------
+    agent_list : list
+        Agent ID to get the last scan date from.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        JSON containing the scan date.
     """
     result = AffectedItemsWazuhResult(all_msg='Last rootcheck scan of the agent was returned',
                                       none_msg='No last scan information was returned')
@@ -58,19 +72,34 @@ def get_last_scan(agent_list):
 @expose_resources(actions=["rootcheck:read"], resources=["agent:id:{agent_list}"])
 def get_rootcheck_agent(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
                         filters=None, q='', distinct=None):
-    """Returns a list of events from the rootcheck database.
+    """Return a list of events from the rootcheck database.
 
-    :param agent_id: Agent ID.
-    :param filters: Fields to filter by.
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order
-    :param select: Selects which fields to return.
-    :param search: Looks for items with the specified string.
-    :param q: Defines query to filter in DB.
-    :param distinct: Look for distinct values
-    :return: AffectedItemsWazuhResult
+    Parameters
+    ----------
+    agent_list : list
+        Agent ID to get the rootcheck events from.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+    search : str
+        Looks for elements with the specified string.
+    select : str
+        Select which fields to return (separated by comma).
+    q : str
+        Query to filter results by.
+    distinct : bool
+        Look for distinct values.
+    filters : dict
+        Fields to filter by.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        JSON containing the rootcheck events.
     """
     if filters is None:
         filters = {}
