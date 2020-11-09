@@ -27,7 +27,9 @@
 #include "../../wazuh_modules/agent_upgrade/agent/wm_agent_upgrade_agent.h"
 #include "../../headers/shared.h"
 
+#ifndef TEST_WINAGENT
 void wm_agent_upgrade_listen_messages(const wm_agent_configs* agent_configs);
+#endif
 void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config);
 bool wm_upgrade_agent_search_upgrade_result(int *queue_fd);
 void wm_upgrade_agent_send_ack_message(int *queue_fd, wm_upgrade_agent_state state);
@@ -619,6 +621,8 @@ void test_wm_agent_upgrade_check_status_queue_error(void **state)
     wm_agent_upgrade_check_status(config);
 }
 
+#ifndef TEST_WINAGENT
+
 void test_wm_agent_upgrade_listen_messages_ok(void **state)
 {
     int socket = 0;
@@ -935,6 +939,8 @@ void test_wm_agent_upgrade_listen_messages_bind_error(void **state)
     wm_agent_upgrade_listen_messages(NULL);
 }
 
+#endif
+
 void test_wm_agent_upgrade_start_agent_module_enabled(void **state)
 {
     int queue = -1;
@@ -1004,6 +1010,7 @@ int main(void) {
         cmocka_unit_test_setup(test_wm_agent_upgrade_check_status_successful, setup_test_executions),
         cmocka_unit_test_setup(test_wm_agent_upgrade_check_status_time_limit, setup_test_executions),
         cmocka_unit_test_setup(test_wm_agent_upgrade_check_status_queue_error, setup_test_executions),
+#ifndef TEST_WINAGENT
         // wm_agent_upgrade_listen_messages
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_ok),
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_receive_empty),
@@ -1015,6 +1022,7 @@ int main(void) {
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_select_error_eintr),
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_select_error),
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_bind_error),
+#endif
         // wm_agent_upgrade_start_agent_module
         cmocka_unit_test_setup(test_wm_agent_upgrade_start_agent_module_enabled, setup_test_executions),
         cmocka_unit_test(test_wm_agent_upgrade_start_agent_module_disabled)
