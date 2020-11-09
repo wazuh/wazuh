@@ -354,6 +354,8 @@ void test_wm_agent_upgrade_check_status_successful(void **state)
     config->upgrade_wait_max = 10;
     config->upgrade_wait_factor_increase = 3;
 
+    allow_upgrades = false;
+
     expect_string(__wrap_StartMQ, path, DEFAULTQPATH);
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, queue);
@@ -408,6 +410,8 @@ void test_wm_agent_upgrade_check_status_successful(void **state)
     will_return(__wrap_fopen, NULL);
 
     wm_agent_upgrade_check_status(config);
+
+    assert_int_equal(allow_upgrades, true);
 }
 
 void test_wm_agent_upgrade_check_status_time_limit(void **state)
@@ -420,6 +424,8 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     config->upgrade_wait_start = 1;
     config->upgrade_wait_max = 10;
     config->upgrade_wait_factor_increase = 3;
+
+    allow_upgrades = false;
 
     expect_string(__wrap_StartMQ, path, DEFAULTQPATH);
     expect_value(__wrap_StartMQ, type, WRITE);
@@ -592,6 +598,8 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     will_return(__wrap_fopen, NULL);
 
     wm_agent_upgrade_check_status(config);
+
+    assert_int_equal(allow_upgrades, true);
 }
 
 void test_wm_agent_upgrade_check_status_queue_error(void **state)
@@ -604,6 +612,8 @@ void test_wm_agent_upgrade_check_status_queue_error(void **state)
     config->upgrade_wait_start = 1;
     config->upgrade_wait_max = 10;
     config->upgrade_wait_factor_increase = 3;
+
+    allow_upgrades = false;
 
     expect_string(__wrap_StartMQ, path, DEFAULTQPATH);
     expect_value(__wrap_StartMQ, type, WRITE);
@@ -619,6 +629,8 @@ void test_wm_agent_upgrade_check_status_queue_error(void **state)
     expect_string(__wrap__mterror, formatted_msg, "(8113): Could not open default queue to send upgrade notification.");
 
     wm_agent_upgrade_check_status(config);
+
+    assert_int_equal(allow_upgrades, true);
 }
 
 #ifndef TEST_WINAGENT

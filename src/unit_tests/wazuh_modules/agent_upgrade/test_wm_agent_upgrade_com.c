@@ -1428,6 +1428,8 @@ void test_wm_agent_upgrade_com_success(void **state) {
 }
 
 void test_wm_agent_upgrade_com_clear_result_failed(void **state) {
+    allow_upgrades = false;
+
     #ifndef TEST_WINAGENT
         expect_string(__wrap_remove, filename, "/var/ossec/var/upgrade/upgrade_result");
     #else
@@ -1443,13 +1445,19 @@ void test_wm_agent_upgrade_com_clear_result_failed(void **state) {
     #endif
 
     char *response = wm_agent_upgrade_com_clear_result();
+
     cJSON *response_object = cJSON_Parse(response);
     assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Could not erase upgrade_result file");
+
+    assert_int_equal(allow_upgrades, false);
+
     cJSON_Delete(response_object);
     os_free(response);
 }
 
 void test_wm_agent_upgrade_com_clear_result_success(void **state) {
+    allow_upgrades = false;
+
     #ifndef TEST_WINAGENT
         expect_string(__wrap_remove, filename, "/var/ossec/var/upgrade/upgrade_result");
     #else
@@ -1458,8 +1466,12 @@ void test_wm_agent_upgrade_com_clear_result_success(void **state) {
     will_return(__wrap_remove, 0);
 
     char *response = wm_agent_upgrade_com_clear_result();
+
     cJSON *response_object = cJSON_Parse(response);
     assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "ok");
+
+    assert_int_equal(allow_upgrades, true);
+
     cJSON_Delete(response_object);
     os_free(response);
 }

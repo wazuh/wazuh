@@ -433,6 +433,48 @@ void test_wm_agent_upgrade_send_open_ok(void **state)
     assert_int_equal(res, 0);
 }
 
+void test_wm_agent_upgrade_send_open_ok_new(void **state)
+{
+    (void) state;
+
+    int socket = 555;
+    int agent = 39;
+    char *wpk_file = "test.wpk";
+    char *cmd = "039 upgrade {\"command\":\"open\",\"parameters\":{\"mode\":\"wb\",\"file\":\"test.wpk\"}}";
+    char *agent_res = "{\"error\":0,\"message\":\"ok\",\"data\": []}";
+    int format = 1;
+
+    will_return(__wrap_isChroot, 0);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, socket);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 upgrade {\"command\":\"open\",\"parameters\":{\"mode\":\"wb\",\"file\":\"test.wpk\"}}'");
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, socket);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(cmd));
+    expect_string(__wrap_OS_SendSecureTCP, msg, cmd);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, agent_res);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: '{\"error\":0,\"message\":\"ok\",\"data\": []}'");
+
+    expect_string(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, agent_response, agent_res);
+    will_return(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, 0);
+
+    int res = wm_agent_upgrade_send_open(agent, format, wpk_file);
+
+    assert_int_equal(res, 0);
+}
+
 void test_wm_agent_upgrade_send_open_retry_ok(void **state)
 {
     (void) state;
@@ -665,6 +707,93 @@ void test_wm_agent_upgrade_send_write_ok(void **state)
     assert_int_equal(res, 0);
 }
 
+void test_wm_agent_upgrade_send_write_ok_new(void **state)
+{
+    (void) state;
+
+    int socket = 555;
+    int agent = 39;
+    char *wpk_file = "test.wpk";
+    char *file_path = "/var/upgrade/wazuh_agent.wpk";
+    int chunk_size = 5;
+    char *chunk = "test\n";
+    char *cmd = "039 upgrade {\"command\":\"write\",\"parameters\":{\"buffer\":\"dGVzdAo=\",\"length\":5,\"file\":\"test.wpk\"}}";
+    char *agent_res = "{\"error\":0,\"message\":\"ok\",\"data\": []}";
+    int format = 1;
+
+    expect_string(__wrap_fopen, path, file_path);
+    expect_string(__wrap_fopen, mode, "rb");
+    will_return(__wrap_fopen, 1);
+
+    will_return(__wrap_fread, chunk);
+    will_return(__wrap_fread, chunk_size);
+
+    will_return(__wrap_isChroot, 0);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, socket);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 upgrade {\"command\":\"write\",\"parameters\":{\"buffer\":\"dGVzdAo=\",\"length\":5,\"file\":\"test.wpk\"}}'");
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, socket);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(cmd));
+    expect_string(__wrap_OS_SendSecureTCP, msg, cmd);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, agent_res);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: '{\"error\":0,\"message\":\"ok\",\"data\": []}'");
+
+    expect_string(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, agent_response, agent_res);
+    will_return(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, 0);
+
+    will_return(__wrap_fread, chunk);
+    will_return(__wrap_fread, chunk_size);
+
+    will_return(__wrap_isChroot, 0);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, socket);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 upgrade {\"command\":\"write\",\"parameters\":{\"buffer\":\"dGVzdAo=\",\"length\":5,\"file\":\"test.wpk\"}}'");
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, socket);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(cmd));
+    expect_string(__wrap_OS_SendSecureTCP, msg, cmd);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, agent_res);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: '{\"error\":0,\"message\":\"ok\",\"data\": []}'");
+
+    expect_string(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, agent_response, agent_res);
+    will_return(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, 0);
+
+    will_return(__wrap_fread, chunk);
+    will_return(__wrap_fread, 0);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
+
+    int res = wm_agent_upgrade_send_write(agent, format, wpk_file, file_path, chunk_size);
+
+    assert_int_equal(res, 0);
+}
+
 void test_wm_agent_upgrade_send_write_err(void **state)
 {
     (void) state;
@@ -811,6 +940,48 @@ void test_wm_agent_upgrade_send_close_ok(void **state)
     assert_int_equal(res, 0);
 }
 
+void test_wm_agent_upgrade_send_close_ok_new(void **state)
+{
+    (void) state;
+
+    int socket = 555;
+    int agent = 33;
+    char *wpk_file = "test.wpk";
+    char *cmd = "033 upgrade {\"command\":\"close\",\"parameters\":{\"file\":\"test.wpk\"}}";
+    char *agent_res = "{\"error\":0,\"message\":\"ok\",\"data\": []}";
+    int format = 1;
+
+    will_return(__wrap_isChroot, 0);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, socket);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '033 upgrade {\"command\":\"close\",\"parameters\":{\"file\":\"test.wpk\"}}'");
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, socket);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(cmd));
+    expect_string(__wrap_OS_SendSecureTCP, msg, cmd);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, agent_res);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: '{\"error\":0,\"message\":\"ok\",\"data\": []}'");
+
+    expect_string(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, agent_response, agent_res);
+    will_return(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, 0);
+
+    int res = wm_agent_upgrade_send_close(agent, format, wpk_file);
+
+    assert_int_equal(res, 0);
+}
+
 void test_wm_agent_upgrade_send_close_err(void **state)
 {
     (void) state;
@@ -890,6 +1061,50 @@ void test_wm_agent_upgrade_send_sha1_ok(void **state)
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, 0);
+
+    int res = wm_agent_upgrade_send_sha1(agent, format, wpk_file, file_sha1);
+
+    assert_int_equal(res, 0);
+}
+
+void test_wm_agent_upgrade_send_sha1_ok_new(void **state)
+{
+    (void) state;
+
+    int socket = 555;
+    int agent = 33;
+    char *wpk_file = "test.wpk";
+    char *file_sha1 = "d321af65983fa412e3a12c312ada12ab321a253a";
+    char *cmd = "033 upgrade {\"command\":\"sha1\",\"parameters\":{\"file\":\"test.wpk\"}}";
+    char *agent_res = "{\"error\":0,\"message\":\"d321af65983fa412e3a12c312ada12ab321a253a\",\"data\": []}";
+    int format = 1;
+
+    will_return(__wrap_isChroot, 0);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, socket);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '033 upgrade {\"command\":\"sha1\",\"parameters\":{\"file\":\"test.wpk\"}}'");
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, socket);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(cmd));
+    expect_string(__wrap_OS_SendSecureTCP, msg, cmd);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, agent_res);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: '{\"error\":0,\"message\":\"d321af65983fa412e3a12c312ada12ab321a253a\",\"data\": []}'");
+
+    expect_string(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, agent_response, agent_res);
+    will_return(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, file_sha1);
+    will_return(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, 0);
 
     int res = wm_agent_upgrade_send_sha1(agent, format, wpk_file, file_sha1);
 
@@ -1022,6 +1237,50 @@ void test_wm_agent_upgrade_send_upgrade_ok(void **state)
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, 0);
+
+    int res = wm_agent_upgrade_send_upgrade(agent, format, wpk_file, installer);
+
+    assert_int_equal(res, 0);
+}
+
+void test_wm_agent_upgrade_send_upgrade_ok_new(void **state)
+{
+    (void) state;
+
+    int socket = 555;
+    int agent = 55;
+    char *wpk_file = "test.wpk";
+    char *installer = "install.sh";
+    char *cmd = "055 upgrade {\"command\":\"upgrade\",\"parameters\":{\"file\":\"test.wpk\",\"installer\":\"install.sh\"}}";
+    char *agent_res = "{\"error\":0,\"message\":\"0\",\"data\": []}";
+    int format = 1;
+
+    will_return(__wrap_isChroot, 0);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, socket);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '055 upgrade {\"command\":\"upgrade\",\"parameters\":{\"file\":\"test.wpk\",\"installer\":\"install.sh\"}}'");
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, socket);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(cmd));
+    expect_string(__wrap_OS_SendSecureTCP, msg, cmd);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, agent_res);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: '{\"error\":0,\"message\":\"0\",\"data\": []}'");
+
+    expect_string(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, agent_response, agent_res);
+    will_return(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, "0");
+    will_return(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, 0);
 
     int res = wm_agent_upgrade_send_upgrade(agent, format, wpk_file, installer);
 
@@ -3628,21 +3887,26 @@ int main(void) {
         cmocka_unit_test(test_wm_agent_upgrade_send_lock_restart_err),
         // wm_agent_upgrade_send_open
         cmocka_unit_test(test_wm_agent_upgrade_send_open_ok),
+        cmocka_unit_test(test_wm_agent_upgrade_send_open_ok_new),
         cmocka_unit_test(test_wm_agent_upgrade_send_open_retry_ok),
         cmocka_unit_test(test_wm_agent_upgrade_send_open_retry_err),
         // wm_agent_upgrade_send_write
         cmocka_unit_test(test_wm_agent_upgrade_send_write_ok),
+        cmocka_unit_test(test_wm_agent_upgrade_send_write_ok_new),
         cmocka_unit_test(test_wm_agent_upgrade_send_write_err),
         cmocka_unit_test(test_wm_agent_upgrade_send_write_open_err),
         // wm_agent_upgrade_send_close
         cmocka_unit_test(test_wm_agent_upgrade_send_close_ok),
+        cmocka_unit_test(test_wm_agent_upgrade_send_close_ok_new),
         cmocka_unit_test(test_wm_agent_upgrade_send_close_err),
         // wm_agent_upgrade_send_sha1
         cmocka_unit_test(test_wm_agent_upgrade_send_sha1_ok),
+        cmocka_unit_test(test_wm_agent_upgrade_send_sha1_ok_new),
         cmocka_unit_test(test_wm_agent_upgrade_send_sha1_err),
         cmocka_unit_test(test_wm_agent_upgrade_send_sha1_invalid_sha1),
         // wm_agent_upgrade_send_upgrade
         cmocka_unit_test(test_wm_agent_upgrade_send_upgrade_ok),
+        cmocka_unit_test(test_wm_agent_upgrade_send_upgrade_ok_new),
         cmocka_unit_test(test_wm_agent_upgrade_send_upgrade_err),
         cmocka_unit_test(test_wm_agent_upgrade_send_upgrade_script_err),
         // wm_agent_upgrade_send_wpk_to_agent
