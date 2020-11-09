@@ -43,6 +43,8 @@ LONG wrap_RegQueryInfoKey(HKEY hKey,
                           LPDWORD lpcbSecurityDescriptor,
                           PFILETIME lpftLastWriteTime);
 
+void expect_RegQueryInfoKey_call(DWORD sub_keys, DWORD values, PFILETIME last_write_time, LONG return_value);
+
 LONG wrap_RegQueryInfoKeyA(HKEY hKey,
                           LPSTR lpClass,
                           LPDWORD lpcchClass,
@@ -67,11 +69,15 @@ LONG wrap_RegEnumKeyEx(HKEY hKey,
                        LPDWORD lpcchClass,
                        PFILETIME lpftLastWriteTime);
 
+void expect_RegEnumKeyEx_call(LPSTR name, DWORD name_length, LONG return_value);
+
 LONG wrap_RegOpenKeyEx(HKEY hKey,
                        LPCSTR lpSubKey,
                        DWORD ulOptions,
                        REGSAM samDesired,
                        PHKEY phkResult);
+
+void expect_RegOpenKeyEx_call(HKEY hKey, LPCSTR sub_key, DWORD options, REGSAM sam, PHKEY result, LONG return_value);
 
 LONG wrap_RegQueryValueEx(HKEY hKey,
                           LPCSTR lpValueName,
@@ -87,6 +93,8 @@ LONG wrap_RegEnumValue(HKEY hKey,
                        LPDWORD lpReserved,
                        LPDWORD lpType,
                        LPBYTE lpData,LPDWORD lpcbData);
+
+void expect_RegEnumValue_call(LPSTR value_name, DWORD type, LPBYTE data, DWORD data_length, LONG return_value);
 
 LONG wrap_RegCloseKey(HKEY hKey);
 

@@ -65,38 +65,6 @@ void fim_registry_process_value_delete_event(fdb_t *fim_sql, fim_entry *data, pt
 void fim_registry_process_key_delete_event(fdb_t *fim_sql, fim_entry *data, pthread_mutex_t *mutex, void *_alert, void *_ev_mode, void *_w_evt);
 void fim_registry_process_value_event(fim_entry *new, fim_entry *saved, fim_event_mode mode, BYTE *data_buffer);
 
-
-void expect_RegOpenKeyEx_call(HKEY hKey, LPCSTR sub_key, DWORD options, REGSAM sam, PHKEY result, LONG return_value) {
-    expect_value(wrap_RegOpenKeyEx, hKey, hKey);
-    expect_string(wrap_RegOpenKeyEx, lpSubKey, sub_key);
-    expect_value(wrap_RegOpenKeyEx, ulOptions, options);
-    expect_value(wrap_RegOpenKeyEx, samDesired, sam);
-    will_return(wrap_RegOpenKeyEx, result);
-    will_return(wrap_RegOpenKeyEx, return_value);
-}
-
-void expect_RegQueryInfoKey_call(DWORD sub_keys, DWORD values, PFILETIME last_write_time, LONG return_value) {
-    will_return(wrap_RegQueryInfoKey, sub_keys);
-    will_return(wrap_RegQueryInfoKey, values);
-    will_return(wrap_RegQueryInfoKey, last_write_time);
-    will_return(wrap_RegQueryInfoKey, return_value);
-}
-
-void expect_RegEnumKeyEx_call(LPSTR name, DWORD name_length, LONG return_value) {
-    will_return(wrap_RegEnumKeyEx, name);
-    will_return(wrap_RegEnumKeyEx, name_length);
-    will_return(wrap_RegEnumKeyEx, return_value);
-}
-
-void expect_RegEnumValue_call(LPSTR value_name, DWORD type, LPBYTE data, DWORD data_length, LONG return_value) {
-    will_return(wrap_RegEnumValue, value_name);
-    will_return(wrap_RegEnumValue, strlen(value_name));
-    will_return(wrap_RegEnumValue, type);
-    will_return(wrap_RegEnumValue, data_length);
-    will_return(wrap_RegEnumValue, data);
-    will_return(wrap_RegEnumValue, return_value);
-}
-
 void expect_SendMSG_call(const char *message_expected, const char *locmsg_expected, char loc_expected, int ret){
     expect_string(__wrap_SendMSG, message, message_expected);
     expect_string(__wrap_SendMSG, locmsg, locmsg_expected);

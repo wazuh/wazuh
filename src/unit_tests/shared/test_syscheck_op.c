@@ -64,7 +64,7 @@ typedef struct __unescape_syscheck_field_data_s {
 typedef struct __registry_group_information {
     char *name;
     char *id;
-} registry_group_information;
+} registry_group_information_t;
 
 /* setup/teardown */
 
@@ -95,7 +95,8 @@ static int teardown_string_array(void **state) {
 }
 
 static int setup_get_registry_group(void **state) {
-    registry_group_information *group_information = (registry_group_information *)calloc(1, sizeof(registry_group_information));
+    registry_group_information_t *group_information = (registry_group_information_t *)
+                                                        calloc(1, sizeof(registry_group_information_t));
 
     if (group_information == NULL) {
         return -1;
@@ -114,7 +115,7 @@ static int setup_get_registry_group(void **state) {
 }
 
 static int teardown_get_registry_group(void **state) {
-    registry_group_information *group_information = *state;
+    registry_group_information_t *group_information = *state;
 
     free(group_information->name);
     free(group_information->id);
@@ -3430,7 +3431,7 @@ void test_w_directory_exists_path_is_dir(void **state) {
 
 void test_get_registry_group_GetSecurityInfo_fails(void **state) {
     HKEY hndl = (HKEY)123456;
-    registry_group_information *group_information = *state;
+    registry_group_information_t *group_information = *state;
     char *group = group_information->name;
     char *group_id = group_information->id;
 
@@ -3454,7 +3455,7 @@ void test_get_registry_group_GetSecurityInfo_fails(void **state) {
 
 void test_get_registry_group_ConvertSidToStringSid_fails(void **state) {
     HKEY hndl = (HKEY)123456;
-    registry_group_information *group_information = *state;
+    registry_group_information_t *group_information = *state;
     char *group = group_information->name;
     char *group_id = group_information->id;
 
@@ -3474,7 +3475,7 @@ void test_get_registry_group_ConvertSidToStringSid_fails(void **state) {
 
 void test_get_registry_group_LookupAccountSid_fails(void **state) {
     HKEY hndl = (HKEY)123456;
-    registry_group_information *group_information = *state;
+    registry_group_information_t *group_information = *state;
     char *group = group_information->name;
     char *group_id = group_information->id;
 
@@ -3495,7 +3496,7 @@ void test_get_registry_group_LookupAccountSid_fails(void **state) {
 
 void test_get_registry_group_LookupAccountSid_not_found(void **state) {
     HKEY hndl = (HKEY)123456;
-    registry_group_information *group_information = *state;
+    registry_group_information_t *group_information = *state;
     char *group = group_information->name;
     char *group_id = group_information->id;
 
@@ -3516,7 +3517,7 @@ void test_get_registry_group_LookupAccountSid_not_found(void **state) {
 
 void test_get_registry_group_success(void **state) {
     HKEY hndl = (HKEY)123456;
-    registry_group_information *group_information = *state;
+    registry_group_information_t *group_information = *state;
     char *group = group_information->name;
     char *group_id = group_information->id;
 
