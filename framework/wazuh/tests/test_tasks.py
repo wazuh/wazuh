@@ -42,7 +42,7 @@ with patch('wazuh.common.ossec_uid'):
     ([4], {'data': [{'error': 8, 'message': 'No task in DB', 'task_id': 4}]}, False)
 ])
 def test_get_item_agent(task_list, tasks_return_value, affected):
-    """PYTODO
+    """Check system's tasks
 
     Parameters
     ----------

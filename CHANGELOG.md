@@ -11,6 +11,9 @@ All notable changes to this project will be documented in this file.
 - Added new **upgrade module**. WPK upgrade feature has been moved to this module, which offers support for cluster architecture and simultaneous upgrades. ([#5387](https://github.com/wazuh/wazuh/issues/5387))
 - Added new **task module**. This module stores and manages all the tasks that are executed in the agents. ([#5386](https://github.com/wazuh/wazuh/issues/5386))
 
+- **Wazuh API:**
+  - Added new endpoint to check status of tasks. ([#6029](https://github.com/wazuh/wazuh/issues/6029))
+
 ### Changed
 
 - **Wazuh API:**
@@ -41,19 +44,6 @@ All notable changes to this project will be documented in this file.
   - Added missing agent:group resource to RBAC's catalog. ([6427](https://github.com/wazuh/wazuh/issues/6427))
 
 ### Removed
-
-### Added
-
-- Added new endpoint to check status of tasks. ([#6029](https://github.com/wazuh/wazuh/issues/6029))
-
-### Changed
-
-- Agent upgrade module refactored. ([#5387](https://github.com/wazuh/wazuh/issues/5387))
-
-### Fixed
-
-### Removed
-
 
 ## [v4.0.0] -
 
