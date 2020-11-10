@@ -214,8 +214,6 @@ static int setup_fim_data(void **state) {
         return -1;
     if (data->lf->decoder_info->fields[FIM_MODE] = strdup("mode"), data->lf->decoder_info->fields[FIM_MODE] == NULL)
         return -1;
-    if (data->lf->fields[FIM_MODE].value = strdup("fim_mode"), data->lf->fields[FIM_MODE].value == NULL)
-        return -1;
     if(data->lf->decoder_info->fields[FIM_SIZE] = strdup("size"), data->lf->decoder_info->fields[FIM_SIZE] == NULL)
         return -1;
     if(data->lf->decoder_info->fields[FIM_PERM] = strdup("perm"), data->lf->decoder_info->fields[FIM_PERM] == NULL)
@@ -283,8 +281,6 @@ static int setup_fim_data(void **state) {
     if(data->lf->decoder_info->fields[FIM_REGISTRY_VALUE_TYPE] = strdup("value_type"), data->lf->decoder_info->fields[FIM_REGISTRY_VALUE_TYPE] == NULL)
         return -1;
     if(data->lf->decoder_info->fields[FIM_ENTRY_TYPE] = strdup("entry_type"), data->lf->decoder_info->fields[FIM_ENTRY_TYPE] == NULL)
-        return -1;
-    if(data->lf->fields[FIM_ENTRY_TYPE].value = strdup("file"), data->lf->fields[FIM_ENTRY_TYPE].value == NULL)
         return -1;
 
     if (fim_init() != 1)
@@ -1288,6 +1284,12 @@ static void test_fim_generate_alert_full_alert(void **state) {
     if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL)
         fail();
 
+    if (input->lf->fields[FIM_MODE].value = strdup("fim_mode"), input->lf->fields[FIM_MODE].value == NULL)
+        fail();
+
+    if(input->lf->fields[FIM_ENTRY_TYPE].value = strdup("file"), input->lf->fields[FIM_ENTRY_TYPE].value == NULL)
+        fail();
+
     if(input->lf->fields[FIM_HARD_LINKS].value = strdup("[\"/a/hard1.file\",\"/b/hard2.file\"]"),
        input->lf->fields[FIM_HARD_LINKS].value == NULL) {
 
@@ -1382,6 +1384,12 @@ static void test_fim_generate_alert_type_not_modified(void **state) {
     input->lf->event_type = FIM_ADDED;
 
     if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL)
+        fail();
+
+    if (input->lf->fields[FIM_MODE].value = strdup("fim_mode"), input->lf->fields[FIM_MODE].value == NULL)
+        fail();
+
+    if(input->lf->fields[FIM_ENTRY_TYPE].value = strdup("file"), input->lf->fields[FIM_ENTRY_TYPE].value == NULL)
         fail();
 
     cJSON_ArrayForEach(array_it, changed_attributes) {
@@ -1501,6 +1509,9 @@ static void test_fim_generate_alert_null_mode(void **state) {
     if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL)
         fail();
 
+    if(input->lf->fields[FIM_ENTRY_TYPE].value = strdup("file"), input->lf->fields[FIM_ENTRY_TYPE].value == NULL)
+        fail();
+
     cJSON_ArrayForEach(array_it, changed_attributes) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
     }
@@ -1577,6 +1588,12 @@ static void test_fim_generate_alert_null_event_type(void **state) {
     if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL)
         fail();
 
+    if (input->lf->fields[FIM_MODE].value = strdup("fim_mode"), input->lf->fields[FIM_MODE].value == NULL)
+        fail();
+
+    if(input->lf->fields[FIM_ENTRY_TYPE].value = strdup("file"), input->lf->fields[FIM_ENTRY_TYPE].value == NULL)
+        fail();
+
     cJSON_ArrayForEach(array_it, changed_attributes) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
     }
@@ -1649,6 +1666,12 @@ static void test_fim_generate_alert_null_attributes(void **state) {
     input->lf->event_type = FIM_MODIFIED;
 
     if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL)
+        fail();
+
+    if (input->lf->fields[FIM_MODE].value = strdup("fim_mode"), input->lf->fields[FIM_MODE].value == NULL)
+        fail();
+
+    if(input->lf->fields[FIM_ENTRY_TYPE].value = strdup("file"), input->lf->fields[FIM_ENTRY_TYPE].value == NULL)
         fail();
 
     cJSON_ArrayForEach(array_it, changed_attributes) {
@@ -1739,6 +1762,12 @@ static void test_fim_generate_alert_null_old_attributes(void **state) {
     if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL)
         fail();
 
+    if (input->lf->fields[FIM_MODE].value = strdup("fim_mode"), input->lf->fields[FIM_MODE].value == NULL)
+        fail();
+
+    if(input->lf->fields[FIM_ENTRY_TYPE].value = strdup("file"), input->lf->fields[FIM_ENTRY_TYPE].value == NULL)
+        fail();
+
     cJSON_ArrayForEach(array_it, changed_attributes) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
     }
@@ -1826,6 +1855,12 @@ static void test_fim_generate_alert_null_audit(void **state) {
     input->lf->event_type = FIM_MODIFIED;
 
     if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL)
+        fail();
+
+    if (input->lf->fields[FIM_MODE].value = strdup("fim_mode"), input->lf->fields[FIM_MODE].value == NULL)
+        fail();
+
+    if(input->lf->fields[FIM_ENTRY_TYPE].value = strdup("file"), input->lf->fields[FIM_ENTRY_TYPE].value == NULL)
         fail();
 
     cJSON_ArrayForEach(array_it, changed_attributes) {
