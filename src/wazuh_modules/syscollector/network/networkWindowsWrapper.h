@@ -143,11 +143,20 @@ public:
 
     std::string netmaskV6() const override
     {
-        // "Convertion m_currentUnicastAddress->OnLinkPrefixLength to hex notation"
-        // This is not working currently. It always returns: "ffff:ffff:ffff:ffff::"
-        // Leaving this as empty for now.
+        std::string retVal;
+        if (m_currentUnicastAddress && Utils::isVistaOrLater())
+        {
+            // Get ipv6Netmask based on current OnLinkPrefixLength value
+            const auto MAX_BITS_LENGTH { 128 };
+            const auto addressPrefixLength { m_currentUnicastAddress->OnLinkPrefixLength };
+            if (addressPrefixLength < MAX_BITS_LENGTH)
+            {
+                // For a unicast IPv6 address, any value greater than 128 is an illegal value
+                retVal = Utils::NetworkWindowsHelper::ipv6Netmask(addressPrefixLength);
+            }
+        }
         // Windows XP netmask IPv6 is not supported
-        return "";
+        return retVal;
     }
 
     std::string broadcast() const override
@@ -182,13 +191,14 @@ public:
                 {
                     retVal += Utils::NetworkWindowsHelper::IAddressToString(gatewayFamily,
                                                                            (reinterpret_cast<sockaddr_in*>(sockAddress))->sin_addr);
+                    retVal += GATEWAY_SEPARATOR;
                 }
                 else if (AF_INET6 == gatewayFamily)
                 {
                     retVal += Utils::NetworkWindowsHelper::IAddressToString(gatewayFamily,
                                                                            (reinterpret_cast<sockaddr_in6*>(sockAddress))->sin6_addr);
+                    retVal += GATEWAY_SEPARATOR;
                 }
-                retVal += GATEWAY_SEPARATOR;
                 gatewayAddress = gatewayAddress->Next;
             }
         }

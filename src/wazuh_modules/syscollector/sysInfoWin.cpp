@@ -615,7 +615,7 @@ nlohmann::json SysInfo::getNetworks() const
         nlohmann::json netInterfaceInfo {};
 
         if ((IF_TYPE_SOFTWARE_LOOPBACK != rawAdapterAddresses->IfType) ||
-            (0 != rawAdapterAddresses->IfIndex && 0 != rawAdapterAddresses->Ipv6IfIndex))
+            (0 != rawAdapterAddresses->IfIndex || 0 != rawAdapterAddresses->Ipv6IfIndex))
         {
             // Ignore either loopback and invalid IPv4/IPv6 indexes interfaces
 
