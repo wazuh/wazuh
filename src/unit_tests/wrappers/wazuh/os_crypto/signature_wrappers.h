@@ -8,16 +8,13 @@
  */
 
 
-#ifndef STDLIB_WRAPPERS_H
-#define STDLIB_WRAPPERS_H
+#ifndef SIGNATURE_WRAPPERS_H
+#define SIGNATURE_WRAPPERS_H
 
+#include "headers/shared.h"
+#include <string.h>
 
-int __wrap_atexit(void (*callback)(void));
+int __wrap_w_wpk_unsign(const char * source, const char * target, const char ** ca_store);
 
-char *__wrap_realpath(const char *path, char *resolved_path);
-
-int __wrap_system(const char *__command);
-
-int __wrap_mkstemp(char *template);
 
 #endif

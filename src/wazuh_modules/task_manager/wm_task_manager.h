@@ -95,7 +95,7 @@ typedef struct _wm_task_manager_task {
 extern const wm_context WM_TASK_MANAGER_CONTEXT;   // Context
 
 // Parse XML configuration
-int wm_task_manager_read(xml_node **nodes, wmodule *module);
+int wm_task_manager_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
 
 /**
  * Do all the analysis of the incomming message and returns a response.

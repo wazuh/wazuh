@@ -33,8 +33,9 @@ int __wrap_wm_agent_upgrade_check_status(__attribute__((unused)) const wm_agent_
     return mock();
 }
 
-int __wrap_wm_agent_upgrade_listen_messages(__attribute__((unused)) const wm_manager_configs* manager_configs) {
-    return mock();
+void __wrap_wm_agent_upgrade_start_manager_module(const wm_manager_configs* manager_configs, const int enabled) {
+    check_expected(manager_configs);
+    check_expected(enabled);
 }
 
 int __wrap_wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_ids, char** error) {
@@ -95,7 +96,17 @@ int __wrap_wm_agent_upgrade_parse_agent_response(const char* agent_response, cha
     check_expected(agent_response);
 
     if (data && strchr(agent_response, ' ')) {
-        *data = strchr(agent_response, ' ') + 1;
+        os_strdup(strchr(agent_response, ' ') + 1, *data);
+    }
+
+    return mock();
+}
+
+int __wrap_wm_agent_upgrade_parse_agent_upgrade_command_response(const char* agent_response, char **data) {
+    check_expected(agent_response);
+
+    if (data) {
+        os_strdup(mock_type(char *), *data);
     }
 
     return mock();

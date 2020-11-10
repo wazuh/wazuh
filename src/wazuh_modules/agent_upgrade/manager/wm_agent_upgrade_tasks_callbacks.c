@@ -135,13 +135,20 @@ cJSON* wm_agent_upgrade_update_status_success_callback(int *error, cJSON* input_
     if (wm_agent_upgrade_validate_task_status_message(input_json, NULL, &agent_id), agent_id > 0) {
         // Tell agent to erase results file
         char *buffer = NULL;
-
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
-        snprintf(buffer, OS_MAXSTR, "%03d com clear_upgrade_result -1", agent_id);
+
+        cJSON *command_info = cJSON_CreateObject();
+        cJSON_AddStringToObject(command_info, task_manager_json_keys[WM_TASK_COMMAND], "clear_upgrade_result");
+        cJSON *params = cJSON_CreateObject();
+        cJSON_AddItemToObject(command_info, task_manager_json_keys[WM_TASK_PARAMETERS], params);
+        char *command_string = cJSON_PrintUnformatted(command_info);
+        snprintf(buffer, OS_MAXSTR, "%.3d upgrade %s", agent_id, command_string);
+        os_free(command_string);
+        cJSON_Delete(command_info);
 
         char *agent_response = wm_agent_upgrade_send_command_to_agent(buffer, strlen(buffer));
 
-        if (wm_agent_upgrade_parse_agent_response(agent_response, NULL) == OS_SUCCESS) {
+        if (wm_agent_upgrade_parse_agent_upgrade_command_response(agent_response, NULL) == OS_SUCCESS) {
             mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UPGRADE_FILE_AGENT);
         }
 

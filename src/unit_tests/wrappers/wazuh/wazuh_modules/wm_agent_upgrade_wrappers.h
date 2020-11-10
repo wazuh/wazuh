@@ -21,7 +21,7 @@ int teardown_hash_table();
 
 int __wrap_wm_agent_upgrade_check_status(const wm_agent_configs* agent_config);
 
-int __wrap_wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs);
+void __wrap_wm_agent_upgrade_start_manager_module(const wm_manager_configs* manager_configs, const int enabled);
 
 int __wrap_wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_ids, char** error);
 
@@ -36,6 +36,8 @@ cJSON* __wrap_wm_agent_upgrade_parse_task_module_request(wm_upgrade_command comm
 int __wrap_wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* task_module_request);
 
 int __wrap_wm_agent_upgrade_parse_agent_response(const char* agent_response, char **data);
+
+int __wrap_wm_agent_upgrade_parse_agent_upgrade_command_response(const char* agent_response, char **data);
 
 OSHashNode* __wrap_wm_agent_upgrade_get_first_node(unsigned int *index);
 
