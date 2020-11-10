@@ -92,7 +92,7 @@ typedef enum key_states {
 int OS_CheckKeys(void);
 
 /* Read the keys */
-void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit) __attribute((nonnull));
+void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed) __attribute((nonnull));
 
 void OS_FreeKey(keyentry *key);
 

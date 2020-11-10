@@ -131,11 +131,9 @@ void HandleSecure()
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
-    minfo(AG_AX_AGENTS, MAX_AGENTS);
-
     /* Read authentication keys */
     minfo(ENC_READ);
-    OS_ReadKeys(&keys, 1, 0, 0);
+    OS_ReadKeys(&keys, 1, 0);
     OS_StartCounter(&keys);
 
     // Key reloader thread

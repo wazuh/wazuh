@@ -89,7 +89,6 @@ static void help_authd()
     print_out("    -x <path>   Full path to server certificate. Default: %s%s.", DEFAULTDIR, CERTFILE);
     print_out("    -k <path>   Full path to server key. Default: %s%s.", DEFAULTDIR, KEYFILE);
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
-    print_out("    -L          Force insertion though agent limit reached.");
     print_out(" ");
     exit(1);
 }
@@ -178,7 +177,6 @@ int main(int argc, char **argv)
         int use_pass = 0;
         int auto_method = 0;
         int validate_host = 0;
-        int no_limit = 0;
         const char *ciphers = NULL;
         const char *ca_cert = NULL;
         const char *server_cert = NULL;
@@ -284,10 +282,6 @@ int main(int argc, char **argv)
                     auto_method = 1;
                     break;
 
-                case 'L':
-                    no_limit = 1;
-                    break;
-
                 default:
                     help_authd();
                     break;
@@ -340,10 +334,6 @@ int main(int argc, char **argv)
         if (port) {
             config.port = port;
         }
-
-        if (no_limit) {
-            config.flags.register_limit = 0;
-        }
     }
 
     /* Exit here if test config is set */
@@ -370,12 +360,12 @@ int main(int argc, char **argv)
     case -1:
         merror("Invalid option at cluster configuration");
         exit(0);
-    case 1:	
-        config.worker_node = TRUE;        	
-        break;	
-    case 0:	
-        config.worker_node = FALSE;	
-        break;	
+    case 1:
+        config.worker_node = TRUE;
+        break;
+    case 0:
+        config.worker_node = FALSE;
+        break;
     }
 
     /* Start daemon -- NB: need to double fork and setsid */
@@ -609,7 +599,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
     if (!config.worker_node) {
         OS_PassEmptyKeyfile();
-        OS_ReadKeys(&keys, 0, !config.flags.clear_removed, 1);
+        OS_ReadKeys(&keys, 0, !config.flags.clear_removed);
     }
     mdebug1("Dispatch thread ready");
 
@@ -727,7 +717,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         else {
             SSL_write(ssl, response, strlen(response));
             snprintf(response, 2048, "ERROR: Unable to add agent");
-            SSL_write(ssl, response, strlen(response));  
+            SSL_write(ssl, response, strlen(response));
         }
 
         SSL_free(ssl);

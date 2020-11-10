@@ -268,7 +268,7 @@ int main(int argc, char **argv)
             int i;
             keystore keys = KEYSTORE_INITIALIZER;
 
-            OS_ReadKeys(&keys, 1, 0, 0);
+            OS_ReadKeys(&keys, 1, 0);
 
             i = OS_IsAllowedID(&keys, agent_id);
             if (i < 0) {
@@ -327,7 +327,7 @@ int main(int argc, char **argv)
                 printf("%s", cJSON_PrintUnformatted(json_root));
             }
         } else {
-            OS_ReadKeys(&keys, 1, 0, 0);
+            OS_ReadKeys(&keys, 1, 0);
 
             i = OS_IsAllowedID(&keys, agent_id);
             if (i < 0) {

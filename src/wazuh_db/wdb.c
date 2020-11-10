@@ -27,7 +27,7 @@ const char* WDBC_RESULT[] = {
     [WDBC_DUE]     = "due",
     [WDBC_ERROR]   = "err",
     [WDBC_IGNORE]  = "ign",
-    [WDBC_UNKNOWN] = "unk"    
+    [WDBC_UNKNOWN] = "unk"
 };
 
 static const char *SQL_VACUUM = "VACUUM;";
@@ -140,12 +140,12 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_DELETE_GROUP] = "DELETE FROM `group` WHERE name = ?;",
     [WDB_STMT_GLOBAL_SELECT_GROUPS] = "SELECT name FROM `group`;",
     [WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE] = "SELECT last_keepalive FROM agent WHERE name = ? AND (register_ip = ? OR register_ip LIKE ? || '/_%');",
-    [WDB_STMT_GLOBAL_SYNC_REQ_GET] = "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, last_keepalive FROM agent WHERE id > ? AND sync_status = 'syncreq' LIMIT 1;", 
+    [WDB_STMT_GLOBAL_SYNC_REQ_GET] = "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, last_keepalive FROM agent WHERE id > ? AND sync_status = 'syncreq' LIMIT 1;",
     [WDB_STMT_GLOBAL_SYNC_SET] = "UPDATE agent SET sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_INFO] = "UPDATE agent SET config_sum = :config_sum, ip = :ip, manager_host = :manager_host, merged_sum = :merged_sum, name = :name, node_name = :node_name, os_arch = :os_arch, os_build = :os_build, os_codename = :os_codename, os_major = :os_major, os_minor = :os_minor, os_name = :os_name, os_platform = :os_platform, os_uname = :os_uname, os_version = :os_version, version = :version, last_keepalive = :last_keepalive, sync_status = :sync_status WHERE id = :id;",
-    [WDB_STMT_GLOBAL_GET_AGENTS] = "SELECT id FROM agent WHERE id > ? LIMIT 1;", 
-    [WDB_STMT_GLOBAL_GET_AGENTS_BY_GREATER_KEEPALIVE] = "SELECT id FROM agent WHERE id > ? AND last_keepalive > ? LIMIT 1;", 
-    [WDB_STMT_GLOBAL_GET_AGENTS_BY_LESS_KEEPALIVE] = "SELECT id FROM agent WHERE id > ? AND last_keepalive < ? LIMIT 1;", 
+    [WDB_STMT_GLOBAL_GET_AGENTS] = "SELECT id FROM agent WHERE id > ? LIMIT 1;",
+    [WDB_STMT_GLOBAL_GET_AGENTS_BY_GREATER_KEEPALIVE] = "SELECT id FROM agent WHERE id > ? AND last_keepalive > ? LIMIT 1;",
+    [WDB_STMT_GLOBAL_GET_AGENTS_BY_LESS_KEEPALIVE] = "SELECT id FROM agent WHERE id > ? AND last_keepalive < ? LIMIT 1;",
     [WDB_STMT_GLOBAL_GET_AGENT_INFO] = "SELECT * FROM agent WHERE id = ?;",
     [WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE] = "SELECT COUNT(*) FROM agent WHERE id=0 AND last_keepalive=253402300799;",
     [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
@@ -169,14 +169,14 @@ wdb_t * wdb_open_global() {
     // Finds DB in pool
     if (wdb = (wdb_t *)OSHash_Get(open_dbs, WDB_GLOB_NAME), wdb) {
         // The corresponding w_mutex_unlock(&wdb->mutex) is called in wdb_leave(wdb_t * wdb)
-        w_mutex_lock(&wdb->mutex); 
+        w_mutex_lock(&wdb->mutex);
         wdb->refcount++;
         w_mutex_unlock(&pool_mutex);
         return wdb;
     } else {
         // Try to open DB
         snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-        
+
         if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
             mdebug1("Global database not found, creating.");
             sqlite3_close_v2(db);
@@ -208,7 +208,7 @@ wdb_t * wdb_open_global() {
     }
 
     // The corresponding w_mutex_unlock(&wdb->mutex) is called in wdb_leave(wdb_t * wdb)
-    w_mutex_lock(&wdb->mutex); 
+    w_mutex_lock(&wdb->mutex);
     wdb->refcount++;
 
     w_mutex_unlock(&pool_mutex);
@@ -535,12 +535,7 @@ int wdb_commit2(wdb_t * wdb) {
 
 /* Create global database */
 int wdb_create_global(const char *path) {
-    char max_agents[16];
-    snprintf(max_agents, 15, "%d", MAX_AGENTS);
-
     if (OS_SUCCESS != wdb_create_file(path, schema_global_sql))
-        return OS_INVALID;
-    else if (OS_SUCCESS != wdb_insert_info("max_agents", max_agents))
         return OS_INVALID;
     else if (OS_SUCCESS != wdb_insert_info("openssl_support", "yes"))
         return OS_INVALID;
@@ -1060,7 +1055,7 @@ int wdb_journal_wal(sqlite3 *db) {
 
 /**
  * @brief Frees agent_info_data struct memory.
- * 
+ *
  * @param[in] agent_data Pointer to the struct to be freed.
  */
 void wdb_free_agent_info_data(agent_info_data *agent_data) {

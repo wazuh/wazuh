@@ -33,7 +33,6 @@ static void helpmsg()
     printf("\t-r -u <id>        Runs the integrity/rootkit checking on one agent now.\n\n");
     printf("\t-s                Changes the output to CSV (comma delimited).\n");
     printf("\t-j                Changes the output to JSON .\n");
-    printf("\t-m                Show the limit of agents that can be added.\n");
     printf("Available options for active response:\n");
     printf("\t-b <ip>           Blocks the specified ip address.\n");
     printf("\t-f <ar> -a        Used with -b, specifies which response to run. Apply AR on all agents.\n");
@@ -68,7 +67,6 @@ int main(int argc, char **argv)
     int list_responses = 0;
     int end_time = 0;
     int restart_agent = 0;
-    int show_max_agents = 0;
     int inactive_only = 0;
 
     char shost[512];
@@ -119,9 +117,6 @@ int main(int argc, char **argv)
                 break;
             case 'l':
                 list_agents++;
-                break;
-            case 'm':
-                show_max_agents++;
                 break;
             case 's':
                 csv_output = 1;
@@ -316,38 +311,11 @@ int main(int argc, char **argv)
         exit(0);
     }
 
-    /* Show limit of agents */
-
-    if (show_max_agents) {
-        if (json_output) {
-            cJSON *data = cJSON_CreateObject();
-
-            if (!(root && data)) {
-                exit(1);
-            }
-
-            cJSON_AddNumberToObject(data, "max_agents", MAX_AGENTS);
-            cJSON_AddNumberToObject(root, "error", 0);
-            cJSON_AddItemToObject(root, "data", data);
-
-            char *render = cJSON_PrintUnformatted(root);
-            printf("%s", render);
-            cJSON_Delete(root);
-            free(render);
-        } else if (csv_output) {
-            printf("%d\n", MAX_AGENTS);
-        } else {
-            printf("Limit of agents: %d\n", MAX_AGENTS);
-        }
-
-        exit(0);
-    }
-
     /* Check if the provided ID is valid */
     if (agent_id != NULL) {
         if (strcmp(agent_id, "000") != 0) {
             OS_PassEmptyKeyfile();
-            OS_ReadKeys(&keys, 1, 0, 0);
+            OS_ReadKeys(&keys, 1, 0);
 
             agt_id = OS_IsAllowedID(&keys, agent_id);
             if (agt_id < 0) {

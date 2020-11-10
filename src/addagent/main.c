@@ -38,7 +38,6 @@ __attribute__((noreturn)) static void helpmsg()
     print_out("    -h          This help message.");
     print_out("    -j          Use JSON output.");
     print_out("    -l          List available agents.");
-    print_out("    -L          Disable agents limit.");
     print_out("    -a <ip>     Add new agent.");
     print_out("    -n <name>   Name for new agent.");
     print_out("    -e <id>     Extracts key for an agent (Manager only).");
@@ -81,9 +80,6 @@ int main(int argc, char **argv)
 {
     char *user_msg;
     int c = 0, cmdlist = 0, json_output = 0;
-#ifndef CLIENT
-    int no_limit = 0;
-#endif
     int force_antiquity;
     char *end;
     const char *cmdexport = NULL;
@@ -181,11 +177,6 @@ int main(int argc, char **argv)
                     merror_exit("Invalid number for -F");
 
                 setenv("OSSEC_REMOVE_DUPLICATED", optarg, 1);
-                break;
-            case 'L':
-#ifndef CLIENT
-                no_limit = 1;
-#endif
                 break;
             default:
                 helpmsg();
@@ -293,7 +284,7 @@ int main(int argc, char **argv)
 #ifdef CLIENT
                 printf("\n ** Agent adding only available on a master ** \n\n");
 #else
-                add_agent(json_output, no_limit);
+                add_agent(json_output);
 #endif
                 break;
             case 'e':

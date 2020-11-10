@@ -74,7 +74,7 @@ char *chomp(char *str)
 
 #ifndef CLIENT
 
-int add_agent(int json_output, int no_limit)
+int add_agent(int json_output)
 {
     int i = 1;
     FILE *fp;
@@ -311,11 +311,6 @@ int add_agent(int json_output, int no_limit)
         /* If user accepts to add */
         if (user_input[0] == 'y' || user_input[0] == 'Y') {
             if (!authd_running) {
-                if ( !no_limit && limitReached() ) {
-                    merror(AG_MAX_ERROR, MAX_AGENTS - 2);
-                    merror_exit(CONFIG_ERROR, KEYS_FILE);
-                }
-
                 time3 = time(0);
                 rand2 = os_random();
 
@@ -649,9 +644,6 @@ int limitReached() {
 
     fclose(fp);
 
-    /* Check for maximum agent size */
-    if ( counter >= (MAX_AGENTS - 2) )
-        return 1;
     return 0;
 
 }

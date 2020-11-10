@@ -17,7 +17,6 @@
 int authd_read_config(const char *path) {
     config.port = DEFAULT_PORT;
     config.force_time = -1;
-    config.flags.register_limit = 1;
 
     mdebug2("Reading configuration '%s'", path);
 
@@ -66,7 +65,6 @@ cJSON *getAuthdConfig(void) {
     if (config.flags.force_insert) cJSON_AddStringToObject(auth,"force_insert","yes"); else cJSON_AddStringToObject(auth,"force_insert","no");
     if (config.flags.clear_removed) cJSON_AddStringToObject(auth,"purge","yes"); else cJSON_AddStringToObject(auth,"purge","no");
     if (config.flags.use_password) cJSON_AddStringToObject(auth,"use_password","yes"); else cJSON_AddStringToObject(auth,"use_password","no");
-    if (config.flags.register_limit) cJSON_AddStringToObject(auth,"limit_maxagents","yes"); else cJSON_AddStringToObject(auth,"limit_maxagents","no");
     if (config.flags.verify_host) cJSON_AddStringToObject(auth,"ssl_verify_host","yes"); else cJSON_AddStringToObject(auth,"ssl_verify_host","no");
     if (config.flags.auto_negotiate) cJSON_AddStringToObject(auth,"ssl_auto_negotiate","yes"); else cJSON_AddStringToObject(auth,"ssl_auto_negotiate","no");
     if (config.ciphers) cJSON_AddStringToObject(auth,"ciphers",config.ciphers);
