@@ -1475,6 +1475,7 @@ def test_select_array(select, required_fields, expected_result):
     except WazuhError as e:
         assert e.code == 1724
 
+
 @patch('wazuh.core.common.ossec_path', new='/var/ossec')
 @patch('wazuh.core.utils.glob.glob')
 def test_get_files(mock_glob):
