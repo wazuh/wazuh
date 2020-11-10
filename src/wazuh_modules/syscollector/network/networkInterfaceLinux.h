@@ -19,10 +19,10 @@
 class FactoryLinuxNetwork
 {
     public:
-    static std::shared_ptr<IOSNetwork>create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceAddress);
+    static std::shared_ptr<IOSNetwork>create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper);
 };
 
-template <sa_family_t osNetworkType>
+template <unsigned short osNetworkType>
 class LinuxNetworkImpl final : public IOSNetwork
 {
     std::shared_ptr<INetworkInterfaceWrapper> m_interfaceAddress;
@@ -39,12 +39,4 @@ public:
     }
 };
 
-template <>
-void LinuxNetworkImpl<AF_INET>::buildNetworkData(nlohmann::json& network);
-template <>
-void LinuxNetworkImpl<AF_INET6>::buildNetworkData(nlohmann::json& network);
-#if defined(AF_PACKET)
-template <>
-void LinuxNetworkImpl<AF_PACKET>::buildNetworkData(nlohmann::json& network);
-#endif
 #endif // _NETWORK_LINUX_H

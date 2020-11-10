@@ -40,8 +40,10 @@ link_directories(${SRC_FOLDER}/external/bzip2/)
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   file(GLOB SYSCOLLECTOR_SRC
       "${CMAKE_SOURCE_DIR}/*Win.cpp"
-      "${CMAKE_SOURCE_DIR}/sysOsInfo/sysOsInfoWin.cpp")
-  add_definitions(-DWIN32=1)
+      "${CMAKE_SOURCE_DIR}/sysOsInfo/sysOsInfoWin.cpp"
+      "${CMAKE_SOURCE_DIR}/network/*Windows.cpp")
+  add_definitions(-DWIN32=1
+                  -D_WIN32_WINNT=0x600)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   file(GLOB SYSCOLLECTOR_SRC
       "${CMAKE_SOURCE_DIR}/*Linux.cpp"

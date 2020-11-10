@@ -12,14 +12,17 @@
 #ifndef _NETWORK_FAMILY_DATA_AFACTORY_H
 #define _NETWORK_FAMILY_DATA_AFACTORY_H
 
+#include <memory>
 #include "json.hpp"
 #include "networkInterfaceLinux.h"
 #include "networkInterfaceBSD.h"
+#include "networkInterfaceWindows.h"
 
 enum OSType
 {
     LINUX,
-    BSDBASED
+    BSDBASED,
+    WINDOWS
 };
 
 template <OSType osType>
@@ -39,9 +42,9 @@ template <>
 class FactoryNetworkFamilyCreator<OSType::LINUX> final
 {
 public:
-    static std::shared_ptr<IOSNetwork> create(const std::shared_ptr<INetworkInterfaceWrapper>& interface)
+    static std::shared_ptr<IOSNetwork> create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper)
     {
-        return FactoryLinuxNetwork::create(interface);
+        return FactoryLinuxNetwork::create(interfaceWrapper);
     }
 };
 
@@ -49,11 +52,20 @@ template <>
 class FactoryNetworkFamilyCreator<OSType::BSDBASED> final
 {
 public:
-    static std::shared_ptr<IOSNetwork> create(const std::shared_ptr<INetworkInterfaceWrapper>& interface)
+    static std::shared_ptr<IOSNetwork> create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper)
     {
-        return FactoryBSDNetwork::create(interface);
+        return FactoryBSDNetwork::create(interfaceWrapper);
     }
 };    
 
+template <>
+class FactoryNetworkFamilyCreator<OSType::WINDOWS> final
+{
+public:
+    static std::shared_ptr<IOSNetwork> create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper)
+    {
+        return FactoryWindowsNetwork::create(interfaceWrapper); //std::make_shared<WindowsNetworkImpl>(interfaceWrapper);
+    }
+};    
 
 #endif // _NETWORK_FAMILY_DATA_AFACTORY_H

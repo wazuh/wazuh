@@ -9,27 +9,28 @@
  * Foundation.
  */
 
+#include <ifaddrs.h>
 #include "networkInterfaceBSD.h"
 #include "networkBSDWrapper.h"
 
-std::shared_ptr<IOSNetwork> FactoryBSDNetwork::create(const std::shared_ptr<INetworkInterfaceWrapper>& interface)
+std::shared_ptr<IOSNetwork> FactoryBSDNetwork::create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper)
 {
     std::shared_ptr<IOSNetwork> ret;
 
-    if (interface)
+    if (interfaceWrapper)
     {
-        const auto family { interface->family() };
+        const auto family { interfaceWrapper->family() };
         if(AF_INET == family)
         {
-            ret = std::make_shared<BSDNetworkImpl<AF_INET>>(interface);
+            ret = std::make_shared<BSDNetworkImpl<AF_INET>>(interfaceWrapper);
         }
         else if (AF_INET6 == family)
         {
-            ret = std::make_shared<BSDNetworkImpl<AF_INET6>>(interface);
+            ret = std::make_shared<BSDNetworkImpl<AF_INET6>>(interfaceWrapper);
         }
         else if (AF_LINK == family)
         {
-            ret = std::make_shared<BSDNetworkImpl<AF_LINK>>(interface);
+            ret = std::make_shared<BSDNetworkImpl<AF_LINK>>(interfaceWrapper);
         }
         else
         {
@@ -38,7 +39,7 @@ std::shared_ptr<IOSNetwork> FactoryBSDNetwork::create(const std::shared_ptr<INet
     }
     else
     {
-        throw std::runtime_error { "Error nullptr interface instance." };
+        throw std::runtime_error { "Error nullptr interfaceWrapper instance." };
     }
     return ret;
 }

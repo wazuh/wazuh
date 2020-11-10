@@ -10,28 +10,29 @@
  */
 
 #include <netdb.h>
+#include <ifaddrs.h>
 #include "networkInterfaceLinux.h"
 #include "networkLinuxWrapper.h"
 
-std::shared_ptr<IOSNetwork> FactoryLinuxNetwork::create(const std::shared_ptr<INetworkInterfaceWrapper>& interface)
+std::shared_ptr<IOSNetwork> FactoryLinuxNetwork::create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper)
 {
     std::shared_ptr<IOSNetwork> ret;
 
-    if (interface)
+    if (interfaceWrapper)
     {
-        const auto family { interface->family() };
+        const auto family { interfaceWrapper->family() };
 
         if(AF_INET == family)
         {
-            ret = std::make_shared<LinuxNetworkImpl<AF_INET>>(interface);
+            ret = std::make_shared<LinuxNetworkImpl<AF_INET>>(interfaceWrapper);
         }
         else if (AF_INET6 == family)
         {
-            ret = std::make_shared<LinuxNetworkImpl<AF_INET6>>(interface);
+            ret = std::make_shared<LinuxNetworkImpl<AF_INET6>>(interfaceWrapper);
         }
         else if (AF_PACKET == family)
         {
-            ret = std::make_shared<LinuxNetworkImpl<AF_PACKET>>(interface);
+            ret = std::make_shared<LinuxNetworkImpl<AF_PACKET>>(interfaceWrapper);
         }
         else
         {
@@ -40,7 +41,7 @@ std::shared_ptr<IOSNetwork> FactoryLinuxNetwork::create(const std::shared_ptr<IN
     }
     else
     {
-        throw std::runtime_error { "Error nullptr interface instance." };
+        throw std::runtime_error { "Error nullptr interfaceWrapper instance." };
     }
     return ret;
 }

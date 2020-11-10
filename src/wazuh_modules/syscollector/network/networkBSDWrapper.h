@@ -12,6 +12,7 @@
 #ifndef _NETWORK_BSD_WRAPPER_H
 #define _NETWORK_BSD_WRAPPER_H
 
+#include <ifaddrs.h>
 #include <net/if.h>
 #include <net/if_types.h>
 #include <net/if_dl.h>
@@ -20,6 +21,7 @@
 #include <net/route.h>
 #include <sys/sysctl.h>
 #include <sys/param.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
 #include "inetworkWrapper.h"
 #include "networkHelper.h"
@@ -53,10 +55,17 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
     {
         return m_interfaceAddress->ifa_name ? m_interfaceAddress->ifa_name : "unknown";
     }
+
+    std::string description() const override
+    {
+        return "unknown";
+    }
+
     int family() const override
     {
         return m_interfaceAddress->ifa_addr ? m_interfaceAddress->ifa_addr->sa_family : AF_UNSPEC;
     }
+
     std::string address() const override
     {
         return m_interfaceAddress->ifa_addr ? 
@@ -64,6 +73,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
                 this->family(), 
                 &(reinterpret_cast<sockaddr_in *>(m_interfaceAddress->ifa_addr))->sin_addr) : "";
     }
+
     std::string netmask() const override
     {
         return m_interfaceAddress->ifa_netmask ? 
@@ -71,6 +81,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
                 m_interfaceAddress->ifa_netmask->sa_family, 
                 &(reinterpret_cast<sockaddr_in *>(m_interfaceAddress->ifa_netmask))->sin_addr) : "";
     }
+
     std::string broadcast() const override
     {
         return m_interfaceAddress->ifa_dstaddr ? 
@@ -86,6 +97,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
                 m_interfaceAddress->ifa_addr->sa_family, 
                 &(reinterpret_cast<sockaddr_in6 *>(m_interfaceAddress->ifa_addr))->sin6_addr) : "";
     }
+
     std::string netmaskV6() const override
     {
         return m_interfaceAddress->ifa_netmask ?
@@ -93,6 +105,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
                     m_interfaceAddress->ifa_netmask->sa_family, 
                     &(reinterpret_cast<sockaddr_in6 *>(m_interfaceAddress->ifa_netmask))->sin6_addr) : "";
     }
+
     std::string broadcastV6() const override
     {
         return m_interfaceAddress->ifa_dstaddr ?
@@ -100,6 +113,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
                     m_interfaceAddress->ifa_dstaddr->sa_family, 
                     &(reinterpret_cast<sockaddr_in6 *>(m_interfaceAddress->ifa_dstaddr))->sin6_addr) : "";
     }
+
     std::string gateway() const override
     {
         std::string retVal = "unknown";
@@ -137,10 +151,21 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
         return retVal;
     }
 
+    std::string metrics() const override
+    {
+        return "unknown";
+    }
+
+    std::string metricsV6() const override
+    {
+        return "unknown";
+    }
+
     std::string dhcp() const override
     {
         return "unknown";
     }
+
     std::string mtu() const override
     {
         return m_interfaceAddress ? std::to_string(reinterpret_cast<if_data *>(m_interfaceAddress->ifa_data)->ifi_mtu) : "";
@@ -175,10 +200,12 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
         }
         return retVal;
     }
+
     std::string state() const override
     {
         return m_interfaceAddress->ifa_flags & IFF_UP ? "up" : "down";
     }
+
     std::string MAC() const override
     {
         std::string retVal { "00:00:00:00:00:00" };
@@ -205,4 +232,4 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
     }
 };
 
-#endif //_NETWORK_LINUX_WRAPPER_H
+#endif //_NETWORK_BSD_WRAPPER_H

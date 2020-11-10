@@ -18,10 +18,10 @@
 class FactoryBSDNetwork
 {
     public:
-    static std::shared_ptr<IOSNetwork>create(const std::shared_ptr<INetworkInterfaceWrapper>& interface);
+    static std::shared_ptr<IOSNetwork>create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper);
 };
 
-template <sa_family_t osNetworkType>
+template <unsigned short osNetworkType>
 class BSDNetworkImpl final : public IOSNetwork
 {
     const std::shared_ptr<INetworkInterfaceWrapper>& m_interfaceAddress;
@@ -34,14 +34,5 @@ public:
         throw std::runtime_error { "Non implemented specialization." };
     }
 };
-
-template <>
-void BSDNetworkImpl<AF_INET>::buildNetworkData(nlohmann::json& network);
-template <>
-void BSDNetworkImpl<AF_INET6>::buildNetworkData(nlohmann::json& network);
-#if defined (HAVE_AF_LINK)
-template <>
-void BSDNetworkImpl<AF_LINK>::buildNetworkData(nlohmann::json& network);
-#endif
 
 #endif // _NETWORK_BSD_H
