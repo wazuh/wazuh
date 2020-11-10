@@ -77,8 +77,8 @@ class LinuxPortWrapper final : public IPortWrapper
 {
     std::vector<std::string> m_fields;
     PortType m_type;
-    std::vector<std::string> m_remoteAddress;
-    std::vector<std::string> m_localAddress;
+    std::vector<std::string> m_remoteAddresses;
+    std::vector<std::string> m_localAddresses;
     std::vector<std::string> m_queue;
     static std::string IPv4Address(const std::string& hexRawAddress) 
     {
@@ -92,12 +92,13 @@ class LinuxPortWrapper final : public IPortWrapper
     static std::string IPv6Address(const std::string& hexRawAddress)
     {
         std::string retVal { "unknown" };
-        struct in6_addr sin6;
-        auto index { 0l };
+
         const auto hexAddressLength { hexRawAddress.length() };
         if (hexAddressLength == IPv6AddressHexSize)
         {
-            char address[INET6_ADDRSTRLEN] = { 0 };
+            in6_addr sin6 {};
+            char address[INET6_ADDRSTRLEN] { 0 };
+            auto index { 0l };
             for (auto i = 0ull; i < hexAddressLength; i += CHAR_BIT)
             {
                 std::stringstream ss;
@@ -114,29 +115,36 @@ class LinuxPortWrapper final : public IPortWrapper
     explicit LinuxPortWrapper(const PortType type, const std::string& row)
     : m_fields{ Utils::split(row, ' ') }
     , m_type { type }
-    , m_remoteAddress { std::move(Utils::split(m_fields.at(REMOTE_ADDRESS),':')) }
-    , m_localAddress { std::move(Utils::split(m_fields.at(LOCAL_ADDRESS),':')) }
+    , m_remoteAddresses { std::move(Utils::split(m_fields.at(REMOTE_ADDRESS),':')) }
+    , m_localAddresses { std::move(Utils::split(m_fields.at(LOCAL_ADDRESS),':')) }
     , m_queue { std::move(Utils::split(m_fields.at(QUEUE),':')) }
     { }
 
     ~LinuxPortWrapper() = default;
     std::string protocol() const override
     {
-        return PORTS_TYPE.at(m_type);
+        std::string retVal { "unknown" };
+
+        const auto it { PORTS_TYPE.find(m_type) };
+        if (PORTS_TYPE.end() != it)
+        {
+            retVal = it->second;
+        }
+        return retVal;
     }
 
     std::string localIp() const override
     {
         std::string retVal { "unknown" };
-        if (m_localAddress.size() == AddressField::ADDRESS_FIELD_SIZE)
+        if (m_localAddresses.size() == AddressField::ADDRESS_FIELD_SIZE)
         {
             if (IPVERSION_TYPE.at(m_type) == IPV4)
             {
-                retVal = IPv4Address(m_localAddress.at(AddressField::IP));
+                retVal = IPv4Address(m_localAddresses.at(AddressField::IP));
             }
             else if (IPVERSION_TYPE.at(m_type) == IPV6)
             {
-                retVal = IPv6Address(m_localAddress.at(AddressField::IP)); 
+                retVal = IPv6Address(m_localAddresses.at(AddressField::IP)); 
             }
         }
         return retVal;
@@ -144,10 +152,10 @@ class LinuxPortWrapper final : public IPortWrapper
     int32_t localPort() const override
     {
         int32_t retVal { -1 };
-        if (m_localAddress.size() == AddressField::ADDRESS_FIELD_SIZE)
+        if (m_localAddresses.size() == AddressField::ADDRESS_FIELD_SIZE)
         {
             std::stringstream ss;
-            ss << std::hex << m_localAddress.at(AddressField::PORT);
+            ss << std::hex << m_localAddresses.at(AddressField::PORT);
             ss >> retVal;
         }
         return retVal;
@@ -155,15 +163,15 @@ class LinuxPortWrapper final : public IPortWrapper
     std::string remoteIP() const override
     {
         std::string retVal { "unknown" };
-        if (m_remoteAddress.size() == AddressField::ADDRESS_FIELD_SIZE)
+        if (m_remoteAddresses.size() == AddressField::ADDRESS_FIELD_SIZE)
         {
             if (IPVERSION_TYPE.at(m_type) == IPV4)
             {
-                retVal = IPv4Address(m_remoteAddress.at(AddressField::IP));
+                retVal = IPv4Address(m_remoteAddresses.at(AddressField::IP));
             }
             else if (IPVERSION_TYPE.at(m_type) == IPV6)
             {
-                retVal = IPv6Address(m_remoteAddress.at(AddressField::IP)); 
+                retVal = IPv6Address(m_remoteAddresses.at(AddressField::IP)); 
             }
         }
         return retVal;
@@ -171,10 +179,10 @@ class LinuxPortWrapper final : public IPortWrapper
     int32_t remotePort() const override
     {
         int32_t retVal { -1 };
-        if (m_remoteAddress.size() == AddressField::ADDRESS_FIELD_SIZE)
+        if (m_remoteAddresses.size() == AddressField::ADDRESS_FIELD_SIZE)
         {
             std::stringstream ss;
-            ss << std::hex << m_remoteAddress.at(AddressField::PORT);
+            ss << std::hex << m_remoteAddresses.at(AddressField::PORT);
             ss >> retVal;
         }
         return retVal;
@@ -210,7 +218,7 @@ class LinuxPortWrapper final : public IPortWrapper
         std::string retVal { "unknown" };
         const auto it { PROTOCOL_TYPE.find(m_type) };
 
-        if (PROTOCOL_TYPE.end() != it && TCP && it->second)
+        if (PROTOCOL_TYPE.end() != it && TCP == it->second)
         {
             std::stringstream ss;
             int32_t state { 0 };

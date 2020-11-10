@@ -37,7 +37,7 @@ static const std::map<int32_t, std::string> STATE_TYPE =
 static const std::map<pid_t, std::string> SYSTEM_PROCESSES = 
 {
     { 0,                                   "System Idle Process"   },
-    { 4,                                   "System"                 },
+    { 4,                                   "System"                },
 };
 
 struct PortTables
@@ -50,14 +50,14 @@ struct PortTables
 
 class WindowsPortWrapper final : public IPortWrapper
 {
-    std::string m_protocol;
-    int32_t m_localPort;
-    std::string m_localIpAddress;
-    int32_t m_remotePort;
-    std::string m_remoteIpAddress;
-    uint32_t m_state;
-    uint32_t m_pid;
-    std::string m_processName;
+    const std::string m_protocol;
+    const int32_t m_localPort;
+    const std::string m_localIpAddress;
+    const int32_t m_remotePort;
+    const std::string m_remoteIpAddress;
+    const uint32_t m_state;
+    const uint32_t m_pid;
+    const std::string m_processName;
 
     static std::string getIpAddress(const DWORD addr)
     {

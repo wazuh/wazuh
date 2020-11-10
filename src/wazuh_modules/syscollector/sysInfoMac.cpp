@@ -287,37 +287,42 @@ static void getProcessesSocketFD(std::map<ProcessInfo, std::vector<std::shared_p
 {
     int32_t maxProcess { 0 };
     auto maxProcessLen { sizeof(maxProcess) };
-    sysctlbyname("kern.maxproc", &maxProcess, &maxProcessLen, nullptr, 0);
-
-    auto pids { std::make_unique<pid_t[]>(maxProcess) };
-    const auto processesCount { proc_listallpids(pids.get(), maxProcess) };
-
-    for (auto i = 0 ; i < processesCount ; ++i)
+    if (!sysctlbyname("kern.maxproc", &maxProcess, &maxProcessLen, nullptr, 0))
     {
-        const auto pid { pids.get()[i] };
+        auto pids { std::make_unique<pid_t[]>(maxProcess) };
+        const auto processesCount { proc_listallpids(pids.get(), maxProcess) };
 
-        proc_bsdinfo processInformation;
-        proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &processInformation, PROC_PIDTBSDINFO_SIZE);
-        const std::string processName { processInformation.pbi_name };
-        const ProcessInfo processData { pid, processName };
-
-        const auto processFDBufferSize { proc_pidinfo(pid, PROC_PIDLISTFDS, 0, 0, 0) };
-        if (processFDBufferSize != -1)
+        for (auto i = 0 ; i < processesCount ; ++i)
         {
-            auto processFDInformationBuffer { std::make_unique<char[]>(processFDBufferSize) };
-            proc_pidinfo(pid, PROC_PIDLISTFDS, 0, processFDInformationBuffer.get(), processFDBufferSize);
-            auto processFDInformation { reinterpret_cast<proc_fdinfo *>(processFDInformationBuffer.get())};
+            const auto pid { pids[i] };
 
-            for (auto j = 0ul; j < processFDBufferSize / PROC_PIDLISTFD_SIZE; ++j )
+            proc_bsdinfo processInformation {};
+            if (proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &processInformation, PROC_PIDTBSDINFO_SIZE != -1)
             {
-                if (PROX_FDTYPE_SOCKET == processFDInformation[j].proc_fdtype)
+                const std::string processName { processInformation.pbi_name };
+                const ProcessInfo processData { pid, processName };
+
+                const auto processFDBufferSize { proc_pidinfo(pid, PROC_PIDLISTFDS, 0, 0, 0) };
+                if (processFDBufferSize != -1)
                 {
-                    auto socketInfo { std::make_shared<socket_fdinfo>() };
-                    if (PROC_PIDFDSOCKETINFO_SIZE == proc_pidfdinfo(pid, processFDInformation[j].proc_fd, PROC_PIDFDSOCKETINFO, socketInfo.get(), PROC_PIDFDSOCKETINFO_SIZE))
+                    auto processFDInformationBuffer { std::make_unique<char[]>(processFDBufferSize) };
+                    if (proc_pidinfo(pid, PROC_PIDLISTFDS, 0, processFDInformationBuffer.get(), processFDBufferSize) != -1)
                     {
-                        if (std::find(s_validFDSock.begin(), s_validFDSock.end(), socketInfo->psi.soi_kind) != s_validFDSock.end())
+                        auto processFDInformation { reinterpret_cast<proc_fdinfo *>(processFDInformationBuffer.get())};
+
+                        for (auto j = 0ul; j < processFDBufferSize / PROC_PIDLISTFD_SIZE; ++j )
                         {
-                            processSocket[processData].push_back(socketInfo);
+                            if (PROX_FDTYPE_SOCKET == processFDInformation[j].proc_fdtype)
+                            {
+                                auto socketInfo { std::make_shared<socket_fdinfo>() };
+                                if (PROC_PIDFDSOCKETINFO_SIZE == proc_pidfdinfo(pid, processFDInformation[j].proc_fd, PROC_PIDFDSOCKETINFO, socketInfo.get(), PROC_PIDFDSOCKETINFO_SIZE))
+                                {
+                                    if (std::find(s_validFDSock.begin(), s_validFDSock.end(), socketInfo->psi.soi_kind) != s_validFDSock.end())
+                                    {
+                                        processSocket[processData].push_back(socketInfo);
+                                    }
+                                }
+                            }
                         }
                     }
                 }

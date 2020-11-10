@@ -49,70 +49,70 @@ struct ProcessInfo
 class BSDPortWrapper final : public IPortWrapper
 {
     ProcessInfo m_processInformation;
-    std::shared_ptr<socket_fdinfo> m_socketInfo;
+    std::shared_ptr<socket_fdinfo> m_spSocketInfo;
 
     public:
     explicit BSDPortWrapper(const ProcessInfo& processInformation, const std::shared_ptr<socket_fdinfo>& socketInfo)
     : m_processInformation { processInformation }
-    , m_socketInfo { socketInfo }
+    , m_spSocketInfo { socketInfo }
     {};
     ~BSDPortWrapper() = default;
 
     std::string protocol() const override
     {
-        std::string retVal = "unknown";
-        const auto it { PORTS_TYPE.find(m_socketInfo->psi.soi_kind) };
+        std::string retVal { "unknown" };
+        const auto it { PORTS_TYPE.find(m_spSocketInfo->psi.soi_kind) };
         if (it != PORTS_TYPE.end())
         {
-            retVal = AF_INET6 == m_socketInfo->psi.soi_family ? it->second + "6" : it->second;
+            retVal = AF_INET6 == m_spSocketInfo->psi.soi_family ? it->second + "6" : it->second;
         }
         return  retVal;
     }
     std::string localIp() const override
     {
-        char ipAddress[NI_MAXHOST] = { 0 };
-        if(AF_INET6 == m_socketInfo->psi.soi_family)
+        char ipAddress[NI_MAXHOST] { 0 };
+        if(AF_INET6 == m_spSocketInfo->psi.soi_family)
         {
             sockaddr_in6 socketAddressIn6;
-            socketAddressIn6.sin6_family = m_socketInfo->psi.soi_family;
-            socketAddressIn6.sin6_addr = static_cast<in6_addr>(m_socketInfo->psi.soi_proto.pri_in.insi_laddr.ina_6);
+            socketAddressIn6.sin6_family = m_spSocketInfo->psi.soi_family;
+            socketAddressIn6.sin6_addr = static_cast<in6_addr>(m_spSocketInfo->psi.soi_proto.pri_in.insi_laddr.ina_6);
             getnameinfo(reinterpret_cast<sockaddr *>(&socketAddressIn6), sizeof(socketAddressIn6), ipAddress, sizeof(ipAddress), nullptr, 0, NI_NUMERICHOST);
         }
         else
         {
             sockaddr_in socketAddressIn;
-            socketAddressIn.sin_family = m_socketInfo->psi.soi_family;
-            socketAddressIn.sin_addr = static_cast<in_addr>(m_socketInfo->psi.soi_proto.pri_in.insi_laddr.ina_46.i46a_addr4);
+            socketAddressIn.sin_family = m_spSocketInfo->psi.soi_family;
+            socketAddressIn.sin_addr = static_cast<in_addr>(m_spSocketInfo->psi.soi_proto.pri_in.insi_laddr.ina_46.i46a_addr4);
             getnameinfo(reinterpret_cast<sockaddr *>(&socketAddressIn), sizeof(socketAddressIn), ipAddress, sizeof(ipAddress), nullptr, 0, NI_NUMERICHOST);
         }
         return ipAddress;
     }
     int32_t localPort() const override
     {
-        return ntohs(m_socketInfo->psi.soi_proto.pri_in.insi_lport);
+        return ntohs(m_spSocketInfo->psi.soi_proto.pri_in.insi_lport);
     }
     std::string remoteIP() const override
     {
-        char ipAddress[NI_MAXHOST] = { 0 };
-        if(AF_INET6 == m_socketInfo->psi.soi_family)
+        char ipAddress[NI_MAXHOST] { 0 };
+        if(AF_INET6 == m_spSocketInfo->psi.soi_family)
         {
             sockaddr_in6 socketAddressIn6;
-            socketAddressIn6.sin6_family = m_socketInfo->psi.soi_family;
-            socketAddressIn6.sin6_addr = static_cast<in6_addr>(m_socketInfo->psi.soi_proto.pri_in.insi_faddr.ina_6);
+            socketAddressIn6.sin6_family = m_spSocketInfo->psi.soi_family;
+            socketAddressIn6.sin6_addr = static_cast<in6_addr>(m_spSocketInfo->psi.soi_proto.pri_in.insi_faddr.ina_6);
             getnameinfo(reinterpret_cast<sockaddr *>(&socketAddressIn6), sizeof(socketAddressIn6), ipAddress, sizeof(ipAddress), nullptr, 0, NI_NUMERICHOST);
         }
         else
         {
             sockaddr_in socketAddressIn;
-            socketAddressIn.sin_family = m_socketInfo->psi.soi_family;
-            socketAddressIn.sin_addr = static_cast<in_addr>(m_socketInfo->psi.soi_proto.pri_in.insi_faddr.ina_46.i46a_addr4);
+            socketAddressIn.sin_family = m_spSocketInfo->psi.soi_family;
+            socketAddressIn.sin_addr = static_cast<in_addr>(m_spSocketInfo->psi.soi_proto.pri_in.insi_faddr.ina_46.i46a_addr4);
             getnameinfo(reinterpret_cast<sockaddr *>(&socketAddressIn), sizeof(socketAddressIn), ipAddress, sizeof(ipAddress), nullptr, 0, NI_NUMERICHOST);
         }
         return ipAddress;
     }
     int32_t remotePort() const override
     {
-        return ntohs(m_socketInfo->psi.soi_proto.pri_in.insi_fport);
+        return ntohs(m_spSocketInfo->psi.soi_proto.pri_in.insi_fport);
     }
     int32_t txQueue() const override
     {
@@ -130,11 +130,11 @@ class BSDPortWrapper final : public IPortWrapper
     {
         std::string retVal { "unknown" };
 
-        const auto itProtocol { PORTS_TYPE.find(m_socketInfo->psi.soi_kind) };
+        const auto itProtocol { PORTS_TYPE.find(m_spSocketInfo->psi.soi_kind) };
 
         if (PORTS_TYPE.end() != itProtocol && SOCKINFO_TCP == itProtocol->first)
         {
-            const auto itState { STATE_TYPE.find(m_socketInfo->psi.soi_proto.pri_tcp.tcpsi_state) };
+            const auto itState { STATE_TYPE.find(m_spSocketInfo->psi.soi_proto.pri_tcp.tcpsi_state) };
 
             if (itState != STATE_TYPE.end())
             {
