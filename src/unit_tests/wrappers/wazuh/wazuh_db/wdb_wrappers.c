@@ -163,8 +163,7 @@ cJSON* __wrap_wdbc_query_parse_json(__attribute__((unused)) int *sock,
     return mock_ptr_type(cJSON *);
 }
 
-cJSON* __wrap_wdb_exec(__attribute__((unused)) sqlite3 *db,
-                 const char *sql) {
+cJSON* __wrap_wdb_exec(__attribute__((unused)) sqlite3 *db, const char *sql) {
     check_expected(sql);
     return mock_ptr_type(cJSON*);
 }

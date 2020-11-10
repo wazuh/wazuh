@@ -75,7 +75,7 @@ void test_scan_info_ok(void **state) {
 
 
     will_return(__wrap_wdb_scan_info_get, 1);
-    
+
     ret = wdb_parse_syscheck(data->wdb, WDB_FIM_FILE, query, data->output);
 
     assert_string_equal(data->output, "ok 0");
