@@ -4943,8 +4943,8 @@ components:
       schema:
         type: string
         enum:
-        - [x32]
-        - [x64]
+        - '[x32]'
+        - '[x64]'
     sgroup:
       in: query
       name: sgroup

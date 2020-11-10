@@ -6,6 +6,16 @@
  * and/or modify it under the terms of GPLv2.
  */
 
+CREATE TABLE pm_event (id INTEGER PRIMARY KEY AUTOINCREMENT, date_first TEXT, date_last TEXT, log TEXT, pci_dss TEXT, cis TEXT);
+
+INSERT INTO pm_event(id, date_first, date_last, log) VALUES (1, '2019-05-29 12:20:11', '2019-05-29 12:21:02', 'Starting syscheck scan.');
+INSERT INTO pm_event(id, date_first, date_last, log) VALUES (2, '2019-05-29 12:20:26', '2019-05-29 12:21:16', 'Ending syscheck scan.');
+INSERT INTO pm_event(id, date_first, date_last, log) VALUES (3, '2019-05-29 12:21:26', '2019-05-29 12:21:26', 'Starting rootcheck scan.');
+INSERT INTO pm_event(id, date_first, date_last, log) VALUES (4, '2019-05-29 12:21:35', '2019-05-29 12:21:35', 'Ending rootcheck scan.');
+
+CREATE TABLE scan_info (module TEXT PRIMARY KEY, first_start INTEGER, first_end INTEGER, start_scan INTEGER, end_scan INTEGER, fim_first_check INTEGER, fim_second_check INTEGER, fim_third_check INTEGER);
+INSERT INTO scan_info(module, first_start, first_end, start_scan, end_scan, fim_first_check, fim_second_check, fim_third_check) VALUES ('fim', 1559134512, 1559134532, 1559134512, 1559134532, 1559134512, 1559132445, 1559132394);
+
 CREATE TABLE fim_entry (full_path TEXT NOT NULL PRIMARY KEY, file TEXT, type TEXT NOT NULL CHECK (type IN ('file', 'registry_key', 'registry_value')), date INTEGER NOT NULL DEFAULT (strftime('%s', 'now')), changes INTEGER NOT NULL DEFAULT 1, arch TEXT CHECK (arch IN (NULL, '[x64]', '[x32]')), value_name TEXT, value_type TEXT, size INTEGER, perm TEXT, uid TEXT, gid TEXT, md5 TEXT, sha1 TEXT, uname TEXT, gname TEXT, mtime INTEGER, inode INTEGER, sha256 TEXT, attributes INTEGER DEFAULT 0, symbolic_path TEXT, checksum TEXT);
 
 /* INSERT TEST VALUES INTO THE FIM ENTRY TABLE
@@ -21,7 +31,7 @@ INSERT INTO fim_entry VALUES('/usr/bin/frm.mailutils','/usr/bin/frm.mailutils','
 INSERT INTO fim_entry VALUES('/usr/bin/apt-key','/usr/bin/apt-key','file',1578640718,1,NULL,NULL,NULL,20599,'100755','0','0','50141b833e183a0ea826ed500e25b8f1','f5792d780476ca9033c230937017532cfd1a4461','root','root',1558469542,16393728,'760885b6142d0c6e52df29cffa9026d1cfbc928b9d123979951e3ba547b5937b',0,NULL,NULL);
 
 -- Registries
-INSERT INTO fim_entry VALUES('registry_key_1','registry_key_1','registry_key',1578640718,1,'[X64]',NULL,NULL,4096,'perm','0','0','','','root','root',12345678,1024,'',0,NULL,NULL);
-INSERT INTO fim_entry VALUES('registry_value_1','registry_value_1','registry_value',1578640718,1,'[X32]','value_name','value_type',4096,'perm','0','0','','','root','root',12345678,1024,'',0,NULL,NULL);
+INSERT INTO fim_entry VALUES('registry_key_1','registry_key_1','registry_key',1578640718,1,'[x64]',NULL,NULL,4096,'perm','0','0','','','root','root',12345678,1024,'',0,NULL,NULL);
+INSERT INTO fim_entry VALUES('registry_value_1','registry_value_1','registry_value',1578640718,1,'[x32]','value_name','value_type',4096,'perm','0','0','','','root','root',12345678,1024,'',0,NULL,NULL);
 
 COMMIT;

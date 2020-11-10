@@ -31,5 +31,5 @@ INSERT INTO "fim_entry" VALUES('/usr/bin/frm.mailutils','/usr/bin/frm.mailutils'
 INSERT INTO "fim_entry" VALUES('/usr/bin/apt-key','/usr/bin/apt-key','file',1578640718,1,NULL,NULL,NULL,20599,'100755','0','0','50141b833e183a0ea826ed500e25b8f1','f5792d780476ca9033c230937017532cfd1a4461','root','root',1558469542,16393728,'760885b6142d0c6e52df29cffa9026d1cfbc928b9d123979951e3ba547b5937b',0,NULL,NULL);
 
 -- Registries
-INSERT INTO "fim_entry" VALUES('registry_key_1','registry_key_1','registry_key',1578640718,1,'[X64]',NULL,NULL,4096,'perm','uid','gid','hash_md5','hash_sha1','root','root',12345678,1024,'hash_sha256',0,NULL,NULL);
-INSERT INTO "fim_entry" VALUES('registry_value_1','registry_value_1','registry_value',1578640718,1,'[X32]','value_name','value_type',4096,'perm','uid','gid','hash_md5','hash_sha1','root','root',12345678,1024,'hash_sha256',0,NULL,NULL);
+INSERT INTO "fim_entry" VALUES('registry_key_1','registry_key_1','registry_key',1578640718,1,'[x64]',NULL,NULL,4096,'perm','uid','gid','hash_md5','hash_sha1','root','root',12345678,1024,'hash_sha256',0,NULL,NULL);
+INSERT INTO "fim_entry" VALUES('registry_value_1','registry_value_1','registry_value',1578640718,1,'[x32]','value_name','value_type',4096,'perm','uid','gid','hash_md5','hash_sha1','root','root',12345678,1024,'hash_sha256',0,NULL,NULL);
