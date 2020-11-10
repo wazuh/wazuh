@@ -5,6 +5,7 @@ project(unit_tests)
 include_directories(${CMAKE_SOURCE_DIR})
 
 add_subdirectory(sysInfo)
+add_subdirectory(sysCollectorImp)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_subdirectory(sysInfoNetworkLinux)
