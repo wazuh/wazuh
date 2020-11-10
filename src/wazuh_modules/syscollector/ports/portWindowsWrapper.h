@@ -162,6 +162,8 @@ class WindowsPortWrapper final : public IPortWrapper
     : m_protocol { "udp" }
     , m_localPort { ntohs(data.dwLocalPort) }
     , m_localIpAddress { getIpAddress(data.dwLocalAddr) }
+    , m_remotePort { 0 }
+    , m_state { 0 }
     , m_pid { data.dwOwningPid }
     , m_processName { getProcessName(processDataList, data.dwOwningPid) }
     { }
@@ -170,6 +172,8 @@ class WindowsPortWrapper final : public IPortWrapper
     : m_protocol("udp6")
     , m_localPort { ntohs(data.dwLocalPort) }
     , m_localIpAddress { getIpV6Address(data.ucLocalAddr) }
+    , m_remotePort { 0 }
+    , m_state { 0 }
     , m_pid { data.dwOwningPid }
     , m_processName { getProcessName(processDataList, data.dwOwningPid) }
     { }
