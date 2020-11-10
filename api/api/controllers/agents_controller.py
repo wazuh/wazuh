@@ -130,17 +130,6 @@ async def add_agent(request, pretty=False, wait_for_complete=False):
     Body.validate_content_type(request, expected_content_type='application/json')
     f_kwargs = await AgentAddedModel.get_kwargs(request)
 
-    # Get IP if not given
-    if not f_kwargs['ip']:
-        if configuration.api_conf['behind_proxy_server']:
-            try:
-                f_kwargs['ip'] = request.headers['X-Forwarded-For']
-            except KeyError:
-                raise_if_exc(WazuhError(1120))
-        else:
-            peername = request.transport.get_extra_info('peername')
-            if peername is not None:
-                f_kwargs['ip'], _ = peername
     f_kwargs['use_only_authd'] = configuration.api_conf['use_only_authd']
 
     dapi = DistributedAPI(f=agent.add_agent,
@@ -224,7 +213,7 @@ async def get_agent_config(request, pretty=False, wait_for_complete=False, agent
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param agent_id: Agent ID. All possible values since 000 onwards.
+    :param agent_id: Agent ID. All possible values from 000 onwards.
     :param component: Selected agent's component.
     :return: AgentConfiguration
     """
@@ -246,7 +235,8 @@ async def get_agent_config(request, pretty=False, wait_for_complete=False, agent
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_single_agent_multiple_groups(request, agent_id, groups_list=None, pretty=False, wait_for_complete=False):
+async def delete_single_agent_multiple_groups(request, agent_id, groups_list=None, pretty=False,
+                                              wait_for_complete=False):
     """'Remove the agent from all groups or a list of them.
 
     The agent will automatically revert to the "default" group if it is removed from all its assigned groups.
@@ -280,7 +270,7 @@ async def get_sync_agent(request, agent_id, pretty=False, wait_for_complete=Fals
     Returns whether the agent configuration has been synchronized with the agent
     or not. This can be useful to check after updating a group configuration.
 
-    :param agent_id: Agent ID. All possible values since 000 onwards.
+    :param agent_id: Agent ID. All possible values from 000 onwards.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout responseç
     :return: AgentSync
@@ -308,7 +298,7 @@ async def delete_single_agent_single_group(request, agent_id, group_id, pretty=F
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param agent_id: Agent ID. All possible values since 000 onwards.
+    :param agent_id: Agent ID. All possible values from 000 onwards.
     :param group_id: Group ID.
     :return: ApiResponse
     """
@@ -334,7 +324,7 @@ async def put_agent_single_group(request, agent_id, group_id, force_single_group
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param agent_id: Agent ID. All possible values since 000 onwards.
+    :param agent_id: Agent ID. All possible values from 000 onwards.
     :param group_id: Group ID.
     :param force_single_group: Forces the agent to belong to a single group
     :return: ApiResponse
@@ -361,7 +351,7 @@ async def get_agent_key(request, agent_id, pretty=False, wait_for_complete=False
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param agent_id: Agent ID. All possible values since 000 onwards.
+    :param agent_id: Agent ID. All possible values from 000 onwards.
     :return: AllItemsResponseAgentsKeys
     """
     f_kwargs = {'agent_list': [agent_id]}
@@ -382,7 +372,7 @@ async def get_agent_key(request, agent_id, pretty=False, wait_for_complete=False
 async def restart_agent(request, agent_id, pretty=False, wait_for_complete=False):
     """Restart an agent.
 
-    :param agent_id: Agent ID. All possible values since 000 onwards.
+    :param agent_id: Agent ID. All possible values from 000 onwards.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :return: AllItemsResponseAgentIDs
@@ -402,7 +392,7 @@ async def restart_agent(request, agent_id, pretty=False, wait_for_complete=False
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_upgrade_agents(request, agents_list='*', pretty=False, wait_for_complete=False, wpk_repo=None,
+async def put_upgrade_agents(request, agents_list=None, pretty=False, wait_for_complete=False, wpk_repo=None,
                              version=None, use_http=False, force=False):
     """Upgrade agents using a WPK file from online repository.
 
@@ -413,7 +403,7 @@ async def put_upgrade_agents(request, agents_list='*', pretty=False, wait_for_co
     wait_for_complete : bool
         Disable timeout response.
     agents_list : list
-        List of agent IDs. All possible values since 000 onwards.
+        List of agent IDs. All possible values from 000 onwards.
     wpk_repo : str
         WPK repository.
     version : str
@@ -438,7 +428,7 @@ async def put_upgrade_agents(request, agents_list='*', pretty=False, wait_for_co
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
-                          wait_for_complete=True,
+                          wait_for_complete=wait_for_complete,
                           logger=logger,
                           broadcasting=agents_list == '*',
                           rbac_permissions=request['token_info']['rbac_policies']
@@ -448,7 +438,7 @@ async def put_upgrade_agents(request, agents_list='*', pretty=False, wait_for_co
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_upgrade_custom_agents(request, agents_list='*', pretty=False, wait_for_complete=False,
+async def put_upgrade_custom_agents(request, agents_list=None, pretty=False, wait_for_complete=False,
                                     file_path=None, installer=None):
     """Upgrade agents using a local WPK file.
 
@@ -459,7 +449,7 @@ async def put_upgrade_custom_agents(request, agents_list='*', pretty=False, wait
     wait_for_complete : bool
         Disable timeout response.
     agents_list : list
-        List of agent IDs. All possible values since 000 onwards.
+        List of agent IDs. All possible values from 000 onwards.
     file_path : str
         Path to the WPK file. The file must be on a folder on the Wazuh's installation directory (by default, <code>/var/ossec</code>).
     installer : str
@@ -478,7 +468,7 @@ async def put_upgrade_custom_agents(request, agents_list='*', pretty=False, wait
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
-                          wait_for_complete=True,
+                          wait_for_complete=wait_for_complete,
                           logger=logger,
                           broadcasting=agents_list == '*',
                           rbac_permissions=request['token_info']['rbac_policies']
@@ -498,7 +488,7 @@ async def get_agent_upgrade(request, agents_list=None, pretty=False, wait_for_co
     wait_for_complete : bool
         Disable timeout response.
     agents_list : list
-        List of agent IDs. All possible values since 000 onwards.
+        List of agent IDs. All possible values from 000 onwards.
 
     Returns
     -------

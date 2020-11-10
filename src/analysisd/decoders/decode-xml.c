@@ -17,14 +17,39 @@
 #include "plugin_decoders.h"
 #include "config.h"
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 /* Internal functions */
 static char *_loadmemory(char *at, char *str);
 static int addDecoder2list(const char *name);
 static int os_setdecoderids(const char *p_name);
-static int ReadDecodeAttrs(char *const *names, char *const *values);
 static OSStore *os_decoder_store = NULL;
 
 static void FreeDecoderInfo(OSDecoderInfo *pi);
+
+/**
+ * @brief Get offset attribute value of a node
+ * @param node node to find offset value
+ * @retval AFTER_PARENT if offset is "after_parent"
+ * @retval AFTER_PREMATCH if offset is "after_prematch"
+ * @retval AFTER_PREVREGEX if offset is "after_regex"
+ * @retval AFTER_ERROR if offset is not any previously listed values
+ * @retval 0 if the attribute is not present
+ */
+STATIC int w_get_attr_offset(xml_node * node);
+
+/**
+ * @brief Get regex type attribute of a node
+ * @param node node to find regex type value
+ * @param type if it is defined, return regex type
+ * @return true if it is defined. false otherwise
+ */
+STATIC bool w_get_attr_regex_type(xml_node * node, w_exp_type_t * type);
 
 int getDecoderfromlist(const char *name)
 {
@@ -113,41 +138,6 @@ static int os_setdecoderids(const char *p_name)
     return (1);
 }
 
-static int ReadDecodeAttrs(char *const *names, char *const *values)
-{
-    if (!names || !values) {
-        return (0);
-    }
-
-    if (!names[0] || !values[0]) {
-        return (0);
-    }
-
-    if (strcmp(names[0], "offset") == 0) {
-        int offset = 0;
-
-        /* Offsets can be: after_parent, after_prematch
-         * or after_regex.
-         */
-        if (strcmp(values[0], "after_parent") == 0) {
-            offset |= AFTER_PARENT;
-        } else if (strcmp(values[0], "after_prematch") == 0) {
-            offset |= AFTER_PREMATCH;
-        } else if (strcmp(values[0], "after_regex") == 0) {
-            offset |= AFTER_PREVREGEX;
-        } else {
-            merror(INV_OFFSET, values[0]);
-            offset |= AFTER_ERROR;
-        }
-
-        return (offset);
-    }
-
-    /* Invalid attribute */
-    merror(INV_ATTR, names[0]);
-    return (AFTER_ERROR);
-}
-
 int ReadDecodeXML(const char *file)
 {
     OS_XML xml;
@@ -177,9 +167,14 @@ int ReadDecodeXML(const char *file)
     int i = 0;
     OSDecoderInfo *NULL_Decoder_tmp = NULL;
 
-    char *regex = NULL;
-    char *prematch = NULL;
-    char *p_name = NULL;
+    char * regex_str = NULL;
+    char * prematch_str = NULL;
+    char * p_name_str = NULL;
+
+    w_exp_type_t regex_type;
+    w_exp_type_t prematch_type;
+    w_exp_type_t p_name_type;
+
     XML_NODE elements = NULL;
     OSDecoderInfo *pi = NULL;
 
@@ -238,6 +233,7 @@ int ReadDecodeXML(const char *file)
             goto cleanup;
         }
 
+        /* Only process a decoder node */
         if (strcasecmp(node[i]->element, xml_decoder) != 0) {
             merror(XML_INVELEM, node[i]->element);
             goto cleanup;
@@ -251,7 +247,7 @@ int ReadDecodeXML(const char *file)
             goto cleanup;
         }
 
-        /* Check for additional entries */
+        /* Check for additional attributes */
         if (node[i]->attributes[1] && node[i]->values[1]) {
             if (strcasecmp(node[i]->attributes[1], xml_decoder_status) != 0) {
                 merror(XML_INVELEM, node[i]->element);
@@ -272,11 +268,7 @@ int ReadDecodeXML(const char *file)
         }
 
         /* Create the OSDecoderInfo */
-        pi = (OSDecoderInfo *)calloc(1, sizeof(OSDecoderInfo));
-        if (pi == NULL) {
-            merror(MEM_ERROR, errno, strerror(errno));
-            goto cleanup;
-        }
+        os_calloc(1, sizeof(OSDecoderInfo), pi);
 
         /* Default values to the list */
         pi->parent = NULL;
@@ -296,15 +288,14 @@ int ReadDecodeXML(const char *file)
         pi->prematch_offset = 0;
         pi->flags = SHOW_STRING | JSON_ARRAY;
 
-        regex = NULL;
-        prematch = NULL;
-        p_name = NULL;
+        regex_str = NULL;
+        prematch_str = NULL;
+        p_name_str = NULL;
 
-        /* Check if strdup worked */
-        if (!pi->name) {
-            merror(MEM_ERROR, errno, strerror(errno));
-            goto cleanup;
-        }
+        /* Default regex types */
+        regex_type = EXP_TYPE_OSREGEX;
+        prematch_type = EXP_TYPE_OSREGEX;
+        p_name_type = EXP_TYPE_OSMATCH;
 
         /* Add decoder */
         if (!addDecoder2list(pi->name)) {
@@ -322,70 +313,98 @@ int ReadDecodeXML(const char *file)
                 goto cleanup;
             }
 
-            /* Check if it is a child of a rule */
+            /* Check if it is a child of a decoder */
             else if (strcasecmp(elements[j]->element, xml_parent) == 0) {
                 pi->parent = _loadmemory(pi->parent, elements[j]->content);
             }
 
             /* Get the regex */
             else if (strcasecmp(elements[j]->element, xml_regex) == 0) {
-                int r_offset;
-                r_offset = ReadDecodeAttrs(elements[j]->attributes,
-                                           elements[j]->values);
+
+                int r_offset = w_get_attr_offset(elements[j]);
 
                 if (r_offset & AFTER_ERROR) {
-                    merror(DEC_REGEX_ERROR, pi->name);
-                    goto cleanup;
+                    mwarn(ANALYSISD_INV_VALUE_DEFAULT, "offset", xml_regex, pi->name);
+                    r_offset = 0;
                 }
 
                 /* Only the first regex entry may have an offset */
-                if (regex && r_offset) {
+                if (regex_str && r_offset) {
                     merror(DUP_REGEX, pi->name);
                     merror(DEC_REGEX_ERROR, pi->name);
                     goto cleanup;
                 }
 
-                /* regex offset */
                 if (r_offset) {
                     pi->regex_offset = r_offset;
                 }
 
+                /* get type */
+                if (!w_get_attr_regex_type(elements[j], &regex_type)) {
+                    regex_type = EXP_TYPE_OSREGEX;
+                }
+
+                /* Only OSRegex & pcre2 support for regex label */
+                if (regex_type != EXP_TYPE_OSREGEX && regex_type != EXP_TYPE_PCRE2) {
+                    mwarn(ANALYSISD_INV_VALUE_DEFAULT, "type", xml_regex, pi->name);
+                    regex_type = EXP_TYPE_OSREGEX;
+                }
+
                 /* Assign regex */
-                regex =
-                    _loadmemory(regex,
-                                elements[j]->content);
+                regex_str = _loadmemory(regex_str, elements[j]->content);
             }
 
             /* Get the pre match */
             else if (strcasecmp(elements[j]->element, xml_prematch) == 0) {
-                int r_offset;
 
-                r_offset = ReadDecodeAttrs(
-                               elements[j]->attributes,
-                               elements[j]->values);
+                int pre_offset = w_get_attr_offset(elements[j]);
 
-                if (r_offset & AFTER_ERROR) {
-                    merror_exit(DEC_REGEX_ERROR, pi->name);
+                if (pre_offset & AFTER_ERROR) {
+                    mwarn(ANALYSISD_INV_VALUE_DEFAULT, "offset", xml_prematch,  pi->name);
+                    pre_offset = 0;
                 }
 
                 /* Only the first prematch entry may have an offset */
-                if (prematch && r_offset) {
+                if (prematch_str && pre_offset) {
                     merror(DUP_REGEX, pi->name);
                     merror_exit(DEC_REGEX_ERROR, pi->name);
                 }
 
-                if (r_offset) {
-                    pi->prematch_offset = r_offset;
+                if (pre_offset) {
+                    pi->prematch_offset = pre_offset;
                 }
 
-                prematch =
-                    _loadmemory(prematch,
-                                elements[j]->content);
+                /* Get type */
+                if (!w_get_attr_regex_type(elements[j], &prematch_type)) {
+                    prematch_type = EXP_TYPE_OSREGEX;
+                }
+
+                /* Only OSRegex & pcre2 support for prematch label */
+                if (prematch_type != EXP_TYPE_OSREGEX && prematch_type != EXP_TYPE_PCRE2) {
+                    mwarn(ANALYSISD_INV_VALUE_DEFAULT, "type", xml_prematch, pi->name);
+                    prematch_type = EXP_TYPE_OSREGEX;
+                }
+
+                prematch_str = _loadmemory(prematch_str, elements[j]->content);
             }
 
             /* Get program name */
             else if (strcasecmp(elements[j]->element, xml_program_name) == 0) {
-                p_name = _loadmemory(p_name, elements[j]->content);
+
+                /* Get type */
+                if (!w_get_attr_regex_type(elements[j], &p_name_type)) {
+                    p_name_type = EXP_TYPE_OSMATCH;
+                }
+
+                /* Only OSMatch & EXP_TYPE_OSREGEX & pcre2 support for prematch label */
+                if (p_name_type != EXP_TYPE_OSMATCH && p_name_type != EXP_TYPE_OSREGEX &&
+                    p_name_type != EXP_TYPE_PCRE2) {
+
+                    mwarn(ANALYSISD_INV_VALUE_DEFAULT, "type", xml_program_name, pi->name);
+                    p_name_type = EXP_TYPE_OSMATCH;
+                }
+
+                p_name_str = _loadmemory(p_name_str, elements[j]->content);
             }
 
             /* Get the FTS comment */
@@ -419,7 +438,7 @@ int ReadDecodeXML(const char *file)
                     goto cleanup;
                 }
 
-                pi->plugin_offset = ReadDecodeAttrs(elements[j]->attributes, elements[j]->values);
+                pi->plugin_offset = w_get_attr_offset(elements[j]);
 
                 if (pi->plugin_offset & AFTER_ERROR) {
                     merror_exit(DEC_REGEX_ERROR, pi->name);
@@ -636,14 +655,14 @@ int ReadDecodeXML(const char *file)
         elements = NULL;
 
         /* Prematch must be set */
-        if (!prematch && !pi->parent && !p_name) {
+        if (!prematch_str && !pi->parent && !p_name_str) {
             merror(DECODE_NOPRE, pi->name);
             merror(DEC_REGEX_ERROR, pi->name);
             goto cleanup;
         }
 
         /* If pi->regex is not set, fts must not be set too */
-        if ((!regex && (pi->fts || pi->order)) || (regex && !pi->order)) {
+        if ((!regex_str && (pi->fts || pi->order)) || (regex_str && !pi->order)) {
             merror(DEC_REGEX_ERROR, pi->name);
             goto cleanup;
         }
@@ -663,7 +682,7 @@ int ReadDecodeXML(const char *file)
             if (!pi->parent) {
                 pi->regex_offset = 0;
                 pi->regex_offset |= AFTER_PARENT;
-            } else if (!prematch) {
+            } else if (!prematch_str) {
                 merror(INV_OFFSET, "after_prematch");
                 merror(DEC_REGEX_ERROR, pi->name);
                 goto cleanup;
@@ -672,7 +691,7 @@ int ReadDecodeXML(const char *file)
 
         /* For the after_regex offset */
         if (pi->regex_offset & AFTER_PREVREGEX) {
-            if (!pi->parent || !regex) {
+            if (!pi->parent || !regex_str) {
                 merror(INV_OFFSET, "after_regex");
                 merror(DEC_REGEX_ERROR, pi->name);
                 goto cleanup;
@@ -701,52 +720,54 @@ int ReadDecodeXML(const char *file)
             goto cleanup;
         }
 
-        if (pi->plugin_offset & AFTER_PREMATCH && !prematch) {
+        if (pi->plugin_offset & AFTER_PREMATCH && !prematch_str) {
             merror(INV_OFFSET, "after_prematch");
             merror(DEC_REGEX_ERROR, pi->name);
             goto cleanup;
         }
 
         /* Compile the regex/prematch */
-        if (prematch) {
-            os_calloc(1, sizeof(OSRegex), pi->prematch);
-            if (!OSRegex_Compile(prematch, pi->prematch, 0)) {
-                merror(REGEX_COMPILE, prematch, pi->prematch->error);
+        if (prematch_str) {
+            w_calloc_expression_t(&pi->prematch, prematch_type);
+
+            if (!w_expression_compile(pi->prematch, prematch_str, 0)) {
+                merror(REGEX_SYNTAX, prematch_str);
+                merror(DEC_REGEX_ERROR, pi->name);
                 goto cleanup;
             }
-
-            free(prematch);
-            prematch = NULL;
+            os_free(prematch_str);
         }
 
         /* Compile the p_name */
-        if (p_name) {
-            os_calloc(1, sizeof(OSMatch), pi->program_name);
-            if (!OSMatch_Compile(p_name, pi->program_name, 0)) {
-                merror(REGEX_COMPILE, p_name, pi->program_name->error);
+        if (p_name_str) {
+            w_calloc_expression_t(&pi->program_name, p_name_type);
+
+            if (!w_expression_compile(pi->program_name, p_name_str, 0)) {
+                merror(REGEX_SYNTAX, p_name_str);
+                merror(DEC_REGEX_ERROR, pi->name);
                 goto cleanup;
             }
-
-            free(p_name);
-            p_name = NULL;
+            os_free(p_name_str);
         }
 
         /* We may not have the pi->regex */
-        if (regex) {
-            os_calloc(1, sizeof(OSRegex), pi->regex);
-            if (!OSRegex_Compile(regex, pi->regex, OS_RETURN_SUBSTRING)) {
-                merror(REGEX_COMPILE, regex, pi->regex->error);
+        if (regex_str) {
+
+            w_calloc_expression_t(&pi->regex, regex_type);
+
+            if (!w_expression_compile(pi->regex, regex_str, OS_RETURN_SUBSTRING)) {
+                merror(REGEX_SYNTAX, regex_str);
+                merror(DEC_REGEX_ERROR, pi->name);
                 goto cleanup;
             }
 
             /* We must have the sub_strings to retrieve the nodes */
-            if (!pi->regex->d_sub_strings) {
-                merror(REGEX_SUBS, regex);
+            if (pi->regex->exp_type == EXP_TYPE_OSREGEX && !pi->regex->regex->d_sub_strings) {
+                merror(REGEX_SUBS, regex_str);
                 goto cleanup;
             }
 
-            free(regex);
-            regex = NULL;
+            os_free(regex_str);
         }
 
         /* Validate arguments */
@@ -769,9 +790,9 @@ int ReadDecodeXML(const char *file)
 
 cleanup:
 
-    free(p_name);
-    free(prematch);
-    free(regex);
+    os_free(p_name_str);
+    os_free(prematch_str);
+    os_free(regex_str);
 
     /* Clean node and XML structures */
     OS_ClearNode(elements);
@@ -857,23 +878,80 @@ void FreeDecoderInfo(OSDecoderInfo *pi) {
     int i;
 
     if (pi) {
-        free(pi->parent);
-        free(pi->name);
+        os_free(pi->parent);
+        os_free(pi->name);
 
         if (pi->fields) {
             for (i = 0; i < Config.decoder_order_size; i++) {
-                free(pi->fields[i]);
+                os_free(pi->fields[i]);
             }
 
-            free(pi->fields);
+            os_free(pi->fields);
         }
 
-        free(pi->fts_fields);
-        free(pi->regex);
-        free(pi->prematch);
-        free(pi->program_name);
-        free(pi->order);
+        os_free(pi->fts_fields);
+        w_free_expression_t(&pi->regex);
+        w_free_expression_t(&pi->prematch);
+        w_free_expression_t(&pi->program_name);
+        os_free(pi->order);
 
-        free(pi);
+        os_free(pi);
     }
+}
+
+STATIC int w_get_attr_offset(xml_node * node) {
+
+    int offset = 0;
+    const char * xml_after_parent = "after_parent";
+    const char * xml_after_prematch = "after_prematch";
+    const char * xml_after_regex = "after_regex";
+
+    const char * str_offset = w_get_attr_val_by_name(node, "offset");
+
+    if (!str_offset) {
+        return 0;
+    }
+
+    /*
+     * Offsets can be: after_parent, after_prematch
+     * or after_regex.
+     */
+    if (strcasecmp(str_offset, xml_after_parent) == 0) {
+        offset |= AFTER_PARENT;
+    } else if (strcasecmp(str_offset, xml_after_prematch) == 0) {
+        offset |= AFTER_PREMATCH;
+    } else if (strcasecmp(str_offset, xml_after_regex) == 0) {
+        offset |= AFTER_PREVREGEX;
+    } else {
+        offset |= AFTER_ERROR;
+    }
+
+    return (offset);
+}
+
+STATIC bool w_get_attr_regex_type(xml_node * node, w_exp_type_t * type) {
+
+    const char * xml_osregex_type = OSREGEX_STR;
+    const char * xml_osmatch_type = OSMATCH_STR;
+    const char * xml_pcre2_type = PCRE2_STR;
+    bool retval = false;
+
+    const char * str_type = w_get_attr_val_by_name(node, "type");
+
+    if (!str_type) {
+        return retval;
+    }
+    retval = true;
+
+    if (strcasecmp(str_type, xml_osregex_type) == 0) {
+        *type = EXP_TYPE_OSREGEX;
+    } else if (strcasecmp(str_type, xml_osmatch_type) == 0) {
+        *type = EXP_TYPE_OSMATCH;
+    } else if (strcasecmp(str_type, xml_pcre2_type) == 0) {
+        *type = EXP_TYPE_PCRE2;
+    } else {
+        *type = EXP_TYPE_INVALID;
+    }
+
+    return retval;
 }

@@ -19,7 +19,7 @@ from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager,
 from wazuh.rbac.orm import SecurityError
 
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
-_user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[_@$!%*?&-])[A-Za-z\d@$!%*?&-_]{8,}$')
+_user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$')
 
 
 def get_user_me():

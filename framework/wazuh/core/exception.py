@@ -332,9 +332,6 @@ class WazuhException(Exception):
         1756: {'message': 'Upgrade procedure could not start. Agent already upgrading',
                'remediation': 'You can check the status of this task with the /agents/:agent_id/upgrade_result endpoint'
                },
-        1757: {'message': 'Unknown error when upgrading',
-               'remediation': 'TO BE DEFINED'
-               },
 
         # CDB List: 1800 - 1899
         1800: {'message': 'Bad format in CDB list {path}'},
@@ -349,11 +346,8 @@ class WazuhException(Exception):
                'remediation': 'Please, make sure you provide a correct filepath'
                },
 
-        1810: {'message': 'Upgrade module\'s reserved exception IDs (1810-1849). '
+        1810: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
                           'The error message will be the output of upgrade module'},
-
-        1850: {'message': 'Tasks module\'s reserved exception IDs (1850-1899). '
-                          'The error message will be the output of tasks module'},
 
         # Manager:
         1900: 'Error restarting manager',
