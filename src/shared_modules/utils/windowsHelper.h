@@ -337,7 +337,7 @@ namespace Utils
 
             if (addrParam)
             {
-                const auto IPV6_BUFFER_ADDRESS_SIZE { 16 };
+                constexpr auto IPV6_BUFFER_ADDRESS_SIZE { 16 };
                 std::array<char, IPV6_BUFFER_ADDRESS_SIZE> buffer;
                 memcpy(buffer.data(), addrParam, IPV6_BUFFER_ADDRESS_SIZE);
 

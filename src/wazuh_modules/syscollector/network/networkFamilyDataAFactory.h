@@ -64,7 +64,7 @@ class FactoryNetworkFamilyCreator<OSType::WINDOWS> final
 public:
     static std::shared_ptr<IOSNetwork> create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper)
     {
-        return FactoryWindowsNetwork::create(interfaceWrapper); //std::make_shared<WindowsNetworkImpl>(interfaceWrapper);
+        return FactoryWindowsNetwork::create(interfaceWrapper);
     }
 };    
 

@@ -1,7 +1,7 @@
 /*
  * Wazuh SYSCOLLECTOR
  * Copyright (C) 2015-2020, Wazuh Inc.
- * October 26, 2020.
+ * November 5, 2020.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -21,8 +21,6 @@
 #include "inetworkWrapper.h"
 #include "makeUnique.h"
 #include "sharedDefs.h"
-
-#include <iostream>
 
 static const std::map<int, std::string> NETWORK_INTERFACE_TYPES =
 {
@@ -120,13 +118,12 @@ public:
         if (Utils::isVistaOrLater())
         {
             ULONG mask { 0 };
-            PULONG netmask { &mask };
             static auto pfnGetConvertLengthToIpv4Mask { Utils::getConvertLengthToIpv4MaskFunctionAddress() };
             if (pfnGetConvertLengthToIpv4Mask)
             {
-                if (m_currentUnicastAddress && !pfnGetConvertLengthToIpv4Mask(m_currentUnicastAddress->OnLinkPrefixLength, netmask))
+                if (m_currentUnicastAddress && !pfnGetConvertLengthToIpv4Mask(m_currentUnicastAddress->OnLinkPrefixLength, &mask))
                 {
-                    retVal = Utils::NetworkWindowsHelper::IAddressToString(this->adapterFamily(), *(reinterpret_cast<in_addr*>(netmask)));
+                    retVal = Utils::NetworkWindowsHelper::IAddressToString(this->adapterFamily(), *(reinterpret_cast<in_addr*>(&mask)));
                 }
             }
         }
@@ -172,24 +169,27 @@ public:
 
     std::string gateway() const override
     {
-        std::string retVal { "unknown" };
+        std::string retVal;
+        constexpr auto GATEWAY_SEPARATOR { "," };
         if (Utils::isVistaOrLater())
         {
-            const auto gatewayAddress { m_interfaceAddress->FirstGatewayAddress };
-            if (gatewayAddress)
+            auto gatewayAddress { m_interfaceAddress->FirstGatewayAddress };
+            while (gatewayAddress)
             {
                 const auto gatewayFamily { gatewayAddress->Address.lpSockaddr->sa_family };
                 const auto sockAddress   { gatewayAddress->Address.lpSockaddr };
                 if (AF_INET == gatewayFamily)
                 {
-                    retVal = Utils::NetworkWindowsHelper::IAddressToString(gatewayFamily, 
+                    retVal += Utils::NetworkWindowsHelper::IAddressToString(gatewayFamily,
                                                                            (reinterpret_cast<sockaddr_in*>(sockAddress))->sin_addr);
                 }
                 else if (AF_INET6 == gatewayFamily)
                 {
-                    retVal = Utils::NetworkWindowsHelper::IAddressToString(gatewayFamily, 
+                    retVal += Utils::NetworkWindowsHelper::IAddressToString(gatewayFamily,
                                                                            (reinterpret_cast<sockaddr_in6*>(sockAddress))->sin6_addr);
                 }
+                retVal += GATEWAY_SEPARATOR;
+                gatewayAddress = gatewayAddress->Next;
             }
         }
         else
@@ -208,7 +208,8 @@ public:
                         currentGWAddress = &(currentAdapterInfo->GatewayList);
                         while(currentGWAddress) 
                         {
-                            retVal = currentGWAddress->IpAddress.String;
+                            retVal += currentGWAddress->IpAddress.String;
+                            retVal += GATEWAY_SEPARATOR;
                             currentGWAddress = currentGWAddress->Next;
                         }
                         foundMatch = true;
@@ -216,6 +217,11 @@ public:
                 }
                 currentAdapterInfo = currentAdapterInfo->Next;
             }
+        }
+        if (!retVal.empty())
+        {
+            // Remove last GATEWAY_SEPARATOR (,)
+            retVal = retVal.substr(0, retVal.size()-1);
         }
         return retVal;
     }

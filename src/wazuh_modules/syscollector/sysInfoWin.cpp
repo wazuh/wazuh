@@ -40,14 +40,6 @@ constexpr auto VISTA_REG_HOTFIX{"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion
 constexpr auto SYSTEM_IDLE_PROCESS_NAME{"System Idle Process"};
 constexpr auto SYSTEM_PROCESS_NAME{"System"};
 
-struct CharDeleter
-{
-    void operator()(char* buffer)
-    {
-        free(buffer);
-    }
-};
-
 class SysInfoProcess final
 {
 public:
@@ -622,8 +614,8 @@ nlohmann::json SysInfo::getNetworks() const
     {
         nlohmann::json netInterfaceInfo {};
 
-        if (!(IF_TYPE_SOFTWARE_LOOPBACK == rawAdapterAddresses->IfType) || 
-            !(0 == rawAdapterAddresses->IfIndex && 0 == rawAdapterAddresses->Ipv6IfIndex))
+        if ((IF_TYPE_SOFTWARE_LOOPBACK != rawAdapterAddresses->IfType) ||
+            (0 != rawAdapterAddresses->IfIndex && 0 != rawAdapterAddresses->Ipv6IfIndex))
         {
             // Ignore either loopback and invalid IPv4/IPv6 indexes interfaces
 

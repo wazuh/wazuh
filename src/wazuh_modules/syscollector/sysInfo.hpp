@@ -37,7 +37,7 @@ private:
     virtual nlohmann::json getPackages() const;
     virtual nlohmann::json getOsInfo() const;
     virtual nlohmann::json getProcessesInfo() const;
-    virtual nlohmann::json getNetworks() const;    
+    virtual nlohmann::json getNetworks() const;
 };
 
 #endif //_SYS_INFO_HPP
