@@ -2252,6 +2252,27 @@ static void test_fim_process_alert_no_event_type(void **state) {
     assert_int_equal(ret, -1);
 }
 
+static void test_fim_process_alert_invalid_entry_type(void **state) {
+    fim_data_t *input = *state;
+    _sdb sdb = {.socket = 10};
+    int ret;
+
+    cJSON *data = cJSON_GetObjectItem(input->event, "data");
+    cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
+
+    cJSON_ReplaceItemInObject(attributes, "type", cJSON_CreateString("invalid"));
+
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
+
+    /* Inside fim_send_db_delete */
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid member 'type' in Syscheck attributes JSON payload");
+
+    ret = fim_process_alert(&sdb, input->lf, data);
+
+    assert_int_equal(ret, -1);
+}
+
 static void test_fim_process_alert_invalid_event_type(void **state) {
     fim_data_t *input = *state;
     _sdb sdb = {.socket = 10};
@@ -3582,6 +3603,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_process_alert_modified_success, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_process_alert_deleted_success, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_process_alert_no_event_type, setup_fim_data, teardown_fim_data),
+        cmocka_unit_test_setup_teardown(test_fim_process_alert_invalid_entry_type, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_process_alert_invalid_event_type, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_process_alert_invalid_object, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_process_alert_no_path, setup_fim_data, teardown_fim_data),
