@@ -171,8 +171,11 @@ static int setup_str_pair(void **state) {
 static int teardown_str_pair(void **state) {
     str_pair_t *new = *state;
 
-    free(new->first);
-    free(new->last);
+    if(new->first)
+        free(new->first);
+    if(new->last)
+        free(new->last);
+
     free(new);
 
     return 0;
@@ -187,10 +190,7 @@ static int teardown_str(void **state) {
 
 /* Auxiliar functions */
 
-static void expect_fim_db_get_first_row_error(const fdb_t *db, int type, char *path) {
-    char buffer[1024];
-
-    snprintf(buffer, 1024, FIM_DB_ERROR_GET_ROW_PATH, "FIRST","FILE");
+static void expect_fim_db_get_first_row_error(const fdb_t *db, int type, char *path, char *error_msg) {
     expect_function_call(__wrap_pthread_mutex_lock);
 
     expect_value(__wrap_fim_db_get_first_path, fim_sql, db);
@@ -198,7 +198,7 @@ static void expect_fim_db_get_first_row_error(const fdb_t *db, int type, char *p
     will_return(__wrap_fim_db_get_first_path, path);
     will_return(__wrap_fim_db_get_first_path, FIMDB_ERR);
 
-    expect_string(__wrap__merror, formatted_msg, buffer);
+    expect_string(__wrap__merror, formatted_msg, error_msg);
     expect_function_call(__wrap_pthread_mutex_unlock);
 }
 
@@ -218,10 +218,7 @@ static void expect_fim_db_get_last_row_success(const fdb_t *db, int type, char *
     will_return(__wrap_fim_db_get_last_path, FIMDB_OK);
 }
 
-static void expect_fim_db_last_row_error(const fdb_t *db, int type, char *first_path) {
-    char buffer[1024];
-    snprintf(buffer, 1024, FIM_DB_ERROR_GET_ROW_PATH, "LAST","FILE");
-
+static void expect_fim_db_last_row_error(const fdb_t *db, int type, char *first_path, char *error_msg) {
     expect_fim_db_get_first_row_success(db, type, first_path);
 
     expect_value(__wrap_fim_db_get_last_path, fim_sql, db);
@@ -229,7 +226,7 @@ static void expect_fim_db_last_row_error(const fdb_t *db, int type, char *first_
     will_return(__wrap_fim_db_get_last_path, NULL);
     will_return(__wrap_fim_db_get_last_path, FIMDB_ERR);
 
-    expect_string(__wrap__merror, formatted_msg, buffer);
+    expect_string(__wrap__merror, formatted_msg, error_msg);
     expect_function_call(__wrap_pthread_mutex_unlock);
 }
 
@@ -258,14 +255,14 @@ static void expect_fim_db_get_count_range_n(char *start, char *stop, int n) {
     expect_function_call(__wrap_pthread_mutex_unlock);
 }
 
-static void expect_fim_db_get_data_checksum_success(const fdb_t *db, char *first, char *last) {
-    expect_fim_db_get_first_row_success(syscheck.database, FIM_TYPE_FILE, first);
-    expect_fim_db_get_last_row_success(syscheck.database, FIM_TYPE_FILE, last);
+static void expect_fim_db_get_data_checksum_success(const fdb_t *db, char **first, char **last) {
+    expect_fim_db_get_first_row_success(syscheck.database, FIM_TYPE_FILE, *first);
+    expect_fim_db_get_last_row_success(syscheck.database, FIM_TYPE_FILE, *last);
 
     expect_value(__wrap_fim_db_get_data_checksum, fim_sql, db);
     will_return(__wrap_fim_db_get_data_checksum, FIMDB_OK);
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_dbsync_check_msg_call("fim_file",INTEGRITY_CHECK_GLOBAL, 1572521857, first, last, NULL,
+    expect_dbsync_check_msg_call("fim_file",INTEGRITY_CHECK_GLOBAL, 1572521857, *first, *last, NULL,
                                  strdup("A mock message"));
 
     expect_string(__wrap_fim_send_sync_msg, msg, "A mock message");
@@ -364,16 +361,20 @@ static void test_fim_sync_push_msg_no_response(void **state) {
 /* fim_sync_checksum */
 static void test_fim_sync_checksum_first_row_error(void **state) {
     pthread_mutex_t *mutex = NULL;
+    char buffer[60];
+    snprintf(buffer, 60, FIM_DB_ERROR_GET_ROW_PATH, "FIRST", "FILE");
 
-    expect_fim_db_get_first_row_error(syscheck.database, FIM_TYPE_FILE, NULL);
+    expect_fim_db_get_first_row_error(syscheck.database, FIM_TYPE_FILE, NULL, buffer);
 
     fim_sync_checksum(FIM_TYPE_FILE, mutex);
 }
 
 static void test_fim_sync_checksum_last_row_error(void **state) {
     pthread_mutex_t *mutex = NULL;
+    char buffer[60];
+    snprintf(buffer, 60, FIM_DB_ERROR_GET_ROW_PATH, "LAST","FILE");
 
-    expect_fim_db_last_row_error(syscheck.database, FIM_TYPE_FILE, NULL);
+    expect_fim_db_last_row_error(syscheck.database, FIM_TYPE_FILE, NULL, buffer);
 
     fim_sync_checksum(FIM_TYPE_FILE, mutex);
 }
@@ -408,9 +409,10 @@ static void test_fim_sync_checksum_success(void **state) {
     char *first = pair->first;
     char *last = pair->last;
 
-    expect_fim_db_get_data_checksum_success(syscheck.database, first, last);
-
+    expect_fim_db_get_data_checksum_success(syscheck.database, &first, &last);
     fim_sync_checksum(FIM_TYPE_FILE, mutex);
+    pair->first = NULL;
+    pair->last = NULL;
 }
 
 /* fim_sync_checksum_split */

@@ -220,7 +220,7 @@ fim_entry *__wrap_fim_db_get_entry_from_sync_msg(fdb_t *fim_sql,
     check_expected_ptr(fim_sql);
     check_expected(path);
 
-    return mock_type(char *);
+    return mock_type(fim_entry *);
 }
 
 #else
