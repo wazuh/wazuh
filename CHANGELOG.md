@@ -11,6 +11,9 @@ All notable changes to this project will be documented in this file.
 - Added new **upgrade module**. WPK upgrade feature has been moved to this module, which offers support for cluster architecture and simultaneous upgrades. ([#5387](https://github.com/wazuh/wazuh/issues/5387))
 - Added new **task module**. This module stores and manages all the tasks that are executed in the agents. ([#5386](https://github.com/wazuh/wazuh/issues/5386))
 
+- **Wazuh API:**
+  - Added endpoints to query and manage Rootcheck data.  ([#6496](https://github.com/wazuh/wazuh/pull/6496))
+
 ### Changed
 
 - **Wazuh API:**
