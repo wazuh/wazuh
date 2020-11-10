@@ -15,6 +15,7 @@
 #include <memory>
 #include "dbsync.h"
 #include "rsync.h"
+#include "sysInfo.hpp"
 #include "syscollectorImp.h"
 
 static void logFunction(const char* msg)
@@ -25,7 +26,21 @@ static void logFunction(const char* msg)
 int main(int argc, const char* argv[])
 {
     const std::chrono::milliseconds timeout{5000};
-    Syscollector sysCollector{timeout};
+    const auto spInfo{ std::make_shared<SysInfo>() };
+    Syscollector sysCollector
+    {
+        spInfo,
+        "1m",
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+    };
     try
     {
         rsync_initialize(logFunction);

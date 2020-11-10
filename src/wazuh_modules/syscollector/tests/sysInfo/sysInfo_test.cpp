@@ -78,7 +78,7 @@ TEST_F(SysInfoTest, network)
 {
     SysInfoWrapper info;
     EXPECT_CALL(info, getNetworks());
-    const auto result {info.network()};
+    const auto result {info.networks()};
     EXPECT_FALSE(result.empty());    
 }
 

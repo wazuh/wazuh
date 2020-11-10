@@ -9,6 +9,8 @@
  * Foundation.
  */
 
+#ifdef WIN32
+
 #ifndef _NETWORK_WINDOWS_HELPER_H
 #define _NETWORK_WINDOWS_HELPER_H
 
@@ -383,3 +385,5 @@ namespace Utils
 #pragma GCC diagnostic pop
 
 #endif // _NETWORK_WINDOWS_HELPER_H
+
+#endif //WIN32

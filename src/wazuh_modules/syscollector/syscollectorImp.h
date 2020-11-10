@@ -12,22 +12,54 @@
 #define _SYSCOLLECTOR_IMP_H
 #include <chrono>
 #include <thread>
-#include <atomic>
-#include "sysInfo.hpp"
+#include <condition_variable>
+#include <mutex>
+#include <memory>
+#include "sysInfoInterface.h"
 #include "json.hpp"
 
 class Syscollector final
 {
 public:
-    Syscollector(const std::chrono::milliseconds& timeout);
+    Syscollector(const std::shared_ptr<ISysInfo>& spInfo,
+                 const std::string& inverval = "1h",
+                 const bool scanOnStart = true,
+                 const bool hardware = true,
+                 const bool os = true,
+                 const bool network = true,
+                 const bool packages = true,
+                 const bool ports = true,
+                 const bool portsAll = true,
+                 const bool processes = true,
+                 const bool hotfixes = true);
     void start();
     ~Syscollector();
 private:
-    void sync();
-    const std::chrono::milliseconds m_timeout;
-    std::atomic_bool                m_running;
-    std::thread                     m_thread;
-    SysInfo                         m_info;
+    bool sleepFor();
+    void scanHardware();
+    void scanOs();
+    void scanNetwork();
+    void scanPackages();
+    void scanPorts();
+    void scanProcesses();
+    void scan();
+    void syncThread();
+    const std::shared_ptr<ISysInfo>   m_spInfo;
+    const std::string                 m_intervalUnit;
+    const unsigned long long          m_intervalValue;
+    const bool                        m_scanOnStart;
+    const bool                        m_hardware;
+    const bool                        m_os;
+    const bool                        m_network;
+    const bool                        m_packages;
+    const bool                        m_ports;
+    const bool                        m_portsAll;
+    const bool                        m_processes;
+    const bool                        m_hotfixes;
+    bool                              m_running;
+    std::condition_variable           m_cv;
+    std::mutex                        m_mutex;
+    std::thread                       m_thread;
 };
 
 

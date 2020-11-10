@@ -36,7 +36,7 @@ nlohmann::json SysInfo::processes()
     return getProcessesInfo();
 }
 
-nlohmann::json SysInfo::network()
+nlohmann::json SysInfo::networks()
 {
-    return getNetworkInfo();
+    return getNetworks();
 }
