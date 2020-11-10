@@ -24,12 +24,12 @@
 typedef struct __fim_data_s {
     cJSON *event;
     Eventinfo *lf;
-}fim_data_t;
+} fim_data_t;
 
 typedef struct __fim_adjust_checksum_data_s {
     sk_sum_t *newsum;
     char **checksum;
-}fim_adjust_checksum_data_t;
+} fim_adjust_checksum_data_t;
 
 /* private functions to be tested */
 void fim_send_db_query(int * sock, const char * query);
@@ -198,6 +198,7 @@ static int setup_fim_data(void **state) {
         return -1;
     if(data->lf->fields = calloc(FIM_NFIELDS, sizeof(DynamicField)), data->lf->fields == NULL)
         return -1;
+
     data->lf->nfields = FIM_NFIELDS;
 
     if(data->lf->decoder_info = calloc(1, sizeof(OSDecoderInfo)), data->lf->decoder_info == NULL)
@@ -275,6 +276,19 @@ static int setup_fim_data(void **state) {
         return -1;
     if(data->lf->decoder_info->fields[FIM_AUDIT_PCWD] = strdup("parent_cwd"), data->lf->decoder_info->fields[FIM_AUDIT_PCWD] == NULL)
         return -1;
+    if(data->lf->decoder_info->fields[FIM_REGISTRY_ARCH] = strdup("arch"), data->lf->decoder_info->fields[FIM_REGISTRY_ARCH] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_REGISTRY_VALUE_NAME] = strdup("value_name"), data->lf->decoder_info->fields[FIM_REGISTRY_VALUE_NAME] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_REGISTRY_VALUE_TYPE] = strdup("value_type"), data->lf->decoder_info->fields[FIM_REGISTRY_VALUE_TYPE] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_ENTRY_TYPE] = strdup("entry_type"), data->lf->decoder_info->fields[FIM_ENTRY_TYPE] == NULL)
+        return -1;
+    if(data->lf->fields[FIM_ENTRY_TYPE].value = strdup("file"), data->lf->fields[FIM_ENTRY_TYPE].value == NULL)
+        return -1;
+
+    if (fim_init() != 1)
+        return -1;
 
     *state = data;
 
@@ -285,9 +299,20 @@ static int teardown_fim_data(void **state) {
     fim_data_t *data = *state;
     int i;
 
+    if (data->lf->fields[FIM_MODE].value) {
+        free(data->lf->fields[FIM_ENTRY_TYPE].value);
+        data->lf->fields[FIM_ENTRY_TYPE].value = NULL;
+    }
+
+    if (data->lf->fields[FIM_ENTRY_TYPE].value) {
+        free(data->lf->fields[FIM_ENTRY_TYPE].value);
+        data->lf->fields[FIM_ENTRY_TYPE].value = NULL;
+    }
+
     for(i = 0; i < FIM_NFIELDS; i++) {
         free(data->lf->decoder_info->fields[i]);
     }
+
     free(data->lf->decoder_info->fields);
     free(data->lf->decoder_info);
 
@@ -440,6 +465,16 @@ static int setup_decode_fim_event(void **state) {
     if(data->decoder_info->fields[FIM_PROC_PNAME] = strdup("parent_name"), data->decoder_info->fields[FIM_PROC_PNAME] == NULL)
         return -1;
     if(data->decoder_info->fields[FIM_AUDIT_PCWD] = strdup("parent_cwd"), data->decoder_info->fields[FIM_AUDIT_PCWD] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_MODE] = strdup("mode"), data->decoder_info->fields[FIM_MODE] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_REGISTRY_ARCH] = strdup("arch"), data->decoder_info->fields[FIM_REGISTRY_ARCH] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_REGISTRY_VALUE_NAME] = strdup("value_name"), data->decoder_info->fields[FIM_REGISTRY_VALUE_NAME] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_REGISTRY_VALUE_TYPE] = strdup("value_type"), data->decoder_info->fields[FIM_REGISTRY_VALUE_TYPE] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_ENTRY_TYPE] = strdup("entry_type"), data->decoder_info->fields[FIM_ENTRY_TYPE] == NULL)
         return -1;
 
     if(data->log = strdup(plain_event), data->log == NULL)
@@ -1253,8 +1288,11 @@ static void test_fim_generate_alert_full_alert(void **state) {
     if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL)
         fail();
 
-    if(input->lf->fields[FIM_HARD_LINKS].value = strdup("[\"/a/hard1.file\",\"/b/hard2.file\"]"), input->lf->fields[FIM_HARD_LINKS].value == NULL)
-        fail();
+    if(input->lf->fields[FIM_HARD_LINKS].value = strdup("[\"/a/hard1.file\",\"/b/hard2.file\"]"),
+       input->lf->fields[FIM_HARD_LINKS].value == NULL) {
+
+       fail();
+    }
 
     cJSON_ArrayForEach(array_it, changed_attributes) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
@@ -2833,89 +2871,11 @@ static void test_fim_process_alert_no_attributes(void **state) {
     if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
         fail();
 
-    /* Inside fim_send_db_save */
-    expect_any(__wrap_wdbc_query_ex, sock);
-    expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
-        "{\"path\":\"/a/path\","
-        "\"timestamp\":123456789}");
-    expect_any(__wrap_wdbc_query_ex, len);
-    will_return(__wrap_wdbc_query_ex, result);
-    will_return(__wrap_wdbc_query_ex, 0);
-
-    expect_string(__wrap_wdbc_parse_result, result, result);
-    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+    expect_string(__wrap__mdebug1, formatted_msg, "No member 'type' in Syscheck attributes JSON payload");
 
     ret = fim_process_alert(&sdb, input->lf, data);
 
-    assert_int_equal(ret, 0);
-
-    // Assert fim_generate_alert
-    /* assert new attributes */
-    assert_null(input->lf->fields[FIM_SIZE].value);
-    assert_null(input->lf->fields[FIM_INODE].value);
-    assert_int_equal(input->lf->inode_after, 0);
-    assert_null(input->lf->fields[FIM_MTIME].value);
-    assert_int_equal(input->lf->mtime_after, 0);
-    assert_null(input->lf->fields[FIM_PERM].value);
-    assert_null(input->lf->fields[FIM_UNAME].value);
-    assert_null(input->lf->fields[FIM_GNAME].value);
-    assert_null(input->lf->fields[FIM_UID].value);
-    assert_null(input->lf->fields[FIM_GID].value);
-    assert_null(input->lf->fields[FIM_MD5].value);
-    assert_null(input->lf->fields[FIM_SHA1].value);
-    assert_null(input->lf->fields[FIM_SHA256].value);
-    assert_null(input->lf->fields[FIM_SYM_PATH].value);
-
-    /* assert old attributes */
-    assert_string_equal(input->lf->size_before, "1234");
-    assert_int_equal(input->lf->inode_before, 2345);
-    assert_int_equal(input->lf->mtime_before, 3456);
-    assert_string_equal(input->lf->perm_before, "old_perm");
-    assert_string_equal(input->lf->uname_before, "old_user_name");
-    assert_string_equal(input->lf->gname_before, "old_group_name");
-    assert_string_equal(input->lf->owner_before, "old_uid");
-    assert_string_equal(input->lf->gowner_before, "old_gid");
-    assert_string_equal(input->lf->md5_before, "old_hash_md5");
-    assert_string_equal(input->lf->sha1_before, "old_hash_sha1");
-    assert_string_equal(input->lf->sha256_before, "old_hash_sha256");
-
-    /* Assert values gotten from audit */
-    assert_string_equal(input->lf->fields[FIM_PPID].value, "12345");
-    assert_string_equal(input->lf->fields[FIM_PROC_ID].value, "23456");
-    assert_string_equal(input->lf->fields[FIM_USER_ID].value, "user_id");
-    assert_string_equal(input->lf->fields[FIM_USER_NAME].value, "user_name");
-    assert_string_equal(input->lf->fields[FIM_GROUP_ID].value, "group_id");
-    assert_string_equal(input->lf->fields[FIM_GROUP_NAME].value, "group_name");
-    assert_string_equal(input->lf->fields[FIM_PROC_NAME].value, "process_name");
-    assert_string_equal(input->lf->fields[FIM_AUDIT_ID].value, "audit_uid");
-    assert_string_equal(input->lf->fields[FIM_AUDIT_NAME].value, "audit_name");
-    assert_string_equal(input->lf->fields[FIM_EFFECTIVE_UID].value, "effective_uid");
-    assert_string_equal(input->lf->fields[FIM_EFFECTIVE_NAME].value, "effective_name");
-
-    assert_string_equal(input->lf->full_log,
-        "File '/a/path' modified\n"
-        "Hard links: /a/hard1.file,/b/hard2.file\n"
-        "Mode: whodata\n"
-        "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n"
-        "Size changed from '1234' to ''\n"
-        "Permissions changed from 'old_perm' to ''\n"
-        "Ownership was 'old_uid', now it is ''\n"
-        "User name was 'old_user_name', now it is ''\n"
-        "Group ownership was 'old_gid', now it is ''\n"
-        "Group name was 'old_group_name', now it is ''\n"
-        "Old modification time was: '3456', now it is '0'\n"
-        "Old inode was: '2345', now it is '0'\n"
-        "Old md5sum was: 'old_hash_md5'\n"
-        "New md5sum is : ''\n"
-        "Old sha1sum was: 'old_hash_sha1'\n"
-        "New sha1sum is : ''\n"
-        "Old sha256sum was: 'old_hash_sha256'\n"
-        "New sha256sum is : ''\n");
-
-    /* Assert actual output */
-    assert_int_equal(input->lf->event_type, FIM_MODIFIED);
-    assert_string_equal(input->lf->decoder_info->name, FIM_MOD);
-    assert_int_equal(input->lf->decoder_info->id, 0);
+    assert_int_equal(ret, -1);
 }
 
 static void test_fim_process_alert_no_old_attributes(void **state) {
@@ -3157,8 +3117,6 @@ static void test_decode_fim_event_type_event(void **state) {
 
     if(lf->agent_id = strdup("007"), lf->agent_id == NULL)
         fail();
-
-    lf->decoder_info->fields[FIM_MODE] = strdup("mode");
 
     /* Inside fim_process_alert */
     expect_any(__wrap_wdbc_query_ex, sock);
