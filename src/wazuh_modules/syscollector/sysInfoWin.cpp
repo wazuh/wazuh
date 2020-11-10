@@ -13,6 +13,9 @@
 #include <windows.h>
 #include <psapi.h>
 #include <tlhelp32.h>
+#include <winternl.h>
+#include <ntstatus.h>
+#include <iphlpapi.h>
 #include <memory>
 #include <list>
 #include <set>
@@ -25,6 +28,9 @@
 #include "registryHelper.h"
 #include "defs.h"
 #include "debug_op.h"
+#include "sysOsInfoWin.h"
+#include "ports/portWindowsWrapper.h"
+#include "ports/portImpl.h"
 
 constexpr auto BASEBOARD_INFORMATION_TYPE{2};
 constexpr auto CENTRAL_PROCESSOR_REGISTRY{"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
@@ -546,12 +552,10 @@ void SysInfo::getMemory(nlohmann::json& info) const
     }
 }
 
-nlohmann::json SysInfo::getProcessesInfo() const
+static void fillProcessesData(std::function<void(PROCESSENTRY32)> func) 
 {
-    nlohmann::json jsProcessesList{};
     PROCESSENTRY32 processEntry{};
     processEntry.dwSize = sizeof(PROCESSENTRY32);
-    // Create a snapshot of all current processes
     const auto processesSnapshot { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
     if (INVALID_HANDLE_VALUE != processesSnapshot)
     {
@@ -559,7 +563,7 @@ nlohmann::json SysInfo::getProcessesInfo() const
         {
             do
             {
-                jsProcessesList.push_back(getProcessInfo(processEntry));
+                func(processEntry);
             } while (Process32Next(processesSnapshot, &processEntry));
         }
         else
@@ -584,6 +588,16 @@ nlohmann::json SysInfo::getProcessesInfo() const
             "Unable to create process snapshot."
         };      
     }
+}
+
+nlohmann::json SysInfo::getProcessesInfo() const
+{
+    nlohmann::json jsProcessesList{};
+    fillProcessesData([&jsProcessesList](const auto& processEntry)
+        {
+            jsProcessesList.push_back(getProcessInfo(processEntry));
+        });
+          
     return jsProcessesList;
 }
 
@@ -603,12 +617,105 @@ nlohmann::json SysInfo::getPackages() const
 
 nlohmann::json SysInfo::getOsInfo() const
 {
-    // Currently not supported for this OS
-    return {};
+    nlohmann::json ret;
+    const auto spOsInfoProvider
+    {
+        std::make_shared<SysOsInfoProviderWindows>()
+    };
+    SysOsInfo::setOsInfo(spOsInfoProvider, ret);
+    return ret;
+}
+
+nlohmann::json SysInfo::getNetworks() const
+{
+    //not implemented for this os yet.
+    nlohmann::json ret;
+    return ret;
+}
+
+template <class T, typename TableClass>
+void getTablePorts(TableClass ownerId, int32_t tcpipVersion, std::unique_ptr<T []>& tableList, std::function<DWORD(T*,DWORD *,bool, int32_t, TableClass)> GetTable)
+{
+    TableClass classId { ownerId };
+    DWORD size { 0 };
+    
+    if (ERROR_INSUFFICIENT_BUFFER == GetTable(nullptr, &size, true, tcpipVersion, classId))
+    {
+        tableList = std::make_unique<T []>(size);
+        if (tableList)
+        {
+            if (NO_ERROR != GetTable(tableList.get(), &size, true, tcpipVersion, classId))
+            {
+                throw std::runtime_error("Error when get table information");
+            }
+        }
+    }
+}
+
+template<typename T>
+void expandPortData(T data, const std::map<pid_t,std::string>& processDataList, nlohmann::json& result)
+{
+    if (data)
+    {
+        for (auto i = 0ul; i < data->dwNumEntries; ++i)
+        {
+            nlohmann::json port;
+            std::make_unique<PortImpl>(std::make_shared<WindowsPortWrapper>(data->table[i],processDataList))->buildPortData(port);
+            result["ports"].push_back(port);
+        }
+    }
 }
 
 nlohmann::json SysInfo::getPorts() const
 {
-    // Currently not supported for this OS
-    return {};
+    nlohmann::json ports;
+    std::map<pid_t,std::string> processDataList;
+    PortTables portTable;
+
+    fillProcessesData([&processDataList](const auto& processEntry)
+        {
+            processDataList[processEntry.th32ProcessID] = processEntry.szExeFile;
+        });
+    
+    getTablePorts<MIB_TCPTABLE_OWNER_PID, TCP_TABLE_CLASS>(
+        TCP_TABLE_OWNER_PID_ALL,
+        AF_INET, 
+        portTable.tcp,
+        [](MIB_TCPTABLE_OWNER_PID* table, DWORD * size, bool order, int32_t tcpipVersion, TCP_TABLE_CLASS tableClass)
+        {
+            return GetExtendedTcpTable(table, size, order, tcpipVersion, tableClass, 0);
+        } );
+    expandPortData(portTable.tcp.get(), processDataList, ports);
+
+    getTablePorts<MIB_TCP6TABLE_OWNER_PID, TCP_TABLE_CLASS>(
+        TCP_TABLE_OWNER_PID_ALL,
+        AF_INET6, 
+        portTable.tcp6,
+        [](MIB_TCP6TABLE_OWNER_PID* table, DWORD * size, bool order, int32_t tcpipVersion, TCP_TABLE_CLASS tableClass)
+        {
+            return GetExtendedTcpTable(table, size, order, tcpipVersion, tableClass, 0);
+        } );
+    expandPortData(portTable.tcp6.get(), processDataList, ports);
+
+    getTablePorts<MIB_UDPTABLE_OWNER_PID, UDP_TABLE_CLASS>(
+        UDP_TABLE_OWNER_PID,
+        AF_INET, 
+        portTable.udp,
+        [](MIB_UDPTABLE_OWNER_PID* table, DWORD * size, bool order, int32_t tcpipVersion, UDP_TABLE_CLASS tableClass)
+        {
+            return GetExtendedUdpTable(table, size, order, tcpipVersion, tableClass, 0);
+        } );
+    expandPortData(portTable.udp.get(), processDataList, ports);
+   
+    getTablePorts<MIB_UDP6TABLE_OWNER_PID, UDP_TABLE_CLASS>(
+        UDP_TABLE_OWNER_PID,
+        AF_INET6, 
+        portTable.udp6,
+        [](MIB_UDP6TABLE_OWNER_PID* table, DWORD * size, bool order, int32_t tcpipVersion, UDP_TABLE_CLASS tableClass)
+        {
+            return GetExtendedUdpTable(table, size, order, tcpipVersion, tableClass, 0);
+        } );
+    expandPortData(portTable.udp6.get(), processDataList, ports);
+    
+    return ports;
 }
