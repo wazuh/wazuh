@@ -12,12 +12,11 @@
 #ifndef _SYS_INFO_HPP
 #define _SYS_INFO_HPP
 
-#include "json.hpp"
+#include "sysInfoInterface.h"
 
 constexpr auto KByte{1024};
 
-
-class SysInfo
+class SysInfo: public ISysInfo
 {
 public:
     SysInfo() = default;

@@ -6,6 +6,8 @@ include_directories(${CMAKE_SOURCE_DIR})
 
 add_subdirectory(sysInfo)
 add_subdirectory(sysInfoPorts)
+add_subdirectory(sysCollectorImp)
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_subdirectory(sysInfoNetworkLinux)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
