@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
@@ -27,17 +27,17 @@ from wazuh.core.wazuh_socket import OssecSocket, OssecSocketJSON
 
 
 def send_to_tasks_socket(command):
-    """Send command to upgrade module / task module
+    """Send command task module
 
     Parameters
     ----------
-    command
+    command : dict
+        Command to be send to task module
 
     Returns
     -------
-    Message received from the socket (Task module or Upgrade module)
+    Message received from the socket
     """
-    # Send upgrading command
     s = OssecSocket(common.TASKS_SOCKET)
     s.send(dumps(command).encode())
     data = loads(s.receive().decode())
