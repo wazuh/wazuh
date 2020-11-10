@@ -17,6 +17,15 @@ void SysInfoParsersTest::TearDown()
 {
 };
 
+TEST_F(SysInfoParsersTest, BaseClass)
+{
+    ISysOsParser parser;
+    nlohmann::json output;
+    std::stringstream info;
+    EXPECT_FALSE(parser.parseFile(info, output));
+    EXPECT_FALSE(parser.parseUname("", output));
+}
+
 TEST_F(SysInfoParsersTest, UnixLinux)
 {
     constexpr auto UNIX_RELEASE_FILE
@@ -163,12 +172,66 @@ TEST_F(SysInfoParsersTest, RedHatCentos)
     const auto spParser{FactorySysOsParser::create("rhel")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("5.11", output["os_version"]);
-    EXPECT_EQ("Centos Linux", output["os_name"]);
-    EXPECT_EQ("centos", output["os_platform"]);
+    EXPECT_EQ("CentOS", output["os_name"]);
+    EXPECT_EQ("rhel", output["os_platform"]);
     EXPECT_EQ("Final", output["os_codename"]);
     EXPECT_EQ("5", output["os_major"]);
     EXPECT_EQ("11", output["os_minor"]);
 }
+
+TEST_F(SysInfoParsersTest, RedHatFedora)
+{
+    constexpr auto REDHAT_RELEASE_FILE
+    {
+        "Fedora release 22 (Twenty Two)"
+    };
+    nlohmann::json output;
+    std::stringstream info{REDHAT_RELEASE_FILE};
+    const auto spParser{FactorySysOsParser::create("rhel")};
+    EXPECT_TRUE(spParser->parseFile(info, output));
+    EXPECT_EQ("22", output["os_version"]);
+    EXPECT_EQ("Fedora", output["os_name"]);
+    EXPECT_EQ("rhel", output["os_platform"]);
+    EXPECT_EQ("Twenty Two", output["os_codename"]);
+    EXPECT_EQ("22", output["os_major"]);
+}
+
+
+TEST_F(SysInfoParsersTest, RedHatServer)
+{
+    constexpr auto REDHAT_RELEASE_FILE
+    {
+        "Red Hat Enterprise Linux Server release 7.2 (Maipo)"
+    };
+    nlohmann::json output;
+    std::stringstream info{REDHAT_RELEASE_FILE};
+    const auto spParser{FactorySysOsParser::create("rhel")};
+    EXPECT_TRUE(spParser->parseFile(info, output));
+    EXPECT_EQ("7.2", output["os_version"]);
+    EXPECT_EQ("Red Hat Enterprise Linux Server", output["os_name"]);
+    EXPECT_EQ("rhel", output["os_platform"]);
+    EXPECT_EQ("Maipo", output["os_codename"]);
+    EXPECT_EQ("7", output["os_major"]);
+    EXPECT_EQ("2", output["os_minor"]);
+}
+
+TEST_F(SysInfoParsersTest, RedHatLinux)
+{
+    constexpr auto REDHAT_RELEASE_FILE
+    {
+        "Red Hat Enterprise Linux ES release 3 (Taroon Update 4)"
+    };
+    nlohmann::json output;
+    std::stringstream info{REDHAT_RELEASE_FILE};
+    const auto spParser{FactorySysOsParser::create("rhel")};
+    EXPECT_TRUE(spParser->parseFile(info, output));
+    EXPECT_EQ("3", output["os_version"]);
+    EXPECT_EQ("Red Hat Enterprise Linux ES", output["os_name"]);
+    EXPECT_EQ("rhel", output["os_platform"]);
+    EXPECT_EQ("Taroon Update 4", output["os_codename"]);
+    EXPECT_EQ("3", output["os_major"]);
+}
+
 
 TEST_F(SysInfoParsersTest, Debian)
 {
@@ -333,7 +396,6 @@ TEST_F(SysInfoParsersTest, HPUX)
     EXPECT_EQ("hp-ux", output["os_platform"]);
     EXPECT_EQ("11", output["os_major"]);
     EXPECT_EQ("23", output["os_minor"]);
-
 }
 
 TEST_F(SysInfoParsersTest, UknownPlatform)
