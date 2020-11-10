@@ -89,6 +89,7 @@ static void help_authd()
     print_out("    -x <path>   Full path to server certificate. Default: %s%s.", DEFAULTDIR, CERTFILE);
     print_out("    -k <path>   Full path to server key. Default: %s%s.", DEFAULTDIR, KEYFILE);
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
+    print_out("    -L          Force insertion though agent limit reached.");
     print_out(" ");
     exit(1);
 }
@@ -280,6 +281,10 @@ int main(int argc, char **argv)
 
                 case 'a':
                     auto_method = 1;
+                    break;
+
+                case 'L':
+                    mwarn("This option no longer applies. The agent limit has been removed.");
                     break;
 
                 default:

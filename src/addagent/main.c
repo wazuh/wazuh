@@ -38,6 +38,7 @@ __attribute__((noreturn)) static void helpmsg()
     print_out("    -h          This help message.");
     print_out("    -j          Use JSON output.");
     print_out("    -l          List available agents.");
+    print_out("    -L          Disable agents limit.");
     print_out("    -a <ip>     Add new agent.");
     print_out("    -n <name>   Name for new agent.");
     print_out("    -e <id>     Extracts key for an agent (Manager only).");
@@ -177,6 +178,11 @@ int main(int argc, char **argv)
                     merror_exit("Invalid number for -F");
 
                 setenv("OSSEC_REMOVE_DUPLICATED", optarg, 1);
+                break;
+            case 'L':
+#ifndef CLIENT
+                mwarn("This option no longer applies. The agent limit has been removed.");
+#endif
                 break;
             default:
                 helpmsg();
