@@ -113,7 +113,7 @@ int __wrap_fim_db_get_first_path(fdb_t * fim_sql, int type, char **path) {
 }
 
 int __wrap_fim_db_get_path_range(fdb_t *fim_sql,
-                                 int type,
+                                 fim_type type,
                                  char *start,
                                  char *top,
                                  fim_tmp_file **file,
@@ -213,27 +213,9 @@ int __wrap_fim_db_sync_path_range(fdb_t *fim_sql,
     return mock();
 }
 
-void expect_fim_db_get_path_range_call(const fdb_t *db,
-                                       const char *start_str,
-                                       const char *top_str,
-                                       int storage,
-                                       fim_tmp_file *tmp_file,
-                                       int ret) {
-
-    expect_value(__wrap_fim_db_get_path_range, fim_sql, db);
-    expect_value(__wrap_fim_db_get_path_range, type, FIM_TYPE_FILE);
-    expect_string(__wrap_fim_db_get_path_range, start, start_str);
-    expect_string(__wrap_fim_db_get_path_range, top, top_str);
-    expect_value(__wrap_fim_db_get_path_range, storage, storage);
-    will_return(__wrap_fim_db_get_path_range, tmp_file);
-    will_return(__wrap_fim_db_get_path_range, ret);
-}
-
-void expect_fim_db_delete_range_call(const fdb_t *db, int storage, const fim_tmp_file *file, int ret){
-    expect_value(__wrap_fim_db_delete_range, fim_sql, db);
-    expect_value(__wrap_fim_db_delete_range, storage, storage);
-    expect_memory(__wrap_fim_db_delete_range, file, file, sizeof(file));
-    will_return(__wrap_fim_db_delete_range, ret);
+int __wrap_fim_db_get_count_entries(fdb_t *fim_sql) {
+    check_expected_ptr(fim_sql);
+    return mock();
 }
 
 #ifndef WIN32
@@ -264,10 +246,44 @@ int __wrap_fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, c
     *buffer = mock_type(char *);
 
     return mock();
-
 }
 
 void __wrap_fim_db_clean_file(fim_tmp_file **file, int storage) {
     check_expected_ptr(file);
     check_expected(storage);
+}
+
+void expect_wrapper_fim_db_get_path_range_call(const fdb_t *db,
+                                       const char *start_str,
+                                       const char *top_str,
+                                       int storage,
+                                       fim_tmp_file *tmp_file,
+                                       int ret) {
+
+    expect_value(__wrap_fim_db_get_path_range, fim_sql, db);
+    expect_value(__wrap_fim_db_get_path_range, type, FIM_TYPE_FILE);
+    expect_string(__wrap_fim_db_get_path_range, start, start_str);
+    expect_string(__wrap_fim_db_get_path_range, top, top_str);
+    expect_value(__wrap_fim_db_get_path_range, storage, storage);
+    will_return(__wrap_fim_db_get_path_range, tmp_file);
+    will_return(__wrap_fim_db_get_path_range, ret);
+}
+
+void expect_wrapper_fim_db_delete_range_call(const fdb_t *db, int storage, const fim_tmp_file *file, int ret){
+    expect_value(__wrap_fim_db_delete_range, fim_sql, db);
+    expect_value(__wrap_fim_db_delete_range, storage, storage);
+    expect_memory(__wrap_fim_db_delete_range, file, file, sizeof(file));
+    will_return(__wrap_fim_db_delete_range, ret);
+}
+
+void expect_wrapper_fim_db_get_count_entries(const fdb_t *db, int ret) {
+    expect_value(__wrap_fim_db_get_count_entries, fim_sql, db);
+    will_return(__wrap_fim_db_get_count_entries, ret);
+}
+
+void expect_wrapper_fim_db_get_paths_from_inode(fdb_t *db, int inode, int dev, char **ret) {
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, db);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, inode);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, dev);
+    will_return(__wrap_fim_db_get_paths_from_inode, ret);
 }
