@@ -14,6 +14,7 @@
 #include <cmocka.h>
 #include "external/libplist/include/plist/plist.h"
 #include "../common.h"
+#include "../headers/shared.h"
 
 void wrap_plist_from_bin (char * bin, size_t size, plist_t *node) {
     if (test_mode) {
@@ -28,7 +29,8 @@ void wrap_plist_from_bin (char * bin, size_t size, plist_t *node) {
 void wrap_plist_to_xml (plist_t *node, char ** xml, uint32_t *size) {
     if (test_mode) {
         check_expected(node);
-        *xml = mock_type(char*);
+        char *tmp = mock_type(char*);
+        w_strdup(tmp, *xml);
         *size = mock_type(uint32_t);
         return;
     }

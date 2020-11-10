@@ -156,7 +156,7 @@ void test_sys_convert_bin_plist_failed_tmpfile(void **state)
     will_return(wrap_plist_from_bin, (void *)1);
 
     expect_value(wrap_plist_to_xml, node, (void *)1);
-    will_return(wrap_plist_to_xml, (void *)1);
+    will_return(wrap_plist_to_xml, "test");
     will_return(wrap_plist_to_xml, stat_size);
 
     expect_value(wrap_fclose, fp, (void *)1);
@@ -193,7 +193,7 @@ void test_sys_convert_bin_plist_ok(void **state)
     will_return(wrap_plist_from_bin, (void *)1);
 
     expect_value(wrap_plist_to_xml, node, (void *)1);
-    will_return(wrap_plist_to_xml, (void *)1);
+    will_return(wrap_plist_to_xml, "<?xml");
     will_return(wrap_plist_to_xml, stat_size);
 
     expect_value(wrap_fclose, fp, (void *)1);
@@ -201,7 +201,7 @@ void test_sys_convert_bin_plist_ok(void **state)
 
     will_return(wrap_tmpfile, (void *)1);
 
-    expect_value(wrap_fwrite, src, (char *)1);
+    expect_string(wrap_fwrite, src, "<?xml");
     will_return(wrap_fwrite, 1);
 
     expect_value(wrap_fseek, fp, (FILE *)1);

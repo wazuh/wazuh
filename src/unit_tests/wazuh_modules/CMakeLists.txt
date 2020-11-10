@@ -22,4 +22,6 @@ elseif(${TARGET} STREQUAL "agent")
   add_subdirectory(syscollector)
 endif()
 
-add_subdirectory(agent_upgrade)
+if(NOT ${uname} STREQUAL "Darwin")
+  add_subdirectory(agent_upgrade)
+endif()
