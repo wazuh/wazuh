@@ -81,25 +81,24 @@ class WazuhDBQueryRootcheck(WazuhDBQuery):
 
 
 def last_scan(agent_id):
-    """Gets the last rootcheck scan of an agent.
+    """Get the last rootcheck scan of an agent.
 
     :param agent_id: Agent ID.
     :return: Dictionary: end, start.
     """
     Agent(agent_id).get_basic_information()
     wdb_conn = WazuhDBConnection()
-    data = {}
 
     # end time
     result = wdb_conn.execute(f"agent {agent_id} sql SELECT max(date_last) FROM pm_event WHERE "
                               "log = 'Ending rootcheck scan.'")
     time = list(result[0].values())[0] if result else None
-    data['end'] = datetime.utcfromtimestamp(time).strftime("%Y-%m-%d %H:%M:%S") if time is not None else None
+    end = datetime.utcfromtimestamp(time).strftime("%Y-%m-%d %H:%M:%S") if time is not None else None
 
     # start time
     result = wdb_conn.execute(f"agent {agent_id} sql SELECT max(date_last) FROM pm_event "
                               "WHERE log = 'Starting rootcheck scan.'")
     time = list(result[0].values())[0] if result else None
-    data['start'] = datetime.utcfromtimestamp(time).strftime("%Y-%m-%d %H:%M:%S") if time is not None else None
+    start = datetime.utcfromtimestamp(time).strftime("%Y-%m-%d %H:%M:%S") if time is not None else None
 
-    return data if data else None
+    return {'start': start, 'end': None if start is None else None if end is None or end < start else end}

@@ -496,6 +496,7 @@ get_rbac_actions:
         description: Clear the agents rootcheck database
         resources:
           - agent:id
+          - agent:group
         example:
           actions:
             - rootcheck:clear
@@ -508,6 +509,7 @@ get_rbac_actions:
         description: Access information from agents rootcheck database
         resources:
           - agent:id
+          - agent:group
         example:
           actions:
             - rootcheck:read
@@ -521,6 +523,7 @@ get_rbac_actions:
         description: Run agents rootcheck scan
         resources:
           - agent:id
+          - agent:group
         example:
           actions:
             - rootcheck:run

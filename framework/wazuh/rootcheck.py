@@ -121,10 +121,10 @@ def get_rootcheck_agent(agent_list=None, offset=0, limit=common.database_limit, 
     limit : int
         Maximum number of elements to return.
     sort : str
-        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        Sort the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
         ascending or descending order.
     search : str
-        Looks for elements with the specified string.
+        Look for elements with the specified string.
     select : str
         Select which fields to return (separated by comma).
     q : str

@@ -57,7 +57,7 @@ class WazuhDBConnection:
         elif query_elements[sql_first_index] == 'rootcheck':
             input_val_errors = [
                 (query_elements[sql_first_index+1] == 'delete' or query_elements[sql_first_index+1] == 'save',
-                 'The API can only send "save" or "delete" requests to WDB')
+                 'Only "save" or "delete" requests can be sent to WDB')
             ]
         else:
             input_val_errors = [
@@ -65,7 +65,8 @@ class WazuhDBConnection:
                 (query_elements[0] == 'agent' or query_elements[0] == 'global', "The {} database is not valid".format(query_elements[0])),
                 (query_elements[1].isdigit() if query_elements[0] == 'agent' else True, "Incorrect agent ID {}".format(query_elements[1])),
                 (query_elements[sql_first_index+1] == 'select' or query_elements[sql_first_index+1] == 'delete' or
-                 query_elements[sql_first_index+1] == 'update', "The API can only send select requests to WDB"),
+                 query_elements[sql_first_index+1] == 'update', 'Only "select", "delete" or "update" requests can be '
+                                                                'sent to WDB'),
                 (not ';' in query, "Found a not valid symbol in database query: ;")
             ]
 

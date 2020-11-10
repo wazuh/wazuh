@@ -342,6 +342,7 @@ x-rbac-catalog:
       description: "Access information from agents rootcheck database"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: [ 'rootcheck:read' ]
         resources: [ 'agent:id:011' ]
@@ -350,6 +351,7 @@ x-rbac-catalog:
       description: "Clear the agents rootcheck database"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: [ 'rootcheck:clear' ]
         resources: [ 'agent:id:*' ]
@@ -358,6 +360,7 @@ x-rbac-catalog:
       description: "Run agents rootcheck scan"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
       example:
         actions: [ 'rootcheck:run' ]
         resources: [ 'agent:id:*' ]
