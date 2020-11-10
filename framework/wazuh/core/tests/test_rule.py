@@ -45,6 +45,22 @@ def test_add_detail(detail, value, details):
     assert value in details[detail]
 
 
+@pytest.mark.parametrize('detail, value, attribs, details', [
+    ('new', '4', {'attrib': 'attrib_value'}, {'actual': '3'}),
+    ('actual', '4', {'new_attrib': 'attrib_value', 'new_attrib2': 'whatever'}, {'actual': {'pattern': '3'}}),
+])
+def test_add_dynamic_detail(detail, value, attribs, details):
+    """Test add_dynamic_detail core rule function."""
+    rule.add_dynamic_detail(detail, value, attribs, details)
+    assert detail in details.keys()
+    if detail == next(iter(details.keys())):
+        assert details[detail]['pattern'].endswith(value)
+    else:
+        assert details[detail]['pattern'] == value
+    for key, value in attribs.items():
+        assert details[detail][key] == value
+
+
 @pytest.mark.parametrize('status, expected_result', [
     ('enabled', 'enabled'),
     ('disabled', 'disabled'),
@@ -82,6 +98,33 @@ def test_load_rules_from_file(rule_file, rule_path, rule_status, exception):
             assert r['status'] == rule_status
     except WazuhError as e:
         assert e.code == exception.code
+
+
+@patch("wazuh.core.common.ossec_path", new=parent_directory)
+@patch("wazuh.core.common.ruleset_rules_path", new=data_path)
+def test_load_rules_from_file_details():
+    """Test set_groups rule core function."""
+    rule_file = '9999-rules_regex_test.xml'
+    rule_path = 'tests/data/rules'
+    details_result = {
+        'id': {
+            'pattern': 'this is a wildcard'
+        },
+        'test_field_name': {
+            'pattern': 'test_field_value',
+            'type': 'osmatch'
+        },
+        'match': {
+            'pattern': 'test_match_1test_match_2test_match_3',
+            'negate': 'yes'
+        },
+        'regex': {
+            'pattern': 'test_regex',
+            'type': 'osregex'
+        }
+    }
+    result = rule.load_rules_from_file(rule_file, rule_path, 'enabled')
+    assert result[0]['details'] == details_result
 
 
 @patch("wazuh.core.rule.load_wazuh_xml", side_effect=OSError(13, 'Error', 'Permissions'))
