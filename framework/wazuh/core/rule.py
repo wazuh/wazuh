@@ -8,7 +8,7 @@ from glob import glob
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhError
-from wazuh.core.utils import load_wazuh_xml
+from wazuh.core.utils import load_wazuh_xml, add_dynamic_detail
 
 REQUIRED_FIELDS = ['id']
 RULE_REQUIREMENTS = ['pci_dss', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13', 'tsc', 'mitre']
@@ -40,31 +40,6 @@ def add_detail(detail, value, details):
         details[detail].append(value)
     else:
         details[detail] = value
-
-
-def add_dynamic_detail(detail, value, attribs, details):
-    """Add a detail with attributes (i.e. regex with negate or type).
-
-    Parameters
-    ----------
-    detail : str
-        Name of the detail.
-    value : str
-        Detail value.
-    attribs : dict
-        Dictionary with the XML attributes.
-    details : dict
-        Dictionary with all the current details.
-    """
-    if detail in details:
-        new_pattern = details[detail]['pattern'] + value
-        details[detail].clear()
-        details[detail]['pattern'] = new_pattern
-    else:
-        details[detail] = dict()
-        details[detail]['pattern'] = value
-
-    details[detail].update(attribs)
 
 
 def check_status(status):
@@ -113,6 +88,7 @@ def load_rules_from_file(rule_filename, rule_relative_path, rule_status):
                         for xml_rule_tags in list(xml_rule):
                             tag = xml_rule_tags.tag.lower()
                             value = xml_rule_tags.text
+                            attribs = xml_rule_tags.attrib
                             if value is None:
                                 value = ''
                             if tag == "group":
@@ -124,7 +100,7 @@ def load_rules_from_file(rule_filename, rule_relative_path, rule_status):
                                 rule['description'] += value
                             elif tag in ("list", "info"):
                                 list_detail = {'name': value}
-                                for attrib, attrib_value in xml_rule_tags.attrib.items():
+                                for attrib, attrib_value in attribs.items():
                                     list_detail[attrib] = attrib_value
                                 add_detail(tag, list_detail, rule['details'])
                             # show rule variables
@@ -134,7 +110,7 @@ def load_rules_from_file(rule_filename, rule_relative_path, rule_status):
                                         value = variable.text
                                 if tag == 'field':
                                     tag = xml_rule_tags.attrib.pop('name')
-                                add_dynamic_detail(tag, value, xml_rule_tags.attrib, rule['details'])
+                                add_dynamic_detail(tag, value, attribs, rule['details'])
                             else:
                                 add_detail(tag, value, rule['details'])
 

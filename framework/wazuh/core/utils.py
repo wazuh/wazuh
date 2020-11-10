@@ -1384,3 +1384,28 @@ def get_files():
     files.add('etc/ossec.conf')
 
     return files
+
+
+def add_dynamic_detail(detail, value, attribs, details):
+    """Add a detail with attributes (i.e. regex with negate or type).
+
+    Parameters
+    ----------
+    detail : str
+        Name of the detail.
+    value : str
+        Detail value.
+    attribs : dict
+        Dictionary with the XML attributes.
+    details : dict
+        Dictionary with all the current details.
+    """
+    if detail in details:
+        new_pattern = details[detail]['pattern'] + value
+        details[detail].clear()
+        details[detail]['pattern'] = new_pattern
+    else:
+        details[detail] = dict()
+        details[detail]['pattern'] = value
+
+    details[detail].update(attribs)
