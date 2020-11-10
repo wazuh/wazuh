@@ -146,17 +146,11 @@ public:
 
     std::string netmaskV6() const override
     {
-        std::string retVal { "unknown" };
-        if (Utils::isVistaOrLater())
-        {
-            if (m_currentUnicastAddress)
-            {
-                // Convert OnLinkPrefixLength to hex notation
-                retVal = length_to_ipv6_mask(m_currentUnicastAddress->OnLinkPrefixLength);  
-            }
-        }
+        // "Convertion m_currentUnicastAddress->OnLinkPrefixLength to hex notation"
+        // This is not working currently. It always returns: "ffff:ffff:ffff:ffff::"
+        // Leaving this as empty for now.
         // Windows XP netmask IPv6 is not supported
-        return retVal;        
+        return "";
     }
 
     std::string broadcast() const override
@@ -214,7 +208,7 @@ public:
                         currentGWAddress = &(currentAdapterInfo->GatewayList);
                         while(currentGWAddress) 
                         {
-                            retVal += currentGWAddress->IpAddress.String;
+                            retVal = currentGWAddress->IpAddress.String;
                             currentGWAddress = currentGWAddress->Next;
                         }
                         foundMatch = true;
@@ -246,7 +240,7 @@ public:
         }
         // XP structure does not support Ipv6Metric information
         return retVal;
-    }    
+    }
 
     std::string dhcp() const override
     {
@@ -333,58 +327,6 @@ public:
     }
 
 private:
-    static char* length_to_ipv6_mask(int mask_length)
-    {
-        char string[64] = {'\0'};
-        char* netmask = (char*)calloc(65,sizeof(char));
-        int length = mask_length;
-        int i = 0, j = 0, k=0;
-
-        while (length){
-            if (length>=4){
-                string[j] = 'f';
-                j++;
-                length -= 4;
-            }else{
-                switch (length){
-                    case 3:
-                        string[j++] = 'e';
-                        break;
-                    case 2:
-                        string[j++] = 'c';
-                        break;
-                    case 1:
-                        string[j++] = '8';
-                        break;
-                }
-                length = 0;
-            }
-
-            k++;
-            if (k == 4 && length){
-                string[j] = ':';
-                j++;
-                k = 0;
-            }
-        }
-
-        if (k != 0){
-            while (k<4){
-                string[j] = '0';
-                j++;
-                k++;
-            }
-        }
-
-        for (i=0; i<2 && j < 39; i++){
-            string[j] = ':';
-            j++;
-        }
-
-        snprintf(netmask, 64, "%s", string);
-
-        return netmask;
-    }
 
     int adapterFamily() const
     {
