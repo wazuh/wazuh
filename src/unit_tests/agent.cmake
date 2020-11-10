@@ -20,8 +20,8 @@ else()
     set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -lcmocka -fprofile-arcs -ftest-coverage)
 endif()
 
-if(${uname} STREQUAL "Darwin")
-  add_subdirectory(wazuh_modules)
-else()
+if(NOT ${uname} STREQUAL "Darwin")
   add_subdirectory(client-agent)
 endif()
+
+add_subdirectory(wazuh_modules)

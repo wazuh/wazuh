@@ -34,6 +34,12 @@ typedef struct _OSHash {
     OSHashNode **table;
 } OSHash;
 
+typedef enum _OSHash_results_codes {
+    OSHASH_ERROR = 0,
+    OSHASH_DUPLICATE,
+    OSHASH_SUCCESS,
+} OSHash_results_codes;
+
 /* Prototypes */
 
 /* Create and initialize hash */

@@ -61,14 +61,6 @@ gid_t __wrap_Privsep_GetGroup(const char *name) {
     return mock_type(gid_t);
 }
 
-int __wrap_chown(const char *__file, __uid_t __owner, __gid_t __group) {
-    check_expected(__file);
-    check_expected(__owner);
-    check_expected(__group);
-
-    return mock_type(int);
-}
-
 /* setup/teardown */
 
 int setup_wdb_agent(void **state) {

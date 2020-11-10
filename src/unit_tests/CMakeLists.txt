@@ -48,6 +48,7 @@ endif()
 if((${uname} STREQUAL "Linux") OR (${uname} STREQUAL "Win32"))
   add_subdirectory(syscheckd)
   add_subdirectory(shared)
+  add_subdirectory(os_xml)
 endif()
 
 # Config files

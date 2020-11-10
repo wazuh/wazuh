@@ -3977,130 +3977,149 @@ stages:
           failed_items: []
 
 ---
-test_name: GET /agents/{agent_id}/upgrade_result
+test_name: GET /agents/upgrade_result
 
 stages:
 
   - name: Try get upgrade result agent 000 (manager)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/upgrade_result?wait_for_complete=true"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '000'
     response:
-      status_code: 400
+      status_code: 200
       json:
-        error: 1703
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - id:
+                - '000'
+              error:
+                code: 1703
+          total_affected_items: 0
+          total_failed_items: 1
 
   - name: Try get upgrade result not existing agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/999/upgrade_result?wait_for_complete=true"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: 999,1000
     response:
-      <<: *resource_not_found
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - id:
+                - '999'
+                - '1000'
+              error:
+                code: 1818
+          total_affected_items: 0
+          total_failed_items: 2
 
   - name: Try get upgrade result agent by name
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/upgrade_result?wait_for_complete=true"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: bad_id
     response:
       status_code: 400
       json:
         <<: *error_spec
 
-  - name: Get agent upgrade result not upgrade
+  - name: Upgrade agents
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/upgrade_result?wait_for_complete=true"
-      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        force: True
+        agents_list: 001,002,000
+        version: 4.0.0
     response:
-      status_code: 400
+      status_code: 200
       json:
-        error: !anyint
-        dapi_errors: !anything
-        detail: !anystr
-        title: !anystr
+        error: 2
+        data:
+          affected_items:
+            - agent: !anystr
+              task_id: 1
+            - agent: !anystr
+              task_id: 2
+          total_affected_items: 2
+          total_failed_items: 1
+          failed_items:
+            - error:
+                code: 1703
+                message: !anystr
+                remediation: !anystr
+              id:
+                - '000'
+        message: !anystr
 
-  - name: Upgrade an agent
+  - name: Get agents upgrade results
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/upgrade?wait_for_complete=true"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        force: True
-    response:
-      status_code:
-        - 200
-        - 500
-      verify_response_with:
-        function: tavern_utils:test_validate_upgrade
-      save:
-        $ext:
-          function: tavern_utils:test_validate_upgrade
-
-  - name: Get agent upgrade result
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/upgrade_result?wait_for_complete=true"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        wait_for_complete: True
+        agents_list: 000,001,002,009,010,999
     response:
-      status_code:
-        - 200
-        - 400
-      verify_response_with:
-        function: tavern_utils:test_validate_upgrade_result
-        extra_kwargs:
-          upgraded: "{upgraded:b}"
-
-  - name: Upgrade an agent to an invalid version
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/002/upgrade?wait_for_complete=true"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        version: 10000.10000.10000
-        force: True
-    response:
-      status_code:
-        - 200
-        - 500
-      verify_response_with:
-        function: tavern_utils:test_validate_upgrade
-      save:
-        $ext:
-          function: tavern_utils:test_validate_upgrade
-
-  - name: Get agent upgrade result (invalid version)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/002/upgrade_result?wait_for_complete=true"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        wait_for_complete: True
-    response:
-      status_code:
-        - 200
-        - 400
-      verify_response_with:
-        function: tavern_utils:test_validate_upgrade_result
-        extra_kwargs:
-          upgraded: "{upgraded:b}"
+      status_code: 200
+      json:
+        error: 2
+        data:
+          affected_items:
+            - message: Success
+              agent: '001'
+              task_id: 1
+              module: upgrade_module
+              command: upgrade
+              status: !anystr
+              create_time: !anystr
+              update_time: !anystr
+            - message: Success
+              agent: '002'
+              task_id: 2
+              module: upgrade_module
+              command: upgrade
+              status: !anystr
+              create_time: !anystr
+              update_time: !anystr
+          total_affected_items: 2
+          total_failed_items: 4
+          failed_items:
+            - error:
+                code: 1703
+                message: !anystr
+                remediation: !anystr
+              id:
+                - '000'
+            - error:
+                code: 1818
+                message: !anystr
+                remediation: !anything
+              id:
+                - '009'
+                - '010'
+                - '999'
+        message: !anystr
