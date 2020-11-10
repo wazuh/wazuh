@@ -9,8 +9,7 @@ if(${uname} STREQUAL "Darwin")
   # Tests list and flags
   list(APPEND tests_names "test_syscollector_bsd")
   list(APPEND tests_flags " ")
-endif()
-list(APPEND use_shared_libs 1)
+  list(APPEND use_shared_libs 1)
 
 # Generate modulesd library
 file(GLOB syscollector_files
@@ -68,3 +67,4 @@ foreach(counter RANGE ${count})
     endif()
     add_test(${test_name} ${test_name})
 endforeach()
+endif()
