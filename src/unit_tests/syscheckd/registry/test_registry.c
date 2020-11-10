@@ -1312,7 +1312,6 @@ static void test_fim_registry_process_value_event_ignore_event(void **state) {
     static registry_ignore ignore_conf[] = { { "valuename", ARCH_32BIT}, { "valuename", ARCH_64BIT}, { NULL, 0} };
     syscheck.value_ignore = ignore_conf;
 
-    printf("~~~~~puntero: %p", syscheck.value_ignore[0].entry);
     expect_string(__wrap__mdebug2, formatted_msg, "(6204): Ignoring 'value' 'valuename' due to 'valuename'");
 
     fim_registry_process_value_event(entry_array[1], entry_array[0], event_mode, data_buffer);
