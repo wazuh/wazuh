@@ -522,7 +522,7 @@ void test_wm_agent_upgrade_com_open_unsopported_mode(void **state) {
     will_return(__wrap_fclose, 0);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg,  "(8125): At open: Unsupported mode 'r'");
+    expect_string(__wrap__mterror, formatted_msg,  "(8125): At open: Unsupported mode.");
 
     char *response = wm_agent_upgrade_com_open(command);
     cJSON *response_object = cJSON_Parse(response);
