@@ -221,8 +221,7 @@ void test_getSyscheckConfig(void **state)
     will_return_always(__wrap_isChroot, 1);
 #endif
 
-    Read_Syscheck_Config("test_syscheck.conf");
-
+    Read_Syscheck_Config("test_syscheck_config.conf");
     ret = getSyscheckConfig();
     *state = ret;
 
@@ -233,7 +232,7 @@ void test_getSyscheckConfig(void **state)
     #if defined(TEST_SERVER) || defined(TEST_AGENT)
     assert_int_equal(cJSON_GetArraySize(sys_items), 20);
     #elif defined(TEST_WINAGENT)
-    assert_int_equal(cJSON_GetArraySize(sys_items), 25);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 27);
     #endif
 
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
@@ -277,7 +276,7 @@ void test_getSyscheckConfig(void **state)
 #if defined(TEST_SERVER) || defined(TEST_AGENT)
     assert_int_equal(cJSON_GetArraySize(sys_dir), 6);
     #elif defined(TEST_WINAGENT)
-    assert_int_equal(cJSON_GetArraySize(sys_dir), 10);
+    assert_int_equal(cJSON_GetArraySize(sys_dir), 17);
 #endif
 
 
@@ -299,13 +298,13 @@ void test_getSyscheckConfig(void **state)
     assert_int_equal(sys_windows_audit_interval->valueint, 0);
 
     cJSON *sys_registry = cJSON_GetObjectItem(sys_items, "registry");
-    assert_int_equal(cJSON_GetArraySize(sys_registry), 33);
+    assert_int_equal(cJSON_GetArraySize(sys_registry), 42);
     cJSON *sys_registry_ignore = cJSON_GetObjectItem(sys_items, "key_ignore");
-    assert_int_equal(cJSON_GetArraySize(sys_registry_ignore), 11);
+    assert_int_equal(cJSON_GetArraySize(sys_registry_ignore), 12);
     cJSON *sys_registry_ignore_sregex = cJSON_GetObjectItem(sys_items, "key_ignore_sregex");
     assert_int_equal(cJSON_GetArraySize(sys_registry_ignore_sregex), 1);
     cJSON *sys_registry_value_ignore = cJSON_GetObjectItem(sys_items, "value_ignore");
-    assert_int_equal(cJSON_GetArraySize(sys_registry_value_ignore), 4);
+    assert_int_equal(cJSON_GetArraySize(sys_registry_value_ignore), 5);
     cJSON *sys_registry_value_ignore_sregex = cJSON_GetObjectItem(sys_items, "value_ignore_sregex");
     assert_int_equal(cJSON_GetArraySize(sys_registry_value_ignore_sregex), 4);
 #endif
@@ -624,9 +623,9 @@ int main(void) {
         cmocka_unit_test_teardown(test_Read_Syscheck_Config_invalid, restart_syscheck),
         cmocka_unit_test_teardown(test_Read_Syscheck_Config_undefined, restart_syscheck),
         cmocka_unit_test_teardown(test_Read_Syscheck_Config_unparsed, restart_syscheck),
-        // cmocka_unit_test_teardown(test_getSyscheckConfig, restart_syscheck),
-        // cmocka_unit_test_teardown(test_getSyscheckConfig_no_audit, restart_syscheck),
-        // cmocka_unit_test_teardown(test_getSyscheckConfig_no_directories, restart_syscheck),
+        cmocka_unit_test_teardown(test_getSyscheckConfig, restart_syscheck),
+        cmocka_unit_test_teardown(test_getSyscheckConfig_no_audit, restart_syscheck),
+        cmocka_unit_test_teardown(test_getSyscheckConfig_no_directories, restart_syscheck),
         cmocka_unit_test_teardown(test_getSyscheckInternalOptions, restart_syscheck),
         cmocka_unit_test_teardown(test_SyscheckConf_DirectoriesWithCommas, restart_syscheck),
     };
