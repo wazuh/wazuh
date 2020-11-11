@@ -13,6 +13,9 @@ All notable changes to this project will be documented in this file.
 - **Wazuh API:**
   - Added endpoints to query and manage Rootcheck data.  ([#6496](https://github.com/wazuh/wazuh/pull/6496))
 
+- **Framework:**
+  - Improved `q` parameter on rules, decoders and cdb-lists modules to allow multiple nested fields. ([#6560](https://github.com/wazuh/wazuh/pull/6560))
+
 ### Changed
 
 - Removed the limit of agents that a manager can support. ([#6097](https://github.com/wazuh/wazuh/issues/6097))
