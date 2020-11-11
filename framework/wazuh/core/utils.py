@@ -12,6 +12,7 @@ import shutil
 import stat
 import sys
 import typing
+from copy import deepcopy
 from datetime import datetime, timedelta
 from itertools import groupby, chain
 from os import chmod, chown, path, listdir, mkdir, curdir, rename, utime
@@ -802,8 +803,32 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
         else:
             return False
 
+    def get_last_dict_element(key_list, dikt):
+        """Get the last element of a dictionary following the keys within a list.
+
+        Parameters
+        ----------
+        key_list : list
+            List of ordered keys.
+        dikt : dict
+            Copy of the full dictionary.
+
+        Returns
+        -------
+        It will return the value of the last key processed in the `key_list` if they all are subsequent keys of it.
+        `None` otherwise.
+        """
+        for key in key_list:
+            if key in dikt:
+                dikt = dikt[key]
+            else:
+                return None
+        else:
+            return dikt
+
     # compile regular expression only one time when function is called
-    re_get_elements = re.compile(r'([\w\-]+)(?:\.?)((?:[\w\-]*))(=|!=|<|>|~)([\w\-./:]+)')  # get elements in a clause
+    # get elements in a clause
+    re_get_elements = re.compile(r'([\w\-]+)(?:\.?)((?:[\w\-](?:\.[\w\-])*)*)(=|!=|<|>|~)([\w\-./:]+)')
     # get a list with OR clauses
     or_clauses = q.split(',')
     output_array = []
@@ -817,24 +842,21 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
             for and_clause in and_clauses:
                 # get elements in a clause
                 try:
-                    field_name, field_subname, op, value = re_get_elements.match(and_clause).groups()
+                    field_name, field_subnames, op, value = re_get_elements.match(and_clause).groups()
                 except AttributeError:
                     raise WazuhError(1407, extra_message=f"Parameter 'q' is not valid: '{and_clause}'")
 
                 # check if a clause is satisfied
-                if field_subname:
-                    if field_name in elem and field_subname in elem[field_name] and \
-                            check_clause(elem[field_name][field_subname], op, value):
-                        continue
-                    else:
-                        match = False
-                        break
+                if field_subnames:
+                    if field_name in elem:
+                        last_element = get_last_dict_element(field_subnames.split('.'), deepcopy(elem[field_name]))
+                        if last_element and check_clause(last_element, op, value):
+                            continue
                 else:
                     if field_name in elem and check_clause(elem[field_name], op, value):
                         continue
-                    else:
-                        match = False
-                        break
+                match = False
+                break
 
             # if match = True, add element to output and break the loop
             if match:
