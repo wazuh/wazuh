@@ -459,15 +459,14 @@ int wm_sync_file(const char *dirname, const char *fname) {
         return -1;
     }
 
-    id_agent = atoi(fname);
-
-    if (id_agent < 0) {
-        mterror(WM_DATABASE_LOGTAG, "Couldn't extract agent ID from file %s/%s", dirname, fname);
-        return -1;
-    }
-
     switch (type) {
     case WDB_GROUPS:
+        id_agent = atoi(fname);
+        if (id_agent < 0) {
+            mterror(WM_DATABASE_LOGTAG, "Couldn't extract agent ID from file %s/%s", dirname, fname);
+            return -1;
+        }
+
         result = wm_sync_agent_group(id_agent, fname);
         break;
 
