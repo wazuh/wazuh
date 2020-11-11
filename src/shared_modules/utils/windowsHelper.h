@@ -418,7 +418,10 @@ namespace Utils
                         netmask += it->second;
                     }
                 }
-                netmask += std::string(refillData, '0'); // Refill data with 0's if applies
+                else
+                {
+                    netmask += std::string(refillData, '0'); // Refill data with 0's if applies
+                }
 
                 if (totalSum < (NETMASK_TOTAL_BITS - BITS_PER_CHUNK))
                 {

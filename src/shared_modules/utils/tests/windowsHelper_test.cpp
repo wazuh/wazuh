@@ -27,7 +27,7 @@ TEST_F(WindowsHelperTest, ipv6NetMask_64)
 TEST_F(WindowsHelperTest, ipv6NetMask_127)
 {
     const int addressPrefixLength { 127 };
-    const std::string expectedNetMask { "ffff:ffff:ffff:ffff:ffff:ffff:ffff:fffe00" };
+    const std::string expectedNetMask { "ffff:ffff:ffff:ffff:ffff:ffff:ffff:fffe" };
     std::string netMask { Utils::NetworkWindowsHelper::ipv6Netmask(addressPrefixLength) };
     EXPECT_EQ(expectedNetMask, netMask);
 }
