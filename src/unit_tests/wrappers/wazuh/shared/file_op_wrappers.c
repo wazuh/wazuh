@@ -126,3 +126,7 @@ float __wrap_DirSize(const char *path) {
 
     return mock();
 }
+
+bool __wrap_isabspath(const char *path) {
+    return mock();
+}

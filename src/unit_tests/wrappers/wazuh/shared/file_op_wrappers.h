@@ -56,4 +56,6 @@ int __wrap_rename_ex(const char *source, const char *destination);
 
 float __wrap_DirSize(const char *path);
 
+bool __wrap_isabspath(const char *path);
+
 #endif
