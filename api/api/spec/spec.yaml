@@ -1896,7 +1896,7 @@ components:
         max_agents:
           type: string
           minimum: 0
-          description: "Maximum number of agents that can be registered. This variable is defined at compilation time"
+          description: "Maximum number of agents that can be registered."
         openssl_support:
           type: string
         ruleset_version:
@@ -7908,7 +7908,7 @@ paths:
                       version: v3.9.0
                       compilation_date: "2019-03-06T11:24:59Z"
                       type: manager
-                      max_agents: 14000
+                      max_agents: unlimited
                       openssl_support: yes
                       ruleset_version: 3905
                       tz_offset: +0000
@@ -9174,7 +9174,7 @@ paths:
                       version: v3.9.0
                       compilation_date: "2019-03-06T11:24:59Z"
                       type: manager
-                      max_agents: 14000
+                      max_agents: unlimited
                       openssl_support: yes
                       ruleset_version: 3905
                       tz_offset: +0000
