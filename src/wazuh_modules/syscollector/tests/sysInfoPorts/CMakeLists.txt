@@ -26,7 +26,6 @@ target_link_libraries(sysInfoPort_unit_test
     pthread
     sqlite3
     cjson
-    dl
 )
 
 add_test(NAME sysInfoPort_unit_test
