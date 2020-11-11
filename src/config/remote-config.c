@@ -23,7 +23,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     unsigned int deny_size = 1;
     remoted *logr;
     int defined_queue_size = 0;
-    const int default_rids_closing_time = 300;
+    const int DEFAULT_RIDS_CLOSING_TIME = 300;
 
     /*** XML Definitions ***/
 
@@ -111,7 +111,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logr->ipv6[pl + 1] = 0;
     logr->lip[pl + 1] = NULL;
 
-    logr->rids_closing_time = default_rids_closing_time;
+    logr->rids_closing_time = DEFAULT_RIDS_CLOSING_TIME;
 
     while (node[i]) {
         if (!node[i]->element) {
