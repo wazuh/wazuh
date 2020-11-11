@@ -3040,7 +3040,7 @@ void test_wdb_get_all_agents_success(void **state) {
 
     // Setting the payload
     set_payload = 1;
-    strncpy(test_payload, "ok 1,2,3", 8);
+    strncpy(test_payload, "ok 1,2,3\0", 9);
 
     // Calling Wazuh DB
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -4413,7 +4413,7 @@ void test_wdb_update_groups_success(void **state) {
 
     struct dirent *dir_ent = NULL;
     os_calloc(1, sizeof(struct dirent), dir_ent);
-    strncpy(dir_ent->d_name, "test_group", 10);
+    strncpy(dir_ent->d_name, "test_group\0", 11);
 
     // Calling Wazuh DB
     will_return(__wrap_wdbc_query_parse_json, 0);
