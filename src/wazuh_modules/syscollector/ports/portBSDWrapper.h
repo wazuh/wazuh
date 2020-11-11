@@ -78,7 +78,7 @@ class BSDPortWrapper final : public IPortWrapper
             socketAddressIn6.sin6_addr = static_cast<in6_addr>(m_spSocketInfo->psi.soi_proto.pri_in.insi_laddr.ina_6);
             getnameinfo(reinterpret_cast<sockaddr *>(&socketAddressIn6), sizeof(socketAddressIn6), ipAddress, sizeof(ipAddress), nullptr, 0, NI_NUMERICHOST);
         }
-        else
+        else if(AF_INET == m_spSocketInfo->psi.soi_family)
         {
             sockaddr_in socketAddressIn;
             socketAddressIn.sin_family = m_spSocketInfo->psi.soi_family;
@@ -101,7 +101,7 @@ class BSDPortWrapper final : public IPortWrapper
             socketAddressIn6.sin6_addr = static_cast<in6_addr>(m_spSocketInfo->psi.soi_proto.pri_in.insi_faddr.ina_6);
             getnameinfo(reinterpret_cast<sockaddr *>(&socketAddressIn6), sizeof(socketAddressIn6), ipAddress, sizeof(ipAddress), nullptr, 0, NI_NUMERICHOST);
         }
-        else
+        else if(AF_INET == m_spSocketInfo->psi.soi_family)
         {
             sockaddr_in socketAddressIn;
             socketAddressIn.sin_family = m_spSocketInfo->psi.soi_family;

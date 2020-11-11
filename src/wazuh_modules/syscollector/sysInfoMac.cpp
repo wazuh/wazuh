@@ -317,7 +317,7 @@ static void getProcessesSocketFD(std::map<ProcessInfo, std::vector<std::shared_p
                                 auto socketInfo { std::make_shared<socket_fdinfo>() };
                                 if (PROC_PIDFDSOCKETINFO_SIZE == proc_pidfdinfo(pid, processFDInformation[j].proc_fd, PROC_PIDFDSOCKETINFO, socketInfo.get(), PROC_PIDFDSOCKETINFO_SIZE))
                                 {
-                                    if (std::find(s_validFDSock.begin(), s_validFDSock.end(), socketInfo->psi.soi_kind) != s_validFDSock.end())
+                                    if (socketInfo && std::find(s_validFDSock.begin(), s_validFDSock.end(), socketInfo->psi.soi_kind) != s_validFDSock.end())
                                     {
                                         processSocket[processData].push_back(socketInfo);
                                     }
