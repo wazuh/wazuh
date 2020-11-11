@@ -61,6 +61,7 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
     EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
     EXPECT_CALL(*spInfoWrapper, networks()).WillOnce(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));    
     std::thread t1;
     {
         Syscollector syscollector{spInfoWrapper, "100s"};
@@ -80,6 +81,7 @@ TEST_F(SyscollectorImpTest, intervalMinutes)
     EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
     EXPECT_CALL(*spInfoWrapper, networks()).WillOnce(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));    
     std::thread t1;
     {
         Syscollector syscollector{spInfoWrapper, "100m"};
@@ -99,6 +101,7 @@ TEST_F(SyscollectorImpTest, intervalDays)
     EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
     EXPECT_CALL(*spInfoWrapper, networks()).WillOnce(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));    
     std::thread t1;
     {
         Syscollector syscollector{spInfoWrapper, "1d"};
@@ -118,6 +121,7 @@ TEST_F(SyscollectorImpTest, intervalUnknownUnit)
     EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
     EXPECT_CALL(*spInfoWrapper, networks()).WillOnce(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));    
     std::thread t1;
     {
         Syscollector syscollector{spInfoWrapper, "1y"};
@@ -137,6 +141,7 @@ TEST_F(SyscollectorImpTest, noScanOnStart)
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
     EXPECT_CALL(*spInfoWrapper, networks()).Times(0);
     EXPECT_CALL(*spInfoWrapper, processes()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
     std::thread t1;
     {
         Syscollector syscollector{spInfoWrapper, "1h", false};
@@ -156,6 +161,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
     EXPECT_CALL(*spInfoWrapper, networks()).WillOnce(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));    
     std::thread t1;
     {
         Syscollector syscollector{spInfoWrapper, "1h", true, false};
@@ -175,6 +181,7 @@ TEST_F(SyscollectorImpTest, noOs)
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
     EXPECT_CALL(*spInfoWrapper, networks()).WillOnce(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));    
     std::thread t1;
     {
         Syscollector syscollector{spInfoWrapper, "1h", true, true, false};
@@ -194,6 +201,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
     EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
     EXPECT_CALL(*spInfoWrapper, networks()).Times(0);
     EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));    
     std::thread t1;
     {
         Syscollector syscollector{spInfoWrapper, "1h", true, true, true, false};
@@ -213,6 +221,7 @@ TEST_F(SyscollectorImpTest, noPackages)
     EXPECT_CALL(*spInfoWrapper, networks()).WillOnce(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
     EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));    
     std::thread t1;
     {
         Syscollector syscollector{spInfoWrapper, "1h", true, true, true, true, false};
@@ -232,6 +241,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     EXPECT_CALL(*spInfoWrapper, networks()).WillOnce(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
     EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
+    EXPECT_CALL(*spInfoWrapper, ports()).Times(0);   
     std::thread t1;
     {
         Syscollector syscollector{spInfoWrapper, "1h", true, true, true, true, true, false};
@@ -251,6 +261,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     EXPECT_CALL(*spInfoWrapper, networks()).WillOnce(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
     EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));    
     std::thread t1;
     {
         Syscollector syscollector{spInfoWrapper, "1h", true, true, true, true, true, true, false};
@@ -270,6 +281,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     EXPECT_CALL(*spInfoWrapper, networks()).WillOnce(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
     EXPECT_CALL(*spInfoWrapper, processes()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));
     std::thread t1;
     {
         Syscollector syscollector{spInfoWrapper, "1h", true, true, true, true, true, true, true, false};
@@ -289,6 +301,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     EXPECT_CALL(*spInfoWrapper, networks()).WillOnce(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
     EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));    
     std::thread t1;
     {
         Syscollector syscollector{spInfoWrapper, "1h", true, true, true, true, true, true, true, true, false};
@@ -308,6 +321,7 @@ TEST_F(SyscollectorImpTest, scanOnInverval)
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return("os"));
     EXPECT_CALL(*spInfoWrapper, processes()).WillRepeatedly(Return("processes"));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return("ports"));    
     std::thread t1;
     {
         Syscollector syscollector{spInfoWrapper, "1s"};
