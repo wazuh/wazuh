@@ -137,3 +137,9 @@ nlohmann::json SysInfo::getOsInfo() const
     }
     return ret;
 }
+
+nlohmann::json SysInfo::getPorts() const
+{
+    // Currently not supported for this OS
+    return {};
+}

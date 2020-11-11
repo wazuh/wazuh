@@ -27,4 +27,34 @@ constexpr auto DPKG_STATUS_PATH {"/var/lib/dpkg/status"};
 constexpr auto MAC_ADDRESS_COUNT_SEGMENTS = 6ull;
 #define ROUNDUP(a) ((a) > 0 ? (1 + (((a)-1) | (sizeof(long) - 1))) : sizeof(long))
 
+enum OSType
+{
+    LINUX,
+    BSDBASED,
+    WINDOWS
+};
+
+enum PortType
+{
+    UDP_IPV4,
+    UDP_IPV6,
+    TCP_IPV4,
+    TCP_IPV6,
+    SIZE_PORT_TYPE
+};
+
+enum Protocol
+{
+    TCP,
+    UDP,
+    PROTOCOL_SIZE
+};
+
+enum IPVersion
+{
+    IPV4,
+    IPV6,
+    IPVERSION_SIZE
+};
+
 #endif //_SHARED_DEFS_H

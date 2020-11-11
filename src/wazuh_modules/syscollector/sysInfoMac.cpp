@@ -21,6 +21,8 @@
 #include <sys/sysctl.h>
 #include <sys/utsname.h>
 #include <fstream>
+#include "ports/portBSDWrapper.h"
+#include "ports/portImpl.h"
 
 const std::string MAC_APPS_PATH{"/Applications"};
 const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};
@@ -35,6 +37,14 @@ static const std::map<int, std::string> s_mapTaskInfoState =
     { 3, "S"},  // Sleep
     { 4, "T"},  // Stopped
     { 5, "Z"}   // Zombie
+};
+
+static const std::vector<int> s_validFDSock =
+{
+    {
+        SOCKINFO_TCP,
+        SOCKINFO_IN
+    }
 };
 
 static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_t pid)
@@ -271,4 +281,71 @@ nlohmann::json SysInfo::getOsInfo() const
         ret["release"] = uts.release;
     }
     return ret;
+}
+
+static void getProcessesSocketFD(std::map<ProcessInfo, std::vector<std::shared_ptr<socket_fdinfo>>>& processSocket)
+{
+    int32_t maxProcess { 0 };
+    auto maxProcessLen { sizeof(maxProcess) };
+    if (!sysctlbyname("kern.maxproc", &maxProcess, &maxProcessLen, nullptr, 0))
+    {
+        auto pids { std::make_unique<pid_t[]>(maxProcess) };
+        const auto processesCount { proc_listallpids(pids.get(), maxProcess) };
+
+        for (auto i = 0 ; i < processesCount ; ++i)
+        {
+            const auto pid { pids[i] };
+
+            proc_bsdinfo processInformation {};
+            if (proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &processInformation, PROC_PIDTBSDINFO_SIZE) != -1)
+            {
+                const std::string processName { processInformation.pbi_name };
+                const ProcessInfo processData { pid, processName };
+
+                const auto processFDBufferSize { proc_pidinfo(pid, PROC_PIDLISTFDS, 0, 0, 0) };
+                if (processFDBufferSize != -1)
+                {
+                    auto processFDInformationBuffer { std::make_unique<char[]>(processFDBufferSize) };
+                    if (proc_pidinfo(pid, PROC_PIDLISTFDS, 0, processFDInformationBuffer.get(), processFDBufferSize) != -1)
+                    {
+                        auto processFDInformation { reinterpret_cast<proc_fdinfo *>(processFDInformationBuffer.get())};
+
+                        for (auto j = 0ul; j < processFDBufferSize / PROC_PIDLISTFD_SIZE; ++j )
+                        {
+                            if (PROX_FDTYPE_SOCKET == processFDInformation[j].proc_fdtype)
+                            {
+                                auto socketInfo { std::make_shared<socket_fdinfo>() };
+                                if (PROC_PIDFDSOCKETINFO_SIZE == proc_pidfdinfo(pid, processFDInformation[j].proc_fd, PROC_PIDFDSOCKETINFO, socketInfo.get(), PROC_PIDFDSOCKETINFO_SIZE))
+                                {
+                                    if (socketInfo && std::find(s_validFDSock.begin(), s_validFDSock.end(), socketInfo->psi.soi_kind) != s_validFDSock.end())
+                                    {
+                                        processSocket[processData].push_back(socketInfo);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+nlohmann::json SysInfo::getPorts() const
+{
+    nlohmann::json ports;
+    std::map<ProcessInfo, std::vector<std::shared_ptr<socket_fdinfo>>> fdMap;
+    getProcessesSocketFD(fdMap);
+
+    for (const auto& processInfo : fdMap)
+    {
+        for (const auto& fdSocket : processInfo.second )
+        {
+            nlohmann::json port;
+            std::make_unique<PortImpl>(std::make_shared<BSDPortWrapper>(processInfo.first, fdSocket))->buildPortData(port);
+            ports["ports"].push_back(port);
+        }
+    }
+
+    return ports;
 }

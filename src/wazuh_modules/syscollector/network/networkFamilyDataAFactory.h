@@ -17,13 +17,7 @@
 #include "networkInterfaceLinux.h"
 #include "networkInterfaceBSD.h"
 #include "networkInterfaceWindows.h"
-
-enum OSType
-{
-    LINUX,
-    BSDBASED,
-    WINDOWS
-};
+#include "sharedDefs.h"
 
 template <OSType osType>
 class FactoryNetworkFamilyCreator final

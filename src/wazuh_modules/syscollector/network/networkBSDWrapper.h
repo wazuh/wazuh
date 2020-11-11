@@ -186,7 +186,6 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
             retVal.rxErrors     = stats->ifi_ierrors;
             retVal.rxDropped    = stats->ifi_iqdrops;
         }
-
         return retVal;
     }
     

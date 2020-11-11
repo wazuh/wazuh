@@ -29,7 +29,8 @@ public:
     MOCK_METHOD(nlohmann::json, packages, (), (override));
     MOCK_METHOD(nlohmann::json, os, (), (override));    
     MOCK_METHOD(nlohmann::json, networks, (), (override));    
-    MOCK_METHOD(nlohmann::json, processes, (), (override));    
+    MOCK_METHOD(nlohmann::json, processes, (), (override));
+    MOCK_METHOD(nlohmann::json, ports, (), (override));
 };
 
 TEST_F(SyscollectorImpTest, defaultCtor)
@@ -40,6 +41,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
     EXPECT_CALL(*spInfoWrapper, networks()).WillOnce(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));
     std::thread t1;
     {
         Syscollector syscollector{spInfoWrapper};
