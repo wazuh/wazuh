@@ -62,8 +62,14 @@ def get_distinct_agents(agent_list=None, offset=0, limit=common.database_limit, 
 def get_agents_summary_status(agent_list=None):
     """Counts the number of agents by status.
 
-    :param agent_list: List of agents ID's.
-    :return: WazuhResult.
+    Parameters
+    ----------
+    agent_list : list[str]
+       List of agents ID's
+
+    Returns
+    -------
+    WazuhResult
     """
     # We don't consider agent 000 in order to get the summary
     if '000' in agent_list:
@@ -86,8 +92,14 @@ def get_agents_summary_status(agent_list=None):
 def get_agents_summary_os(agent_list=None):
     """Gets a list of available OS.
 
-    :param agent_list: List of agents ID's.
-    :return: WazuhResult.
+    Parameters
+    ----------
+    agent_list : list[str]
+       List of agents ID's
+
+    Returns
+    -------
+    WazuhResult
     """
     # We don't consider agent 000 in order to get the summary
     if '000' in agent_list:
