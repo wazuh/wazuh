@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - **Framework:**
   - Refactored agent upgrade module. ([#5537](https://github.com/wazuh/wazuh/issues/5537))
   - Refactored agent upgrade CLI. ([#5675](https://github.com/wazuh/wazuh/issues/5675))
+  - Changed rule and decoder details structure. ([#6318](https://github.com/wazuh/wazuh/issues/6318))
   - Improved AWS Config integration to avoid performance issues by removing alert fields with variables such as Instance ID in its name. ([#6537](https://github.com/wazuh/wazuh/issues/6537))
 
 ### Fixed

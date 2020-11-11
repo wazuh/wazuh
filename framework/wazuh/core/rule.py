@@ -8,11 +8,14 @@ from glob import glob
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhError
-from wazuh.core.utils import load_wazuh_xml
+from wazuh.core.utils import load_wazuh_xml, add_dynamic_detail
 
 REQUIRED_FIELDS = ['id']
 RULE_REQUIREMENTS = ['pci_dss', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13', 'tsc', 'mitre']
 SORT_FIELDS = ['filename', 'relative_dirname', 'description', 'id', 'level', 'status']
+DYNAMIC_OPTIONS = {'regex', 'field', 'match', 'action', 'extra_data', 'hostname', 'id', 'location', 'match',
+                   'program_name', 'protocol', 'user', 'url', 'srcport', 'dstport', 'status', 'system_name',
+                   'extra_data', 'srcgeoip', 'dstgeoip'}
 
 
 class Status(Enum):
@@ -85,6 +88,7 @@ def load_rules_from_file(rule_filename, rule_relative_path, rule_status):
                         for xml_rule_tags in list(xml_rule):
                             tag = xml_rule_tags.tag.lower()
                             value = xml_rule_tags.text
+                            attribs = xml_rule_tags.attrib
                             if value is None:
                                 value = ''
                             if tag == "group":
@@ -94,17 +98,19 @@ def load_rules_from_file(rule_filename, rule_relative_path, rule_status):
                                     groups.append(f'mitre_{mitre_id.text}')
                             elif tag == "description":
                                 rule['description'] += value
-                            elif tag == "field":
-                                add_detail(xml_rule_tags.attrib['name'], value, rule['details'])
                             elif tag in ("list", "info"):
                                 list_detail = {'name': value}
-                                for attrib, attrib_value in xml_rule_tags.attrib.items():
+                                for attrib, attrib_value in attribs.items():
                                     list_detail[attrib] = attrib_value
                                 add_detail(tag, list_detail, rule['details'])
                             # show rule variables
-                            elif tag in {'regex', 'match', 'user', 'id'} and value != '' and value[0] == "$":
-                                for variable in filter(lambda x: x.get('name') == value[1:], root.findall('var')):
-                                    add_detail(tag, variable.text, rule['details'])
+                            elif tag in DYNAMIC_OPTIONS:
+                                if value != '' and value[0] == '$':
+                                    for variable in filter(lambda x: x.get('name') == value[1:], root.findall('var')):
+                                        value = variable.text
+                                if tag == 'field':
+                                    tag = xml_rule_tags.attrib.pop('name')
+                                add_dynamic_detail(tag, value, attribs, rule['details'])
                             else:
                                 add_detail(tag, value, rule['details'])
 
