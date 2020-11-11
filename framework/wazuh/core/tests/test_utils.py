@@ -1475,6 +1475,7 @@ def test_select_array(select, required_fields, expected_result):
     except WazuhError as e:
         assert e.code == 1724
 
+
 @patch('wazuh.core.common.ossec_path', new='/var/ossec')
 @patch('wazuh.core.utils.glob.glob')
 def test_get_files(mock_glob):
@@ -1487,3 +1488,19 @@ def test_get_files(mock_glob):
 
     assert 'etc/ossec.conf' in result
     assert all('/var/ossec' not in x for x in result)
+
+
+@pytest.mark.parametrize('detail, value, attribs, details', [
+    ('new', '4', {'attrib': 'attrib_value'}, {'actual': '3'}),
+    ('actual', '4', {'new_attrib': 'attrib_value', 'new_attrib2': 'whatever'}, {'actual': {'pattern': '3'}}),
+])
+def test_add_dynamic_detail(detail, value, attribs, details):
+    """Test add_dynamic_detail core rule function."""
+    add_dynamic_detail(detail, value, attribs, details)
+    assert detail in details.keys()
+    if detail == next(iter(details.keys())):
+        assert details[detail]['pattern'].endswith(value)
+    else:
+        assert details[detail]['pattern'] == value
+    for key, value in attribs.items():
+        assert details[detail][key] == value

@@ -2803,14 +2803,14 @@ components:
           description: "Decoder definition fields"
           properties:
             program_name:
-              type: string
+              type: object
               nullable: true
             parent:
               type: string
             prematch:
-              type: string
+              type: object
             regex:
-              type: array
+              type: object
               items:
                 type: string
             order:
@@ -11188,7 +11188,8 @@ paths:
                       name: wazuh
                       position: 0
                       details:
-                        prematch: "^wazuh: "
+                        prematch:
+                          pattern: "^wazuh: "
                     - filename: 0005-wazuh_decoders.xml
                       relative_dirname: ruleset/decoders
                       status: enabled
@@ -11196,9 +11197,10 @@ paths:
                       position: 1
                       details:
                         parent: wazuh
-                        prematch: "^Agent buffer:"
+                        prematch:
+                          pattern: "^Agent buffer:"
                         regex:
-                          - "^ '(\\S+)'."
+                          pattern: "^ '(\\S+)'."
                         order: level
                   total_affected_items: 2
                   failed_items: []
