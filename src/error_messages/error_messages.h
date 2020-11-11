@@ -521,7 +521,7 @@
 #define WM_UPGRADE_UPGRADE_QUEUE_FULL               "(8122): Upgrade queue is full. Agent '%d' won't be upgraded."
 #define WM_UPGRADE_TASK_MANANAGER_ERROR             "(8123): There has been an error executing the request in the tasks manager."
 #define WM_UPGRADE_FILE_OPENED                      "(8124): At %s: File '%s' was opened. Closing."
-#define WM_UPGRADE_UNSUPPORTED_MODE                 "(8125): At %s: Unsupported mode '%s'"
+#define WM_UPGRADE_UNSUPPORTED_MODE                 "(8125): At %s: Unsupported mode."
 #define WM_UPGRADE_INVALID_FILE_NAME                "(8126): At %s: Invalid file name."
 #define WM_UPGRADE_FILE_NOT_OPENED_AUTO             "(8127): At %s: File not opened. Agent might have been auto-restarted during upgrade."
 #define WM_UPGRADE_DIFFERENT_FILE                   "(8128): At %s: The target file doesn't match the opened file '%s'"

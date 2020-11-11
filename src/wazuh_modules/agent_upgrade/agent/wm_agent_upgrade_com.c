@@ -220,7 +220,7 @@ STATIC char * wm_agent_upgrade_com_open(const cJSON* json_object) {
     }
 
     if (!mode_obj || (mode_obj->type != cJSON_String) || (strcmp(mode_obj->valuestring, "w") && strcmp(mode_obj->valuestring, "wb"))) {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNSUPPORTED_MODE, "open", mode_obj->valuestring);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNSUPPORTED_MODE, "open");
         return wm_agent_upgrade_command_ack(ERROR_UNSOPPORTED_MODE, error_messages[ERROR_UNSOPPORTED_MODE]);
     }
 
