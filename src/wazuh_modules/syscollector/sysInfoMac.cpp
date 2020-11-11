@@ -297,7 +297,7 @@ static void getProcessesSocketFD(std::map<ProcessInfo, std::vector<std::shared_p
             const auto pid { pids[i] };
 
             proc_bsdinfo processInformation {};
-            if (proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &processInformation, PROC_PIDTBSDINFO_SIZE != -1)
+            if (proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &processInformation, PROC_PIDTBSDINFO_SIZE) != -1)
             {
                 const std::string processName { processInformation.pbi_name };
                 const ProcessInfo processData { pid, processName };
