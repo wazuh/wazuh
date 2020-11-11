@@ -76,7 +76,7 @@ TEST_F(SysInfoTest, processes)
     EXPECT_FALSE(result.empty());    
 }
 
-TEST_F(SysInfoTest, networks)
+TEST_F(SysInfoTest, network)
 {
     SysInfoWrapper info;
     EXPECT_CALL(info, getNetworks());

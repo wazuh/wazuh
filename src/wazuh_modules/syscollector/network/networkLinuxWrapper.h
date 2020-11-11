@@ -1,7 +1,20 @@
+/*
+ * Wazuh SYSCOLLECTOR
+ * Copyright (C) 2015-2020, Wazuh Inc.
+ * October 24, 2020.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #ifndef _NETWORK_LINUX_WRAPPER_H
 #define _NETWORK_LINUX_WRAPPER_H
 
+#include <ifaddrs.h>
 #include <net/if_arp.h>
+#include <sys/socket.h>
 #include "inetworkWrapper.h"
 #include "networkHelper.h"
 #include "filesystemHelper.h"
@@ -127,7 +140,8 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
         }
         return retVal;
     }
-    public:
+
+public:
     explicit NetworkLinuxInterface(ifaddrs* addrs)
     : m_interfaceAddress(addrs)
     { 
@@ -140,6 +154,11 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
     std::string name() const override
     {
         return m_interfaceAddress->ifa_name ? m_interfaceAddress->ifa_name : "";
+    }
+
+    std::string description() const override
+    {
+        return "unknown";
     }
 
     int family() const override
@@ -180,14 +199,17 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
     {
         return m_interfaceAddress->ifa_addr ? Utils::splitIndex(getNameInfo(m_interfaceAddress->ifa_addr, sizeof(struct sockaddr_in6)), '%', 0) : "";
     }
+
     std::string netmaskV6() const override
     {
         return m_interfaceAddress->ifa_netmask ? getNameInfo(m_interfaceAddress->ifa_netmask, sizeof(struct sockaddr_in6)) : "";
     }
+
     std::string broadcastV6() const override
     {
         return m_interfaceAddress->ifa_ifu.ifu_broadaddr ? getNameInfo(m_interfaceAddress->ifa_ifu.ifu_broadaddr, sizeof(struct sockaddr_in6)) : "";
     }
+
     std::string gateway() const override
     {
         std::string retVal { "unknown" };
@@ -216,6 +238,16 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
             }
         }
         return retVal;
+    }
+
+    std::string metrics() const override
+    {
+        return "unknown";
+    }
+
+    std::string metricsV6() const override
+    {
+        return "unknown";
     }
 
     std::string dhcp() const override
@@ -285,6 +317,7 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
         }
         return retVal;
     }
+
     std::string mtu() const override
     {
         std::string retVal;
@@ -307,11 +340,13 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
         const auto networkTypeCode { Utils::getFileContent(std::string(WM_SYS_IFDATA_DIR) + this->name() + "/type") };
         return Utils::NetworkHelper::getNetworkTypeStringCode(std::stoi(networkTypeCode), NETWORK_INTERFACE_TYPE);
     }
+
     std::string state() const override
     {
         const auto operationalState { Utils::getFileContent(std::string(WM_SYS_IFDATA_DIR) + this->name() + "/operstate") };
         return Utils::splitIndex(operationalState, '\n', 0);
     }
+
     std::string MAC() const override
     {
         const auto mac { Utils::getFileContent(std::string(WM_SYS_IFDATA_DIR) + this->name() + "/address")};

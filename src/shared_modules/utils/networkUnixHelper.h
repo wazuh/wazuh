@@ -34,7 +34,7 @@ namespace Utils
 
     class NetworkUnixHelper final
     {
-        public:
+    public:
         static void getNetworks(std::unique_ptr<ifaddrs, IfAddressSmartDeleter>& interfacesAddress, std::map<std::string, std::vector<ifaddrs*>>& networkInterfaces)
         {
             struct ifaddrs *ifaddr { nullptr };

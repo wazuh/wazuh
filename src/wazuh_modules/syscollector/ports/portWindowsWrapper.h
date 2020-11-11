@@ -15,6 +15,7 @@
 #include "iportWrapper.h"
 #include "sharedDefs.h"
 #include "stringHelper.h"
+#include "windowsHelper.h"
 
 const auto IPV6_BUFFER_ADDRESS_SIZE { 16 };
 
@@ -66,54 +67,6 @@ class WindowsPortWrapper final : public IPortWrapper
         return inet_ntoa(ipaddress);
     }
 
-    static std::string getIpV6Address(const uint8_t* addrParam)
-    {
-        std::string retVal;
-
-        if (addrParam)
-        {
-            std::array<char, IPV6_BUFFER_ADDRESS_SIZE> buffer;
-            std::memcpy(buffer.data(), addrParam, IPV6_BUFFER_ADDRESS_SIZE);
-
-            std::array<char, IPV6_BUFFER_ADDRESS_SIZE> addrComparator;
-            addrComparator.fill(0);
-
-            if (std::equal(buffer.begin(), buffer.end(), addrComparator.begin()))
-            {
-                retVal = "::";
-            }
-            else
-            {
-                addrComparator.at(IPV6_BUFFER_ADDRESS_SIZE-1) = 0x1;
-                if (std::equal(buffer.begin(), buffer.end(), addrComparator.begin()))
-                {
-                    retVal = "::1";
-                }
-                else
-                {
-                    std::stringstream ss;
-                    bool separator { false };
-                    ss << std::hex << std::setfill('0');
-                    for (const auto& value : buffer)
-                    {
-                        ss << std::setw(2) << (static_cast<unsigned>(value) & 0xFF);
-
-                        if (separator)
-                        {
-                            ss << ":";
-                        }
-                        separator = !separator;
-                    }
-                    retVal = ss.str();
-                    Utils::replaceAll(retVal,"0000", "");
-                    Utils::replaceAll(retVal,":::", "::");
-                    retVal = retVal.substr(0, retVal.size() - 1);
-                }
-            }
-        }
-        return retVal;
-    }
-
     static std::string getProcessName(const std::map<pid_t, std::string> processDataList, const pid_t pid)
     {
         std::string retVal { "unknown" };
@@ -150,9 +103,9 @@ class WindowsPortWrapper final : public IPortWrapper
     WindowsPortWrapper(const _MIB_TCP6ROW_OWNER_PID& data, const std::map<pid_t, std::string>& processDataList)
     : m_protocol { "tcp6" }
     , m_localPort { ntohs(data.dwLocalPort) }
-    , m_localIpAddress { getIpV6Address(data.ucLocalAddr) }
+    , m_localIpAddress { Utils::NetworkWindowsHelper::getIpV6Address(data.ucLocalAddr) }
     , m_remotePort { ntohs(data.dwRemotePort) }
-    , m_remoteIpAddress { getIpV6Address(data.ucRemoteAddr) }
+    , m_remoteIpAddress { Utils::NetworkWindowsHelper::getIpV6Address(data.ucRemoteAddr) }
     , m_state { data.dwState }
     , m_pid { data.dwOwningPid }
     , m_processName { getProcessName(processDataList, data.dwOwningPid) }
@@ -171,7 +124,7 @@ class WindowsPortWrapper final : public IPortWrapper
     WindowsPortWrapper(const _MIB_UDP6ROW_OWNER_PID& data, const std::map<pid_t, std::string>& processDataList)
     : m_protocol("udp6")
     , m_localPort { ntohs(data.dwLocalPort) }
-    , m_localIpAddress { getIpV6Address(data.ucLocalAddr) }
+    , m_localIpAddress { Utils::NetworkWindowsHelper::getIpV6Address(data.ucLocalAddr) }
     , m_remotePort { 0 }
     , m_state { 0 }
     , m_pid { data.dwOwningPid }

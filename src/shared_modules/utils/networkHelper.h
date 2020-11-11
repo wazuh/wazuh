@@ -25,7 +25,7 @@ namespace Utils
 {
     class NetworkHelper final
     {
-        public:
+    public:
         static std::string getNetworkTypeStringCode(const int value, const std::map<std::pair<int, int>, std::string>& interfaceTypeData)
         {
             std::string retVal { "unknown" };

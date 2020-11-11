@@ -22,7 +22,8 @@ set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-v
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     file(GLOB SYSCOLLECTOR_TESTTOOL_SRC
         "${CMAKE_SOURCE_DIR}/*Win.cpp"
-        "${CMAKE_SOURCE_DIR}/sysOsInfo/sysOsInfoWin.cpp")
+        "${CMAKE_SOURCE_DIR}/sysOsInfo/sysOsInfoWin.cpp"
+        "${CMAKE_SOURCE_DIR}/network/*Windows.cpp")
     add_definitions(-DWIN32=1)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   file(GLOB SYSCOLLECTOR_TESTTOOL_SRC
