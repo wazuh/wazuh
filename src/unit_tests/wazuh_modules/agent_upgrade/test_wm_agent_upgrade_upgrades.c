@@ -30,7 +30,7 @@
 
 extern w_linked_queue_t *upgrade_queue;
 
-sem_t upgrade_semaphore;
+extern sem_t upgrade_semaphore;
 
 typedef struct _test_upgrade_args {
     wm_manager_configs *config;

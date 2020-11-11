@@ -86,7 +86,9 @@ async def get_user_me(request, pretty=False, wait_for_complete=False):
     -------
     Users information
     """
+    f_kwargs = {'token': request['token_info']}
     dapi = DistributedAPI(f=security.get_user_me,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
                           logger=logger,
