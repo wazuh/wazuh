@@ -8,14 +8,14 @@ from unittest.mock import patch, MagicMock, ANY, call
 from copy import deepcopy
 from werkzeug.exceptions import Unauthorized
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         from wazuh.core.results import WazuhResult
 
 import pytest
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         from api import authentication
 
@@ -35,7 +35,8 @@ decoded_payload = {
     "exp": security_conf['auth_token_exp_timeout'],
     "sub": '001',
     "rbac_policies": {'value': 'test', 'rbac_mode': security_conf['rbac_mode']},
-    "rbac_roles": [1]
+    "rbac_roles": [1],
+    'run_as': False
 }
 
 original_payload = {
@@ -44,6 +45,7 @@ original_payload = {
     "nbf": 0,
     "exp": security_conf['auth_token_exp_timeout'],
     "sub": '001',
+    'run_as': False,
     "rbac_roles": [1],
     "rbac_mode": security_conf['rbac_mode']
 }
@@ -140,7 +142,7 @@ def test_generate_token(mock_raise_if_exc, mock_submit, mock_distribute_function
 
 @patch('api.authentication.TokenManager')
 def test_check_token(mock_tokenmanager):
-    result = authentication.check_token('wazuh_user', [1], 3600)
+    result = authentication.check_token(username='wazuh_user', roles=[1], token_nbf_time=3600, run_as=False)
     assert result == {'valid': ANY, 'policies': ANY}
 
 
@@ -161,7 +163,7 @@ def test_decode_token(mock_raise_if_exc, mock_submit, mock_distribute_function, 
 
     # Check all functions are called with expected params
     calls = [call(f=ANY, f_kwargs={'username': original_payload['sub'], 'token_nbf_time': original_payload['nbf'],
-                                   'roles': original_payload['rbac_roles']},
+                                   'run_as': False, 'roles': original_payload['rbac_roles']},
                   request_type='local_master', is_async=False, wait_for_complete=True, logger=ANY),
              call(f=ANY, request_type='local_master', is_async=False, wait_for_complete=True, logger=ANY)]
     mock_dapi.assert_has_calls(calls)

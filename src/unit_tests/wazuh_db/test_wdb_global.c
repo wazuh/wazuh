@@ -5278,6 +5278,52 @@ void test_wdb_global_get_all_agents_full(void **state)
     assert_int_equal(result, WDBC_DUE);
 }
 
+void test_wdb_global_check_manager_keepalive_stmt_error(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__merror, formatted_msg, "DB(000) Can't cache statement");
+
+    assert_int_equal(wdb_global_check_manager_keepalive(data->wdb), -1);
+}
+
+void test_wdb_global_check_manager_keepalive_step_error(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_stmt_cache, 10);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
+    assert_int_equal(wdb_global_check_manager_keepalive(data->wdb), -1);
+}
+
+void test_wdb_global_check_manager_keepalive_step_nodata(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_stmt_cache, 10);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    assert_int_equal(wdb_global_check_manager_keepalive(data->wdb), 0);
+}
+
+void test_wdb_global_check_manager_keepalive_step_ok(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_stmt_cache, 10);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 1);
+
+    assert_int_equal(wdb_global_check_manager_keepalive(data->wdb), 1);
+}
+
+
+
+
+
+
+
+
+
 int main()
 {
     const struct CMUnitTest tests[] = {
@@ -5483,7 +5529,11 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_bind_fail, test_setup, test_teardown),              
         cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_no_agents, test_setup, test_teardown),              
         cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_success, test_setup, test_teardown),              
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_full, test_setup, test_teardown)              
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_full, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_check_manager_keepalive_stmt_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_check_manager_keepalive_step_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_check_manager_keepalive_step_nodata, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_check_manager_keepalive_step_ok, test_setup, test_teardown),
         };
     
     return cmocka_run_group_tests(tests, NULL, NULL);

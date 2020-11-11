@@ -23,7 +23,7 @@ PRAGMA foreign_keys=OFF;
 BEGIN TRANSACTION;
 
 /* Default users */
-INSERT INTO users VALUES(1,'wazuh','pbkdf2:sha256:150000$OMVAATei$cb30da77537eea26b964265dab6f403e9499f18522c7cc9e6ba2cb2d33694e1f',0,'1970-01-01 00:00:00');
+INSERT INTO users VALUES(1,'wazuh','pbkdf2:sha256:150000$OMVAATei$cb30da77537eea26b964265dab6f403e9499f18522c7cc9e6ba2cb2d33694e1f',1,'1970-01-01 00:00:00');
 INSERT INTO users VALUES(2,'wazuh-wui','pbkdf2:sha256:150000$wbPFpWBC$e3dee9520837bc0e49dd92c3ea4d59ecf7539a9314be2d5cc7582a9ff37d478f',1,'1970-01-01 00:00:00');
 
 /* Testing */

@@ -272,8 +272,8 @@ alert_data *GetAlertData(int flag, FILE *fp) {
             else if (strncmp(GEOIP_BEGIN_SRC, str, GEOIP_BEGIN_SRC_SZ) == 0) {
                 os_clearnl(str, p);
                 p = str + GEOIP_BEGIN_SRC_SZ;
-                free(alert_data->srcgeoip);
-                os_strdup(p, alert_data->srcgeoip);
+                os_free(al_data->srcgeoip);
+                os_strdup(p, al_data->srcgeoip);
             }
 #endif
             /* srcport */

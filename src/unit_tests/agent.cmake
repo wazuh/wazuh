@@ -12,3 +12,4 @@ add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT -DENABLE_AUDIT -DINOTIFY
 set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -lcmocka -fprofile-arcs -ftest-coverage)
 
 add_subdirectory(client-agent)
+add_subdirectory(wazuh_modules)

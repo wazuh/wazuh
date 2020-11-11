@@ -132,9 +132,13 @@ size_t wcom_dispatch(char *command, size_t length, char ** output){
         // unmerge [file_path]
         return wcom_unmerge(rcv_args, output);
 
-    }else if (strcmp(rcv_comm, "upgrade_result") == 0){
+    } else if (strcmp(rcv_comm, "upgrade_result") == 0) {
         // upgrade_result
         return wcom_upgrade_result(output);
+
+    } else if (strcmp(rcv_comm, "clear_upgrade_result") == 0){
+        // upgrade_result
+        return wcom_clear_upgrade_result(output);
 
     } else if (strcmp(rcv_comm, "uncompress") == 0){
         if (!rcv_args){
@@ -508,11 +512,7 @@ size_t wcom_upgrade_result(char ** output){
 
     FILE * result_file;
 
-#ifndef WIN32
     if (result_file = fopen(PATH, "r"), result_file) {
-#else
-    if (result_file = fopen(PATH, "rb"), result_file) {
-#endif
         if (fgets(buffer,20,result_file)){
             os_malloc(OS_MAXSTR + 1, *output);
             snprintf(*output, OS_MAXSTR, "ok %s", buffer);
@@ -521,8 +521,24 @@ size_t wcom_upgrade_result(char ** output){
         }
         fclose(result_file);
     }
-    os_strdup("err Cannot read upgrade_result file.", *output);
+    os_malloc(OS_MAXSTR + 1, *output);
+    snprintf(*output, OS_MAXSTR, "err Cannot read upgrade_result file due to [(%d)-(%s)]", errno, strerror(errno));
     mdebug1("At WCOM upgrade_result: Cannot read file '%s'.", PATH);
+    return strlen(*output);
+}
+
+size_t wcom_clear_upgrade_result(char **output) {
+#ifndef WIN32
+    const char * PATH = isChroot() ? UPGRADE_DIR "/upgrade_result" : DEFAULTDIR UPGRADE_DIR "/upgrade_result";
+#else
+    const char * PATH = UPGRADE_DIR "\\upgrade_result";
+#endif
+    if (remove(PATH) == 0) {
+        os_strdup("ok ", *output);
+    } else {
+        os_strdup("err Could not erase upgrade_result file", *output);
+        mdebug1("At WCOM clear_upgrade_result: Could not erase file '%s'.", PATH);
+    }
     return strlen(*output);
 }
 

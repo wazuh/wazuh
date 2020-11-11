@@ -61,7 +61,7 @@ async def login_user(request, user: str, raw=False):
 
     token = None
     try:
-        token = generate_token(user_id=user, data=data.dikt)
+        token = generate_token(user_id=user, data=data.dikt, run_as='auth_context' in f_kwargs.keys())
     except WazuhException as e:
         raise_if_exc(e)
 
@@ -898,7 +898,8 @@ async def set_role_rule(request, role_id, rule_ids, pretty=False, wait_for_compl
     dict
         Role information
     """
-    f_kwargs = {'role_id': role_id, 'rule_ids': rule_ids}
+    f_kwargs = {'role_id': role_id, 'rule_ids': rule_ids,
+                'run_as': {'user': request['token_info']['sub'], 'run_as': request['token_info']['run_as']}}
 
     dapi = DistributedAPI(f=security.set_role_rule,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

@@ -65,4 +65,9 @@
 #define COMPRESSED_LOG_LONG_PATH                "(7502): The path of the compressed log is too long."
 #define COMPRESSED_JSON_LONG_PATH               "(7503): The path of the compressed json is too long."
 
+/* Ruleset reading warnings */
+#define ANALYSISD_INV_VALUE_RULE                "(7600): Invalid value '%s' for attribute '%s' in rule %d"
+#define ANALYSISD_INV_VALUE_DEFAULT             "(7601): Invalid value for attribute '%s' in '%s' option " \
+                                                "(decoder `%s`). Default value will be taken"
+
 #endif /* WARN_MESSAGES_H */

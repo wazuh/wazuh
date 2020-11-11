@@ -158,6 +158,7 @@ cJSON* __wrap_wdbc_query_parse_json(__attribute__((unused)) int *sock,
 
     return mock_ptr_type(cJSON *);
 }
+
 cJSON* __wrap_wdb_exec(__attribute__((unused)) sqlite3 *db, 
                  const char *sql) {
     check_expected(sql);
@@ -170,6 +171,11 @@ int __wrap_wdb_sql_exec(__attribute__((unused)) wdb_t *wdb,
                         const char *sql_exec) {
     check_expected(sql_exec);
     return mock();
+}
+
+cJSON* __wrap_wdb_get_agent_info(int id) {
+    check_expected(id);
+    return mock_ptr_type(cJSON*);
 }
 
 wdb_t* __wrap_wdb_init(__attribute__((unused)) sqlite3* db, const char* id) {

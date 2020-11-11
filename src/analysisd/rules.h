@@ -14,6 +14,7 @@
 #define MAX_LAST_EVENTS 11
 
 #include "shared.h"
+#include "expression.h"
 #include "active-response.h"
 #include "lists.h"
 
@@ -90,8 +91,9 @@ typedef struct _RuleInfoDetail {
 
 typedef struct _FieldInfo {
     char *name;
-    OSRegex *regex;
+    w_expression_t *regex;
 } FieldInfo;
+
 
 typedef struct _RuleInfo {
     int sigid;  /* id attribute -- required*/
@@ -145,32 +147,32 @@ typedef struct _RuleInfo {
     void *(*event_search)(void *lf, void *rule, void *rule_match);
 
     char *group;
-    OSMatch *match;
-    OSRegex *regex;
+    w_expression_t * match;
+    w_expression_t * regex;
 
     /* Policy-based rules */
     char *day_time;
     char *week_day;
 
-    os_ip **srcip;
-    os_ip **dstip;
-    OSMatch *srcgeoip;
-    OSMatch *dstgeoip;
-    OSMatch *srcport;
-    OSMatch *dstport;
-    OSMatch *user;
-    OSMatch *url;
-    OSMatch *id;
-    OSMatch *status;
-    OSMatch *hostname;
-    OSMatch *program_name;
-    OSMatch *data;
-    OSMatch *extra_data;
-    OSMatch *location;
-    OSMatch *system_name;
-    OSMatch *protocol;
+    w_expression_t * srcip;
+    w_expression_t * dstip;
+    w_expression_t * srcgeoip;
+    w_expression_t * dstgeoip;
+    w_expression_t * srcport;
+    w_expression_t * dstport;
+    w_expression_t * user;
+    w_expression_t * url;
+    w_expression_t * id;
+    w_expression_t * status;
+    w_expression_t * hostname;
+    w_expression_t * program_name;
+    w_expression_t * data;
+    w_expression_t * extra_data;
+    w_expression_t * location;
+    w_expression_t * system_name;
+    w_expression_t * protocol;
     FieldInfo **fields;
-    char *action;
+    w_expression_t * action;
 
     char *comment; /* description in the xml */
     char *info;

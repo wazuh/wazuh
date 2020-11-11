@@ -17,6 +17,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - ossec-agentlessd: !anystr
@@ -56,6 +57,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - compilation_date: !anystr
@@ -130,6 +132,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - alerts: !anything
@@ -166,6 +169,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - rootcheck:
@@ -188,6 +192,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - syscheck:
@@ -223,6 +228,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -263,6 +269,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - alerts: !anything
@@ -306,6 +313,7 @@ stages:
     response:
         status_code: 200
         json:
+          error: !anyint
           data:
             affected_items:
               - averages: !anything
@@ -329,6 +337,7 @@ stages:
     response:
         status_code: 200
         json:
+          error: !anyint
           data:
             affected_items:
               - Sun:
@@ -371,6 +380,7 @@ stages:
     response:
         status_code: 200
         json:
+          error: !anyint
           data:
             affected_items:
               - total_events_decoded: !anyfloat
@@ -438,6 +448,7 @@ stages:
     response:
         status_code: 200
         json:
+          error: !anyint
           data:
             affected_items:
               - queue_size: !anyfloat
@@ -468,6 +479,7 @@ stages:
     response:
         status_code: 200
         json:
+          error: !anyint
           data:
             affected_items: !anything
             failed_items: []
@@ -487,6 +499,7 @@ stages:
     response:
         status_code: 200
         json:
+          error: !anyint
           data:
             affected_items:
               - &manager_log
@@ -515,6 +528,7 @@ stages:
     response:
         status_code: 200
         json:
+          error: !anyint
           data:
             affected_items:
               - <<: *manager_log
@@ -537,6 +551,7 @@ stages:
     response:
         status_code: 200
         json:
+          error: !anyint
           data:
             affected_items:
               - <<: *manager_log
@@ -561,6 +576,7 @@ stages:
     response:
         status_code: 200
         json:
+          error: !anyint
           data:
             affected_items:
               - <<: *manager_log
@@ -585,6 +601,7 @@ stages:
     response:
         status_code: 200
         json:
+          error: !anyint
           data:
             affected_items:
               - <<: *manager_log
@@ -606,6 +623,7 @@ stages:
     response:
         status_code: 200
         json:
+          error: !anyint
           data:
             affected_items:
               - <<: *manager_log
@@ -650,6 +668,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - ossec-agentlessd: !anything
@@ -694,6 +713,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - node_name: !anystr
@@ -751,6 +771,7 @@ stages:
     response:
       status_code: 200
       json: &update_api_config_ok
+        error: !anyint
         data:
           affected_items: !anything
           total_affected_items: 1
@@ -822,6 +843,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - node_name: !anystr
@@ -895,6 +917,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - node_name: !anystr
@@ -1131,6 +1154,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/ossec.conf'
@@ -1153,6 +1177,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/rules/new-rules.xml'
@@ -1176,6 +1201,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1202,6 +1228,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/rules/new-rules.xml'
@@ -1225,6 +1252,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1250,6 +1278,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/decoders/new-decoder.xml'
@@ -1273,6 +1302,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1299,6 +1329,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/decoders/new-decoder.xml'
@@ -1322,6 +1353,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1347,6 +1379,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/lists/new-list'
@@ -1370,6 +1403,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1396,6 +1430,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/lists/new-list'
@@ -1419,6 +1454,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1447,6 +1483,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/rules/local_rules.xml'
@@ -1467,6 +1504,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1490,6 +1528,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/decoders/local_decoder.xml'
@@ -1510,6 +1549,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1533,6 +1573,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - 'etc/lists/security-eventchannel.cdb'
@@ -1553,6 +1594,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1579,6 +1621,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: !anystr
@@ -1599,6 +1642,7 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: PUT
+      error: !anyint
       data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n  <rule id=\"111111\" level=\"XXX\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1619,6 +1663,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -1644,6 +1689,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - global: !anything
@@ -1661,6 +1707,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - active-response: !anything
@@ -1679,6 +1726,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - alerts: !anything
@@ -1696,6 +1744,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - command: !anything
@@ -1713,6 +1762,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - internal: !anything
@@ -1730,6 +1780,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - auth: !anything
@@ -1747,6 +1798,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - internal: !anything
@@ -1764,6 +1816,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - localfile: !anything
@@ -1781,6 +1834,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items: []
@@ -1797,6 +1851,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - internal: !anything
@@ -1814,6 +1869,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - monitord: !anything
@@ -1831,6 +1887,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - remote: !anything
@@ -1848,6 +1905,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - internal: !anything
@@ -1865,6 +1923,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - syscheck: !anything
@@ -1882,6 +1941,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - rootcheck: !anything
@@ -1899,6 +1959,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - internal: !anything
@@ -1916,6 +1977,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - wmodules: !anything
@@ -1940,6 +2002,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - !anystr
