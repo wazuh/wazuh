@@ -13804,8 +13804,6 @@ paths:
                   format: names
                 password:
                   type: string
-                  maxLength: 64
-                  minLength: 8
                   format: password
                 allow_run_as:
                   type: boolean
@@ -13919,8 +13917,6 @@ paths:
               properties:
                 password:
                   type: string
-                  maxLength: 64
-                  minLength: 8
                   format: password
                 allow_run_as:
                   type: boolean
