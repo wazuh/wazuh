@@ -320,13 +320,13 @@ static void test_remove_empty_folders_success(void **state) {
 #endif
     int ret = -1;
     char message[OS_SIZE_1024];
-    char **not_null;
+    char **mock_directory_content;
 
-    if(not_null = calloc(2, sizeof(char*)), !not_null)
+    if(mock_directory_content = calloc(2, sizeof(char*)), !mock_directory_content)
         fail();
 
-    not_null[0] = strdup("some-file.tmp");
-    not_null[1] = NULL;
+    mock_directory_content[0] = strdup("some-file.tmp");
+    mock_directory_content[1] = NULL;
 
     expect_wreaddir_call(first_subdir, NULL);
 
@@ -335,7 +335,7 @@ static void test_remove_empty_folders_success(void **state) {
 
     expect_rmdir_ex_call(first_subdir, 0);
 
-    expect_wreaddir_call(second_subdir, not_null);
+    expect_wreaddir_call(second_subdir, mock_directory_content);
 
     ret = remove_empty_folders(input);
 
@@ -360,13 +360,13 @@ static void test_remove_empty_folders_recursive_success(void **state) {
 #endif
     char messages[3][OS_SIZE_1024];
     int ret = -1;
-    char **not_null;
+    char **mock_directory_content;
 
-    if(not_null = calloc(2, sizeof(char*)), !not_null)
+    if(mock_directory_content = calloc(2, sizeof(char*)), !mock_directory_content)
         fail();
 
-    not_null[0] = strdup("some-file.tmp");
-    not_null[1] = NULL;
+    mock_directory_content[0] = strdup("some-file.tmp");
+    mock_directory_content[1] = NULL;
 
     snprintf(messages[0], OS_SIZE_1024, "Removing empty directory '%s'.", parent_dirs[0]);
     snprintf(messages[1], OS_SIZE_1024, "Removing empty directory '%s'.", parent_dirs[1]);
@@ -385,7 +385,7 @@ static void test_remove_empty_folders_recursive_success(void **state) {
 
     expect_rmdir_ex_call(parent_dirs[1], 0);
 
-    expect_wreaddir_call(parent_dirs[2], not_null);
+    expect_wreaddir_call(parent_dirs[2], mock_directory_content);
 
     ret = remove_empty_folders(input);
 
@@ -2874,6 +2874,7 @@ static void test_get_file_user_CreateFile_error_generic(void **state) {
 
 static void test_get_file_user_GetSecurityInfo_error(void **state) {
     char **array = *state;
+    char error_msg[OS_SIZE_1024];
 
     expect_CreateFile_call("C:\\a\\path", (HANDLE)1234);
 
@@ -2886,8 +2887,6 @@ static void test_get_file_user_GetSecurityInfo_error(void **state) {
     expect_ConvertSidToStringSid_call("dummy", FALSE);
 
     expect_string(__wrap__mdebug1, formatted_msg, "The user's SID could not be extracted.");
-
-    char error_msg[OS_SIZE_1024];
 
     snprintf(error_msg,
              OS_SIZE_1024,
@@ -2925,6 +2924,7 @@ static void test_get_file_user_LookupAccountSid_error(void **state) {
 
 static void test_get_file_user_LookupAccountSid_error_none_mapped(void **state) {
     char **array = *state;
+    char error_msg[OS_SIZE_1024];
 
     expect_CreateFile_call("C:\\a\\path", (HANDLE)1234);
 
@@ -2936,8 +2936,6 @@ static void test_get_file_user_LookupAccountSid_error_none_mapped(void **state) 
 
     expect_LookupAccountSid_call("", "domainname", FALSE);
     expect_GetLastError_call(ERROR_NONE_MAPPED);
-
-    char error_msg[OS_SIZE_1024];
 
     snprintf(error_msg,
              OS_SIZE_1024,
@@ -3434,11 +3432,10 @@ void test_get_registry_group_GetSecurityInfo_fails(void **state) {
     registry_group_information_t *group_information = *state;
     char *group = group_information->name;
     char *group_id = group_information->id;
+    char error_msg[OS_SIZE_1024];
 
     expect_GetSecurityInfo_call(NULL, (PSID)"", ERROR_ACCESS_DENIED);
     expect_GetLastError_call(ERROR_ACCESS_DENIED);
-
-    char error_msg[OS_SIZE_1024];
 
     snprintf(error_msg,
              OS_SIZE_1024,
@@ -3586,14 +3583,13 @@ void test_get_registry_permissions_GetSecurityDescriptorDacl_no_DACL(void **stat
     HKEY hndl = (HKEY)123456;
     unsigned int retval = 0;
     char permissions[OS_SIZE_6144 + 1];
+    char error_msg[OS_SIZE_1024];
 
     expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_INSUFFICIENT_BUFFER);
 
     expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_SUCCESS);
 
     expect_GetSecurityDescriptorDacl_call(TRUE, (PACL*)0, TRUE);
-
-    char error_msg[OS_SIZE_1024];
 
     snprintf(error_msg,
              OS_SIZE_1024,
@@ -3695,11 +3691,11 @@ void test_get_registry_permissions_success(void **state) {
 }
 
 void test_get_registry_mtime_RegQueryInfoKeyA_fails(void **state) {
-    PFILETIME last_write_time;
+    FILETIME last_write_time;
     unsigned int retval = 0;
     HKEY hndl = (HKEY)123456;
 
-    expect_RegQueryInfoKeyA_call(last_write_time, ERROR_MORE_DATA);
+    expect_RegQueryInfoKeyA_call(&last_write_time, ERROR_MORE_DATA);
 
     expect_string(__wrap__mwarn, formatted_msg, "Couldn't get modification time for registry key.");
 
@@ -3709,11 +3705,11 @@ void test_get_registry_mtime_RegQueryInfoKeyA_fails(void **state) {
 }
 
 void test_get_registry_mtime_success(void **state) {
-    PFILETIME last_write_time;
+    FILETIME last_write_time;
     unsigned int retval = 0;
     HKEY hndl = (HKEY)123456;
 
-    expect_RegQueryInfoKeyA_call(last_write_time, ERROR_SUCCESS);
+    expect_RegQueryInfoKeyA_call(&last_write_time, ERROR_SUCCESS);
 
     retval = get_registry_mtime(hndl);
 

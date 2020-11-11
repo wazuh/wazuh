@@ -616,9 +616,11 @@ void ag_send_syscheck(char * message) {
 
 #else /* #ifndef WIN32 */
 
+// LCOV_EXCL_START
 char *get_registry_user(const char *path, char **sid, HANDLE hndl) {
     return get_user(path, sid, hndl, SE_REGISTRY_KEY);
 }
+// LCOV_EXCL_STOP
 
 char *get_file_user(const char *path, char **sid) {
     HANDLE hFile;
