@@ -143,8 +143,6 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_SELECT_AGENT_NAME,
     WDB_STMT_GLOBAL_SELECT_AGENT_GROUP,
     WDB_STMT_GLOBAL_FIND_AGENT,
-    WDB_STMT_GLOBAL_SELECT_AGENT_STATUS,
-    WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS,
     WDB_STMT_GLOBAL_FIND_GROUP,
     WDB_STMT_GLOBAL_UPDATE_AGENT_GROUP,
     WDB_STMT_GLOBAL_INSERT_AGENT_GROUP,
@@ -175,7 +173,6 @@ typedef enum global_db_access {
     WDB_UPDATE_AGENT_DATA,
     WDB_UPDATE_AGENT_KEEPALIVE,
     WDB_UPDATE_AGENT_CONNECTION_STATUS,
-    WDB_UPDATE_AGENT_STATUS,
     WDB_UPDATE_AGENT_GROUP,
     WDB_SET_AGENT_LABELS,
     WDB_GET_ALL_AGENTS,
@@ -184,7 +181,6 @@ typedef enum global_db_access {
     WDB_GET_AGENT_LABELS,
     WDB_SELECT_AGENT_NAME,
     WDB_SELECT_AGENT_GROUP,
-    WDB_SELECT_AGENT_STATUS,
     WDB_SELECT_KEEPALIVE,
     WDB_FIND_GROUP,
     WDB_SELECT_GROUPS,
@@ -475,16 +471,6 @@ int wdb_update_agent_keepalive(int id, const char *connection_status, const char
 int wdb_update_agent_connection_status(int id, const char *connection_status, int *sock);
 
 /**
- * @brief Set agent updating status.
- *
- * @param[in] id ID of the agent.
- * @param[in] status The status to be set. WDB_AGENT_EMPTY, WDB_AGENT_PENDING or WDB_AGENT_UPDATED.
- * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Returns OS_SUCCESS if success. OS_INVALID on error.
- */
-int wdb_set_agent_status(int id_agent, int status, int *sock);
-
-/**
  * @brief Update agent group. If the group is not specified, it is set to NULL.
  *
  * @param[in] id ID of the agent.
@@ -562,15 +548,6 @@ char* wdb_get_agent_name(int id, int *sock);
  * @return A string with the agent group on success or NULL on failure.
  */
 char* wdb_get_agent_group(int id, int *sock);
-
-/**
- * @brief Get agent updating status.
- *
- * @param[in] id_agent ID of the agent.
- * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Returns the WDB_AGENT_* status if success. OS_INVALID on error.
- */
-int wdb_get_agent_status(int id_agent, int *sock);
 
 /**
  * @brief Function to get the agent last keepalive.
@@ -1121,27 +1098,6 @@ int wdb_parse_global_delete_agent_belong(wdb_t * wdb, char * input, char * outpu
 int wdb_parse_global_find_agent(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to parse the select agent update status request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with 'agent_id'.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK followed by a JSON with the status. -1 On error: invalid DB query syntax.
- */
-int wdb_parse_global_select_agent_status(wdb_t * wdb, char * input, char * output);
-
-/**
- * @brief Function to parse the update agent update status request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the agent and update status data in JSON format.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_global_update_agent_status(wdb_t * wdb, char * input, char * output);
-
-/**
  * @brief Function to parse the update agent group request.
  *
  * @param [in] wdb The global struct database.
@@ -1557,25 +1513,6 @@ int wdb_global_delete_agent_belong(wdb_t *wdb, int id);
  * @return JSON with id on success. NULL on error.
  */
 cJSON* wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip);
-
-/**
- * @brief Function to get the update status of a particular agent.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] id Agent id.
- * @return JSON with the agent update status on success. NULL on error.
- */
-cJSON* wdb_global_select_agent_status(wdb_t *wdb, int id);
-
-/**
- * @brief Function to update an agent update status.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] id The agent ID
- * @param [in] status The value of the status
- * @return Returns 0 on success or -1 on error.
- */
-int wdb_global_update_agent_status(wdb_t *wdb, int id, char *status);
 
 /**
  * @brief Function to update an agent group.
