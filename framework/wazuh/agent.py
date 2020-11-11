@@ -65,6 +65,9 @@ def get_agents_summary_status(agent_list=None):
     :param agent_list: List of agents ID's.
     :return: WazuhResult.
     """
+    # We don't consider agent 000 in order to get the summary
+    if '000' in agent_list:
+        agent_list.remove('000')
     summary = {'active': 0, 'disconnected': 0, 'never_connected': 0, 'pending': 0, 'total': 0}
     if len(agent_list) != 0:
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
@@ -86,6 +89,9 @@ def get_agents_summary_os(agent_list=None):
     :param agent_list: List of agents ID's.
     :return: WazuhResult.
     """
+    # We don't consider agent 000 in order to get the summary
+    if '000' in agent_list:
+        agent_list.remove('000')
     result = AffectedItemsWazuhResult(none_msg='Could not get the operative system of the agents',
                                       all_msg='Showing the operative system of all specified agents',
                                       some_msg='Could not get the operative system of some agents')
