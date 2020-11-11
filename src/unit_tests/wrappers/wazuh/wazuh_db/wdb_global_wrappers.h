@@ -57,10 +57,6 @@ int __wrap_wdb_global_delete_agent_belong(wdb_t *wdb, int id);
 
 cJSON* __wrap_wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip);
 
-cJSON* __wrap_wdb_global_select_agent_status(wdb_t *wdb, int id);
-
-int __wrap_wdb_global_update_agent_status(wdb_t *wdb, int id, char *status);
-
 int __wrap_wdb_global_update_agent_group(wdb_t *wdb, int id, char *group);
 
 cJSON* __wrap_wdb_global_find_group(wdb_t *wdb, char* group_name);
