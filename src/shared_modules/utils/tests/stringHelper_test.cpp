@@ -136,3 +136,11 @@ TEST_F(StringUtilsTest, SplitDelimiterNullTerminated)
     EXPECT_EQ(tokens[0], "hello");
     EXPECT_EQ(tokens[1], "world");
 }
+
+TEST_F(StringUtilsTest, CheckMultiReplacement)
+{
+    std::string string_base { "hello         world" };
+    const auto ret_val { Utils::replaceAll(string_base, "  ", " ") };
+    EXPECT_EQ(string_base, "hello world");
+    EXPECT_TRUE(ret_val);
+}

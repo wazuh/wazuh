@@ -26,6 +26,7 @@ public:
     virtual nlohmann::json os() = 0;
     virtual nlohmann::json processes() = 0;
     virtual nlohmann::json networks() = 0;
+    virtual nlohmann::json ports() = 0;
 };
 
 #endif //_SYS_INFO_INTERFACE

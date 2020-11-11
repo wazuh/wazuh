@@ -17,7 +17,7 @@ if(COVERITY)
 endif(COVERITY)
 add_definitions(-DENABLE_SYSC=1)
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14")
+set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     file(GLOB SYSCOLLECTOR_TESTTOOL_SRC
@@ -62,6 +62,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         rsync
         dbsync
         psapi
+        iphlpapi
+        ws2_32
         -static-libgcc -static-libstdc++
     )
 elseif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")

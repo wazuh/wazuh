@@ -15,12 +15,7 @@
 #include "json.hpp"
 #include "networkInterfaceLinux.h"
 #include "networkInterfaceBSD.h"
-
-enum OSType
-{
-    LINUX,
-    BSDBASED
-};
+#include "sharedDefs.h"
 
 template <OSType osType>
 class FactoryNetworkFamilyCreator final
