@@ -630,7 +630,7 @@ int wdb_reset_agents_connection(int *sock);
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Pointer to the array, on success. NULL on errors.
  */
-int* wdb_get_agents_by_connection_status(const char* status, int *sock);
+int* wdb_get_agents_by_connection_status(const char* connection_status, int *sock);
 
 /**
  * @brief This method creates and sends a command to WazuhDB to set as disconnected all the
@@ -1241,7 +1241,7 @@ int wdb_parse_reset_agents_connection(wdb_t * wdb, char * output);
  *
  * @param wdb The global struct database.
  * @param [in] wdb The global struct database.
- * @param [in] input String with 'connection_status'.
+ * @param [in] input String with 'last_id' and 'connection_status'.
  * @param [out] output Response of the query in JSON format.
  * @retval 0 Success: Response contains the value.
  * @retval -1 On error: Response contains details of the error.
@@ -1656,13 +1656,14 @@ int wdb_global_reset_agents_connection(wdb_t *wdb);
 /**
  * @brief Function to get the id of every agent with a specific connection_status.
  *
- * @param wdb The Global struct database.
- * @param status Connection status of the agents requested.
- * @retval JSON with every agent ID on success.
- * @retval NULL on error.
+ * @param [in] wdb The Global struct database.
+ * @param [in] last_agent_id ID where to start querying.
+ * @param [in] connection_status Connection status of the agents requested.
+ * @param [out] output A buffer where the response is written. Must be de-allocated by the caller.
+ * @return wdbc_result to represent if all agents has being obtained or any error occurred.
  */
+wdbc_result wdb_global_get_agents_by_connection_status (wdb_t *wdb, int* last_agent_id, const char* connection_status, char **output);
 
-cJSON* wdb_global_get_agents_by_connection_status(wdb_t *wdb, const char* status);
 /*
  * @brief Gets all the agents' IDs (excluding the manager) that satisfy the keepalive condition to be disconnected.
  *
