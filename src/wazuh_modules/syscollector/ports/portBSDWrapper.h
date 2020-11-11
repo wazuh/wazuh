@@ -55,7 +55,12 @@ class BSDPortWrapper final : public IPortWrapper
     explicit BSDPortWrapper(const ProcessInfo& processInformation, const std::shared_ptr<socket_fdinfo>& socketInfo)
     : m_processInformation { processInformation }
     , m_spSocketInfo { socketInfo }
-    {};
+    {
+        if (!m_spSocketInfo)
+        {
+            throw std::runtime_error {"Invalid socket FD information"};
+        }
+    };
     ~BSDPortWrapper() = default;
 
     std::string protocol() const override
