@@ -37,8 +37,6 @@ int wd_agents = -2;
 int wd_groups = -2;
 int wd_shared_groups = -2;
 #endif // !LOCAL
-int wd_syscheck = -2;
-int wd_rootcheck = -2;
 
 /* Get current inotify queued events limit */
 static int get_max_queued_events();
@@ -90,15 +88,6 @@ static int wm_sync_agent_group(int id_agent, const char *fname);
 static int wm_sync_shared_group(const char *fname);
 static void wm_scan_directory(const char *dirname);
 static int wm_sync_file(const char *dirname, const char *path);
-// Fill syscheck database from an offset. Returns offset at last successful read event, or -1 on error.
-static long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registry);
-// Fill complete rootcheck database.
-static int wm_fill_rootcheck(sqlite3 *db, const char *path);
-/*
- * Extract agent name, IP and whether it's a Windows registry database from the file name.
- * Returns 0 on success, 1 to ignore and -1 on error.
- */
-static int wm_extract_agent(const char *fname, char *name, char *addr, int *registry);
 
 // Database module context definition
 const wm_context WM_DATABASE_CONTEXT = {
@@ -178,14 +167,6 @@ void* wm_database_main(wm_database *data) {
                 wm_sync_multi_groups(DEFAULTDIR SHAREDCFG_DIR);
             }
 #endif
-            if (data->sync_syscheck) {
-                wm_scan_directory(DEFAULTDIR SYSCHECK_DIR);
-            }
-
-            if (data->sync_rootcheck) {
-                wm_scan_directory(DEFAULTDIR ROOTCHECK_DIR);
-            }
-
             gettime(&spec1);
             time_sub(&spec1, &spec0);
             mtdebug1(WM_DATABASE_LOGTAG, "Cycle completed: %.3lf ms (%.3f clock ms).", spec1.tv_sec * 1000 + spec1.tv_nsec / 1000000.0, (double)(clock() - cstart) / CLOCKS_PER_SEC * 1000);
@@ -207,8 +188,6 @@ void* wm_database_main(wm_database *data) {
 void wm_sync_manager() {
     agent_info_data *manager_data = NULL;
     char *os_uname = NULL;
-    const char *path = NULL;
-    struct stat buffer;
 
     os_calloc(1, sizeof(agent_info_data), manager_data);
     os_calloc(1, sizeof(os_data), manager_data->osd);
@@ -251,29 +230,6 @@ void wm_sync_manager() {
     }
 
     wdb_free_agent_info_data(manager_data);
-
-    // Set starting offset if full_sync disabled
-
-    if (!module->full_sync) {
-        path = DEFAULTDIR SYSCHECK_DIR "/syscheck";
-
-        // Don't print error if stat fails because syscheck and rootcheck must not exist
-
-        if (!stat(path, &buffer) && buffer.st_size > 0) {
-            switch (wdb_get_agent_status(0, &wdb_wmdb_sock)) {
-            case -1:
-                mterror(WM_DATABASE_LOGTAG, "Couldn't get database status for manager.");
-                break;
-            case WDB_AGENT_EMPTY:
-                if (OS_SUCCESS != wdb_set_agent_offset(0, WDB_SYSCHECK, buffer.st_size, &wdb_wmdb_sock))
-                    mterror(WM_DATABASE_LOGTAG, "Couldn't write offset data on database for manager.");
-            }
-        }
-
-        if (OS_SUCCESS != wdb_set_agent_status(0, WDB_AGENT_UPDATED, &wdb_wmdb_sock)) {
-            mterror(WM_DATABASE_LOGTAG, "Couldn't write agent status on database for manager.");
-        }
-    }
 }
 
 #ifndef LOCAL
@@ -298,7 +254,6 @@ void wm_check_agents() {
 // Synchronize agents
 void wm_sync_agents() {
     unsigned int i;
-    char path[PATH_MAX] = "";
     char * group;
     char cidr[20];
     keystore keys = KEYSTORE_INITIALIZER;
@@ -307,13 +262,12 @@ void wm_sync_agents() {
     clock_t clock0 = clock();
     struct timespec spec0;
     struct timespec spec1;
-    struct stat buffer;
 
     gettime(&spec0);
 
     mtdebug1(WM_DATABASE_LOGTAG, "Synchronizing agents.");
     OS_PassEmptyKeyfile();
-    OS_ReadKeys(&keys, 0, 0, 0);
+    OS_ReadKeys(&keys, 0, 0);
 
     os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
 
@@ -334,25 +288,8 @@ void wm_sync_agents() {
             *group = 0;
         }
 
-        if (!(wdb_insert_agent(id, entry->name, NULL, OS_CIDRtoStr(entry->ip, cidr, 20) ? 
-                               entry->ip->ip : cidr, entry->key, *group ? group : NULL,1, &wdb_wmdb_sock) || module->full_sync)) {
-            // Find files
-            snprintf(path, PATH_MAX, "%s/(%s) %s->syscheck", DEFAULTDIR SYSCHECK_DIR, entry->name, entry->ip->ip);
-
-            if (stat(path, &buffer) < 0) {
-                if (errno != ENOENT)
-                    mterror(WM_DATABASE_LOGTAG, FSTAT_ERROR, path, errno, strerror(errno));
-            } else if (OS_SUCCESS != wdb_set_agent_offset(id, WDB_SYSCHECK, buffer.st_size, &wdb_wmdb_sock))
-                mterror(WM_DATABASE_LOGTAG, "Couldn't write offset data on database for agent %d (%s).", id, entry->name);
-
-            snprintf(path, PATH_MAX, "%s/(%s) %s->syscheck-registry", DEFAULTDIR SYSCHECK_DIR, entry->name, entry->ip->ip);
-
-            if (stat(path, &buffer) < 0) {
-                if (errno != ENOENT)
-                    mterror(WM_DATABASE_LOGTAG, FSTAT_ERROR, path, errno, strerror(errno));
-            } else if (OS_SUCCESS != wdb_set_agent_offset(id, WDB_SYSCHECK_REGISTRY, buffer.st_size, &wdb_wmdb_sock))
-                mterror(WM_DATABASE_LOGTAG, "Couldn't write offset data on database for agent %d (%s).", id, entry->name);
-        } else {
+        if (wdb_insert_agent(id, entry->name, NULL, OS_CIDRtoStr(entry->ip, cidr, 20) ?
+                             entry->ip->ip : cidr, entry->key, *group ? group : NULL,1, &wdb_wmdb_sock)) {
             // The agent already exists, update group only.
             wm_sync_agent_group(id, entry->id);
         }
@@ -500,17 +437,11 @@ void wm_scan_directory(const char *dirname) {
 }
 
 int wm_sync_file(const char *dirname, const char *fname) {
-    char name[FILE_SIZE];
-    char addr[FILE_SIZE];
     char path[PATH_MAX] = "";
     char del_path[PATH_MAX] = "";
-    struct stat buffer;
-    long offset;
     int result = 0;
     int id_agent = -1;
-    int is_registry = 0;
     int type;
-    sqlite3 *db;
 
     mtdebug2(WM_DATABASE_LOGTAG, "Synchronizing file '%s/%s'", dirname, fname);
 
@@ -519,21 +450,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
         return -1;
     }
 
-    if (!strcmp(dirname, DEFAULTDIR SYSCHECK_DIR)) {
-        type = WDB_SYSCHECK;
-
-        if (!strcmp(fname, "syscheck")) {
-            id_agent = 0;
-            strcpy(name, "localhost");
-        }
-    } else if (!strcmp(dirname, DEFAULTDIR ROOTCHECK_DIR)) {
-        type = WDB_ROOTCHECK;
-
-        if (!strcmp(fname, "rootcheck")) {
-            id_agent = 0;
-            strcpy(name, "localhost");
-        }
-    } else if (!strcmp(dirname, DEFAULTDIR GROUPS_DIR)) {
+    if (!strcmp(dirname, DEFAULTDIR GROUPS_DIR)) {
         type = WDB_GROUPS;
     } else if (!strcmp(dirname, DEFAULTDIR SHAREDCFG_DIR)) {
         type = WDB_SHARED_GROUPS;
@@ -564,47 +481,6 @@ int wm_sync_file(const char *dirname, const char *fname) {
     case WDB_SHARED_GROUPS:
         id_agent = 0;
         break;
-
-    default:
-        // If id_agent != 0, then the file corresponds to an agent
-
-        if (id_agent) {
-            switch (wm_extract_agent(fname, name, addr, &is_registry)) {
-            case 0:
-                if ((id_agent = wdb_find_agent(name, addr, &wdb_wmdb_sock)), id_agent == -2) {
-                    mtdebug1(WM_DATABASE_LOGTAG, "No such agent at database for file %s/%s", dirname, fname);
-                    snprintf(del_path, PATH_MAX, "%s/%s", dirname, fname);
-                    unlink(del_path);
-                    return -1;
-                }
-                else if (id_agent == -1) {
-                    mtdebug1(WM_DATABASE_LOGTAG, "Error querying database for file %s/%s", dirname, fname);
-                    return -1;
-                }
-
-                if (is_registry)
-                    type = WDB_SYSCHECK_REGISTRY;
-
-                break;
-
-            case 1:
-                mtdebug1(WM_DATABASE_LOGTAG, "Ignoring file '%s/%s'", dirname, fname);
-                return 0;
-
-            default:
-                mterror(WM_DATABASE_LOGTAG, "Couldn't extract agent name and address from file %s/%s", dirname, fname);
-                return -1;
-            }
-        }
-
-        if (stat(path, &buffer) < 0) {
-            if (errno == ENOENT) {
-                mtdebug2(WM_DATABASE_LOGTAG, FSTAT_ERROR, path, errno, strerror(errno));
-            } else {
-                mterror(WM_DATABASE_LOGTAG, FSTAT_ERROR, path, errno, strerror(errno));
-            }
-            return -1;
-        }
     }
 
     switch (wdb_get_agent_status(id_agent, &wdb_wmdb_sock)) {
@@ -618,85 +494,6 @@ int wm_sync_file(const char *dirname, const char *fname) {
     }
 
     switch (type) {
-    case WDB_SYSCHECK:
-    case WDB_SYSCHECK_REGISTRY:
-        if ((offset = wdb_get_agent_offset(id_agent, type, &wdb_wmdb_sock)) < 0) {
-            mterror(WM_DATABASE_LOGTAG, "Couldn't file offset from database for agent '%d'.", id_agent);
-            return -1;
-        }
-
-        if (buffer.st_size < offset) {
-            mtwarn(WM_DATABASE_LOGTAG, "File '%s' was truncated.", path);
-            offset = 0;
-        }
-
-        if (buffer.st_size > offset) {
-            if (!(db = wdb_open_agent(id_agent, name))) {
-                mterror(WM_DATABASE_LOGTAG, "Couldn't open database for file '%s/%s'.", dirname, fname);
-                return -1;
-            }
-
-            if (OS_SUCCESS != wdb_set_agent_status(id_agent, WDB_AGENT_PENDING, &wdb_wmdb_sock)) {
-                mterror(WM_DATABASE_LOGTAG, "Couldn't write agent status on database for agent %d (%s).", id_agent, name);
-                sqlite3_close_v2(db);
-                return -1;
-            }
-
-            if (OS_SUCCESS != wdb_set_agent_offset(id_agent, type, buffer.st_size, &wdb_wmdb_sock)) {
-                mterror(WM_DATABASE_LOGTAG, "Couldn't write offset data on database for agent %d (%s).", id_agent, name);
-                sqlite3_close_v2(db);
-                return -1;
-            }
-
-            offset = wm_fill_syscheck(db, path, offset, is_registry);
-            sqlite3_close_v2(db);
-
-            if (OS_SUCCESS != wdb_set_agent_status(id_agent, WDB_AGENT_UPDATED, &wdb_wmdb_sock)) {
-                mterror(WM_DATABASE_LOGTAG, "Couldn't write agent status on database for agent %d (%s).", id_agent, name);
-                return -1;
-            }
-
-            if (offset < 0) {
-                mterror(WM_DATABASE_LOGTAG, "Couldn't fill syscheck database for file '%s/%s'.", dirname, fname);
-                return -1;
-            }
-
-            if (offset != buffer.st_size && OS_SUCCESS != wdb_set_agent_offset(id_agent, type, offset, &wdb_wmdb_sock)) {
-                mterror(WM_DATABASE_LOGTAG, "Couldn't write offset data on database for agent %d (%s) (post-fill).", id_agent, name);
-                return -1;
-            }
-        } else
-            mtdebug1(WM_DATABASE_LOGTAG, "Skipping file '%s/%s' (no new data).", dirname, fname);
-
-        break;
-
-    case WDB_ROOTCHECK:
-        if (!(db = wdb_open_agent(id_agent, name))) {
-            mterror(WM_DATABASE_LOGTAG, "Couldn't open database for file '%s/%s'.", dirname, fname);
-            return -1;
-        }
-
-        if (OS_SUCCESS != wdb_set_agent_status(id_agent, WDB_AGENT_PENDING, &wdb_wmdb_sock)) {
-            mterror(WM_DATABASE_LOGTAG, "Couldn't write agent status on database for agent %d (%s).", id_agent, name);
-            sqlite3_close_v2(db);
-            return -1;
-        }
-
-        result = wm_fill_rootcheck(db, path);
-        sqlite3_close_v2(db);
-
-        if (OS_SUCCESS != wdb_set_agent_status(id_agent, WDB_AGENT_UPDATED, &wdb_wmdb_sock)) {
-            mterror(WM_DATABASE_LOGTAG, "Couldn't write agent status on database for agent %d (%s).", id_agent, name);
-            return -1;
-        }
-
-        if (result < 0) {
-            mterror(WM_DATABASE_LOGTAG, "Couldn't fill rootcheck database for file '%s/%s'.", dirname, fname);
-            return -1;
-        }
-
-        break;
-
     case WDB_GROUPS:
         result = wm_sync_agent_group(id_agent, fname);
         break;
@@ -709,219 +506,6 @@ int wm_sync_file(const char *dirname, const char *fname) {
     return result;
 }
 
-// Fill syscheck database from an offset. Returns offset at last successful read event, or -1 on error.
-long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registry) {
-    char buffer[OS_MAXSTR];
-    char *end;
-    char *event;
-    char *c_sum;
-    char *timestamp;
-    char *f_name;
-    int count;
-    long last_offset = offset;
-    clock_t clock_ini;
-    int type = is_registry ? WDB_FILE_TYPE_REGISTRY : WDB_FILE_TYPE_FILE;
-    FILE *fp;
-
-    sk_sum_t sum;
-    memset(&sum, 0, sizeof(sk_sum_t));
-
-    if (!(fp = fopen(path, "r"))) {
-        mterror(WM_DATABASE_LOGTAG, FOPEN_ERROR, path, errno, strerror(errno));
-        return -1;
-    }
-
-    if (fseek(fp, offset, SEEK_SET) < 0) {
-        mterror(WM_DATABASE_LOGTAG, FSEEK_ERROR, path, errno, strerror(errno));
-        fclose(fp);
-        return -1;
-    }
-
-    clock_ini = clock();
-    wdb_begin(db);
-
-    for (count = 0; fgets(buffer, OS_MAXSTR, fp); last_offset = ftell(fp)) {
-        end = strchr(buffer, '\n');
-
-        if (!end) {
-            mtwarn(WM_DATABASE_LOGTAG, "Corrupt line found parsing '%s' (incomplete). Breaking.", path);
-            break;
-        } else if (end == buffer)
-            continue;
-
-        *end = '\0';
-        c_sum = buffer + 3;
-
-        if (!(timestamp = strstr(c_sum, " !"))) {
-            mtwarn(WM_DATABASE_LOGTAG, "Corrupt line found parsing '%s' (no timestamp found).", path);
-            continue;
-        }
-
-        *timestamp = '\0';
-        timestamp += 2;
-
-        if (!(f_name = strchr(timestamp, ' '))) {
-            mtwarn(WM_DATABASE_LOGTAG, "Corrupt line found parsing '%s'.", path);
-            continue;
-        }
-
-        *(f_name++) = '\0';
-
-        switch (sk_decode_sum(&sum, c_sum, NULL)) {
-        case 0:
-            switch (wdb_get_last_fim(db, f_name, type)) {
-            case WDB_FIM_NOT_FOUND:
-                event = buffer[0] == '+' || (buffer[0] == '#' && buffer[1] == '+') ? "added" : "modified";
-                break;
-            case WDB_FIM_ADDED:
-            case WDB_FIM_MODIFIED:
-            case WDB_FIM_READDED:
-                event = "modified";
-                break;
-            case WDB_FIM_DELETED:
-                event = "readded";
-                break;
-            default:
-                mterror(WM_DATABASE_LOGTAG, "Couldn't extract FIM data from database.");
-                continue;
-            }
-
-            break;
-        case 1:
-            event = "deleted";
-            break;
-        default:
-            mtwarn(WM_DATABASE_LOGTAG, "Corrupt line found parsing '%s'.", path);
-            continue;
-        }
-
-        if (wdb_insert_fim(db, type, atol(timestamp), f_name, event, &sum) < 0)
-            mterror(WM_DATABASE_LOGTAG, "Couldn't insert FIM event into database from file '%s'.", path);
-
-        count++;
-    }
-
-    wdb_commit(db);
-    mtdebug2(WM_DATABASE_LOGTAG, "Syscheck file sync finished. Count: %d. Time: %.3lf ms.", count, (double)(clock() - clock_ini) / CLOCKS_PER_SEC * 1000);
-
-    fclose(fp);
-    return last_offset;
-}
-
-// Fill complete rootcheck database. Returns 0 on success or -1 on error.
-int wm_fill_rootcheck(sqlite3 *db, const char *path) {
-    char buffer[OS_MAXSTR];
-    char *end;
-    int count = 0;
-    rk_event_t event;
-    clock_t clock_ini;
-    FILE *fp;
-
-    if (!(fp = fopen(path, "r"))) {
-        mterror(WM_DATABASE_LOGTAG, FOPEN_ERROR, path, errno, strerror(errno));
-        return -1;
-    }
-
-    clock_ini = clock();
-    wdb_begin(db);
-
-    while (fgets(buffer, OS_MAXSTR, fp)) {
-        end = strchr(buffer, '\n');
-
-        if (!end) {
-            mtwarn(WM_DATABASE_LOGTAG, "Corrupt line found parsing '%s' (incomplete). Breaking.", path);
-            break;
-        } else if (end == buffer)
-            continue;
-
-        *end = '\0';
-
-        if (rk_decode_event(buffer, &event) < 0) {
-            mtwarn(WM_DATABASE_LOGTAG, "Corrupt line found parsing '%s'.", path);
-            continue;
-        }
-
-        switch (wdb_update_pm(db, &event)) {
-            case -1:
-                mterror(WM_DATABASE_LOGTAG, "Updating PM tuple on SQLite database for file '%s'.", path);
-                continue;
-            case 0:
-                if (wdb_insert_pm(db, &event) < 0) {
-                    mterror(WM_DATABASE_LOGTAG, "Inserting PM tuple on SQLite database for file '%s'.", path);
-                    continue;
-                }
-
-                count++;
-                break;
-
-            default:
-                count++;
-        }
-    }
-
-    wdb_commit(db);
-    mtdebug2(WM_DATABASE_LOGTAG, "Rootcheck file sync finished. Count: %d. Time: %.3lf ms.", count, (double)(clock() - clock_ini) / CLOCKS_PER_SEC * 1000);
-
-    fclose(fp);
-    return 0;
-}
-
-/*
- * Extract agent name, IP and whether it's a Windows registry database from the file name.
- * Returns 0 on success, 1 to ignore and -1 on error.
- */
-int wm_extract_agent(const char *fname, char *name, char *addr, int *registry) {
-    const char *c;
-    const char *_name;
-    const char *_addr;
-    size_t z_name;
-    size_t z_addr;
-
-    switch (fname[0]) {
-    case '(':
-        // Syscheck/Rootcheck
-        fname++;
-
-        if (!(c = strchr(fname, ')')))
-            return -1;
-
-        z_name = c - fname;
-        _name = fname;
-        fname = c + 2;
-
-        if (!(c = strstr(fname, "->")))
-            return -1;
-
-        z_addr = c - fname;
-        _addr = fname;
-        fname = c + 2;
-
-        if (!(strcmp(fname, "syscheck") && strcmp(fname, "rootcheck")))
-            *registry = 0;
-        else if (!strcmp(fname, "syscheck-registry"))
-            *registry = 1;
-        else
-            return -1;
-
-        break;
-
-    case '.':
-        // Hidden files or .cpt: ignore
-        return 1;
-
-    default:
-        // Ignore the file
-        return 1;
-    }
-
-    memcpy(name, _name, z_name);
-    name[z_name] = '\0';
-    memcpy(addr, _addr, z_addr);
-    addr[z_addr] = '\0';
-
-    return 0;
-}
-
 
 // Get read data
 
@@ -931,9 +515,6 @@ cJSON *wm_database_dump(const wm_database *data) {
     cJSON *wm_db = cJSON_CreateObject();
 
     if (data->sync_agents) cJSON_AddStringToObject(wm_db,"sync_agents","yes"); else cJSON_AddStringToObject(wm_db,"sync_agents","no");
-    if (data->sync_syscheck) cJSON_AddStringToObject(wm_db,"sync_syscheck","yes"); else cJSON_AddStringToObject(wm_db,"sync_syscheck","no");
-    if (data->sync_rootcheck) cJSON_AddStringToObject(wm_db,"sync_rootcheck","yes"); else cJSON_AddStringToObject(wm_db,"sync_rootcheck","no");
-    if (data->full_sync) cJSON_AddStringToObject(wm_db,"full_sync","yes"); else cJSON_AddStringToObject(wm_db,"full_sync","no");
     if (data->real_time) cJSON_AddStringToObject(wm_db,"real_time","yes"); else cJSON_AddStringToObject(wm_db,"real_time","no");
     cJSON_AddNumberToObject(wm_db,"interval",data->interval);
     cJSON_AddNumberToObject(wm_db,"max_queued_events",data->max_queued_events);
@@ -960,14 +541,11 @@ wmodule* wm_database_read() {
     wmodule *module = NULL;
 
     data.sync_agents = getDefine_Int("wazuh_database", "sync_agents", 0, 1);
-    data.sync_syscheck = 0; //getDefine_Int("wazuh_database", "sync_syscheck", 0, 1);
-    data.sync_rootcheck = getDefine_Int("wazuh_database", "sync_rootcheck", 0, 1);
-    data.full_sync = getDefine_Int("wazuh_database", "full_sync", 0, 1);
     data.real_time = getDefine_Int("wazuh_database", "real_time", 0, 1);
     data.interval = getDefine_Int("wazuh_database", "interval", 0, 86400);
     data.max_queued_events = getDefine_Int("wazuh_database", "max_queued_events", 0, INT_MAX);
 
-    if (data.sync_agents || data.sync_syscheck || data.sync_rootcheck) {
+    if (data.sync_agents) {
         os_calloc(1, sizeof(wmodule), module);
         os_calloc(1, sizeof(wm_database), module->data);
         module->context = &WM_DATABASE_CONTEXT;
@@ -1091,22 +669,6 @@ void wm_inotify_setup(wm_database * data) {
     }
 
 #endif
-
-    if (data->sync_syscheck) {
-        if ((wd_syscheck = inotify_add_watch(inotify_fd, DEFAULTDIR SYSCHECK_DIR, IN_MODIFY)) < 0)
-            mterror(WM_DATABASE_LOGTAG, "Couldn't watch Syscheck directory: %s.", strerror(errno));
-
-        mtdebug2(WM_DATABASE_LOGTAG, "wd_syscheck='%d'", wd_syscheck);
-        wm_scan_directory(DEFAULTDIR SYSCHECK_DIR);
-    }
-
-    if (data->sync_rootcheck) {
-        if ((wd_rootcheck = inotify_add_watch(inotify_fd, DEFAULTDIR ROOTCHECK_DIR, IN_MODIFY)) < 0)
-            mterror(WM_DATABASE_LOGTAG, "Couldn't watch Rootcheck directory: %s.", strerror(errno));
-
-        mtdebug2(WM_DATABASE_LOGTAG, "wd_rootcheck='%d'", wd_rootcheck);
-        wm_scan_directory(DEFAULTDIR ROOTCHECK_DIR);
-    }
 }
 
 // Real time inotify reader thread
@@ -1166,11 +728,7 @@ static void * wm_inotify_start(__attribute__((unused)) void * args) {
                     dirname = DEFAULTDIR SHAREDCFG_DIR;
                 } else
 #endif
-                if (event->wd == wd_syscheck) {
-                    dirname = DEFAULTDIR SYSCHECK_DIR;
-                } else if (event->wd == wd_rootcheck) {
-                    dirname = DEFAULTDIR ROOTCHECK_DIR;
-                } else if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
+                if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
                     mterror(WM_DATABASE_LOGTAG, "Inotify event queue overflowed.");
                     continue;
                 } else {

@@ -82,11 +82,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define MAX_PID 32768
 #endif
 
-/* Limit of 256 agents */
-#ifndef MAX_AGENTS
-#define MAX_AGENTS  256
-#endif
-
 /* First ID assigned by authd */
 #ifndef AUTHD_FIRST_ID
 #define AUTHD_FIRST_ID  1024

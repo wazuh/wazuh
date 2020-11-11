@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "rootcheck_op.h"
+#include "wazuh_db/wdb.h"
 
 /* Get rootcheck title from log */
 char* rk_get_title(const char *log) {
@@ -82,27 +83,18 @@ char* rk_get_file(const char *log) {
     return NULL;
 }
 
-/* Extract time and event from Rootcheck log. It doesn't reserve memory. */
-int rk_decode_event(char *buffer, rk_event_t *event) {
-    char *string;
-    char *end;
+int send_rootcheck_log(const char* agent_id, long int date, const char* log, char* response) {
+    char wazuhdb_query[OS_SIZE_6144];
+    int db_result;
+    int socket = -1;
 
-    if (buffer[0] == '!') {
-        string = buffer + 1;
-        event->date_last = strtol(string, &end, 10);
+    snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s rootcheck save %li %s", agent_id, date, log);
+    db_result = wdbc_query_ex(&socket, wazuhdb_query, response, OS_SIZE_6144);
+    close(socket);
 
-        if (event->date_last == LONG_MAX || event->date_last < 0 || *end != '!')
-            return -1;
+    if (db_result == -2) {
+        merror("Bad load query: '%s'.", wazuhdb_query);
+    }
 
-        string = end + 1;
-        event->date_first = strtol(string, &end, 10);
-
-        if (event->date_first == LONG_MAX || event->date_first < 0 || *end != ' ')
-            return -1;
-
-        event->log = end + 1;
-    } else
-        event->log = buffer;
-
-    return 0;
+    return db_result;
 }

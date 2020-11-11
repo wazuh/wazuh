@@ -16,7 +16,8 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,
                         -Wl,--wrap,wdb_scan_info_get -Wl,--wrap,wdb_fim_update_date_entry -Wl,--wrap,wdb_fim_clean_old_entries \
                         -Wl,--wrap,wdb_scan_info_update -Wl,--wrap,wdb_scan_info_fim_checks_control -Wl,--wrap,wdb_syscheck_load \
                         -Wl,--wrap,wdb_fim_delete -Wl,--wrap,wdb_syscheck_save -Wl,--wrap,wdb_syscheck_save2 \
-                        -Wl,--wrap,wdbi_query_checksum -Wl,--wrap,wdbi_query_clear")
+                        -Wl,--wrap,wdbi_query_checksum -Wl,--wrap,wdbi_query_clear -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,wdb_step \
+                        -Wl,--wrap,sqlite3_changes -Wl,--wrap,sqlite3_bind_int -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_last_insert_rowid")
 
 list(APPEND wdb_tests_names "test_wdb_global_parser")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_mwarn \
@@ -25,8 +26,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,
                              -Wl,--wrap,wdb_global_get_agent_labels -Wl,--wrap,wdb_global_del_agent_labels -Wl,--wrap,wdb_global_set_agent_label \
                              -Wl,--wrap,wdb_global_update_agent_keepalive -Wl,--wrap,wdb_global_delete_agent -Wl,--wrap,wdb_global_select_agent_name \
                              -Wl,--wrap,wdb_global_select_agent_group -Wl,--wrap,wdb_global_delete_agent_belong -Wl,--wrap,wdb_global_find_agent \
-                             -Wl,--wrap,wdb_global_select_agent_fim_offset -Wl,--wrap,wdb_global_select_agent_reg_offset \
-                             -Wl,--wrap,wdb_global_update_agent_fim_offset -Wl,--wrap,wdb_global_update_agent_reg_offset -Wl,--wrap,wdb_global_select_agent_status \
+                             -Wl,--wrap,wdb_global_select_agent_status \
                              -Wl,--wrap,wdb_global_update_agent_status -Wl,--wrap,wdb_global_update_agent_group -Wl,--wrap,wdb_global_find_group \
                              -Wl,--wrap,wdb_global_insert_agent_group -Wl,--wrap,wdb_global_insert_agent_belong -Wl,--wrap,wdb_global_delete_group_belong \
                              -Wl,--wrap,wdb_global_delete_group -Wl,--wrap,wdb_global_select_groups -Wl,--wrap,wdb_global_select_agent_keepalive \
@@ -68,6 +68,10 @@ list(APPEND wdb_tests_names "test_wdb_metadata")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,sqlite3_prepare_v2 -Wl,--wrap,sqlite3_errmsg \
                              -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_finalize -Wl,--wrap,sqlite3_column_int")
 
+
+list(APPEND wdb_tests_names "test_wdb_rootcheck")
+list(APPEND wdb_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_bind_int \
+                             -Wl,--wrap,sqlite3_last_insert_rowid -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_changes")
 
 # Compilig tests
 list(LENGTH wdb_tests_names count)

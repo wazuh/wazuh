@@ -127,6 +127,11 @@ int main(int argc, char **argv)
         merror_exit(CONFIG_ERROR, cfg);
     }
 
+    /* Exit if verify msg id is set and worker pool is greater than one */
+    if ((getDefine_Int("remoted", "worker_pool", 1, 16) > 1) && (getDefine_Int("remoted", "verify_msg_id", 0, 1) == 1)) {
+        merror_exit("Message id verification can't be guaranteed when worker_pool is greater than 1.");
+    }
+
     logr.nocmerged = nocmerged ? 1 : !getDefine_Int("remoted", "merge_shared", 0, 1);
 
     // Read the cluster status and the node type from the configuration file
