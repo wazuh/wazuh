@@ -2337,6 +2337,8 @@ components:
             - wazuh-modulesd:agent-key-polling
             - wazuh-modulesd:aws-s3
             - wazuh-modulesd:azure-logs
+            - wazuh-modulesd:agent-upgrade
+            - wazuh-modulesd:task-manager
             - wazuh-modulesd:ciscat
             - wazuh-modulesd:control
             - wazuh-modulesd:command
