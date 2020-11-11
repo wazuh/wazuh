@@ -385,9 +385,9 @@ w_logtest_session_t *w_logtest_initialize_session(char *token, OSList* list_msg)
     os_calloc(1, sizeof(w_logtest_session_t), session);
 
     session->token = token;
-    session->expired = false;
     session->last_connection = time(NULL);
-    w_mutex_init(&session->mutex, NULL);
+
+    w_rwlock_init(&session->in_use, NULL);
 
     /* Create list to save previous events */
     os_calloc(1, sizeof(EventList), session->eventlist);
@@ -499,9 +499,6 @@ cleanup:
             OSHash_Free(session->acm_store);
         }
 
-        /* Remove session */
-        w_mutex_destroy(&session->mutex);
-
         /* Free memory allocated in OSRegex execution */
         OSRegex_free_regex_matching(&session->decoder_match);
         OSRegex_free_regex_matching(&session->rule_match);
@@ -550,19 +547,16 @@ void w_logtest_remove_session(char *token) {
     /* Remove accumulator hash */
     OSHash_Free(session->acm_store);
 
-    /* Remove session */
-    w_mutex_destroy(&session->mutex);
-
     /* Free memory allocated in OSRegex execution */
     OSRegex_free_regex_matching(&session->decoder_match);
     OSRegex_free_regex_matching(&session->rule_match);
 
-    mdebug1(LOGTEST_INFO_SESSION_REMOVE, token_session);
-    os_free(token_session);
-
     /* Remove token and session */
     os_free(session->token);
     os_free(session);
+
+    mdebug1(LOGTEST_INFO_SESSION_REMOVE, token_session);
+    os_free(token_session);
 }
 
 
@@ -586,21 +580,13 @@ void *w_logtest_check_inactive_sessions(w_logtest_connection_t * connection) {
             token_session = hash_node->key;
             session = hash_node->data;
 
-            w_mutex_lock(&session->mutex);
             current_time = time(NULL);
             if (difftime(current_time, session->last_connection) >= w_logtest_conf.session_timeout) {
-                session->expired = true;
+                w_logtest_remove_session(token_session);
+                connection->active_client -= 1;
             }
-
-            w_mutex_unlock(&session->mutex);
 
             hash_node = OSHash_Next(w_logtest_sessions, &inode_it, hash_node);
-
-            if (session->expired) {
-                connection->active_client -= 1;
-                w_logtest_remove_session(token_session);
-            }
-
         }
 
         w_mutex_unlock(&connection->mutex_hash_table);
@@ -840,16 +826,13 @@ w_logtest_session_t * w_logtest_get_session(cJSON * req, OSList * list_msg, w_lo
 
     /* Search an active session */
     if (s_token) {
+        w_mutex_lock(&connection->mutex_hash_table);
         if (session = OSHash_Get_ex(w_logtest_sessions, s_token), session) {
-
-            w_mutex_lock(&session->mutex);
-            if (!session->expired) {
-                session->last_connection = time(NULL);
-                w_mutex_unlock(&session->mutex);
-                return session;
-            }
-            w_mutex_unlock(&session->mutex);
+            session->last_connection = time(NULL);
+            w_rwlock_rdlock(&session->in_use);
+            return session;
         }
+        w_mutex_unlock(&connection->mutex_hash_table);
 
         mdebug1(LOGTEST_WARN_TOKEN_EXPIRED, s_token);
         smwarn(list_msg, LOGTEST_WARN_TOKEN_EXPIRED, s_token);
@@ -863,7 +846,9 @@ w_logtest_session_t * w_logtest_get_session(cJSON * req, OSList * list_msg, w_lo
     } while (OSHash_Get_ex(w_logtest_sessions, s_token) != NULL);
 
     session = w_logtest_initialize_session(s_token, list_msg);
+
     if (session) {
+        w_rwlock_rdlock(&session->in_use);
         w_logtest_register_session(connection, session);
         mdebug1(LOGTEST_INFO_TOKEN_SESSION, s_token);
         sminfo(list_msg, LOGTEST_INFO_TOKEN_SESSION, s_token);
@@ -879,15 +864,12 @@ w_logtest_session_t * w_logtest_get_session(cJSON * req, OSList * list_msg, w_lo
 
 void w_logtest_register_session(w_logtest_connection_t * connection, w_logtest_session_t * session) {
 
-    w_mutex_lock(&connection->mutex_hash_table);
     connection->active_client += 1;
 
     /* Find the client who has not made a query for the longest time and remove session */
     if (connection->active_client > w_logtest_conf.max_sessions) {
         w_logtest_remove_old_session(connection);
     }
-
-    w_mutex_unlock(&connection->mutex_hash_table);
 
     /* Register session */
     OSHash_Add_ex(w_logtest_sessions, session->token, session);
@@ -898,7 +880,6 @@ void w_logtest_remove_old_session(w_logtest_connection_t * connection) {
 
         OSHashNode * hash_node;
         unsigned int inode_it = 0;
-
         w_logtest_session_t * current_session = NULL;
         w_logtest_session_t * old_session = NULL;
         bool exchange = false;
@@ -913,14 +894,7 @@ void w_logtest_remove_old_session(w_logtest_connection_t * connection) {
         while (hash_node) {
 
             current_session = hash_node->data;
-
-            w_mutex_lock(&current_session->mutex);
-            w_mutex_lock(&old_session->mutex);
-
             exchange = old_session->last_connection > current_session->last_connection;
-
-            w_mutex_unlock(&old_session->mutex);
-            w_mutex_unlock(&current_session->mutex);
 
             if (exchange) {
                 old_session = current_session;
@@ -930,8 +904,8 @@ void w_logtest_remove_old_session(w_logtest_connection_t * connection) {
         }
 
         /* Remove old session */
-        connection->active_client -= 1;
         w_logtest_remove_session(old_session->token);
+        connection->active_client -= 1;
 }
 
 
@@ -1079,6 +1053,7 @@ int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_
     bool alert_generated = false;
 
     /* Get session */
+
     current_session = w_logtest_get_session(json_request, list_msg, connection);
     if (current_session) {
         cJSON_AddStringToObject(json_response, W_LOGTEST_JSON_TOKEN, current_session->token);
@@ -1097,6 +1072,8 @@ int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_
         }
         w_logtest_add_msg_response(json_response, list_msg, &retval);
     }
+
+    w_rwlock_unlock(&current_session->in_use);
 
     /* Check alert level */
     if (retval >= W_LOGTEST_RCODE_SUCCESS) {
@@ -1123,8 +1100,10 @@ int w_logtest_process_request_remove_session(cJSON * json_request, cJSON * json_
         w_mutex_lock(&connection->mutex_hash_table);
 
         if (session = OSHash_Get_ex(w_logtest_sessions, s_token), session) {
-            connection->active_client -= 1;
+            w_rwlock_wrlock(&session->in_use);
             w_logtest_remove_session(s_token);
+            connection->active_client -= 1;
+            w_rwlock_unlock(&session->in_use);
             sminfo(list_msg, LOGTEST_INFO_SESSION_REMOVE, s_token);
 
         } else {

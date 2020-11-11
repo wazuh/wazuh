@@ -11,6 +11,7 @@
 #define LOGTEST_H
 
 #include "shared.h"
+#include "../headers/pthreads_op.h"
 #include "config.h"
 #include "rules.h"
 #include "config.h"
@@ -81,8 +82,7 @@ typedef struct w_logtest_session_t {
 
     char *token;                            ///< Client ID
     time_t last_connection;                 ///< Timestamp of the last query
-    bool expired;                           ///< Indicates that the session expired and will be deleted
-    pthread_mutex_t mutex;                  ///< Prevent race condition between get a session and remove it for inactivity
+    pthread_rwlock_t in_use;                ///< To prevent remove the session when it is in use
 
     RuleNode *rule_list;                    ///< Rule list
     OSDecoderNode *decoderlist_forpname;    ///< Decoder list to match logs which have a program name

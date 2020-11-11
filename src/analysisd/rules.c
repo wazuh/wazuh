@@ -1680,7 +1680,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         goto cleanup;
                     }
 
-                    free(dstgeoip);
+                    os_free(dstgeoip);
                     dstgeoip = NULL;
                 }
 
