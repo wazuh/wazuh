@@ -1840,7 +1840,7 @@ void test_wdb_update_agent_connection_status_error_socket(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
     will_return(__wrap_wdbc_query_ex, response);
@@ -1880,7 +1880,7 @@ void test_wdb_update_agent_connection_status_error_sql_execution(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
     will_return(__wrap_wdbc_query_ex, response);
@@ -1920,7 +1920,7 @@ void test_wdb_update_agent_connection_status_error_result(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
     will_return(__wrap_wdbc_query_ex, response);
@@ -1961,7 +1961,7 @@ void test_wdb_update_agent_connection_status_success(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
     will_return(__wrap_wdbc_query_ex, response);
@@ -4709,7 +4709,7 @@ void test_wdb_reset_agents_connection_error_socket(void **state)
     const char *response = "err";
 
     // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
     will_return(__wrap_wdbc_query_ex, response);
@@ -4731,7 +4731,7 @@ void test_wdb_reset_agents_connection_error_sql_execution(void **state)
     const char *response = "err";
 
     // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
     will_return(__wrap_wdbc_query_ex, response);
@@ -4753,7 +4753,7 @@ void test_wdb_reset_agents_connection_error_result(void **state)
     const char *response = "err";
 
     // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
     will_return(__wrap_wdbc_query_ex, response);
@@ -4776,7 +4776,7 @@ void test_wdb_reset_agents_connection_success(void **state)
     const char *response = "ok";
 
     // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, sock);
+    expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
     will_return(__wrap_wdbc_query_ex, response);
