@@ -121,42 +121,37 @@ def test_checking_configuration(read_config):
             wazuh.core.cluster.cluster.check_cluster_config(configuration)
 
 
-agent_info = b"""Linux |agent1 |3.10.0-862.el7.x86_64 |#1 SMP Fri Apr 20 16:44:24 UTC 2018 |x86_64 [CentOS Linux|centos: 7 (Core)] - Wazuh v3.7.2 / d10d46b48c280384e8773a5fa24ecacb
-5b458d5fa953a391de1130a2625f3df2 merged.mg
+agent_groups = b"default,windows-servers"
 
 
-#"manager_hostname":centos
-#"node_name":worker-1
-"""
-
-
-@patch('os.listdir', return_value=['agent1-any', 'agent2-any'])
+@patch('os.listdir', return_value=['005', '006'])
 @patch('wazuh.core.cluster.cluster.stat')
-def test_merge_agent_info(stat_mock, listdir_mock):
+def test_merge_info(stat_mock, listdir_mock):
     """
     Tests merge agent info function
     """
     stat_mock.return_value.st_mtime = time()
-    stat_mock.return_value.st_size = len(agent_info)
+    stat_mock.return_value.st_size = len(agent_groups)
 
-    with patch('builtins.open', mock_open(read_data=agent_info)) as m:
-        wazuh.core.cluster.cluster.merge_agent_info('agent-info', 'worker1')
-        m.assert_any_call(common.ossec_path + '/queue/cluster/worker1/agent-info.merged', 'wb')
-        m.assert_any_call(common.ossec_path + '/queue/agent-info/agent1-any', 'rb')
-        m.assert_any_call(common.ossec_path + '/queue/agent-info/agent2-any', 'rb')
+    with patch('builtins.open', mock_open(read_data=agent_groups)) as m:
+        wazuh.core.cluster.cluster.merge_info('agent-groups', 'worker1', file_type='-shared')
+        m.assert_any_call(common.ossec_path + '/queue/cluster/worker1/agent-groups-shared.merged', 'wb')
+        m.assert_any_call(common.ossec_path + '/queue/agent-groups/005', 'rb')
+        m.assert_any_call(common.ossec_path + '/queue/agent-groups/006', 'rb')
         handle = m()
-        expected = f'{len(agent_info)} agent1-any {datetime.utcfromtimestamp(stat_mock.return_value.st_mtime)}\n'.encode() + agent_info
+        expected = f'{len(agent_groups)} 005 ' \
+                   f'{datetime.utcfromtimestamp(stat_mock.return_value.st_mtime)}\n'.encode() + agent_groups
         handle.write.assert_any_call(expected)
 
 
 @pytest.mark.parametrize('agent_info, exception', [
-    (f"258 agent1-any 2019-03-29 14:57:29.610934\n{agent_info}".encode(), None),
-    (f"2i58 agent1-any 2019-03-29 14:57:29.610934\n{agent_info}".encode(), ValueError)
+    (f"23 005 2019-03-29 14:57:29.610934\n{agent_groups}".encode(), None),
+    (f"2i58 006 2019-03-29 14:57:29.610934\n{agent_groups}".encode(), ValueError)
 ])
 @patch('wazuh.core.cluster.cluster.stat')
-def test_unmerge_agent_info(stat_mock, agent_info, exception):
+def test_unmerge_info(stat_mock, agent_info, exception):
     stat_mock.return_value.st_size = len(agent_info)
     with patch('builtins.open', mock_open(read_data=agent_info)) as m:
-        agent_infos = list(
-            wazuh.core.cluster.cluster.unmerge_agent_info('agent-info', '/random/path', 'agent-info.merged'))
-        assert len(agent_infos) == (1 if exception is None else 0)
+        agent_groups = list(
+            wazuh.core.cluster.cluster.unmerge_info('agent-groups', '/random/path', 'agent-groups-shared.merged'))
+        assert len(agent_groups) == (1 if exception is None else 0)

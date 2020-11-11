@@ -121,7 +121,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
                     entry_metadata = {"mod_time": str(file_mod_time), 'cluster_item_key': get_cluster_item_key}
                     if '.merged' in entry:
                         entry_metadata['merged'] = True
-                        entry_metadata['merge_type'] = 'agent-info' if 'agent-info' in entry else 'agent-groups'
+                        entry_metadata['merge_type'] = 'agent-groups'
                         entry_metadata['merge_name'] = dirname + '/' + entry
                     else:
                         entry_metadata['merged'] = False
@@ -141,7 +141,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
     return walk_files
 
 
-def get_files_status(node_type, node_name, get_md5=True):
+def get_files_status(node_type, get_md5=True):
     cluster_items = get_cluster_items()
 
     final_items = {}
@@ -150,21 +150,9 @@ def get_files_status(node_type, node_name, get_md5=True):
             continue
 
         if item['source'] == node_type or item['source'] == 'all':
-            if item.get("files") and "agent-info.merged" in item["files"]:
-                agents_to_send, merged_path = \
-                    merge_agent_info(merge_type="agent-info",
-                                     node_name=node_name,
-                                     time_limit_seconds=cluster_items['sync_options']['get_agentinfo_newer_than']
-                                     )
-                if agents_to_send == 0:
-                    return {}
-
-                fullpath = path.dirname(merged_path)
-            else:
-                fullpath = file_path
             try:
                 final_items.update(
-                    walk_dir(fullpath, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
+                    walk_dir(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
                              cluster_items['files']['excluded_extensions'], file_path, get_md5, node_type))
             except Exception as e:
                 logger.warning("Error getting file status: {}.".format(e))
@@ -241,8 +229,8 @@ def compare_files(good_files, check_files, node_name):
         # merge all shared extra valid files into a single one.
         # To Do: if more extra valid files types are included, compute their merge type and remove hardcoded
         # agent-groups
-        shared_merged = [(merge_agent_info(merge_type='agent-groups', files=shared_e_v, file_type='-shared',
-                                           node_name=node_name, time_limit_seconds=0)[1],
+        shared_merged = [(merge_info(merge_type='agent-groups', files=shared_e_v, file_type='-shared',
+                                     node_name=node_name, time_limit_seconds=0)[1],
                           {'cluster_item_key': '/queue/agent-groups/', 'merged': True, 'merge-type': 'agent-groups'})]
 
         shared_files = dict(itertools.chain(shared_merged, ((key, good_files[key]) for key in shared)))
@@ -291,11 +279,7 @@ def clean_up(node_name=""):
         logger.error("[Cluster] Error cleaning up: {0}.".format(str(e)))
 
 
-#
-# Agents
-#
-
-def merge_agent_info(merge_type, node_name, files=None, file_type="", time_limit_seconds=1800):
+def merge_info(merge_type, node_name, files=None, file_type="", time_limit_seconds=common.limit_seconds):
     min_mtime = 0
     if time_limit_seconds:
         min_mtime = time() - time_limit_seconds
@@ -330,13 +314,13 @@ def merge_agent_info(merge_type, node_name, files=None, file_type="", time_limit
     return files_to_send, output_file
 
 
-def unmerge_agent_info(merge_type, path_file, filename):
-    src_agent_info_path = path.abspath("{}/{}".format(path_file, filename))
-    dst_agent_info_path = os.path.join("queue", merge_type)
+def unmerge_info(merge_type, path_file, filename):
+    src_path = path.abspath("{}/{}".format(path_file, filename))
+    dst_path = os.path.join("queue", merge_type)
 
     bytes_read = 0
-    total_bytes = stat(src_agent_info_path).st_size
-    with open(src_agent_info_path, 'rb') as src_f:
+    total_bytes = stat(src_path).st_size
+    with open(src_path, 'rb') as src_f:
         while bytes_read < total_bytes:
             # read header
             header = src_f.readline().decode()
@@ -345,12 +329,11 @@ def unmerge_agent_info(merge_type, path_file, filename):
                 st_size, name, st_mtime = header[:-1].split(' ', 2)
                 st_size = int(st_size)
             except ValueError as e:
-                logger.warning(f"Malformed agent-info.merged file ({e}). Parsed line: {header}. "
-                               f"Some agent statuses won't be synced")
+                logger.warning(f"Malformed file ({e}). Parsed line: {header}. Some files won't be synced")
                 break
 
             # read data
             data = src_f.read(st_size)
             bytes_read += st_size
 
-            yield dst_agent_info_path + '/' + name, data, st_mtime
+            yield dst_path + '/' + name, data, st_mtime

@@ -347,9 +347,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             try:
                 if self.connected:
                     before = time.time()
-                    await SyncWorker(cmd=b'sync_i_w_m', files_to_sync={}, checksums=wazuh.core.cluster.cluster.get_files_status('master',
-                                                                                                                                self.name),
-                                     logger=integrity_logger, worker=self).sync()
+                    await SyncWorker(cmd=b'sync_i_w_m', files_to_sync={}, logger=integrity_logger, worker=self,
+                                     checksums=wazuh.core.cluster.cluster.get_files_status('master')).sync()
                     after = time.time()
                     integrity_logger.debug("Time synchronizing integrity: {} s".format(after - before))
             except exception.WazuhException as e:
@@ -402,8 +401,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             before = time.time()
             self.logger.debug("Starting to send extra valid files")
             # TODO: Add support for more extra valid file types if ever added
-            n_files, merged_file = wazuh.core.cluster.cluster.merge_agent_info(merge_type='agent-groups', files=extra_valid.keys(),
-                                                                               time_limit_seconds=0, node_name=self.name)
+            n_files, merged_file = \
+                wazuh.core.cluster.cluster.merge_info(merge_type='agent-groups', files=extra_valid.keys(),
+                                                      time_limit_seconds=0, node_name=self.name)
             if n_files:
                 files_to_sync = {merged_file: {'merged': True, 'merge_type': 'agent-groups', 'merge_name': merged_file,
                                                'cluster_item_key': '/queue/agent-groups/'}}
@@ -583,11 +583,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 self._check_removed_agents("{}{}".format(zip_path, filename), logger)
 
             if data['merged']:  # worker nodes can only receive agent-groups files
-                if data['merge-type'] == 'agent-info':
-                    logger.warning("Agent status received in a worker node")
-                    raise WazuhInternalError(3011)
-
-                for name, content, _ in wazuh.core.cluster.cluster.unmerge_agent_info('agent-groups', zip_path, filename):
+                for name, content, _ in wazuh.core.cluster.cluster.unmerge_info('agent-groups', zip_path, filename):
                     full_unmerged_name = os.path.join(common.ossec_path, name)
                     tmp_unmerged_path = full_unmerged_name + '.tmp'
                     with open(tmp_unmerged_path, 'wb') as f:
