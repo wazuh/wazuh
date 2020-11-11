@@ -59,7 +59,6 @@ TEST_F(WindowsHelperTest, ipv6NetMask_72)
 TEST_F(WindowsHelperTest, ipv6NetMask_INVALID)
 {
     const int addressPrefixLength { 130 };
-    const std::string expectedNetMask;
     std::string netMask { Utils::NetworkWindowsHelper::ipv6Netmask(addressPrefixLength) };
     EXPECT_TRUE(netMask.empty());
 }
