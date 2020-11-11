@@ -25,7 +25,7 @@
 #include "os_net/os_net.h"
 
 /* Queue to store agents ready to be upgraded */
-STATIC w_queue_t *upgrade_queue;
+STATIC w_linked_queue_t *upgrade_queue;
 
 /* Running threads semaphore */
 sem_t upgrade_semaphore;
@@ -122,11 +122,11 @@ STATIC int wm_agent_upgrade_send_sha1(int agent_id, const char *wpk_file, const 
 STATIC int wm_agent_upgrade_send_upgrade(int agent_id, const char *wpk_file, const char *installer) __attribute__((nonnull));
 
 void wm_agent_upgrade_init_upgrade_queue() {
-    upgrade_queue = queue_init(MAX_AGENTS);
+    upgrade_queue = linked_queue_init();
 }
 
 void wm_agent_upgrade_destroy_upgrade_queue() {
-    queue_free(upgrade_queue);
+    linked_queue_free(upgrade_queue);
 }
 
 void wm_agent_upgrade_prepare_upgrades() {
@@ -141,12 +141,8 @@ void wm_agent_upgrade_prepare_upgrades() {
 
         node = wm_agent_upgrade_get_next_node(&index, node);
 
-        if (!queue_push_ex(upgrade_queue, agent_task)) {
-            wm_agent_upgrade_remove_entry(agent_key, 0);
-        } else {
-            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UPGRADE_QUEUE_FULL, agent_key);
-            wm_agent_upgrade_remove_entry(agent_key, 1);
-        }
+        linked_queue_push_ex(upgrade_queue, agent_task);
+        wm_agent_upgrade_remove_entry(agent_key, 0);
     }
 }
 
@@ -160,7 +156,7 @@ void* wm_agent_upgrade_dispatch_upgrades(void *arg) {
         // Blocks until an available thread is ready
         sem_wait(&upgrade_semaphore);
 
-        wm_agent_task *agent_task = queue_pop_ex(upgrade_queue);
+        wm_agent_task *agent_task = linked_queue_pop_ex(upgrade_queue);
 
         os_calloc(1, sizeof(wm_upgrade_args), upgrade_config);
         upgrade_config->config = config;

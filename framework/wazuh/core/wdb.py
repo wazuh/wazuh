@@ -54,13 +54,19 @@ class WazuhDBConnection:
                 (query_elements[2] == 'select',
                  'Wrong SQL query for Mitre database')
             ]
+        elif query_elements[sql_first_index] == 'rootcheck':
+            input_val_errors = [
+                (query_elements[sql_first_index+1] == 'delete' or query_elements[sql_first_index+1] == 'save',
+                 'Only "save" or "delete" requests can be sent to WDB')
+            ]
         else:
             input_val_errors = [
                 (query_elements[sql_first_index] == 'sql', "Incorrect WDB request type."),
                 (query_elements[0] == 'agent' or query_elements[0] == 'global', "The {} database is not valid".format(query_elements[0])),
                 (query_elements[1].isdigit() if query_elements[0] == 'agent' else True, "Incorrect agent ID {}".format(query_elements[1])),
                 (query_elements[sql_first_index+1] == 'select' or query_elements[sql_first_index+1] == 'delete' or
-                 query_elements[sql_first_index+1] == 'update', "The API can only send select requests to WDB"),
+                 query_elements[sql_first_index+1] == 'update', 'Only "select", "delete" or "update" requests can be '
+                                                                'sent to WDB'),
                 (not ';' in query, "Found a not valid symbol in database query: ;")
             ]
 
@@ -204,7 +210,7 @@ class WazuhDBConnection:
 
         # only for delete queries
         if delete:
-            regex = re.compile(r"\w+ \d+? sql delete from ([a-z0-9,_ ]+)")
+            regex = re.compile(r"\w+ \d+? (sql delete from ([a-z0-9,_ ]+)|\w+ delete$)")
             if regex.match(query_lower) is None:
                 raise WazuhError(2004, "Delete query is wrong")
             return self._send(query_lower)
@@ -233,7 +239,7 @@ class WazuhDBConnection:
                 lim = int(re.compile(r".* limit (\d+)").match(query_lower).group(1))
                 query_lower = query_lower.replace(" limit {}".format(lim), "")
 
-            regex = re.compile(r"\w+(?: \d*|)? sql select ([A-Z a-z0-9,*_` \.\-%\(\):\']+) from")
+            regex = re.compile(r"\w+(?: \d*|)? sql select ([A-Z a-z0-9,*_` \.\-%\(\):\']+?) from")
             select = regex.match(query_lower).group(1)
             countq = query_lower.replace(select, "count(*)", 1)
             gb_regex = re.compile(r"(group by [^\s]+)")

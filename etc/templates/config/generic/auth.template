@@ -7,7 +7,6 @@
     <force_time>0</force_time>
     <purge>yes</purge>
     <use_password>no</use_password>
-    <limit_maxagents>yes</limit_maxagents>
     <ciphers>HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH</ciphers>
     <!-- <ssl_agent_ca></ssl_agent_ca> -->
     <ssl_verify_host>no</ssl_verify_host>

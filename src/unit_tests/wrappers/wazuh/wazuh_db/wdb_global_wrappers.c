@@ -119,19 +119,19 @@ int __wrap_wdb_global_delete_agent( __attribute__((unused)) wdb_t *wdb,
 cJSON* __wrap_wdb_global_select_agent_name( __attribute__((unused)) wdb_t *wdb,
                                             int id) {
     check_expected(id);
-    return mock_ptr_type(cJSON*);   
+    return mock_ptr_type(cJSON*);
 }
 
 cJSON* __wrap_wdb_global_select_agent_group(__attribute__((unused)) wdb_t *wdb,
                                             int id) {
     check_expected(id);
-    return mock_ptr_type(cJSON*);   
+    return mock_ptr_type(cJSON*);
 }
 
 int __wrap_wdb_global_delete_agent_belong(  __attribute__((unused)) wdb_t *wdb,
                                             int id) {
     check_expected(id);
-    return mock();   
+    return mock();
 }
 
 cJSON* __wrap_wdb_global_find_agent(__attribute__((unused)) wdb_t *wdb,
@@ -140,34 +140,6 @@ cJSON* __wrap_wdb_global_find_agent(__attribute__((unused)) wdb_t *wdb,
     check_expected(name);
     check_expected(ip);
     return mock_ptr_type(cJSON*);
-}
-
-cJSON* __wrap_wdb_global_select_agent_fim_offset(   __attribute__((unused)) wdb_t *wdb,
-                                                    int id) {
-    check_expected(id);
-    return mock_ptr_type(cJSON*);
-}
-
-cJSON* __wrap_wdb_global_select_agent_reg_offset(   __attribute__((unused)) wdb_t *wdb,
-                                                    int id) {
-    check_expected(id);
-    return mock_ptr_type(cJSON*);
-}
-
-int __wrap_wdb_global_update_agent_fim_offset(  __attribute__((unused)) wdb_t *wdb,
-                                                int id,
-                                                long offset) {
-    check_expected(id);
-    check_expected(offset);
-    return mock();
-}
-
-int __wrap_wdb_global_update_agent_reg_offset(  __attribute__((unused)) wdb_t *wdb,
-                                                int id,
-                                                long offset) {
-    check_expected(id);
-    check_expected(offset);
-    return mock();
 }
 
 cJSON* __wrap_wdb_global_select_agent_status(       __attribute__((unused)) wdb_t *wdb,

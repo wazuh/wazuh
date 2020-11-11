@@ -22,8 +22,9 @@ static void helpmsg(void) __attribute__((noreturn));
 
 static void helpmsg()
 {
-    printf("\n%s %s: Manages the policy and auditing database.\n",
+    printf("\n%s %s: This binary has been deprecated, use API calls related below instead\n",
            __ossec_name, ARGV0);
+    printf("\nManages the policy and auditing database.\n");
     printf("Available options:\n\n");
     printf("\t-h          This help message.\n");
     printf("\t-V          Print version.\n");
@@ -267,7 +268,7 @@ int main(int argc, char **argv)
             int i;
             keystore keys = KEYSTORE_INITIALIZER;
 
-            OS_ReadKeys(&keys, 1, 0, 0);
+            OS_ReadKeys(&keys, 1, 0);
 
             i = OS_IsAllowedID(&keys, agent_id);
             if (i < 0) {
@@ -326,7 +327,7 @@ int main(int argc, char **argv)
                 printf("%s", cJSON_PrintUnformatted(json_root));
             }
         } else {
-            OS_ReadKeys(&keys, 1, 0, 0);
+            OS_ReadKeys(&keys, 1, 0);
 
             i = OS_IsAllowedID(&keys, agent_id);
             if (i < 0) {
