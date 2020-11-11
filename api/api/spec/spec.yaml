@@ -1896,7 +1896,7 @@ components:
         max_agents:
           type: string
           minimum: 0
-          description: "Maximum number of agents that can be registered. This variable is defined at compilation time"
+          description: "Maximum number of agents that can be registered."
         openssl_support:
           type: string
         ruleset_version:
@@ -2337,6 +2337,8 @@ components:
             - wazuh-modulesd:agent-key-polling
             - wazuh-modulesd:aws-s3
             - wazuh-modulesd:azure-logs
+            - wazuh-modulesd:agent-upgrade
+            - wazuh-modulesd:task-manager
             - wazuh-modulesd:ciscat
             - wazuh-modulesd:control
             - wazuh-modulesd:command
@@ -7908,7 +7910,7 @@ paths:
                       version: v3.9.0
                       compilation_date: "2019-03-06T11:24:59Z"
                       type: manager
-                      max_agents: 14000
+                      max_agents: unlimited
                       openssl_support: yes
                       ruleset_version: 3905
                       tz_offset: +0000
@@ -9174,7 +9176,7 @@ paths:
                       version: v3.9.0
                       compilation_date: "2019-03-06T11:24:59Z"
                       type: manager
-                      max_agents: 14000
+                      max_agents: unlimited
                       openssl_support: yes
                       ruleset_version: 3905
                       tz_offset: +0000
