@@ -457,7 +457,7 @@ x-rbac-catalog:
         resources: ['agent:id:*']
         effect: "allow"
     'tasks:status':
-      description: "Get tasks status information about a specified list of tasks"
+      description: "Access tasks's status information"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
