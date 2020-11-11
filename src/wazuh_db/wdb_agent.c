@@ -567,69 +567,6 @@ int wdb_update_agent_group(int id, char *group, int *sock) {
     return result;
 }
 
-<<<<<<< HEAD
-=======
-int wdb_set_agent_offset(int id, int type, long offset, int *sock) {
-    int result = 0;
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-    char *payload = NULL;
-    int aux_sock = -1;
-    char *data_in_str = NULL;
-    cJSON *data_in = cJSON_CreateObject();
-
-    if (!data_in) {
-        mdebug1("Error creating data JSON for Wazuh DB.");
-        return OS_INVALID;
-    }
-
-    cJSON_AddNumberToObject(data_in, "id", id);
-    cJSON_AddNumberToObject(data_in, "offset", offset);
-
-    data_in_str = cJSON_PrintUnformatted(data_in);
-    cJSON_Delete(data_in);
-
-    switch (type) {
-    case WDB_SYSCHECK:
-        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_FIM_OFFSET], data_in_str);
-        break;
-    case WDB_SYSCHECK_REGISTRY:
-        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_REG_OFFSET], data_in_str);
-        break;
-    default:
-        os_free(data_in_str);
-        return OS_INVALID;
-    }
-
-    os_free(data_in_str);
-
-    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    switch (result) {
-        case OS_SUCCESS:
-            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
-                mdebug1("Global DB Error reported in the result of the query");
-                result = OS_INVALID;
-            }
-            break;
-        case OS_INVALID:
-            mdebug1("Global DB Error in the response from socket");
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            return OS_INVALID;
-        default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            return OS_INVALID;
-    }
-
-    return result;
-}
-
->>>>>>> Fix memory size error
 int wdb_set_agent_labels(int id, const char *labels, int *sock) {
     int result = 0;
     // Making use of a big buffer for the query because it
@@ -934,49 +871,6 @@ time_t wdb_get_agent_keepalive(const char *name, const char *ip, int *sock){
     return output;
 }
 
-<<<<<<< HEAD
-=======
-long wdb_get_agent_offset(int id, int type, int *sock) {
-    long int output = 0;
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-    cJSON *root = NULL;
-    cJSON *json_offset = NULL;
-    char * column = NULL;
-    int aux_sock = -1;
-
-    switch (type) {
-    case WDB_SYSCHECK:
-        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_FIM_OFFSET], id);
-        column = "fim_offset";
-        break;
-    case WDB_SYSCHECK_REGISTRY:
-        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_REG_OFFSET],id);
-        column = "reg_offset";
-        break;
-    default:
-        return OS_INVALID;
-    }
-
-    root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    if (!root) {
-        merror("Error querying Wazuh DB to get agent offset.");
-        return OS_INVALID;
-    }
-
-    json_offset = cJSON_GetObjectItem(root->child,column);
-    output = cJSON_IsNumber(json_offset) ? json_offset->valueint : OS_INVALID;
-
-    cJSON_Delete(root);
-    return output;
-}
-
->>>>>>> Fix memory size error
 int wdb_find_group(const char *name, int *sock) {
     int output = OS_INVALID;
     char wdbquery[WDBQUERY_SIZE] = "";
