@@ -24,10 +24,10 @@ TEST_F(WindowsHelperTest, ipv6NetMask_64)
     EXPECT_EQ(expectedNetMask, netMask);
 }
 
-TEST_F(WindowsHelperTest, ipv6NetMask_128)
+TEST_F(WindowsHelperTest, ipv6NetMask_127)
 {
-    const int addressPrefixLength { 128 };
-    const std::string expectedNetMask { "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff" };
+    const int addressPrefixLength { 127 };
+    const std::string expectedNetMask { "ffff:ffff:ffff:ffff:ffff:ffff:ffff:fffe00" };
     std::string netMask { Utils::NetworkWindowsHelper::ipv6Netmask(addressPrefixLength) };
     EXPECT_EQ(expectedNetMask, netMask);
 }
@@ -54,5 +54,13 @@ TEST_F(WindowsHelperTest, ipv6NetMask_72)
     const std::string expectedNetMask { "ffff:ffff:ffff:ffff:ff00::" };
     std::string netMask { Utils::NetworkWindowsHelper::ipv6Netmask(addressPrefixLength) };
     EXPECT_EQ(expectedNetMask, netMask);
+}
+
+TEST_F(WindowsHelperTest, ipv6NetMask_INVALID)
+{
+    const int addressPrefixLength { 130 };
+    const std::string expectedNetMask;
+    std::string netMask { Utils::NetworkWindowsHelper::ipv6Netmask(addressPrefixLength) };
+    EXPECT_TRUE(netMask.empty());
 }
 #endif

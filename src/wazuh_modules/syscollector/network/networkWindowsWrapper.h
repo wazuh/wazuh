@@ -147,13 +147,7 @@ public:
         if (m_currentUnicastAddress && Utils::isVistaOrLater())
         {
             // Get ipv6Netmask based on current OnLinkPrefixLength value
-            const auto MAX_BITS_LENGTH { 128 };
-            const auto addressPrefixLength { m_currentUnicastAddress->OnLinkPrefixLength };
-            if (addressPrefixLength < MAX_BITS_LENGTH)
-            {
-                // For a unicast IPv6 address, any value greater than 128 is an illegal value
-                retVal = Utils::NetworkWindowsHelper::ipv6Netmask(addressPrefixLength);
-            }
+            retVal = Utils::NetworkWindowsHelper::ipv6Netmask(m_currentUnicastAddress->OnLinkPrefixLength);
         }
         // Windows XP netmask IPv6 is not supported
         return retVal;

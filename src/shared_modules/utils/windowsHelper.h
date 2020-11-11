@@ -54,7 +54,7 @@ namespace Utils
     static GetSystemFirmwareTable_t getSystemFirmwareTableFunctionAddress()
     {
         GetSystemFirmwareTable_t ret{nullptr};
-        auto hKernel32 { GetModuleHandle(TEXT("kernel32")) };
+        auto hKernel32 { GetModuleHandle(TEXT("kernel32.dll")) };
         if (hKernel32)
         {
             ret = reinterpret_cast<GetSystemFirmwareTable_t>(GetProcAddress(hKernel32, "GetSystemFirmwareTable"));
@@ -377,47 +377,54 @@ namespace Utils
 
         static std::string ipv6Netmask(const uint8_t maskLength)
         {
-            // Each chunks of addresses has four letters "f" following by a ":"
-            // If "maskLength" is not multiple of 4, we need to fill the current
-            // "chunk" depending of the amount of letters needed. That's why
-            // the need of the following map.
-            static std::map<int, std::string> NET_MASK_FILLER_CHARS_MAP =
+            static const auto MAX_BITS_LENGTH { 128 };
+            std::string netmask;
+            if (maskLength < MAX_BITS_LENGTH)
             {
-                { 1, "8"},
-                { 2, "c"},
-                { 3, "e"}
-            };
-            static const int BITS_PER_CHUNK     { 4 };
-            static const int NETMASK_TOTAL_BITS { 32 };
+                // For a unicast IPv6 address, any value greater than 128 is an illegal value
 
-            std::string netmask { "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff" }; // 128 bits address
-            const int value          { maskLength / BITS_PER_CHUNK };
-            const int remainingValue { maskLength % BITS_PER_CHUNK };
-            const int totalSum       { value + remainingValue };
-            const int refillData     { totalSum % BITS_PER_CHUNK };
-            const int separators     { value / BITS_PER_CHUNK };
-            const int remainingSeparators     { value % BITS_PER_CHUNK };
-            const int finalNumberOfSeparators { remainingSeparators == 0 ? separators-1 : separators };
-
-            // Add the needed ":" separators
-            netmask = netmask.substr(0, value+finalNumberOfSeparators);
-
-            if (remainingValue)
-            {
-                // If the maskLength is not multiple of 4, let's refill with the corresponding
-                // character
-                const auto it { NET_MASK_FILLER_CHARS_MAP.find(remainingValue) };
-                if (NET_MASK_FILLER_CHARS_MAP.end() != it)
+                // Each chunks of addresses has four letters "f" following by a ":"
+                // If "maskLength" is not multiple of 4, we need to fill the current
+                // "chunk" depending of the amount of letters needed. That's why
+                // the need of the following map.
+                static std::map<int, std::string> NET_MASK_FILLER_CHARS_MAP =
                 {
-                    netmask += it->second;
-                }
-            }
-            netmask += std::string(refillData, '0'); // Refill data with 0's if applies
+                    { 1, "8"},
+                    { 2, "c"},
+                    { 3, "e"}
+                };
+                static const int BITS_PER_CHUNK     { 4 };
+                static const int NETMASK_TOTAL_BITS { 32 };
 
-            if (totalSum < (NETMASK_TOTAL_BITS - BITS_PER_CHUNK))
-            {
-                // Append "::" to fill the complete 128 bits address (IPv6 representation)
-                netmask += "::";
+                netmask = "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"; // 128 bits address
+                const int value          { maskLength / BITS_PER_CHUNK };
+                const int remainingValue { maskLength % BITS_PER_CHUNK };
+                const int totalSum       { value + remainingValue };
+                const int refillData     { totalSum % BITS_PER_CHUNK };
+                const int separators     { value / BITS_PER_CHUNK };
+                const int remainingSeparators     { value % BITS_PER_CHUNK };
+                const int finalNumberOfSeparators { remainingSeparators == 0 ? separators-1 : separators };
+
+                // Add the needed ":" separators
+                netmask = netmask.substr(0, value+finalNumberOfSeparators);
+
+                if (remainingValue)
+                {
+                    // If the maskLength is not multiple of 4, let's refill with the corresponding
+                    // character
+                    const auto it { NET_MASK_FILLER_CHARS_MAP.find(remainingValue) };
+                    if (NET_MASK_FILLER_CHARS_MAP.end() != it)
+                    {
+                        netmask += it->second;
+                    }
+                }
+                netmask += std::string(refillData, '0'); // Refill data with 0's if applies
+
+                if (totalSum < (NETMASK_TOTAL_BITS - BITS_PER_CHUNK))
+                {
+                    // Append "::" to fill the complete 128 bits address (IPv6 representation)
+                    netmask += "::";
+                }
             }
 
             return netmask;
