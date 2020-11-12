@@ -54,11 +54,11 @@ void SQLiteDBEngine::bulkInsert(const std::string& table,
     if (0 != loadTableData(table))
     {
         auto transaction { m_sqliteFactory->createTransaction(m_sqliteConnection) };
-        const auto& stmt { getStatement(buildInsertBulkDataSqlQuery(table, data.at(0))) };
         const auto& tableFieldsMetaData { m_tableFields[table] };
 
         for (const auto& jsonValue : data)
         {
+            const auto& stmt { getStatement(buildInsertBulkDataSqlQuery(table, jsonValue)) };
             int32_t index { 1l };
             for (const auto& field : tableFieldsMetaData)
             {
@@ -73,7 +73,6 @@ void SQLiteDBEngine::bulkInsert(const std::string& table,
                 throw dbengine_error{ BIND_FIELDS_DOES_NOT_MATCH };
             }
             // LCOV_EXCL_STOP
-            stmt->reset();
         }
         transaction->commit();
     }
@@ -170,29 +169,37 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
     {
         if (getPrimaryKeysFromTable(table, primaryKeyList))
         {
-            ReturnTypeCallback resultCbType{ MODIFIED };
-            nlohmann::json jsResult;
-            const bool diffExist { getRowDiff(primaryKeyList, table, data.at(0), jsResult) };
-            if (diffExist)
+            nlohmann::json bulkInsertJson;
+            for (const auto& entry : data)
             {
-                const nlohmann::json jsDataToUpdate{getDataToUpdate(primaryKeyList, jsResult, data.at(0), inTransaction)};
-                if (!jsDataToUpdate[0].empty())
+                nlohmann::json jsResult;
+                const bool diffExist { getRowDiff(primaryKeyList, table, entry, jsResult) };
+                if (diffExist)
                 {
-                    const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection)};
-                    updateSingleRow(table, jsDataToUpdate[0]);
-                    transaction->commit();
+                    const nlohmann::json jsDataToUpdate{getDataToUpdate(primaryKeyList, jsResult, entry, inTransaction)};
+                    if (!jsDataToUpdate[0].empty())
+                    {
+                        const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection)};
+                        updateSingleRow(table, jsDataToUpdate[0]);
+                        transaction->commit();
+                        if (callback && !jsResult.empty())
+                        {
+                            callback(MODIFIED, jsResult);
+                        }
+                    }
+                }
+                else
+                {
+                    bulkInsertJson.push_back(entry);
                 }
             }
-            else
+            if (!bulkInsertJson.empty())
             {
-                resultCbType = INSERTED;
-                jsResult = data;
-                bulkInsert(table, data);
-            }
-
-            if (callback && !jsResult.empty())
-            {
-                callback(resultCbType, jsResult);
+                bulkInsert(table, bulkInsertJson);
+                if (callback)
+                {
+                    callback(INSERTED, bulkInsertJson);
+                }
             }
         }
     }
@@ -1227,10 +1234,12 @@ std::string SQLiteDBEngine::buildUpdatePartialDataSqlQuery(const std::string& ta
         }
         sql = sql.substr(0, sql.size()-1);  // Remove the last " , "
         sql.append(" WHERE ");
-        for (const auto& value : primaryKeyList)
+        for (auto it = data.begin(); it != data.end(); ++it)
         {
-            sql.append(value);
-            sql.append("=? AND ");
+            if (std::find(primaryKeyList.begin(), primaryKeyList.end(), it.key()) != primaryKeyList.end())
+            {
+                sql += it.key() + "=? AND ";
+            }
         }
         sql = sql.substr(0, sql.size()-5);  // Remove the last " AND "
         sql.append(";");
@@ -1432,28 +1441,32 @@ void SQLiteDBEngine::updateSingleRow(const std::string& table,
     std::vector<std::string> primaryKeyList;
     if (getPrimaryKeysFromTable(table, primaryKeyList))
     {
+        const auto& tableFields { m_tableFields[table] };
         const auto& stmt { getStatement(buildUpdatePartialDataSqlQuery(table, jsData, primaryKeyList)) };
-        auto tableFields { m_tableFields[table] };
         int32_t index { 1l };
-        std::sort(tableFields.begin(),
-                  tableFields.end(),
-                  [](const ColumnData& data1, const ColumnData& data2)
-                  {
-                    const auto pk1{std::get<TableHeader::PK>(data1)};
-                    const auto pk2{std::get<TableHeader::PK>(data2)};
-                    if (pk1 != pk2)
-                    {
-                        return !pk1;
-                    }
-                    const auto name1{std::get<TableHeader::Name>(data1)};
-                    const auto name2{std::get<TableHeader::Name>(data2)};
-                    return name1 < name2;
-                  });
-        for (const auto& field : tableFields)
+        for (auto it = jsData.begin(); it != jsData.end(); ++it)
         {
-            if (jsData.end() != jsData.find(std::get<TableHeader::Name>(field)))
+            if (std::find(primaryKeyList.begin(), primaryKeyList.end(), it.key()) == primaryKeyList.end())
             {
-                bindJsonData(stmt, field, jsData, index);
+                const auto it1{std::find_if(tableFields.begin(), tableFields.end(), [&it](const auto& value){return std::get<GenericTupleIndex::GenString>(value) == it.key();})};
+                if (it1 == tableFields.end())
+                {
+                    throw dbengine_error{ BIND_FIELDS_DOES_NOT_MATCH };
+                }
+                bindJsonData(stmt, *it1, jsData, index);
+                ++index;
+            }
+        }
+        for (auto it = jsData.begin(); it != jsData.end(); ++it)
+        {
+            if (std::find(primaryKeyList.begin(), primaryKeyList.end(), it.key()) != primaryKeyList.end())
+            {
+                const auto it1{std::find_if(tableFields.begin(), tableFields.end(), [&it](const auto& value){return std::get<GenericTupleIndex::GenString>(value) == it.key();})};
+                if (it1 == tableFields.end())
+                {
+                    throw dbengine_error{ BIND_FIELDS_DOES_NOT_MATCH };
+                }
+                bindJsonData(stmt, *it1, jsData, index);
                 ++index;
             }
         }

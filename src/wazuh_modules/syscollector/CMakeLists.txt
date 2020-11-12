@@ -29,6 +29,8 @@ include_directories(${SRC_FOLDER}/external/cJSON/)
 include_directories(${SRC_FOLDER}/external/procps/)
 include_directories(${SRC_FOLDER}/external/bzip2/)
 include_directories(${SRC_FOLDER}/shared_modules/utils)
+include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
+include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${CMAKE_SOURCE_DIR}/)
 include_directories(${CMAKE_SOURCE_DIR}/sysOsInfo/)
 
