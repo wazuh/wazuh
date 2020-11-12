@@ -14,24 +14,24 @@
 constexpr auto PACKAGES_SQL_STATEMENT
 {
     R"(CREATE TABLE packages(
-    `name` TEXT,
-    `version` TEXT,
-    `vendor` TEXT,
-    `install_time` TEXT,
-    `location` TEXT,
-    `architecture` TEXT,
-    `groups` TEXT,
-    `description` TEXT,
-    `size` TEXT,
-    `priority` TEXT,
-    `multiarch` TEXT,
-    `source` TEXT,
-    `checksum` TEXT,
-    PRIMARY KEY (`name`,'version','architecture')) WITHOUT ROWID;)"
+    name TEXT,
+    version TEXT,
+    vendor TEXT,
+    install_time TEXT,
+    location TEXT,
+    architecture TEXT,
+    groups TEXT,
+    description TEXT,
+    size TEXT,
+    priority TEXT,
+    multiarch TEXT,
+    source TEXT,
+    checksum TEXT,
+    PRIMARY KEY (name,version,architecture)) WITHOUT ROWID;)"
 };
 constexpr auto PROCESSES_SQL_STATEMENT
 {
-    R"(CREATE TABLE IF NOT EXISTS processes (
+    R"(CREATE TABLE processes (
     pid BIGINT,
     name TEXT,
     state TEXT,
