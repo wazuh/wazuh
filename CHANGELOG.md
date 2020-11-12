@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Support for PCRE2 regular expressions in rules and decoders ([#6480](https://github.com/wazuh/wazuh/pull/6480))
 - Added new **upgrade module**. WPK upgrade feature has been moved to this module, which offers support for cluster architecture and simultaneous upgrades. ([#5387](https://github.com/wazuh/wazuh/issues/5387))
 - Added new **task module**. This module stores and manages all the tasks that are executed in the agents. ([#5386](https://github.com/wazuh/wazuh/issues/5386))
+- Let the time interval to detect that an agent got disconnected configurable. Deprecate parameter `DISCON_TIME`. ([#6396](https://github.com/wazuh/wazuh/pull/6396))
 
 - **Wazuh API:**
   - Added endpoints to query and manage Rootcheck data.  ([#6496](https://github.com/wazuh/wazuh/pull/6496))
