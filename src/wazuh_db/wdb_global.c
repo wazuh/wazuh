@@ -1054,34 +1054,93 @@ cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id) {
     return result;
 }
 
-cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int keep_alive) {
-    cJSON* result = NULL;
-    sqlite3_stmt *stmt = NULL;
+wdbc_result wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int keep_alive, char **output) {
+    sqlite3_stmt* agent_stmt = NULL;
+    unsigned response_size = 0;
+    wdbc_result status = WDBC_UNKNOWN;
+
+    os_calloc(WDB_MAX_RESPONSE_SIZE, sizeof(char), *output);
+    char *response_aux = *output;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
-        return NULL;
+        snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s", "Cannot begin transaction");
+        return WDBC_ERROR;
     }
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT) < 0) {
-        mdebug1("Cannot cache statement");
-        return NULL;
+    while (status == WDBC_UNKNOWN) {
+        //Prepare SQL query
+        if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT) < 0) {
+            mdebug1("Cannot cache statement");
+            snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s", "Cannot cache statement");
+            status = WDBC_ERROR;
+            break;
+        }
+        agent_stmt = wdb->stmt[WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT];
+        if (sqlite3_bind_int(agent_stmt, 1, last_agent_id) != SQLITE_OK) {
+            merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+            snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s", "Cannot bind sql statement");
+            status = WDBC_ERROR;
+            break;
+        }
+
+        if (sqlite3_bind_int(agent_stmt, 2, keep_alive) != SQLITE_OK) {
+            merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+            snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s", "Cannot bind sql statement");
+            status = WDBC_ERROR;
+            break;
+        }
+
+        //Get agent id
+        cJSON* sql_agents_response = wdb_exec_stmt(agent_stmt);
+        if (sql_agents_response && sql_agents_response->child) {
+            cJSON* json_agent = sql_agents_response->child;
+            cJSON* json_id = cJSON_GetObjectItem(json_agent,"id");
+            if (cJSON_IsNumber(json_id)) {
+                //Print Agent info
+                char *id_str = cJSON_PrintUnformatted(json_id);
+                unsigned id_len = strlen(id_str);
+
+                //Check if new agent fits in response
+                if (response_size+id_len+1 < WDB_MAX_RESPONSE_SIZE) {
+                    //Add new agent
+                    memcpy(response_aux, id_str, id_len);
+                    response_aux += id_len;
+                    //Add separator
+                    *response_aux++ = ',';
+                    //Save size and last ID
+                    response_size += id_len+1;
+                    last_agent_id = json_id->valueint;
+                    //Set connection status as disconnected                    
+                    if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb, last_agent_id, "disconnected")) {
+                        merror("Cannot set connection_status for agent %d", last_agent_id);
+                        snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s %d", "Cannot set connection_status for agent", last_agent_id);
+                        status = WDBC_ERROR;
+                    }
+                }
+                else {
+                    //Pending agents but buffer is full
+                    status = WDBC_DUE;
+                }
+                os_free(id_str);
+            }
+        }
+        else {
+            //All agents have been obtained
+            status = WDBC_OK;
+        }
+        cJSON_Delete(sql_agents_response);
     }
 
-    stmt = wdb->stmt[WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT];
-
-    if (sqlite3_bind_int(stmt, 1, keep_alive) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return NULL;
+    if (status != WDBC_ERROR) {
+        if (response_size > 0) {
+            //Remove last ','
+            response_aux--;
+        }
+        //Add string end
+        *response_aux = '\0';
     }
-
-    result = wdb_exec_stmt(stmt);
-
-    if (!result) {
-        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
-    }
-
-    return result;
+    return status;
 }
 
 wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **output) {
