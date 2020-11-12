@@ -1681,7 +1681,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                     }
 
                     os_free(dstgeoip);
-                    dstgeoip = NULL;
                 }
 
                 /* Add in URL */
