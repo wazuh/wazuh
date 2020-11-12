@@ -32,11 +32,12 @@ def run_logtest(token=None, event=None, log_format=None, location=None):
     dict
         Logtest response after analyzing the event.
     """
+    local_vars = locals()
     # Token is not required
-    if locals()['token'] is None:
-        del locals()['token']
+    if local_vars['token'] is None:
+        del local_vars['token']
 
-    response = send_logtest_msg(command='log_processing', parameters=locals())
+    response = send_logtest_msg(command='log_processing', parameters=local_vars)
     if response['error'] != 0:
         raise WazuhError(code=7000, extra_message=response.get('message', 'Could not parse error message'))
 

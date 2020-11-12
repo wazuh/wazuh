@@ -41,7 +41,7 @@ stages:
           messages: !anything
           output: !anything
           alert: !anybool
-          codemsg: 1 # codemsg = 1 because there is a warning (token generated)
+          codemsg: 1 # codemsg = 1 because there is a warning (invalid token)
       save:
         json:
           returned_token: data.token
@@ -62,6 +62,8 @@ stages:
       status_code: 200
       json:
         <<: *logtest_json_response
+        data:
+          codemsg: 0 # codemsg = 0 because there are no warnings
 
   - name: Run logtest using a token from a running session
     request:
@@ -82,7 +84,7 @@ stages:
         <<: *logtest_json_response
         data:
           token: "{returned_token}"
-          codemsg: 0
+          codemsg: 0 # codemsg = 0 because there are no warnings
 
 
 ---
