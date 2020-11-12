@@ -72,11 +72,13 @@ def get_agents_summary_status(agent_list=None):
     WazuhResult
     """
     # We don't consider agent 000 in order to get the summary
-    if '000' in agent_list:
-        agent_list.remove('000')
+    # We need to do a shallow copy in order to avoid removing the resources for 000
+    local_agent_list = agent_list.copy()
+    if '000' in local_agent_list:
+        local_agent_list.remove('000')
     summary = {'active': 0, 'disconnected': 0, 'never_connected': 0, 'pending': 0, 'total': 0}
     if len(agent_list) != 0:
-        rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
+        rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=local_agent_list)
 
         db_query = WazuhDBQueryAgents(limit=None, select=['status'], **rbac_filters)
         data = db_query.run()
@@ -102,13 +104,15 @@ def get_agents_summary_os(agent_list=None):
     WazuhResult
     """
     # We don't consider agent 000 in order to get the summary
-    if '000' in agent_list:
-        agent_list.remove('000')
+    # We need to do a shallow copy in order to avoid removing the resources for 000
+    local_agent_list = agent_list.copy()
+    if '000' in local_agent_list:
+        local_agent_list.remove('000')
     result = AffectedItemsWazuhResult(none_msg='Could not get the operative system of the agents',
                                       all_msg='Showing the operative system of all specified agents',
                                       some_msg='Could not get the operative system of some agents')
-    if len(agent_list) != 0:
-        rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
+    if len(local_agent_list) != 0:
+        rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=local_agent_list)
 
         db_query = WazuhDBQueryAgents(select=['os.platform'], default_sort_field='os_platform', min_select_fields=set(),
                                       distinct=True, **rbac_filters)

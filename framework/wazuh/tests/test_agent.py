@@ -94,7 +94,7 @@ def test_agent_get_agents_summary_status(socket_mock, send_mock):
     summary = get_agents_summary_status(short_agent_list)
     assert isinstance(summary, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
     # Asserts are based on what it should get from the fake database
-    expected_results = {'active': 3, 'disconnected': 1, 'never_connected': 1, 'pending': 1, 'total': 6}
+    expected_results = {'active': 2, 'disconnected': 1, 'never_connected': 1, 'pending': 1, 'total': 5}
     summary_data = summary['data']
     assert set(summary_data.keys()) == set(expected_results.keys())
     assert summary_data['active'] == expected_results['active']
