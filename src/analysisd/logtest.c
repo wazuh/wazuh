@@ -41,7 +41,6 @@ void *w_logtest_init() {
     }
 
     w_mutex_init(&connection.mutex, NULL);
-    w_mutex_init(&connection.mutex_hash_table, NULL);
     connection.active_client = 0;
 
     minfo(LOGTEST_INITIALIZED);
@@ -73,7 +72,6 @@ void *w_logtest_init() {
     }
 
     w_mutex_destroy(&connection.mutex);
-    w_mutex_destroy(&connection.mutex_hash_table);
 
     return NULL;
 }
@@ -514,6 +512,7 @@ cleanup:
 
         /* Remove session */
         w_mutex_destroy(&session->mutex);
+        os_free(token);
         os_free(session);
     }
 
@@ -530,7 +529,7 @@ void w_logtest_remove_session(char *token) {
     os_strdup(token, token_session);
 
     /* Remove session from hash */
-    if (session = OSHash_Delete_ex(w_logtest_sessions, token), !session) {
+    if (session = OSHash_Delete(w_logtest_sessions, token), !session) {
         os_free(token_session);
         return;
     }
@@ -580,7 +579,7 @@ void *w_logtest_check_inactive_sessions(w_logtest_connection_t * connection) {
     while (FOREVER()) {
 
         sleep(w_logtest_conf.session_timeout);
-        w_mutex_lock(&connection->mutex_hash_table);
+        w_rwlock_wrlock(&w_logtest_sessions->mutex);
 
         hash_node = OSHash_Begin(w_logtest_sessions, &inode_it);
 
@@ -603,7 +602,7 @@ void *w_logtest_check_inactive_sessions(w_logtest_connection_t * connection) {
             }
         }
 
-        w_mutex_unlock(&connection->mutex_hash_table);
+        w_rwlock_unlock(&w_logtest_sessions->mutex);
 
     }
 
@@ -829,7 +828,7 @@ int w_logtest_check_input_request(cJSON * root, char ** msg, OSList * list_msg) 
 
 void w_logtest_register_session(w_logtest_connection_t * connection, w_logtest_session_t * session) {
 
-    w_mutex_lock(&connection->mutex_hash_table);
+    w_rwlock_wrlock(&w_logtest_sessions->mutex);
     connection->active_client += 1;
 
     /* Find the client who has not made a query for the longest time and remove session */
@@ -837,7 +836,7 @@ void w_logtest_register_session(w_logtest_connection_t * connection, w_logtest_s
         w_logtest_remove_old_session(connection);
     }
 
-    w_mutex_unlock(&connection->mutex_hash_table);
+    w_rwlock_unlock(&w_logtest_sessions->mutex);
 
     /* Register session */
     OSHash_Add_ex(w_logtest_sessions, session->token, session);
@@ -1028,9 +1027,10 @@ int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_
     }
 
     if (s_token) {
-        w_mutex_lock(&connection->mutex_hash_table);
 
-        if (current_session = OSHash_Get_ex(w_logtest_sessions, s_token), current_session) {
+        w_rwlock_wrlock(&w_logtest_sessions->mutex);
+
+        if (current_session = OSHash_Get(w_logtest_sessions, s_token), current_session) {
             w_mutex_lock(&current_session->mutex);
             current_session->last_connection = time(NULL);
         } else {
@@ -1038,13 +1038,11 @@ int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_
             smwarn(list_msg, LOGTEST_WARN_TOKEN_EXPIRED, s_token);
         }
 
-        w_mutex_unlock(&connection->mutex_hash_table);
+        w_rwlock_unlock(&w_logtest_sessions->mutex);
     }
 
     if (!current_session) { /* If it doesn't exist, create new session */
-        current_session = w_logtest_initialize_session(list_msg);
-
-        if (current_session) {
+        if (current_session = w_logtest_initialize_session(list_msg), current_session) {
             w_mutex_lock(&current_session->mutex);
             w_logtest_register_session(connection, current_session);
             mdebug1(LOGTEST_INFO_TOKEN_SESSION, current_session->token);
@@ -1056,26 +1054,23 @@ int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_
     }
 
     w_logtest_add_msg_response(json_response, list_msg, &retval);
-
-    if (current_session) {
-        cJSON_AddStringToObject(json_response, W_LOGTEST_JSON_TOKEN, current_session->token);
+    if (!current_session || retval < W_LOGTEST_RCODE_SUCCESS) {
+        return retval;
     }
-    
+
+    cJSON_AddStringToObject(json_response, W_LOGTEST_JSON_TOKEN, current_session->token);
+
     /* Proccess log */
     bool alert_generated = false;
+    cJSON * json_log_processed = w_logtest_process_log(json_request, current_session, &alert_generated, list_msg);
 
-    if (retval >= W_LOGTEST_RCODE_SUCCESS && current_session) {
-        cJSON * json_log_processed = w_logtest_process_log(json_request, current_session, &alert_generated, list_msg);
-        if (json_log_processed) {
-            cJSON_AddItemToObject(json_response, W_LOGTEST_JSON_OUTPUT, json_log_processed);
-        } else {
-            smerror(list_msg, LOGTEST_ERROR_PROCESS_EVENT);
-            mdebug1(LOGTEST_ERROR_PROCESS_EVENT);
-        }
-    }
+    w_mutex_unlock(&current_session->mutex);
 
-    if (current_session) {
-        w_mutex_unlock(&current_session->mutex);
+    if (json_log_processed) {
+        cJSON_AddItemToObject(json_response, W_LOGTEST_JSON_OUTPUT, json_log_processed);
+    } else {
+        smerror(list_msg, LOGTEST_ERROR_PROCESS_EVENT);
+        mdebug1(LOGTEST_ERROR_PROCESS_EVENT);
     }
 
     /* Generate response */
@@ -1102,23 +1097,23 @@ int w_logtest_process_request_remove_session(cJSON * json_request, cJSON * json_
     if (j_token && j_token->valuestring != NULL) {
         s_token = j_token->valuestring;
 
-        w_mutex_lock(&connection->mutex_hash_table);
+        w_rwlock_wrlock(&w_logtest_sessions->mutex);
 
-        if (session = OSHash_Get_ex(w_logtest_sessions, s_token), session) {
+        if (session = OSHash_Get(w_logtest_sessions, s_token), session) {
             if (pthread_mutex_trylock(&session->mutex)) {
                 smerror(list_msg, LOGTEST_ERROR_REMOVE_SESSION, s_token);
             } else {
                 w_mutex_unlock(&session->mutex);
                 w_logtest_remove_session(s_token);
                 connection->active_client -= 1;
-                sminfo(list_msg, LOGTEST_INFO_SESSION_REMOVE, s_token); 
+                sminfo(list_msg, LOGTEST_INFO_SESSION_REMOVE, s_token);
             }
         } else {
             smerror(list_msg, LOGTEST_WARN_SESSION_NOT_FOUND, s_token);
             mdebug1(LOGTEST_WARN_SESSION_NOT_FOUND, s_token);
         }
 
-        w_mutex_unlock(&connection->mutex_hash_table);
+        w_rwlock_unlock(&w_logtest_sessions->mutex);
 
     } else {
         smerror(list_msg, LOGTEST_ERROR_TOKEN_INVALID_TYPE);
