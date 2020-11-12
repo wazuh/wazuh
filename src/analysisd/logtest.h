@@ -114,9 +114,7 @@ typedef struct w_logtest_connection_t {
 
     pthread_mutex_t mutex;      ///< Mutex to prevent race condition in accept syscall
     int sock;                   ///< The open connection with logtest queue
-
-    pthread_mutex_t mutex_hash_table;  ///< Mutex to prevent race condition in hash table and active client
-    int active_client;                 ///< Number of current clients
+    int active_client;          ///< Number of current clients
 
 } w_logtest_connection_t;
 
