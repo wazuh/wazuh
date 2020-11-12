@@ -13,12 +13,14 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int __wrap_wm_sendmsg(__attribute__((unused)) int usec,
-                      __attribute__((unused)) int queue,
-                      __attribute__((unused)) const char *message,
-                      __attribute__((unused)) const char *locmsg,
-                      __attribute__((unused)) char loc) {
-    return 0;
+int __wrap_wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, char loc) {
+    check_expected(usec);
+    check_expected(queue);
+    check_expected(message);
+    check_expected(locmsg);
+    check_expected(loc);
+
+    return mock();
 }
 
 int __wrap_wm_state_io(const char * tag,

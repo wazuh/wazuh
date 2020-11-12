@@ -32,7 +32,7 @@
 | agent:read               | agent:id  | 000,002,004,006,008,010,012             |                     |
 | agent:delete             | agent:id  | 001,003,005,007,009,011                 |                     |
 | agent:restart            | agent:id  | *                                       | 002,005,006,008,010 |
-| agent:upgrade            | agent:id  |                                         | *                   |
+| agent:upgrade            | agent:id  | 001,002                                 |                     |
 | agent:modify_group       | agent:id  | 000,001,002,003,005,006,007,008,011,999 |                     |
 | agent:create             | *         |                                         | *                   |
 | group:read               | group:id  | *                                       | group3              |

@@ -27,3 +27,41 @@ int __wrap_queue_push_ex(w_queue_t * queue, void * data) {
 
     return retval;
 }
+
+int __wrap_queue_full(const w_queue_t * queue) {
+    check_expected_ptr(queue);
+
+    return mock();
+}
+
+void * __wrap_queue_pop_ex(w_queue_t * queue) {
+    void * data = NULL;
+
+    int retval = mock();
+
+    check_expected_ptr(queue);
+
+    if (retval != -1) {
+        data = queue->data[queue->end];
+        queue->end = (queue->end + 1) % queue->size;
+        queue->elements--;
+    }
+
+    return data;
+}
+
+void * __wrap_queue_pop_ex_timedwait(w_queue_t * queue, __attribute__((unused)) const struct timespec * abstime) {
+    void * data = NULL;
+
+    int retval = mock();
+
+    check_expected_ptr(queue);
+
+    if (retval != -1) {
+        data = queue->data[queue->end];
+        queue->end = (queue->end + 1) % queue->size;
+        queue->elements--;
+    }
+
+    return data;
+}

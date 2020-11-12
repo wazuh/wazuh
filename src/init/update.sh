@@ -134,6 +134,11 @@ UpdateStopOSSEC()
     if [ -d "$DIRECTORY/queue/agent-info" ]; then
         rm -rf $DIRECTORY/queue/agent-info > /dev/null 2>&1
     fi
+
+    # Deleting plain-text rootcheck information if exists (it was migrated to Wazuh DB in v4.1)
+    if [ -d "$DIRECTORY/queue/rootcheck" ]; then
+        rm -rf $DIRECTORY/queue/rootcheck > /dev/null 2>&1
+    fi
 }
 
 UpdateOldVersions()

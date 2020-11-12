@@ -117,6 +117,7 @@ typedef struct whodata_dir_status whodata_dir_status;
 
 typedef struct _rtfim {
     int fd;
+    unsigned int queue_overflow:1;
     OSHash *dirtb;
 #ifdef WIN32
     HANDLE evt;

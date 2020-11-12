@@ -34,7 +34,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         nowDaemon();
         goDaemon();
     }
-    
+
     /* Set group ID */
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
@@ -54,8 +54,8 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         }
     }
     /* Read private keys  */
-    minfo(ENC_READ);    
-    OS_ReadKeys(&keys, 1, 0, 0); 
+    minfo(ENC_READ);
+    OS_ReadKeys(&keys, 1, 0);
 
     // Resolve hostnames
     rc = 0;
@@ -106,7 +106,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     os_random();
 
     /* Ignore SIGPIPE, it will be detected on recv */
-    signal(SIGPIPE, SIG_IGN);    
+    signal(SIGPIPE, SIG_IGN);
 
     /* Launch rotation thread */
 
@@ -147,7 +147,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
             agt->execdq = -1;
         }
     }
-    
+
     start_agent(1);
 
     os_delwait();

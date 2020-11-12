@@ -66,11 +66,11 @@ class SyncWorker:
         if isinstance(result, Exception):
             self.logger.error(f"Error asking for permission: {result}")
             return
-        elif result == b'False':
+        elif result == b'True':
+            self.logger.info("Permission to synchronize granted")
+        else:
             self.logger.info('Master didnt grant permission to synchronize')
             return
-        else:
-            self.logger.info("Permission to synchronize granted")
 
         self.logger.info("Compressing files")
         compressed_data_path = wazuh.core.cluster.cluster.compress_files(name=self.worker.name,

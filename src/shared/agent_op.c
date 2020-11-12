@@ -25,11 +25,6 @@ static struct {
 } os_restart;
 
 #ifndef WIN32
-//Sends message thru the cluster
-static int w_send_clustered_message(const char* command, const char* payload, char* response);
-
-//Alloc and create sendsync command payload
-static cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message);
 
 //Alloc and create an agent removal command payload
 static cJSON* w_create_agent_remove_payload(const char *id, const int purge);
@@ -765,7 +760,7 @@ static int w_parse_agent_add_response(const char* buffer, char *err_response, ch
 }
 
 #ifndef WIN32
-static cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message) {
+cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message) {
     cJSON * request = cJSON_CreateObject();
 
     cJSON_AddStringToObject(request, "daemon_name", daemon_name);
@@ -837,7 +832,7 @@ static int w_parse_agent_remove_response(const char* buffer, char *err_response,
     return result;
 }
 
-static int w_send_clustered_message(const char* command, const char* payload, char* response) {
+int w_send_clustered_message(const char* command, const char* payload, char* response) {
     char sockname[PATH_MAX + 1] = {0};
     int sock = -1;
     int result = 0;

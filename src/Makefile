@@ -29,11 +29,11 @@ EXTERNAL_LIBFFI=external/libffi/
 EXTERNAL_CPYTHON=external/cpython/
 EXTERNAL_MSGPACK=external/msgpack/
 EXTERNAL_BZIP2=external/bzip2/
+EXTERNAL_LIBPCRE2=external/libpcre2/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
 endif
-MAXAGENTS?=100000
 # XXX Becareful NO EXTRA Spaces here
 PREFIX?=/var/ossec
 PG_CONFIG?=pg_config
@@ -75,7 +75,7 @@ endif
 ONEWAY?=no
 CLEANFULL?=no
 
-DEFINES=-DMAX_AGENTS=${MAXAGENTS} -DOSSECHIDS
+DEFINES=-DOSSECHIDS
 DEFINES+=-DDEFAULTDIR=\"${PREFIX}\"
 DEFINES+=-DUSER=\"${OSSEC_USER}\"
 DEFINES+=-DREMUSER=\"${OSSEC_USER_REM}\"
@@ -235,7 +235,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2}
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${EXTERNAL_LIBPCRE2}include
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
@@ -467,7 +467,6 @@ help: failtarget
 	@echo "   make DEBUG=yes               Build with symbols and without optimization. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DEBUGAD=yes             Enables extra debugging logging in ossec-analysisd. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make PREFIX=/path            Install OSSEC to '/path'. Defaults to /var/ossec"
-	@echo "   make MAXAGENTS=NUMBER        Set the number of maximum agents to NUMBER. Defaults to 2048"
 	@echo "   make ONEWAY=yes              Disables manager's ACK towards agent. It allows connecting agents without backward connection from manager. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make CLEANFULL=yes           Makes the alert mailing subject clear in the format: '<location> - <level> - <description>'. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make RESOURCES_URL           Set the Wazuh resources URL"
@@ -512,7 +511,6 @@ settings:
 	@echo "    DEBUG:              ${DEBUG}"
 	@echo "    DEBUGAD             ${DEBUGAD}"
 	@echo "    PREFIX:             ${PREFIX}"
-	@echo "    MAXAGENTS:          ${MAXAGENTS}"
 	@echo "    DATABASE:           ${DATABASE}"
 	@echo "    ONEWAY:             ${ONEWAY}"
 	@echo "    CLEANFULL:          ${CLEANFULL}"
@@ -666,8 +664,9 @@ AUDIT_LIB = $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
 LIBFFI_LIB = $(EXTERNAL_LIBFFI)$(TARGET)/.libs/libffi.a
 MSGPACK_LIB = $(EXTERNAL_MSGPACK)libmsgpack.a
 BZIP2_LIB   = $(EXTERNAL_BZIP2)libbz2.a
+LIBPCRE2_LIB = $(EXTERNAL_LIBPCRE2).libs/libpcre2-8.a
 
-EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB)
+EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
 
 ifneq (${TARGET},winagent)
 EXTERNAL_LIBS += $(MSGPACK_LIB)
@@ -863,6 +862,17 @@ $(MSGPACK_LIB): ${msgpack_o}
 	${OSSEC_RANLIB} $@
 endif
 
+#### PCRE2 lib #########
+
+
+
+$(LIBPCRE2_LIB):
+ifeq (${TARGET},winagent)
+	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC CC=${MING_BASE}${CC} ./configure --enable-jit=auto --host=${MINGW_HOST} --disable-shared && cp src/pcre2.h include/pcre2.h && ${MAKE}
+else
+	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC ./configure --enable-jit=auto --disable-shared && cp src/pcre2.h include/pcre2.h && ${MAKE}
+endif
+
 ################################
 #### External dependencies  ####
 ################################
@@ -899,7 +909,7 @@ endif
 endif
 
 
-EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2
+EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 libpcre2
 EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
@@ -929,7 +939,6 @@ external/%.tar.gz:
 ####################
 #### OSSEC Libs ####
 ####################
-
 ifneq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
 BUILD_LIBS = libwazuh.a $(EXTERNAL_LIBS)
 else
@@ -996,6 +1005,9 @@ wrappers_externals_procpc_o := $(wrappers_externals_procpc_c:.c=.o)
 wrappers_externals_sqlite_c := $(wildcard unit_tests/wrappers/externals/sqlite/*.c)
 wrappers_externals_sqlite_o := $(wrappers_externals_sqlite_c:.c=.o)
 
+wrappers_externals_pcre2_c := $(wildcard unit_tests/wrappers/externals/pcre2/*.c)
+wrappers_externals_pcre2_o := $(wrappers_externals_pcre2_c:.c=.o)
+
 wrappers_libc_c := $(wildcard unit_tests/wrappers/libc/*.c)
 wrappers_libc_o := $(wrappers_libc_c:.c=.o)
 
@@ -1060,6 +1072,7 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_cJSON_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_openssl_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_sqlite_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_externals_pcre2_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_libc_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_posix_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_o}
@@ -1118,10 +1131,16 @@ config/%.o: config/%.c
 
 #### Wazuh modules ##
 
-wmodules_c := $(wildcard wazuh_modules/wm*.c)
+wmodules_c := $(wildcard wazuh_modules/wm*.c) $(wildcard wazuh_modules/agent_upgrade/*.c)
 
-ifneq (${TARGET},agent)
+ifeq (${TARGET},agent)
+	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/agent_upgrade/agent/*.c)
+else ifeq (${TARGET},winagent)
+	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/agent_upgrade/agent/*.c)
+else
 	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/vulnerability_detector/*.c)
+	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/task_manager/*.c)
+	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/agent_upgrade/manager/*.c)
 endif
 
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
@@ -1963,7 +1982,7 @@ clean-internals: clean-unit-tests
 	rm -f ${os_auth_o}
 	rm -f ${all_analysisd_o} ${all_analysisd_libs} analysisd/compiled_rules/compiled_rules.h
 	rm -f ${integrator_o}
-	rm -f ${wmodulesd_o} ${wmodules_o}
+	rm -f ${wmodulesd_o} ${wmodules_o} $(wildcard wazuh_modules/agent_upgrade/agent/*.o)
 	rm -f ${wdb_o}
 	rm -f ${SELINUX_MODULE}
 	rm -f ${SELINUX_POLICY}
@@ -1978,6 +1997,7 @@ clean-unit-tests:
 	rm -f ${wrappers_externals_openssl_o}
 	rm -f ${wrappers_externals_procpc_o}
 	rm -f ${wrappers_externals_sqlite_o}
+	rm -f ${wrappers_externals_pcre2_o}
 	rm -f ${wrappers_libc_o}
 	rm -f ${wrappers_linux_o}
 	rm -f ${wrappers_posix_o}

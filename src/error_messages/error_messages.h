@@ -214,6 +214,7 @@
 /* Regex errors */
 #define REGEX_COMPILE   "(1450): Syntax error on regex: '%s': %d."
 #define REGEX_SUBS      "(1451): Missing sub_strings on regex: '%s'."
+#define REGEX_SYNTAX    "(1452): Syntax error on regex: '%s'"
 
 /* Mail errors */
 #define INVALID_SMTP    "(1501): Invalid SMTP Server: %s"
@@ -234,6 +235,8 @@
 
 #define INV_OFFSET      "(2120): Invalid offset value: '%s'"
 #define INV_ATTR        "(2121): Invalid decoder attribute: '%s'"
+#define INV_VAL         "(2122): Invalid value for attribute: '%s'"
+#define INV_VAL_ATTR    "(2123): Invalid value '%s' for attribute: '%s'"
 
 /* os_zlib */
 #define COMPRESS_ERR    "(2201): Error compressing string: '%s'."
@@ -253,8 +256,6 @@
 #define EVTLOG_GETLAST  "(4107): Unable to query last event log from: '%s'."
 #define EVTLOG_DUP      "(4108): Duplicated event log entry: '%s'."
 #define AG_NOKEYS_EXIT  "(4109): Unable to start without auth keys. Exiting."
-#define AG_MAX_ERROR    "(4110): Maximum number of agents '%d' reached."
-#define AG_AX_AGENTS    "(4111): Maximum number of agents allowed: '%d'."
 #define AG_INV_MNGIP    "(4112): Invalid server address found: '%s'"
 #define AG_ENROLL_FAIL  "(4113): Auto Enrollment configuration failed."
 
@@ -266,6 +267,7 @@
 #define RL_INV_ATTR     "(5105): Invalid rule attributes inside file: '%s'."
 #define RL_NO_OPT       "(5106): Rule '%d' without any options. "\
                         "It may lead to false positives. Exiting. "
+#define RL_REGEX_SYNTAX "(5107): Syntax error on tag '%s' in rule %d"
 
 /* Syslog output */
 #define XML_INV_CSYSLOG "(5301): Invalid client-syslog configuration."
@@ -493,6 +495,51 @@
 #define FIM_DB_ERROR_RM_RANGE                       "(6708): Failed to delete a range of paths between '%s' and '%s'"
 #define FIM_DB_ERROR_RM_NOT_SCANNED                 "(6709): Failed to delete from db all unscanned files."
 #define FIM_ERROR_WHODATA_INIT                      "(6710): Failed to start the Whodata engine. Directories/files will be monitored in Realtime mode"
+
+/* Modules messages */
+#define WM_UPGRADE_JSON_PARSE_ERROR                 "(8101): Cannot parse JSON: '%s'"
+#define WM_UPGRADE_UNDEFINED_ACTION_ERRROR          "(8102): No action defined for command: '%s'"
+#define WM_UPGRADE_COMMAND_PARSE_ERROR              "(8103): Error parsing command: '%s'"
+#define WM_UPGRADE_UNREACHEABLE_TASK_MANAGER        "(8104): Cannot connect to '%s'. Could not reach task manager module."
+#define WM_UPGRADE_INVALID_TASK_MAN_JSON            "(8105): Response from task manager does not have a valid JSON format."
+#define WM_UPGRADE_TASK_EMPTY_MESSAGE               "(8106): Empty message from task manager module."
+#define WM_UPGRADE_REQUIRED_PARAMETERS              "(8107): Required parameters in message are missing."
+#define WM_UPGRADE_BIND_SOCK_ERROR                  "(8108): Unable to bind to socket '%s': '%s'"
+#define WM_UPGRADE_SELECT_ERROR                     "(8109): Error in select(): '%s'. Exiting..."
+#define WM_UPGRADE_ACCEPT_ERROR                     "(8110): Error in accept(): '%s'"
+#define WM_UPGRADE_RECV_ERROR                       "(8111): Error in recv(): '%s'"
+#define WM_UPGRADE_SOCKTERR_ERROR                   "(8112): Response size is bigger than expected."
+#define WM_UPGRADE_QUEUE_FD                         "(8113): Could not open default queue to send upgrade notification."
+#define WM_UPGRADE_UNREACHEABLE_REQUEST             "(8114): Cannot connect to '%s'. Could not reach agent."
+#define WM_UPGRADE_EMPTY_AGENT_RESPONSE             "(8115): Response from agent is empty."
+#define WM_UPGRADE_AGENT_RESPONSE_MESSAGE_ERROR     "(8116): Error response from agent: '%s'"
+#define WM_UPGRADE_AGENT_RESPONSE_UNKNOWN_ERROR     "(8117): Unknown error from agent."
+#define WM_UPGRADE_AGENT_RESPONSE_SHA1_ERROR        "(8118): The SHA1 of the file doesn't match in the agent."
+#define WM_UPGRADE_TASK_UPDATE_ERROR                "(8119): There has been an error updating task state. Error code: '%d', message: '%s'"
+#define WM_UPGRADE_RESULT_FILE_ERROR                "(8120): Agent was unable to erase upgrade_result file. Reason: '%s'"
+#define WM_UPGRADE_AGENT_RESPONSE_SCRIPT_ERROR      "(8121): Script execution failed in the agent."
+#define WM_UPGRADE_UPGRADE_QUEUE_FULL               "(8122): Upgrade queue is full. Agent '%d' won't be upgraded."
+#define WM_UPGRADE_TASK_MANANAGER_ERROR             "(8123): There has been an error executing the request in the tasks manager."
+
+#define MOD_TASK_CHECK_DB_ERROR                     "(8250): DB integrity is invalid. Exiting..."
+#define MOD_TASK_CREATE_SOCK_ERROR                  "(8251): Queue '%s' not accessible: '%s'. Exiting..."
+#define MOD_TASK_SELECT_ERROR                       "(8252): Error in select(): '%s'. Exiting..."
+#define MOD_TASK_ACCEPT_ERROR                       "(8253): Error in accept(): '%s'"
+#define MOD_TASK_RECV_ERROR                         "(8254): Error in recv(): '%s'"
+#define MOD_TASK_SOCKTERR_ERROR                     "(8255): Response size is bigger than expected."
+#define MOD_TASK_LENGTH_ERROR                       "(8256): Received message > '%i'"
+#define MOD_TASK_PARSE_JSON_ERROR                   "(8257): Error parsing JSON event: '%s'"
+#define MOD_TASK_PARSE_KEY_ERROR                    "(8259): Invalid message. '%s' not found at index '%d'"
+#define MOD_TASK_DB_ERROR                           "(8260): Database error at index '%d'"
+#define MOD_TASK_UNKNOWN_VALUE_ERROR                "(8261): Invalid '%s' at index '%d'"
+#define MOD_TASK_COULD_NOT_FIND_TASK                "(8262): Couldn't find task in DB at index '%d'"
+#define MOD_TASK_COULD_NOT_FIND_AGENT               "(8263): Couldn't find agent in DB at index '%d'"
+
+#define MOD_TASK_CREATE_DB_ERROR                    "(8275): DB couldn't be checked or created."
+#define MOD_TASK_OPEN_DB_ERROR                      "(8276): DB couldn't be opened."
+#define MOD_TASK_SQL_ERROR                          "(8277): SQL error: '%s'"
+#define MOD_TASK_SQL_PREPARE_ERROR                  "(8278): Couldn't prepare SQL statement."
+#define MOD_TASK_SQL_STEP_ERROR                     "(8279): Couldn't execute SQL statement."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."

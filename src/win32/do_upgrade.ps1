@@ -77,7 +77,8 @@ while($process_id -eq $null -And $counter -gt 0)
     $process_id = (Get-Process ossec-agent).id
 }
 write-output "$(Get-Date -format u) - Process ID: $($process_id)" >> .\upgrade\upgrade.log
-
+# Wait for agent state to be cleaned
+Start-Sleep 10
 # Check status file
 $status = Get-Content .\ossec-agent.state | select-string "status='connected'" -SimpleMatch
 $counter = 5
@@ -92,10 +93,11 @@ write-output "$(Get-Date -format u) - Reading status file: $($status)" >> .\upgr
 If ($status -eq $null)
 {
     write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
+    Get-Service -Name "Wazuh" | Stop-Service
     restore
     write-output "$(Get-Date -format u) - Upgrade failed: Restoring." >> .\upgrade\upgrade.log
     .\ossec-agent.exe install-service >> .\upgrade\upgrade.log
-    Start-Service -Name "ossec-agent" -ErrorAction SilentlyContinue
+    Start-Service -Name "Wazuh" -ErrorAction SilentlyContinue
 }
 Else
 {
