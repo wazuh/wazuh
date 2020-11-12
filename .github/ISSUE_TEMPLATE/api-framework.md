@@ -22,9 +22,7 @@ Please fill the table above. Feel free to extend it at your convenience.
 
 
 
-<!--
-Depending on the affected components by this issue, the following checks should be selected and marked.
--->
+## Checks
 
 - **Unit tests** without failures. Updated and/or expanded if there are new functions/methods/outputs:
   - [ ] Cluster (`framework/wazuh/core/cluster/tests/` & `framework/wazuh/core/cluster/dapi/tests/`)
@@ -38,7 +36,6 @@ Depending on the affected components by this issue, the following checks should 
 - [ ] **Changelog** (`CHANGELOG.md`)
 - [ ] **Documentation** (`/wazuh-documentation/source/user-manual/api`)
     
-
 <!-- If changes are made to any of the following components, uncomment the corresponding line 
 - [ ] **Integration tests** without failures for API configuration (`/wazuh-qa/tests/integration/test_api/test_config/`)
 - [ ] **System tests** for agent enrollment process (`/wazuh-qa/tests/system/test_cluster/test_agent_enrollment`)
