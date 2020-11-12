@@ -239,11 +239,14 @@ cJSON* __wrap_wdb_global_get_agent_info(__attribute__((unused)) wdb_t *wdb,
 int __wrap_wdb_global_reset_agents_connection( __attribute__((unused)) wdb_t *wdb) {
     return mock();
 }
-
-cJSON* __wrap_wdb_global_get_agents_by_connection_status(__attribute__((unused)) wdb_t* wdb,
-                                                         const char* status) {
-    check_expected(status);
-    return mock_ptr_type(cJSON*);
+wdbc_result __wrap_wdb_global_get_agents_by_connection_status (__attribute__((unused)) wdb_t *wdb,
+                                                               int last_agent_id,
+                                                               const char* connection_status,
+                                                               char **output) {
+    check_expected(last_agent_id);
+    check_expected(connection_status);
+    os_strdup(mock_ptr_type(char*), *output);
+    return mock();
 }
 
 cJSON* __wrap_wdb_global_get_agents_to_disconnect(__attribute__((unused)) wdb_t *wdb,
