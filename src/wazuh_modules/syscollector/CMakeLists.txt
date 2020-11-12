@@ -29,6 +29,8 @@ include_directories(${SRC_FOLDER}/external/cJSON/)
 include_directories(${SRC_FOLDER}/external/procps/)
 include_directories(${SRC_FOLDER}/external/bzip2/)
 include_directories(${SRC_FOLDER}/shared_modules/utils)
+include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
+include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${CMAKE_SOURCE_DIR}/)
 include_directories(${CMAKE_SOURCE_DIR}/sysOsInfo/)
 
@@ -96,14 +98,12 @@ endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
     DEPENDS syscollector
     )
 
-if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    add_custom_target(copy-files-network ALL
-        COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/syscollector.dir/network/*.o*
-        ${CMAKE_SOURCE_DIR}/network/
-        DEPENDS syscollector
-        )
-endif(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+add_custom_target(copy-files-network ALL
+    COMMAND ${CMAKE_COMMAND} -E copy
+    ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/syscollector.dir/network/*.o*
+    ${CMAKE_SOURCE_DIR}/network/
+    DEPENDS syscollector
+    )
 
 add_custom_target(copy-files-sysosinfo ALL
     COMMAND ${CMAKE_COMMAND} -E copy

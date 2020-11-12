@@ -145,7 +145,7 @@ static nlohmann::json parsePackage(const std::vector<std::string>& entries)
         it = info.find("Section");
         if (it != info.end())
         {
-            ret["group"] = it->second;
+            ret["groups"] = it->second;
         }
         it = info.find("Installed-Size");
         if (it != info.end())
@@ -155,7 +155,7 @@ static nlohmann::json parsePackage(const std::vector<std::string>& entries)
         it = info.find("Multi-Arch");
         if (it != info.end())
         {
-            ret["multi-arch"] = it->second;
+            ret["multiarch"] = it->second;
         }
         it = info.find("Architecture");
         if (it != info.end())
@@ -253,7 +253,7 @@ static nlohmann::json parseRpm(const std::string& packageInfo)
         it = info.find("Group");
         if (it != info.end())
         {
-            ret["group"] = it->second;
+            ret["groups"] = it->second;
         }
         it = info.find("Epoch");
         if (it != info.end())
@@ -263,7 +263,7 @@ static nlohmann::json parseRpm(const std::string& packageInfo)
         it = info.find("Release");
         if (it != info.end())
         {
-            version += it->second + "-";
+            version +=it->second + "-";
         }
         it = info.find("Version");
         if (it != info.end())

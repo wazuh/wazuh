@@ -188,7 +188,7 @@ static void parseAppInfo(const std::string& path, nlohmann::json& data)
             else if (line == "<key>LSApplicationCategoryType</key>" &&
                 std::getline(file, line))
             {
-                package["group"] = getValueFnc(line);
+                package["groups"] = getValueFnc(line);
             }
             else if (line == "<key>CFBundleIdentifier</key>" &&
                 std::getline(file, line))

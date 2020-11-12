@@ -11,6 +11,7 @@
 #include "syscollectorImp.h"
 #include <iostream>
 
+constexpr auto PACKAGES_SQL_STATEMENT{ "CREATE TABLE packages(`name` TEXT, `version` TEXT, `vendor` TEXT, `install_time` TEXT, `location` TEXT, `architecture` TEXT, `groups` TEXT, `description` TEXT, `size` TEXT, `priority` TEXT, `multiarch` TEXT, `source` TEXT, `checksum` TEXT, PRIMARY KEY (`name`,'version','architecture')) WITHOUT ROWID;"};
 
 bool Syscollector::sleepFor()
 {
@@ -40,6 +41,16 @@ bool Syscollector::sleepFor()
     return ret;
 }
 
+std::string Syscollector::getCreateStatement() const
+{
+    std::string ret;
+    if (m_packages)
+    {
+        ret += PACKAGES_SQL_STATEMENT;
+    }
+    return ret;
+}
+
 Syscollector::Syscollector(const std::shared_ptr<ISysInfo>& spInfo,
                            const std::string& interval,
                            const bool scanOnStart,
@@ -64,6 +75,7 @@ Syscollector::Syscollector(const std::shared_ptr<ISysInfo>& spInfo,
 , m_processes{processes}
 , m_hotfixes{hotfixes}
 , m_running{false}
+, m_dbSync{HostType::AGENT, DbEngineType::SQLITE3, "syscollector.db", getCreateStatement()}
 , m_thread{std::bind(&Syscollector::syncThread, this)}
 {
 }
@@ -105,13 +117,35 @@ void Syscollector::scanNetwork()
 }
 void Syscollector::scanPackages()
 {
-    if (m_packages)
+    constexpr auto queueSize{1024};
+    constexpr auto table{"packages"};
+    const auto& tables { nlohmann::json::parse(R"({"tables": ["packages"]})") };
+
+    const auto callback
     {
-        const auto& packages{m_spInfo->packages()};
-        std::cout << packages.dump() << std::endl;
-        if (m_hotfixes)
+        [](ReturnTypeCallback result, const nlohmann::json& data)
         {
+            //notify changes
+            std::cout << result << std::endl;
+            std::cout << data.dump() << std::endl;
         }
+    };
+    DBSyncTxn txn
+    {
+        m_dbSync.handle(),
+        tables.at("tables"),
+        0,
+        queueSize,
+        callback
+    };
+    nlohmann::json jsResult;
+    nlohmann::json input;
+    input["table"] = table;
+    input["data"] = m_spInfo->packages();
+    txn.syncTxnRow(input);//synctxn
+    txn.getDeletedRows(callback);//synctxn
+    if (m_hotfixes)
+    {
     }
 }
 void Syscollector::scanPorts()
@@ -139,12 +173,15 @@ void Syscollector::scan()
     scanHardware();
     scanOs();
     scanNetwork();
-    scanPackages();
+    if (m_packages)
+    {
+        scanPackages();
+    }
     scanPorts();
     scanProcesses();
 }
 
-void Syscollector::start()
+void Syscollector::syncThread()
 {
     if (m_scanOnStart)
     {
@@ -153,13 +190,6 @@ void Syscollector::start()
     while(sleepFor())
     {
         scan();
-    }
-}
-
-void Syscollector::syncThread()
-{
-    while(sleepFor())
-    {
         //sync Rsync
     }
 }

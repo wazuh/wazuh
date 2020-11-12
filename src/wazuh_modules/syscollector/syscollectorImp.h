@@ -17,6 +17,8 @@
 #include <memory>
 #include "sysInfoInterface.h"
 #include "json.hpp"
+#include "commonDefs.h"
+#include "dbsync.hpp"
 
 class Syscollector final
 {
@@ -32,9 +34,9 @@ public:
                  const bool portsAll = true,
                  const bool processes = true,
                  const bool hotfixes = true);
-    void start();
     ~Syscollector();
 private:
+    std::string getCreateStatement() const;
     bool sleepFor();
     void scanHardware();
     void scanOs();
@@ -44,22 +46,23 @@ private:
     void scanProcesses();
     void scan();
     void syncThread();
-    const std::shared_ptr<ISysInfo>   m_spInfo;
-    const std::string                 m_intervalUnit;
-    const unsigned long long          m_intervalValue;
-    const bool                        m_scanOnStart;
-    const bool                        m_hardware;
-    const bool                        m_os;
-    const bool                        m_network;
-    const bool                        m_packages;
-    const bool                        m_ports;
-    const bool                        m_portsAll;
-    const bool                        m_processes;
-    const bool                        m_hotfixes;
-    bool                              m_running;
-    std::condition_variable           m_cv;
-    std::mutex                        m_mutex;
-    std::thread                       m_thread;
+    const std::shared_ptr<ISysInfo>                m_spInfo;
+    const std::string                              m_intervalUnit;
+    const unsigned long long                       m_intervalValue;
+    const bool                                     m_scanOnStart;
+    const bool                                     m_hardware;
+    const bool                                     m_os;
+    const bool                                     m_network;
+    const bool                                     m_packages;
+    const bool                                     m_ports;
+    const bool                                     m_portsAll;
+    const bool                                     m_processes;
+    const bool                                     m_hotfixes;
+    bool                                           m_running;
+    DBSync                                         m_dbSync;
+    std::condition_variable                        m_cv;
+    std::mutex                                     m_mutex;
+    std::thread                                    m_thread;
 };
 
 

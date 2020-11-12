@@ -4,6 +4,10 @@ project(syscollectorimp_unit_test)
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
+
+link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
+link_directories(${SRC_FOLDER}/shared_modules/rsync/build/lib)
+
 file(GLOB SYSCOLLECTOR_IMP_UNIT_TEST_SRC
     "*.cpp")
 
@@ -26,6 +30,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         pthread
         sqlite3
         cjson
+        rsync
+        dbsync
         -static-libgcc -static-libstdc++
     )
 else()
@@ -41,6 +47,8 @@ else()
         pthread
         sqlite3
         cjson
+        rsync
+        dbsync
         dl
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")

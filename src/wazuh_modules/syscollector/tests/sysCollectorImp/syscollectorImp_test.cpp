@@ -36,101 +36,61 @@ public:
 TEST_F(SyscollectorImpTest, defaultCtor)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
-    EXPECT_CALL(*spInfoWrapper, hardware()).WillOnce(Return("hardware"));
-    EXPECT_CALL(*spInfoWrapper, packages()).WillOnce(Return("packages"));
-    EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
-    EXPECT_CALL(*spInfoWrapper, networks()).WillOnce(Return("networks"));
-    EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return("hardware"));
+    EXPECT_CALL(*spInfoWrapper, packages()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"name":"TEXT", "version":"TEXT", "vendor":"TEXT", "install_time":"TEXT", "location":"TEXT", "architecture":"TEXT", "groups":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT"}])")));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return("os"));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return("networks"));
+    EXPECT_CALL(*spInfoWrapper, processes()).WillRepeatedly(Return("processes"));
     EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));
-    std::thread t1;
-    {
-        Syscollector syscollector{spInfoWrapper};
-        t1 = std::thread{[&syscollector](){ syscollector.start(); }};
-    }
-    if (t1.joinable())
-    {
-        t1.join();
-    }
+    Syscollector syscollector{spInfoWrapper, "5s"};
 }
 
 TEST_F(SyscollectorImpTest, intervalSeconds)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillOnce(Return("hardware"));
-    EXPECT_CALL(*spInfoWrapper, packages()).WillOnce(Return("packages"));
+    EXPECT_CALL(*spInfoWrapper, packages()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"architecture":"amd64","group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"}])")));
     EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
     EXPECT_CALL(*spInfoWrapper, networks()).WillOnce(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
     EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));    
-    std::thread t1;
-    {
-        Syscollector syscollector{spInfoWrapper, "100s"};
-        t1 = std::thread{[&syscollector](){ syscollector.start(); }};
-    }
-    if (t1.joinable())
-    {
-        t1.join();
-    }
+    Syscollector syscollector{spInfoWrapper, "100s"};
 }
 
 TEST_F(SyscollectorImpTest, intervalMinutes)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillOnce(Return("hardware"));
-    EXPECT_CALL(*spInfoWrapper, packages()).WillOnce(Return("packages"));
+    EXPECT_CALL(*spInfoWrapper, packages()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"architecture":"amd64","group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"}])")));
     EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
     EXPECT_CALL(*spInfoWrapper, networks()).WillOnce(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
     EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));    
-    std::thread t1;
-    {
-        Syscollector syscollector{spInfoWrapper, "100m"};
-        t1 = std::thread{[&syscollector](){ syscollector.start(); }};
-    }
-    if (t1.joinable())
-    {
-        t1.join();
-    }
+    Syscollector syscollector{spInfoWrapper, "100m"};
 }
 
 TEST_F(SyscollectorImpTest, intervalDays)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillOnce(Return("hardware"));
-    EXPECT_CALL(*spInfoWrapper, packages()).WillOnce(Return("packages"));
+    EXPECT_CALL(*spInfoWrapper, packages()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"architecture":"amd64","group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"}])")));
     EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
     EXPECT_CALL(*spInfoWrapper, networks()).WillOnce(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
     EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));    
-    std::thread t1;
-    {
-        Syscollector syscollector{spInfoWrapper, "1d"};
-        t1 = std::thread{[&syscollector](){ syscollector.start(); }};
-    }
-    if (t1.joinable())
-    {
-        t1.join();
-    }
+    Syscollector syscollector{spInfoWrapper, "1d"};
 }
 
 TEST_F(SyscollectorImpTest, intervalUnknownUnit)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillOnce(Return("hardware"));
-    EXPECT_CALL(*spInfoWrapper, packages()).WillOnce(Return("packages"));
+    EXPECT_CALL(*spInfoWrapper, packages()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"architecture":"amd64","group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"}])")));
     EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
     EXPECT_CALL(*spInfoWrapper, networks()).WillOnce(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
     EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));    
-    std::thread t1;
-    {
-        Syscollector syscollector{spInfoWrapper, "1y"};
-        t1 = std::thread{[&syscollector](){ syscollector.start(); }};
-    }
-    if (t1.joinable())
-    {
-        t1.join();
-    }
+    Syscollector syscollector{spInfoWrapper, "1y"};
 }
 
 TEST_F(SyscollectorImpTest, noScanOnStart)
@@ -142,75 +102,43 @@ TEST_F(SyscollectorImpTest, noScanOnStart)
     EXPECT_CALL(*spInfoWrapper, networks()).Times(0);
     EXPECT_CALL(*spInfoWrapper, processes()).Times(0);
     EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
-    std::thread t1;
-    {
-        Syscollector syscollector{spInfoWrapper, "1h", false};
-        t1 = std::thread{[&syscollector](){ syscollector.start(); }};
-    }
-    if (t1.joinable())
-    {
-        t1.join();
-    }
+    Syscollector syscollector{spInfoWrapper, "1h", false};
 }
 
 TEST_F(SyscollectorImpTest, noHardware)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
-    EXPECT_CALL(*spInfoWrapper, packages()).WillOnce(Return("packages"));
+    EXPECT_CALL(*spInfoWrapper, packages()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"architecture":"amd64","group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"}])")));
     EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
     EXPECT_CALL(*spInfoWrapper, networks()).WillOnce(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
     EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));    
-    std::thread t1;
-    {
-        Syscollector syscollector{spInfoWrapper, "1h", true, false};
-        t1 = std::thread{[&syscollector](){ syscollector.start(); }};
-    }
-    if (t1.joinable())
-    {
-        t1.join();
-    }
+    Syscollector syscollector{spInfoWrapper, "1h", true, false};
 }
 
 TEST_F(SyscollectorImpTest, noOs)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillOnce(Return("hardware"));
-    EXPECT_CALL(*spInfoWrapper, packages()).WillOnce(Return("packages"));
+    EXPECT_CALL(*spInfoWrapper, packages()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"architecture":"amd64","group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"}])")));
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
     EXPECT_CALL(*spInfoWrapper, networks()).WillOnce(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
     EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));    
-    std::thread t1;
-    {
-        Syscollector syscollector{spInfoWrapper, "1h", true, true, false};
-        t1 = std::thread{[&syscollector](){ syscollector.start(); }};
-    }
-    if (t1.joinable())
-    {
-        t1.join();
-    }
+    Syscollector syscollector{spInfoWrapper, "1h", true, true, false};
 }
 
 TEST_F(SyscollectorImpTest, noNetwork)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillOnce(Return("hardware"));
-    EXPECT_CALL(*spInfoWrapper, packages()).WillOnce(Return("packages"));
+    EXPECT_CALL(*spInfoWrapper, packages()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"architecture":"amd64","group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"}])")));
     EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
     EXPECT_CALL(*spInfoWrapper, networks()).Times(0);
     EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
     EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));    
-    std::thread t1;
-    {
-        Syscollector syscollector{spInfoWrapper, "1h", true, true, true, false};
-        t1 = std::thread{[&syscollector](){ syscollector.start(); }};
-    }
-    if (t1.joinable())
-    {
-        t1.join();
-    }
+    Syscollector syscollector{spInfoWrapper, "1h", true, true, true, false};
 }
 
 TEST_F(SyscollectorImpTest, noPackages)
@@ -222,114 +150,66 @@ TEST_F(SyscollectorImpTest, noPackages)
     EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
     EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
     EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));    
-    std::thread t1;
-    {
-        Syscollector syscollector{spInfoWrapper, "1h", true, true, true, true, false};
-        t1 = std::thread{[&syscollector](){ syscollector.start(); }};
-    }
-    if (t1.joinable())
-    {
-        t1.join();
-    }
+    Syscollector syscollector{spInfoWrapper, "1h", true, true, true, true, false};
 }
 
 TEST_F(SyscollectorImpTest, noPorts)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillOnce(Return("hardware"));
-    EXPECT_CALL(*spInfoWrapper, packages()).WillOnce(Return("packages"));
+    EXPECT_CALL(*spInfoWrapper, packages()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"architecture":"amd64","group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"}])")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillOnce(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
     EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
     EXPECT_CALL(*spInfoWrapper, ports()).Times(0);   
-    std::thread t1;
-    {
-        Syscollector syscollector{spInfoWrapper, "1h", true, true, true, true, true, false};
-        t1 = std::thread{[&syscollector](){ syscollector.start(); }};
-    }
-    if (t1.joinable())
-    {
-        t1.join();
-    }
+    Syscollector syscollector{spInfoWrapper, "1h", true, true, true, true, true, false};
 }
 
 TEST_F(SyscollectorImpTest, noPortsAll)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillOnce(Return("hardware"));
-    EXPECT_CALL(*spInfoWrapper, packages()).WillOnce(Return("packages"));
+    EXPECT_CALL(*spInfoWrapper, packages()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"architecture":"amd64","group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"}])")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillOnce(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
     EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
     EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));    
-    std::thread t1;
-    {
-        Syscollector syscollector{spInfoWrapper, "1h", true, true, true, true, true, true, false};
-        t1 = std::thread{[&syscollector](){ syscollector.start(); }};
-    }
-    if (t1.joinable())
-    {
-        t1.join();
-    }
+    Syscollector syscollector{spInfoWrapper, "1h", true, true, true, true, true, true, false};
 }
 
 TEST_F(SyscollectorImpTest, noProcesses)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillOnce(Return("hardware"));
-    EXPECT_CALL(*spInfoWrapper, packages()).WillOnce(Return("packages"));
+    EXPECT_CALL(*spInfoWrapper, packages()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"architecture":"amd64","group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"}])")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillOnce(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
     EXPECT_CALL(*spInfoWrapper, processes()).Times(0);
     EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));
-    std::thread t1;
-    {
-        Syscollector syscollector{spInfoWrapper, "1h", true, true, true, true, true, true, true, false};
-        t1 = std::thread{[&syscollector](){ syscollector.start(); }};
-    }
-    if (t1.joinable())
-    {
-        t1.join();
-    }
+    Syscollector syscollector{spInfoWrapper, "1h", true, true, true, true, true, true, true, false};
 }
 
 TEST_F(SyscollectorImpTest, noHotfixes)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillOnce(Return("hardware"));
-    EXPECT_CALL(*spInfoWrapper, packages()).WillOnce(Return("packages"));
+    EXPECT_CALL(*spInfoWrapper, packages()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"architecture":"amd64","group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"}])")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillOnce(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, os()).WillOnce(Return("os"));
     EXPECT_CALL(*spInfoWrapper, processes()).WillOnce(Return("processes"));
     EXPECT_CALL(*spInfoWrapper, ports()).WillOnce(Return("ports"));    
-    std::thread t1;
-    {
-        Syscollector syscollector{spInfoWrapper, "1h", true, true, true, true, true, true, true, true, false};
-        t1 = std::thread{[&syscollector](){ syscollector.start(); }};
-    }
-    if (t1.joinable())
-    {
-        t1.join();
-    }
+    Syscollector syscollector{spInfoWrapper, "1h", true, true, true, true, true, true, true, true, false};
 }
 
 TEST_F(SyscollectorImpTest, scanOnInverval)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return("hardware"));
-    EXPECT_CALL(*spInfoWrapper, packages()).WillRepeatedly(Return("packages"));
+    EXPECT_CALL(*spInfoWrapper, packages()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"architecture":"amd64","group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"}])")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return("networks"));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return("os"));
     EXPECT_CALL(*spInfoWrapper, processes()).WillRepeatedly(Return("processes"));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return("ports"));    
-    std::thread t1;
-    {
-        Syscollector syscollector{spInfoWrapper, "1s"};
-        t1 = std::thread{[&syscollector](){ syscollector.start(); }};
-        std::this_thread::sleep_for(std::chrono::seconds{3});
-    }
-    if (t1.joinable())
-    {
-        t1.join();
-    }
+    Syscollector syscollector{spInfoWrapper, "1s"};
+    std::this_thread::sleep_for(std::chrono::seconds{3});
 }

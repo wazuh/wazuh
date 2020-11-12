@@ -27,25 +27,25 @@ int main(int argc, const char* argv[])
 {
     const std::chrono::milliseconds timeout{5000};
     const auto spInfo{ std::make_shared<SysInfo>() };
-    Syscollector sysCollector
-    {
-        spInfo,
-        "1m",
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true
-    };
+    rsync_initialize(logFunction);
+    dbsync_initialize(logFunction);
     try
     {
-        rsync_initialize(logFunction);
-        dbsync_initialize(logFunction);
-        sysCollector.start();
+        Syscollector sysCollector
+        {
+            spInfo,
+            "15s",
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+        };
+        while(std::cin.get() != 'q' );
     }
     catch(const std::exception& ex)
     {
