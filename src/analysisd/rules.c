@@ -257,9 +257,17 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
     i = 0;
 
     /* Read the XML */
-    if (OS_ReadXML(rulepath, &xml) < 0) {
-        smerror(log_msg, XML_ERROR, rulepath, xml.err, xml.err_line);
-        goto cleanup;
+    switch(OS_ReadXML(rulepath, &xml)) {
+        case -2:
+            smwarn(log_msg, FOPEN_ERROR, rulepath, errno, strerror(errno));
+            retval = 0;
+            goto cleanup;
+        case -1:
+            smerror(log_msg, XML_ERROR, rulepath, xml.err, xml.err_line);
+            goto cleanup;
+        case 0:
+        default:
+            break;
     }
     mdebug2("Read xml for rule.");
 

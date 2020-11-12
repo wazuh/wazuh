@@ -185,13 +185,17 @@ int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
     OSDecoderInfo *pi = NULL;
 
     /* Read the XML */
-    if ((i = OS_ReadXML(file, &xml)) < 0) {
-        if ((i == -2) && (strcmp(file, XML_LDECODER) == 0)) {
-            return (-2);
-        }
-
-        smerror(log_msg, XML_ERROR, file, xml.err, xml.err_line);
-        goto cleanup;
+    switch(OS_ReadXML(file, &xml)) {
+        case -2:
+            smwarn(log_msg, FOPEN_ERROR, file, errno, strerror(errno));
+            retval = 1;
+            goto cleanup;
+        case -1:
+            smerror(log_msg, XML_ERROR, file, xml.err, xml.err_line);
+            goto cleanup;
+        case 0:
+        default:
+            break;
     }
 
     /* Apply any variables found */
