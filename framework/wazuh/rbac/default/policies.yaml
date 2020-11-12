@@ -104,7 +104,7 @@ default_policies:
         effect: allow
 
   ciscat_read:
-    description: Allow read agent’s ciscat results information.
+    description: Allow read agent's ciscat results information.
     policies:
       ciscat:
         actions:
@@ -176,7 +176,7 @@ default_policies:
         effect: allow
 
   sca_read:
-    description: Allow read agent’s sca information.
+    description: Allow read agent's sca information.
     policies:
       sca:
         actions:
