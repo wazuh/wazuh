@@ -513,13 +513,15 @@
 #define LOGTEST_ERROR_JSON_REQUIRED_SFIELD          "(7308): '%s' JSON field is required and must be a string"
 #define LOGTEST_ERROR_TOKEN_INVALID                 "(7309): '%s' is not a valid token"
 #define LOGTEST_ERROR_RESPONSE                      "(7310): Failure to sending response to client [%i] %s."
-#define LOGTEST_ERROR_INITIALIZE_SESSION            "(7311): Failure to initializing session '%s'"
+#define LOGTEST_ERROR_INITIALIZE_SESSION            "(7311): Failure to initializing session"
 #define LOGTEST_ERROR_PROCESS_EVENT                 "(7312): Failed to process the event"
 #define LOGTEST_ERROR_FIELD_NOT_FOUND               "(7313): '%s' JSON field not found"
 #define LOGTEST_ERROR_RECV_MSG_EMPTY_TO             "(7314): Failure to receive message: empty or reception timeout"
 #define LOGTEST_ERROR_RECV_MSG_OVERSIZE             "(7315): Failure to receive message: size is bigger than expected"
 #define LOGTEST_ERROR_TOKEN_INVALID_TYPE            "(7316): Failure to remove session. token JSON field must be a string"
 #define LOGTEST_ERROR_FIELD_NOT_VALID               "(7317): '%s' JSON field value is not valid"
+#define LOGTEST_ERROR_REMOVE_SESSION                "(7318): Failure to remove session '%s'"
+
 /* Modules messages */
 #define WM_UPGRADE_JSON_PARSE_ERROR                 "(8101): Cannot parse JSON: '%s'"
 #define WM_UPGRADE_UNDEFINED_ACTION_ERRROR          "(8102): No action defined for command: '%s'"
