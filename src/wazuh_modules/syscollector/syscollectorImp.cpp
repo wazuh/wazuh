@@ -63,6 +63,40 @@ constexpr auto PROCESSES_SQL_STATEMENT
     PRIMARY KEY (pid));)"
 };
 
+constexpr auto OS_SQL_STATEMENT
+{
+    R"(CREATE TABLE os (
+        hostname TEXT,
+        architecture TEXT,
+        os_name TEXT,
+        os_version TEXT,
+        os_codename TEXT,
+        os_major TEXT,
+        os_minor TEXT,
+        os_build TEXT,
+        os_platform TEXT,
+        sysname TEXT,
+        release TEXT,
+        version TEXT,
+        os_release TEXT,
+        PRIMARY KEY (os_name)
+    );)"
+};
+
+constexpr auto HARDWARE_SQL_STATEMENT
+{
+    R"(CREATE TABLE hardware (
+        board_serial TEXT,
+        cpu_name TEXT,
+        cpu_cores INTEGER CHECK (cpu_cores > 0),
+        cpu_mhz BIGINT CHECK (cpu_mhz > 0),
+        ram_total BIGINT CHECK (ram_total > 0),
+        ram_free BIGINT CHECK (ram_free > 0),
+        ram_usage INTEGER CHECK (ram_usage >= 0 AND ram_usage <= 100),
+        PRIMARY KEY (board_serial)
+    );)"
+};
+
 static void updateAndNotifyChanges(const DBSYNC_HANDLE handle, const std::string& table, const nlohmann::json& values)
 {
     const std::map<ReturnTypeCallback, std::string> operationsMap
@@ -151,6 +185,14 @@ bool Syscollector::sleepFor()
 std::string Syscollector::getCreateStatement() const
 {
     std::string ret;
+    if (m_hardware)
+    {
+        ret += HARDWARE_SQL_STATEMENT;
+    }
+    if (m_os)
+    {
+        ret += OS_SQL_STATEMENT;
+    }
     if (m_packages)
     {
         ret += PACKAGES_SQL_STATEMENT;
@@ -206,16 +248,16 @@ void Syscollector::scanHardware()
 {
     if (m_hardware)
     {
-        const auto& hw{m_spInfo->hardware()};
-        std::cout << hw.dump() << std::endl;
+        constexpr auto table{"hardware"};
+        updateAndNotifyChanges(m_dbSync.handle(), table, nlohmann::json{m_spInfo->hardware()});
     }
 }
 void Syscollector::scanOs()
 {
     if(m_os)
     {
-        const auto& os{m_spInfo->os()};
-        std::cout << os.dump() << std::endl;
+        constexpr auto table{"os"};
+        updateAndNotifyChanges(m_dbSync.handle(), table, nlohmann::json{m_spInfo->os()});
     }
 }
 void Syscollector::scanNetwork()
@@ -228,8 +270,11 @@ void Syscollector::scanNetwork()
 }
 void Syscollector::scanPackages()
 {
-    constexpr auto table{"packages"};
-    updateAndNotifyChanges(m_dbSync.handle(), table, m_spInfo->packages());
+    if (m_packages)
+    {
+        constexpr auto table{"packages"};
+        updateAndNotifyChanges(m_dbSync.handle(), table, m_spInfo->packages());
+    }
 }
 void Syscollector::scanPorts()
 {
@@ -245,8 +290,11 @@ void Syscollector::scanPorts()
 
 void Syscollector::scanProcesses()
 {
-    constexpr auto table{"processes"};
-    updateAndNotifyChanges(m_dbSync.handle(), table, m_spInfo->processes());
+    if (m_processes)
+    {
+        constexpr auto table{"processes"};
+        updateAndNotifyChanges(m_dbSync.handle(), table, m_spInfo->processes());
+    }
 }
 
 void Syscollector::scan()
@@ -254,15 +302,9 @@ void Syscollector::scan()
     scanHardware();
     scanOs();
     scanNetwork();
-    if (m_packages)
-    {
-        scanPackages();
-    }
+    scanPackages();
     scanPorts();
-    if (m_processes)
-    {
-        scanProcesses();
-    }
+    scanProcesses();
 }
 
 void Syscollector::syncThread()
