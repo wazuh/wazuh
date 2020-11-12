@@ -82,7 +82,7 @@ typedef struct w_logtest_session_t {
 
     char *token;                            ///< Client ID
     time_t last_connection;                 ///< Timestamp of the last query
-    pthread_rwlock_t in_use;                ///< To prevent remove the session when it is in use
+    pthread_mutex_t in_use;                ///< To prevent remove the session when it is in use
 
     RuleNode *rule_list;                    ///< Rule list
     OSDecoderNode *decoderlist_forpname;    ///< Decoder list to match logs which have a program name
