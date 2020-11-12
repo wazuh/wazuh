@@ -12,6 +12,7 @@
 #define REPORTSCONFIG_H
 
 #include "report_op.h"
+#include "global-config.h"
 
 /* Structure for the report */
 typedef struct _report_config {
@@ -41,6 +42,8 @@ typedef struct _monitor_config {
 
     char **agents;
     report_config **reports;
+
+    _Config global;
 } monitor_config;
 
 #endif /* REPORTSCONFIG_H */

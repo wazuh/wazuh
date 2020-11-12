@@ -110,6 +110,7 @@ void wm_agent_upgrade_free_agent_info(wm_agent_info* agent_info) {
         os_free(agent_info->minor_version);
         os_free(agent_info->architecture);
         os_free(agent_info->wazuh_version);
+        os_free(agent_info->connection_status);
         os_free(agent_info);
     }
 }

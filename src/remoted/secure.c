@@ -11,6 +11,7 @@
 #include "shared.h"
 #include "os_net/os_net.h"
 #include "remoted.h"
+#include "wazuh_db/wdb.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
@@ -111,6 +112,10 @@ void HandleSecure()
             w_create_thread(wait_for_msgs, NULL);
         }
     }
+
+    // Reset all the agents' connection status in Wazuh DB
+    if (OS_SUCCESS != wdb_reset_agents_connection(NULL))
+        mwarn("Unable to reset the agents' connection status. Possible incorrect statuses until the agents get connected to the manager.");
 
     // Create message handler thread pool
     {

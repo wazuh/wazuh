@@ -51,7 +51,7 @@ bool __wrap_wm_agent_upgrade_validate_task_status_message(const cJSON *input_jso
 
 int __wrap_wm_agent_upgrade_validate_id(int agent_id);
 
-int __wrap_wm_agent_upgrade_validate_status(int last_keep_alive);
+int __wrap_wm_agent_upgrade_validate_status(const char* connection_status);
 
 int __wrap_wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch);
 

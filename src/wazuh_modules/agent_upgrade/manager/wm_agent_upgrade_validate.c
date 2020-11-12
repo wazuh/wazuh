@@ -40,11 +40,11 @@ int wm_agent_upgrade_validate_id(int agent_id) {
     return return_code;
 }
 
-int wm_agent_upgrade_validate_status(int last_keep_alive) {
-    int return_code = WM_UPGRADE_SUCCESS;
+int wm_agent_upgrade_validate_status(const char* connection_status) {
+    int return_code = WM_UPGRADE_AGENT_IS_NOT_ACTIVE;
 
-    if (last_keep_alive < 0 || last_keep_alive < (time(0) - DISCON_TIME)) {
-        return_code = WM_UPGRADE_AGENT_IS_NOT_ACTIVE;
+    if (connection_status && !strcmp(AGENT_CS_ACTIVE, connection_status)) {
+        return_code = WM_UPGRADE_SUCCESS;
     }
 
     return return_code;

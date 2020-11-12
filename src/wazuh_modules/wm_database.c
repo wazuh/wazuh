@@ -222,6 +222,7 @@ void wm_sync_manager() {
         manager_data->id = 0;
         os_strdup(os_uname, manager_data->osd->os_uname);
         os_strdup(__ossec_name " " __ossec_version, manager_data->version);
+        os_strdup(AGENT_CS_ACTIVE, manager_data->connection_status);
         os_strdup("synced", manager_data->sync_status);
 
         wdb_update_agent_data(manager_data, &wdb_wmdb_sock);
@@ -438,7 +439,6 @@ void wm_scan_directory(const char *dirname) {
 
 int wm_sync_file(const char *dirname, const char *fname) {
     char path[PATH_MAX] = "";
-    char del_path[PATH_MAX] = "";
     int result = 0;
     int id_agent = -1;
     int type;
@@ -460,41 +460,13 @@ int wm_sync_file(const char *dirname, const char *fname) {
     }
 
     switch (type) {
-
     case WDB_GROUPS:
         id_agent = atoi(fname);
-
-        if (!id_agent) {
+        if (id_agent < 0) {
             mterror(WM_DATABASE_LOGTAG, "Couldn't extract agent ID from file %s/%s", dirname, fname);
             return -1;
         }
 
-        if (wdb_get_agent_status(id_agent, &wdb_wmdb_sock) < 0) {
-            snprintf(del_path, PATH_MAX - 1, DEFAULTDIR GROUPS_DIR "/%03d", id_agent);
-            unlink(del_path);
-            wdb_delete_agent_belongs(id_agent, &wdb_wmdb_sock);
-            return -1;
-        }
-
-        break;
-
-    case WDB_SHARED_GROUPS:
-        id_agent = 0;
-        break;
-    }
-
-    switch (wdb_get_agent_status(id_agent, &wdb_wmdb_sock)) {
-    case -1:
-        mterror(WM_DATABASE_LOGTAG, "Couldn't get database status for agent '%d'.", id_agent);
-        return -1;
-    case WDB_AGENT_PENDING:
-        mtwarn(WM_DATABASE_LOGTAG, "Agent '%d' database status was 'pending'. Data could be lost.", id_agent);
-        wdb_set_agent_status(id_agent, WDB_AGENT_UPDATED, &wdb_wmdb_sock);
-        break;
-    }
-
-    switch (type) {
-    case WDB_GROUPS:
         result = wm_sync_agent_group(id_agent, fname);
         break;
 
