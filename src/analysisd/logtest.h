@@ -82,7 +82,7 @@ typedef struct w_logtest_session_t {
 
     char *token;                            ///< Client ID
     time_t last_connection;                 ///< Timestamp of the last query
-    pthread_mutex_t in_use;                ///< To prevent remove the session when it is in use
+    pthread_mutex_t mutex;                  ///< Prevent race condition between get a session and remove it
 
     RuleNode *rule_list;                    ///< Rule list
     OSDecoderNode *decoderlist_forpname;    ///< Decoder list to match logs which have a program name
@@ -190,11 +190,10 @@ int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
 
 /**
  * @brief Create resources necessary to service client
- * @param token client identifier
  * @param msg_error contains the message to send to the client in case of invalid rules or decoder otherwise, it's null
  * @return NULL on failure, otherwise a w_logtest_session_t object which represents to the client
  */
-w_logtest_session_t *w_logtest_initialize_session(char * token, OSList * list_msg);
+w_logtest_session_t *w_logtest_initialize_session(OSList * list_msg);
 
 /**
  * @brief Free resources after client closes connection
@@ -271,19 +270,6 @@ void w_logtest_add_msg_response(cJSON* response, OSList* list_msg, int* error_co
  * @return char* new token string
  */
 char* w_logtest_generate_token();
-
-/**
- * @brief Get a session for a request
- *
- * Search for an active session based on the request token. If session expires
- * or the token is invalid, returns a new session
- *
- * @param req request for a session
- * @param list_msg list of \ref os_analysisd_log_msg_t for store messages
- * @param connection Manager of connections
- * @return new session or NULL on error
- */
-w_logtest_session_t * w_logtest_get_session(cJSON * req, OSList * list_msg, w_logtest_connection_t * connection);
 
 /**
  * @brief Register a session as active in connection
