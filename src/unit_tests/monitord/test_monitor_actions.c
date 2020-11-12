@@ -348,7 +348,7 @@ void test_monitor_agents_alert_message_sent() {
     will_return(__wrap_wdb_get_agent_info, j_agent_info);
 
     mond.global.agents_disconnection_time = 20;
-    mond.global.agents_disconnection_alert_time = 200;
+    mond.global.agents_disconnection_alert_time = 100;
     will_return(__wrap_time, 1000);
 
     // monitor_send_disconnection_msg

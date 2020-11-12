@@ -41,7 +41,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
 
     /* Setting default values for global parameters */
     cfg->global.agents_disconnection_time = 20;
-    cfg->global.agents_disconnection_alert_time = 120;
+    cfg->global.agents_disconnection_alert_time = 100;
 
     if (ReadConfig(modules, cfgfile, cfg, NULL) < 0 ||
         ReadConfig(CGLOBAL, cfgfile, &cfg->global, NULL) < 0 ) {
