@@ -4452,80 +4452,69 @@ void test_wdb_reset_agents_connection_success(void **state)
 
 /* Tests wdb_get_agents_by_connection_status */
 
-void test_wdb_get_agents_by_connection_status_fail_response(void **state)
+void test_wdb_get_agents_by_connection_status_query_response(void **state)
 {
-    const char *query_str = "global get-agents-by-connection-status active";
+    const char *query_str = "global get-agents-by-connection-status 0 active";
     const char *response = "err";
 
     // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_parse, sock);
-    expect_string(__wrap_wdbc_query_parse, query, query_str);
-    expect_value(__wrap_wdbc_query_parse, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_parse, response);
-    will_return(__wrap_wdbc_query_parse, WDBC_ERROR);
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     int *array = wdb_get_agents_by_connection_status("active", NULL);
 
     assert_null(array);
-    os_free(array);
 }
 
-void test_wdb_get_agents_by_connection_status_empty_response(void **state)
+void test_wdb_get_agents_by_connection_status_parse_error(void **state)
 {
-    const char *query_str = "global get-agents-by-connection-status active";
-    const char *response = "ok";
+    const char *query_str = "global get-agents-by-connection-status 0 active";
+    const char *response = "err";
 
     // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_parse, sock);
-    expect_string(__wrap_wdbc_query_parse, query, query_str);
-    expect_value(__wrap_wdbc_query_parse, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_parse, response);
-    will_return(__wrap_wdbc_query_parse, WDBC_OK);
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
-    // Parsing response
-    will_return(__wrap_cJSON_Parse, NULL);
-    expect_function_call(__wrap_cJSON_Delete);
+    // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
 
     int *array = wdb_get_agents_by_connection_status("active", NULL);
 
-    assert_non_null(array);
-    assert_int_equal(-1, array[0]);
-    os_free(array);
+    assert_null(array);
 }
 
 void test_wdb_get_agents_by_connection_status_due_query_success(void **state)
 {
-    const char *query_str1 = "global get-agents-by-connection-status active";
-    const char *query_str2 = "continue";
-    const char *response1 = "due [{\"id\":1},{\"id\":2},";
-    const char *response2 = "ok {\"id\":3},{\"id\":4}]";
-    cJSON* jsonresponse = __real_cJSON_Parse("[{\"id\":1},{\"id\":2},{\"id\":3},{\"id\":4}]");
+    const char *query_str1 = "global get-agents-by-connection-status 0 active";
+    const char *query_str2 = "global get-agents-by-connection-status 2 active";
+    const char *response1 = "due 1,2";
+    const char *response2 = "ok 3,4";
 
     // Calling Wazuh DB first time
-    expect_any(__wrap_wdbc_query_parse, sock);
-    expect_string(__wrap_wdbc_query_parse, query, query_str1);
-    expect_value(__wrap_wdbc_query_parse, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_parse, response1);
-    will_return(__wrap_wdbc_query_parse, WDBC_DUE);
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str1);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response1);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Calling Wazuh DB second time
-    expect_any(__wrap_wdbc_query_parse, sock);
-    expect_string(__wrap_wdbc_query_parse, query, query_str2);
-    expect_value(__wrap_wdbc_query_parse, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_parse, response2);
-    will_return(__wrap_wdbc_query_parse, WDBC_OK);
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str2);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response2);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
-    // Parsing response
-    will_return(__wrap_cJSON_Parse, jsonresponse);
-    cJSON *item = jsonresponse->child;
-    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(item, "id"));
-    item = item->next;
-    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(item, "id"));
-    item = item->next;
-    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(item, "id"));
-    item = item->next;
-    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(item, "id"));
-    expect_function_call(__wrap_cJSON_Delete);
+    // Parsing Wazuh DB result
+    expect_any_count(__wrap_wdbc_parse_result, result, -1);
+    will_return(__wrap_wdbc_parse_result, WDBC_DUE);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     int *array = wdb_get_agents_by_connection_status("active", NULL);
 
@@ -4536,27 +4525,26 @@ void test_wdb_get_agents_by_connection_status_due_query_success(void **state)
     assert_int_equal(4, array[3]);
     assert_int_equal(-1, array[4]);
     os_free(array);
-    __real_cJSON_Delete(jsonresponse);
 }
 
 void test_wdb_get_agents_by_connection_status_success(void **state)
 {
-    const char *query_str = "global get-agents-by-connection-status active";
-    const char *response = "ok [{\"id\":1},{\"id\":2}]";
-    cJSON* jsonresponse = __real_cJSON_Parse("[{\"id\":1},{\"id\":2}]");
+    const char *query_str = "global get-agents-by-connection-status 0 active";
+
+    // Setting the payload
+    set_payload = 1;
+    strncpy(test_payload, "ok 1,2\0", 9);
 
     // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_parse, sock);
-    expect_string(__wrap_wdbc_query_parse, query, query_str);
-    expect_value(__wrap_wdbc_query_parse, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_parse, response);
-    will_return(__wrap_wdbc_query_parse, WDBC_OK);
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, test_payload);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
-    // Parsing response
-    will_return(__wrap_cJSON_Parse, jsonresponse);
-    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(jsonresponse->child, "id"));
-    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(jsonresponse->child->next, "id"));
-    expect_function_call(__wrap_cJSON_Delete);
+    // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     int *array = wdb_get_agents_by_connection_status("active", NULL);
 
@@ -4565,7 +4553,10 @@ void test_wdb_get_agents_by_connection_status_success(void **state)
     assert_int_equal(2, array[1]);
     assert_int_equal(-1, array[2]);
     os_free(array);
-    __real_cJSON_Delete(jsonresponse);
+
+    // Cleaning payload
+    set_payload = 0;
+    memset(test_payload, '\0', OS_MAXSTR);
 }
 
 /* Tests wdb_disconnect_agents */
@@ -4835,8 +4826,8 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_reset_agents_connection_error_result, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_reset_agents_connection_success, setup_wdb_agent, teardown_wdb_agent),
         /* Tests wdb_get_agents_by_connection_status */
-        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_fail_response, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_empty_response, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_query_response, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_parse_error, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_success, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_due_query_success, setup_wdb_agent, teardown_wdb_agent),
         /* Tests wdb_disconnect_agents */
