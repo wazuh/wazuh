@@ -1210,7 +1210,7 @@ int wdb_global_check_manager_keepalive(wdb_t *wdb) {
     }
 }
 
-wdbc_result wdb_global_get_agents_by_connection_status (wdb_t *wdb, int* last_agent_id, const char* connection_status, char **output) {
+wdbc_result wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, char **output) {
     wdbc_result status = WDBC_UNKNOWN;
     unsigned response_size = 0;
 
@@ -1232,7 +1232,7 @@ wdbc_result wdb_global_get_agents_by_connection_status (wdb_t *wdb, int* last_ag
             break;
         }
         sqlite3_stmt* stmt = wdb->stmt[WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS];
-        if (sqlite3_bind_int(stmt, 1, *last_agent_id) != SQLITE_OK) {
+        if (sqlite3_bind_int(stmt, 1, last_agent_id) != SQLITE_OK) {
             merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
             snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s", "Cannot bind sql statement");
             status = WDBC_ERROR;
@@ -1267,7 +1267,7 @@ wdbc_result wdb_global_get_agents_by_connection_status (wdb_t *wdb, int* last_ag
                     *response_aux++ = ',';
                     //Save size and last ID
                     response_size += id_len+1;
-                    *last_agent_id = agent_id;
+                    last_agent_id = agent_id;
                 }
                 else {
                     //Pending agents but buffer is full
