@@ -5065,37 +5065,35 @@ int wdb_parse_reset_agents_connection(wdb_t * wdb, char * output) {
 }
 
 int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output) {
+    int last_id = 0;
     int keep_alive = 0;
-    cJSON *agents = NULL;
-    cJSON *agent = NULL;
-    cJSON *id = NULL;
     char* out = NULL;
+    char *next = NULL;
+    const char delim[2] = " ";
+    char *savedptr = NULL;
 
-    keep_alive = atoi(input);
-
-    if (agents = wdb_global_get_agents_to_disconnect(wdb, keep_alive), !agents) {
-        mdebug1("Error getting agents to disconnect; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
-        snprintf(output, OS_MAXSTR + 1, "err Error getting agents to disconnect; %s", sqlite3_errmsg(wdb->db));
+    /* Get last id*/
+    next = strtok_r(input, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments last id not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments last id not found");
         return OS_INVALID;
     }
+    last_id = atoi(next);
 
-    cJSON_ArrayForEach(agent, agents) {
-        id = cJSON_GetObjectItem(agent, "id");
-        if (cJSON_IsNumber(id)) {
-            if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb, id->valueint, AGENT_CS_DISCONNECTED)) {
-                mdebug1("Error setting agent %d as disconnected; err database %s/%s.db: %s",
-                         id->valueint, WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
-                snprintf(output, OS_MAXSTR + 1, "err Cannot set agent %d as disconnected; %s", id->valueint, sqlite3_errmsg(wdb->db));
-                cJSON_Delete(agents);
-                return OS_INVALID;
-            }
-        }
+    /* Get keepalive*/
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments keepalive not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments keepalive not found");
+        return OS_INVALID;
     }
+    keep_alive = atoi(next);
 
-    out = cJSON_PrintUnformatted(agents);
-    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-    os_free(out);
-    cJSON_Delete(agents);
+    wdbc_result status = wdb_global_get_agents_to_disconnect(wdb, last_id, keep_alive, &out);
+    snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], out);
+
+    os_free(out)
 
     return OS_SUCCESS;
 }
