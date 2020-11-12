@@ -82,27 +82,32 @@ int wm_agent_upgrade_validate_system(const char *platform, const char *os_major,
 
 int wm_agent_upgrade_validate_version(const char *wazuh_version, wm_upgrade_command command, void *task) {
     char *tmp_agent_version = NULL;
+    char *manager_version = NULL;
     int return_code = WM_UPGRADE_GLOBAL_DB_FAILURE;
 
     if (wazuh_version) {
         if (tmp_agent_version = strchr(wazuh_version, 'v'), tmp_agent_version) {
-            return_code = WM_UPGRADE_SUCCESS;
 
             if (wm_agent_upgrade_compare_versions(tmp_agent_version, WM_UPGRADE_MINIMAL_VERSION_SUPPORT) < 0) {
                 return_code = WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED;
             } else if (WM_UPGRADE_UPGRADE == command) {
                 wm_upgrade_task *upgrade_task = (wm_upgrade_task *)task;
-                char *manager_version = strchr(__ossec_version, 'v');
 
-                os_strdup(upgrade_task->custom_version ? upgrade_task->custom_version : manager_version, upgrade_task->wpk_version);
+                if (manager_version = strchr(__ossec_version, 'v'), manager_version) {
+                    return_code = WM_UPGRADE_SUCCESS;
 
-                if (!upgrade_task->force_upgrade) {
-                    if (wm_agent_upgrade_compare_versions(tmp_agent_version, upgrade_task->wpk_version) >= 0) {
-                        return_code = WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT;
-                    } else if (wm_agent_upgrade_compare_versions(upgrade_task->wpk_version, manager_version) > 0) {
-                        return_code = WM_UPGRADE_NEW_VERSION_GREATER_MASTER;
+                    os_strdup(upgrade_task->custom_version ? upgrade_task->custom_version : manager_version, upgrade_task->wpk_version);
+
+                    if (!upgrade_task->force_upgrade) {
+                        if (wm_agent_upgrade_compare_versions(tmp_agent_version, upgrade_task->wpk_version) >= 0) {
+                            return_code = WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT;
+                        } else if (wm_agent_upgrade_compare_versions(upgrade_task->wpk_version, manager_version) > 0) {
+                            return_code = WM_UPGRADE_NEW_VERSION_GREATER_MASTER;
+                        }
                     }
                 }
+            } else if (WM_UPGRADE_UPGRADE_CUSTOM == command) {
+                return_code = WM_UPGRADE_SUCCESS;
             }
         }
     }

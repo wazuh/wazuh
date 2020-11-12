@@ -198,6 +198,8 @@ wm_task_manager_task* wm_task_manager_parse_message(const char *msg) {
 
     if (!task->parameters) {
         wm_task_manager_free_task(task);
+        cJSON_Delete(event_json);
+        return NULL;
     }
 
     cJSON_Delete(event_json);
