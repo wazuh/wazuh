@@ -4985,12 +4985,6 @@ int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, ch
 
     /* Get last_id*/
     next = strtok_r(input, delim, &savedptr);
-    if (next == NULL || strcmp(next, "last_id") != 0) {
-        mdebug1("Invalid arguments 'last_id' not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'last_id' not found");
-        return OS_INVALID;
-    }
-    next = strtok_r(NULL, delim, &savedptr);
     if (next == NULL) {
         mdebug1("Invalid arguments 'last_id' not found.");
         snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'last_id' not found");
@@ -5006,7 +5000,7 @@ int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, ch
     }
     connection_status = next;
 
-    wdbc_result status = wdb_global_get_agents_by_connection_status(wdb, &last_id, connection_status, &out);
+    wdbc_result status = wdb_global_get_agents_by_connection_status(wdb, last_id, connection_status, &out);
     snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], out);
 
     os_free(out)

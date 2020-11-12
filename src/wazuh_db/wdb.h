@@ -1662,7 +1662,7 @@ int wdb_global_reset_agents_connection(wdb_t *wdb);
  * @param [out] output A buffer where the response is written. Must be de-allocated by the caller.
  * @return wdbc_result to represent if all agents has being obtained or any error occurred.
  */
-wdbc_result wdb_global_get_agents_by_connection_status (wdb_t *wdb, int* last_agent_id, const char* connection_status, char **output);
+wdbc_result wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, char **output);
 
 /*
  * @brief Gets all the agents' IDs (excluding the manager) that satisfy the keepalive condition to be disconnected.
