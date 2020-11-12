@@ -28,7 +28,6 @@ static const char *global_db_commands[] = {
     [WDB_UPDATE_AGENT_DATA] = "global update-agent-data %s",
     [WDB_UPDATE_AGENT_KEEPALIVE] = "global update-keepalive %s",
     [WDB_UPDATE_AGENT_CONNECTION_STATUS] = "global update-connection-status %s",
-    [WDB_UPDATE_AGENT_STATUS] = "global update-agent-status %s",
     [WDB_UPDATE_AGENT_GROUP] = "global update-agent-group %s",
     [WDB_SET_AGENT_LABELS] = "global set-labels %d %s",
     [WDB_GET_ALL_AGENTS] = "global get-all-agents last_id %d",
@@ -37,7 +36,6 @@ static const char *global_db_commands[] = {
     [WDB_GET_AGENT_LABELS] = "global get-labels %d",
     [WDB_SELECT_AGENT_NAME] = "global select-agent-name %d",
     [WDB_SELECT_AGENT_GROUP] = "global select-agent-group %d",
-    [WDB_SELECT_AGENT_STATUS] = "global select-agent-status %d",
     [WDB_SELECT_KEEPALIVE] = "global select-keepalive %s %s",
     [WDB_FIND_GROUP] = "global find-group %s",
     [WDB_SELECT_GROUPS] = "global select-groups",
@@ -445,71 +443,6 @@ int wdb_update_agent_connection_status(int id, const char *connection_status, in
     return result;
 }
 
-int wdb_set_agent_status(int id_agent, int status, int *sock) {
-    int result = 0;
-    const char *str_status = NULL;
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-    char *payload = NULL;
-    cJSON *data_in = NULL;
-    char *data_in_str = NULL;
-    int aux_sock = -1;
-
-    switch (status) {
-    case WDB_AGENT_EMPTY:
-        str_status = "empty";
-        break;
-    case WDB_AGENT_PENDING:
-        str_status = "pending";
-        break;
-    case WDB_AGENT_UPDATED:
-        str_status = "updated";
-        break;
-    default:
-        return OS_INVALID;
-    }
-
-    data_in = cJSON_CreateObject();
-
-    if (!data_in) {
-        mdebug1("Error creating data JSON for Wazuh DB.");
-        return OS_INVALID;
-    }
-
-    cJSON_AddNumberToObject(data_in, "id", id_agent);
-    cJSON_AddStringToObject(data_in, "status", str_status);
-
-    data_in_str = cJSON_PrintUnformatted(data_in);
-    cJSON_Delete(data_in);
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_STATUS], data_in_str);
-    os_free(data_in_str);
-
-    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    switch (result) {
-        case OS_SUCCESS:
-            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
-                mdebug1("Global DB Error reported in the result of the query");
-                result = OS_INVALID;
-            }
-            break;
-        case OS_INVALID:
-            mdebug1("Global DB Error in the response from socket");
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            return OS_INVALID;
-        default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            return OS_INVALID;
-    }
-
-    return result;
-}
-
 int wdb_update_agent_group(int id, char *group, int *sock) {
     int result = 0;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -802,37 +735,6 @@ char* wdb_get_agent_group(int id, int *sock) {
     json_group = cJSON_GetObjectItem(root->child,"group");
     if (cJSON_IsString(json_group) && json_group->valuestring != NULL) {
         os_strdup(json_group->valuestring, output);
-    }
-
-    cJSON_Delete(root);
-    return output;
-}
-
-int wdb_get_agent_status(int id_agent, int *sock) {
-    int output = -1;
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-    cJSON *root = NULL;
-    cJSON *json_status = NULL;
-    int aux_sock = -1;
-
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_AGENT_STATUS], id_agent);
-    root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    if (!root) {
-        merror("Error querying Wazuh DB to get the agent status.");
-        return OS_INVALID;
-    }
-
-    json_status = cJSON_GetObjectItem(root->child,"status");
-    if (cJSON_IsString(json_status) && json_status->valuestring != NULL) {
-        output = !strcmp(json_status->valuestring, "empty") ? WDB_AGENT_EMPTY : !strcmp(json_status->valuestring, "pending") ? WDB_AGENT_PENDING : WDB_AGENT_UPDATED;
-    } else {
-        output = OS_INVALID;
     }
 
     cJSON_Delete(root);

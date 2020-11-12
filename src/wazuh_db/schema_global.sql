@@ -28,9 +28,6 @@ CREATE TABLE IF NOT EXISTS agent (
     node_name TEXT DEFAULT 'unknown',
     date_add INTEGER NOT NULL,
     last_keepalive INTEGER,
-    status TEXT NOT NULL CHECK (status IN ('empty', 'pending', 'updated')) DEFAULT 'empty',
-    fim_offset INTEGER NOT NULL DEFAULT 0,
-    reg_offset INTEGER NOT NULL DEFAULT 0,
     `group` TEXT DEFAULT 'default',
     sync_status TEXT NOT NULL CHECK (sync_status IN ('synced', 'syncreq')) DEFAULT 'synced',
     connection_status TEXT NOT NULL CHECK (connection_status IN ('pending', 'never_connected', 'active', 'disconnected')) DEFAULT 'never_connected'
