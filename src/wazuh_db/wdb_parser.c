@@ -488,6 +488,15 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_global_update_agent_keepalive(wdb, next, output);
             }
+        } else if (strcmp(query, "update-connection-status") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax for update-connection-status.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_update_connection_status(wdb, next, output);
+            }
         } else if (strcmp(query, "delete-agent") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for delete-agent.");
@@ -532,24 +541,6 @@ int wdb_parse(char * input, char * output) {
                 result = OS_INVALID;
             } else {
                 result = wdb_parse_global_find_agent(wdb, next, output);
-            }
-        } else if (strcmp(query, "select-agent-status") == 0) {
-            if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for select-agent-status.");
-                mdebug2("Global DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                result = wdb_parse_global_select_agent_status(wdb, next, output);
-            }
-        } else if (strcmp(query, "update-agent-status") == 0) {
-            if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for update-agent-status.");
-                mdebug2("Global DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                result = wdb_parse_global_update_agent_status(wdb, next, output);
             }
         } else if (strcmp(query, "update-agent-group") == 0) {
             if (!next) {
@@ -628,14 +619,14 @@ int wdb_parse(char * input, char * output) {
                 result = wdb_parse_global_sync_agent_info_set(wdb, next, output);
             }
         }
-        else if (strcmp(query, "get-agents-by-keepalive") == 0) {
+        else if (strcmp(query, "disconnect-agents") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for get-agents-by-keepalive.");
+                mdebug1("Global DB Invalid DB query syntax for disconnect-agents.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
-                result = wdb_parse_global_get_agents_by_keepalive(wdb, next, output);
+                result = wdb_parse_global_disconnect_agents(wdb, next, output);
             }
         }
         else if (strcmp(query, "get-all-agents") == 0) {
@@ -656,6 +647,19 @@ int wdb_parse(char * input, char * output) {
                 result = OS_INVALID;
             } else {
                 result = wdb_parse_global_get_agent_info(wdb, next, output);
+            }
+        }
+        else if (strcmp(query, "reset-agents-connection") == 0) {
+            result = wdb_parse_reset_agents_connection(wdb, output);
+        }
+        else if (strcmp(query, "get-agents-by-connection-status") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax for get-agents-by-connection-status.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_get_agents_by_connection_status(wdb, next, output);
             }
         }
         else {
@@ -4277,6 +4281,7 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
     cJSON *j_manager_host = NULL;
     cJSON *j_node_name = NULL;
     cJSON *j_agent_ip = NULL;
+    cJSON *j_connection_status = NULL;
     cJSON *j_sync_status = NULL;
     cJSON *j_labels = NULL;
 
@@ -4303,6 +4308,7 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
         j_manager_host = cJSON_GetObjectItem(agent_data, "manager_host");
         j_node_name = cJSON_GetObjectItem(agent_data, "node_name");
         j_agent_ip = cJSON_GetObjectItem(agent_data, "agent_ip");
+        j_connection_status = cJSON_GetObjectItem(agent_data, "connection_status");
         j_sync_status = cJSON_GetObjectItem(agent_data, "sync_status");
         j_labels = cJSON_GetObjectItem(agent_data, "labels");
 
@@ -4324,12 +4330,13 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
             char *manager_host = cJSON_IsString(j_manager_host) ? j_manager_host->valuestring : NULL;
             char *node_name = cJSON_IsString(j_node_name) ? j_node_name->valuestring : NULL;
             char *agent_ip = cJSON_IsString(j_agent_ip) ? j_agent_ip->valuestring : NULL;
+            char *connection_status = cJSON_IsString(j_connection_status) ? j_connection_status->valuestring : NULL;
             char *sync_status = cJSON_IsString(j_sync_status) ? j_sync_status->valuestring : "synced";
             char *labels = cJSON_IsString(j_labels) ? j_labels->valuestring : NULL;
 
             if (OS_SUCCESS != wdb_global_update_agent_version(wdb, id, os_name, os_version, os_major, os_minor, os_codename,
                                                               os_platform, os_build, os_uname, os_arch, version, config_sum,
-                                                              merged_sum, manager_host, node_name, agent_ip, sync_status)) {
+                                                              merged_sum, manager_host, node_name, agent_ip, connection_status, sync_status)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
@@ -4440,6 +4447,7 @@ int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * ou
     cJSON *agent_data = NULL;
     const char *error = NULL;
     cJSON *j_id = NULL;
+    cJSON *j_connection_status = NULL;
     cJSON *j_sync_status = NULL;
 
     agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
@@ -4450,14 +4458,16 @@ int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * ou
         return OS_INVALID;
     } else {
         j_id = cJSON_GetObjectItem(agent_data, "id");
+        j_connection_status = cJSON_GetObjectItem(agent_data, "connection_status");
         j_sync_status = cJSON_GetObjectItem(agent_data, "sync_status");
 
-        if (cJSON_IsNumber(j_id) && cJSON_IsString(j_sync_status)) {
+        if (cJSON_IsNumber(j_id) && cJSON_IsString(j_connection_status) && cJSON_IsString(j_sync_status)) {
             // Getting each field
             int id = j_id->valueint;
+            char *connection_status = j_connection_status->valuestring;
             char *sync_status = j_sync_status->valuestring;
 
-            if (OS_SUCCESS != wdb_global_update_agent_keepalive(wdb, id, sync_status)) {
+            if (OS_SUCCESS != wdb_global_update_agent_keepalive(wdb, id, connection_status, sync_status)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
@@ -4465,6 +4475,47 @@ int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * ou
             }
         } else {
             mdebug1("Global DB Invalid JSON data when updating agent keepalive.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
+            cJSON_Delete(agent_data);
+            return OS_INVALID;
+        }
+    }
+
+    snprintf(output, OS_MAXSTR + 1, "ok");
+    cJSON_Delete(agent_data);
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_update_connection_status(wdb_t * wdb, char * input, char * output) {
+    cJSON *agent_data = NULL;
+    const char *error = NULL;
+    cJSON *j_id = NULL;
+    cJSON *j_connection_status = NULL;
+
+    agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
+    if (!agent_data) {
+        mdebug1("Global DB Invalid JSON syntax when updating agent connection status.");
+        mdebug2("Global DB JSON error near: %s", error);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
+        return OS_INVALID;
+    } else {
+        j_id = cJSON_GetObjectItem(agent_data, "id");
+        j_connection_status = cJSON_GetObjectItem(agent_data, "connection_status");
+
+        if (cJSON_IsNumber(j_id) && cJSON_IsString(j_connection_status)) {
+            // Getting each field
+            int id = j_id->valueint;
+            char *connection_status = j_connection_status->valuestring;
+
+            if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb, id, connection_status)) {
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+                cJSON_Delete(agent_data);
+                return OS_INVALID;
+            }
+        } else {
+            mdebug1("Global DB Invalid JSON data when updating agent connection status.");
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
             cJSON_Delete(agent_data);
             return OS_INVALID;
@@ -4592,68 +4643,6 @@ int wdb_parse_global_find_agent(wdb_t * wdb, char * input, char * output) {
     snprintf(output, OS_MAXSTR + 1, "ok %s", out);
     os_free(out);
     cJSON_Delete(j_id);
-    cJSON_Delete(agent_data);
-
-    return OS_SUCCESS;
-}
-
-int wdb_parse_global_select_agent_status(wdb_t * wdb, char * input, char * output) {
-    int agent_id = 0;
-    cJSON *status = NULL;
-    char *out = NULL;
-
-    agent_id = atoi(input);
-
-    if (status = wdb_global_select_agent_status(wdb, agent_id), !status) {
-        mdebug1("Error getting agent update status from global.db.");
-        snprintf(output, OS_MAXSTR + 1, "err Error getting agent update status from global.db.");
-        return OS_INVALID;
-    }
-
-    out = cJSON_PrintUnformatted(status);
-    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-    os_free(out);
-    cJSON_Delete(status);
-
-    return OS_SUCCESS;
-}
-
-int wdb_parse_global_update_agent_status(wdb_t * wdb, char * input, char * output) {
-    cJSON *agent_data = NULL;
-    const char *error = NULL;
-    cJSON *j_id = NULL;
-    cJSON *j_status = NULL;
-
-    agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
-    if (!agent_data) {
-        mdebug1("Global DB Invalid JSON syntax when updating agent update status.");
-        mdebug2("Global DB JSON error near: %s", error);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
-        return OS_INVALID;
-    } else {
-        j_id = cJSON_GetObjectItem(agent_data, "id");
-        j_status = cJSON_GetObjectItem(agent_data, "status");
-
-        if (cJSON_IsNumber(j_id) && cJSON_IsString(j_status) && j_status->valuestring) {
-            // Getting each field
-            int id = j_id->valueint;
-            char *status = j_status->valuestring;
-
-            if (OS_SUCCESS != wdb_global_update_agent_status(wdb, id, status)) {
-                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
-                snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
-                cJSON_Delete(agent_data);
-                return OS_INVALID;
-            }
-        } else {
-            mdebug1("Global DB Invalid JSON data when updating agent update status.");
-            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
-            cJSON_Delete(agent_data);
-            return OS_INVALID;
-        }
-    }
-
-    snprintf(output, OS_MAXSTR + 1, "ok");
     cJSON_Delete(agent_data);
 
     return OS_SUCCESS;
@@ -4986,58 +4975,28 @@ int wdb_parse_global_get_agent_info(wdb_t* wdb, char* input, char* output) {
     return OS_SUCCESS;
 }
 
-int wdb_parse_global_get_agents_by_keepalive(wdb_t* wdb, char* input, char* output) {
-    static int last_id = 0;
-    char* out = NULL;
-    char *next = NULL;
-    char comparator = '<';
-    int keep_alive = 0;
-    const char delim[2] = " ";
-    char *savedptr = NULL;
+int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, char* output) {
+    cJSON *agents = NULL;
+    char *out = NULL;
 
-    /* Get keepalive condition */
-    next = strtok_r(input, delim, &savedptr);
-    if (next == NULL || strcmp(next, "condition") != 0) {
-        mdebug1("Invalid arguments 'condition' not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'condition' not found");
+    if (agents = wdb_global_get_agents_by_connection_status(wdb, input), !agents) {
+        mdebug1("Error getting agent information from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting agent information from global.db.");
         return OS_INVALID;
     }
-    next = strtok_r(NULL, delim, &savedptr);
-    if (next == NULL) {
-        mdebug1("Invalid arguments 'condition' not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'condition' not found");
-        return OS_INVALID;
-    }
-    comparator = *next;
-    next = strtok_r(NULL, delim, &savedptr);
-    if (next == NULL) {
-        mdebug1("Invalid arguments 'condition' not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'condition' not found");
-        return OS_INVALID;
-    }
-    keep_alive = atoi(next);
+    #if 0
+    *output = cJSON_PrintUnformatted(agents);
+    cJSON_Delete(agents);
 
-    /* Get last_id*/
-    next = strtok_r(NULL, delim, &savedptr);
-    if (next == NULL || strcmp(next, "last_id") != 0) {
-        mdebug1("Invalid arguments 'last_id' not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'last_id' not found");
-        return OS_INVALID;
-    }
-    next = strtok_r(NULL, delim, &savedptr);
-    if (next == NULL) {
-        mdebug1("Invalid arguments 'last_id' not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'last_id' not found");
-        return OS_INVALID;
-    }
-    last_id = atoi(next);
-
-    wdbc_result status = wdb_global_get_agents_by_keepalive(wdb, &last_id, comparator, keep_alive, &out);
-    snprintf(output, OS_MAXSTR + 1, "%s %s", WDBC_RESULT[status], out);
-
-    os_free(out)
+    return WDBC_OK;
+    #else
+    out = cJSON_PrintUnformatted(agents);
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+    os_free(out);
+    cJSON_Delete(agents);
 
     return OS_SUCCESS;
+    #endif
 }
 
 int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output) {
@@ -5066,6 +5025,53 @@ int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output) {
     snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], out);
 
     os_free(out)
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_reset_agents_connection(wdb_t * wdb, char * output) {
+    if (OS_SUCCESS != wdb_global_reset_agents_connection(wdb)) {
+        mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+        snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    snprintf(output, OS_MAXSTR + 1, "ok");
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output) {
+    int keep_alive = 0;
+    cJSON *agents = NULL;
+    cJSON *agent = NULL;
+    cJSON *id = NULL;
+    char* out = NULL;
+
+    keep_alive = atoi(input);
+
+    if (agents = wdb_global_get_agents_to_disconnect(wdb, keep_alive), !agents) {
+        mdebug1("Error getting agents to disconnect; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+        snprintf(output, OS_MAXSTR + 1, "err Error getting agents to disconnect; %s", sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    cJSON_ArrayForEach(agent, agents) {
+        id = cJSON_GetObjectItem(agent, "id");
+        if (cJSON_IsNumber(id)) {
+            if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb, id->valueint, AGENT_CS_DISCONNECTED)) {
+                mdebug1("Error setting agent %d as disconnected; err database %s/%s.db: %s",
+                         id->valueint, WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                snprintf(output, OS_MAXSTR + 1, "err Cannot set agent %d as disconnected; %s", id->valueint, sqlite3_errmsg(wdb->db));
+                cJSON_Delete(agents);
+                return OS_INVALID;
+            }
+        }
+    }
+
+    out = cJSON_PrintUnformatted(agents);
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+    os_free(out);
+    cJSON_Delete(agents);
 
     return OS_SUCCESS;
 }

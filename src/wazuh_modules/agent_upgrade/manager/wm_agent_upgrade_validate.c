@@ -87,11 +87,11 @@ int wm_agent_upgrade_validate_id(int agent_id) {
     return return_code;
 }
 
-int wm_agent_upgrade_validate_status(int last_keep_alive) {
-    int return_code = WM_UPGRADE_SUCCESS;
+int wm_agent_upgrade_validate_status(const char* connection_status) {
+    int return_code = WM_UPGRADE_AGENT_IS_NOT_ACTIVE;
 
-    if (last_keep_alive < 0 || last_keep_alive < (time(0) - DISCON_TIME)) {
-        return_code = WM_UPGRADE_AGENT_IS_NOT_ACTIVE;
+    if (connection_status && !strcmp(AGENT_CS_ACTIVE, connection_status)) {
+        return_code = WM_UPGRADE_SUCCESS;
     }
 
     return return_code;
@@ -459,14 +459,14 @@ bool wm_agent_upgrade_validate_task_status_message(const cJSON *input_json, char
         cJSON *data_object = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_ERROR_MESSAGE]);
         cJSON *status_object = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_STATUS]);
         cJSON *agent_json = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_AGENT_ID]);
-        
+
         if (error_object && (error_object->type == cJSON_Number) && data_object && (data_object->type == cJSON_String) && agent_json
             && (agent_json->type == cJSON_Number)) {
-            
+
             if (agent_id) {
                 *agent_id = agent_json->valueint;
             }
-            
+
             if (error_object->valueint == WM_UPGRADE_SUCCESS) {
                 if (status && status_object && status_object->type == cJSON_String) {
                     os_strdup(status_object->valuestring, *status);

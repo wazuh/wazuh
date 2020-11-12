@@ -67,6 +67,18 @@ size_t moncom_getconfig(const char * section, char ** output) {
         } else {
             goto error;
         }
+    }
+    else if (strcmp(section, "global") == 0){
+        if (cfg = getMonitorGlobalOptions(), cfg) {
+            os_strdup("ok", *output);
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
+            cJSON_Delete(cfg);
+            return strlen(*output);
+        } else {
+            goto error;
+        }
     } else {
         goto error;
     }

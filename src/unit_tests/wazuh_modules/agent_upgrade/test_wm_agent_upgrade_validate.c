@@ -120,19 +120,29 @@ void test_wm_agent_upgrade_validate_id_manager(void **state)
 void test_wm_agent_upgrade_validate_status_ok(void **state)
 {
     (void) state;
-    int last_keep_alive = time(0);
+    const char *connection_status = AGENT_CS_ACTIVE;
 
-    int ret = wm_agent_upgrade_validate_status(last_keep_alive);
+    int ret = wm_agent_upgrade_validate_status(connection_status);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+}
+
+void test_wm_agent_upgrade_validate_status_null(void **state)
+{
+    (void) state;
+    const char *connection_status = NULL;
+
+    int ret = wm_agent_upgrade_validate_status(connection_status);
+
+    assert_int_equal(ret, WM_UPGRADE_AGENT_IS_NOT_ACTIVE);
 }
 
 void test_wm_agent_upgrade_validate_status_disconnected(void **state)
 {
     (void) state;
-    int last_keep_alive = time(0) - (DISCON_TIME * 2);
+    const char *connection_status = "disconnected";
 
-    int ret = wm_agent_upgrade_validate_status(last_keep_alive);
+    int ret = wm_agent_upgrade_validate_status(connection_status);
 
     assert_int_equal(ret, WM_UPGRADE_AGENT_IS_NOT_ACTIVE);
 }
@@ -1425,6 +1435,7 @@ int main(void) {
         cmocka_unit_test(test_wm_agent_upgrade_validate_id_manager),
         // wm_agent_upgrade_validate_status
         cmocka_unit_test(test_wm_agent_upgrade_validate_status_ok),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_status_null),
         cmocka_unit_test(test_wm_agent_upgrade_validate_status_disconnected),
         // wm_agent_upgrade_validate_system
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_windows_ok),
