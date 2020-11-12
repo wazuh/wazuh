@@ -17,3 +17,8 @@ WINBOOL wrap_CloseHandle(HANDLE hObject) {
     check_expected(hObject);
     return mock();
 }
+
+void expect_CloseHandle_call(HANDLE object, int ret) {
+    expect_value(wrap_CloseHandle, hObject, object);
+    will_return(wrap_CloseHandle, ret);
+}

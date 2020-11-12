@@ -24,6 +24,11 @@ HANDLE wrap_CreateFile(LPCSTR lpFileName,
     return mock_type(HANDLE);
 }
 
+void expect_CreateFile_call(const char *filename, HANDLE ret) {
+    expect_string(wrap_CreateFile, lpFileName, filename);
+    will_return(wrap_CreateFile, (HANDLE)ret);
+}
+
 DWORD wrap_GetFileAttributesA(LPCSTR lpFileName) {
     check_expected(lpFileName);
     return mock();
