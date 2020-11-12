@@ -75,10 +75,9 @@ Syscollector::Syscollector(const std::shared_ptr<ISysInfo>& spInfo,
 , m_processes{processes}
 , m_hotfixes{hotfixes}
 , m_running{false}
-, m_dbSync{HostType::AGENT, DbEngineType::SQLITE3, "temp.db", getCreateStatement()}
+, m_dbSync{HostType::AGENT, DbEngineType::SQLITE3, "syscollector.db", getCreateStatement()}
 , m_thread{std::bind(&Syscollector::syncThread, this)}
 {
-
 }
 
 Syscollector::~Syscollector()
@@ -118,6 +117,7 @@ void Syscollector::scanNetwork()
 }
 void Syscollector::scanPackages()
 {
+    constexpr auto queueSize{1024};
     constexpr auto table{"packages"};
     const auto& tables { nlohmann::json::parse(R"({"tables": ["packages"]})") };
 
@@ -134,8 +134,8 @@ void Syscollector::scanPackages()
     {
         m_dbSync.handle(),
         tables.at("tables"),
-        1,
-        1024,
+        0,
+        queueSize,
         callback
     };
     nlohmann::json jsResult;
