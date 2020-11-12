@@ -606,11 +606,11 @@ stages:
      json:
        error: !anyint
        data:
-         active: 5
+         active: 4
          disconnected: 1
          never_connected: 1
          pending: 0
-         total: 7
+         total: 6
 
 ---
 test_name: GET /agents/summary/os
