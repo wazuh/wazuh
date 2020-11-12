@@ -51,9 +51,9 @@ int Lists_OP_LoadList(char *listfile, ListNode **cdblists, OSList* log_msg)
     FILE *txt_fd = fopen(a_filename, "r");
     if (!txt_fd)
     {
-        smerror(log_msg, FOPEN_ERROR, a_filename, errno, strerror(errno));
-        free(tmp_listnode_pt);
-        return -1;
+        smwarn(log_msg, FOPEN_ERROR, a_filename, errno, strerror(errno));
+        os_free(tmp_listnode_pt);
+        return 0;
     }
 
     fclose(txt_fd);

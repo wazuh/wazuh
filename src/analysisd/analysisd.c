@@ -488,6 +488,11 @@ int main_analysisd(int argc, char **argv)
     }
     nowChroot();
 
+    /* Set the user */
+    if (Privsep_SetUser(uid) < 0) {
+        merror_exit(SETUID_ERROR, user, errno, strerror(errno));
+    }
+
     Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", MIN_ORDER_SIZE, MAX_DECODER_ORDER_SIZE);
 
     if (!os_analysisd_last_events) {
@@ -532,17 +537,25 @@ int main_analysisd(int argc, char **argv)
                     }
                     if (!ReadDecodeXML(*decodersfiles, &os_analysisd_decoderlist_pn, 
                                         &os_analysisd_decoderlist_nopn, &os_analysisd_decoder_store, list_msg)) {
-                        node_log_msg = OSList_GetFirstNode(list_msg);
+                        error_exit = 1; 
+                    }
+                    node_log_msg = OSList_GetFirstNode(list_msg);
 
-                        while (node_log_msg) {
-                            os_analysisd_log_msg_t * data_msg = node_log_msg->data;
-                            msg = os_analysisd_string_log_msg(data_msg);
+                    while (node_log_msg) {
+                        os_analysisd_log_msg_t * data_msg = node_log_msg->data;
+                        msg = os_analysisd_string_log_msg(data_msg);
+
+                        if (data_msg->level == LOGLEVEL_WARNING) {
+                            mwarn("%s", msg);
+                        } else if (data_msg->level == LOGLEVEL_ERROR) {
                             merror("%s", msg);
-                            os_free(msg);
-                            os_analysisd_free_log_msg(&data_msg);
-                            OSList_DeleteCurrentlyNode(list_msg);
-                            node_log_msg = OSList_GetFirstNode(list_msg);
                         }
+                        os_free(msg);
+                        os_analysisd_free_log_msg(&data_msg);
+                        OSList_DeleteCurrentlyNode(list_msg);
+                        node_log_msg = OSList_GetFirstNode(list_msg);
+                    }
+                    if (error_exit) {
                         merror_exit(CONFIG_ERROR, *decodersfiles);
                     }
 
@@ -585,24 +598,32 @@ int main_analysisd(int argc, char **argv)
 
                 char **listfiles;
                 listfiles = Config.lists;
+                int error_exit = 0;
                 while (listfiles && *listfiles) {
 
                     if (!test_config) {
                         mdebug1("Reading the lists file: '%s'", *listfiles);
                     }
                     if (Lists_OP_LoadList(*listfiles, &os_analysisd_cdblists, list_msg) < 0) {
-                        char * msg;
-                        OSListNode * node_log_msg;
-                        node_log_msg = OSList_GetFirstNode(list_msg);
-                        while (node_log_msg) {
-                            os_analysisd_log_msg_t * data_msg = node_log_msg->data;
-                            msg = os_analysisd_string_log_msg(data_msg);
+                        error_exit = 1;
+                    }
+                    char * msg;
+                    OSListNode * node_log_msg;
+                    node_log_msg = OSList_GetFirstNode(list_msg);
+                    while (node_log_msg) {
+                        os_analysisd_log_msg_t * data_msg = node_log_msg->data;
+                        msg = os_analysisd_string_log_msg(data_msg);
+                        if (data_msg->level == LOGLEVEL_WARNING) {
+                            mwarn("%s", msg);
+                        } else if (data_msg->level == LOGLEVEL_ERROR) {
                             merror("%s", msg);
-                            os_free(msg);
-                            os_analysisd_free_log_msg(&data_msg);
-                            OSList_DeleteCurrentlyNode(list_msg);
-                            node_log_msg = OSList_GetFirstNode(list_msg);
                         }
+                        os_free(msg);
+                        os_analysisd_free_log_msg(&data_msg);
+                        OSList_DeleteCurrentlyNode(list_msg);
+                        node_log_msg = OSList_GetFirstNode(list_msg);
+                    }
+                    if (error_exit) {
                         merror_exit(LISTS_ERROR, *listfiles);
                     }
 
@@ -654,7 +675,6 @@ int main_analysisd(int argc, char **argv)
                             mwarn("%s", msg);
                         } else if (data_msg->level == LOGLEVEL_ERROR) {
                             merror("%s", msg);
-                            error_exit = 1;
                         }
                         os_free(msg);
                         os_analysisd_free_log_msg(&data_msg);
@@ -720,11 +740,6 @@ int main_analysisd(int argc, char **argv)
 
     /* Signal manipulation */
     StartSIG(ARGV0);
-
-    /* Set the user */
-    if (Privsep_SetUser(uid) < 0) {
-        merror_exit(SETUID_ERROR, user, errno, strerror(errno));
-    }
 
     /* Create the PID file */
     if (CreatePID(ARGV0, getpid()) < 0) {
