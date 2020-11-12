@@ -20,8 +20,6 @@ For questions related to the user experience, please refer:
 Please fill the table above. Feel free to extend it at your convenience.
 -->
 
-
-
 ## Checks
 
 - **Unit tests** without failures. Updated and/or expanded if there are new functions/methods/outputs:
