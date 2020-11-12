@@ -249,10 +249,14 @@ wdbc_result __wrap_wdb_global_get_agents_by_connection_status (__attribute__((un
     return mock();
 }
 
-cJSON* __wrap_wdb_global_get_agents_to_disconnect(__attribute__((unused)) wdb_t *wdb,
-                                                  int keep_alive) {
+wdbc_result __wrap_wdb_global_get_agents_to_disconnect(__attribute__((unused)) wdb_t *wdb,
+                                                  int last_agent_id,
+                                                  int keep_alive,
+                                                  char **output) {
+    check_expected(last_agent_id);
     check_expected(keep_alive);
-    return mock_ptr_type(cJSON*);
+    os_strdup(mock_ptr_type(char*), *output);
+    return mock();
 }
 
 int __wrap_wdb_global_check_manager_keepalive(wdb_t *wdb) {
