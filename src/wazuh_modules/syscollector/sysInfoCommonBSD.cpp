@@ -92,3 +92,4 @@ nlohmann::json SysInfo::getNetworks() const
     
     return networks;
 }
+

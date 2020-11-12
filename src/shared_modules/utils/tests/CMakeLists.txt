@@ -11,6 +11,8 @@ endif(COVERITY)
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14")
 set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
+include_directories(${SRC_FOLDER}/)
+include_directories(${SRC_FOLDER}/headers/)
 include_directories(${SRC_FOLDER}/shared_modules/utils/)
 include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
 include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
@@ -26,7 +28,8 @@ add_executable(utils_unit_test
     "${UTIL_CXX_UNITTEST_SRC}")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    add_definitions(-DWIN32=1)
+    add_definitions(-DWIN32=1
+                    -D_WIN32_WINNT=0x600)
     target_link_libraries(utils_unit_test
         debug gtestd
         debug gmockd

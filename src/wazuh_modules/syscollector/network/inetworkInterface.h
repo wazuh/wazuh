@@ -12,9 +12,6 @@
 #ifndef _NETWORK_INTERFACE_H
 #define _NETWORK_INTERFACE_H
 
-#include <sys/socket.h>
-#include <memory>
-#include <ifaddrs.h>
 #include "json.hpp"
 
 class IOSNetwork

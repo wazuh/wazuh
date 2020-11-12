@@ -34,7 +34,7 @@ namespace Utils
 
     class NetworkUnixHelper final
     {
-        public:
+    public:
         static void getNetworks(std::unique_ptr<ifaddrs, IfAddressSmartDeleter>& interfacesAddress, std::map<std::string, std::vector<ifaddrs*>>& networkInterfaces)
         {
             struct ifaddrs *ifaddr { nullptr };
@@ -44,7 +44,7 @@ namespace Utils
                 interfacesAddress.reset(ifaddr);
                 for (auto ifa = ifaddr; ifa; ifa = ifa->ifa_next)
                 {
-                    if (ifa && !(ifa->ifa_flags & IFF_LOOPBACK))
+                    if (!(ifa->ifa_flags & IFF_LOOPBACK))
                     {
                         networkInterfaces[ifa->ifa_name].push_back(ifa); 
                     }

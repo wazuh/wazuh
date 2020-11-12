@@ -227,7 +227,7 @@ else
 		SHARED=dll
 		DEFINES_EVENTCHANNEL=-D_WIN32_WINNT=0x600
 		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-pthread
+		OSSEC_LDFLAGS+=-pthread -static-libgcc -static-libstdc++
 endif # winagent
 
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
@@ -1205,7 +1205,7 @@ build_syscollector: build_shared_modules
 	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SYSCOLLECTOR_OS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && ${MAKE}
 
 ifeq (${TARGET},winagent)
-syscollector_cpp := $(wildcard wazuh_modules/syscollector/*Win.cpp) $(wildcard wazuh_modules/syscollector/sysOsInfo/*Win.cpp)
+syscollector_cpp := $(wildcard wazuh_modules/syscollector/*Win.cpp) $(wildcard wazuh_modules/syscollector/sysOsInfo/*Win.cpp) $(wildcard wazuh_modules/syscollector/network/*Windows.cpp)
 else ifeq (${uname_S},Linux)
 syscollector_cpp := $(wildcard wazuh_modules/syscollector/*Linux.cpp) $(wildcard wazuh_modules/syscollector/network/*Linux.cpp) wazuh_modules/syscollector/sysOsInfo/sysOsParsers.cpp
 else ifeq (${uname_S},Darwin)

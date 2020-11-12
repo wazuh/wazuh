@@ -29,6 +29,7 @@ nlohmann::json SysInfo::getPackages() const {return "";}
 nlohmann::json SysInfo::getOsInfo() const {return "";}
 nlohmann::json SysInfo::getProcessesInfo() const {return {};}
 nlohmann::json SysInfo::getNetworks() const {return {};}
+nlohmann::json SysInfo::getPorts() const {return {};}
 
 class SysInfoWrapper: public SysInfo
 {
@@ -42,8 +43,9 @@ public:
     MOCK_METHOD(void, getMemory, (nlohmann::json&), (const override));
     MOCK_METHOD(nlohmann::json, getPackages, (), (const override));
     MOCK_METHOD(nlohmann::json, getOsInfo, (), (const override));
-    MOCK_METHOD(nlohmann::json, getProcessesInfo, (), (const override));    
-    MOCK_METHOD(nlohmann::json, getNetworks, (), (const override));    
+    MOCK_METHOD(nlohmann::json, getProcessesInfo, (), (const override));
+    MOCK_METHOD(nlohmann::json, getNetworks, (), (const override));
+    MOCK_METHOD(nlohmann::json, getPorts, (), (const override));
 };
 
 TEST_F(SysInfoTest, hardware)
@@ -74,12 +76,20 @@ TEST_F(SysInfoTest, processes)
     EXPECT_FALSE(result.empty());    
 }
 
-TEST_F(SysInfoTest, networks)
+TEST_F(SysInfoTest, network)
 {
     SysInfoWrapper info;
     EXPECT_CALL(info, getNetworks());
     const auto result {info.networks()};
     EXPECT_FALSE(result.empty());    
+}
+
+TEST_F(SysInfoTest, ports)
+{
+    SysInfoWrapper info;
+    EXPECT_CALL(info, getPorts());
+    const auto result {info.ports()};
+    EXPECT_FALSE(result.empty());
 }
 
 TEST_F(SysInfoTest, os)

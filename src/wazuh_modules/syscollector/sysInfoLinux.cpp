@@ -22,6 +22,8 @@
 #include "networkHelper.h"
 #include "network/networkLinuxWrapper.h"
 #include "network/networkFamilyDataAFactory.h"
+#include "ports/portLinuxWrapper.h"
+#include "ports/portImpl.h"
 
 struct ProcTableDeleter
 {
@@ -488,4 +490,29 @@ nlohmann::json SysInfo::getNetworks() const
     }
     
     return networks;
+}
+
+nlohmann::json SysInfo::getPorts() const
+{
+    nlohmann::json ports;
+    for (const auto &portType : PORTS_TYPE)
+    {
+        const auto fileContent { Utils::getFileContent(WM_SYS_NET_DIR+portType.second) };
+        const auto rows { Utils::split(fileContent,'\n') };
+        auto fileBody { false };
+        for (auto row : rows)
+        {
+            nlohmann::json port {};
+            if (fileBody)
+            {
+                row = Utils::trim(row);
+                Utils::replaceAll(row, "\t", " ");
+                Utils::replaceAll(row, "  ", " ");
+                std::make_unique<PortImpl>(std::make_shared<LinuxPortWrapper>(portType.first, row))->buildPortData(port);
+                ports["ports"].push_back(port);
+            }
+            fileBody = true;
+        }
+    }
+    return ports;
 }

@@ -1,7 +1,7 @@
 /*
  * Wazuh SYSCOLLECTOR
  * Copyright (C) 2015-2020, Wazuh Inc.
- * October 24, 2020.
+ * November 3, 2020.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,29 +9,28 @@
  * Foundation.
  */
 
-#ifndef _NETWORK_LINUX_H
-#define _NETWORK_LINUX_H
+#ifndef _NETWORK_INTERFACE_WINDOWS_H
+#define _NETWORK_INTERFACE_WINDOWS_H
 
 #include "inetworkInterface.h"
 #include "inetworkWrapper.h"
 
-
-class FactoryLinuxNetwork
+class FactoryWindowsNetwork
 {
-    public:
-    static std::shared_ptr<IOSNetwork>create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper);
+public:
+    static std::shared_ptr<IOSNetwork> create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceAddress);
 };
 
-template <unsigned short osNetworkType>
-class LinuxNetworkImpl final : public IOSNetwork
+template <int osNetworkType>
+class WindowsNetworkImpl final : public IOSNetwork
 {
     std::shared_ptr<INetworkInterfaceWrapper> m_interfaceAddress;
 public:
-    explicit LinuxNetworkImpl(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceAddress)
+    explicit WindowsNetworkImpl(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceAddress)
     : m_interfaceAddress(interfaceAddress)
     { }
     // LCOV_EXCL_START
-    ~LinuxNetworkImpl() = default;
+    ~WindowsNetworkImpl() = default;
     // LCOV_EXCL_STOP
     void buildNetworkData(nlohmann::json& /*network*/) override
     {
@@ -39,4 +38,4 @@ public:
     }
 };
 
-#endif // _NETWORK_LINUX_H
+#endif // _NETWORK_INTERFACE_WINDOWS_H

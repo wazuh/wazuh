@@ -9,15 +9,19 @@
  * Foundation.
  */
 
-#include <winsock2.h>
-#include <windows.h>
+#include <ws2tcpip.h>
 #include <psapi.h>
 #include <tlhelp32.h>
+#include <winternl.h>
+#include <ntstatus.h>
+#include <iphlpapi.h>
 #include <memory>
 #include <list>
 #include <set>
 #include <system_error>
-#include <versionhelpers.h>
+#include <winternl.h>
+#include <ntstatus.h>
+#include <netioapi.h>
 #include "sysinfoapi.h"
 #include "sysInfo.hpp"
 #include "cmdHelper.h"
@@ -26,6 +30,11 @@
 #include "defs.h"
 #include "debug_op.h"
 #include "sysOsInfoWin.h"
+#include "windowsHelper.h"
+#include "network/networkWindowsWrapper.h"
+#include "network/networkFamilyDataAFactory.h"
+#include "ports/portWindowsWrapper.h"
+#include "ports/portImpl.h"
 
 constexpr auto BASEBOARD_INFORMATION_TYPE{2};
 constexpr auto CENTRAL_PROCESSOR_REGISTRY{"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
@@ -34,15 +43,6 @@ constexpr auto WIN_REG_HOTFIX{"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Com
 constexpr auto VISTA_REG_HOTFIX{"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\HotFix"};
 constexpr auto SYSTEM_IDLE_PROCESS_NAME{"System Idle Process"};
 constexpr auto SYSTEM_PROCESS_NAME{"System"};
-
-static bool isVistaOrLater()
-{
-    static const bool ret
-    {
-        IsWindowsVistaOrGreater()
-    };
-    return ret;
-}
 
 class SysInfoProcess final
 {
@@ -69,7 +69,6 @@ public:
     std::string cmd()
     {
         std::string ret { "unknown" };
-        std::string path;
         const auto spReadBuff { std::make_unique<char[]>(OS_MAXSTR) };
         // Get full Windows kernel path for the process
         if (spReadBuff && GetProcessImageFileName(m_hProcess, spReadBuff.get(), OS_MAXSTR))
@@ -312,19 +311,6 @@ static std::string processName(const PROCESSENTRY32& processEntry)
     return ret;
 }
 
-typedef UINT (WINAPI *GetSystemFirmwareTable_t)(DWORD, DWORD, PVOID, DWORD);
-static GetSystemFirmwareTable_t getSystemFirmwareTableFunctionAddress()
-{
-    GetSystemFirmwareTable_t ret{nullptr};
-    auto hKernel32{LoadLibrary("kernel32.dll")};
-    if (hKernel32)
-    {
-        ret = reinterpret_cast<GetSystemFirmwareTable_t>(GetProcAddress(hKernel32, "GetSystemFirmwareTable"));
-        FreeLibrary(hKernel32);
-    }
-    return ret;
-}
-
 static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
 {
     nlohmann::json jsProcessInfo{};
@@ -469,9 +455,9 @@ static void getHotFixFromRegNT(const HKEY key, const std::string& subKey, nlohma
 std::string SysInfo::getSerialNumber() const
 {
     std::string ret;
-    if (isVistaOrLater())
+    if (Utils::isVistaOrLater())
     {
-        static auto pfnGetSystemFirmwareTable{getSystemFirmwareTableFunctionAddress()};
+        static auto pfnGetSystemFirmwareTable{Utils::getSystemFirmwareTableFunctionAddress()};
         if (pfnGetSystemFirmwareTable)
         {
             const auto size {pfnGetSystemFirmwareTable('RSMB', 0, nullptr, 0)};
@@ -480,11 +466,11 @@ std::string SysInfo::getSerialNumber() const
                 const auto spBuff{std::make_unique<unsigned char[]>(size)};
                 if (spBuff)
                 {
-                    /* Get raw SMBIOS firmware table */
+                    // Get raw SMBIOS firmware table
                     if (pfnGetSystemFirmwareTable('RSMB', 0, spBuff.get(), size) == size)
                     {
                         PRawSMBIOSData smbios{reinterpret_cast<PRawSMBIOSData>(spBuff.get())};
-                        /* Parse SMBIOS structures */
+                        // Parse SMBIOS structures
                         ret = parseRawSmbios(smbios->SMBIOSTableData, size);
                     }
                 }
@@ -547,12 +533,10 @@ void SysInfo::getMemory(nlohmann::json& info) const
     }
 }
 
-nlohmann::json SysInfo::getProcessesInfo() const
+static void fillProcessesData(std::function<void(PROCESSENTRY32)> func) 
 {
-    nlohmann::json jsProcessesList{};
     PROCESSENTRY32 processEntry{};
     processEntry.dwSize = sizeof(PROCESSENTRY32);
-    // Create a snapshot of all current processes
     const auto processesSnapshot { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
     if (INVALID_HANDLE_VALUE != processesSnapshot)
     {
@@ -560,7 +544,7 @@ nlohmann::json SysInfo::getProcessesInfo() const
         {
             do
             {
-                jsProcessesList.push_back(getProcessInfo(processEntry));
+                func(processEntry);
             } while (Process32Next(processesSnapshot, &processEntry));
         }
         else
@@ -585,6 +569,16 @@ nlohmann::json SysInfo::getProcessesInfo() const
             "Unable to create process snapshot."
         };      
     }
+}
+
+nlohmann::json SysInfo::getProcessesInfo() const
+{
+    nlohmann::json jsProcessesList{};
+    fillProcessesData([&jsProcessesList](const auto& processEntry)
+        {
+            jsProcessesList.push_back(getProcessInfo(processEntry));
+        });
+          
     return jsProcessesList;
 }
 
@@ -615,7 +609,144 @@ nlohmann::json SysInfo::getOsInfo() const
 
 nlohmann::json SysInfo::getNetworks() const
 {
-    //not implemented for this os yet.
-    nlohmann::json ret;
-    return ret;
+    nlohmann::json networks {};
+    std::unique_ptr<IP_ADAPTER_INFO, Utils::IPAddressSmartDeleter> adapterInfo;
+    std::unique_ptr<IP_ADAPTER_ADDRESSES, Utils::IPAddressSmartDeleter> adaptersAddresses;
+    Utils::NetworkWindowsHelper::getAdapters(adaptersAddresses);
+
+    if (!Utils::isVistaOrLater())
+    {
+        // Get additional IPv4 info - Windows XP only
+        Utils::NetworkWindowsHelper::getAdapterInfo(adapterInfo);
+    }
+
+    auto rawAdapterAddresses { adaptersAddresses.get() }; 
+
+    while(rawAdapterAddresses)
+    {
+        nlohmann::json netInterfaceInfo {};
+
+        if ((IF_TYPE_SOFTWARE_LOOPBACK != rawAdapterAddresses->IfType) ||
+            (0 != rawAdapterAddresses->IfIndex || 0 != rawAdapterAddresses->Ipv6IfIndex))
+        {
+            // Ignore either loopback and invalid IPv4/IPv6 indexes interfaces
+
+            auto unicastAddress { rawAdapterAddresses->FirstUnicastAddress };
+            while (unicastAddress)
+            {
+                const auto lpSockAddr { unicastAddress->Address.lpSockaddr };
+                if (lpSockAddr)
+                {
+                    const auto unicastAddressFamily { lpSockAddr->sa_family };
+                    if (AF_INET == unicastAddressFamily)
+                    {
+                        // IPv4 data
+                        FactoryNetworkFamilyCreator<OSType::WINDOWS>::create(std::make_shared<NetworkWindowsInterface>(Utils::NetworkWindowsHelper::IPV4, rawAdapterAddresses, unicastAddress, adapterInfo.get()))->buildNetworkData(netInterfaceInfo);
+                    }
+                    else if (AF_INET6 == unicastAddressFamily)
+                    {
+                        // IPv6 data                    
+                        FactoryNetworkFamilyCreator<OSType::WINDOWS>::create(std::make_shared<NetworkWindowsInterface>(Utils::NetworkWindowsHelper::IPV6, rawAdapterAddresses, unicastAddress, adapterInfo.get()))->buildNetworkData(netInterfaceInfo);
+                    }
+                }
+                unicastAddress = unicastAddress->Next;
+            }
+
+            // Common data                
+            FactoryNetworkFamilyCreator<OSType::WINDOWS>::create(std::make_shared<NetworkWindowsInterface>(Utils::NetworkWindowsHelper::COMMON_DATA, rawAdapterAddresses, unicastAddress, adapterInfo.get()))->buildNetworkData(netInterfaceInfo);
+
+            networks["iface"].push_back(netInterfaceInfo);
+        }
+
+        rawAdapterAddresses = rawAdapterAddresses->Next;
+    }
+
+    return networks;
+}
+
+template <class T, typename TableClass>
+void getTablePorts(TableClass ownerId, int32_t tcpipVersion, std::unique_ptr<T []>& tableList, std::function<DWORD(T*,DWORD *,bool, int32_t, TableClass)> GetTable)
+{
+    TableClass classId { ownerId };
+    DWORD size { 0 };
+    
+    if (ERROR_INSUFFICIENT_BUFFER == GetTable(nullptr, &size, true, tcpipVersion, classId))
+    {
+        tableList = std::make_unique<T []>(size);
+        if (tableList)
+        {
+            if (NO_ERROR != GetTable(tableList.get(), &size, true, tcpipVersion, classId))
+            {
+                throw std::runtime_error("Error when get table information");
+            }
+        }
+    }
+}
+
+template<typename T>
+void expandPortData(T data, const std::map<pid_t,std::string>& processDataList, nlohmann::json& result)
+{
+    if (data)
+    {
+        for (auto i = 0ul; i < data->dwNumEntries; ++i)
+        {
+            nlohmann::json port;
+            std::make_unique<PortImpl>(std::make_shared<WindowsPortWrapper>(data->table[i],processDataList))->buildPortData(port);
+            result["ports"].push_back(port);
+        }
+    }
+}
+
+nlohmann::json SysInfo::getPorts() const
+{
+    nlohmann::json ports;
+    std::map<pid_t,std::string> processDataList;
+    PortTables portTable;
+
+    fillProcessesData([&processDataList](const auto& processEntry)
+        {
+            processDataList[processEntry.th32ProcessID] = processEntry.szExeFile;
+        });
+    
+    getTablePorts<MIB_TCPTABLE_OWNER_PID, TCP_TABLE_CLASS>(
+        TCP_TABLE_OWNER_PID_ALL,
+        AF_INET, 
+        portTable.tcp,
+        [](MIB_TCPTABLE_OWNER_PID* table, DWORD * size, bool order, int32_t tcpipVersion, TCP_TABLE_CLASS tableClass)
+        {
+            return GetExtendedTcpTable(table, size, order, tcpipVersion, tableClass, 0);
+        } );
+    expandPortData(portTable.tcp.get(), processDataList, ports);
+
+    getTablePorts<MIB_TCP6TABLE_OWNER_PID, TCP_TABLE_CLASS>(
+        TCP_TABLE_OWNER_PID_ALL,
+        AF_INET6, 
+        portTable.tcp6,
+        [](MIB_TCP6TABLE_OWNER_PID* table, DWORD * size, bool order, int32_t tcpipVersion, TCP_TABLE_CLASS tableClass)
+        {
+            return GetExtendedTcpTable(table, size, order, tcpipVersion, tableClass, 0);
+        } );
+    expandPortData(portTable.tcp6.get(), processDataList, ports);
+
+    getTablePorts<MIB_UDPTABLE_OWNER_PID, UDP_TABLE_CLASS>(
+        UDP_TABLE_OWNER_PID,
+        AF_INET, 
+        portTable.udp,
+        [](MIB_UDPTABLE_OWNER_PID* table, DWORD * size, bool order, int32_t tcpipVersion, UDP_TABLE_CLASS tableClass)
+        {
+            return GetExtendedUdpTable(table, size, order, tcpipVersion, tableClass, 0);
+        } );
+    expandPortData(portTable.udp.get(), processDataList, ports);
+   
+    getTablePorts<MIB_UDP6TABLE_OWNER_PID, UDP_TABLE_CLASS>(
+        UDP_TABLE_OWNER_PID,
+        AF_INET6, 
+        portTable.udp6,
+        [](MIB_UDP6TABLE_OWNER_PID* table, DWORD * size, bool order, int32_t tcpipVersion, UDP_TABLE_CLASS tableClass)
+        {
+            return GetExtendedUdpTable(table, size, order, tcpipVersion, tableClass, 0);
+        } );
+    expandPortData(portTable.udp6.get(), processDataList, ports);
+    
+    return ports;
 }

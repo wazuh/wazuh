@@ -152,6 +152,8 @@ void Syscollector::scanPorts()
 {
     if (m_ports)
     {
+        const auto& ports{m_spInfo->ports()};
+        std::cout << ports.dump() << std::endl;
         if (m_portsAll)
         {
         }
