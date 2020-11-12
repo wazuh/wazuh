@@ -67,12 +67,14 @@ static void updateAndNotifyChanges(const DBSYNC_HANDLE handle, const std::string
 {
     const std::map<ReturnTypeCallback, std::string> operationsMap
     {
+        // LCOV_EXCL_START
         {MODIFIED, "MODIFIED"},
         {DELETED , "DELETED "},
         {INSERTED, "INSERTED"},
         {MAX_ROWS, "MAX_ROWS"},
         {DB_ERROR, "DB_ERROR"},
         {SELECTED, "SELECTED"},
+        // LCOV_EXCL_STOP
     };
     constexpr auto queueSize{4096};
     const auto callback
@@ -92,11 +94,13 @@ static void updateAndNotifyChanges(const DBSYNC_HANDLE handle, const std::string
             }
             else
             {
+                // LCOV_EXCL_START
                 nlohmann::json msg;
                 msg["type"] = table;
                 msg["operation"] = operationsMap.at(result);
                 msg["data"] = data;
                 std::cout << msg.dump() << std::endl;
+                // LCOV_EXCL_STOP
             }
         }
     };
