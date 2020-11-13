@@ -36,7 +36,8 @@ const wm_context WM_AZURE_CONTEXT = {
     AZ_WM_NAME,
     (wm_routine)wm_azure_main,
     (wm_routine)(void *)wm_azure_destroy,
-    (cJSON * (*)(const void *))wm_azure_dump
+    (cJSON * (*)(const void *))wm_azure_dump,
+    0
 };
 
 // Module main function. It won't return.

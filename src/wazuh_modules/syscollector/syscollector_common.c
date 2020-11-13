@@ -25,7 +25,8 @@ const wm_context WM_SYS_CONTEXT = {
     "syscollector",
     (wm_routine)wm_sys_main,
     (wm_routine)(void *)wm_sys_destroy,
-    (cJSON * (*)(const void *))wm_sys_dump
+    (cJSON * (*)(const void *))wm_sys_dump,
+    0
 };
 
 #ifndef WIN32

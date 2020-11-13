@@ -14,6 +14,7 @@
 #include "logcollector/logcollector.h"
 #include "os_execd/execd.h"
 #include "wazuh_modules/wmodules.h"
+#include "sysInfo.h"
 
 HANDLE hMutex;
 int win_debug_level;
@@ -324,156 +325,36 @@ int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) sh
 
 char *get_agent_ip()
 {
-    typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
-
     char *agent_ip = NULL;
-    int min_metric = INT_MAX;
 
-    static HMODULE sys_library = NULL;
-    static CallFunc _get_network_vista = NULL;
-
-
-    ULONG flags = (checkVista() ? (GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_GATEWAYS) : 0);
-
-    PIP_ADAPTER_ADDRESSES pAddresses = NULL;
-    ULONG outBufLen = 0;
-    ULONG Iterations = 0;
-    DWORD dwRetVal = 0;
-
-    PIP_ADAPTER_ADDRESSES pCurrAddresses = NULL;
-
-    PIP_ADAPTER_INFO AdapterInfo = NULL;
-
-    /* Allocate a 15 KB buffer to start with */
-    outBufLen = WORKING_BUFFER_SIZE;
-
-    do {
-        pAddresses = (IP_ADAPTER_ADDRESSES *) win_alloc(outBufLen);
-
-        if (pAddresses == NULL) {
-            mterror_exit(WM_SYS_LOGTAG, "Memory allocation failed for IP_ADAPTER_ADDRESSES struct.");
-        }
-
-        dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, pAddresses, &outBufLen);
-
-        if (dwRetVal == ERROR_BUFFER_OVERFLOW) {
-            win_free(pAddresses);
-            pAddresses = NULL;
-        } else {
-            break;
-        }
-
-        Iterations++;
-    } while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (Iterations < MAX_TRIES));
-
-    if (dwRetVal == NO_ERROR) {
-        if (!checkVista()) {
-            /* Retrieve additional data from IPv4 interfaces using GetAdaptersInfo() (under XP) */
-            Iterations = 0;
-            outBufLen = WORKING_BUFFER_SIZE;
-
-            do {
-                AdapterInfo = (IP_ADAPTER_INFO *) win_alloc(outBufLen);
-
-                if (AdapterInfo == NULL) {
-                    mterror_exit(WM_SYS_LOGTAG, "Memory allocation failed for IP_ADAPTER_INFO struct.");
-                }
-
-                dwRetVal = GetAdaptersInfo(AdapterInfo, &outBufLen);
-
-                if (dwRetVal == ERROR_BUFFER_OVERFLOW) {
-                    win_free(AdapterInfo);
-                    AdapterInfo = NULL;
-                } else {
-                    break;
-                }
-
-                Iterations++;
-            } while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (Iterations < MAX_TRIES));
-        } else {
-            if (!sys_library) {
-                sys_library = LoadLibrary("syscollector_win_ext.dll");
-            }
-
-            if (sys_library && !_get_network_vista) {
-                if (_get_network_vista = (CallFunc)GetProcAddress(sys_library, "get_network_vista"), !_get_network_vista) {
-                    dwRetVal = GetLastError();
-                    mterror(WM_SYS_LOGTAG, "Unable to access 'get_network_vista' on syscollector_win_ext.dll.");
-                    goto end;
-                }
-            }
-        }
-
-        if (dwRetVal == NO_ERROR) {
-            pCurrAddresses = pAddresses;
-            while (pCurrAddresses) {
-                char *string;
-                /* Ignore Loopback interface */
-                if (pCurrAddresses->IfType == IF_TYPE_SOFTWARE_LOOPBACK) {
-                    pCurrAddresses = pCurrAddresses->Next;
+    cJSON *object;
+    sysinfo_networks(&object);
+    if (object) {
+        const cJSON *iface = cJSON_GetObjectItem(object, "iface");
+        if (iface) {
+            const int size_ids = cJSON_GetArraySize(iface);
+            for (int i = 0; i < size_ids; i++){
+                const cJSON *element = cJSON_GetArrayItem(iface, i);
+                if(!element) {
                     continue;
                 }
-
-                /* Ignore interfaces without valid IPv4 indexes */
-                if (pCurrAddresses->IfIndex == 0) {
-                    pCurrAddresses = pCurrAddresses->Next;
-                    continue;
-                }
-
-                if (checkVista()) {
-                    if (!sys_library) {
-                        merror("Could not load library 'syscollector_win_ext.dll'");
-                        goto end;
+                cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
+                if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring,"unkwown")) {
+                    const cJSON *ipv4 = cJSON_GetObjectItem(element, "IPv4");
+                    if (!ipv4) {
+                        continue;
                     }
-
-                    /* Call function get_network_vista() in syscollector_win_ext.dll */
-                    string = _get_network_vista(pCurrAddresses, 0, NULL);
-                } else {
-                    /* Call function get_network_xp() */
-                    string = get_network_xp(pCurrAddresses, AdapterInfo, 0, NULL);
-                }
-
-                const char *jsonErrPtr;
-                cJSON *object = cJSON_ParseWithOpts(string, &jsonErrPtr, 0);
-                cJSON *iface = cJSON_GetObjectItem(object, "iface");
-                cJSON *ipv4 = cJSON_GetObjectItem(iface, "IPv4");
-                if(ipv4){
-                    cJSON * gateway = cJSON_GetObjectItem(ipv4, "gateway");
-                    if (gateway) {
-                        if(checkVista()){
-                            cJSON * metric = cJSON_GetObjectItem(ipv4, "metric");
-                            if (metric && metric->valueint < min_metric) {
-                                cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
-                                cJSON *address = cJSON_GetArrayItem(addresses,0);
-                                free(agent_ip);
-                                os_strdup(address->valuestring, agent_ip);
-                                min_metric = metric->valueint;
-                            }
-                        }
-                        else{
-                            cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
-                            cJSON *address = cJSON_GetArrayItem(addresses,0);
-                            free(agent_ip);
-                            os_strdup(address->valuestring, agent_ip);
-                            free(string);
-                            cJSON_Delete(object);
-                            break;
-                        }
+                    cJSON *address = cJSON_GetObjectItem(ipv4, "address");
+                    if (address && cJSON_GetStringValue(address))
+                    {
+                        os_strdup(address->valuestring, agent_ip);
+                        break;
                     }
                 }
-                free(string);
-                cJSON_Delete(object);
-                pCurrAddresses = pCurrAddresses->Next;
             }
         }
+        sysinfo_free_result(&object);
     }
-
-end:
-
-    if (pAddresses) {
-        win_free((HLOCAL)pAddresses);
-    }
-
     return agent_ip;
 }
 

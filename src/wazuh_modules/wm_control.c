@@ -11,7 +11,7 @@
 
 #if defined (__linux__) || defined (__MACH__) || defined (sun)
 #include "wm_control.h"
-#include "syscollector/syscollector.h"
+#include "sysInfo.h"
 #include "external/cJSON/cJSON.h"
 #include "file_op.h"
 #include "../os_net/os_net.h"
@@ -24,7 +24,8 @@ const wm_context WM_CONTROL_CONTEXT = {
     "control",
     (wm_routine)wm_control_main,
     (wm_routine)(void *)wm_control_destroy,
-    (cJSON * (*)(const void *))wm_control_dump
+    (cJSON * (*)(const void *))wm_control_dump,
+    0
 };
 
 #if defined (__linux__) || defined (__MACH__)
@@ -73,112 +74,34 @@ char* getPrimaryIP(){
     char * agent_ip = NULL;
 
 #if defined __linux__ || defined __MACH__
-    char **ifaces_list;
-    struct ifaddrs *ifaddr = NULL, *ifa;
-    int size;
-    int i = 0;
-#ifdef __linux__
-    int min_metric = INT_MAX;
-#endif
-
-    if (getifaddrs(&ifaddr) == -1) {
-        if (ifaddr) {
-            freeifaddrs(ifaddr);
-        }
-        mterror(WM_CONTROL_LOGTAG, "at getPrimaryIP(): getifaddrs() failed.");
-        return agent_ip;
-    }
-
-    for (ifa = ifaddr; ifa; ifa = ifa->ifa_next){
-        i++;
-    }
-
-    if(i == 0){
-        mtdebug1(WM_CONTROL_LOGTAG, "No network interfaces found when reading agent IP.");
-        return agent_ip;
-    }
-
-    os_calloc(i, sizeof(char *), ifaces_list);
-
-    /* Create interfaces list */
-    size = getIfaceslist(ifaces_list, ifaddr);
-
-    if(!ifaces_list[0]){
-        mtdebug1(WM_CONTROL_LOGTAG, "No network interfaces found when reading agent IP.");
-        os_free(ifaces_list);
-        freeifaddrs(ifaddr);
-        return agent_ip;
-    }
-
-#ifdef __MACH__
-    OSHash *gateways = OSHash_Create();
-    OSHash_SetFreeDataPointer(gateways, (void (*)(void *)) freegate);
-    if (getGatewayList(gateways) < 0){
-        mtdebug1(WM_CONTROL_LOGTAG, "Unable to obtain the Default Gateway list");
-        OSHash_Free(gateways);
-        os_free(ifaces_list);
-        freeifaddrs(ifaddr);
-        return agent_ip;
-    }
-    gateway *gate;
-#endif
-
-    for (i=0; i<size; i++) {
-        cJSON *object = cJSON_CreateObject();
-#ifdef __linux__
-        getNetworkIface_linux(object, ifaces_list[i], ifaddr);
-#elif defined __MACH__
-        if(gate = OSHash_Get(gateways, ifaces_list[i]), gate){
-            if(!gate->isdefault){
-                cJSON_Delete(object);
-                continue;
-            }
-            if(gate->addr[0]=='l'){
-                cJSON_Delete(object);
-                continue;
-            }
-            getNetworkIface_bsd(object, ifaces_list[i], ifaddr, gate);
-        }
-#endif
-        cJSON *interface = cJSON_GetObjectItem(object, "iface");
-        cJSON *ipv4 = cJSON_GetObjectItem(interface, "IPv4");
-        if(ipv4){
-#ifdef __linux__
-            cJSON * gateway = cJSON_GetObjectItem(ipv4, "gateway");
-            if (gateway) {
-                cJSON * metric = cJSON_GetObjectItem(ipv4, "metric");
-                if (metric && metric->valueint < min_metric) {
-                    cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
-                    cJSON *address = cJSON_GetArrayItem(addresses,0);
-                    if(agent_ip != NULL){
-                        free(agent_ip);
+    cJSON *object;
+    sysinfo_networks(&object);
+    if (object) {
+        const cJSON *iface = cJSON_GetObjectItem(object, "iface");
+        if (iface) {
+            const int size_ids = cJSON_GetArraySize(iface);
+            for (int i = 0; i < size_ids; i++){
+                const cJSON *element = cJSON_GetArrayItem(iface, i);
+                if(!element) {
+                    continue;
+                }
+                cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
+                if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring,"unkwown")) {
+                    const cJSON *ipv4 = cJSON_GetObjectItem(element, "IPv4");
+                    if (!ipv4) {
+                        continue;
                     }
-                    os_strdup(address->valuestring, agent_ip);
-                    min_metric = metric->valueint;
+                    cJSON *address = cJSON_GetObjectItem(ipv4, "address");
+                    if (address && cJSON_GetStringValue(address))
+                    {
+                        os_strdup(address->valuestring, agent_ip);
+                        break;
+                    }
                 }
             }
-#elif defined __MACH__
-            cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
-            cJSON *address = cJSON_GetArrayItem(addresses,0);
-            os_strdup(address->valuestring, agent_ip);
-            cJSON_Delete(object);
-            break;
-#endif
-
         }
-        cJSON_Delete(object);
+        sysinfo_free_result(&object);
     }
-#if defined __MACH__
-    OSHash_Free(gateways);
-#endif
-
-    freeifaddrs(ifaddr);
-    for (i=0; ifaces_list[i]; i++){
-        free(ifaces_list[i]);
-    }
-
-    free(ifaces_list);
-
 #elif defined sun
 
     // Get number of interfaces

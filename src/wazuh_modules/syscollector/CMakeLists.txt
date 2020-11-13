@@ -28,89 +28,43 @@ include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/external/cJSON/)
 include_directories(${SRC_FOLDER}/external/procps/)
 include_directories(${SRC_FOLDER}/external/bzip2/)
+include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/shared_modules/utils)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
-include_directories(${CMAKE_SOURCE_DIR}/)
-include_directories(${CMAKE_SOURCE_DIR}/sysOsInfo/)
+include_directories(${SRC_FOLDER}/data_provider/include/)
+include_directories(${CMAKE_SOURCE_DIR}/include)
 
+link_directories(${SRC_FOLDER}/external/openssl/)
 link_directories(${SRC_FOLDER}/external/sqlite/)
 link_directories(${SRC_FOLDER}/external/cJSON/)
 link_directories(${SRC_FOLDER}/external/procps/)
 link_directories(${SRC_FOLDER}/external/bzip2/)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  file(GLOB SYSCOLLECTOR_SRC
-      "${CMAKE_SOURCE_DIR}/*Win.cpp"
-      "${CMAKE_SOURCE_DIR}/sysOsInfo/sysOsInfoWin.cpp"
-      "${CMAKE_SOURCE_DIR}/network/*Windows.cpp")
   add_definitions(-DWIN32=1
                   -D_WIN32_WINNT=0x600)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  file(GLOB SYSCOLLECTOR_SRC
-      "${CMAKE_SOURCE_DIR}/*Linux.cpp"
-      "${CMAKE_SOURCE_DIR}/network/*Linux.cpp"
-      "${CMAKE_SOURCE_DIR}/sysOsInfo/sysOsParsers.cpp")
-else()
-  if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    file(GLOB SYSCOLLECTOR_SRC
-        "${CMAKE_SOURCE_DIR}/*Mac.cpp"
-        "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp"
-        "${CMAKE_SOURCE_DIR}/network/*BSD.cpp"
-        "${CMAKE_SOURCE_DIR}/sysOsInfo/sysOsParsers.cpp")
-  elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
-    file(GLOB SYSCOLLECTOR_SRC
-        "${CMAKE_SOURCE_DIR}/*FreeBSD.cpp"
-        "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp"
-        "${CMAKE_SOURCE_DIR}/network/*BSD.cpp"
-        "${CMAKE_SOURCE_DIR}/sysOsInfo/sysOsParsers.cpp")
-  elseif(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
-    file(GLOB SYSCOLLECTOR_SRC
-        "${CMAKE_SOURCE_DIR}/*OpenBSD.cpp"
-        "${CMAKE_SOURCE_DIR}/*CommonBSD.cpp"
-        "${CMAKE_SOURCE_DIR}/network/*BSD.cpp"
-        "${CMAKE_SOURCE_DIR}/sysOsInfo/sysOsParsers.cpp")
-  endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
+file(GLOB SYSCOLLECTOR_SRC
+    "${CMAKE_SOURCE_DIR}/src/*.cpp"
+    )
 
-add_library(syscollector OBJECT 
-    "${SYSCOLLECTOR_SRC}"
-    "${CMAKE_SOURCE_DIR}/syscollectorImp.cpp"
-    "${CMAKE_SOURCE_DIR}/sysInfo.cpp" )
+add_library(syscollector STATIC 
+    ${SYSCOLLECTOR_SRC}
+    )
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  target_link_libraries(syscollector sqlite3 cjson gcov proc)
+  target_link_libraries(syscollector dbsync rsync sqlite3 cjson gcov)
   if(UNIT_TEST)
     include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
     include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
     link_directories(${SRC_FOLDER}/external/googletest/lib/)
   endif(UNIT_TEST)
 else()
-    target_link_libraries(syscollector sqlite3 cjson proc)
+    target_link_libraries(syscollector dbsync rsync sqlite3 cjson)
     add_subdirectory(testtool)
 endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
-
- add_custom_target(copy-files ALL
-    COMMAND ${CMAKE_COMMAND} -E copy
-    ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/syscollector.dir/*.o*
-    ${CMAKE_SOURCE_DIR}/
-    DEPENDS syscollector
-    )
-
-add_custom_target(copy-files-network ALL
-    COMMAND ${CMAKE_COMMAND} -E copy
-    ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/syscollector.dir/network/*.o*
-    ${CMAKE_SOURCE_DIR}/network/
-    DEPENDS syscollector
-    )
-
-add_custom_target(copy-files-sysosinfo ALL
-    COMMAND ${CMAKE_COMMAND} -E copy
-    ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/syscollector.dir/sysOsInfo/*.o*
-    ${CMAKE_SOURCE_DIR}/sysOsInfo/
-    DEPENDS syscollector
-    )
 
 if(UNIT_TEST)
 add_subdirectory(tests)

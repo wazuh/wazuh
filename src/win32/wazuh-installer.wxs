@@ -275,11 +275,14 @@
                          </File>
                         <File Id="AGENT_AUTH.EXE.MANIFEST" Name="agent-auth.exe.manifest" Source="agent-auth.exe.manifest" />
                     </Component>
-                    <Component Id="SYSCOLLECTOR_DLL" DiskId="1" Guid="3F72347F-1282-44C1-8A97-40BB68CAE4FB">
-                        <File Id="SYSCOLLECTOR_DLL" Name="syscollector_win_ext.dll" Source="..\wazuh_modules\syscollector\syscollector_win_ext.dll" />
-                    </Component>
                     <Component Id="LIBWAZUHEXT_DLL" DiskId="1" Guid="31F7B5FA-9678-427B-9536-88AAA897A82A">
                         <File Id="LIBWAZUHEXT_DLL" Name="libwazuhext.dll" Source="..\libwazuhext.dll" />
+                    </Component>
+                    <Component Id="DBSYNC_DLL" DiskId="1" Guid="E6DD27ED-1579-4369-B83D-FD618894B56C">
+                        <File Id="DBSYNC_DLL" Name="dbsync.dll" Source="..\shared_modules\dbsync\build\bin\dbsync.dll" />
+                    </Component>
+                    <Component Id="RSYNC_DLL" DiskId="1" Guid="9F23B2D8-609D-43F6-BB90-7C81A5DF5A67">
+                        <File Id="RSYNC_DLL" Name="rsync.dll" Source="..\shared_modules\rsync\build\bin\rsync.dll" />
                     </Component>
 
                     <!-- Mark this file as permanent, so it is not deleted on uninstall. -->
@@ -557,6 +560,8 @@
             <ComponentRef Id="AGENT_AUTH.EXE" />
             <ComponentRef Id="SYSCOLLECTOR_DLL" />
             <ComponentRef Id="LIBWAZUHEXT_DLL" />
+            <ComponentRef Id="RSYNC_DLL" />
+            <ComponentRef Id="DBSYNC_DLL" />
             <ComponentRef Id="LOCAL_INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="OSSEC.CONF" />
             <ComponentRef Id="OSSEC_PRE6.CONF" />

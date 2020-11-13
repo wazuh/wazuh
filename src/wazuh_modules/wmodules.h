@@ -12,13 +12,10 @@
 #ifndef W_MODULES
 #define W_MODULES
 
-#ifndef ARGV0
-#define ARGV0 "wazuh-modulesd"
-#endif // ARGV0
-
 #include "shared.h"
 #include <pthread.h>
 #include "config/config.h"
+#include "wmodules_def.h"
 
 #define WM_DEFAULT_DIR  DEFAULTDIR "/wodles"        // Default modules directory.
 #define WM_STATE_DIR    DEFAULTDIR "/var/wodles"    // Default directory for states.
@@ -46,29 +43,10 @@
 #define DAY_SEC    86400
 #define WEEK_SEC   604800
 
+#define RANDOM_LENGTH  512
+#define MAX_VALUE_NAME 16383
+
 #define EXECVE_ERROR 0x7F
-
-typedef void* (*wm_routine)(void*);     // Standard routine pointer
-
-// Module context: this should be defined for every module
-
-typedef struct wm_context {
-    const char *name;                   // Name for module
-    wm_routine start;                   // Main function
-    wm_routine destroy;                 // Destructor
-    int (* sync)(const char*);          // Sync
-    cJSON *(* dump)(const void *);
-} wm_context;
-
-// Main module structure
-
-typedef struct wmodule {
-    pthread_t thread;                   // Thread ID
-    const wm_context *context;          // Context (common structure)
-    char *tag;                          // Module tag
-    void *data;                         // Data (module-dependent structure)
-    struct wmodule *next;               // Pointer to next module
-} wmodule;
 
 // Verification type
 typedef enum crypto_type {
@@ -81,7 +59,7 @@ typedef enum crypto_type {
 
 #include "wm_oscap.h"
 #include "wm_database.h"
-#include "syscollector/syscollector.h"
+#include "syscollector.h"
 #include "wm_command.h"
 #include "wm_ciscat.h"
 #include "wm_aws.h"

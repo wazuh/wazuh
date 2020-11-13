@@ -45,7 +45,8 @@ const wm_context WM_CISCAT_CONTEXT = {
     "cis-cat",
     (wm_routine)wm_ciscat_main,
     (wm_routine)(void *)wm_ciscat_destroy,
-    (cJSON * (*)(const void *))wm_ciscat_dump
+    (cJSON * (*)(const void *))wm_ciscat_dump,
+    0
 };
 
 // CIS-CAT module main function. It won't return.
@@ -170,7 +171,13 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
             if (id < 0)
                 id = -id;
         #else
-            int id = wm_sys_get_random_id();
+            char random_id[RANDOM_SIZE];
+            snprintf(random_id, RANDOM_SIZE - 1, "%u%u", os_random(), os_random());
+            int id = atoi(random_id);
+
+            if (id < 0) {
+                id = -id;
+            }
         #endif
 
             for (eval = ciscat->evals; eval; eval = eval->next) {
