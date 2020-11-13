@@ -141,8 +141,10 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_GET_AGENTS] = "SELECT id FROM agent WHERE id > ? LIMIT 1;",
     [WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS] = "SELECT id FROM agent WHERE id > ? AND connection_status = ? LIMIT 1;",
     [WDB_STMT_GLOBAL_GET_AGENT_INFO] = "SELECT * FROM agent WHERE id = ?;",
-    [WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT] = "SELECT id FROM agent WHERE id > ? AND connection_status = 'active' AND last_keepalive < ? LIMIT 1;",
+    [WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT] = "SELECT id FROM agent WHERE id > ? AND connection_status = 'active' AND last_keepalive < ?;",
     [WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS] = "UPDATE agent SET connection_status = 'disconnected', sync_status = ? where connection_status != 'disconnected' AND connection_status != 'never_connected' AND id != 0;",
+    [WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT] = "SELECT id FROM agent WHERE id > ? AND connection_status = 'active' AND last_keepalive < ?;",
+    [WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS] = "UPDATE agent SET connection_status = 'disconnected' where connection_status != 'disconnected' AND connection_status != 'never_connected' AND id != 0;",
     [WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE] = "SELECT COUNT(*) FROM agent WHERE id=0 AND last_keepalive=253402300799;",
     [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
 };
@@ -793,6 +795,83 @@ void wdb_close_old() {
     w_mutex_unlock(&pool_mutex);
 }
 
+cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status) {
+    cJSON* result = NULL;
+
+    //JJP: Puedo sacar esto
+    if (!stmt) {
+        mdebug1("Invalid SQL statement.");
+        return NULL;
+    }
+
+    int _status = sqlite3_step(stmt);
+    if (SQLITE_ROW == _status) {
+        int count = sqlite3_column_count(stmt);
+        if (count > 0) {
+            result = cJSON_CreateObject();
+
+            for (int i = 0; i < count; i++) {
+                switch (sqlite3_column_type(stmt, i)) {
+                case SQLITE_INTEGER:
+                case SQLITE_FLOAT:
+                    cJSON_AddNumberToObject(result, sqlite3_column_name(stmt, i), sqlite3_column_double(stmt, i));
+                    break;
+
+                case SQLITE_TEXT:
+                case SQLITE_BLOB:
+                    cJSON_AddStringToObject(result, sqlite3_column_name(stmt, i), (const char *)sqlite3_column_text(stmt, i));
+                    break;
+
+                case SQLITE_NULL:
+                default:
+                    ;
+                }
+            }
+        }
+    }
+    else if (SQLITE_DONE != _status) {
+        mdebug1("SQL statement execution failed");
+    }
+
+    if (status) {
+        *status = _status;
+    }
+
+    return result;
+}
+
+cJSON* wdb_exec_stmt_sized(sqlite3_stmt * stmt, size_t max_size, int* status) {
+    if (!stmt) {
+        mdebug1("Invalid SQL statement.");
+        *status = SQLITE_ERROR;
+        return NULL;
+    }
+
+    cJSON* result = cJSON_CreateArray();
+    int result_size = 2; //'[]' json array
+    cJSON* row = NULL;
+    do {
+        row = wdb_exec_row_stmt(stmt, status);
+        if (row) {
+            char *row_str = cJSON_PrintUnformatted(row);
+            size_t row_len = strlen(row_str)+1;
+            //JJP: Por performance puedo usar cJSON_PrintBuffered ya que ya se el tamanho del json, o directamente el tamanho del socket
+            //Check if new agent fits in response
+            if (result_size+row_len < max_size) {
+                cJSON_AddItemToArray(result, row);
+                result_size += row_len;
+            }
+            else {
+                cJSON_Delete(row);
+                row = NULL;
+            }
+            os_free(row_str);
+        }
+    }while (row != NULL);
+
+    return result;
+}
+
 cJSON * wdb_exec_stmt(sqlite3_stmt * stmt) {
     int r;
     int count;
@@ -806,6 +885,7 @@ cJSON * wdb_exec_stmt(sqlite3_stmt * stmt) {
     }
 
     result = cJSON_CreateArray();
+    //JJP: Pasar a wdb_exec_row_stmt
 
     while (r = sqlite3_step(stmt), r == SQLITE_ROW) {
         if (count = sqlite3_column_count(stmt), count > 0) {

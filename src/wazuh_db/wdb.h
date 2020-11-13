@@ -887,6 +887,17 @@ void wdb_close_old();
 int wdb_remove_database(const char * agent_id);
 
 /**
+ * @brief Function to execute a one row of an SQL statement and save the result in a JSON array.
+ *
+ * @param [in] stmt The SQL statement to be executed.
+ * @return JSON array with the statement execution results. NULL On error.
+ */
+cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status);
+
+//JJP: Doxygen
+cJSON * wdb_exec_stmt_sized(sqlite3_stmt * stmt, size_t max_size, int* status);
+
+/**
  * @brief Function to execute a SQL statement and save the result in a JSON array.
  *
  * @param [in] stmt The SQL statement to be executed.
@@ -1693,7 +1704,7 @@ wdbc_result wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_age
  * @param [out] output A buffer where the response is written. Must be de-allocated by the caller.
  * @return wdbc_result to represent if all agents has being obtained.
  */
-wdbc_result wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int keep_alive, const char *sync_status, char **output);
+cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int keep_alive, const char *sync_status, wdbc_result* status);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
