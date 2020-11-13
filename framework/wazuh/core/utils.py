@@ -803,32 +803,43 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
         else:
             return False
 
-    def get_last_dict_element(key_list, dikt):
-        """Get the last element of a dictionary following the keys within a list.
+    def get_match_candidates(iterable, key_list: list, candidates: list):
+        """Get the match candidates following a list of keys.
 
         Parameters
         ----------
+        iterable : dict or list
+            Iterable object to be iterated over.
         key_list : list
-            List of ordered keys.
-        dikt : dict
-            Copy of the full dictionary.
+            List of keys.
+        candidates : list
+            Empty list that will be filled
 
         Returns
         -------
-        It will return the value of the last key processed in the `key_list` if they all are subsequent keys of it.
-        `None` otherwise.
+        True if there is one match at least. False otherwise.
         """
-        for key in key_list:
-            if key in dikt:
-                dikt = dikt[key]
+        for index, key in enumerate(key_list):
+            if isinstance(iterable, list):
+                candidate_list = list()
+                for element in list(iterable):
+                    candidate_list.append(get_match_candidates(element, key_list[index:], candidates))
+                if True in candidate_list:
+                    return True
+                else:
+                    return False
             else:
-                return None
+                if key in iterable:
+                    iterable = iterable[key]
+                else:
+                    return False
         else:
-            return dikt
+            candidates.append(iterable)
+            return True
 
     # compile regular expression only one time when function is called
     # get elements in a clause
-    re_get_elements = re.compile(r'([\w\-]+)(?:\.?)((?:[\w\-](?:\.[\w\-])*)*)(=|!=|<|>|~)([\w\-./:]+)')
+    re_get_elements = re.compile(r'([\w\-]+)(?:\.?)((?:[\w\-](?:\.[\w\-])*)*)(=|!=|<|>|~)([\w\-./: ]+)')
     # get a list with OR clauses
     or_clauses = q.split(',')
     output_array = []
@@ -847,11 +858,11 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
                     raise WazuhError(1407, extra_message=f"Parameter 'q' is not valid: '{and_clause}'")
 
                 # check if a clause is satisfied
-                if field_subnames:
-                    if field_name in elem:
-                        last_element = get_last_dict_element(field_subnames.split('.'), deepcopy(elem[field_name]))
-                        if last_element and check_clause(last_element, op, value):
-                            continue
+                match_candidates = list()
+                if field_subnames and field_name in elem and \
+                        get_match_candidates(deepcopy(elem[field_name]), field_subnames.split('.'), match_candidates):
+                    if any([check_clause(candidate, op, value) for candidate in match_candidates]):
+                        continue
                 else:
                     if field_name in elem and check_clause(elem[field_name], op, value):
                         continue
