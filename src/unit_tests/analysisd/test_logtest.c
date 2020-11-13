@@ -24,9 +24,8 @@ void w_logtest_register_session(w_logtest_connection_t * connection, w_logtest_s
 void w_logtest_remove_old_session(w_logtest_connection_t * connection);
 void * w_logtest_check_inactive_sessions(w_logtest_connection_t * connection);
 int w_logtest_fts_init(OSList ** fts_list, OSHash ** fts_store);
-w_logtest_session_t * w_logtest_initialize_session(char * token, OSList * list_msg);
+w_logtest_session_t * w_logtest_initialize_session(OSList * list_msg);
 char * w_logtest_generate_token();
-w_logtest_session_t * w_logtest_get_session(cJSON * req, OSList * list_msg, w_logtest_connection_t * connection);
 void w_logtest_add_msg_response(cJSON * response, OSList * list_msg, int * error_code);
 int w_logtest_check_input(char * input_json, cJSON ** req, char ** command_value, char ** msg, OSList * list_msg);
 int w_logtest_check_input_request(cJSON * root, char ** msg, OSList * list_msg);
@@ -57,6 +56,9 @@ bool refill_OS_CleanMSG =  false;
 OSDecoderInfo * decoder_CleanMSG;
 
 Eventinfo * event_OS_AddEvent = NULL;
+
+w_logtest_session_t * stored_session = NULL;
+bool store_session = false;
 /* setup/teardown */
 
 
@@ -120,6 +122,26 @@ int __wrap_pthread_mutex_destroy() {
     return mock();
 }
 
+int __wrap_pthread_mutex_trylock(pthread_mutex_t *mutex) {
+    return mock();
+}
+
+int __wrap_pthread_rwlock_init() {
+    return mock();
+}
+
+int __wrap_pthread_rwlock_wrlock(pthread_rwlock_t * mutex) {
+    return mock_type(int);
+}
+
+int __wrap_pthread_rwlock_rdlock(pthread_rwlock_t * mutex) {
+    return mock_type(int);
+}
+
+int __wrap_pthread_rwlock_unlock(pthread_rwlock_t * mutex) {
+    return mock_type(int);
+}
+
 int __wrap_ReadConfig(int modules, const char *cfgfile, void *d1, void *d2) {
     if (!logtest_enabled) {
         w_logtest_conf.enabled = false;
@@ -178,14 +200,25 @@ void * __wrap_OSHash_Delete_ex(OSHash *self, const char *key) {
     return mock_type(void *);
 }
 
+void * __wrap_OSHash_Delete(OSHash *self, const char *key) {
+    if (key) check_expected(key);
+    return mock_type(void *);
+}
+
 int __wrap_OSHash_Add_ex(OSHash *hash, const char *key, void *data) {
 
     if (key) check_expected(key);
     if (data) check_expected(data);
+    if (data && store_session) stored_session = (w_logtest_session_t *) data;
     return mock_type(int);
 }
 
 void * __wrap_OSHash_Get_ex(OSHash *self, const char *key) {
+    if (key) check_expected(key);
+    return mock_type(void *);
+}
+
+void * __wrap_OSHash_Get(OSHash *self, const char *key) {
     if (key) check_expected(key);
     return mock_type(void *);
 }
@@ -559,7 +592,6 @@ void test_w_logtest_init_pthread_fail(void **state)
     will_return(__wrap_OSHash_setSize, 1);
 
     will_return(__wrap_pthread_mutex_init, 0);
-    will_return(__wrap_pthread_mutex_init, 0);
 
     expect_string(__wrap__minfo, formatted_msg, "(7200): Logtest started");
 
@@ -593,7 +625,6 @@ void test_w_logtest_init_pthread_fail(void **state)
     will_return(__wrap_unlink, 0);
 
     will_return(__wrap_pthread_mutex_destroy, 0);
-    will_return(__wrap_pthread_mutex_destroy, 0);
 
     w_logtest_init();
     w_logtest_conf_threads = 1;
@@ -612,7 +643,6 @@ void test_w_logtest_init_unlink_fail(void **state)
     expect_in_range(__wrap_OSHash_setSize, new_size, 1, 400);
     will_return(__wrap_OSHash_setSize, 1);
 
-    will_return(__wrap_pthread_mutex_init, 0);
     will_return(__wrap_pthread_mutex_init, 0);
 
     expect_string(__wrap__minfo, formatted_msg, "(7200): Logtest started");
@@ -649,7 +679,6 @@ void test_w_logtest_init_unlink_fail(void **state)
     expect_string(__wrap__merror, formatted_msg, msg);
 
     will_return(__wrap_pthread_mutex_destroy, 0);
-    will_return(__wrap_pthread_mutex_destroy, 0);
 
     w_logtest_init();
     w_logtest_conf_threads = 1;
@@ -668,7 +697,6 @@ void test_w_logtest_init_done(void **state)
     expect_in_range(__wrap_OSHash_setSize, new_size, 1, 400);
     will_return(__wrap_OSHash_setSize, 1);
 
-    will_return(__wrap_pthread_mutex_init, 0);
     will_return(__wrap_pthread_mutex_init, 0);
 
     expect_string(__wrap__minfo, formatted_msg, "(7200): Logtest started");
@@ -698,7 +726,6 @@ void test_w_logtest_init_done(void **state)
     will_return(__wrap_unlink, 0);
 
 
-    will_return(__wrap_pthread_mutex_destroy, 0);
     will_return(__wrap_pthread_mutex_destroy, 0);
 
     w_logtest_init();
@@ -817,8 +844,8 @@ void test_w_logtest_remove_session_fail(void **state)
 {
     char * key = "test";
 
-    expect_value(__wrap_OSHash_Delete_ex, key, "test");
-    will_return(__wrap_OSHash_Delete_ex, NULL);
+    expect_value(__wrap_OSHash_Delete, key, "test");
+    will_return(__wrap_OSHash_Delete, NULL);
 
     w_logtest_remove_session(key);
 
@@ -830,8 +857,8 @@ void test_w_logtest_remove_session_OK(void **state)
     w_logtest_session_t *session;
     os_calloc(1, sizeof(w_logtest_session_t), session);
 
-    expect_value(__wrap_OSHash_Delete_ex, key, "test");
-    will_return(__wrap_OSHash_Delete_ex, session);
+    expect_value(__wrap_OSHash_Delete, key, "test");
+    will_return(__wrap_OSHash_Delete, session);
 
     will_return(__wrap_OSStore_Free, session->decoder_store);
 
@@ -870,23 +897,19 @@ void test_w_logtest_check_inactive_sessions_no_remove(void **state)
 
     will_return(__wrap_sleep, 0);
 
-    will_return(__wrap_pthread_mutex_lock, 0);
+    will_return(__wrap_pthread_rwlock_wrlock, 0);
 
     will_return(__wrap_OSHash_Begin, hash_node);
-
-    will_return(__wrap_pthread_mutex_lock, 0);
 
     will_return(__wrap_time, NULL);
 
     will_return(__wrap_difftime, 1);
 
-    will_return(__wrap_pthread_mutex_unlock, 0);
-
     will_return(__wrap_OSHash_Next, NULL);
 
-    will_return(__wrap_FOREVER, 0);
+    will_return(__wrap_pthread_rwlock_unlock, 0);
 
-    will_return(__wrap_pthread_mutex_unlock, 0);
+    will_return(__wrap_FOREVER, 0);
 
     w_logtest_check_inactive_sessions(&connection);
 
@@ -917,15 +940,15 @@ void test_w_logtest_check_inactive_sessions_remove(void **state)
 
     will_return(__wrap_sleep, 0);
 
-    will_return(__wrap_pthread_mutex_lock, 0);
+    will_return(__wrap_pthread_rwlock_wrlock, 0);
 
     will_return(__wrap_OSHash_Begin, hash_node);
-
-    will_return(__wrap_pthread_mutex_lock, 0);
 
     will_return(__wrap_time, NULL);
 
     will_return(__wrap_difftime, 1000000);
+
+    will_return(__wrap_pthread_mutex_trylock, 0);
 
     will_return(__wrap_pthread_mutex_unlock, 0);
 
@@ -934,8 +957,8 @@ void test_w_logtest_check_inactive_sessions_remove(void **state)
     // test_w_logtest_remove_session_ok
     char * key = "test";
 
-    expect_value(__wrap_OSHash_Delete_ex, key, "test");
-    will_return(__wrap_OSHash_Delete_ex, session);
+    expect_value(__wrap_OSHash_Delete, key, "test");
+    will_return(__wrap_OSHash_Delete, session);
 
     will_return(__wrap_OSStore_Free, NULL);
 
@@ -947,11 +970,11 @@ void test_w_logtest_check_inactive_sessions_remove(void **state)
 
     will_return(__wrap_pthread_mutex_destroy, 0);
 
-    will_return(__wrap_pthread_mutex_unlock, 0);
+    expect_string(__wrap__mdebug1, formatted_msg, "(7206): The session 'test' was closed successfully");
 
     will_return(__wrap_FOREVER, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(7206): The session 'test' was closed successfully");
+    will_return(__wrap_pthread_rwlock_unlock, 0);
 
 
     w_logtest_check_inactive_sessions(&connection);
@@ -973,7 +996,6 @@ void test_w_logtest_remove_old_session_one(void ** state) {
     /* Oldest session */
     w_logtest_session_t * old_session;
     os_calloc(1, sizeof(w_logtest_session_t), old_session);
-    old_session->expired = 0;
     old_session->last_connection = 100;
     w_strdup("old_session", old_session->token);
     OSHashNode * hash_node_old;
@@ -984,9 +1006,12 @@ void test_w_logtest_remove_old_session_one(void ** state) {
     will_return(__wrap_OSHash_Begin, hash_node_old);
     will_return(__wrap_OSHash_Next, NULL);
 
+    will_return(__wrap_pthread_mutex_lock, 0);
+    will_return(__wrap_pthread_mutex_unlock, 0);
+
     /* Remove session */
-    expect_string(__wrap_OSHash_Delete_ex, key, "old_session");
-    will_return(__wrap_OSHash_Delete_ex, old_session);
+    expect_string(__wrap_OSHash_Delete, key, "old_session");
+    will_return(__wrap_OSHash_Delete, old_session);
 
     will_return(__wrap_OSStore_Free, old_session->decoder_store);
 
@@ -1019,7 +1044,6 @@ void test_w_logtest_remove_old_session_many(void ** state) {
     /* Oldest session */
     w_logtest_session_t * old_session;
     os_calloc(1, sizeof(w_logtest_session_t), old_session);
-    old_session->expired = 0;
     old_session->last_connection = 100;
     w_strdup("old_session", old_session->token);
     OSHashNode * hash_node_old;
@@ -1029,7 +1053,6 @@ void test_w_logtest_remove_old_session_many(void ** state) {
 
     /* Other session */
     w_logtest_session_t other_session;
-    other_session.expired = 0;
     other_session.last_connection = 300;
     OSHashNode * hash_node_other;
     os_calloc(1, sizeof(OSHashNode), hash_node_other);
@@ -1039,17 +1062,13 @@ void test_w_logtest_remove_old_session_many(void ** state) {
     will_return(__wrap_OSHash_Begin, hash_node_other);
     will_return(__wrap_OSHash_Next, hash_node_old);
 
-    will_return(__wrap_pthread_mutex_lock, 0);
-    will_return(__wrap_pthread_mutex_lock, 0);
-
-    will_return(__wrap_pthread_mutex_unlock, 0);
-    will_return(__wrap_pthread_mutex_unlock, 0);
-
     will_return(__wrap_OSHash_Next, NULL);
 
+    will_return(__wrap_pthread_mutex_lock, 0);
+    will_return(__wrap_pthread_mutex_unlock, 0);
     /* w_logtest_remove_session */
-    expect_value(__wrap_OSHash_Delete_ex, key, old_session->token);
-    will_return(__wrap_OSHash_Delete_ex, old_session);
+    expect_value(__wrap_OSHash_Delete, key, old_session->token);
+    will_return(__wrap_OSHash_Delete, old_session);
 
     will_return(__wrap_OSStore_Free, NULL);
 
@@ -1083,9 +1102,9 @@ void test_w_logtest_register_session_dont_remove(void ** state) {
     w_logtest_session_t session;
     w_strdup("test", session.token);
 
-    will_return(__wrap_pthread_mutex_lock, 0);
+    will_return(__wrap_pthread_rwlock_wrlock, 0);
 
-    will_return(__wrap_pthread_mutex_unlock, 0);
+    will_return(__wrap_pthread_rwlock_unlock, 0);
 
     expect_value(__wrap_OSHash_Add_ex, key, session.token);
     expect_value(__wrap_OSHash_Add_ex, data, &session);
@@ -1112,7 +1131,6 @@ void test_w_logtest_register_session_remove_old(void ** state) {
     /* Oldest session */
     w_logtest_session_t * old_session;
     os_calloc(1, sizeof(w_logtest_session_t), old_session);
-    old_session->expired = 0;
     old_session->last_connection = 100;
     w_strdup("old_session", old_session->token);
     OSHashNode * hash_node_old;
@@ -1122,28 +1140,24 @@ void test_w_logtest_register_session_remove_old(void ** state) {
 
     /* Other session */
     w_logtest_session_t other_session;
-    other_session.expired = 0;
     other_session.last_connection = 300;
     OSHashNode * hash_node_other;
     os_calloc(1, sizeof(OSHashNode), hash_node_other);
     w_strdup("other_session", hash_node_other->key);
     hash_node_other->data = &other_session;
 
-    will_return(__wrap_pthread_mutex_lock, 0);
+    will_return(__wrap_pthread_rwlock_wrlock, 0);
     will_return(__wrap_OSHash_Begin, hash_node_other);
     will_return(__wrap_OSHash_Next, hash_node_old);
 
-    will_return(__wrap_pthread_mutex_lock, 0);
-    will_return(__wrap_pthread_mutex_lock, 0);
-
-    will_return(__wrap_pthread_mutex_unlock, 0);
-    will_return(__wrap_pthread_mutex_unlock, 0);
-
     will_return(__wrap_OSHash_Next, NULL);
 
+    will_return(__wrap_pthread_mutex_lock, 0);
+    will_return(__wrap_pthread_mutex_unlock, 0);
+
     /* w_logtest_remove_session */
-    expect_value(__wrap_OSHash_Delete_ex, key, old_session->token);
-    will_return(__wrap_OSHash_Delete_ex, old_session);
+    expect_value(__wrap_OSHash_Delete, key, old_session->token);
+    will_return(__wrap_OSHash_Delete, old_session);
 
     will_return(__wrap_OSStore_Free, NULL);
 
@@ -1157,11 +1171,12 @@ void test_w_logtest_register_session_remove_old(void ** state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "(7206): The session 'old_session' was closed successfully");
 
-    will_return(__wrap_pthread_mutex_unlock, 0);
+    will_return(__wrap_pthread_rwlock_unlock, 0);
 
     expect_value(__wrap_OSHash_Add_ex, key, session.token);
     expect_value(__wrap_OSHash_Add_ex, data, &session);
     will_return(__wrap_OSHash_Add_ex, 0);
+    
 
     w_logtest_register_session(&connection, &session);
     assert_int_equal(connection.active_client, active_session);
@@ -1184,6 +1199,12 @@ void test_w_logtest_initialize_session_error_decoders(void ** state) {
     Config.decoders = calloc(2, sizeof(char *));
     Config.decoders[0] = decoder_file;
 
+    random_bytes_result = 1234565555; // 0x49_95_f9_b3
+    expect_value(__wrap_randombytes, length, W_LOGTEST_TOKEN_LENGH >> 1);
+
+    expect_string(__wrap_OSHash_Get_ex, key, "4995f9b3");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
     will_return(__wrap_time, 0);
     will_return(__wrap_pthread_mutex_init, 0);
     will_return(__wrap_ReadDecodeXML, 0);
@@ -1193,7 +1214,7 @@ void test_w_logtest_initialize_session_error_decoders(void ** state) {
 
     will_return(__wrap_pthread_mutex_destroy, 0);
 
-    session = w_logtest_initialize_session(token, msg);
+    session = w_logtest_initialize_session(msg);
 
     assert_null(session);
 
@@ -1215,6 +1236,12 @@ void test_w_logtest_initialize_session_error_cbd_list(void ** state) {
     Config.lists = calloc(2, sizeof(char *));
     Config.lists[0] = cbd_file;
 
+    random_bytes_result = 1234565555; // 0x49_95_f9_b3
+    expect_value(__wrap_randombytes, length, W_LOGTEST_TOKEN_LENGH >> 1);
+
+    expect_string(__wrap_OSHash_Get_ex, key, "4995f9b3");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
     will_return(__wrap_time, 0);
     will_return(__wrap_pthread_mutex_init, 0);
     will_return(__wrap_ReadDecodeXML, 1);
@@ -1226,7 +1253,7 @@ void test_w_logtest_initialize_session_error_cbd_list(void ** state) {
 
     will_return(__wrap_pthread_mutex_destroy, 0);
 
-    session = w_logtest_initialize_session(token, msg);
+    session = w_logtest_initialize_session(msg);
 
     assert_null(session);
 
@@ -1253,6 +1280,12 @@ void test_w_logtest_initialize_session_error_rules(void ** state) {
     Config.includes = calloc(2, sizeof(char *));
     Config.includes[0] = include_file;
 
+    random_bytes_result = 1234565555; // 0x49_95_f9_b3
+    expect_value(__wrap_randombytes, length, W_LOGTEST_TOKEN_LENGH >> 1);
+
+    expect_string(__wrap_OSHash_Get_ex, key, "4995f9b3");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
     will_return(__wrap_time, 0);
     will_return(__wrap_pthread_mutex_init, 0);
     will_return(__wrap_ReadDecodeXML, 1);
@@ -1265,7 +1298,7 @@ void test_w_logtest_initialize_session_error_rules(void ** state) {
 
     will_return(__wrap_pthread_mutex_destroy, 0);
 
-    session = w_logtest_initialize_session(token, msg);
+    session = w_logtest_initialize_session(msg);
 
     assert_null(session);
 
@@ -1293,6 +1326,12 @@ void test_w_logtest_initialize_session_error_hash_rules(void ** state) {
     Config.includes = calloc(2, sizeof(char *));
     Config.includes[0] = include_file;
 
+    random_bytes_result = 1234565555; // 0x49_95_f9_b3
+    expect_value(__wrap_randombytes, length, W_LOGTEST_TOKEN_LENGH >> 1);
+
+    expect_string(__wrap_OSHash_Get_ex, key, "4995f9b3");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
     will_return(__wrap_time, 0);
     will_return(__wrap_pthread_mutex_init, 0);
     will_return(__wrap_ReadDecodeXML, 1);
@@ -1307,7 +1346,7 @@ void test_w_logtest_initialize_session_error_hash_rules(void ** state) {
 
     will_return(__wrap_pthread_mutex_destroy, 0);
 
-    session = w_logtest_initialize_session(token, msg);
+    session = w_logtest_initialize_session(msg);
 
     assert_null(session);
 
@@ -1335,6 +1374,12 @@ void test_w_logtest_initialize_session_error_fts_init(void ** state) {
     Config.includes = calloc(2, sizeof(char *));
     Config.includes[0] = include_file;
 
+    random_bytes_result = 1234565555; // 0x49_95_f9_b3
+    expect_value(__wrap_randombytes, length, W_LOGTEST_TOKEN_LENGH >> 1);
+
+    expect_string(__wrap_OSHash_Get_ex, key, "4995f9b3");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
     will_return(__wrap_time, 0);
     will_return(__wrap_pthread_mutex_init, 0);
     will_return(__wrap_ReadDecodeXML, 1);
@@ -1358,7 +1403,7 @@ void test_w_logtest_initialize_session_error_fts_init(void ** state) {
 
     will_return(__wrap_pthread_mutex_destroy, 0);
 
-    session = w_logtest_initialize_session(token, msg);
+    session = w_logtest_initialize_session(msg);
 
     assert_null(session);
 
@@ -1385,6 +1430,12 @@ void test_w_logtest_initialize_session_error_accumulate_init(void ** state) {
     char * include_file = "test.xml";
     Config.includes = calloc(2, sizeof(char *));
     Config.includes[0] = include_file;
+
+    random_bytes_result = 1234565555; // 0x49_95_f9_b3
+    expect_value(__wrap_randombytes, length, W_LOGTEST_TOKEN_LENGH >> 1);
+
+    expect_string(__wrap_OSHash_Get_ex, key, "4995f9b3");
+    will_return(__wrap_OSHash_Get_ex, NULL);
 
     will_return(__wrap_time, 0);
     will_return(__wrap_pthread_mutex_init, 0);
@@ -1422,7 +1473,7 @@ void test_w_logtest_initialize_session_error_accumulate_init(void ** state) {
 
     session_load_acm_store = true;
 
-    session = w_logtest_initialize_session(token, msg);
+    session = w_logtest_initialize_session(msg);
 
     session_load_acm_store = false;
 
@@ -1452,6 +1503,12 @@ void test_w_logtest_initialize_session_success(void ** state) {
     Config.includes = calloc(2, sizeof(char *));
     Config.includes[0] = include_file;
 
+    random_bytes_result = 1234565555; // 0x49_95_f9_b3
+    expect_value(__wrap_randombytes, length, W_LOGTEST_TOKEN_LENGH >> 1);
+
+    expect_string(__wrap_OSHash_Get_ex, key, "4995f9b3");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
     will_return(__wrap_time, 1212);
     will_return(__wrap_pthread_mutex_init, 0);
     will_return(__wrap_ReadDecodeXML, 1);
@@ -1477,20 +1534,88 @@ void test_w_logtest_initialize_session_success(void ** state) {
 
     will_return(__wrap_Accumulate_Init, 1);
 
-    session = w_logtest_initialize_session(token, msg);
+    session = w_logtest_initialize_session(msg);
 
     assert_non_null(session);
-    assert_false(session->expired);
     assert_int_equal(session->last_connection, 1212);
 
     os_free(token);
     os_free(session->eventlist);
+    os_free(session->token);
     os_free(session);
     os_free(Config.includes);
     os_free(Config.decoders);
     os_free(Config.lists);
 }
 
+void test_w_logtest_initialize_session_success_duplicate_key(void ** state) {
+
+    char * token = strdup("test");
+    OSList * msg = (OSList *) 1;
+    w_logtest_session_t * session;
+
+    char * decoder_file = "test.xml";
+    Config.decoders = calloc(2, sizeof(char *));
+    Config.decoders[0] = decoder_file;
+
+    char * cbd_file = "test.xml";
+    Config.lists = calloc(2, sizeof(char *));
+    Config.lists[0] = cbd_file;
+
+    char * include_file = "test.xml";
+    Config.includes = calloc(2, sizeof(char *));
+    Config.includes[0] = include_file;
+
+    random_bytes_result = 1234565555; // 0x49_95_f9_b3
+    expect_value(__wrap_randombytes, length, W_LOGTEST_TOKEN_LENGH >> 1);
+
+    expect_string(__wrap_OSHash_Get_ex, key, "4995f9b3");
+    will_return(__wrap_OSHash_Get_ex, (void *) 1);
+
+    random_bytes_result = 1234565555; // 0x49_95_f9_b3
+    expect_value(__wrap_randombytes, length, W_LOGTEST_TOKEN_LENGH >> 1);
+
+    expect_string(__wrap_OSHash_Get_ex, key, "4995f9b3");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    will_return(__wrap_time, 1212);
+    will_return(__wrap_pthread_mutex_init, 0);
+    will_return(__wrap_ReadDecodeXML, 1);
+    will_return(__wrap_SetDecodeXML, 0);
+    will_return(__wrap_Lists_OP_LoadList, 0);
+    will_return(__wrap_Rules_OP_ReadRules, 0);
+    will_return(__wrap__setlevels, 0);
+    will_return(__wrap_OSHash_Create, 1);
+    will_return(__wrap_AddHash_Rule, 0);
+
+    /* FTS init success */
+    OSList * fts_list;
+    OSHash * fts_store;
+    OSList * list = (OSList *) 1;
+    OSHash * hash = (OSHash *) 1;
+    will_return(__wrap_getDefine_Int, 5);
+    will_return(__wrap_OSList_Create, list);
+    will_return(__wrap_OSList_SetMaxSize, 1);
+    will_return(__wrap_OSHash_Create, hash);
+    expect_value(__wrap_OSHash_setSize, new_size, 2048);
+    will_return(__wrap_OSHash_setSize, 1);
+    will_return(__wrap_OSHash_SetFreeDataPointer, 1);
+
+    will_return(__wrap_Accumulate_Init, 1);
+
+    session = w_logtest_initialize_session(msg);
+
+    assert_non_null(session);
+    assert_int_equal(session->last_connection, 1212);
+
+    os_free(token);
+    os_free(session->eventlist);
+    os_free(session->token);
+    os_free(session);
+    os_free(Config.includes);
+    os_free(Config.decoders);
+    os_free(Config.lists);
+}
 /* w_logtest_generate_token */
 void test_w_logtest_generate_token_success(void ** state) {
 
@@ -1520,291 +1645,6 @@ void test_w_logtest_generate_token_success_empty_bytes(void ** state) {
     assert_string_equal(token, "000015b3");
 
     os_free(token);
-}
-
-/* w_logtest_get_session */
-void test_w_logtest_get_session_fail(void ** state) {
-
-    w_logtest_session_t * ret_session;
-    w_logtest_connection_t connection;
-
-    cJSON * json_request = (cJSON *) 1;
-    OSList * list_msg = (OSList *) 55;
-
-
-    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, NULL);
-
-    /* Generate token */
-    random_bytes_result = 5555; // 0x00_00_15_b3
-    expect_value(__wrap_randombytes, length, W_LOGTEST_TOKEN_LENGH >> 1);
-
-    expect_string(__wrap_OSHash_Get_ex, key, "000015b3");
-    will_return(__wrap_OSHash_Get_ex, NULL);
-
-    /* Initialize session*/
-    char * decoder_file = "test.xml";
-    Config.decoders = calloc(2, sizeof(char *));
-    Config.decoders[0] = decoder_file;
-
-    will_return(__wrap_time, 0);
-    will_return(__wrap_pthread_mutex_init, 0);
-    will_return(__wrap_ReadDecodeXML, 0);
-
-    // test_w_logtest_remove_session_ok_error_load_decoder_cbd_rules_hash
-    will_return(__wrap_OSStore_Free, (OSStore *) 1);
-    will_return(__wrap_pthread_mutex_destroy, 0);
-
-
-    /* w_logtest_get_session */
-    expect_string(__wrap__mdebug1, formatted_msg, "(7311): Failure to initializing session '000015b3'");
-
-    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_ERROR);
-    expect_value(__wrap__os_analysisd_add_logmsg, list, list_msg);
-    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "(7311): Failure to initializing session '000015b3'");
-
-    ret_session = w_logtest_get_session(json_request, list_msg, &connection);
-
-    assert_null(ret_session);
-    os_free(Config.includes);
-    os_free(Config.decoders);
-    os_free(Config.lists);
-
-
-}
-
-void test_w_logtest_get_session_active(void ** state) {
-
-    w_logtest_connection_t connection;
-    w_logtest_session_t active_session;
-    w_logtest_session_t * ret_session;
-
-    cJSON * json_request = (cJSON *) 1;
-    cJSON * json_request_token;
-    OSList * list_msg = (OSList *) 55;
-    char * token = strdup("test_token");
-    const time_t now = (time_t) 2020;
-
-    os_calloc(1, sizeof(cJSON), json_request_token);
-    json_request_token->valuestring = token;
-    active_session.expired = false;
-    active_session.last_connection = 0;
-
-
-    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, json_request_token);
-
-    expect_value(__wrap_OSHash_Get_ex, key, token);
-    will_return(__wrap_OSHash_Get_ex, &active_session);
-
-    will_return(__wrap_pthread_mutex_lock, 0);
-    will_return(__wrap_time, now);
-    will_return(__wrap_pthread_mutex_unlock, 0);
-
-    ret_session = w_logtest_get_session(json_request, list_msg, &connection);
-
-    assert_ptr_equal(ret_session, &active_session);
-    assert_int_equal(now, ret_session->last_connection);
-
-    os_free(token);
-    os_free(json_request_token);
-}
-
-void test_w_logtest_get_session_expired_token(void ** state) {
-
-    w_logtest_session_t * ret_session;
-    w_logtest_connection_t connection;
-
-    cJSON * json_request = (cJSON *) 1;
-    cJSON * json_request_token;
-    OSList * list_msg = (OSList *) 55;
-    char req_token[] = "test_token";
-
-    os_calloc(1, sizeof(cJSON), json_request_token);
-    json_request_token->valuestring = req_token;
-
-    w_logtest_session_t expired_session;
-    expired_session.expired = true;
-
-    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, json_request_token);
-
-    expect_string(__wrap_OSHash_Get_ex, key, "test_token");
-    will_return(__wrap_OSHash_Get_ex, &expired_session);
-    will_return(__wrap_pthread_mutex_lock, 0);
-    will_return(__wrap_pthread_mutex_unlock, 0);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "(7003): 'test_token' token expires");
-
-    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_WARNING);
-    expect_value(__wrap__os_analysisd_add_logmsg, list, list_msg);
-    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "(7003): 'test_token' token expires");
-
-    /* Generate token */
-    random_bytes_result = 5555; // 0x00_00_15_b3
-    expect_value(__wrap_randombytes, length, W_LOGTEST_TOKEN_LENGH >> 1);
-
-    expect_string(__wrap_OSHash_Get_ex, key, "000015b3");
-    will_return(__wrap_OSHash_Get_ex, NULL);
-
-    /* Initialize session*/
-    char * decoder_file = "test.xml";
-    Config.decoders = calloc(2, sizeof(char *));
-    Config.decoders[0] = decoder_file;
-
-    char * cbd_file = "test.xml";
-    Config.lists = calloc(2, sizeof(char *));
-    Config.lists[0] = cbd_file;
-
-    char * include_file = "test.xml";
-    Config.includes = calloc(2, sizeof(char *));
-    Config.includes[0] = include_file;
-
-    will_return(__wrap_time, 1212);
-    will_return(__wrap_pthread_mutex_init, 0);
-    will_return(__wrap_ReadDecodeXML, 1);
-    will_return(__wrap_SetDecodeXML, 0);
-    will_return(__wrap_Lists_OP_LoadList, 0);
-    will_return(__wrap_Rules_OP_ReadRules, 0);
-    will_return(__wrap__setlevels, 0);
-    will_return(__wrap_OSHash_Create, 1);
-    will_return(__wrap_AddHash_Rule, 0);
-
-    /* Initialize session -- FTS init success */
-    OSList * fts_list;
-    OSHash * fts_store;
-    OSList * list = (OSList *) 1;
-    OSHash * hash = (OSHash *) 1;
-    will_return(__wrap_getDefine_Int, 5);
-    will_return(__wrap_OSList_Create, list);
-    will_return(__wrap_OSList_SetMaxSize, 1);
-    will_return(__wrap_OSHash_Create, hash);
-    expect_value(__wrap_OSHash_setSize, new_size, 2048);
-    will_return(__wrap_OSHash_setSize, 1);
-    will_return(__wrap_OSHash_SetFreeDataPointer, 1);
-
-    will_return(__wrap_Accumulate_Init, 1);
-
-    /* w_logtest_register_session */
-    const int active_session = 5;
-
-    connection.active_client = active_session;
-    w_logtest_conf.max_sessions = active_session + 1;
-
-    will_return(__wrap_pthread_mutex_lock, 0);
-
-    will_return(__wrap_pthread_mutex_unlock, 0);
-
-    expect_string(__wrap_OSHash_Add_ex, key, "000015b3");
-    expect_not_value(__wrap_OSHash_Add_ex, data, NULL);
-    will_return(__wrap_OSHash_Add_ex, 0);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "(7202): Session initialized with token '000015b3'");
-
-    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_INFO);
-    expect_value(__wrap__os_analysisd_add_logmsg, list, list_msg);
-    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "(7202): Session initialized with token '000015b3'");
-
-    ret_session = w_logtest_get_session(json_request, list_msg, &connection);
-
-    assert_non_null(ret_session);
-    assert_false(ret_session->expired);
-    assert_int_equal(ret_session->last_connection, 1212);
-
-    os_free(ret_session->token);
-    os_free(ret_session->eventlist);
-    os_free(ret_session);
-    os_free(Config.includes);
-    os_free(Config.decoders);
-    os_free(Config.lists);
-    os_free(json_request_token);
-}
-
-void test_w_logtest_get_session_new(void ** state) {
-
-    w_logtest_session_t * ret_session;
-    w_logtest_connection_t connection;
-
-    cJSON * json_request = (cJSON *) 1;
-    OSList * list_msg = (OSList *) 55;
-
-
-    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, NULL);
-
-    /* Generate token */
-    random_bytes_result = 5555; // 0x00_00_15_b3
-    expect_value(__wrap_randombytes, length, W_LOGTEST_TOKEN_LENGH >> 1);
-
-    expect_string(__wrap_OSHash_Get_ex, key, "000015b3");
-    will_return(__wrap_OSHash_Get_ex, NULL);
-
-    /* Initialize session*/
-    char * decoder_file = "test.xml";
-    Config.decoders = calloc(2, sizeof(char *));
-    Config.decoders[0] = decoder_file;
-
-    char * cbd_file = "test.xml";
-    Config.lists = calloc(2, sizeof(char *));
-    Config.lists[0] = cbd_file;
-
-    char * include_file = "test.xml";
-    Config.includes = calloc(2, sizeof(char *));
-    Config.includes[0] = include_file;
-
-    will_return(__wrap_time, 1212);
-    will_return(__wrap_pthread_mutex_init, 0);
-    will_return(__wrap_ReadDecodeXML, 1);
-    will_return(__wrap_SetDecodeXML, 0);
-    will_return(__wrap_Lists_OP_LoadList, 0);
-    will_return(__wrap_Rules_OP_ReadRules, 0);
-    will_return(__wrap__setlevels, 0);
-    will_return(__wrap_OSHash_Create, 1);
-    will_return(__wrap_AddHash_Rule, 0);
-
-    /* Initialize session -- FTS init success */
-    OSList * fts_list;
-    OSHash * fts_store;
-    OSList * list = (OSList *) 1;
-    OSHash * hash = (OSHash *) 1;
-    will_return(__wrap_getDefine_Int, 5);
-    will_return(__wrap_OSList_Create, list);
-    will_return(__wrap_OSList_SetMaxSize, 1);
-    will_return(__wrap_OSHash_Create, hash);
-    expect_value(__wrap_OSHash_setSize, new_size, 2048);
-    will_return(__wrap_OSHash_setSize, 1);
-    will_return(__wrap_OSHash_SetFreeDataPointer, 1);
-
-    will_return(__wrap_Accumulate_Init, 1);
-
-    /* w_logtest_register_session */
-    const int active_session = 5;
-
-    connection.active_client = active_session;
-    w_logtest_conf.max_sessions = active_session + 1;
-
-    will_return(__wrap_pthread_mutex_lock, 0);
-
-    will_return(__wrap_pthread_mutex_unlock, 0);
-
-    expect_string(__wrap_OSHash_Add_ex, key, "000015b3");
-    expect_not_value(__wrap_OSHash_Add_ex, data, NULL);
-    will_return(__wrap_OSHash_Add_ex, 0);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "(7202): Session initialized with token '000015b3'");
-
-    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_INFO);
-    expect_value(__wrap__os_analysisd_add_logmsg, list, list_msg);
-    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "(7202): Session initialized with token '000015b3'");
-
-    ret_session = w_logtest_get_session(json_request, list_msg, &connection);
-
-    assert_non_null(ret_session);
-    assert_false(ret_session->expired);
-    assert_int_equal(ret_session->last_connection, 1212);
-
-    os_free(ret_session->token);
-    os_free(ret_session->eventlist);
-    os_free(ret_session);
-    os_free(Config.includes);
-    os_free(Config.decoders);
-    os_free(Config.lists);
 }
 
 void test_w_logtest_add_msg_response_null_list(void ** state) {
@@ -2988,9 +2828,9 @@ void test_w_logtest_process_request_type_log_processing(void ** state) {
     /* w_logtest_get_session */
     expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_ERROR);
     expect_value(__wrap__os_analysisd_add_logmsg, list, list_msg);
-    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "(7311): Failure to initializing session '000015b3'");
+    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "(7311): Failure to initializing session");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(7311): Failure to initializing session '000015b3'");
+    expect_string(__wrap__mdebug1, formatted_msg, "(7311): Failure to initializing session");
 
 
     /*w_logtest_add_msg_response error*/
@@ -4069,10 +3909,9 @@ void test_w_logtest_process_request_remove_session_session_not_found(void ** sta
 
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &token);
 
-    will_return(__wrap_pthread_mutex_lock, 0);
-    expect_string(__wrap_OSHash_Get_ex, key, "000015b3");
-    will_return(__wrap_OSHash_Get_ex, NULL);
-
+    will_return(__wrap_pthread_rwlock_wrlock, 0);
+    expect_string(__wrap_OSHash_Get, key, "000015b3");
+    will_return(__wrap_OSHash_Get, NULL);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(7004): No session found for token '000015b3'");
 
@@ -4080,7 +3919,69 @@ void test_w_logtest_process_request_remove_session_session_not_found(void ** sta
     expect_value(__wrap__os_analysisd_add_logmsg, list, NULL);
     expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "(7004): No session found for token '000015b3'");
 
-    will_return(__wrap_pthread_mutex_unlock, 0);
+    will_return(__wrap_pthread_rwlock_unlock, 0);
+
+    /*w_logtest_add_msg_response error*/
+    os_analysisd_log_msg_t * message;
+    os_calloc(1, sizeof(os_analysisd_log_msg_t), message);
+    message->level = LOGLEVEL_ERROR;
+    message->msg = strdup("Test Message");
+    message->file = NULL;
+    message->func = NULL;
+    OSListNode * list_msg_node;
+    os_calloc(1, sizeof(OSListNode), list_msg_node);
+    list_msg_node->data = message;
+    list_msg.cur_node = list_msg_node;
+
+    will_return(__wrap_OSList_GetFirstNode, list_msg_node);
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON*) 1);
+
+    will_return(__wrap_os_analysisd_string_log_msg, strdup("Test Message"));
+
+    expect_string(__wrap_wm_strcat, str2, "ERROR: ");
+    will_return(__wrap_wm_strcat, 0);
+
+    expect_string(__wrap_wm_strcat, str2, "Test Message");
+    will_return(__wrap_wm_strcat, 0);
+
+    will_return(__wrap_cJSON_CreateString, (cJSON *) 1);
+
+    will_return(__wrap_OSList_GetFirstNode, NULL);
+
+
+    retval = w_logtest_process_request_remove_session(json_request, json_response, NULL, &connection);
+
+    assert_int_equal(retval, expect_retval);
+    assert_int_equal(connection.active_client, 5);
+    os_free(list_msg_node);
+}
+
+void test_w_logtest_process_request_remove_session_session_in_use(void ** state)
+{
+    cJSON * json_request = (cJSON *) 1;
+    cJSON * json_response = (cJSON *) 2;
+    OSList list_msg = {0};
+    w_logtest_connection_t connection = {0};
+    connection.active_client = 5;
+
+    cJSON token = {0};
+    token.valuestring = "000015b3";
+
+    const int expect_retval = W_LOGTEST_RCODE_ERROR_PROCESS;
+    int retval;
+
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &token);
+
+    will_return(__wrap_pthread_rwlock_wrlock, 0);
+    expect_string(__wrap_OSHash_Get, key, "000015b3");
+    will_return(__wrap_OSHash_Get, (void *) 1);
+    will_return(__wrap_pthread_mutex_trylock, EBUSY);
+
+    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_ERROR);
+    expect_value(__wrap__os_analysisd_add_logmsg, list, NULL);
+    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "(7318): Failure to remove session '000015b3'");
+
+    will_return(__wrap_pthread_rwlock_unlock, 0);
 
     /*w_logtest_add_msg_response error*/
     os_analysisd_log_msg_t * message;
@@ -4136,14 +4037,16 @@ void test_w_logtest_process_request_remove_session_ok(void ** state)
 
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &token);
 
-    will_return(__wrap_pthread_mutex_lock, 0);
-    expect_string(__wrap_OSHash_Get_ex, key, "000015b3");
-    will_return(__wrap_OSHash_Get_ex, session);
+    will_return(__wrap_pthread_rwlock_wrlock, 0);
+    expect_string(__wrap_OSHash_Get, key, "000015b3");
+    will_return(__wrap_OSHash_Get, session);
+    will_return(__wrap_pthread_mutex_trylock, 0);
+    will_return(__wrap_pthread_mutex_unlock, 0);
 
     // remove session ok
 
-    expect_value(__wrap_OSHash_Delete_ex, key, "000015b3");
-    will_return(__wrap_OSHash_Delete_ex, session);
+    expect_value(__wrap_OSHash_Delete, key, "000015b3");
+    will_return(__wrap_OSHash_Delete, session);
 
     will_return(__wrap_OSStore_Free, session->decoder_store);
 
@@ -4161,7 +4064,7 @@ void test_w_logtest_process_request_remove_session_ok(void ** state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "(7206): The session '000015b3' was closed successfully");
 
-    will_return(__wrap_pthread_mutex_unlock, 0);
+    will_return(__wrap_pthread_rwlock_unlock, 0);
 
     /*w_logtest_add_msg_response error*/
     os_analysisd_log_msg_t * message;
@@ -4471,11 +4374,11 @@ void test_w_logtest_process_request_log_processing_fail_session(void ** state)
 
 
     /* w_logtest_get_session */
-    expect_string(__wrap__mdebug1, formatted_msg, "(7311): Failure to initializing session '000015b3'");
+    expect_string(__wrap__mdebug1, formatted_msg, "(7311): Failure to initializing session");
 
     expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_ERROR);
     expect_value(__wrap__os_analysisd_add_logmsg, list, &list_msg);
-    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "(7311): Failure to initializing session '000015b3'");
+    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "(7311): Failure to initializing session");
 
     /* error w_logtest_add_msg_response */
     os_analysisd_log_msg_t * message;
@@ -4529,13 +4432,16 @@ void test_w_logtest_process_request_log_processing_fail_process_log(void ** stat
 
     os_calloc(1, sizeof(cJSON), json_request_token);
     json_request_token->valuestring = token;
-    active_session.expired = false;
     active_session.last_connection = 0;
 
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, json_request_token);
 
-    expect_value(__wrap_OSHash_Get_ex, key, token);
-    will_return(__wrap_OSHash_Get_ex, &active_session);
+    will_return(__wrap_pthread_rwlock_wrlock, 0);
+
+    expect_value(__wrap_OSHash_Get, key, token);
+    will_return(__wrap_OSHash_Get, &active_session);
+
+    will_return(__wrap_pthread_rwlock_unlock, 0);
 
     will_return(__wrap_pthread_mutex_lock, 0);
     will_return(__wrap_time, now);
@@ -4652,13 +4558,14 @@ void test_w_logtest_process_request_log_processing_ok_and_alert(void ** state)
 
     os_calloc(1, sizeof(cJSON), json_request_token);
     json_request_token->valuestring = token;
-    active_session.expired = false;
     active_session.last_connection = 0;
 
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, json_request_token);
 
-    expect_value(__wrap_OSHash_Get_ex, key, token);
-    will_return(__wrap_OSHash_Get_ex, &active_session);
+    will_return(__wrap_pthread_rwlock_wrlock, 0);
+    expect_value(__wrap_OSHash_Get, key, token);
+    will_return(__wrap_OSHash_Get, &active_session);
+    will_return(__wrap_pthread_rwlock_unlock, 0);
 
     will_return(__wrap_pthread_mutex_lock, 0);
     will_return(__wrap_time, now);
@@ -4775,6 +4682,207 @@ void test_w_logtest_process_request_log_processing_ok_and_alert(void ** state)
     os_free(active_session.rule_list);
 }
 
+void test_w_logtest_process_request_log_processing_ok_session_expired(void ** state) {
+    cJSON json_request = {0};
+    cJSON json_response = {0};
+    w_logtest_connection_t connection = {0};
+    OSList * list_msg;
+    os_calloc(1, sizeof(OSList), list_msg);
+
+    const int extpect_retval = -1;
+    int retval;
+
+    // get session
+    cJSON * json_request_token;
+    w_logtest_session_t active_session;
+    char * token = strdup("test_token");
+    const time_t now = (time_t) 2020;
+
+    os_calloc(1, sizeof(cJSON), json_request_token);
+    json_request_token->valuestring = token;
+    active_session.last_connection = 0;
+
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, json_request_token);
+
+    will_return(__wrap_pthread_rwlock_wrlock, 0);
+    expect_value(__wrap_OSHash_Get, key, token);
+    will_return(__wrap_OSHash_Get, NULL);
+    expect_string(__wrap__mdebug1, formatted_msg, "(7003): 'test_token' token expires");
+
+    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_WARNING);
+    expect_value(__wrap__os_analysisd_add_logmsg, list, list_msg);
+    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "(7003): 'test_token' token expires");
+
+    will_return(__wrap_pthread_rwlock_unlock, 0);
+
+    // w_logtest_initialize_session
+
+    /* Generate session token */
+    char * decoder_file = "test.xml";
+    Config.decoders = calloc(2, sizeof(char *));
+    Config.decoders[0] = decoder_file;
+
+    char * cbd_file = "test.xml";
+    Config.lists = calloc(2, sizeof(char *));
+    Config.lists[0] = cbd_file;
+
+    char * include_file = "test.xml";
+    Config.includes = calloc(2, sizeof(char *));
+    Config.includes[0] = include_file;
+
+    random_bytes_result = 1234565555; // 0x49_95_f9_b3
+    expect_value(__wrap_randombytes, length, W_LOGTEST_TOKEN_LENGH >> 1);
+
+    expect_string(__wrap_OSHash_Get_ex, key, "4995f9b3");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    will_return(__wrap_pthread_mutex_init, 0);
+    will_return(__wrap_time, 1212);
+    will_return(__wrap_ReadDecodeXML, 1);
+    will_return(__wrap_SetDecodeXML, 0);
+    will_return(__wrap_Lists_OP_LoadList, 0);
+    will_return(__wrap_Rules_OP_ReadRules, 0);
+    will_return(__wrap__setlevels, 0);
+    will_return(__wrap_OSHash_Create, 1);
+    will_return(__wrap_AddHash_Rule, 0);
+
+    /* FTS init success */
+    OSList * fts_list;
+    OSHash * fts_store;
+    OSList * list = (OSList *) 1;
+    OSHash * hash = (OSHash *) 1;
+    will_return(__wrap_getDefine_Int, 5);
+    will_return(__wrap_OSList_Create, list);
+    will_return(__wrap_OSList_SetMaxSize, 1);
+    will_return(__wrap_OSHash_Create, hash);
+    expect_value(__wrap_OSHash_setSize, new_size, 2048);
+    will_return(__wrap_OSHash_setSize, 1);
+    will_return(__wrap_OSHash_SetFreeDataPointer, 1);
+    will_return(__wrap_Accumulate_Init, 1);
+
+    will_return(__wrap_pthread_mutex_lock, 0);
+    /* w_logtest_register_session */
+    will_return(__wrap_pthread_rwlock_wrlock, 0);
+    will_return(__wrap_pthread_rwlock_unlock, 0);
+    store_session = true;
+    expect_string(__wrap_OSHash_Add_ex, key, "4995f9b3");
+    expect_any(__wrap_OSHash_Add_ex, data);
+    will_return(__wrap_OSHash_Add_ex, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(7202): Session initialized with token '4995f9b3'");
+
+    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_INFO);
+    expect_value(__wrap__os_analysisd_add_logmsg, list, list_msg);
+    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "(7202): Session initialized with token '4995f9b3'");
+
+    /* now msg w_logtest_add_msg_response */
+    OSListNode * list_msg_node;
+    os_analysisd_log_msg_t * message;
+    os_calloc(1, sizeof(os_analysisd_log_msg_t), message);
+    message->level = LOGLEVEL_INFO;
+    message->msg = strdup("Test Message");
+    message->file = NULL;
+    message->func = NULL;
+    os_calloc(1, sizeof(OSListNode), list_msg_node);
+    list_msg_node->data = message;
+    list_msg->cur_node = list_msg_node;
+
+    will_return(__wrap_OSList_GetFirstNode, list_msg_node);
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
+
+    will_return(__wrap_os_analysisd_string_log_msg, strdup("Test Message"));
+
+    expect_string(__wrap_wm_strcat, str2, "INFO: ");
+    will_return(__wrap_wm_strcat, 0);
+
+    expect_string(__wrap_wm_strcat, str2, "Test Message");
+    will_return(__wrap_wm_strcat, 0);
+
+    will_return(__wrap_cJSON_CreateString, (cJSON *) 1);
+
+    will_return(__wrap_OSList_GetFirstNode, NULL);
+
+    will_return(__wrap_cJSON_AddStringToObject, NULL);
+    /* Alert w_logtest_process_log */
+    Config.decoder_order_size = 1;
+    cJSON json_event = {0};
+    json_event.child = false;
+
+    char * raw_event = strdup("event");
+    char * str_location = strdup("location");
+
+    OSDecoderInfo decoder_info = {0};
+    decoder_info.accumulate = 1;
+    decoder_info.type = SYSLOG;
+    decoder_CleanMSG = &decoder_info;
+
+
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &json_event);
+    will_return(__wrap_cJSON_GetStringValue, raw_event);
+
+    // w_logtest_preprocessing_phase
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
+    will_return(__wrap_cJSON_GetStringValue, str_location);
+
+    refill_OS_CleanMSG = true;
+    will_return(__wrap_OS_CleanMSG, 0);
+
+    // w_logtest_decoding_phase
+    expect_any(__wrap_DecodeEvent, node);
+
+    // w_logtest_process_request_log_processing
+    will_return(__wrap_pthread_mutex_unlock, 0);
+
+    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_ERROR);
+    expect_value(__wrap__os_analysisd_add_logmsg, list, list_msg);
+    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "(7312): Failed to process the event");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(7312): Failed to process the event");
+
+    // w_logtest_add_msg_response
+    os_analysisd_log_msg_t * message_error;
+    os_calloc(1, sizeof(os_analysisd_log_msg_t), message_error);
+    message_error->level = LOGLEVEL_ERROR;
+    message_error->msg = strdup("Test Message");
+    message_error->file = NULL;
+    message_error->func = NULL;
+    os_calloc(1, sizeof(OSListNode), list_msg_node);
+    list_msg_node->data = message_error;
+
+    will_return(__wrap_OSList_GetFirstNode, list_msg_node);
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
+
+    will_return(__wrap_os_analysisd_string_log_msg, strdup("Test Message"));
+
+    expect_string(__wrap_wm_strcat, str2, "ERROR: ");
+    will_return(__wrap_wm_strcat, 0);
+
+    expect_string(__wrap_wm_strcat, str2, "Test Message");
+    will_return(__wrap_wm_strcat, 0);
+
+    will_return(__wrap_cJSON_CreateString, (cJSON *) 1);
+
+    will_return(__wrap_OSList_GetFirstNode, NULL);
+
+    retval = w_logtest_process_request_log_processing(&json_request, &json_response, list_msg, &connection);
+
+    assert_int_equal(extpect_retval, retval);
+
+    os_free(stored_session->token);
+    os_free(stored_session->eventlist);
+    os_free(stored_session);
+    os_free(token);
+    os_free(json_request_token);
+    os_free(list_msg);
+    os_free(str_location);
+    os_free(raw_event);
+    os_free(list_msg_node);
+    os_free(Config.includes);
+    os_free(Config.decoders);
+    os_free(Config.lists);
+    store_session = false;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -4816,14 +4924,10 @@ int main(void)
         cmocka_unit_test(test_w_logtest_initialize_session_error_fts_init),
         cmocka_unit_test(test_w_logtest_initialize_session_error_accumulate_init),
         cmocka_unit_test(test_w_logtest_initialize_session_success),
+        cmocka_unit_test(test_w_logtest_initialize_session_success_duplicate_key),
         // Tests w_logtest_generate_token
         cmocka_unit_test(test_w_logtest_generate_token_success),
         cmocka_unit_test(test_w_logtest_generate_token_success_empty_bytes),
-        // Tests w_logtest_get_session
-        cmocka_unit_test(test_w_logtest_get_session_fail),
-        cmocka_unit_test(test_w_logtest_get_session_active),
-        cmocka_unit_test(test_w_logtest_get_session_expired_token),
-        cmocka_unit_test(test_w_logtest_get_session_new),
         // Tests w_logtest_add_msg_response
         cmocka_unit_test(test_w_logtest_add_msg_response_null_list),
         cmocka_unit_test(test_w_logtest_add_msg_response_new_field_msg),
@@ -4893,6 +4997,7 @@ int main(void)
         // Tests w_logtest_process_request_remove_session
         cmocka_unit_test(test_w_logtest_process_request_remove_session_invalid_token),
         cmocka_unit_test(test_w_logtest_process_request_remove_session_session_not_found),
+        cmocka_unit_test(test_w_logtest_process_request_remove_session_session_in_use),
         cmocka_unit_test(test_w_logtest_process_request_remove_session_ok),
         // Tests w_logtest_clients_handler
         cmocka_unit_test(test_w_logtest_clients_handler_error_acept),
@@ -4904,7 +5009,8 @@ int main(void)
         // w_logtest_process_request_log_processing
         cmocka_unit_test(test_w_logtest_process_request_log_processing_fail_session),
         cmocka_unit_test(test_w_logtest_process_request_log_processing_fail_process_log),
-        cmocka_unit_test(test_w_logtest_process_request_log_processing_ok_and_alert)
+        cmocka_unit_test(test_w_logtest_process_request_log_processing_ok_and_alert),
+        cmocka_unit_test(test_w_logtest_process_request_log_processing_ok_session_expired),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
