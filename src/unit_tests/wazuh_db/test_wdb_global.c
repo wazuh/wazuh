@@ -4905,6 +4905,7 @@ void test_wdb_global_get_agents_by_connection_status_transaction_fail(void **sta
 
     assert_string_equal(output, "Cannot begin transaction");
     assert_int_equal(status, WDBC_ERROR);
+    os_free(output);
 }
 
 void test_wdb_global_get_agents_by_connection_status_cache_fail(void **state)
@@ -4921,6 +4922,7 @@ void test_wdb_global_get_agents_by_connection_status_cache_fail(void **state)
 
     assert_string_equal(output, "Cannot cache statement");
     assert_int_equal(status, WDBC_ERROR);
+    os_free(output);
 }
 
 void test_wdb_global_get_agents_by_connection_status_bind_fail(void **state)
@@ -4943,7 +4945,7 @@ void test_wdb_global_get_agents_by_connection_status_bind_fail(void **state)
 
     assert_string_equal(output, "Cannot bind sql statement");
     assert_int_equal(status, WDBC_ERROR);
-
+    os_free(output);
 }
 
 void test_wdb_global_get_agents_by_connection_status_bind2_fail(void **state)
@@ -4969,7 +4971,7 @@ void test_wdb_global_get_agents_by_connection_status_bind2_fail(void **state)
 
     assert_string_equal(output, "Cannot bind sql statement");
     assert_int_equal(status, WDBC_ERROR);
-
+    os_free(output);
 }
 
 void test_wdb_global_get_agents_by_connection_status_empty(void **state)
@@ -4995,6 +4997,45 @@ void test_wdb_global_get_agents_by_connection_status_empty(void **state)
 
     assert_string_equal(output, "");
     assert_int_equal(status, WDBC_OK);
+    os_free(output);
+}
+
+void test_wdb_global_get_agents_by_connection_status_success(void **state)
+{
+    char *output = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+    wdbc_result status = WDBC_UNKNOWN;
+    int last_agent_id = 0;
+    cJSON *root = cJSON_Parse("[{\"id\":1}]");
+
+    will_return_count(__wrap_wdb_begin2, 1, -1);
+    will_return_count(__wrap_wdb_stmt_cache, 1, -1);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "active");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt, root);
+
+    will_return(__wrap_wdb_exec_stmt, NULL);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_agent_id + 1);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "active");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    expect_function_call(__wrap_cJSON_Delete);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    status = wdb_global_get_agents_by_connection_status(data->wdb, last_agent_id, "active", &output);
+
+    assert_string_equal(output, "1");
+    assert_int_equal(status, WDBC_OK);
+    __real_cJSON_Delete(root);
+    os_free(output);
 }
 
 int main()
@@ -5218,6 +5259,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_bind_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_bind2_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_empty, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_success, test_setup, test_teardown),
         };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
