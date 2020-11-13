@@ -18,6 +18,8 @@ extern int _base_line;
 void fim_registry_free_key(fim_registry_key *key);
 void fim_registry_free_value_data(fim_registry_value_data *data);
 
+static const char *default_key_query = "INSERT INTO registry_key VALUES(1, \"HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\", \"permissions\", \"userid\", \"groupid\", \"username\", \"groupname\", 1234, \'[x32]\', 0, 1234, \"checksum1\");";
+
 int check_fim_db_reg_key(fim_registry_key *key_to_check){
     fim_registry_key *key_saved = fim_db_get_registry_key(syscheck.database, key_to_check->path, key_to_check->arch);
     if(!key_saved){
@@ -199,7 +201,7 @@ static void test_fim_db_get_registry_key(void **state) {
 
     will_return_always(__wrap_sqlite3_step, 1);
 
-    execute_query("INSERT INTO registry_key VALUES(1, \"HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\",  \"permissions\", \"userid\", \"groupid\", \"username\", \"groupname\", 1234, \'[x32]\', 0, 1234, \"checksum1\");");
+    execute_query(default_key_query);
 
     // Get
     key = fim_db_get_registry_key(syscheck.database, "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", 0);
@@ -214,7 +216,7 @@ static void test_fim_db_get_registry_key_using_id(void **state) {
 
     will_return_always(__wrap_sqlite3_step, 1);
 
-    execute_query("INSERT INTO registry_key VALUES(1, \"HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\",  \"permissions\", \"userid\", \"groupid\", \"username\", \"groupname\", 1234, \'[x32]\', 0, 1234, \"checksum1\");");
+    execute_query(default_key_query);
 
     // Get
     key = fim_db_get_registry_key_using_id(syscheck.database, 1);
@@ -229,7 +231,7 @@ static void test_fim_db_get_registry_data(void **state) {
 
     will_return_always(__wrap_sqlite3_step, 1);
 
-    execute_query("INSERT INTO registry_key VALUES(1, \"HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\",  \"permissions\", \"userid\", \"groupid\", \"username\", \"groupname\", 1234, \'[x32]\', 0, 1234, \"checksum1\");");
+    execute_query(default_key_query);
     execute_query("INSERT INTO registry_data VALUES(1, \"valuename\", 4, 4, \"hash1\", \"hash2\", \"hash3\", 0, 1234, \"checksum2\");");
 
     // Get
@@ -244,7 +246,7 @@ static void test_fim_db_get_registry_key_db_error(void **state) {
 
     will_return_always(__wrap_sqlite3_step, 1);
 
-    execute_query("INSERT INTO registry_key VALUES(1, \"HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\", \"permissions\", \"userid\", \"groupid\", \"username\", \"groupname\", 1234, \'[x32]\', 0, 1234, \"checksum1\");");
+    execute_query(default_key_query);
 
     // Get
     key = fim_db_get_registry_key(syscheck.database, "nonexist", 0);
@@ -256,7 +258,7 @@ static void test_fim_db_get_registry_key_using_id_db_error(void **state) {
 
     will_return_always(__wrap_sqlite3_step, 1);
 
-    execute_query("INSERT INTO registry_key VALUES(1, \"HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\",  \"permissions\", \"userid\", \"groupid\", \"username\", \"groupname\", 1234, \'[x32]\', 0, 1234, \"checksum1\");");
+    execute_query(default_key_query);
 
     // Get
     key = fim_db_get_registry_key_using_id(syscheck.database, 3);
@@ -268,7 +270,7 @@ static void test_fim_db_get_registry_data_db_error(void **state) {
 
     will_return_always(__wrap_sqlite3_step, 1);
 
-    execute_query("INSERT INTO registry_key VALUES(1, \"HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\",  \"permissions\", \"userid\", \"groupid\", \"username\", \"groupname\", 1234, \'[x32]\', 0, 1234, \"checksum1\");");
+    execute_query(default_key_query);
     execute_query("INSERT INTO registry_data VALUES(1, \"valuename\", 4, 4, \"hash1\", \"hash2\", \"hash3\", 0, 1234, \"checksum2\");");
 
     // Get
@@ -332,7 +334,7 @@ static void test_fim_db_insert_registry_data(void **state) {
 
     will_return_always(__wrap_sqlite3_step, 1);
 
-    execute_query("INSERT INTO registry_key VALUES(1, \"HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\", \"permissions\", \"userid\", \"groupid\", \"username\", \"groupname\", 1234, \'[x32]\', 0, 1234, \"checksum1\");");
+    execute_query(default_key_query);
 
     // Insert value
     ret = fim_db_insert_registry_data(syscheck.database, entry->registry_entry.value, entry->registry_entry.key->id, 1);
@@ -366,7 +368,7 @@ static void test_fim_db_insert_registry_data_db_error(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_step, 1);
 
-    execute_query("INSERT INTO registry_key VALUES(1, \"HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\", \"permissions\", \"userid\", \"groupid\", \"username\", \"groupname\", 1234, \'[x32]\', 0, 1234, \"checksum1\");");
+    execute_query(default_key_query);
 
     // Insert value
     ret = fim_db_insert_registry_data(syscheck.database, entry->registry_entry.value, entry->registry_entry.key->id, 1);
@@ -381,7 +383,7 @@ static void test_fim_db_remove_registry_key(void **state) {
 
     will_return_always(__wrap_sqlite3_step, 1);
 
-    execute_query("INSERT INTO registry_key VALUES(1, \"HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\", \"permissions\", \"userid\", \"groupid\", \"username\", \"groupname\", 1234, \'[x32]\', 0, 1234, \"checksum1\");");
+    execute_query(default_key_query);
 
     // Remove
     ret = fim_db_remove_registry_key(syscheck.database, entry);
@@ -396,7 +398,7 @@ static void test_fim_db_remove_registry_data(void **state) {
 
     will_return_always(__wrap_sqlite3_step, 1);
 
-    execute_query("INSERT INTO registry_key VALUES(1, \"HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\",  \"permissions\", \"userid\", \"groupid\", \"username\", \"groupname\", 1234, \'[x32]\', 0, 1234, \"checksum1\");");
+    execute_query(default_key_query);
 
     execute_query("INSERT INTO registry_data VALUES(1, \"valuename\", 4, 4, \"hash1\", \"hash2\", \"hash3\", 0, 1234, \"checksum2\");");
 
@@ -418,7 +420,7 @@ static void test_fim_db_remove_registry_key_db_error(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_step, 1);
 
-    execute_query("INSERT INTO registry_key VALUES(1, \"HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\", \"permissions\", \"userid\", \"groupid\", \"username\", \"groupname\", 1234, \'[x32]\', 0, 1234, \"checksum1\");");
+    execute_query(default_key_query);
 
     // Remove
     ret = fim_db_remove_registry_key(syscheck.database, entry);
@@ -436,7 +438,7 @@ static void test_fim_db_remove_registry_data_db_error(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_step, 1);
 
-    execute_query("INSERT INTO registry_key VALUES(1, \"HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\",  \"permissions\", \"userid\", \"groupid\", \"username\", \"groupname\", 1234, \'[x32]\', 0, 1234, \"checksum1\");");
+    execute_query(default_key_query);
     execute_query("INSERT INTO registry_data VALUES(1, \"valuename\", 4, 4, \"hash1\", \"hash2\", \"hash3\", 0, 1234, \"checksum2\");");
 
     entry->registry_entry.value->id = 1;
@@ -484,7 +486,7 @@ static void test_fim_db_set_registry_key_scanned(void **state) {
 
     will_return_always(__wrap_sqlite3_step, 1);
 
-    execute_query("INSERT INTO registry_key VALUES(1, \"HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\", \"permissions\", \"userid\", \"groupid\", \"username\", \"groupname\", 1234, \'[x32]\', 0, 1234, \"checksum1\");");
+    execute_query(default_key_query);
 
     ret = fim_db_set_registry_key_scanned(syscheck.database, "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", 0);
     assert_int_equal(ret, FIMDB_OK);
@@ -500,7 +502,7 @@ static void test_fim_db_set_registry_key_scanned_error(void **state) {
     will_return(__wrap_sqlite3_step, FIMDB_ERR);
     expect_string(__wrap__merror, formatted_msg, "Step error setting scanned key path 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile': not an error");
 
-    execute_query("INSERT INTO registry_key VALUES(1, \"HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\", \"permissions\", \"userid\", \"groupid\", \"username\", \"groupname\", 1234, \'[x32]\', 0, 1234, \"checksum1\");");
+    execute_query(default_key_query);
 
     ret = fim_db_set_registry_key_scanned(syscheck.database, "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", 0);
     assert_int_equal(ret, FIMDB_ERR);
@@ -514,7 +516,7 @@ static void test_fim_db_set_registry_data_scanned(void **state) {
 
     will_return_always(__wrap_sqlite3_step, 1);
 
-    execute_query("INSERT INTO registry_key VALUES(1, \"HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\",  \"permissions\", \"userid\", \"groupid\", \"username\", \"groupname\", 1234, \'[x32]\', 0, 1234, \"checksum1\");");
+    execute_query(default_key_query);
     execute_query("INSERT INTO registry_data VALUES(1, \"valuename\", 4, 4, \"hash1\", \"hash2\", \"hash3\", 0, 1234, \"checksum2\");");
 
     ret = fim_db_set_registry_data_scanned(syscheck.database, "valuename", 1);
@@ -531,7 +533,7 @@ static void test_fim_db_set_registry_data_scanned_error(void **state) {
     will_return(__wrap_sqlite3_step, FIMDB_ERR);
     expect_string(__wrap__merror, formatted_msg, "Step error setting scanned data name 'valuename': not an error");
 
-    execute_query("INSERT INTO registry_key VALUES(1, \"HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\",  \"permissions\", \"userid\", \"groupid\", \"username\", \"groupname\", 1234, \'[x32]\', 0, 1234, \"checksum1\");");
+    execute_query(default_key_query);
     execute_query("INSERT INTO registry_data VALUES(1, \"valuename\", 4, 4, \"hash1\", \"hash2\", \"hash3\", 0, 1234, \"checksum2\");");
 
     ret = fim_db_set_registry_data_scanned(syscheck.database, "valuename", 1);
