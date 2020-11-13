@@ -47,13 +47,57 @@ fim_file_data DEFAULT_FILE_DATA = {
 
     // Options
     .mode = FIM_REALTIME,
-    .last_event = 0,
+    .last_event = 12345679,
     .dev = 100,
     .scanned = 0,
     .options = (CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE | CHECK_MD5SUM |
                 CHECK_SHA1SUM | CHECK_SHA256SUM),
     .checksum = "0123456789abcdef0123456789abcdef01234567",
 };
+
+#ifdef TEST_WINAGENT
+const fim_registry_key DEFAULT_REGISTRY_KEY = {
+    .id = 1,
+    .path = "HKEY_LOCAL_MACHINE\\software\\some:\\key",
+    .perm = "perm",
+    .uid = "",
+    .gid = "",
+    .user_name = "",
+    .group_name = "",
+    .mtime = 12345678,
+    .arch = ARCH_64BIT,
+    .scanned = 1,
+    .last_event = 12345679,
+    .checksum = "0123456789abcdef0123456789abcdef01234567"
+};
+
+const fim_registry_value_data DEFAULT_REGISTRY_VALUE = {
+    .id = 1,
+    .name = "some:value",
+    .type = REG_SZ,
+    .size = 10,
+    .hash_md5 = "0123456789abcdef0123456789abcdef",
+    .hash_sha1 = "0123456789abcdef0123456789abcdef01234567",
+    .hash_sha256 = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    .scanned = 1,
+    .last_event = 12345679,
+    .checksum = "0123456789abcdef0123456789abcdef01234567",
+    .mode = FIM_SCHEDULED
+};
+
+static registry REGISTRY_CONFIGURATION[] = {
+    [0] = {
+        .entry = "HKEY_LOCAL_MACHINE\\software",
+        .arch = ARCH_64BIT,
+        .opts = REGISTRY_CHECK_ALL,
+        .recursion_level = 512,
+        .diff_size_limit = 0,
+        .restrict_key = NULL,
+        .restrict_value = NULL,
+        .tag = NULL
+    },
+    [1] = NULL };
+#endif
 
 /* Auxiliar structs */
 typedef struct __json_payload_s {
@@ -77,6 +121,8 @@ int __wrap_time() {
 static int setup_group(void **state) {
 #ifdef TEST_WINAGENT
     time_mock_value = 1572521857;
+
+    syscheck.registry = REGISTRY_CONFIGURATION;
 #endif
     syscheck.database = fim_db_init(FIM_DB_DISK);
     return 0;
@@ -185,6 +231,12 @@ static int teardown_str(void **state) {
     char *data = *state;
     free(data);
 
+    return 0;
+}
+
+static int teardown_delete_json(void **state) {
+    cJSON *json = *state;
+    cJSON_Delete(json);
     return 0;
 }
 
@@ -666,6 +718,106 @@ static void test_fim_sync_dispatch_unwknown_command(void **state) {
     fim_sync_dispatch(payload);
 }
 
+
+static void test_fim_entry_json_file_entry(void **state) {
+    char *f_path = "/dir/test";
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = f_path, .file_entry.data = &DEFAULT_FILE_DATA };
+    cJSON *event;
+
+    event = fim_entry_json(f_path, &entry);
+
+    assert_non_null(event);
+
+    *state = event;
+
+    cJSON *path = cJSON_GetObjectItem(event, "path");
+    assert_non_null(path);
+    assert_string_equal(path->valuestring, f_path);
+
+    cJSON *timestamp = cJSON_GetObjectItem(event, "timestamp");
+    assert_non_null(timestamp);
+    assert_int_equal(timestamp->valueint, 12345679);
+}
+
+#ifdef TEST_WINAGENT
+static void test_fim_entry_json_registry_key_entry(void **state) {
+    const char *input_path = DEFAULT_REGISTRY_KEY.path;
+    fim_registry_key key = DEFAULT_REGISTRY_KEY;
+    fim_entry entry = {
+        .type = FIM_TYPE_REGISTRY,
+        .registry_entry.key = &key,
+        .registry_entry.value = NULL
+    };
+    cJSON *event;
+
+    event = fim_entry_json(input_path, &entry);
+
+    assert_non_null(event);
+
+    *state = event;
+
+    cJSON *path = cJSON_GetObjectItem(event, "path");
+    assert_non_null(path);
+    assert_string_equal(path->valuestring, input_path);
+
+    cJSON *timestamp = cJSON_GetObjectItem(event, "timestamp");
+    assert_non_null(timestamp);
+    assert_int_equal(timestamp->valueint, 12345679);
+
+    cJSON *arch = cJSON_GetObjectItem(event, "arch");
+    assert_non_null(arch);
+    assert_string_equal(arch->valuestring, "[x64]");
+
+    assert_null(cJSON_GetObjectItem(event, "value_name"));
+}
+
+static void test_fim_entry_json_registry_value_entry(void **state) {
+    const char *input_path = DEFAULT_REGISTRY_KEY.path;
+    fim_registry_key key = DEFAULT_REGISTRY_KEY;
+    fim_registry_value_data value = DEFAULT_REGISTRY_VALUE;
+    fim_entry entry = {
+        .type = FIM_TYPE_REGISTRY,
+        .registry_entry.key = &key,
+        .registry_entry.value = &value
+    };
+    cJSON *event;
+
+    event = fim_entry_json(input_path, &entry);
+
+    assert_non_null(event);
+
+    *state = event;
+
+    cJSON *path = cJSON_GetObjectItem(event, "path");
+    assert_non_null(path);
+    assert_string_equal(path->valuestring, input_path);
+
+    cJSON *timestamp = cJSON_GetObjectItem(event, "timestamp");
+    assert_non_null(timestamp);
+    assert_int_equal(timestamp->valueint, 12345679);
+
+    cJSON *arch = cJSON_GetObjectItem(event, "arch");
+    assert_non_null(arch);
+    assert_string_equal(arch->valuestring, "[x64]");
+
+    cJSON *value_name = cJSON_GetObjectItem(event, "value_name");
+    assert_non_null(value_name);
+    assert_string_equal(value_name->valuestring, "some:value");
+}
+#endif
+
+static void test_fim_entry_json_null_path(void **state) {
+    char *f_path = "/dir/test";
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = f_path, .file_entry.data = &DEFAULT_FILE_DATA };
+    cJSON *event;
+
+    expect_assert_failure(fim_entry_json(NULL, &entry));
+}
+
+static void test_fim_entry_json_null_data(void **state) {
+    expect_assert_failure(fim_entry_json("/a/path", NULL));
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* fim_sync_push */
@@ -701,6 +853,15 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_checksum_fail, setup_json_payload, teardown_json_payload),
         cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_no_data, setup_json_payload, teardown_json_payload),
         cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_unwknown_command, setup_json_payload, teardown_json_payload),
+
+        /* fim_entry_json */
+        cmocka_unit_test_teardown(test_fim_entry_json_file_entry, teardown_delete_json),
+#ifdef TEST_WINAGENT
+        cmocka_unit_test_teardown(test_fim_entry_json_registry_key_entry, teardown_delete_json),
+        cmocka_unit_test_teardown(test_fim_entry_json_registry_value_entry, teardown_delete_json),
+#endif
+        cmocka_unit_test(test_fim_entry_json_null_path),
+        cmocka_unit_test(test_fim_entry_json_null_data),
     };
 
     return cmocka_run_group_tests(tests, setup_group, NULL);

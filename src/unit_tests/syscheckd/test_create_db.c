@@ -773,41 +773,6 @@ static void test_fim_attributes_json_without_options(void **state) {
     assert_string_equal(cJSON_GetStringValue(checksum), "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
 }
 
-
-static void test_fim_entry_json(void **state) {
-    fim_data_t *fim_data = *state;
-    const char *f_path = "/dir/test";
-    fim_entry *entry = NULL;
-    os_calloc(1, sizeof(fim_entry), entry);
-    entry->type = FIM_TYPE_FILE;
-    os_calloc(1, sizeof(fim_file_data), entry->file_entry.data);
-
-    entry->file_entry.data = fim_data->old_data;
-    fim_data->json = fim_entry_json(f_path, entry);
-
-    assert_non_null(fim_data->json);
-    cJSON *path = cJSON_GetObjectItem(fim_data->json, "path");
-    assert_non_null(path);
-    assert_string_equal(path->valuestring, f_path);
-    cJSON *timestamp = cJSON_GetObjectItem(fim_data->json, "timestamp");
-    assert_non_null(timestamp);
-    assert_int_equal(timestamp->valueint, 1570184220);
-}
-
-static void test_fim_entry_json_null_path(void **state) {
-    fim_data_t *fim_data = *state;
-    fim_entry *entry = NULL;
-    os_calloc(1, sizeof(fim_entry), entry);
-    entry->type = FIM_TYPE_FILE;
-    os_calloc(1, sizeof(fim_file_data), entry->file_entry.data);
-
-    entry->file_entry.data = fim_data->old_data;
-    expect_assert_failure(fim_entry_json(NULL, entry));
-}
-static void test_fim_entry_json_null_data(void **state) {
-    expect_assert_failure(fim_entry_json("/a/path", NULL));
-}
-
 static void test_fim_json_compare_attrs(void **state) {
     fim_data_t *fim_data = *state;
     int i = 0;
@@ -4275,11 +4240,6 @@ int main(void) {
         /* fim_attributes_json */
         cmocka_unit_test_teardown(test_fim_attributes_json, teardown_delete_json),
         cmocka_unit_test_teardown(test_fim_attributes_json_without_options, teardown_delete_json),
-
-        /* fim_entry_json */
-        cmocka_unit_test_teardown(test_fim_entry_json, teardown_delete_json),
-        cmocka_unit_test(test_fim_entry_json_null_path),
-        cmocka_unit_test(test_fim_entry_json_null_data),
 
         /* fim_json_compare_attrs */
         cmocka_unit_test_teardown(test_fim_json_compare_attrs, teardown_delete_json),
