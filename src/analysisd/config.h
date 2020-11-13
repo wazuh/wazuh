@@ -26,7 +26,7 @@ extern long int __crt_ftell; /* Global ftell pointer */
 extern _Config Config;       /* Global Config structure */
 
 #ifdef LIBGEOIP_ENABLED
-GeoIP *geoipdb;
+extern GeoIP *geoipdb;
 #endif
 
 int GlobalConf(const char *cfgfile);

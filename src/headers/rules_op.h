@@ -123,7 +123,7 @@ typedef struct _RuleInfo {
     OSList *group_search;
 
     /* Function pointer to the event_search */
-    void *(*event_search)(void *lf, void *rule, void *rule_match);
+    void *(*event_search)(void *lf, void *os_analysisd_last_events, void *rule, void *rule_match);
 
     char *group;
     OSMatch *match;
