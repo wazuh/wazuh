@@ -42,4 +42,5 @@ void expect_fim_configuration_directory_call(const char *path, const char *file,
  */
 void expect_fim_checker_call(const char *path, int w_evt, int report);
 
+void __wrap_free_entry(fim_entry *entry);
 #endif

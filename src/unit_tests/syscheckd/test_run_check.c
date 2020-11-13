@@ -29,6 +29,7 @@
 #include "../syscheckd/db/fim_db.h"
 
 #ifdef TEST_WINAGENT
+#include "../wrappers/windows/processthreadsapi_wrappers.h"
 
 void set_priority_windows_thread();
 void set_whodata_mode_changes();

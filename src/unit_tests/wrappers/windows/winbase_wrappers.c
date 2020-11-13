@@ -24,6 +24,10 @@ DWORD wrap_FormatMessage(__UNUSED_PARAM(DWORD dwFlags),
     return 0;
 }
 
+void expect_FormatMessage_call(char *buffer) {
+    will_return(wrap_FormatMessage, buffer);
+}
+
 HLOCAL wrap_LocalFree(__UNUSED_PARAM(HLOCAL hMem)) {
     return NULL;
 }
@@ -48,6 +52,12 @@ WINBOOL wrap_LookupAccountSid(__UNUSED_PARAM(LPCSTR lpSystemName),
     }
 
     return mock();
+}
+
+void expect_LookupAccountSid_call(char *name, char *DomainName, int ret_value) {
+    will_return(wrap_LookupAccountSid, name);
+    will_return(wrap_LookupAccountSid, DomainName);
+    will_return(wrap_LookupAccountSid, ret_value);
 }
 
 WINBOOL wrap_GetFileSecurity(LPCSTR lpFileName,

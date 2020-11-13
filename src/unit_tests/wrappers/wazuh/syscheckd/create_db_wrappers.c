@@ -76,3 +76,7 @@ void expect_fim_configuration_directory_call(const char *path, const char *file,
     expect_string(__wrap_fim_configuration_directory, entry, file);
     will_return(__wrap_fim_configuration_directory, ret);
 }
+
+void __wrap_free_entry(__attribute__((unused)) fim_entry *entry) {
+    return;
+}
