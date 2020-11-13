@@ -16,23 +16,27 @@
 #include "decoder.h"
 #include "error_messages/error_messages.h"
 #include "error_messages/debug_messages.h"
+#include "analysisd.h"
 
-/* We have two internal lists. One with the program_name
- * and one without. This is going to improve greatly the
- * performance of our decoder matching.
- */
-OSDecoderNode *osdecodernode_forpname;
-OSDecoderNode *osdecodernode_nopname;
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
 
-static OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi);
+OSDecoderNode *os_analysisd_decoderlist_pn;
+OSDecoderNode *os_analysisd_decoderlist_nopn;
+OSStore *os_analysisd_decoder_store;
+
+STATIC OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi, OSList* log_msg);
 
 /* Create the Event List */
-void OS_CreateOSDecoderList()
-{
-    osdecodernode_forpname = NULL;
-    osdecodernode_nopname = NULL;
+void OS_CreateOSDecoderList() {
 
-    return;
+    os_analysisd_decoderlist_pn = NULL;
+    os_analysisd_decoderlist_nopn = NULL;
+    os_analysisd_decoder_store = NULL;
 }
 
 /* Get first osdecoder */
@@ -40,25 +44,21 @@ OSDecoderNode *OS_GetFirstOSDecoder(const char *p_name)
 {
     /* If program name is set, we return the forpname list */
     if (p_name) {
-        return (osdecodernode_forpname);
+        return (os_analysisd_decoderlist_pn);
     }
 
-    return (osdecodernode_nopname);
+    return (os_analysisd_decoderlist_nopn);
 }
 
 /* Add an osdecoder to the list */
-static OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi)
+STATIC OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi, OSList* log_msg)
 {
     OSDecoderNode *tmp_node = s_node;
     OSDecoderNode *new_node;
     int rm_f = 0;
 
     if (tmp_node) {
-        new_node = (OSDecoderNode *)calloc(1, sizeof(OSDecoderNode));
-        if (new_node == NULL) {
-            merror(MEM_ERROR, errno, strerror(errno));
-            return (NULL);
-        }
+        os_calloc(1, sizeof(OSDecoderNode), new_node);
 
         /* Going to the last node */
         do {
@@ -72,20 +72,21 @@ static OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi)
 
                 /* Multi-regexes patterns cannot have prematch */
                 if (pi->prematch) {
-                    merror(PDUP_INV, pi->name);
+                    smerror(log_msg, PDUP_INV, pi->name);
                     goto error;
                 }
 
                 /* Multi-regex patterns cannot have fts set */
                 if (pi->fts) {
-                    merror(PDUPFTS_INV, pi->name);
+                    smerror(log_msg, PDUPFTS_INV, pi->name);
                     goto error;
                 }
 
-                if ((tmp_node->osdecoder->regex || tmp_node->osdecoder->plugindecoder) && (pi->regex || pi->plugindecoder)) {
+                if ((tmp_node->osdecoder->regex || tmp_node->osdecoder->plugindecoder) 
+                    && (pi->regex || pi->plugindecoder)) {
                     tmp_node->osdecoder->get_next = 1;
                 } else {
-                    merror(DUP_INV, pi->name);
+                    smerror(log_msg, DUP_INV, pi->name);
                     goto error;
                 }
             }
@@ -94,7 +95,7 @@ static OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi)
 
         /* Must have a prematch set */
         if (!rm_f && (pi->regex_offset & AFTER_PREVREGEX)) {
-            merror(INV_OFFSET, pi->name);
+            smerror(log_msg, INV_OFFSET, pi->name);
             goto error;
         }
 
@@ -108,15 +109,11 @@ static OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi)
     else {
         /* Must not have a previous regex set */
         if (pi->regex_offset & AFTER_PREVREGEX) {
-            merror(INV_OFFSET, pi->name);
+            smerror(log_msg, INV_OFFSET, pi->name);
             return (NULL);
         }
 
-        tmp_node = (OSDecoderNode *)calloc(1, sizeof(OSDecoderNode));
-
-        if (tmp_node == NULL) {
-            merror_exit(MEM_ERROR, errno, strerror(errno));
-        }
+        os_calloc(1, sizeof(OSDecoderNode), tmp_node);
 
         tmp_node->child = NULL;
         tmp_node->next = NULL;
@@ -128,13 +125,13 @@ static OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi)
     return (s_node);
 
 error:
-    if (new_node) {
-        free(new_node);
-    }
+    os_free(new_node);
+
     return (NULL);
 }
 
-int OS_AddOSDecoder(OSDecoderInfo *pi)
+int OS_AddOSDecoder(OSDecoderInfo *pi, OSDecoderNode **pn_osdecodernode,
+                    OSDecoderNode **npn_osdecodernode, OSList* log_msg)
 {
     int added = 0;
     OSDecoderNode *osdecodernode;
@@ -143,21 +140,21 @@ int OS_AddOSDecoder(OSDecoderInfo *pi)
      * name and the other without.
      */
     if (pi->program_name) {
-        osdecodernode = osdecodernode_forpname;
+        osdecodernode = *pn_osdecodernode;
     } else {
-        osdecodernode = osdecodernode_nopname;
+        osdecodernode = *npn_osdecodernode;
     }
 
     /* Search for parent on both lists */
     if (pi->parent) {
-        OSDecoderNode *tmp_node = osdecodernode_forpname;
+        OSDecoderNode *tmp_node = *pn_osdecodernode;
 
         /* List with p_name */
         while (tmp_node) {
             if (strcmp(tmp_node->osdecoder->name, pi->parent) == 0) {
-                tmp_node->child = _OS_AddOSDecoder(tmp_node->child, pi);
+                tmp_node->child = _OS_AddOSDecoder(tmp_node->child, pi, log_msg);
                 if (!tmp_node->child) {
-                    merror(DEC_PLUGIN_ERR);
+                    smerror(log_msg, DEC_PLUGIN_ERR);
                     return (0);
                 }
                 added = 1;
@@ -166,12 +163,12 @@ int OS_AddOSDecoder(OSDecoderInfo *pi)
         }
 
         /* List without p name */
-        tmp_node = osdecodernode_nopname;
+        tmp_node = *npn_osdecodernode;
         while (tmp_node) {
             if (strcmp(tmp_node->osdecoder->name, pi->parent) == 0) {
-                tmp_node->child = _OS_AddOSDecoder(tmp_node->child, pi);
+                tmp_node->child = _OS_AddOSDecoder(tmp_node->child, pi, log_msg);
                 if (!tmp_node->child) {
-                    merror(DEC_PLUGIN_ERR);
+                    smerror(log_msg, DEC_PLUGIN_ERR);
                     return (0);
                 }
                 added = 1;
@@ -184,21 +181,80 @@ int OS_AddOSDecoder(OSDecoderInfo *pi)
             return (1);
         }
 
-        merror(PPLUGIN_INV, pi->parent);
+        smerror(log_msg, PPLUGIN_INV, pi->parent);
         return (0);
     } else {
-        osdecodernode = _OS_AddOSDecoder(osdecodernode, pi);
+        osdecodernode = _OS_AddOSDecoder(osdecodernode, pi, log_msg);
         if (!osdecodernode) {
-            merror(DEC_PLUGIN_ERR);
+            smerror(log_msg, DEC_PLUGIN_ERR);
             return (0);
         }
 
         /* Update global decoder pointers */
         if (pi->program_name) {
-            osdecodernode_forpname = osdecodernode;
+            *pn_osdecodernode = osdecodernode;
         } else {
-            osdecodernode_nopname = osdecodernode;
+            *npn_osdecodernode = osdecodernode;
         }
     }
     return (1);
+}
+
+void os_remove_decoders_list(OSDecoderNode *decoderlist_pn, OSDecoderNode *decoderlist_npn) {
+
+    OSDecoderInfo **decoders;
+    int pos = 0;
+    int num_decoders = 0;
+
+    os_count_decoders(decoderlist_pn, &num_decoders);
+    os_count_decoders(decoderlist_npn, &num_decoders);
+
+    os_calloc(num_decoders + 1, sizeof(OSDecoderInfo *), decoders);
+
+    os_remove_decodernode(decoderlist_pn, decoders, &pos, &num_decoders);
+    os_remove_decodernode(decoderlist_npn, decoders, &pos, &num_decoders);
+
+    for (int i = 0; i <= pos; i++) {
+        FreeDecoderInfo(decoders[i]);
+    }
+
+    os_free(decoders);
+}
+
+void os_remove_decodernode(OSDecoderNode *node, OSDecoderInfo **decoders, int *pos, int *max_size) {
+
+    OSDecoderNode *tmp_node;
+
+    while (node) {
+
+        if (node->child) {
+            os_remove_decodernode(node->child, decoders, pos, max_size);
+        }
+
+        tmp_node = node;
+        node = node->next;
+
+        if (tmp_node->osdecoder->internal_saving == false && *pos <= *max_size) {
+
+            tmp_node->osdecoder->internal_saving = true;
+            decoders[*pos] = tmp_node->osdecoder;
+            (*pos)++;
+        }
+
+        os_free(tmp_node);
+    }
+}
+
+void os_count_decoders(OSDecoderNode *node, int *num_decoders) {
+
+    while(node) {
+
+        if (node->child) {
+            os_count_decoders(node->child, num_decoders);
+        }
+
+        (*num_decoders)++;
+
+        node = node->next;
+    }
 }

@@ -169,6 +169,9 @@
 #define LIST_SIZE_ERROR "(1292): Error setting error size."
 #define LIST_FREE_ERROR "(1293): Error setting data free pointer."
 
+/* Hash operation */
+#define HASH_ERROR      "(1295): Unable to create a new hash (calloc)."
+
 /* Log collector messages */
 #define MISS_LOG_FORMAT "(1901): Missing 'log_format' element."
 #define MISS_FILE       "(1902): Missing 'location' element."
@@ -495,6 +498,27 @@
 #define FIM_DB_ERROR_RM_RANGE                       "(6708): Failed to delete a range of paths between '%s' and '%s'"
 #define FIM_DB_ERROR_RM_NOT_SCANNED                 "(6709): Failed to delete from db all unscanned files."
 #define FIM_ERROR_WHODATA_INIT                      "(6710): Failed to start the Whodata engine. Directories/files will be monitored in Realtime mode"
+
+/* Wazuh Logtest error messsages */
+#define LOGTEST_ERROR_BIND_SOCK                     "(7300): Unable to bind to socket '%s'. Errno: (%d) %s"
+#define LOGTEST_ERROR_ACCEPT_CONN                   "(7301): Failure to accept connection. Errno: %s"
+#define LOGTEST_ERROR_RECV_MSG_ERRNO                "(7302): Failure to receive message: Errno: %s"
+#define LOGTEST_ERROR_INIT_HASH                     "(7303): Failure to initialize all_sessions hash"
+#define LOGTEST_ERROR_INV_CONF                      "(7304): Invalid wazuh-logtest configuration"
+#define LOGTEST_ERROR_SIZE_HASH                     "(7305): Failure to resize all_sessions hash"
+#define LOGTEST_ERROR_COMMAND_NOT_ALLOWED           "(7306): Unable to process command"
+#define LOGTEST_ERROR_JSON_PARSE_POS                "(7307): Error parsing JSON in position %i, ... %s ..."
+#define LOGTEST_ERROR_JSON_REQUIRED_SFIELD          "(7308): '%s' JSON field is required and must be a string"
+#define LOGTEST_ERROR_TOKEN_INVALID                 "(7309): '%s' is not a valid token"
+#define LOGTEST_ERROR_RESPONSE                      "(7310): Failure to sending response to client [%i] %s."
+#define LOGTEST_ERROR_INITIALIZE_SESSION            "(7311): Failure to initializing session"
+#define LOGTEST_ERROR_PROCESS_EVENT                 "(7312): Failed to process the event"
+#define LOGTEST_ERROR_FIELD_NOT_FOUND               "(7313): '%s' JSON field not found"
+#define LOGTEST_ERROR_RECV_MSG_EMPTY_TO             "(7314): Failure to receive message: empty or reception timeout"
+#define LOGTEST_ERROR_RECV_MSG_OVERSIZE             "(7315): Failure to receive message: size is bigger than expected"
+#define LOGTEST_ERROR_TOKEN_INVALID_TYPE            "(7316): Failure to remove session. token JSON field must be a string"
+#define LOGTEST_ERROR_FIELD_NOT_VALID               "(7317): '%s' JSON field value is not valid"
+#define LOGTEST_ERROR_REMOVE_SESSION                "(7318): Failure to remove session '%s'"
 
 /* Modules messages */
 #define WM_UPGRADE_JSON_PARSE_ERROR                 "(8101): Cannot parse JSON: '%s'"
