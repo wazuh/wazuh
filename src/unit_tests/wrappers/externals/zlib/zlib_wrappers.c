@@ -20,7 +20,7 @@ int __wrap_gzread(gzFile gz_fd,
                   int len) {
     check_expected_ptr(gz_fd);
     int n = mock();
-    if(n <= len) {
+    if(n <= len && (n > 0)) {
         memcpy(buf, mock_type(void*), n);
     }
     return n;

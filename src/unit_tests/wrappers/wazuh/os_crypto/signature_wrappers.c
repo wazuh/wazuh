@@ -7,18 +7,13 @@
  * Foundation
  */
 
-#include "string_wrappers.h"
+#include "signature_wrappers.h"
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
 
-
-char *__wrap_strerror (__attribute__((unused)) int __errnum) {
-    return mock_type(char*);
-}
-
-size_t __wrap_strlen(const char *s) {
-    check_expected(s);
+int __wrap_w_wpk_unsign(const char * source,  __attribute__((unused)) const char * target,  __attribute__((unused)) const char ** ca_store) {
+    check_expected(source);
     return mock();
 }

@@ -7,17 +7,14 @@
  * Foundation
  */
 
+#ifndef IO_WIN_WRAPPERS_H
+#define IO_WIN_WRAPPERS_H
 
-#ifndef STDLIB_WRAPPERS_H
-#define STDLIB_WRAPPERS_H
+#include <io.h>
 
+#undef _mktemp_s
+#define _mktemp_s  wrap_mktemp_s
 
-int __wrap_atexit(void (*callback)(void));
-
-char *__wrap_realpath(const char *path, char *resolved_path);
-
-int __wrap_system(const char *__command);
-
-int __wrap_mkstemp(char *template);
+char * wrap_mktemp_s(const char *path, ssize_t length);
 
 #endif
