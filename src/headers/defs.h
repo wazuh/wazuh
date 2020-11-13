@@ -140,6 +140,8 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define CLUSTER_SOCK "/queue/cluster/c-internal.sock"
 #define CONTROL_SOCK "/queue/ossec/control"
 #define LOGTEST_SOCK "/queue/ossec/logtest"
+#define AGENT_UPGRADE_SOCK "/queue/ossec/upgrade"
+
 
 // Tasks socket
 #define TASK_QUEUE "/queue/tasks/task"

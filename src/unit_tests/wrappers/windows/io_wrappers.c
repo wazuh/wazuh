@@ -1,24 +1,17 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
- * All rights reserved.
+/*
+ * Copyright (C) 2015-2020, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
- * Foundation
+ * Foundation.
  */
-
-#include "string_wrappers.h"
-#include <stddef.h>
 #include <stdarg.h>
+#include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include "io_wrappers.h"
 
-
-char *__wrap_strerror (__attribute__((unused)) int __errnum) {
+char * wrap_mktemp_s(__attribute__((unused)) const char *path, __attribute__((unused)) ssize_t length) {
     return mock_type(char*);
-}
-
-size_t __wrap_strlen(const char *s) {
-    check_expected(s);
-    return mock();
 }
