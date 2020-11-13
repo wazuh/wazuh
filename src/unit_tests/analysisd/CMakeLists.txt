@@ -87,7 +87,10 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,ReadConfig -Wl,--wrap,_merror -Wl,--wrap
                              -Wl,--wrap,CreateThread -Wl,--wrap,pthread_join -Wl,--wrap,unlink \
                              -Wl,--wrap,Eventinfo_to_jsonstr -Wl,--wrap,cJSON_Parse -Wl,--wrap,ParseRuleComment \
                              -Wl,--wrap,Accumulate -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_AddBoolToObject \
-                             -Wl,--wrap,OSHash_SetFreeDataPointer")
+                             -Wl,--wrap,OSHash_SetFreeDataPointer -Wl,--wrap,OSHash_Delete \
+                             -Wl,--wrap,pthread_rwlock_init -Wl,--wrap,pthread_rwlock_rdlock \
+                             -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_wrlock \
+                             -Wl,--wrap,pthread_mutex_trylock -Wl,--wrap,OSHash_Get")
 
 LIST(APPEND analysisd_names "test_logtest-config")
 LIST(APPEND analysisd_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug2 -Wl,--wrap,get_nproc -Wl,--wrap,cJSON_CreateObject \
