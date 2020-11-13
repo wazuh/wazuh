@@ -75,7 +75,8 @@ def get_agents_summary_status(agent_list=None):
     if len(agent_list) != 0:
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
-        db_query = WazuhDBQueryAgents(limit=None, select=['status'], **rbac_filters)
+        # We don't consider agent 000 in order to get the summary
+        db_query = WazuhDBQueryAgents(limit=None, select=['status'], query="id!=000", **rbac_filters)
         data = db_query.run()
 
         for agent in data['items']:
@@ -87,7 +88,7 @@ def get_agents_summary_status(agent_list=None):
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def get_agents_summary_os(agent_list=None):
-    """Gets a list of available OS.
+    """Get a list of available OS.
 
     Parameters
     ----------
@@ -104,8 +105,9 @@ def get_agents_summary_os(agent_list=None):
     if len(agent_list) != 0:
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
+        # We don't consider agent 000 in order to get the summary
         db_query = WazuhDBQueryAgents(select=['os.platform'], default_sort_field='os_platform', min_select_fields=set(),
-                                      distinct=True, **rbac_filters)
+                                      distinct=True, query="id!=000", **rbac_filters)
         query_data = db_query.run()
         query_data['items'] = [row['os']['platform'] for row in query_data['items']]
         result.affected_items = query_data['items']
@@ -858,7 +860,9 @@ def upload_group_file(group_list=None, file_data=None, file_name='agent.conf'):
 def get_full_overview() -> WazuhResult:
     """Get information about agents.
 
-    :return: Dictionary with information about agents
+    Returns
+    -------
+    Dictionary with information about agents
     """
     # get information from different methods of Agent class
     stats_distinct_node = get_distinct_agents(fields=['node_name']).affected_items
