@@ -2480,4 +2480,4 @@ with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
         for d_role_name, payload in default_relationships[next(iter(default_relationships))]['roles'].items():
             for d_rule_name in payload['rule_ids']:
                 rrum.add_rule_to_role(role_id=rm.get_role(name=d_role_name)['id'],
-                                      rule_id=rum.get_rule_by_name(d_rule_name)['id'])
+                                      rule_id=rum.get_rule_by_name(d_rule_name)['id'], force_admin=True)
