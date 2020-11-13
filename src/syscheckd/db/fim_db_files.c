@@ -115,6 +115,7 @@ int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
 
 }
 
+// LCOV_EXCL_START
 int fim_db_delete_not_scanned(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
     return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_db_remove_path, storage,
                                     (void *) true, (void *) FIM_SCHEDULED, NULL);
@@ -130,6 +131,7 @@ int fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file, pthread_mut
     return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_db_remove_path, storage,
                                     (void *) true, (void *) (fim_event_mode) mode, (void *) w_evt);
 }
+// LCOV_EXCL_STOP
 
 fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt) {
 
