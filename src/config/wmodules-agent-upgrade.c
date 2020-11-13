@@ -132,7 +132,7 @@ int wm_agent_upgrade_read(__attribute__((unused)) const OS_XML *xml, xml_node **
             }
         } else if (!strcmp(nodes[i]->element, XML_CA_VERIFICATION)) {
             XML_NODE childs = OS_GetElementsbyNode(xml, nodes[i]);
-            if (wm_agent_upgrade_read_ca_verification(childs, &data->agent_config.enable_ca_verification)) {
+            if (!childs || wm_agent_upgrade_read_ca_verification(childs, &data->agent_config.enable_ca_verification)) {
                 OS_ClearNode(childs);
                 return OS_INVALID;
             }
