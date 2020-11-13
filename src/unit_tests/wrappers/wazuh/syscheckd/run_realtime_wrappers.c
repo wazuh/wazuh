@@ -26,6 +26,13 @@ int __wrap_realtime_adddir(const char *dir, int whodata, __attribute__((unused))
     return mock();
 }
 
+
 int __wrap_realtime_start() {
     return 0;
+}
+
+void expect_realtime_adddir_call(const char *path, int whodata, int ret) {
+    expect_string(__wrap_realtime_adddir, dir, path);
+    expect_value(__wrap_realtime_adddir, whodata, whodata);
+    will_return(__wrap_realtime_adddir, ret);
 }

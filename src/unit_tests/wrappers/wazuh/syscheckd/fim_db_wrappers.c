@@ -213,6 +213,29 @@ int __wrap_fim_db_sync_path_range(fdb_t *fim_sql,
     return mock();
 }
 
+void expect_fim_db_get_path_range_call(const fdb_t *db,
+                                       const char *start_str,
+                                       const char *top_str,
+                                       int storage,
+                                       fim_tmp_file *tmp_file,
+                                       int ret) {
+
+    expect_value(__wrap_fim_db_get_path_range, fim_sql, db);
+    expect_value(__wrap_fim_db_get_path_range, type, FIM_TYPE_FILE);
+    expect_string(__wrap_fim_db_get_path_range, start, start_str);
+    expect_string(__wrap_fim_db_get_path_range, top, top_str);
+    expect_value(__wrap_fim_db_get_path_range, storage, storage);
+    will_return(__wrap_fim_db_get_path_range, tmp_file);
+    will_return(__wrap_fim_db_get_path_range, ret);
+}
+
+void expect_fim_db_delete_range_call(const fdb_t *db, int storage, const fim_tmp_file *file, int ret){
+    expect_value(__wrap_fim_db_delete_range, fim_sql, db);
+    expect_value(__wrap_fim_db_delete_range, storage, storage);
+    expect_memory(__wrap_fim_db_delete_range, file, file, sizeof(file));
+    will_return(__wrap_fim_db_delete_range, ret);
+}
+
 #ifndef WIN32
 fim_entry *__wrap_fim_db_get_entry_from_sync_msg(fdb_t *fim_sql,
                                                  __attribute__((unused)) fim_type type,

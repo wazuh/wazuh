@@ -94,6 +94,21 @@ int __wrap_fim_db_sync_path_range(fdb_t *fim_sql,
                                   fim_tmp_file *file,
                                   int storage);
 
+/**
+ * @brief This function loads the expect and will_return calls for the wrapper of fim_db_get_path_range
+ */
+void expect_fim_db_get_path_range_call(const fdb_t *db,
+                                       const char *start_str,
+                                       const char *top_str,
+                                       int storage,
+                                       fim_tmp_file *tmp_file,
+                                       int ret);
+
+/**
+ * @brief This function loads the expect and will_return calls for the wrapper of fim_db_delete_range
+ */
+void expect_fim_db_delete_range_call(const fdb_t *db, int storage, const fim_tmp_file *file, int ret);
+
 #ifndef WIN32
 fim_entry *__wrap_fim_db_get_entry_from_sync_msg(fdb_t *fim_sql,
                                                  __attribute__((unused)) fim_type type,
@@ -103,8 +118,8 @@ fim_entry *__wrap_fim_db_get_entry_from_sync_msg(fdb_t *fim_sql,
 fim_entry *__wrap_fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const char *path);
 #endif
 
-#endif
-
 int __wrap_fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **buffer);
 
 void __wrap_fim_db_clean_file(fim_tmp_file **file, int storage);
+
+#endif

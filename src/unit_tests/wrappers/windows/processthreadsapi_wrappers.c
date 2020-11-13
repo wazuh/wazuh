@@ -43,3 +43,9 @@ BOOL wrap_OpenProcessToken(__UNUSED_PARAM (HANDLE  ProcessHandle),
     *TokenHandle = mock_type(HANDLE);
     return mock();
 }
+
+void expect_SetThreadPriority_call(HANDLE handle, int priority, int ret) {
+    expect_value(wrap_SetThreadPriority, hThread, handle);
+    expect_value(wrap_SetThreadPriority, nPriority, priority);
+    will_return(wrap_SetThreadPriority, ret);
+}
