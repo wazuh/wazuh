@@ -5078,7 +5078,6 @@ int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output) {
     int last_id = 0;
     int keep_alive = 0;
     char *sync_status = NULL;
-    char* out = NULL;
     char *next = NULL;
     const char delim[2] = " ";
     char *savedptr = NULL;
@@ -5101,19 +5100,21 @@ int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output) {
     }
     keep_alive = atoi(next);
 
-    /* Get sync_status*/
-    next = strtok_r(NULL, delim, &savedptr);
-    if (next == NULL) {
-        mdebug1("Invalid arguments sync_status not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments sync_status not found");
+    // Execute command
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_agents_to_disconnect(wdb, last_id, keep_alive, sync_status, &status);
+    if (!result) {
+        mdebug1("Error getting agents to be disconnected from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting agents to be disconnected from global.db.");
         return OS_INVALID;
     }
-    sync_status = next;
 
-    wdbc_result status = wdb_global_get_agents_to_disconnect(wdb, last_id, keep_alive, sync_status, &out);
+    //Print response
+    char* out = cJSON_PrintUnformatted(result);
     snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], out);
 
-    os_free(out);
+    cJSON_Delete(result);
+    os_free(out)
 
     return OS_SUCCESS;
 }

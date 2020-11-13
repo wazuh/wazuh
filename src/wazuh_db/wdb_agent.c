@@ -1169,18 +1169,24 @@ int* wdb_disconnect_agents(int keepalive, const char *sync_status, int *sock) {
             char* payload = NULL;
             status = wdbc_parse_result(wdboutput, &payload);
             if (status == WDBC_OK || status == WDBC_DUE) {
-                const char delim = ',';
-                const char sdelim[] = { delim, '\0' };
-                //Realloc new size
-                int new_len = os_strcnt(payload, delim)+1;
-                os_realloc(array, sizeof(int)*(len+new_len+1), array);
-                //Append IDs to array
-                char* agent_id = NULL;
-                char *savedptr = NULL;
-                for (agent_id = strtok_r(payload, sdelim, &savedptr); agent_id; agent_id = strtok_r(NULL, sdelim, &savedptr)) {
-                    array[len] = atoi(agent_id);
-                    last_id = array[len];
-                    len++;
+                cJSON* response = cJSON_Parse(payload);                
+                if (response) {
+                    //Realloc new size   
+                    os_realloc(array, sizeof(int)*(len+cJSON_GetArraySize(response)+1), array);
+                    //Append IDs to array
+                    cJSON* agent = NULL;
+                    cJSON_ArrayForEach(agent, response) {
+                        cJSON* id = cJSON_GetObjectItem(agent,"id");
+                        if (cJSON_IsNumber(id)) {
+                            array[len] = id->valueint;
+                            last_id = id->valueint;
+                            len++;
+                        }
+                    }                    
+                    cJSON_Delete(response);
+                }
+                else {
+                    status = WDBC_ERROR;
                 }
             }
         }
