@@ -53,8 +53,8 @@ int check_fim_db_reg_value_data(fim_registry_value_data *value_to_check, int id)
     return 0;
 }
 
-fim_registry_key *create_reg_key(int id, const char *path, const char *perm, const char *uid, const char *gid, const char *user_name,
-                                 const char *group_name) {
+fim_registry_key *create_reg_key(int id, const char *path, const char *perm, const char *uid, const char *gid,
+                                 const char *user_name, const char *group_name) {
     fim_registry_key *ret;
 
     os_calloc(1, sizeof(fim_registry_key), ret);
@@ -178,9 +178,11 @@ int count_scanned(int type) {
     char *err_msg = NULL;
 
     if (type == 0){
-        sqlite3_exec(syscheck.database->db, "SELECT * FROM registry_key WHERE scanned = 1", n_scanned_callback, &n_scanned, &err_msg);
+        sqlite3_exec(syscheck.database->db, "SELECT * FROM registry_key WHERE scanned = 1", n_scanned_callback,
+                     &n_scanned, &err_msg);
     } else if (type == 1){
-        sqlite3_exec(syscheck.database->db, "SELECT * FROM registry_data WHERE scanned = 1", n_scanned_callback, &n_scanned, &err_msg);
+        sqlite3_exec(syscheck.database->db, "SELECT * FROM registry_data WHERE scanned = 1", n_scanned_callback,
+                     &n_scanned, &err_msg);
     }
 
     if (err_msg) {
