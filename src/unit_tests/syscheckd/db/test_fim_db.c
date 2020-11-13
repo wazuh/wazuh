@@ -26,7 +26,7 @@
 #include "wrappers/wazuh/shared/integrity_op_wrappers.h"
 #include "wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "wrappers/wazuh/syscheckd/run_check_wrappers.h"
-#include "wrappers/wazuh/syscheckd/seechanges_wrappers.h"
+#include "wrappers/wazuh/syscheckd/fim_diff_changes_wrappers.h"
 
 #include "db/fim_db.h"
 
