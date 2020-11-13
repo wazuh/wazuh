@@ -213,6 +213,14 @@ int __wrap_OSHash_Add_ex(OSHash *hash, const char *key, void *data) {
     return mock_type(int);
 }
 
+int __wrap_OSHash_Add(OSHash *hash, const char *key, void *data) {
+
+    if (key) check_expected(key);
+    if (data) check_expected(data);
+    if (data && store_session) stored_session = (w_logtest_session_t *) data;
+    return mock_type(int);
+}
+
 void * __wrap_OSHash_Get_ex(OSHash *self, const char *key) {
     if (key) check_expected(key);
     return mock_type(void *);
@@ -1115,13 +1123,9 @@ void test_w_logtest_register_session_dont_remove(void ** state) {
     w_logtest_session_t session;
     w_strdup("test", session.token);
 
-    will_return(__wrap_pthread_rwlock_wrlock, 0);
-
-    will_return(__wrap_pthread_rwlock_unlock, 0);
-
-    expect_value(__wrap_OSHash_Add_ex, key, session.token);
-    expect_value(__wrap_OSHash_Add_ex, data, &session);
-    will_return(__wrap_OSHash_Add_ex, 0);
+    expect_value(__wrap_OSHash_Add, key, session.token);
+    expect_value(__wrap_OSHash_Add, data, &session);
+    will_return(__wrap_OSHash_Add, 0);
 
     w_logtest_register_session(&connection, &session);
 
@@ -1159,7 +1163,6 @@ void test_w_logtest_register_session_remove_old(void ** state) {
     w_strdup("other_session", hash_node_other->key);
     hash_node_other->data = &other_session;
 
-    will_return(__wrap_pthread_rwlock_wrlock, 0);
     will_return(__wrap_OSHash_Begin, hash_node_other);
     will_return(__wrap_OSHash_Next, hash_node_old);
 
@@ -1184,11 +1187,9 @@ void test_w_logtest_register_session_remove_old(void ** state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "(7206): The session 'old_session' was closed successfully");
 
-    will_return(__wrap_pthread_rwlock_unlock, 0);
-
-    expect_value(__wrap_OSHash_Add_ex, key, session.token);
-    expect_value(__wrap_OSHash_Add_ex, data, &session);
-    will_return(__wrap_OSHash_Add_ex, 0);
+    expect_value(__wrap_OSHash_Add, key, session.token);
+    expect_value(__wrap_OSHash_Add, data, &session);
+    will_return(__wrap_OSHash_Add, 0);
     
 
     w_logtest_register_session(&connection, &session);
@@ -4776,11 +4777,11 @@ void test_w_logtest_process_request_log_processing_ok_session_expired(void ** st
     will_return(__wrap_pthread_mutex_lock, 0);
     /* w_logtest_register_session */
     will_return(__wrap_pthread_rwlock_wrlock, 0);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
     store_session = true;
-    expect_string(__wrap_OSHash_Add_ex, key, "4995f9b3");
-    expect_any(__wrap_OSHash_Add_ex, data);
-    will_return(__wrap_OSHash_Add_ex, 0);
+    expect_string(__wrap_OSHash_Add, key, "4995f9b3");
+    expect_any(__wrap_OSHash_Add, data);
+    will_return(__wrap_OSHash_Add, 0);
+    will_return(__wrap_pthread_rwlock_unlock, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(7202): Session initialized with token '4995f9b3'");
 

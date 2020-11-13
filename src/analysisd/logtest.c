@@ -828,7 +828,6 @@ int w_logtest_check_input_request(cJSON * root, char ** msg, OSList * list_msg) 
 
 void w_logtest_register_session(w_logtest_connection_t * connection, w_logtest_session_t * session) {
 
-    w_rwlock_wrlock(&w_logtest_sessions->mutex);
     connection->active_client += 1;
 
     /* Find the client who has not made a query for the longest time and remove session */
@@ -836,10 +835,8 @@ void w_logtest_register_session(w_logtest_connection_t * connection, w_logtest_s
         w_logtest_remove_old_session(connection);
     }
 
-    w_rwlock_unlock(&w_logtest_sessions->mutex);
-
     /* Register session */
-    OSHash_Add_ex(w_logtest_sessions, session->token, session);
+    OSHash_Add(w_logtest_sessions, session->token, session);
 }
 
 
@@ -1043,8 +1040,10 @@ int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_
 
     if (!current_session) { /* If it doesn't exist, create new session */
         if (current_session = w_logtest_initialize_session(list_msg), current_session) {
+            w_rwlock_wrlock(&w_logtest_sessions->mutex);
             w_mutex_lock(&current_session->mutex);
             w_logtest_register_session(connection, current_session);
+            w_rwlock_unlock(&w_logtest_sessions->mutex);
             mdebug1(LOGTEST_INFO_TOKEN_SESSION, current_session->token);
             sminfo(list_msg, LOGTEST_INFO_TOKEN_SESSION, current_session->token);
         } else {

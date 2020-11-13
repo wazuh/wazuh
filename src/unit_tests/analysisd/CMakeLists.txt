@@ -90,7 +90,7 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,ReadConfig -Wl,--wrap,_merror -Wl,--wrap
                              -Wl,--wrap,OSHash_SetFreeDataPointer -Wl,--wrap,OSHash_Delete \
                              -Wl,--wrap,pthread_rwlock_init -Wl,--wrap,pthread_rwlock_rdlock \
                              -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_wrlock \
-                             -Wl,--wrap,pthread_mutex_trylock -Wl,--wrap,OSHash_Get")
+                             -Wl,--wrap,pthread_mutex_trylock -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Add")
 
 LIST(APPEND analysisd_names "test_logtest-config")
 LIST(APPEND analysisd_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug2 -Wl,--wrap,get_nproc -Wl,--wrap,cJSON_CreateObject \
