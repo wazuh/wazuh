@@ -32,4 +32,5 @@ int __wrap_fim_registry_event(char *key, fim_file_data *data, int pos);
 
 int __wrap_fim_whodata_event(whodata_evt * w_evt);
 
+void __wrap_free_entry(fim_entry *entry);
 #endif
