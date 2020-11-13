@@ -655,6 +655,9 @@ int* wdb_get_agents_by_connection_status(const char* connection_status, int *soc
  */
 int* wdb_disconnect_agents(int keepalive, const char *sync_status, int *sock);
 
+//JJP: Doxygen and location
+wdbc_result wdb_parse_chunk_to_int(char* input, int* output, const char* item, int* last_item, int* last_size);
+
 /**
  * @brief Create database for agent from profile.
  *

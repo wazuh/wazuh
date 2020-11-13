@@ -1152,6 +1152,49 @@ int* wdb_get_agents_by_connection_status (const char* connection_status, int *so
     return array;
 }
 
+wdbc_result wdb_parse_chunk_to_int(char* input, int* output, const char* item, int* last_item, int* last_size) {
+    int len = last_size ? *last_size : 0;
+    int _last_item = 0;
+    char* payload = NULL;
+
+    wdbc_result status = wdbc_parse_result(input, &payload);
+    if (status == WDBC_OK || status == WDBC_DUE) {
+        cJSON* response = cJSON_Parse(payload);
+        if (response) {
+            //Realloc new size
+            os_realloc(output, sizeof(int)*(len+cJSON_GetArraySize(response)+1), output);
+            //Append items to output array
+            cJSON* agent = NULL;
+            cJSON_ArrayForEach(agent, response) {
+                cJSON* json_item = cJSON_GetObjectItem(agent, item);
+                if (cJSON_IsNumber(json_item)) {
+                    output[len] = json_item->valueint;
+                    _last_item = json_item->valueint;
+                    len++;
+                }
+            }
+            cJSON_Delete(response);
+        }
+        else {
+            status = WDBC_ERROR;
+        }
+    }
+
+    // If status is WDBC_OK terminate the output array
+    if (status == WDBC_OK) {
+        output[len] = -1;
+    }
+    // If status is any error, freed the output array
+    else if (status != WDBC_DUE) {
+        os_free(output);
+    }
+
+    if (last_size) *last_size = len;
+    if (last_item) *last_item = _last_item;
+
+    return status;
+}
+
 int* wdb_disconnect_agents(int keepalive, const char *sync_status, int *sock) {
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -1165,40 +1208,11 @@ int* wdb_disconnect_agents(int keepalive, const char *sync_status, int *sock) {
         // Query WazuhDB
         snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DISCONNECT_AGENTS], last_id, keepalive, sync_status);
         if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
-            // Parse result
-            char* payload = NULL;
-            status = wdbc_parse_result(wdboutput, &payload);
-            if (status == WDBC_OK || status == WDBC_DUE) {
-                cJSON* response = cJSON_Parse(payload);                
-                if (response) {
-                    //Realloc new size   
-                    os_realloc(array, sizeof(int)*(len+cJSON_GetArraySize(response)+1), array);
-                    //Append IDs to array
-                    cJSON* agent = NULL;
-                    cJSON_ArrayForEach(agent, response) {
-                        cJSON* id = cJSON_GetObjectItem(agent,"id");
-                        if (cJSON_IsNumber(id)) {
-                            array[len] = id->valueint;
-                            last_id = id->valueint;
-                            len++;
-                        }
-                    }                    
-                    cJSON_Delete(response);
-                }
-                else {
-                    status = WDBC_ERROR;
-                }
-            }
+            status = wdb_parse_chunk_to_int(wdboutput, array, "id", &last_id, &len);
         }
         else {
             status = WDBC_ERROR;
         }
-    }
-    if (status == WDBC_OK) {
-        array[len] = -1;
-    }
-    else {
-        os_free(array);
     }
 
     if (!sock) {
