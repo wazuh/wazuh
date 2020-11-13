@@ -15,6 +15,9 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **API:**
+  - Fixed an error with `POST /security/roles/{role_id}/rules` when removing role-rule relationships. ([#6594](https://github.com/wazuh/wazuh/issues/6594))
+
 - **Core:**
   - Fixed a bug in Remoted that limited the maximum agent number to `MAX_AGENTS-3` instead of `MAX_AGENTS-2`. ([#4560](https://github.com/wazuh/wazuh/pull/4560))
   - Fixed an error in the network library when handling disconnected sockets. ([#6444](https://github.com/wazuh/wazuh/pull/6444))
