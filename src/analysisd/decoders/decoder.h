@@ -85,6 +85,27 @@ typedef struct dbsync_context_t {
     cJSON * data;
 } dbsync_context_t;
 
+/**
+ * @brief Structure to save decoders which have program_name or parent with program_name
+ */
+extern OSDecoderNode *os_analysisd_decoderlist_pn;
+
+/**
+ * @brief Structure to save decoders which haven't program_name or parent without program_name
+ */
+extern OSDecoderNode *os_analysisd_decoderlist_nopn;
+
+/**
+ * @brief Hash to save data which have the same id
+ *
+ * Only for Analysisd use
+ */
+extern OSHash *os_analysisd_acm_store;
+
+/**
+ * @brief Decoder list to save internals decoders
+ */
+extern OSStore *os_analysisd_decoder_store;
 
 /**
  * @brief Decoding a event

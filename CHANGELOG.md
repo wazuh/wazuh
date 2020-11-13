@@ -67,7 +67,6 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 
-<<<<<<< HEAD
 ### Added
 
 - Wazuh API:
@@ -75,10 +74,6 @@ All notable changes to this project will be documented in this file.
 - Added new framework modules to use the logtest tool ([#5870](https://github.com/wazuh/wazuh/pull/5870))
 
 ## [v4.0.0] -
-=======
-
-## [v4.0.0] - 2020-10-23
->>>>>>> master
 
 ### Added
 

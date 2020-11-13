@@ -25,6 +25,10 @@
 #define STATIC static
 #endif
 
+OSDecoderNode *os_analysisd_decoderlist_pn;
+OSDecoderNode *os_analysisd_decoderlist_nopn;
+OSStore *os_analysisd_decoder_store;
+
 STATIC OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi, OSList* log_msg);
 
 /* Create the Event List */

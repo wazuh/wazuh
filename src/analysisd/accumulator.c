@@ -40,6 +40,14 @@ typedef struct _OS_ACM_Store {
     char *data;
 } OS_ACM_Store;
 
+
+OSHash *os_analysisd_acm_store;
+
+int os_analysisd_acm_lookups;
+
+time_t os_analysisd_acm_purge_ts;
+
+
 /**
  * @brief Copies the C string pointed by src into the array pointed by dst
  * @param dst destination

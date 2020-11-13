@@ -21,6 +21,9 @@ int fts_list_size;
 static FILE *fp_list = NULL;
 static FILE **fp_ignore = NULL;
 
+OSList *os_analysisd_fts_list;
+OSHash *os_analysisd_fts_store;
+
 /* Multiple readers / one write mutex */
 static pthread_rwlock_t file_update_rwlock;
 static pthread_mutex_t fts_write_lock;

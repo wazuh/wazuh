@@ -10,6 +10,9 @@
 #include "logtest.h"
 
 
+OSHash *w_logtest_sessions;
+
+
 void *w_logtest_init() {
 
     w_logtest_connection_t connection;

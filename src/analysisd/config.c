@@ -24,6 +24,10 @@ _Config Config;       /* Global Config structure */
 rlim_t nofile;
 int sys_debug_level;
 
+#ifdef LIBGEOIP_ENABLED
+GeoIP *geoipdb;
+#endif
+
 int GlobalConf(const char *cfgfile)
 {
     int modules = 0;

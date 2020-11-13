@@ -33,7 +33,7 @@ typedef struct w_logtest_conf_t {
 /**
  * @brief Global variable to save the configuration
  */
-w_logtest_conf_t w_logtest_conf;
+extern w_logtest_conf_t w_logtest_conf;
 
 
 /**

@@ -27,6 +27,8 @@ STATIC int _AddtoRule(int sid, int level, int none, const char *group,
                RuleNode *r_node, RuleInfo *read_rule);
 
 
+RuleNode *os_analysisd_rulelist;
+
 /* Create the RuleList */
 void OS_CreateRuleList() {
     os_analysisd_rulelist = NULL;

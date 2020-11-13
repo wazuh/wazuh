@@ -25,11 +25,17 @@
 RuleInfo *currently_rule;
 int default_timeframe;
 
+unsigned int hourly_alerts;
+
 /* Do diff mutex */
 static pthread_mutex_t do_diff_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Hourly alerts mutex */
 static pthread_mutex_t hourly_alert_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+w_queue_t * writer_queue_log_fts;
+
+EventList *os_analysisd_last_events;
 
 /* Change path for test rule */
 #ifdef TESTRULE

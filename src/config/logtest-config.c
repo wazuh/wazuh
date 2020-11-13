@@ -10,12 +10,12 @@
 
 #include "logtest-config.h"
 
+w_logtest_conf_t w_logtest_conf;
 
 const char *enabled = "enabled";
 const char *threads = "threads";
 const char *max_sessions = "max_sessions";
 const char *session_timeout = "session_timeout";
-
 
 int Read_Logtest(XML_NODE node) {
 

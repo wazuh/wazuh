@@ -13,27 +13,19 @@
 
 #include "eventinfo.h"
 
-
-/**
- * @brief Hash to save data which have the same id
- *
- * Only for Analysisd use
- */
-OSHash *os_analysisd_acm_store;
-
 /**
  * @brief Counter of the number of times purged
  *
  * Only for Analysisd use
  */
-int os_analysisd_acm_lookups;
+extern int os_analysisd_acm_lookups;
 
 /**
  * @brief Counter of interval time since the last purge
  *
  * Only for Analysisd use
  */
-time_t os_analysisd_acm_purge_ts;
+extern time_t os_analysisd_acm_purge_ts;
 
 /**
  * @brief Initialize accumulator engine

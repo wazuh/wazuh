@@ -88,7 +88,7 @@
 typedef struct EventList EventList;
 struct _Eventinfo;
 
-unsigned int hourly_alerts;
+extern unsigned int hourly_alerts;
 
 typedef struct _RuleInfoDetail {
     int type;
@@ -221,6 +221,20 @@ typedef struct _RuleNode {
     struct _RuleNode *child;
 } RuleNode;
 
+/**
+ * @brief Structure to save all rules read in starting.
+ */
+extern RuleNode *os_analysisd_rulelist;
+
+/**
+ * @brief FTS log writer queue
+ */
+extern w_queue_t * writer_queue_log_fts;
+
+/**
+ * @brief Structure to save the last list of events.
+ */
+extern EventList *os_analysisd_last_events;
 
 RuleInfoDetail *zeroinfodetails(int type, const char *data);
 int get_info_attributes(char **attributes, char **values, OSList* log_msg);

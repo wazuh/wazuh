@@ -11,13 +11,13 @@
 #include "shared.h"
 #include "rules.h"
 #include "cdb/cdb.h"
-#include "analysisd.h"
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 
-
+ListNode *os_analysisd_cdblists;
+ListRule *os_analysisd_cdbrules;
 
 /* Create the ListRule */
 void OS_CreateListsList() {

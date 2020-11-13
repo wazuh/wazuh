@@ -208,6 +208,9 @@ static w_queue_t * dispatch_dbsync_input;
 /* Upgrade module decoder  */
 static w_queue_t * upgrade_module_input;
 
+/* FTS log writer queue */
+extern w_queue_t * writer_queue_log_fts;
+
 /* Hourly firewall mutex */
 static pthread_mutex_t hourly_firewall_mutex = PTHREAD_MUTEX_INITIALIZER;
 

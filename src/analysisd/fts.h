@@ -25,12 +25,12 @@
 /**
  * @brief Structure to save previous fts events
  */
-OSList *os_analysisd_fts_list;
+extern OSList *os_analysisd_fts_list;
 
 /**
  * @brief Structure to save fts values processed
  */
-OSHash *os_analysisd_fts_store;
+extern OSHash *os_analysisd_fts_store;
 
 
 /**

@@ -105,7 +105,7 @@ typedef struct w_logtest_session_t {
 /**
  * @brief List of client actives
  */
-OSHash *w_logtest_sessions;
+extern OSHash *w_logtest_sessions;
 
 /**
  * @brief An instance of w_logtest_connection allow managing the connections with the logtest socket
