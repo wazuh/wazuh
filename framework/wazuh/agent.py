@@ -60,7 +60,7 @@ def get_distinct_agents(agent_list=None, offset=0, limit=common.database_limit, 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def get_agents_summary_status(agent_list=None):
-    """Counts the number of agents by status.
+    """Count the number of agents by status.
 
     Parameters
     ----------
