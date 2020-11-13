@@ -8,8 +8,10 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#include "syscollectorImp.h"
 #include <iostream>
+#include "syscollectorImp.h"
+#include "stringHelper.h"
+#include "hashHelper.h"
 
 constexpr auto PACKAGES_SQL_STATEMENT
 {
@@ -60,6 +62,7 @@ constexpr auto PROCESSES_SQL_STATEMENT
     tgid BIGINT,
     tty BIGINT,
     processor BIGINT,
+    checksum TEXT,
     PRIMARY KEY (pid));)"
 };
 
@@ -79,6 +82,7 @@ constexpr auto OS_SQL_STATEMENT
         release TEXT,
         version TEXT,
         os_release TEXT,
+        checksum TEXT,
         PRIMARY KEY (os_name)
     );)"
 };
@@ -93,6 +97,7 @@ constexpr auto HARDWARE_SQL_STATEMENT
         ram_total BIGINT CHECK (ram_total > 0),
         ram_free BIGINT CHECK (ram_free > 0),
         ram_usage INTEGER CHECK (ram_usage >= 0 AND ram_usage <= 100),
+        checksum TEXT,
         PRIMARY KEY (board_serial)
     );)"
 };
@@ -150,6 +155,13 @@ static void updateAndNotifyChanges(const DBSYNC_HANDLE handle, const std::string
     nlohmann::json input;
     input["table"] = table;
     input["data"] = values;
+    for (auto& item : input["data"])
+    {
+        const auto content{item.dump()};
+        Utils::HashData hash;
+        hash.update(content.c_str(), content.size());
+        item["checksum"] = Utils::asciiToHex(hash.hash());
+    }
     txn.syncTxnRow(input);
     txn.getDeletedRows(callback);
 }

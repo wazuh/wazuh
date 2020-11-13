@@ -11,6 +11,7 @@ include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${CMAKE_SOURCE_DIR}/sysOsInfo/)
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
 link_directories(${SRC_FOLDER}/shared_modules/rsync/build/lib)
+link_directories(${SRC_FOLDER}/external/openssl/)
 
 if(COVERITY)
   add_definitions(-D__GNUC__=8)
@@ -64,7 +65,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         dbsync
         psapi
         iphlpapi
+        crypto
+        ssl
         ws2_32
+        crypt32
         -static-libgcc -static-libstdc++
     )
 elseif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
