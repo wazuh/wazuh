@@ -864,17 +864,20 @@ def get_full_overview() -> WazuhResult:
     -------
     Dictionary with information about agents
     """
-    # get information from different methods of Agent class
-    stats_distinct_node = get_distinct_agents(fields=['node_name']).affected_items
+    # We don't consider agent 000 in order to get the summary
+    q = "id!=000"
+
+    # Get information from different methods of Agent class
+    stats_distinct_node = get_distinct_agents(fields=['node_name'], q=q).affected_items
     groups = get_agent_groups().affected_items
     stats_distinct_os = get_distinct_agents(fields=['os.name',
-                                                    'os.platform', 'os.version']).affected_items
-    stats_version = get_distinct_agents(fields=['version']).affected_items
+                                                    'os.platform', 'os.version'], q=q).affected_items
+    stats_version = get_distinct_agents(fields=['version'], q=q).affected_items
     summary = get_agents_summary_status()['data'] if 'data' in get_agents_summary_status() else dict()
     try:
         last_registered_agent = [get_agents(limit=1,
                                             sort={'fields': ['dateAdd'], 'order': 'desc'},
-                                            q='id!=000').affected_items[0]]
+                                            q=q).affected_items[0]]
     except IndexError:  # an IndexError could happen if there are not registered agents
         last_registered_agent = []
     # combine results in an unique dictionary
