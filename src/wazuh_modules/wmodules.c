@@ -480,12 +480,3 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
     return match;
 }
 
-#ifdef __MACH__
-void freegate(gateway *gate){
-    if(!gate){
-        return;
-    }
-    os_free(gate->addr);
-    os_free(gate);
-}
-#endif

@@ -172,8 +172,4 @@ size_t wmcom_dispatch(char * command, char ** output);
 size_t wmcom_getconfig(const char * section, char ** output);
 void wmcom_sync(const char * section, char** output);
 
-#ifdef __MACH__
-void freegate(gateway *gate);
-#endif
-
 #endif // W_MODULES
