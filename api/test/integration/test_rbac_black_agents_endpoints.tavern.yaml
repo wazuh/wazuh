@@ -1233,6 +1233,7 @@ stages:
                 - '002'
           total_affected_items: 1
           total_failed_items: 2
+    delay_after: !float "{restart_delay}"
 
   - name: Try to assign all agents to group1 (Partially allowed, user agnostic)
     request:
@@ -1253,6 +1254,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
+    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /groups/{group_id}/configuration
@@ -1271,6 +1273,7 @@ stages:
         "{file_xml:s}"
     response:
       status_code: 200
+    delay_after: !float "{restart_delay}"
 
   - name: Try to update group3 configuration (Denied)
     request:

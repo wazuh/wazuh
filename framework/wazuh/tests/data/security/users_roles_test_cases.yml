@@ -112,8 +112,16 @@ create_user:
     result:
       affected_items: []
       failed_items:
-        "5007":
+        "5009":
           - new_user1
+  - params:
+      username: new_user2
+      password: WazuhWazuh1
+    result:
+      affected_items: []
+      failed_items:
+        "5007":
+          - new_user2
 update_user:
   - params:
       user_id:
@@ -144,7 +152,7 @@ update_user:
     result:
       affected_items: []
       failed_items:
-        "5007":
+        "5009":
           - 106
 remove_users:
   - params:

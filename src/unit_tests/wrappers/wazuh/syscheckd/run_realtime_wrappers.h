@@ -11,8 +11,6 @@
 #ifndef RUN_REALTIME_WRAPPERS_H
 #define RUN_REALTIME_WRAPPERS_H
 
-int __wrap_count_watches();
-
 int __wrap_realtime_adddir(const char *dir, int whodata, int followsl);
 
 int __wrap_realtime_start();

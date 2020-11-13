@@ -34,7 +34,6 @@ ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
 endif
-MAXAGENTS?=100000
 # XXX Becareful NO EXTRA Spaces here
 PREFIX?=/var/ossec
 PG_CONFIG?=pg_config
@@ -76,7 +75,7 @@ endif
 ONEWAY?=no
 CLEANFULL?=no
 
-DEFINES=-DMAX_AGENTS=${MAXAGENTS} -DOSSECHIDS
+DEFINES=-DOSSECHIDS
 DEFINES+=-DDEFAULTDIR=\"${PREFIX}\"
 DEFINES+=-DUSER=\"${OSSEC_USER}\"
 DEFINES+=-DREMUSER=\"${OSSEC_USER_REM}\"
@@ -468,7 +467,6 @@ help: failtarget
 	@echo "   make DEBUG=yes               Build with symbols and without optimization. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DEBUGAD=yes             Enables extra debugging logging in ossec-analysisd. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make PREFIX=/path            Install OSSEC to '/path'. Defaults to /var/ossec"
-	@echo "   make MAXAGENTS=NUMBER        Set the number of maximum agents to NUMBER. Defaults to 2048"
 	@echo "   make ONEWAY=yes              Disables manager's ACK towards agent. It allows connecting agents without backward connection from manager. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make CLEANFULL=yes           Makes the alert mailing subject clear in the format: '<location> - <level> - <description>'. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make RESOURCES_URL           Set the Wazuh resources URL"
@@ -513,7 +511,6 @@ settings:
 	@echo "    DEBUG:              ${DEBUG}"
 	@echo "    DEBUGAD             ${DEBUGAD}"
 	@echo "    PREFIX:             ${PREFIX}"
-	@echo "    MAXAGENTS:          ${MAXAGENTS}"
 	@echo "    DATABASE:           ${DATABASE}"
 	@echo "    ONEWAY:             ${ONEWAY}"
 	@echo "    CLEANFULL:          ${CLEANFULL}"

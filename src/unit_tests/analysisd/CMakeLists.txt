@@ -2,15 +2,15 @@
 file(GLOB analysisd_files
     ${SRC_FOLDER}/analysisd/*.o
     ${SRC_FOLDER}/analysisd/alerts/*.o
-    ${SRC_FOLDER}/analysisd/output/*.o
-    ${SRC_FOLDER}/analysisd/format/*.o
     ${SRC_FOLDER}/analysisd/cdb/*.o
-    ${SRC_FOLDER}/analysisd/alerts/*.o
+    ${SRC_FOLDER}/analysisd/compiled_rules/*.o
     ${SRC_FOLDER}/analysisd/decoders/*.o
     ${SRC_FOLDER}/analysisd/output/*.o
     ${SRC_FOLDER}/analysisd/format/*.o
     ${SRC_FOLDER}/analysisd/decoders/plugins/*.o
-    ${SRC_FOLDER}/analysisd/compiled_rules/*.o)
+    ${SRC_FOLDER}/analysisd/format/*.o
+    ${SRC_FOLDER}/analysisd/output/*.o
+   )
 
 add_library(ANALYSISD_O STATIC ${analysisd_files})
 
@@ -115,6 +115,8 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,Free_Eventinfo")
 
 LIST(APPEND analysisd_names "test_logmsg")
 LIST(APPEND analysisd_flags "-Wl,--wrap,isDebug -Wl,--wrap,OSList_AddData -Wl,--wrap,vsnprintf")
+LIST(APPEND analysisd_names "test_decoder_rootcheck")
+LIST(APPEND analysisd_flags "-Wl,--wrap,send_rootcheck_log -Wl,--wrap,_merror -Wl,--wrap,_mdebug1")
 
 list(LENGTH analysisd_names count)
 math(EXPR count "${count} - 1")
