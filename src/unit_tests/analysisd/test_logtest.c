@@ -986,6 +986,19 @@ void test_w_logtest_check_inactive_sessions_remove(void **state)
 }
 
 /* w_logtest_remove_old_session */
+void test_w_logtest_remove_old_session_Begin_fail(void ** state) {
+
+    w_logtest_connection_t connection;
+
+    connection.active_client = 2;
+    w_logtest_conf.max_sessions = 1;
+
+    will_return(__wrap_OSHash_Begin, NULL);
+
+    w_logtest_remove_old_session(&connection);
+
+}
+
 void test_w_logtest_remove_old_session_one(void ** state) {
 
     w_logtest_connection_t connection;
@@ -4911,6 +4924,7 @@ int main(void)
         cmocka_unit_test(test_w_logtest_check_inactive_sessions_no_remove),
         cmocka_unit_test(test_w_logtest_check_inactive_sessions_remove),
         // Test w_logtest_remove_old_session
+        cmocka_unit_test(test_w_logtest_remove_old_session_Begin_fail),
         cmocka_unit_test(test_w_logtest_remove_old_session_one),
         cmocka_unit_test(test_w_logtest_remove_old_session_many),
         // Test w_logtest_register_session
