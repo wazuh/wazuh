@@ -191,7 +191,7 @@ int wm_agent_upgrade_read(__attribute__((unused)) const OS_XML *xml, xml_node **
     #ifdef CLIENT
     if (data->agent_config.enable_ca_verification) {
         if (!wcom_ca_store || !wcom_ca_store[0]) {
-            os_realloc(wcom_ca_store, 2, wcom_ca_store);
+            os_realloc(wcom_ca_store, 2 * sizeof(char *), wcom_ca_store);
             os_strdup(DEF_CA_STORE, wcom_ca_store[0]);
             wcom_ca_store[1] = NULL;
         }
@@ -208,7 +208,10 @@ static int wm_agent_upgrade_read_ca_verification(xml_node **nodes, unsigned int 
     int ca_store_count = 0;
 
     if (wcom_ca_store) {
-        os_realloc(wcom_ca_store, ca_store_count + 1, wcom_ca_store);
+        for (int i = 0; wcom_ca_store[i]; ++i) {
+            os_free(wcom_ca_store[i]);
+        }
+        os_realloc(wcom_ca_store, sizeof(char *), wcom_ca_store);
         wcom_ca_store[0] = NULL;
     }
 
@@ -223,7 +226,7 @@ static int wm_agent_upgrade_read_ca_verification(xml_node **nodes, unsigned int 
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_CA_STORE)) {
-            os_realloc(wcom_ca_store, ca_store_count + 2, wcom_ca_store);
+            os_realloc(wcom_ca_store, (ca_store_count + 2) * sizeof(char *), wcom_ca_store);
             os_strdup(nodes[i]->content, wcom_ca_store[ca_store_count]);
             ca_store_count++;
             wcom_ca_store[ca_store_count] = NULL;
