@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - **API:**
-  - `GET /agents/summary/os`, `GET /agents/summary/status` and `GET /agents/overview` will no longer consider `000` as an agent. ([#6574](https://github.com/wazuh/wazuh/pull/6574))
+  - `GET /agents/summary/os`, `GET /agents/summary/status` and `GET /overview/agents` will no longer consider `000` as an agent. ([#6574](https://github.com/wazuh/wazuh/pull/6574))
 
 ### Fixed
 
