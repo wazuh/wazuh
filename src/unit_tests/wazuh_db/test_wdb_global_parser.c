@@ -6,11 +6,14 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "hash_op.h"
+#include "os_err.h"
 #include "wazuh_db/wdb.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_global_wrappers.h"
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
+#include "wazuhdb_op.h"
 
 typedef struct test_struct {
     wdb_t *wdb;
@@ -2220,42 +2223,38 @@ void test_wdb_parse_global_get_agents_by_connection_status_syntax_error(void **s
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_parse_global_get_agents_by_connection_status_query_error(void **state)
+void test_wdb_parse_global_get_agents_by_connection_status_status_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-agents-by-connection-status active";
+    char query[OS_BUFFER_SIZE] = "global get-agents-by-connection-status 0 ";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-connection-status active");
-    expect_string(__wrap_wdb_global_get_agents_by_connection_status, status, "active");
-    will_return(__wrap_wdb_global_get_agents_by_connection_status, NULL);
-    expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent information from global.db.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-connection-status 0 ");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'connection_status' not found.");
 
     ret = wdb_parse(query, data->output);
 
-    assert_string_equal(data->output, "err Error getting agent information from global.db.");
+    assert_string_equal(data->output, "err Invalid arguments 'connection_status' not found");
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_parse_global_get_agents_by_connection_status_success(void **state)
+void test_wdb_parse_global_get_agents_by_connection_status_query_success(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-agents-by-connection-status active";
-    cJSON *j_object = NULL;
-
-    j_object = cJSON_CreateObject();
-    cJSON_AddNumberToObject(j_object, "id", 1);
+    char query[OS_BUFFER_SIZE] = "global get-agents-by-connection-status 0 active";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-connection-status active");
-    expect_string(__wrap_wdb_global_get_agents_by_connection_status, status, "active");
-    will_return(__wrap_wdb_global_get_agents_by_connection_status, j_object);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-connection-status 0 active");
+    expect_value(__wrap_wdb_global_get_agents_by_connection_status, last_agent_id, 0);
+    expect_string(__wrap_wdb_global_get_agents_by_connection_status, connection_status, "active");
+    will_return(__wrap_wdb_global_get_agents_by_connection_status, "MESSAGE");
+    will_return(__wrap_wdb_global_get_agents_by_connection_status, WDBC_OK);
 
     ret = wdb_parse(query, data->output);
 
-    assert_string_equal(data->output, "ok {\"id\":1}");
+    assert_string_equal(data->output, "ok MESSAGE");
     assert_int_equal(ret, OS_SUCCESS);
 }
 
@@ -2398,8 +2397,8 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_reset_agents_connection_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_get_agent_info */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_syntax_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_query_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_status_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_query_success, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

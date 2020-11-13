@@ -4976,27 +4976,36 @@ int wdb_parse_global_get_agent_info(wdb_t* wdb, char* input, char* output) {
 }
 
 int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, char* output) {
-    cJSON *agents = NULL;
-    char *out = NULL;
+    int last_id = 0;
+    char *connection_status = NULL;
+    char* out = NULL;
+    char *next = NULL;
+    const char delim[2] = " ";
+    char *savedptr = NULL;
 
-    if (agents = wdb_global_get_agents_by_connection_status(wdb, input), !agents) {
-        mdebug1("Error getting agent information from global.db.");
-        snprintf(output, OS_MAXSTR + 1, "err Error getting agent information from global.db.");
+    /* Get last_id*/
+    next = strtok_r(input, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments 'last_id' not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'last_id' not found");
         return OS_INVALID;
     }
-    #if 0
-    *output = cJSON_PrintUnformatted(agents);
-    cJSON_Delete(agents);
+    last_id = atoi(next);
+    /* Get connection status */
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments 'connection_status' not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'connection_status' not found");
+        return OS_INVALID;
+    }
+    connection_status = next;
 
-    return WDBC_OK;
-    #else
-    out = cJSON_PrintUnformatted(agents);
-    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-    os_free(out);
-    cJSON_Delete(agents);
+    wdbc_result status = wdb_global_get_agents_by_connection_status(wdb, last_id, connection_status, &out);
+    snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], out);
+
+    os_free(out)
 
     return OS_SUCCESS;
-    #endif
 }
 
 int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output) {
