@@ -625,9 +625,13 @@ int wdb_remove_group_from_belongs_db(const char *name, int *sock);
 int wdb_reset_agents_connection(int *sock);
 
 /**
- * @brief Get every agent (excluding the manager) that matches the specified connection status.
+ * @brief Returns an array containing the ID of every agent (excluding the manager) that matches
+ *        the specified connection status, ended with -1.
+ *        This method creates and sends a command to WazuhDB to receive the ID of every agent.
+ *        If the response is bigger than the capacity of the socket, multiple commands will be sent until every
+ *        agent ID is obtained. The array is heap allocated memory that must be freed by the caller.
  *
- * @param[in] status The connection status.
+ * @param[in] connection_status The connection status.
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Pointer to the array, on success. NULL on errors.
  */
@@ -1656,6 +1660,9 @@ int wdb_global_reset_agents_connection(wdb_t *wdb);
 
 /**
  * @brief Function to get the id of every agent with a specific connection_status.
+ *        Response is prepared in one chunk, if the size of the chunk exceeds WDB_MAX_RESPONSE_SIZE
+ *        parsing stops and reports the amount of agents obtained.
+ *        Multiple calls to this function can be required to fully obtain all agents.
  *
  * @param [in] wdb The Global struct database.
  * @param [in] last_agent_id ID where to start querying.
