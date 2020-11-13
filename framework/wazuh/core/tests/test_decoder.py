@@ -82,3 +82,25 @@ def test_load_decoders_from_file(filename, relative_dirname, status, permissions
     finally:
         # Set file permissions back to 777 after test if the file exists
         os.path.exists(full_file_path) and os.chmod(full_file_path, old_permissions)
+
+
+@patch('wazuh.core.common.ossec_path', new=test_data_path)
+def test_load_decoders_from_file_details():
+    decoder_file = 'test3_decoders.xml'
+    decoder_path = 'decoders'
+    details_result = {
+        'program_name': {
+            'pattern': 'test_program_name',
+            'type': 'osregex'
+        },
+        'prematch': {
+            'pattern': 'test_prematch'
+        },
+        'regex': {
+            'pattern': 'test_regex',
+            'type': 'pcre2'
+        },
+        'order': 'test_order'
+    }
+    result = decoder.load_decoders_from_file(decoder_file, decoder_path, 'enabled')
+    assert result[0]['details'] == details_result

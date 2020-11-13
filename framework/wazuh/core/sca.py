@@ -2,9 +2,12 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
+import re
 from datetime import datetime
 
 from wazuh.core.agent import Agent
+from wazuh.core.common import database_limit
+from wazuh.core.exception import WazuhError
 from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend
 
 # API field -> DB field
@@ -43,7 +46,7 @@ fields_translation_sca_check_rule = {'rules.type': 'type', 'rules.rule': 'rule'}
 
 default_query_sca = 'SELECT {0} FROM sca_policy sca INNER JOIN sca_scan_info si ON sca.id=si.policy_id'
 default_query_sca_check = 'SELECT {0} FROM sca_check a LEFT JOIN sca_check_compliance b ON a.id=b.id_check ' \
-                          'LEFT JOIN sca_check_rules c ON a.id=c.id_check'
+                          'LEFT JOIN sca_check_rules c ON a.id=c.id_check WHERE id IN (SELECT id FROM sca_check)'
 
 
 class WazuhDBQuerySCA(WazuhDBQuery):
@@ -95,6 +98,58 @@ class WazuhDBQuerySCA(WazuhDBQuery):
                 return value
 
         self._data = [{key: format_fields(key, value)
-                      for key, value in item.items() if key in self.select} for item in self._data]
+                       for key, value in item.items() if key in self.select} for item in self._data]
 
         return super()._format_data_into_dictionary()
+
+
+class WazuhDBQuerySCACheck(WazuhDBQuerySCA):
+
+    def _parse_filters(self):
+        if self.legacy_filters:
+            self._parse_legacy_filters()
+        if self.q:
+            self._parse_query()
+        if self.search or self.query_filters:
+            self.query += " WHERE " if self.query.count('WHERE') == 1 else ' AND '
+
+    def _add_limit_to_query(self):
+        if self.limit:
+            if self.limit > database_limit:
+                raise WazuhError(1405, str(self.limit))
+
+            # We add offset and limit only to the inner SELECT (subquery)
+            self.query += ' LIMIT :inner_limit OFFSET :inner_offset'
+            self.request['inner_offset'] = self.offset
+            self.request['inner_limit'] = self.limit
+            self.request['offset'] = 0
+            self.request['limit'] = 0
+        elif self.limit == 0:  # 0 is not a valid limit
+            raise WazuhError(1406)
+
+    def run(self):
+        """Builds the query and runs it on the database"""
+        # Remove the last )
+        self.query = self.query[:-1]
+
+        self._add_select_to_query()
+        self._add_filters_to_query()
+        self._add_search_to_query()
+
+        # Add the last )
+        self.query += ")"
+        if self.count:
+            self._get_total_items()
+            if not self.data:
+                return {'totalItems': self.total_items}
+
+        # Remove the last )
+        self.query = self.query[:-1]
+        self._add_limit_to_query()
+
+        # Add the last )
+        self.query += ")"
+        self._add_sort_to_query()
+        if self.data:
+            self._execute_data_query()
+            return self._format_data_into_dictionary()

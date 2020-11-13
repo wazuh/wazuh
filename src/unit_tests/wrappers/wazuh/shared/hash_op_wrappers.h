@@ -15,8 +15,10 @@
 
 int __wrap_OSHash_Add(OSHash *self, const char *key, void *data);
 
+int __real_OSHash_Add_ex(OSHash *self, const char *key, void *data);
 int __wrap_OSHash_Add_ex(OSHash *self, const char *key, void *data);
 
+void *__real_OSHash_Begin(const OSHash *self, unsigned int *i);
 void *__wrap_OSHash_Begin(const OSHash *self, unsigned int *i);
 
 void *__wrap_OSHash_Clean(OSHash *self, void (*cleaner)(void*));
@@ -25,8 +27,11 @@ OSHash *__wrap_OSHash_Create();
 
 void *__wrap_OSHash_Delete_ex(OSHash *self, const char *key);
 
+void *__wrap_OSHash_Delete(OSHash *self, const char *key);
+
 void *__wrap_OSHash_Get(const OSHash *self, const char *key);
 
+void *__real_OSHash_Get_ex(const OSHash *self, const char *key);
 void *__wrap_OSHash_Get_ex(const OSHash *self, const char *key);
 
 void *__wrap_OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *current);

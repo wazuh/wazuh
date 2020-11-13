@@ -51,7 +51,12 @@ int main(int argc, char **argv)
         system(cmd);
 
         /* Change permissions */
-        system("echo y|icacls * /T /grant  \"*S-1-5-32-544:F\" ");
+
+        system("echo y|icacls .  /inheritancelevel:d ");
+
+        system("echo y|icacls .  /remove  \"*S-1-5-32-545\" ");
+
+        system("echo y|icacls ossec.conf  /remove  \"*S-1-1-0\" ");
 
         /* Copy them back */
 
@@ -66,8 +71,6 @@ int main(int argc, char **argv)
 
         snprintf(cmd, OS_MAXSTR, "move ..\\help.txt .");
         system(cmd);
-    } else {
-        system("echo y|cacls . /T /G  \"*S-1-5-32-544:F\" ");
     }
 
     return (1);

@@ -10,7 +10,7 @@ from datetime import datetime
 from time import strftime
 
 from wazuh.core import common
-from wazuh.core.database import Connection
+from wazuh.core.wdb import WazuhDBConnection
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
 
 """
@@ -51,7 +51,7 @@ class Wazuh:
         self.installation_date = common.installation_date
         self.type = common.install_type
         self.path = common.ossec_path
-        self.max_agents = 'N/A'
+        self.max_agents = 'unlimited'
         self.openssl_support = 'N/A'
         self.ruleset_version = None
         self.tz_offset = None
@@ -90,16 +90,10 @@ class Wazuh:
         """
         # info DB if possible
         try:
-            conn = Connection(common.database_path_global)
-
-            query = "SELECT * FROM info"
-            conn.execute(query)
-
-            for tuple_ in conn:
-                if hasattr(self, tuple_['key']):
-                    setattr(self, tuple_['key'], tuple_['value'])
+            wdb_conn = WazuhDBConnection()
+            open_ssl = wdb_conn.execute("global sql SELECT value FROM info WHERE key = 'openssl_support'")[0]['value']
+            self.openssl_support = open_ssl
         except Exception:
-            self.max_agents = "N/A"
             self.openssl_support = "N/A"
 
         # Ruleset version
