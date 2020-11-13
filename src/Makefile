@@ -80,7 +80,7 @@ WIN_CMAKE_RULES+=win32/syscollector
 WIN_CMAKE_LIBS+=${SYSCOLLECTOR}build/lib/libsyscollector.a 
 endif
 endif
-$(info VAR is$(WIN_CMAKE_RULES))
+
 
 ifeq (${uname_S},Darwin)
 SYSINFO_OS=-DCMAKE_SYSTEM_NAME=Darwin
@@ -267,14 +267,11 @@ endif #DEBUG
 OSSEC_CFLAGS+=${OFLAGS}
 OSSEC_LDFLAGS+=${OFLAGS}
 
-ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
-	ifeq (${TARGET}, winagent)
-		SHARED_MODULES_LDFLAGS=-L${DBSYNC}build/bin -L${RSYNC}build/bin -ldbsync -lrsync
-	else
-		SHARED_MODULES_LDFLAGS=-L${DBSYNC}build/lib -L${RSYNC}build/lib -ldbsync -lrsync
-	endif
+ifeq (${TARGET}, winagent)
+	SHARED_MODULES_LDFLAGS=-L${DBSYNC}build/bin -L${RSYNC}build/bin -ldbsync -lrsync
+else
+	SHARED_MODULES_LDFLAGS=-L${DBSYNC}build/lib -L${RSYNC}build/lib -ldbsync -lrsync
 endif
-
 
 ifneq (,$(filter ${CLEANFULL},YES yes y Y 1))
 	DEFINES+=-DCLEANFULL
@@ -374,6 +371,7 @@ OSSEC_CXXBIN   =${QUIET_CCBIN}${MING_BASE}${CXX}
 OSSEC_CC      =${QUIET_CC}${MING_BASE}${CC}
 OSSEC_CCBIN   =${QUIET_CCBIN}${MING_BASE}${CC}
 OSSEC_SHARED  =${QUIET_CCBIN}${MING_BASE}${CC} -shared
+OSSEC_CXXSHARED   =${QUIET_CCBIN}${MING_BASE}${CXX} -shared
 OSSEC_LINK    =${QUIET_LINK}${MING_BASE}ar -crus
 OSSEC_RANLIB  =${QUIET_RANLIB}${MING_BASE}ranlib
 OSSEC_WINDRES =${QUIET_CCBIN}${MING_BASE}windres
@@ -410,10 +408,16 @@ ifneq (,$(filter ${USE_GEOIP},YES auto yes y Y 1))
 	OSSEC_LIBS+=-lGeoIP
 endif # USE_GEOIP
 
-OSSEC_LIBS+=-L${SYSINFO}build/lib -lsysinfo -static-libgcc -static-libstdc++
+OSSEC_LIBS+=-L${SYSINFO}build/lib -lsysinfo
+
+ifneq (${uname_S},Darwin)
+OSSEC_LIBS+=-static-libstdc++
+endif
+
+OSSEC_LIBS+=-L${SYSCOLLECTOR}build/lib 
 
 ifeq (,$(filter ${DISABLE_SYSC}, YES yes y Y 1))
-	OSSEC_LIBS+=-L${SYSCOLLECTOR}build/lib -lsyscollector
+	OSSEC_LIBS+=-lsyscollector
 endif
 
 MI :=
@@ -653,6 +657,7 @@ BUILD_AGENT+=manage_agents
 BUILD_AGENT+=wazuh-modulesd
 
 BUILD_CMAKE_PROJECTS+=build_sysinfo
+BUILD_CMAKE_PROJECTS+=build_shared_modules
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
 BUILD_CMAKE_PROJECTS+=build_syscollector
 endif
@@ -1349,7 +1354,7 @@ ifeq (${uname_S},Darwin)
 WAZUH_SHFLAGS=-install_name @rpath/libwazuhext.$(SHARED)
 
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(WAZUH_SHFLAGS) -o $@ -Wl,-all_load $^ -Wl,-noall_load $(OSSEC_LIBS)
+	$(OSSEC_CXXSHARED) $(OSSEC_CFLAGS) $(WAZUH_SHFLAGS) -o $@ -Wl,-all_load $^ -Wl,-noall_load $(OSSEC_LIBS) $(SHARED_MODULES_LDFLAGS)
 else
 ifeq (${TARGET}, winagent)
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
