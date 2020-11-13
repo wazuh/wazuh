@@ -59,3 +59,8 @@ int __wrap_w_get_file_permissions(const char *file_path, char *permissions, int 
     snprintf(permissions, perm_size, "%s", mock_type(char*));
     return mock();
 }
+
+int __wrap_remove_empty_folders(const char *folder) {
+    check_expected(folder);
+    return mock();
+}

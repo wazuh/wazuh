@@ -37,3 +37,8 @@ int __wrap_system(const char *__command) {
     check_expected(__command);
     return mock();
 }
+
+void expect_system(const char *__command, int ret) {
+    expect_string(__wrap_system, __command, __command);
+    will_return(__wrap_system, ret);
+}

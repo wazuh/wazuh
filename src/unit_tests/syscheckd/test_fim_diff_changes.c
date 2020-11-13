@@ -13,9 +13,15 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
+#include "../wrappers/wazuh/os_crypto/md5_op_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/libc/stdio_wrappers.h"
+#include "../wrappers/libc/stdlib_wrappers.h"
+#include "../wrappers/posix/stat_wrappers.h"
 
 #ifdef TEST_WINAGENT
 #define CHECK_REGISTRY_ALL                                                                             \
@@ -34,11 +40,19 @@ static registry_ignore default_reg_ignore[] = { { "HKEY_LOCAL_MACHINE\\Software\
                                             { "HKEY_LOCAL_MACHINE\\Software\\Ignore", ARCH_64BIT},
                                             { NULL, 0} };
 
-static char *default_reg_ignore_regex_patterns[] = { "IgnoreRegex", "IgnoreRegex", NULL };
+static registry default_reg_nodiff[] = { { "HKEY_LOCAL_MACHINE\\Software\\Ignore", ARCH_32BIT},
+                                            { "HKEY_LOCAL_MACHINE\\Software\\Ignore", ARCH_64BIT},
+                                            { NULL, 0} };
 
+static char *default_reg_ignore_regex_patterns[] = { "IgnoreRegex", "batfile", NULL };
 static registry_ignore_regex default_reg_ignore_regex[] = { { NULL, ARCH_32BIT }, { NULL, ARCH_64BIT }, { NULL, 0 } };
 
 #endif
+
+static char *syscheck_nodiff[] = {"/file/nodiff/", NULL};
+
+static char *syscheck_nodiff_regex_patterns[] = {"regex", NULL};
+static OSMatch *syscheck_nodiff_regex[] = { NULL, NULL };
 
 static char *dir_config[] = {
     "/path/to/file",
@@ -68,28 +82,144 @@ typedef struct diff_data {
     char *diff_file;
 } diff_data;
 
-#ifdef TEST_WINAGENT
+typedef struct gen_diff_struct {
+    diff_data *diff;
+    char **strarray;
+} gen_diff_struct;
 
+
+#ifdef TEST_WINAGENT
 char *adapt_win_fc_output(char *command_output);
 diff_data *initialize_registry_diff_data(const char *key_name, const char *value_name, const registry *configuration);
-
-#else
-
-
 #endif
 
 diff_data *initialize_file_diff_data(const char *filename);
 char* filter(const char *string);
 void free_diff_data(diff_data *diff);
+int fim_diff_check_limits(diff_data *diff);
+int fim_diff_delete_compress_folder(const char *folder);
+int fim_diff_estimate_compression(float file_size);
+int fim_diff_create_compress_file(const diff_data *diff);
+void fim_diff_modify_compress_estimation(float compressed_size, float uncompressed_size);
+int fim_diff_compare(const diff_data *diff);
+void save_compress_file(const diff_data *diff);
+int is_file_nodiff(const char *filename);
+int is_registry_nodiff(const char *key_name, const char *value_name, int arch);
+char *gen_diff_str(const diff_data *diff);
+char *fim_diff_generate(const diff_data *diff);
+int fim_diff_registry_tmp(const char *value_data, DWORD data_type, const diff_data *diff);
+
+void expect_gen_diff_generate(gen_diff_struct *gen_diff_data_container) {
+    gen_diff_data_container->diff->diff_file = "/path/to/diff/file";
+
+    FILE *fp = (FILE*)2345;
+    size_t n = 145;
+
+    expect_wfopen(gen_diff_data_container->diff->diff_file, "rb", fp);
+
+    expect_fread(gen_diff_data_container->strarray[0], n);
+
+    expect_fclose(fp, 0);
+}
+
+void expect_initialize_file_diff_data(const char *path, int ret_abspath){
+    expect_abspath(path, ret_abspath);
+}
+
+void expect_fim_diff_registry_tmp(const char *folder, const char *file, FILE *fp, const char *value_data) {
+    expect_mkdir_ex(folder, 0);
+    expect_fopen(file, "w", fp);
+    if (fp){
+        expect_fprintf(fp, value_data, 0);
+        expect_fclose(fp, 0);
+    } else {
+        expect_any(__wrap__merror, formatted_msg);
+    }
+
+}
+
+void expect_fim_diff_check_limits(const char *file_origin, const char *compress_folder, int ret) {
+    int file_size;
+    file_size = 512 * 1024;
+    syscheck.file_size_enabled = 1;
+    syscheck.disk_quota_enabled = 0;
+    syscheck.disk_quota_limit = 1024;
+
+    if (ret) {
+        file_size = 2048 * 1024;
+        if (ret == 2) {
+            syscheck.file_size_enabled = 0;
+            syscheck.disk_quota_enabled = 1;
+        }
+    }
+
+#ifndef TEST_WINAGENT
+    expect_string(__wrap_FileSize, path, file_origin);
+    will_return(__wrap_FileSize, file_size);
+#else
+    expect_string(__wrap_FileSizeWin, file, file_origin);
+    will_return(__wrap_FileSizeWin, file_size);
+#endif
+    if (ret == 1){
+        expect_string(__wrap_IsDir, file, compress_folder);
+        will_return(__wrap_IsDir, -1);
+    }
+}
+
+void expect_fim_diff_create_compress_file(const char *file_origin, const char *compress_folder, int ret) {
+    int file_size;
+    file_size = 512 * 1024;
+    syscheck.file_size_enabled = 1;
+    syscheck.disk_quota_enabled = 0;
+    syscheck.disk_quota_limit = 1024;
+
+    if (ret) {
+        file_size = 2048 * 1024;
+        if (ret == 2) {
+            syscheck.file_size_enabled = 0;
+            syscheck.disk_quota_enabled = 1;
+        }
+    }
+
+#ifndef TEST_WINAGENT
+    expect_string(__wrap_FileSize, path, file_origin);
+    will_return(__wrap_FileSize, file_size);
+#else
+    expect_string(__wrap_FileSizeWin, file, file_origin);
+    will_return(__wrap_FileSizeWin, file_size);
+#endif
+    if (ret == 1){
+        expect_string(__wrap_IsDir, file, compress_folder);
+        will_return(__wrap_IsDir, -1);
+    }
+}
 
 /* Setup/teardown */
 
 static int setup_group(void **state) {
 
+    // No diff
+    for (int i = 0; syscheck_nodiff_regex_patterns[i]; i++) {
+        syscheck_nodiff_regex[i] = calloc(1, sizeof(OSMatch));
+
+        if (syscheck_nodiff_regex[i] == NULL) {
+            return -1;
+        }
+
+        if (!OSMatch_Compile(syscheck_nodiff_regex_patterns[i], syscheck_nodiff_regex[i], 0)) {
+            return -1;
+        }
+    }
+    syscheck.nodiff = syscheck_nodiff;
+    syscheck.nodiff_regex = syscheck_nodiff_regex;
+
+    syscheck.dir = dir_config;
+    syscheck.diff_size_limit = diff_size_limit_config;
+
 #ifdef TEST_WINAGENT
     syscheck.registry = default_reg_config;
-    syscheck.key_ignore = default_reg_ignore;
 
+    // Ignore registries
     for (int i = 0; default_reg_ignore_regex_patterns[i]; i++) {
         default_reg_ignore_regex[i].regex = calloc(1, sizeof(OSMatch));
 
@@ -101,23 +231,40 @@ static int setup_group(void **state) {
             return -1;
         }
     }
-
+    syscheck.key_ignore = default_reg_ignore;
     syscheck.key_ignore_regex = default_reg_ignore_regex;
+
+    // No diff registries
+    syscheck.registry_nodiff = default_reg_nodiff;
+    syscheck.registry_nodiff_regex = default_reg_ignore_regex;
 #endif
 
-    syscheck.dir = dir_config;
-    syscheck.diff_size_limit = diff_size_limit_config;
+    test_mode = 1;
 
     return 0;
 }
 
 static int teardown_group(void **state) {
+
+    test_mode = 0;
+
     return 0;
 }
 
 static int teardown_free_string(void **state) {
     char * string = *state;
     free(string);
+    return 0;
+}
+
+static int setup_diff_data(void **state) {
+    diff_data *diff = NULL;
+    os_calloc(1, sizeof(diff_data), diff);
+    if (!diff)
+        return 1;
+
+    *state = diff;
+
     return 0;
 }
 
@@ -161,6 +308,52 @@ static int teardown_adapt_win_fc_output(void **state) {
     return 0;
 }
 #endif
+
+static int setup_gen_diff_str(void **state) {
+    gen_diff_struct *gen_diff_data_container = calloc(1, sizeof(gen_diff_struct));
+
+    if(gen_diff_data_container == NULL)
+        return -1;
+
+    setup_adapt_win_fc_output((void **)&gen_diff_data_container->strarray);
+    setup_diff_data((void **)&gen_diff_data_container->diff);
+
+    char *input = strdup(
+        "Comparing files start.txt and end.txt\r\n"
+        "***** start.txt\r\n"
+        "    1:  First line\r\n"
+        "***** END.TXT\r\n"
+        "    1:  First Line 123\r\n"
+        "    2:  Last line\r\n"
+        "*****\r\n\r\n\r\n");
+    if(input == NULL) fail();
+    gen_diff_data_container->strarray[0] = input;
+
+    char *output = strdup(
+        "< First line\n"
+        "---\n"
+        "> First Line 123\n"
+        "> Last line\n");
+    if(output == NULL) fail();
+    gen_diff_data_container->strarray[1] = output;
+
+    *state = gen_diff_data_container;
+
+    return 0;
+}
+
+static int teardown_free_gen_diff_str(void **state) {
+    gen_diff_struct *gen_diff_data_container = *state;
+
+    teardown_adapt_win_fc_output((void **)&gen_diff_data_container->strarray);
+    teardown_free_diff_data((void **)&gen_diff_data_container->diff);
+    os_free(gen_diff_data_container);
+
+    return 0;
+}
+
+
+
 
 
 /**********************************************************************************************************************\
@@ -296,16 +489,19 @@ void test_initialize_registry_diff_data(void **state) {
 void test_initialize_file_diff_data(void **state) {
     diff_data *diff = NULL;
 
+    expect_abspath("C:\\path\\to\\file", 1);
+    expect_abspath("queue/diff", 1);
+
     diff = initialize_file_diff_data("C:\\path\\to\\file");
 
     assert_non_null(diff);
-    assert_string_equal(diff->compress_folder, "/var/ossec/queue/diff/local/path/to/file");
-    assert_string_equal(diff->compress_file, "/var/ossec/queue/diff/local/path/to/file/last-entry.gz");
-    assert_string_equal(diff->tmp_folder, "/var/ossec/queue/diff/tmp");
-    assert_string_equal(diff->file_origin, "/path/to/file");
-    assert_string_equal(diff->uncompress_file, "/var/ossec/queue/diff/tmp/tmp-entry");
-    assert_string_equal(diff->compress_tmp_file, "/var/ossec/queue/diff/tmp/tmp-entry.gz");
-    assert_string_equal(diff->diff_file, "/var/ossec/queue/diff/tmp/diff-file");
+    assert_string_equal(diff->compress_folder, "queue/diff/local/C\\path\\to\\file");
+    assert_string_equal(diff->compress_file, "queue/diff/local/C\\path\\to\\file/last-entry.gz");
+    assert_string_equal(diff->tmp_folder, "queue/diff/tmp");
+    assert_string_equal(diff->file_origin, "C:\\path\\to\\file");
+    assert_string_equal(diff->uncompress_file, "queue/diff/tmp/tmp-entry");
+    assert_string_equal(diff->compress_tmp_file, "queue/diff/tmp/tmp-entry.gz");
+    assert_string_equal(diff->diff_file, "queue/diff/tmp/diff-file");
 
     *state = diff;
 }
@@ -314,6 +510,8 @@ void test_initialize_file_diff_data(void **state) {
 
 void test_initialize_file_diff_data(void **state) {
     diff_data *diff = NULL;
+
+    expect_abspath("/path/to/file", 1);
 
     diff = initialize_file_diff_data("/path/to/file");
 
@@ -338,14 +536,18 @@ void test_initialize_file_diff_data_too_long_path(void **state) {
     // Long path
 #ifdef TEST_WINAGENT
     char path[PATH_MAX] = "c:\\";
-    for (int i = 0; i < PATH_MAX - 37; i++) {
+    for (int i = 0; i < PATH_MAX - 26; i++) {
         strcat (path, "a");
     }
+    expect_abspath(path, 1);
+    expect_abspath("queue/diff", 1);
 #else
     char path[PATH_MAX] = "/aa";
     for (int i = 0; i < PATH_MAX - 37; i++) {
         strcat (path, "a");
     }
+
+    expect_abspath(path, 1);
 #endif
 
     expect_any(__wrap__merror, formatted_msg);
@@ -357,3303 +559,809 @@ void test_initialize_file_diff_data_too_long_path(void **state) {
     *state = diff;
 }
 
-/*
-void test_is_nodiff_true(void **state) {
-    int ret;
+void test_initialize_file_diff_data_abspath_fail(void **state) {
+    diff_data *diff = NULL;
 
-    const char * file_name = "/etc/ssl/private.key";
+    expect_abspath("/path/to/file", 0);
 
-    ret = is_nodiff(file_name);
+    expect_string(__wrap__merror, formatted_msg, "(6711): Cannot get absolute path of '/path/to/file': Success (0)");
+
+    diff = initialize_file_diff_data("/path/to/file");
+
+    assert_null(diff);
+
+    *state = diff;
+}
+
+void test_fim_diff_check_limits(void **state) {
+    diff_data *diff = *state;
+
+    diff->size_limit = 2048;
+    diff->file_origin = "/path/to/file";
+    syscheck.file_size_enabled = 1;
+
+#ifndef TEST_WINAGENT
+    expect_string(__wrap_FileSize, path, diff->file_origin);
+    will_return(__wrap_FileSize, 1024 * 1024);
+#else
+    expect_string(__wrap_FileSizeWin, file, diff->file_origin);
+    will_return(__wrap_FileSizeWin, 1024 * 1024);
+#endif
+
+    int ret = fim_diff_check_limits(diff);
+
+    assert_int_equal(ret, 0);
+
+    *state = diff;
+}
+
+void test_fim_diff_check_limits_size_limit_reached(void **state) {
+    diff_data *diff = *state;
+
+    diff->size_limit = 1024;
+    diff->file_origin = "/path/to/file";
+    diff->compress_folder = "/compress_folder";
+    syscheck.file_size_enabled = 1;
+
+#ifndef TEST_WINAGENT
+    expect_string(__wrap_FileSize, path, diff->file_origin);
+    will_return(__wrap_FileSize, 2048 * 1024);
+#else
+    expect_string(__wrap_FileSizeWin, file, diff->file_origin);
+    will_return(__wrap_FileSizeWin, 2048 * 1024);
+#endif
+
+    expect_string(__wrap_IsDir, file, diff->compress_folder);
+    will_return(__wrap_IsDir, -1);
+
+    int ret = fim_diff_check_limits(diff);
+
+    assert_int_equal(ret, 1);
+
+    *state = diff;
+}
+
+void test_fim_diff_check_limits_estimate_compression(void **state) {
+    diff_data *diff = *state;
+
+    diff->size_limit = 2048;
+    diff->file_origin = "/path/to/file";
+    syscheck.file_size_enabled = 0;
+    syscheck.disk_quota_enabled = 1;
+
+#ifndef TEST_WINAGENT
+    expect_string(__wrap_FileSize, path, diff->file_origin);
+    will_return(__wrap_FileSize, 1024 * 1024);
+#else
+    expect_string(__wrap_FileSizeWin, file, diff->file_origin);
+    will_return(__wrap_FileSizeWin, 1024 * 1024);
+#endif
+
+    int ret = fim_diff_check_limits(diff);
+
+    assert_int_equal(ret, 2);
+
+    *state = diff;
+}
+
+void test_fim_diff_delete_compress_folder(void **state) {
+    char *folder = "/path/to/folder";
+
+    syscheck.diff_folder_size = -1;
+
+    expect_string(__wrap_IsDir, file, folder);
+    will_return(__wrap_IsDir, 0);
+
+    expect_string(__wrap_DirSize, path, folder);
+    will_return(__wrap_DirSize, 1024 * 1024);
+
+    expect_string(__wrap_rmdir_ex, name, folder);
+    will_return(__wrap_rmdir_ex, 0);
+
+    expect_string(__wrap_remove_empty_folders, folder, folder);
+    will_return(__wrap_remove_empty_folders, 0);
+
+    int ret = fim_diff_delete_compress_folder(folder);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_fim_diff_delete_compress_folder_no_dir(void **state) {
+    char *folder = "/path/to/folder";
+
+    syscheck.diff_folder_size = -1;
+
+    expect_string(__wrap_IsDir, file, folder);
+    will_return(__wrap_IsDir, -1);
+
+    int ret = fim_diff_delete_compress_folder(folder);
+
+    assert_int_equal(ret, -2);
+}
+
+void test_fim_diff_delete_compress_folder_rmdir_ex_fail(void **state) {
+    char *folder = "/path/to/folder";
+
+    syscheck.diff_folder_size = -1;
+
+    expect_string(__wrap_IsDir, file, folder);
+    will_return(__wrap_IsDir, 0);
+
+    expect_string(__wrap_DirSize, path, folder);
+    will_return(__wrap_DirSize, 1024 * 1024);
+
+    expect_string(__wrap_rmdir_ex, name, folder);
+    will_return(__wrap_rmdir_ex, -1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(1143): Unable to delete folder '/path/to/folder' due to [(41)-(Directory not empty)].");
+
+    int ret = fim_diff_delete_compress_folder(folder);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_fim_diff_delete_compress_folder_remove_folder_fail(void **state) {
+    char *folder = "/path/to/folder";
+
+    syscheck.diff_folder_size = -1;
+
+    expect_string(__wrap_IsDir, file, folder);
+    will_return(__wrap_IsDir, 0);
+
+    expect_string(__wrap_DirSize, path, folder);
+    will_return(__wrap_DirSize, 1024 * 1024);
+
+    expect_string(__wrap_rmdir_ex, name, folder);
+    will_return(__wrap_rmdir_ex, 0);
+
+    expect_string(__wrap_remove_empty_folders, folder, folder);
+    will_return(__wrap_remove_empty_folders, -1);
+
+    int ret = fim_diff_delete_compress_folder(folder);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_fim_diff_estimate_compression_file_not_fit(void **state) {
+    syscheck.diff_folder_size = 10240;
+    syscheck.disk_quota_limit = 10240;
+
+    int ret = fim_diff_estimate_compression(1024);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_fim_diff_estimate_compression_ok(void **state) {
+    syscheck.diff_folder_size = 5120;
+    syscheck.disk_quota_limit = 10240;
+
+    int ret = fim_diff_estimate_compression(1024);
 
     assert_int_equal(ret, 1);
 }
 
+void test_fim_diff_create_compress_file_fail_compress(void **state) {
+    diff_data *diff = *state;
+    diff->file_origin = "/path/file/origin";
+    diff->compress_tmp_file = "/path/compress/tmp/file";
 
-void test_is_nodiff_false(void **state) {
-    int ret;
+    expect_string(__wrap_w_compress_gzfile, filesrc, diff->file_origin);
+    expect_string(__wrap_w_compress_gzfile, filedst, diff->compress_tmp_file);
+    will_return(__wrap_w_compress_gzfile, -1);
 
-    const char * file_name = "/dummy_file.key";
+    expect_string(__wrap__mwarn, formatted_msg, "(6914): Cannot create a snapshot of file '/path/file/origin'");
 
-    ret = is_nodiff(file_name);
+    int ret = fim_diff_create_compress_file(diff);
 
-    assert_int_equal(ret, 0);
+    assert_int_equal(ret, -1);
+
+    *state = diff;
 }
 
+void test_fim_diff_create_compress_file_ok(void **state) {
+    diff_data *diff = *state;
+    diff->file_origin = "/path/file/origin";
+    diff->compress_tmp_file = "/path/compress/tmp/file";
+    syscheck.disk_quota_enabled = 1;
+    syscheck.diff_folder_size = 5120;
+    syscheck.disk_quota_limit = 10240;
 
-void test_is_nodiff_regex_true(void **state) {
-    int ret;
+    expect_string(__wrap_w_compress_gzfile, filesrc, diff->file_origin);
+    expect_string(__wrap_w_compress_gzfile, filedst, diff->compress_tmp_file);
+    will_return(__wrap_w_compress_gzfile, 0);
 
-    const char * file_name = "file.test";
+#ifndef TEST_WINAGENT
+    expect_string(__wrap_FileSize, path, diff->compress_tmp_file);
+    will_return(__wrap_FileSize, 1024 * 1024);
+#else
+    expect_string(__wrap_FileSizeWin, file, diff->compress_tmp_file);
+    will_return(__wrap_FileSizeWin, 1024 * 1024);
+#endif
 
-    ret = is_nodiff(file_name);
+    int ret = fim_diff_create_compress_file(diff);
 
+    assert_int_equal(ret, 0);
+
+    *state = diff;
+}
+
+void test_fim_diff_create_compress_file_quota_reached(void **state) {
+    diff_data *diff = *state;
+    diff->file_origin = "/path/file/origin";
+    diff->compress_tmp_file = "/path/compress/tmp/file";
+    syscheck.disk_quota_enabled = 1;
+    syscheck.diff_folder_size = 10240;
+    syscheck.disk_quota_limit = 10240;
+    syscheck.disk_quota_full_msg = true;
+
+    expect_string(__wrap_w_compress_gzfile, filesrc, diff->file_origin);
+    expect_string(__wrap_w_compress_gzfile, filedst, diff->compress_tmp_file);
+    will_return(__wrap_w_compress_gzfile, 0);
+
+#ifndef TEST_WINAGENT
+    expect_string(__wrap_FileSize, path, diff->compress_tmp_file);
+    will_return(__wrap_FileSize, 1024 * 1024);
+#else
+    expect_string(__wrap_FileSizeWin, file, diff->compress_tmp_file);
+    will_return(__wrap_FileSizeWin, 1024 * 1024);
+#endif
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6350): The calculate of the file size '/path/file/origin' exceeds the disk_quota. Operation discarded.");
+
+    int ret = fim_diff_create_compress_file(diff);
+
+    assert_int_equal(ret, -1);
+
+    *state = diff;
+}
+
+void test_fim_diff_modify_compress_estimation_small_compresion_rate(void **state) {
+    syscheck.comp_estimation_perc = 0.9;
+
+    fim_diff_modify_compress_estimation(10240, 10240);
+
+    // Rate unmodified
+    assert_float_equal(syscheck.comp_estimation_perc, 0.9, 0.001);
+}
+
+void test_fim_diff_modify_compress_estimation_MIN_COMP_ESTIM(void **state) {
+    syscheck.comp_estimation_perc = 0.6;
+
+    fim_diff_modify_compress_estimation(9216, 10240);
+
+    // Rate set at minimun
+    assert_float_equal(syscheck.comp_estimation_perc, 0.4, 0.001);
+}
+
+void test_fim_diff_modify_compress_estimation_ok(void **state) {
+    syscheck.comp_estimation_perc = 0.9;
+
+    fim_diff_modify_compress_estimation(5120, 10240);
+
+    // Rate modified
+    assert_float_equal(syscheck.comp_estimation_perc, 0.7, 0.001);
+}
+
+void test_fim_diff_compare_fail_uncompress_MD5(void **state) {
+    diff_data *diff = *state;
+    diff->uncompress_file = "/path/to/uncompress/file";
+    os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
+
+    expect_OS_MD5_File_call(diff->uncompress_file, md5sum_old, OS_BINARY, -1);
+
+    int ret = fim_diff_compare(diff);
+
+    assert_int_equal(ret, -1);
+
+    *state = diff;
+}
+
+void test_fim_diff_compare_fail_origin_MD5(void **state) {
+    diff_data *diff = *state;
+    diff->uncompress_file = "/path/to/uncompress/file";
+    diff->file_origin = "/path/to/uncompress/file";
+    os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
+    os_md5 md5sum_new = "3c183a30cffcda1408daf1c61d47b274";
+
+    expect_OS_MD5_File_call(diff->uncompress_file, md5sum_old, OS_BINARY, 0);
+    expect_OS_MD5_File_call(diff->file_origin, md5sum_new, OS_BINARY, 0);
+
+    int ret = fim_diff_compare(diff);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_fim_diff_compare_fail_not_match(void **state) {
+    diff_data *diff = *state;
+    diff->uncompress_file = "/path/to/uncompress/file";
+    diff->file_origin = "/path/to/uncompress/file";
+    os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
+    os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
+
+    expect_OS_MD5_File_call(diff->uncompress_file, md5sum_old, OS_BINARY, 0);
+    expect_OS_MD5_File_call(diff->file_origin, md5sum_new, OS_BINARY, 0);
+
+    int ret = fim_diff_compare(diff);
+
+    assert_int_equal(ret, 0);
+
+    *state = diff;
+}
+
+void test_fim_diff_compare_fail_match(void **state) {
+    diff_data *diff = *state;
+    diff->uncompress_file = "/path/to/uncompress/file";
+    diff->file_origin = "/path/to/uncompress/file";
+    os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
+    os_md5 md5sum_new = "3c183a30cffcda1408daf1c61d47b274";
+
+    expect_OS_MD5_File_call(diff->uncompress_file, md5sum_old, OS_BINARY, 0);
+    expect_OS_MD5_File_call(diff->file_origin, md5sum_new, OS_BINARY, 0);
+
+    int ret = fim_diff_compare(diff);
+
+    assert_int_equal(ret, -1);
+
+    *state = diff;
+}
+
+void test_save_compress_file_ok(void **state) {
+    diff_data *diff = *state;
+    diff->compress_tmp_file = "/path/to/compress/tmp/file";
+    diff->compress_file = "/path/to/compress/file";
+    syscheck.disk_quota_enabled = 1;
+    syscheck.diff_folder_size = 0;
+
+    expect_rename_ex(diff->compress_tmp_file, diff->compress_file, 0);
+
+#ifndef TEST_WINAGENT
+    expect_string(__wrap_FileSize, path, diff->compress_file);
+    will_return(__wrap_FileSize, 1024 * 1024);
+#else
+    expect_string(__wrap_FileSizeWin, file, diff->compress_file);
+    will_return(__wrap_FileSizeWin, 1024 * 1024);
+#endif
+
+    save_compress_file(diff);
+    assert_int_equal(syscheck.diff_folder_size, 1024);
+
+    *state = diff;
+}
+
+void test_save_compress_file_rename_fail(void **state) {
+    diff_data *diff = *state;
+    diff->compress_tmp_file = "/path/to/compress/tmp/file";
+    diff->compress_file = "/path/to/compress/file";
+    syscheck.disk_quota_enabled = 1;
+    syscheck.diff_folder_size = 0;
+
+    expect_rename_ex(diff->compress_tmp_file, diff->compress_file, -1);
+
+    expect_string(__wrap__merror, formatted_msg, "(1124): Could not rename file '/path/to/compress/tmp/file' to '/path/to/compress/file' due to [(0)-(Success)].");
+
+    save_compress_file(diff);
+    assert_int_equal(syscheck.diff_folder_size, 0);
+
+    *state = diff;
+}
+
+void test_is_file_nodiff_normal_check(void **state) {
+
+    int ret = is_file_nodiff("/file/nodiff/");
     assert_int_equal(ret, 1);
 }
 
+void test_is_file_nodiff_regex_check(void **state) {
 
-void test_is_nodiff_regex_false(void **state) {
-    int ret;
+    int ret = is_file_nodiff("/file/nodiff/regex/");
+    assert_int_equal(ret, 1);
+}
 
-    const char * file_name = "test.file";
+void test_is_file_nodiff_not_match(void **state) {
 
-    ret = is_nodiff(file_name);
-
+    int ret = is_file_nodiff("/file/nodiff/no_config");
     assert_int_equal(ret, 0);
 }
 
+#ifdef TEST_WINAGENT
+void test_is_registry_nodiff_normal_check(void **state) {
 
-void test_is_nodiff_no_nodiff(void **state) {
-    int ret;
-    int i;
+    int ret = is_registry_nodiff("HKEY_LOCAL_MACHINE\\Software", "Ignore", 1);
+    assert_int_equal(ret, 1);
+}
 
-    if (syscheck.nodiff) {
-        for (i=0; syscheck.nodiff[i] != NULL; i++) {
-            free(syscheck.nodiff[i]);
-        }
-        free(syscheck.nodiff);
-    }
-    if (syscheck.nodiff_regex) {
-        for (i=0; syscheck.nodiff_regex[i] != NULL; i++) {
-            OSMatch_FreePattern(syscheck.nodiff_regex[i]);
-            free(syscheck.nodiff_regex[i]);
-        }
-        free(syscheck.nodiff_regex);
-    }
-    syscheck.nodiff = NULL;
-    syscheck.nodiff_regex = NULL;
+void test_is_registry_nodiff_regex_check(void **state) {
 
-    const char * file_name = "test.file";
+    int ret = is_registry_nodiff("HKEY_LOCAL_MACHINE\\Software", "batfile", 1);
+    assert_int_equal(ret, 1);
+}
 
-    ret = is_nodiff(file_name);
+void test_is_registry_nodiff_not_match(void **state) {
 
+    int ret = is_registry_nodiff("HKEY_LOCAL_MACHINE\\Software", "RecursionLevel0", 1);
     assert_int_equal(ret, 0);
 }
-
-void test_gen_diff_alert(void **state) {
-#ifndef TEST_WINAGENT
-    const char * file_name = "/folder/test.file";
-
-    char *dirs_tmp[] = {
-        "/var",
-        "/var/ossec",
-        "/var/ossec/queue",
-        "/var/ossec/queue/diff",
-        "/var/ossec/queue/diff/localtmp",
-        "/var/ossec/queue/diff/localtmp/folder",
-        "/var/ossec/queue/diff/localtmp/folder/test.file",
-        NULL
-    };
-#else
-    const char * file_name = "c:\\folder\\test.file";
-
-    char *dirs_tmp[] = {
-        "queue",
-        "queue/diff",
-        "queue/diff/localtmp",
-        "queue/diff/localtmp/c",
-        "queue/diff/localtmp/c/folder",
-        "queue/diff/localtmp/c/folder/test.file",
-        NULL
-    };
 #endif
 
-    time_t time = 12345;
-    int i = 0;
+// gen_diff_str function tests
 
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
+void test_gen_diff_str_wfropen_fail(void **state) {
+    diff_data *diff = *state;
+    diff->diff_file = "/path/to/diff/file";
 
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, "/var/ossec/queue/diff/local/folder/test.file/last-entry.gz");
-    will_return(__wrap_FileSize, 1024 * 1024);
-    expect_string(__wrap_FileSize, path, "/folder/test.file");
-    will_return(__wrap_FileSize, 10);
-#else
-    expect_string(__wrap_FileSizeWin, file, "queue/diff/local/c\\folder\\test.file/last-entry.gz");
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-    expect_string(__wrap_FileSizeWin, file, "c\\folder\\test.file");
-    will_return(__wrap_FileSizeWin, 10);
-#endif
+    expect_wfopen(diff->diff_file, "rb", NULL);
 
-    // seechanges_createpath
-    for (i = 0; dirs_tmp[i]; i++) {
-        expect_string(__wrap_IsDir, file, dirs_tmp[i]);
-        will_return(__wrap_IsDir, 1);
-        expect_string(__wrap_mkdir, __path, dirs_tmp[i]);
-#ifndef TEST_WINAGENT
-        expect_value(__wrap_mkdir, __mode, 0770);
-#endif
-        will_return(__wrap_mkdir, 0);
-    }
+    expect_string(__wrap__merror, formatted_msg, "(6665): Unable to generate diff alert (fopen)'/path/to/diff/file'.");
 
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_wfopen, __filename, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
-#else
-    expect_string(__wrap_wfopen, __filename, "queue/diff/local/c\\folder\\test.file/diff.12345");
-#endif
-    expect_string(__wrap_wfopen, __modes, "rb");
-    will_return(__wrap_wfopen, 1);
-
-#ifndef TEST_WINAGENT
-    will_return(__wrap_fread, "test diff");
-    will_return(__wrap_fread, 9);
-#else
-    will_return(__wrap_fread, "Comparing files start.txt and end.txt\r\n"
-                              "***** start.txt\r\n"
-                              "    1:  First line\r\n"
-                              "***** END.TXT\r\n"
-                              "    1:  First Line 123\r\n"
-                              "    2:  Last line\r\n"
-                              "*****\r\n\r\n\r\n");
-    will_return(__wrap_fread, 146);
-#endif
-
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
-    will_return(__wrap_unlink, 0);
-
-    expect_string(__wrap_w_compress_gzfile, filesrc, "/folder/test.file");
-    expect_string(__wrap_w_compress_gzfile, filedst, "/var/ossec/queue/diff/localtmp/folder/test.file/last-entry.gz");
-#else
-    expect_string(__wrap_w_compress_gzfile, filesrc, "c:\\folder\\test.file");
-    expect_string(__wrap_w_compress_gzfile, filedst, "queue/diff/localtmp/c\\folder\\test.file/last-entry.gz");
-#endif
-    will_return(__wrap_w_compress_gzfile, 0);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, "/var/ossec/queue/diff/localtmp/folder/test.file/last-entry.gz");
-    will_return(__wrap_FileSize, 1024 * 1024);
-
-    expect_string(__wrap_rename_ex, source, "/var/ossec/queue/diff/localtmp/folder/test.file/last-entry.gz");
-    expect_string(__wrap_rename_ex, destination, "/var/ossec/queue/diff/local/folder/test.file/last-entry.gz");
-    will_return(__wrap_rename_ex, 0);
-
-    expect_string(__wrap_rmdir_ex, name, "/var/ossec/queue/diff/localtmp");
-    will_return(__wrap_rmdir_ex, 0);
-#else
-    expect_string(__wrap_FileSizeWin, file, "queue/diff/localtmp/c\\folder\\test.file/last-entry.gz");
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-
-    expect_string(__wrap_rename_ex, source, "queue/diff/localtmp/c\\folder\\test.file/last-entry.gz");
-    expect_string(__wrap_rename_ex, destination, "queue/diff/local/c\\folder\\test.file/last-entry.gz");
-    will_return(__wrap_rename_ex, 0);
-
-    expect_string(__wrap_rmdir_ex, name, "queue/diff/localtmp");
-    will_return(__wrap_rmdir_ex, 0);
-#endif
-
-    char *diff = gen_diff_alert(file_name, time, 1);
+    char *diff_str = gen_diff_str(diff);
+    assert_ptr_equal(diff_str, NULL);
 
     *state = diff;
-
-#ifndef TEST_WINAGENT
-    assert_string_equal(diff, "test diff");
-#else
-    assert_string_equal(diff, "< First line\n---\n> First Line 123\n> Last line\n");
-#endif
 }
 
-void test_gen_diff_alert_big_size(void **state) {
-#ifndef TEST_WINAGENT
-    const char * file_name = "/folder/test.file";
+void test_gen_diff_str_fread_fail(void **state) {
+    diff_data *diff = *state;
+    diff->diff_file = "/path/to/diff/file";
+    FILE *fp = (FILE*)2345;
+    char *diff_contain = "diff_contain";
 
-    char *dirs_tmp[] = {
-        "/var",
-        "/var/ossec",
-        "/var/ossec/queue",
-        "/var/ossec/queue/diff",
-        "/var/ossec/queue/diff/localtmp",
-        "/var/ossec/queue/diff/localtmp/folder",
-        "/var/ossec/queue/diff/localtmp/folder/test.file",
-        NULL
-    };
-#else
-    const char * file_name = "c:\\folder\\test.file";
+    expect_wfopen(diff->diff_file, "rb", fp);
 
-    char *dirs_tmp[] = {
-        "queue",
-        "queue/diff",
-        "queue/diff/localtmp",
-        "queue/diff/localtmp/c",
-        "queue/diff/localtmp/c/folder",
-        "queue/diff/localtmp/c/folder/test.file",
-        NULL
-    };
-#endif
-    time_t time = 12345;
-    int i = 0;
+    expect_fread(diff_contain, 0);
 
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, "/var/ossec/queue/diff/local/folder/test.file/last-entry.gz");
-    will_return(__wrap_FileSize, 1024 * 1024);
-    expect_string(__wrap_FileSize, path, "/folder/test.file");
-    will_return(__wrap_FileSize, 10);
-#else
-    expect_string(__wrap_FileSizeWin, file, "queue/diff/local/c\\folder\\test.file/last-entry.gz");
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-    expect_string(__wrap_FileSizeWin, file, "c\\folder\\test.file");
-    will_return(__wrap_FileSizeWin, 10);
-#endif
-
-    // seechanges_createpath
-    for (i = 0; dirs_tmp[i]; i++) {
-        expect_string(__wrap_IsDir, file, dirs_tmp[i]);
-        will_return(__wrap_IsDir, 1);
-        expect_string(__wrap_mkdir, __path, dirs_tmp[i]);
-#ifndef TEST_WINAGENT
-        expect_value(__wrap_mkdir, __mode, 0770);
-#endif
-        will_return(__wrap_mkdir, 0);
-    }
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_wfopen, __filename, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
-#else
-    expect_string(__wrap_wfopen, __filename, "queue/diff/local/c\\folder\\test.file/diff.12345");
-#endif
-    expect_string(__wrap_wfopen, __modes, "rb");
-    will_return(__wrap_wfopen, 1);
-
-#ifndef TEST_WINAGENT
-    will_return(__wrap_fread, "this is a really big diff\n");
-    will_return(__wrap_fread, OS_MAXSTR - OS_SK_HEADER - 1);
-#else
-    will_return(__wrap_fread, "Comparing files start.txt and end.txt\r\n"
-                              "Resync failed. Files are too different.\r\n"
-                              "***** start.txt\r\n"
-                              "    1:  First line\r\n"
-                              "***** END.TXT\r\n"
-                              "    1:  First Line 123\r\n"
-                              "    2:  Last line\r\n"
-                              "*****\r\n");
-    will_return(__wrap_fread, OS_MAXSTR - OS_SK_HEADER - 1);
-#endif
-
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
-    will_return(__wrap_unlink, 0);
-
-    expect_string(__wrap_w_compress_gzfile, filesrc, "/folder/test.file");
-    expect_string(__wrap_w_compress_gzfile, filedst, "/var/ossec/queue/diff/localtmp/folder/test.file/last-entry.gz");
-#else
-    expect_string(__wrap_w_compress_gzfile, filesrc, "c:\\folder\\test.file");
-    expect_string(__wrap_w_compress_gzfile, filedst, "queue/diff/localtmp/c\\folder\\test.file/last-entry.gz");
-#endif
-    will_return(__wrap_w_compress_gzfile, 0);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, "/var/ossec/queue/diff/localtmp/folder/test.file/last-entry.gz");
-    will_return(__wrap_FileSize, 1024 * 1024);
-
-    expect_string(__wrap_rename_ex, source, "/var/ossec/queue/diff/localtmp/folder/test.file/last-entry.gz");
-    expect_string(__wrap_rename_ex, destination, "/var/ossec/queue/diff/local/folder/test.file/last-entry.gz");
-    will_return(__wrap_rename_ex, 0);
-
-    expect_string(__wrap_rmdir_ex, name, "/var/ossec/queue/diff/localtmp");
-    will_return(__wrap_rmdir_ex, 0);
-#else
-    expect_string(__wrap_FileSizeWin, file, "queue/diff/localtmp/c\\folder\\test.file/last-entry.gz");
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-
-    expect_string(__wrap_rename_ex, source, "queue/diff/localtmp/c\\folder\\test.file/last-entry.gz");
-    expect_string(__wrap_rename_ex, destination, "queue/diff/local/c\\folder\\test.file/last-entry.gz");
-    will_return(__wrap_rename_ex, 0);
-
-    expect_string(__wrap_rmdir_ex, name, "queue/diff/localtmp");
-    will_return(__wrap_rmdir_ex, 0);
-#endif
-
-    char *diff = gen_diff_alert(file_name, time, 1);
-
-    *state = diff;
-
-#ifndef TEST_WINAGENT
-    assert_string_equal(diff, "this is a really big diff\nMore changes...");
-#else
-    assert_string_equal(diff, "< First line\n---\n> First Line 123\n> Last line\nMore changes...");
-#endif
-}
-
-void test_gen_diff_alert_abspath_error(void **state) {
-    const char * file_name = "/folder/test.file";
-    time_t time = 12345;
-
-    errno = 0;
-
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 0);
-
-    expect_string(__wrap__merror, formatted_msg, "Cannot get absolute path of '/folder/test.file': Success (0)");
-
-    char *diff = gen_diff_alert(file_name, time, 1);
-
-    assert_null(diff);
-}
-
-void test_gen_diff_alert_fopen_error(void **state) {
-#ifndef TEST_WINAGENT
-    const char * file_name = "/folder/test.file";
-
-    char *dirs_tmp[] = {
-        "/var",
-        "/var/ossec",
-        "/var/ossec/queue",
-        "/var/ossec/queue/diff",
-        "/var/ossec/queue/diff/localtmp",
-        "/var/ossec/queue/diff/localtmp/folder",
-        "/var/ossec/queue/diff/localtmp/folder/test.file",
-        NULL
-    };
-#else
-    const char * file_name = "c:\\folder\\test.file";
-
-    char *dirs_tmp[] = {
-        "queue",
-        "queue/diff",
-        "queue/diff/localtmp",
-        "queue/diff/localtmp/c",
-        "queue/diff/localtmp/c/folder",
-        "queue/diff/localtmp/c/folder/test.file",
-        NULL
-    };
-#endif
-    time_t time = 12345;
-    int i = 0;
-
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, "/var/ossec/queue/diff/local/folder/test.file/last-entry.gz");
-    will_return(__wrap_FileSize, 1024 * 1024);
-	expect_string(__wrap_FileSize, path, "/folder/test.file");
-    will_return(__wrap_FileSize, 10);
-#else
-    expect_string(__wrap_FileSizeWin, file, "queue/diff/local/c\\folder\\test.file/last-entry.gz");
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-    expect_string(__wrap_FileSizeWin, file, "c\\folder\\test.file");
-    will_return(__wrap_FileSizeWin, 10);
-#endif
-
-    // seechanges_createpath
-    for (i = 0; dirs_tmp[i]; i++) {
-        expect_string(__wrap_IsDir, file, dirs_tmp[i]);
-        will_return(__wrap_IsDir, 1);
-        expect_string(__wrap_mkdir, __path, dirs_tmp[i]);
-#ifndef TEST_WINAGENT
-        expect_value(__wrap_mkdir, __mode, 0770);
-#endif
-        will_return(__wrap_mkdir, 0);
-    }
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_w_compress_gzfile, filesrc, "/folder/test.file");
-    expect_string(__wrap_w_compress_gzfile, filedst, "/var/ossec/queue/diff/localtmp/folder/test.file/last-entry.gz");
-    will_return(__wrap_w_compress_gzfile, 0);
-
-    expect_string(__wrap_FileSize, path, "/var/ossec/queue/diff/localtmp/folder/test.file/last-entry.gz");
-    will_return(__wrap_FileSize, 1024 * 1024);
-
-    expect_string(__wrap_wfopen, __filename, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
-#else
-    expect_string(__wrap_w_compress_gzfile, filesrc, "c:\\folder\\test.file");
-    expect_string(__wrap_w_compress_gzfile, filedst, "queue/diff/localtmp/c\\folder\\test.file/last-entry.gz");
-    will_return(__wrap_w_compress_gzfile, 0);
-
-    expect_string(__wrap_FileSizeWin, file, "queue/diff/localtmp/c\\folder\\test.file/last-entry.gz");
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-
-    expect_string(__wrap_wfopen, __filename, "queue/diff/local/c\\folder\\test.file/diff.12345");
-#endif
-    expect_string(__wrap_wfopen, __modes, "rb");
-    will_return(__wrap_wfopen, 0);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "(6665): Unable to generate diff alert (fopen)'/var/ossec/queue/diff/local/folder/test.file/diff.12345'.");
-#else
-    expect_string(__wrap__merror, formatted_msg, "(6665): Unable to generate diff alert (fopen)'queue/diff/local/c\\folder\\test.file/diff.12345'.");
-#endif
-
-    char *diff = gen_diff_alert(file_name, time, 1);
-
-    assert_null(diff);
-}
-
-void test_gen_diff_alert_fread_error(void **state) {
-#ifndef TEST_WINAGENT
-    const char * file_name = "/folder/test.file";
-
-    char *dirs_tmp[] = {
-        "/var",
-        "/var/ossec",
-        "/var/ossec/queue",
-        "/var/ossec/queue/diff",
-        "/var/ossec/queue/diff/localtmp",
-        "/var/ossec/queue/diff/localtmp/folder",
-        "/var/ossec/queue/diff/localtmp/folder/test.file",
-        NULL
-    };
-#else
-    const char * file_name = "c:\\folder\\test.file";
-
-    char *dirs_tmp[] = {
-        "queue",
-        "queue/diff",
-        "queue/diff/localtmp",
-        "queue/diff/localtmp/c",
-        "queue/diff/localtmp/c/folder",
-        "queue/diff/localtmp/c/folder/test.file",
-        NULL
-    };
-#endif
-    time_t time = 12345;
-    int i = 0;
-
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, "/var/ossec/queue/diff/local/folder/test.file/last-entry.gz");
-    will_return(__wrap_FileSize, 1024 * 1024);
-	expect_string(__wrap_FileSize, path, "/folder/test.file");
-    will_return(__wrap_FileSize, 10);
-#else
-    expect_string(__wrap_FileSizeWin, file, "queue/diff/local/c\\folder\\test.file/last-entry.gz");
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-    expect_string(__wrap_FileSizeWin, file, "c\\folder\\test.file");
-    will_return(__wrap_FileSizeWin, 10);
-#endif
-
-    // seechanges_createpath
-    for (i = 0; dirs_tmp[i]; i++) {
-        expect_string(__wrap_IsDir, file, dirs_tmp[i]);
-        will_return(__wrap_IsDir, 1);
-        expect_string(__wrap_mkdir, __path, dirs_tmp[i]);
-#ifndef TEST_WINAGENT
-        expect_value(__wrap_mkdir, __mode, 0770);
-#endif
-        will_return(__wrap_mkdir, 0);
-    }
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_w_compress_gzfile, filesrc, "/folder/test.file");
-    expect_string(__wrap_w_compress_gzfile, filedst, "/var/ossec/queue/diff/localtmp/folder/test.file/last-entry.gz");
-    will_return(__wrap_w_compress_gzfile, 0);
-
-    expect_string(__wrap_FileSize, path, "/var/ossec/queue/diff/localtmp/folder/test.file/last-entry.gz");
-    will_return(__wrap_FileSize, 1024 * 1024);
-
-    expect_string(__wrap_wfopen, __filename, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
-#else
-    expect_string(__wrap_w_compress_gzfile, filesrc, "c:\\folder\\test.file");
-    expect_string(__wrap_w_compress_gzfile, filedst, "queue/diff/localtmp/c\\folder\\test.file/last-entry.gz");
-    will_return(__wrap_w_compress_gzfile, 0);
-
-    expect_string(__wrap_FileSizeWin, file, "queue/diff/localtmp/c\\folder\\test.file/last-entry.gz");
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-
-    expect_string(__wrap_wfopen, __filename, "queue/diff/local/c\\folder\\test.file/diff.12345");
-#endif
-    expect_string(__wrap_wfopen, __modes, "rb");
-    will_return(__wrap_wfopen, 1);
-
-    will_return(__wrap_fread, "test diff");
-    will_return(__wrap_fread, 0);
-
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
-    will_return(__wrap_unlink, 0);
-#endif
+    expect_fclose(fp, 0);
 
     expect_string(__wrap__merror, formatted_msg, "(6666): Unable to generate diff alert (fread).");
 
-    char *diff = gen_diff_alert(file_name, time, 1);
-
-    assert_null(diff);
-}
-
-void test_gen_diff_alert_compress_error(void **state) {
-#ifndef TEST_WINAGENT
-    const char * file_name = "/folder/test.file";
-
-    char *dirs_tmp[] = {
-        "/var",
-        "/var/ossec",
-        "/var/ossec/queue",
-        "/var/ossec/queue/diff",
-        "/var/ossec/queue/diff/localtmp",
-        "/var/ossec/queue/diff/localtmp/folder",
-        "/var/ossec/queue/diff/localtmp/folder/test.file",
-        NULL
-    };
-#else
-    const char * file_name = "c:\\folder\\test.file";
-
-    char *dirs_tmp[] = {
-        "queue",
-        "queue/diff",
-        "queue/diff/localtmp",
-        "queue/diff/localtmp/c",
-        "queue/diff/localtmp/c/folder",
-        "queue/diff/localtmp/c/folder/test.file",
-        NULL
-    };
-#endif
-    time_t time = 12345;
-    int i = 0;
-
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, "/var/ossec/queue/diff/local/folder/test.file/last-entry.gz");
-    will_return(__wrap_FileSize, 1024 * 1024);
-	expect_string(__wrap_FileSize, path, "/folder/test.file");
-    will_return(__wrap_FileSize, 10);
-#else
-    expect_string(__wrap_FileSizeWin, file, "queue/diff/local/c\\folder\\test.file/last-entry.gz");
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-    expect_string(__wrap_FileSizeWin, file, "c\\folder\\test.file");
-    will_return(__wrap_FileSizeWin, 10);
-#endif
-
-    // seechanges_createpath
-    for (i = 0; dirs_tmp[i]; i++) {
-        expect_string(__wrap_IsDir, file, dirs_tmp[i]);
-        will_return(__wrap_IsDir, 1);
-        expect_string(__wrap_mkdir, __path, dirs_tmp[i]);
-#ifndef TEST_WINAGENT
-        expect_value(__wrap_mkdir, __mode, 0770);
-#endif
-        will_return(__wrap_mkdir, 0);
-    }
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_wfopen, __filename, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
-#else
-    expect_string(__wrap_wfopen, __filename, "queue/diff/local/c\\folder\\test.file/diff.12345");
-#endif
-    expect_string(__wrap_wfopen, __modes, "rb");
-    will_return(__wrap_wfopen, 1);
-
-#ifndef TEST_WINAGENT
-    will_return(__wrap_fread, "test diff");
-    will_return(__wrap_fread, 9);
-#else
-    will_return(__wrap_fread, "Comparing files start.txt and end.txt\r\n"
-                              "***** start.txt\r\n"
-                              "    1:  First line\r\n"
-                              "***** END.TXT\r\n"
-                              "    1:  First Line 123\r\n"
-                              "    2:  Last line\r\n"
-                              "*****\r\n\r\n\r\n");
-    will_return(__wrap_fread, 146);
-#endif
-
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
-    will_return(__wrap_unlink, 0);
-
-    expect_string(__wrap_w_compress_gzfile, filesrc, "/folder/test.file");
-    expect_string(__wrap_w_compress_gzfile, filedst, "/var/ossec/queue/diff/localtmp/folder/test.file/last-entry.gz");
-#else
-    expect_string(__wrap_w_compress_gzfile, filesrc, "c:\\folder\\test.file");
-    expect_string(__wrap_w_compress_gzfile, filedst, "queue/diff/localtmp/c\\folder\\test.file/last-entry.gz");
-#endif
-    will_return(__wrap_w_compress_gzfile, -1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap__mwarn, formatted_msg, "(6914): Cannot create a snapshot of file '/folder/test.file'");
-#else
-    expect_string(__wrap__mwarn, formatted_msg, "(6914): Cannot create a snapshot of file 'c:\\folder\\test.file'");
-#endif
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_rename_ex, source, "/var/ossec/queue/diff/localtmp/folder/test.file/last-entry.gz");
-    expect_string(__wrap_rename_ex, destination, "/var/ossec/queue/diff/local/folder/test.file/last-entry.gz");
-    will_return(__wrap_rename_ex, 0);
-
-    expect_string(__wrap_rmdir_ex, name, "/var/ossec/queue/diff/localtmp");
-    will_return(__wrap_rmdir_ex, 0);
-#else
-    expect_string(__wrap_rename_ex, source, "queue/diff/localtmp/c\\folder\\test.file/last-entry.gz");
-    expect_string(__wrap_rename_ex, destination, "queue/diff/local/c\\folder\\test.file/last-entry.gz");
-    will_return(__wrap_rename_ex, 0);
-
-    expect_string(__wrap_rmdir_ex, name, "queue/diff/localtmp");
-    will_return(__wrap_rmdir_ex, 0);
-#endif
-
-    char *diff = gen_diff_alert(file_name, time, 1);
+    char *diff_str = gen_diff_str(diff);
+    assert_ptr_equal(diff_str, NULL);
 
     *state = diff;
-
-#ifndef TEST_WINAGENT
-    assert_string_equal(diff, "test diff");
-#else
-    assert_string_equal(diff, "< First line\n---\n> First Line 123\n> Last line\n");
-#endif
 }
 
-void test_gen_diff_alert_exceed_disk_quota_limit(void **state) {
-#ifndef TEST_WINAGENT
-    const char * file_name = "/folder/test.file";
+void test_gen_diff_str_ok(void **state) {
+    gen_diff_struct *gen_diff_data_container = *state;
+    gen_diff_data_container->diff->diff_file = "/path/to/diff/file";
 
-    char *dirs_tmp[] = {
-        "/var",
-        "/var/ossec",
-        "/var/ossec/queue",
-        "/var/ossec/queue/diff",
-        "/var/ossec/queue/diff/localtmp",
-        "/var/ossec/queue/diff/localtmp/folder",
-        "/var/ossec/queue/diff/localtmp/folder/test.file",
-        NULL
-    };
-#else
-    const char * file_name = "c:\\folder\\test.file";
+    FILE *fp = (FILE*)2345;
+    size_t n = 145;
 
-    char *dirs_tmp[] = {
-        "queue",
-        "queue/diff",
-        "queue/diff/localtmp",
-        "queue/diff/localtmp/c",
-        "queue/diff/localtmp/c/folder",
-        "queue/diff/localtmp/c/folder/test.file",
-        NULL
-    };
-#endif
-    time_t time = 12345;
-    int i = 0;
-    syscheck.diff_folder_size = 2048;
+    expect_wfopen(gen_diff_data_container->diff->diff_file, "rb", fp);
 
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
+    expect_fread(gen_diff_data_container->strarray[0], n);
 
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, "/var/ossec/queue/diff/local/folder/test.file/last-entry.gz");
-    will_return(__wrap_FileSize, 1024 * 1024);
-	expect_string(__wrap_FileSize, path, "/folder/test.file");
-    will_return(__wrap_FileSize, 10);
-#else
-    expect_string(__wrap_FileSizeWin, file, "queue/diff/local/c\\folder\\test.file/last-entry.gz");
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-    expect_string(__wrap_FileSizeWin, file, "c\\folder\\test.file");
-    will_return(__wrap_FileSizeWin, 10);
-#endif
+    expect_fclose(fp, 0);
 
-    // seechanges_createpath
-    for (i = 0; dirs_tmp[i]; i++) {
-        expect_string(__wrap_IsDir, file, dirs_tmp[i]);
-        will_return(__wrap_IsDir, 1);
-        expect_string(__wrap_mkdir, __path, dirs_tmp[i]);
-#ifndef TEST_WINAGENT
-        expect_value(__wrap_mkdir, __mode, 0770);
-#endif
-        will_return(__wrap_mkdir, 0);
-    }
+    char *diff_str = gen_diff_str(gen_diff_data_container->diff);
+    assert_string_equal(diff_str, gen_diff_data_container->strarray[1]);
 
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_w_compress_gzfile, filesrc, "/folder/test.file");
-    expect_string(__wrap_w_compress_gzfile, filedst, "/var/ossec/queue/diff/localtmp/folder/test.file/last-entry.gz");
-    will_return(__wrap_w_compress_gzfile, 0);
-
-    expect_string(__wrap_FileSize, path, "/var/ossec/queue/diff/localtmp/folder/test.file/last-entry.gz");
-    will_return(__wrap_FileSize, syscheck.disk_quota_limit * 1024 + 1024 * 2);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6350): The maximum configured size for the '/var/ossec/queue/diff' folder has been reached, the diff operation cannot be performed.");
-
-	expect_string(__wrap_FileSize, path, "/folder/test.file");
-    will_return(__wrap_FileSize, syscheck.disk_quota_limit * 1024 + 1024 * 2);
-	expect_string(__wrap_FileSize, path, "/var/ossec/queue/diff/localtmp/folder/test.file/last-entry.gz");
-    will_return(__wrap_FileSize, syscheck.disk_quota_limit * 1024 + 1024 * 2);
-#else
-    expect_string(__wrap_w_compress_gzfile, filesrc, "c:\\folder\\test.file");
-    expect_string(__wrap_w_compress_gzfile, filedst, "queue/diff/localtmp/c\\folder\\test.file/last-entry.gz");
-    will_return(__wrap_w_compress_gzfile, 0);
-
-    expect_string(__wrap_FileSizeWin, file, "queue/diff/localtmp/c\\folder\\test.file/last-entry.gz");
-    will_return(__wrap_FileSizeWin, syscheck.disk_quota_limit * 1024 + 1024 * 2);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6350): The maximum configured size for the 'queue/diff' folder has been reached, the diff operation cannot be performed.");
-	expect_string(__wrap_FileSizeWin, file, "c:\\folder\\test.file");
-    will_return(__wrap_FileSizeWin, syscheck.disk_quota_limit * 1024 + 1024 * 2);
-	expect_string(__wrap_FileSizeWin, file, "queue/diff/localtmp/c\\folder\\test.file/last-entry.gz");
-    will_return(__wrap_FileSizeWin, syscheck.disk_quota_limit * 1024 + 1024 * 2);
-#endif
-
-    // seechanges_delete_compressed_file
-    const char * diff_folder = "queue/diff";
-    char containing_folder[PATH_MAX + 1];
-    char last_entry_file[PATH_MAX + 1];
-    float file_size = 0.0;
-
-#ifndef TEST_WINAGENT
-    const char * file_name_delete = "/folder/test.file";
-    const char * file_name_delete_abs = file_name_delete;
-    const char * default_path = "/var/ossec/";
-
-    snprintf(containing_folder, OS_SIZE_128, "%s%s/local%s", default_path, diff_folder, file_name_delete_abs);
-    snprintf(last_entry_file, OS_SIZE_128, "%s%s/local%s/last-entry.gz", default_path, diff_folder, file_name_delete_abs);
-#else
-    const char * file_name_delete = "c:\\folder\\test.file";
-    const char * file_name_delete_abs = "c\\folder\\test.file";
-    const char * default_path = "";
-
-    snprintf(containing_folder, OS_SIZE_128, "%s%s/local/%s", default_path, diff_folder, file_name_delete_abs);
-    snprintf(last_entry_file, OS_SIZE_128, "%s%s/local/%s/last-entry.gz", default_path, diff_folder, file_name_delete_abs);
-
-    expect_string(__wrap_abspath, path, containing_folder);
-    will_return(__wrap_abspath, 1);
-
-    expect_string(__wrap_abspath, path, last_entry_file);
-    will_return(__wrap_abspath, 1);
-#endif
-
-    expect_string(__wrap_IsDir, file, containing_folder);
-    will_return(__wrap_IsDir, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, last_entry_file);
-    will_return(__wrap_FileSize, 1024);
-#else
-    expect_string(__wrap_FileSizeWin, file, last_entry_file);
-    will_return(__wrap_FileSizeWin, 1024);
-#endif
-
-    expect_string(__wrap_rmdir_ex, name, containing_folder);
-    will_return(__wrap_rmdir_ex, 0);
-
-    char debug_msg[OS_SIZE_512];
-    snprintf(debug_msg, OS_SIZE_512, FIM_DIFF_FOLDER_DELETED, containing_folder);
-
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-
-    // gen_diff_alert
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_rmdir_ex, name, "/var/ossec/queue/diff/localtmp");
-#else
-    expect_string(__wrap_rmdir_ex, name, "queue/diff/localtmp");
-#endif
-    will_return(__wrap_rmdir_ex, 0);
-
-    char *diff = gen_diff_alert(file_name, time, 1);
-
-    assert_null(diff);
+    *state = gen_diff_data_container;
 }
-
-void test_seechanges_dupfile(void **state) {
-    (void) state;
-
-    const char * old_file = "/folder/test.old";
-    const char * new_file = "/folder/test.new";
-
-    expect_string(__wrap_wfopen, __filename, old_file);
-    expect_string(__wrap_wfopen, __modes, "rb");
-    will_return(__wrap_wfopen, 1);
-
-    expect_string(__wrap_wfopen, __filename, new_file);
-    expect_string(__wrap_wfopen, __modes, "wb");
-    will_return(__wrap_wfopen, 1);
-
-    will_return(__wrap_fread, "test dup file");
-    will_return(__wrap_fread, 13);
-
-    will_return(__wrap_fwrite, 13);
-
-    will_return(__wrap_fread, "");
-    will_return(__wrap_fread, 0);
-
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-
-    int ret = seechanges_dupfile(old_file, new_file);
-
-    assert_int_equal(ret, 1);
-}
-
-void test_seechanges_dupfile_fopen_error1(void **state) {
-    (void) state;
-
-    const char * old_file = "/folder/test.old";
-    const char * new_file = "/folder/test.new";
-
-    expect_string(__wrap_wfopen, __filename, old_file);
-    expect_string(__wrap_wfopen, __modes, "rb");
-    will_return(__wrap_wfopen, 0);
-
-    int ret = seechanges_dupfile(old_file, new_file);
-
-    assert_int_equal(ret, 0);
-}
-
-void test_seechanges_dupfile_fopen_error2(void **state) {
-    (void) state;
-
-    const char * old_file = "/folder/test.old";
-    const char * new_file = "/folder/test.new";
-
-    expect_string(__wrap_wfopen, __filename, old_file);
-    expect_string(__wrap_wfopen, __modes, "rb");
-    will_return(__wrap_wfopen, 1);
-
-    expect_string(__wrap_wfopen, __filename, new_file);
-    expect_string(__wrap_wfopen, __modes, "wb");
-    will_return(__wrap_wfopen, 0);
-
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-
-    int ret = seechanges_dupfile(old_file, new_file);
-
-    assert_int_equal(ret, 0);
-}
-
-void test_seechanges_dupfile_fwrite_error(void **state) {
-    (void) state;
-
-    const char * old_file = "/folder/test.old";
-    const char * new_file = "/folder/test.new";
-
-    expect_string(__wrap_wfopen, __filename, old_file);
-    expect_string(__wrap_wfopen, __modes, "rb");
-    will_return(__wrap_wfopen, 1);
-
-    expect_string(__wrap_wfopen, __filename, new_file);
-    expect_string(__wrap_wfopen, __modes, "wb");
-    will_return(__wrap_wfopen, 1);
-
-    will_return(__wrap_fread, "test dup file");
-    will_return(__wrap_fread, 13);
-
-    will_return(__wrap_fwrite, 0);
-
-    expect_string(__wrap__merror, formatted_msg, "(6668): Unable to write data on file '/folder/test.new'");
-
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-
-    int ret = seechanges_dupfile(old_file, new_file);
-
-    assert_int_equal(ret, 1);
-}
-
-void test_seechanges_createpath(void **state) {
-    (void) state;
-
-    const char * file_name = "/folder/test.file";
-
-    expect_string(__wrap_IsDir, file, "/folder");
-    will_return(__wrap_IsDir, 0);
-
-    int ret = seechanges_createpath(file_name);
-
-    assert_int_equal(ret, 1);
-}
-
-void test_seechanges_createpath_invalid_path(void **state) {
-    (void) state;
-
-    const char * file_name = "\\";
-
-    expect_string(__wrap__merror, formatted_msg, "(6669): Invalid path name: '\\'");
-
-    int ret = seechanges_createpath(file_name);
-
-    assert_int_equal(ret, 0);
-}
-
-void test_seechanges_createpath_mkdir(void **state) {
-    (void) state;
-
-    const char * file_name = "/folder/test.file";
-
-    expect_string(__wrap_IsDir, file, "/folder");
-    will_return(__wrap_IsDir, -1);
-
-    expect_string(__wrap_mkdir, __path, "/folder");
-#ifndef TEST_WINAGENT
-    expect_value(__wrap_mkdir, __mode, 0770);
-#endif
-    will_return(__wrap_mkdir, 0);
-
-    int ret = seechanges_createpath(file_name);
-
-    assert_int_equal(ret, 1);
-}
-
-void test_seechanges_createpath_mkdir_error(void **state) {
-    (void) state;
-
-    const char * file_name = "/folder/test.file";
-
-    errno = 0;
-
-    expect_string(__wrap_IsDir, file, "/folder");
-    will_return(__wrap_IsDir, -1);
-
-    expect_string(__wrap_mkdir, __path, "/folder");
-#ifndef TEST_WINAGENT
-    expect_value(__wrap_mkdir, __mode, 0770);
-#endif
-    will_return(__wrap_mkdir, -1);
-
-    expect_string(__wrap__merror, formatted_msg, "(1107): Could not create directory '/folder' due to [(0)-(Success)].");
-
-    int ret = seechanges_createpath(file_name);
-
-    assert_int_equal(ret, 0);
-}
-
-void test_seechanges_addfile(void **state) {
-    const char * diff_folder = "queue/diff/local";
-    const char * diff_tmp_folder = "queue/diff/localtmp";
-    int i = 0;
-
-#ifndef TEST_WINAGENT
-    const char * file_name = "/home/test";
-    const char * file_name_abs = file_name;
-    const char * default_path = "/var/ossec/";
-
-    char *dirs_tmp[] = {
-        "/var",
-        "/var/ossec",
-        "/var/ossec/queue",
-        "/var/ossec/queue/diff",
-        "/var/ossec/queue/diff/localtmp",
-        "/var/ossec/queue/diff/localtmp/home",
-        "/var/ossec/queue/diff/localtmp/home/test",
-        NULL
-    };
-#else
-    const char * file_name = "c:\\windows\\system32\\drivers\\etc\\test_";
-    const char * file_name_abs = "c\\windows\\system32\\drivers\\etc\\test_";
-    const char * default_path = "";
-    const char * diff_string = "Comparing files start.txt and end.txt\r\n"
-                               "***** start.txt\r\n"
-                               "    1:  First line\r\n"
-                               "***** END.TXT\r\n"
-                               "    1:  First Line 123\r\n"
-                               "    2:  Last line\r\n"
-                               "*****\r\n\r\n\r\n";
-    const char * diff_adapted_string = "< First line\n"
-                                       "---\n"
-                                       "> First Line 123\n"
-                                       "> Last line\n";
-
-    char *dirs_tmp[] = {
-        "queue",
-        "queue/diff",
-        "queue/diff/localtmp",
-        "queue/diff/localtmp/c",
-        "queue/diff/localtmp/c/windows",
-        "queue/diff/localtmp/c/windows/system32",
-        "queue/diff/localtmp/c/windows/system32/drivers",
-        "queue/diff/localtmp/c/windows/system32/drivers/etc",
-        "queue/diff/localtmp/c/windows/system32/drivers/etc/test_",
-        NULL
-    };
-#endif
-
-    char last_entry[OS_SIZE_128];
-    char last_entry_gz[OS_SIZE_128];
-    char last_entry_tmp[OS_SIZE_128];
-    char last_entry_gz_tmp[OS_SIZE_128];
-    char state_file[OS_SIZE_128];
-    char diff_file[OS_SIZE_128];
-
-    snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
-    snprintf(last_entry_tmp, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_tmp_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz_tmp, OS_SIZE_128, "%.124s.gz", last_entry_tmp);
-    snprintf(state_file, OS_SIZE_128, "%s%s/%s/state.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(diff_file, OS_SIZE_128, "%s%s/%s/diff.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, file_name_abs);
-    will_return(__wrap_FileSize, 20);
-#else
-    expect_string(__wrap_FileSizeWin, file, file_name);
-    will_return(__wrap_FileSizeWin, 20);
-#endif
-
-    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, last_entry_gz);
-    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, last_entry);
-    will_return(__wrap_w_uncompress_gzfile, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, last_entry);
-    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
-    will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
-    will_return(__wrap_OS_MD5_File, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, file_name);
-    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
-    will_return(__wrap_OS_MD5_File, "636fd4d56b21e95c6bde60277ed355ea");
-    will_return(__wrap_OS_MD5_File, 0);
-
-    expect_string(__wrap_File_DateofChange, file, last_entry);
-    will_return(__wrap_File_DateofChange, 1);
-
-    expect_string(__wrap_rename, __old, last_entry);
-    expect_string(__wrap_rename, __new, state_file);
-    will_return(__wrap_rename, 1);
-
-    expect_string(__wrap_File_DateofChange, file, last_entry);
-    will_return(__wrap_File_DateofChange, 1);
-
-    // seechanges_dupfile()
-    expect_string(__wrap_wfopen, __filename, file_name);
-    expect_string(__wrap_wfopen, __modes, "rb");
-    will_return(__wrap_wfopen, 1);
-    expect_string(__wrap_wfopen, __filename, last_entry);
-    expect_string(__wrap_wfopen, __modes, "wb");
-    will_return(__wrap_wfopen, 1);
-    will_return(__wrap_fread, "test");
-    will_return(__wrap_fread, 13);
-    will_return(__wrap_fwrite, 13);
-    will_return(__wrap_fread, "");
-    will_return(__wrap_fread, 0);
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/home/test/state.1");
-    will_return(__wrap_unlink, 0);
-    // symlink_to_dir()
-    expect_string(__wrap_lstat, filename, file_name);
-    will_return(__wrap_lstat, 0120000);
-    will_return(__wrap_lstat, 0);
-    expect_string(__wrap_stat, __file, file_name);
-    will_return(__wrap_stat, 0040000);
-    will_return(__wrap_stat, 0);
-#endif
-
-    expect_string(__wrap_wfopen, __filename, diff_file);
-    expect_string(__wrap_wfopen, __modes, "wb");
-    will_return(__wrap_wfopen, 1);
-
-    will_return(__wrap_fwrite, 1);
-
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/home/test/last-entry");
-    will_return(__wrap_unlink, 0);
-#endif
-
-    // gen_diff_alert()
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, "/var/ossec/queue/diff/local/home/test/last-entry.gz");
-    will_return(__wrap_FileSize, 1024 * 1024);
-#else
-    expect_string(__wrap_FileSizeWin, file, "queue/diff/local/c\\windows\\system32\\drivers\\etc\\test_/last-entry.gz");
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-#endif
-
-    // seechanges_createpath
-    for (i = 0; dirs_tmp[i]; i++) {
-        expect_string(__wrap_IsDir, file, dirs_tmp[i]);
-        will_return(__wrap_IsDir, 1);
-        expect_string(__wrap_mkdir, __path, dirs_tmp[i]);
-#ifndef TEST_WINAGENT
-        expect_value(__wrap_mkdir, __mode, 0770);
-#endif
-        will_return(__wrap_mkdir, 0);
-    }
-
-    expect_string(__wrap_wfopen, __filename, diff_file);
-    expect_string(__wrap_wfopen, __modes, "rb");
-    will_return(__wrap_wfopen, 1);
-#ifndef TEST_WINAGENT
-    will_return(__wrap_fread, "test diff");
-    will_return(__wrap_fread, 9);
-#else
-    will_return(__wrap_fread, diff_string);
-    will_return(__wrap_fread, strlen(diff_string));
-#endif
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/home/test/diff.1");
-    will_return(__wrap_unlink, 0);
-#endif
-
-    expect_string(__wrap_w_compress_gzfile, filesrc, file_name);
-    expect_string(__wrap_w_compress_gzfile, filedst, last_entry_gz_tmp);
-    will_return(__wrap_w_compress_gzfile, 0);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, file_name);
-    will_return(__wrap_FileSize, 10);
-    expect_string(__wrap_FileSize, path, last_entry_gz_tmp);
-    will_return(__wrap_FileSize, 1024 * 1024);
-#else
-    expect_string(__wrap_FileSizeWin, file, file_name_abs);
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-    expect_string(__wrap_FileSizeWin, file, last_entry_gz_tmp);
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-#endif
-
-    expect_string(__wrap_rename_ex, source, last_entry_gz_tmp);
-    expect_string(__wrap_rename_ex, destination, last_entry_gz);
-    will_return(__wrap_rename_ex, 0);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_rmdir_ex, name, "/var/ossec/queue/diff/localtmp");
-    will_return(__wrap_rmdir_ex, 0);
-#else
-    expect_string(__wrap_rmdir_ex, name, "queue/diff/localtmp");
-    will_return(__wrap_rmdir_ex, 0);
-#endif
-
-    char * diff = seechanges_addfile(file_name);
-
-    *state = diff;
-
-#ifndef TEST_WINAGENT
-    assert_string_equal(diff, "test diff");
-#else
-    assert_string_equal(diff, diff_adapted_string);
-#endif
-}
-
-void test_seechanges_addfile_run_diff(void **state) {
-    const char * diff_folder = "queue/diff/local";
-    const char * diff_tmp_folder = "queue/diff/localtmp";
-    int i = 0;
-
-#ifndef TEST_WINAGENT
-    const char * file_name = "/home/test";
-    const char * file_name_abs = file_name;
-    const char * default_path = "/var/ossec/";
-
-    char *dirs_tmp[] = {
-        "/var",
-        "/var/ossec",
-        "/var/ossec/queue",
-        "/var/ossec/queue/diff",
-        "/var/ossec/queue/diff/localtmp",
-        "/var/ossec/queue/diff/localtmp/home",
-        "/var/ossec/queue/diff/localtmp/home/test",
-        NULL
-    };
-#else
-    const char * file_name = "c:\\windows\\system32\\drivers\\etc\\test";
-    const char * file_name_abs = "c\\windows\\system32\\drivers\\etc\\test";
-    const char * default_path = "";
-    const char * diff_string = "Comparing files start.txt and end.txt\r\n"
-                               "***** start.txt\r\n"
-                               "    1:  First line\r\n"
-                               "***** END.TXT\r\n"
-                               "    1:  First Line 123\r\n"
-                               "    2:  Last line\r\n"
-                               "*****\r\n\r\n\r\n";
-    const char * diff_adapted_string = "< First line\n"
-                                       "---\n"
-                                       "> First Line 123\n"
-                                       "> Last line\n";
-
-    char *dirs_tmp[] = {
-        "queue",
-        "queue/diff",
-        "queue/diff/localtmp",
-        "queue/diff/localtmp/c",
-        "queue/diff/localtmp/c/windows",
-        "queue/diff/localtmp/c/windows/system32",
-        "queue/diff/localtmp/c/windows/system32/drivers",
-        "queue/diff/localtmp/c/windows/system32/drivers/etc",
-        "queue/diff/localtmp/c/windows/system32/drivers/etc/test",
-        NULL
-    };
-#endif
-
-    char last_entry[OS_SIZE_128];
-    char last_entry_gz[OS_SIZE_128];
-    char last_entry_tmp[OS_SIZE_128];
-    char last_entry_gz_tmp[OS_SIZE_128];
-    char state_file[OS_SIZE_128];
-    char diff_file[OS_SIZE_128];
-
-    snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
-    snprintf(last_entry_tmp, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_tmp_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz_tmp, OS_SIZE_128, "%.124s.gz", last_entry_tmp);
-    snprintf(state_file, OS_SIZE_128, "%s%s/%s/state.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(diff_file, OS_SIZE_128, "%s%s/%s/diff.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, file_name_abs);
-    will_return(__wrap_FileSize, 2048);
-#else
-    expect_string(__wrap_FileSizeWin, file, file_name);
-    will_return(__wrap_FileSizeWin, 2048);
-#endif
-
-    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, last_entry_gz);
-    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, last_entry);
-    will_return(__wrap_w_uncompress_gzfile, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, last_entry);
-    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
-    will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
-    will_return(__wrap_OS_MD5_File, 0);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/home/test/state.1");
-    will_return(__wrap_unlink, 0);
-#endif
-
-    expect_string(__wrap_OS_MD5_File, fname, file_name);
-    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
-    will_return(__wrap_OS_MD5_File, "636fd4d56b21e95c6bde60277ed355ea");
-    will_return(__wrap_OS_MD5_File, 0);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/home/test/last-entry");
-    will_return(__wrap_unlink, 0);
-#endif
-
-    expect_string(__wrap_File_DateofChange, file, last_entry);
-    will_return(__wrap_File_DateofChange, 1);
-
-    expect_string(__wrap_rename, __old, last_entry);
-    expect_string(__wrap_rename, __new, state_file);
-    will_return(__wrap_rename, 1);
-
-    expect_string(__wrap_File_DateofChange, file, last_entry);
-    will_return(__wrap_File_DateofChange, 1);
-
-    // seechanges_dupfile()
-    expect_string(__wrap_wfopen, __filename, file_name);
-    expect_string(__wrap_wfopen, __modes, "rb");
-    will_return(__wrap_wfopen, 1);
-    expect_string(__wrap_wfopen, __filename, last_entry);
-    expect_string(__wrap_wfopen, __modes, "wb");
-    will_return(__wrap_wfopen, 1);
-    will_return(__wrap_fread, "test");
-    will_return(__wrap_fread, 13);
-    will_return(__wrap_fwrite, 13);
-    will_return(__wrap_fread, "");
-    will_return(__wrap_fread, 0);
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/home/test/diff.1");
-    will_return(__wrap_unlink, 0);
-
-    // symlink_to_dir()
-    expect_string(__wrap_lstat, filename, file_name);
-    will_return(__wrap_lstat, 0);
-    will_return(__wrap_lstat, 0);
-
-    expect_string(__wrap_system, __command, "diff \"/var/ossec/queue/diff/local/home/test/state.1\" "
-                                            "\"/var/ossec/queue/diff/local/home/test/last-entry\" > "
-                                            "\"/var/ossec/queue/diff/local/home/test/diff.1\" 2> "
-                                            "/dev/null");
-    will_return(__wrap_system, 256);
-#else
-    expect_string(__wrap_system, __command, "fc /n \"queue\\diff\\local\\c\\windows\\system32\\drivers\\etc\\test\\state.1\" "
-                                            "\"queue\\diff\\local\\c\\windows\\system32\\drivers\\etc\\test\\last-entry\" > "
-                                            "\"queue\\diff\\local\\c\\windows\\system32\\drivers\\etc\\test\\diff.1\" 2> "
-                                            "nul");
-    will_return(__wrap_system, 0);
-#endif
-
-    // gen_diff_alert()
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, last_entry_gz);
-    will_return(__wrap_FileSize, 1024 * 1024);
-    expect_string(__wrap_FileSize, path, file_name);
-    will_return(__wrap_FileSize, 10);
-#else
-    expect_string(__wrap_FileSizeWin, file, last_entry_gz);
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-    expect_string(__wrap_FileSizeWin, file, file_name_abs);
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-#endif
-
-    // seechanges_createpath
-    for (i = 0; dirs_tmp[i]; i++) {
-        expect_string(__wrap_IsDir, file, dirs_tmp[i]);
-        will_return(__wrap_IsDir, 1);
-        expect_string(__wrap_mkdir, __path, dirs_tmp[i]);
-#ifndef TEST_WINAGENT
-        expect_value(__wrap_mkdir, __mode, 0770);
-#endif
-        will_return(__wrap_mkdir, 0);
-    }
-
-    expect_string(__wrap_wfopen, __filename, diff_file);
-    expect_string(__wrap_wfopen, __modes, "rb");
-    will_return(__wrap_wfopen, 1);
-#ifndef TEST_WINAGENT
-    will_return(__wrap_fread, "test diff");
-    will_return(__wrap_fread, 9);
-#else
-    will_return(__wrap_fread, diff_string);
-    will_return(__wrap_fread, strlen(diff_string));
-#endif
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-
-    expect_string(__wrap_w_compress_gzfile, filesrc, file_name);
-    expect_string(__wrap_w_compress_gzfile, filedst, last_entry_gz_tmp);
-    will_return(__wrap_w_compress_gzfile, 0);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, last_entry_gz_tmp);
-    will_return(__wrap_FileSize, 1024 * 1024);
-#else
-    expect_string(__wrap_FileSizeWin, file, last_entry_gz_tmp);
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-#endif
-
-    expect_string(__wrap_rename_ex, source, last_entry_gz_tmp);
-    expect_string(__wrap_rename_ex, destination, last_entry_gz);
-    will_return(__wrap_rename_ex, 0);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_rmdir_ex, name, "/var/ossec/queue/diff/localtmp");
-    will_return(__wrap_rmdir_ex, 0);
-#else
-    expect_string(__wrap_rmdir_ex, name, "queue/diff/localtmp");
-    will_return(__wrap_rmdir_ex, 0);
-#endif
-
-    char * diff = seechanges_addfile(file_name);
-
-    *state = diff;
-
-#ifndef TEST_WINAGENT
-    assert_string_equal(diff, "test diff");
-#else
-    assert_string_equal(diff, diff_adapted_string);
-#endif
-}
-
-void test_seechanges_addfile_create_gz_file(void **state) {
-    const char * diff_folder = "queue/diff/local";
-    const char * diff_tmp_folder = "queue/diff/localtmp";
-
-#ifndef TEST_WINAGENT
-    const char * file_name = "/home/test";
-    const char * file_name_abs = file_name;
-    const char * default_path = "/var/ossec/";
-    char *dirs[] = {
-        "/var",
-        "/var/ossec",
-        "/var/ossec/queue",
-        "/var/ossec/queue/diff",
-        "/var/ossec/queue/diff/local",
-        "/var/ossec/queue/diff/local/home",
-        "/var/ossec/queue/diff/local/home/test",
-        NULL
-    };
-
-    char *dirs_tmp[] = {
-        "/var",
-        "/var/ossec",
-        "/var/ossec/queue",
-        "/var/ossec/queue/diff",
-        "/var/ossec/queue/diff/localtmp",
-        "/var/ossec/queue/diff/localtmp/home",
-        "/var/ossec/queue/diff/localtmp/home/test",
-        NULL
-    };
-#else
-    const char * file_name = "c:\\windows\\system32\\drivers\\etc\\test_";
-    const char * file_name_abs = "c\\windows\\system32\\drivers\\etc\\test_";
-    const char * default_path = "";
-    char *dirs[] = {
-        "queue",
-        "queue/diff",
-        "queue/diff/local",
-        "queue/diff/local/c",
-        "queue/diff/local/c/windows",
-        "queue/diff/local/c/windows/system32",
-        "queue/diff/local/c/windows/system32/drivers",
-        "queue/diff/local/c/windows/system32/drivers/etc",
-        "queue/diff/local/c/windows/system32/drivers/etc/test_",
-        NULL
-    };
-
-    char *dirs_tmp[] = {
-        "queue",
-        "queue/diff",
-        "queue/diff/localtmp",
-        "queue/diff/localtmp/c",
-        "queue/diff/localtmp/c/windows",
-        "queue/diff/localtmp/c/windows/system32",
-        "queue/diff/localtmp/c/windows/system32/drivers",
-        "queue/diff/localtmp/c/windows/system32/drivers/etc",
-        "queue/diff/localtmp/c/windows/system32/drivers/etc/test_",
-        NULL
-    };
-#endif
-
-    int i;
-    char last_entry[OS_SIZE_128];
-    char last_entry_gz[OS_SIZE_128];
-    char last_entry_tmp[OS_SIZE_128];
-    char last_entry_gz_tmp[OS_SIZE_128];
-    char state_file[OS_SIZE_128];
-    char diff_file[OS_SIZE_128];
-    char warn_msg[OS_SIZE_128];
-
-    snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
-    snprintf(last_entry_tmp, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_tmp_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz_tmp, OS_SIZE_128, "%.124s.gz", last_entry_tmp);
-    snprintf(state_file, OS_SIZE_128, "%s%s/%s/state.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(diff_file, OS_SIZE_128, "%s%s/%s/diff.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, file_name_abs);
-    will_return(__wrap_FileSize, 2048);
-#else
-    expect_string(__wrap_FileSizeWin, file, file_name);
-    will_return(__wrap_FileSizeWin, 2048);
-#endif
-
-    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, last_entry_gz);
-    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, last_entry);
-    will_return(__wrap_w_uncompress_gzfile, -1);
-
-    // seechanges_createpath
-
-    for (i = 0; dirs[i]; i++) {
-        expect_string(__wrap_IsDir, file, dirs[i]);
-        will_return(__wrap_IsDir, 0);
-    }
-
-    for (i = 0; dirs_tmp[i]; i++) {
-        expect_string(__wrap_IsDir, file, dirs_tmp[i]);
-        will_return(__wrap_IsDir, -1);
-        expect_string(__wrap_mkdir, __path, dirs_tmp[i]);
-#ifndef TEST_WINAGENT
-        expect_value(__wrap_mkdir, __mode, 0770);
-#endif
-        will_return(__wrap_mkdir, 0);
-    }
-
-    expect_string(__wrap_w_compress_gzfile, filesrc, file_name);
-    expect_string(__wrap_w_compress_gzfile, filedst, last_entry_gz_tmp);
-    will_return(__wrap_w_compress_gzfile, -1);
-
-    snprintf(warn_msg, OS_SIZE_128, FIM_WARN_GENDIFF_SNAPSHOT, file_name);
-    expect_string(__wrap__mwarn, formatted_msg, warn_msg);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_abspath, path, "queue/diff/localtmp");
-    will_return(__wrap_abspath, 1);
-#endif
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_rmdir_ex, name, "/var/ossec/queue/diff/localtmp");
-    will_return(__wrap_rmdir_ex, 0);
-#else
-    expect_string(__wrap_rmdir_ex, name, "queue/diff/localtmp");
-    will_return(__wrap_rmdir_ex, 0);
-#endif
-
-    char * diff = seechanges_addfile(file_name);
-
-    assert_null(diff);
-}
-
-void test_seechanges_addfile_same_md5(void **state) {
-    const char * diff_folder = "queue/diff/local";
-    const char * diff_tmp_folder = "queue/diff/localtmp";
-    int i = 0;
-
-#ifndef TEST_WINAGENT
-    const char * file_name = "/home/test";
-    const char * file_name_abs = file_name;
-    const char * default_path = "/var/ossec/";
-
-    char *dirs_tmp[] = {
-        "/var",
-        "/var/ossec",
-        "/var/ossec/queue",
-        "/var/ossec/queue/diff",
-        "/var/ossec/queue/diff/localtmp",
-        "/var/ossec/queue/diff/localtmp/home",
-        "/var/ossec/queue/diff/localtmp/home/test",
-        NULL
-    };
-#else
-    const char * file_name = "c:\\windows\\system32\\drivers\\etc\\test_";
-    const char * file_name_abs = "c\\windows\\system32\\drivers\\etc\\test_";
-    const char * default_path = "";
-
-    char *dirs_tmp[] = {
-        "queue",
-        "queue/diff",
-        "queue/diff/localtmp",
-        "queue/diff/localtmp/c",
-        "queue/diff/localtmp/c/windows",
-        "queue/diff/localtmp/c/windows/system32",
-        "queue/diff/localtmp/c/windows/system32/drivers",
-        "queue/diff/localtmp/c/windows/system32/drivers/etc",
-        "queue/diff/localtmp/c/windows/system32/drivers/etc/test_",
-        NULL
-    };
-#endif
-
-    char last_entry[OS_SIZE_128];
-    char last_entry_gz[OS_SIZE_128];
-    char last_entry_tmp[OS_SIZE_128];
-    char last_entry_gz_tmp[OS_SIZE_128];
-    char state_file[OS_SIZE_128];
-    char diff_file[OS_SIZE_128];
-
-    snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
-    snprintf(last_entry_tmp, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_tmp_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz_tmp, OS_SIZE_128, "%.124s.gz", last_entry_tmp);
-    snprintf(state_file, OS_SIZE_128, "%s%s/%s/state.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(diff_file, OS_SIZE_128, "%s%s/%s/diff.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, file_name_abs);
-    will_return(__wrap_FileSize, 2048);
-#else
-    expect_string(__wrap_FileSizeWin, file, file_name);
-    will_return(__wrap_FileSizeWin, 2048);
-#endif
-
-    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, last_entry_gz);
-    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, last_entry);
-    will_return(__wrap_w_uncompress_gzfile, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, last_entry);
-    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
-    will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
-    will_return(__wrap_OS_MD5_File, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, file_name);
-    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
-    will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
-    will_return(__wrap_OS_MD5_File, 0);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/home/test/last-entry");
-    will_return(__wrap_unlink, 0);
-#endif
-
-    char * diff = seechanges_addfile(file_name);
-
-    assert_null(diff);
-}
-
-void test_seechanges_addfile_abspath_error(void **state) {
-#ifndef TEST_WINAGENT
-    const char * file_name = "/folder/test";
-#else
-    const char * file_name = "c:\\folder\\test";
-#endif
-
-    char error_msg[OS_SIZE_128];
-
-    errno = 0;
-
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 0);
-
-    snprintf(error_msg, OS_SIZE_128, "Cannot get absolute path of '%s': Success (0)", file_name);
-    expect_string(__wrap__merror, formatted_msg, error_msg);
-
-    char * diff = seechanges_addfile(file_name);
-
-    assert_null(diff);
-}
-
-void test_seechanges_addfile_md5_error1(void **state) {
-    const char * diff_folder = "queue/diff/local";
-
-#ifndef TEST_WINAGENT
-    const char * file_name = "/home/test";
-    const char * file_name_abs = file_name;
-    const char * default_path = "/var/ossec/";
-#else
-    const char * file_name = "c:\\windows\\system32\\drivers\\etc\\test_";
-    const char * file_name_abs = "c\\windows\\system32\\drivers\\etc\\test_";
-    const char * default_path = "";
-#endif
-
-    char last_entry[OS_SIZE_128];
-    char last_entry_gz[OS_SIZE_128];
-
-    snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
-
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, file_name_abs);
-    will_return(__wrap_FileSize, 2048);
-#else
-    expect_string(__wrap_FileSizeWin, file, file_name);
-    will_return(__wrap_FileSizeWin, 2048);
-#endif
-
-
-    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, last_entry_gz);
-    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, last_entry);
-    will_return(__wrap_w_uncompress_gzfile, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, last_entry);
-    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
-    will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
-    will_return(__wrap_OS_MD5_File, -1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/home/test/last-entry");
-    will_return(__wrap_unlink, 0);
-#endif
-
-    char * diff = seechanges_addfile(file_name);
-
-    assert_null(diff);
-}
-
-void test_seechanges_addfile_md5_error2(void **state) {
-    const char * diff_folder = "queue/diff/local";
-
-#ifndef TEST_WINAGENT
-    const char * file_name = "/home/test";
-    const char * file_name_abs = file_name;
-    const char * default_path = "/var/ossec/";
-#else
-    const char * file_name = "c:\\windows\\system32\\drivers\\etc\\test_";
-    const char * file_name_abs = "c\\windows\\system32\\drivers\\etc\\test_";
-    const char * default_path = "";
-#endif
-
-    char last_entry[OS_SIZE_128];
-    char last_entry_gz[OS_SIZE_128];
-
-    snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
-
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, file_name_abs);
-    will_return(__wrap_FileSize, 2048);
-#else
-    expect_string(__wrap_FileSizeWin, file, file_name);
-    will_return(__wrap_FileSizeWin, 2048);
-#endif
-
-    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, last_entry_gz);
-    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, last_entry);
-    will_return(__wrap_w_uncompress_gzfile, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, last_entry);
-    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
-    will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
-    will_return(__wrap_OS_MD5_File, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, file_name);
-    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
-    will_return(__wrap_OS_MD5_File, "636fd4d56b21e95c6bde60277ed355ea");
-    will_return(__wrap_OS_MD5_File, -1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/home/test/last-entry");
-    will_return(__wrap_unlink, 0);
-#endif
-
-    char * diff = seechanges_addfile(file_name);
-
-    assert_null(diff);
-}
-
-void test_seechanges_addfile_rename_error(void **state) {
-    const char * diff_folder = "queue/diff/local";
-
-#ifndef TEST_WINAGENT
-    const char * file_name = "/home/test";
-    const char * file_name_abs = file_name;
-    const char * default_path = "/var/ossec/";
-#else
-    const char * file_name = "c:\\windows\\system32\\drivers\\etc\\test_";
-    const char * file_name_abs = "c\\windows\\system32\\drivers\\etc\\test_";
-    const char * default_path = "";
-#endif
-
-    char last_entry[OS_SIZE_128];
-    char last_entry_gz[OS_SIZE_128];
-    char state_file[OS_SIZE_128];
-    char error_msg[OS_SIZE_512];
-
-    snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
-    snprintf(state_file, OS_SIZE_128, "%s%s/%s/state.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, file_name_abs);
-    will_return(__wrap_FileSize, 2048);
-#else
-    expect_string(__wrap_FileSizeWin, file, file_name);
-    will_return(__wrap_FileSizeWin, 2048);
-#endif
-
-    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, last_entry_gz);
-    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, last_entry);
-    will_return(__wrap_w_uncompress_gzfile, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, last_entry);
-    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
-    will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
-    will_return(__wrap_OS_MD5_File, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, file_name);
-    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
-    will_return(__wrap_OS_MD5_File, "636fd4d56b21e95c6bde60277ed355ea");
-    will_return(__wrap_OS_MD5_File, 0);
-
-    expect_string(__wrap_File_DateofChange, file, last_entry);
-    will_return(__wrap_File_DateofChange, 1);
-
-    expect_string(__wrap_rename, __old, last_entry);
-    expect_string(__wrap_rename, __new, state_file);
-    will_return(__wrap_rename, -1);
-
-    snprintf(error_msg, OS_SIZE_512, RENAME_ERROR, last_entry, state_file, errno, strerror(errno));
-    expect_string(__wrap__merror, formatted_msg, error_msg);
-
-    char * diff = seechanges_addfile(file_name);
-
-    assert_null(diff);
-}
-
-void test_seechanges_addfile_dupfile_error(void **state) {
-    const char * diff_folder = "queue/diff/local";
-
-#ifndef TEST_WINAGENT
-    const char * file_name = "/home/test";
-    const char * file_name_abs = file_name;
-    const char * default_path = "/var/ossec/";
-#else
-    const char * file_name = "c:\\windows\\system32\\drivers\\etc\\test_";
-    const char * file_name_abs = "c\\windows\\system32\\drivers\\etc\\test_";
-    const char * default_path = "";
-#endif
-
-    char last_entry[OS_SIZE_128];
-    char last_entry_gz[OS_SIZE_128];
-    char state_file[OS_SIZE_128];
-    char error_msg[OS_SIZE_128];
-
-    snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
-    snprintf(state_file, OS_SIZE_128, "%s%s/%s/state.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, file_name_abs);
-    will_return(__wrap_FileSize, 2048);
-#else
-    expect_string(__wrap_FileSizeWin, file, file_name);
-    will_return(__wrap_FileSizeWin, 2048);
-#endif
-
-    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, last_entry_gz);
-    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, last_entry);
-    will_return(__wrap_w_uncompress_gzfile, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, last_entry);
-    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
-    will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
-    will_return(__wrap_OS_MD5_File, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, file_name);
-    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
-    will_return(__wrap_OS_MD5_File, "636fd4d56b21e95c6bde60277ed355ea");
-    will_return(__wrap_OS_MD5_File, 0);
-
-    expect_string(__wrap_File_DateofChange, file, last_entry);
-    will_return(__wrap_File_DateofChange, 1);
-
-    expect_string(__wrap_rename, __old, last_entry);
-    expect_string(__wrap_rename, __new, state_file);
-    will_return(__wrap_rename, 1);
-
-    // seechanges_dupfile()
-    expect_string(__wrap_wfopen, __filename, file_name);
-    expect_string(__wrap_wfopen, __modes, "rb");
-    will_return(__wrap_wfopen, 0);
-
-    snprintf(error_msg, OS_SIZE_128, FIM_ERROR_GENDIFF_CREATE_SNAPSHOT, file_name);
-    expect_string(__wrap__merror, formatted_msg, error_msg);
-
-    char * diff = seechanges_addfile(file_name);
-
-    assert_null(diff);
-}
-
-void test_seechanges_addfile_fopen_error(void **state) {
-    const char * diff_folder = "queue/diff/local";
-
-#ifndef TEST_WINAGENT
-    const char * file_name = "/home/test";
-    const char * file_name_abs = file_name;
-    const char * default_path = "/var/ossec/";
-#else
-    const char * file_name = "c:\\windows\\system32\\drivers\\etc\\test_";
-    const char * file_name_abs = "c\\windows\\system32\\drivers\\etc\\test_";
-    const char * default_path = "";
-#endif
-
-    char last_entry[OS_SIZE_128];
-    char last_entry_gz[OS_SIZE_128];
-    char state_file[OS_SIZE_128];
-    char diff_file[OS_SIZE_128];
-    char error_msg[OS_SIZE_256];
-
-    snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
-    snprintf(state_file, OS_SIZE_128, "%s%s/%s/state.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(diff_file, OS_SIZE_128, "%s%s/%s/diff.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, file_name_abs);
-    will_return(__wrap_FileSize, 2048);
-#else
-    expect_string(__wrap_FileSizeWin, file, file_name);
-    will_return(__wrap_FileSizeWin, 2048);
-#endif
-
-    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, last_entry_gz);
-    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, last_entry);
-    will_return(__wrap_w_uncompress_gzfile, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, last_entry);
-    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
-    will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
-    will_return(__wrap_OS_MD5_File, 0);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/home/test/state.1");
-    will_return(__wrap_unlink, 0);
-#endif
-
-    expect_string(__wrap_OS_MD5_File, fname, file_name);
-    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
-    will_return(__wrap_OS_MD5_File, "636fd4d56b21e95c6bde60277ed355ea");
-    will_return(__wrap_OS_MD5_File, 0);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/home/test/last-entry");
-    will_return(__wrap_unlink, 0);
-#endif
-
-    expect_string(__wrap_File_DateofChange, file, last_entry);
-    will_return(__wrap_File_DateofChange, 1);
-
-    expect_string(__wrap_rename, __old, last_entry);
-    expect_string(__wrap_rename, __new, state_file);
-    will_return(__wrap_rename, 1);
-
-    expect_string(__wrap_File_DateofChange, file, last_entry);
-    will_return(__wrap_File_DateofChange, 1);
-
-    // seechanges_dupfile()
-    expect_string(__wrap_wfopen, __filename, file_name);
-    expect_string(__wrap_wfopen, __modes, "rb");
-    will_return(__wrap_wfopen, 1);
-    expect_string(__wrap_wfopen, __filename, last_entry);
-    expect_string(__wrap_wfopen, __modes, "wb");
-    will_return(__wrap_wfopen, 1);
-    will_return(__wrap_fread, "test");
-    will_return(__wrap_fread, 13);
-    will_return(__wrap_fwrite, 13);
-    will_return(__wrap_fread, "");
-    will_return(__wrap_fread, 0);
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/home/test/diff.1");
-    will_return(__wrap_unlink, 0);
-#endif
-
-#ifndef TEST_WINAGENT
-    // symlink_to_dir()
-    expect_string(__wrap_lstat, filename, file_name);
-    will_return(__wrap_lstat, 0120000);
-    will_return(__wrap_lstat, 0);
-    expect_string(__wrap_stat, __file, file_name);
-    will_return(__wrap_stat, 0040000);
-    will_return(__wrap_stat, 0);
-#endif
-
-    expect_string(__wrap_wfopen, __filename, diff_file);
-    expect_string(__wrap_wfopen, __modes, "wb");
-    will_return(__wrap_wfopen, 0);
-
-    snprintf(error_msg, OS_SIZE_256, FIM_ERROR_GENDIFF_OPEN_FILE, diff_file);
-    expect_string(__wrap__merror, formatted_msg, error_msg);
-
-    char * diff = seechanges_addfile(file_name);
-
-    assert_null(diff);
-}
-
-void test_seechanges_addfile_fwrite_error(void **state) {
-    const char * diff_folder = "queue/diff/local";
-    const char * diff_tmp_folder = "queue/diff/localtmp";
-    int i = 0;
-
-#ifndef TEST_WINAGENT
-    const char * file_name = "/home/test";
-    const char * file_name_abs = file_name;
-    const char * default_path = "/var/ossec/";
-
-    char *dirs_tmp[] = {
-        "/var",
-        "/var/ossec",
-        "/var/ossec/queue",
-        "/var/ossec/queue/diff",
-        "/var/ossec/queue/diff/localtmp",
-        "/var/ossec/queue/diff/localtmp/home",
-        "/var/ossec/queue/diff/localtmp/home/test",
-        NULL
-    };
-#else
-    const char * file_name = "c:\\windows\\system32\\drivers\\etc\\test_";
-    const char * file_name_abs = "c\\windows\\system32\\drivers\\etc\\test_";
-    const char * default_path = "";
-    const char * diff_string = "Comparing files start.txt and end.txt\r\n"
-                               "***** start.txt\r\n"
-                               "    1:  First line\r\n"
-                               "***** END.TXT\r\n"
-                               "    1:  First Line 123\r\n"
-                               "    2:  Last line\r\n"
-                               "*****\r\n\r\n\r\n";
-    const char * diff_adapted_string = "< First line\n"
-                                       "---\n"
-                                       "> First Line 123\n"
-                                       "> Last line\n";
-
-    char *dirs_tmp[] = {
-        "queue",
-        "queue/diff",
-        "queue/diff/localtmp",
-        "queue/diff/localtmp/c",
-        "queue/diff/localtmp/c/windows",
-        "queue/diff/localtmp/c/windows/system32",
-        "queue/diff/localtmp/c/windows/system32/drivers",
-        "queue/diff/localtmp/c/windows/system32/drivers/etc",
-        "queue/diff/localtmp/c/windows/system32/drivers/etc/test_",
-        NULL
-    };
-#endif
-
-    char last_entry[OS_SIZE_128];
-    char last_entry_gz[OS_SIZE_128];
-    char last_entry_tmp[OS_SIZE_128];
-    char last_entry_gz_tmp[OS_SIZE_128];
-    char state_file[OS_SIZE_128];
-    char diff_file[OS_SIZE_128];
-    char error_msg[OS_SIZE_256];
-
-    snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
-    snprintf(last_entry_tmp, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_tmp_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz_tmp, OS_SIZE_128, "%.124s.gz", last_entry_tmp);
-    snprintf(state_file, OS_SIZE_128, "%s%s/%s/state.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(diff_file, OS_SIZE_128, "%s%s/%s/diff.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, file_name_abs);
-    will_return(__wrap_FileSize, 2048);
-#else
-    expect_string(__wrap_FileSizeWin, file, file_name);
-    will_return(__wrap_FileSizeWin, 2048);
-#endif
-
-    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, last_entry_gz);
-    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, last_entry);
-    will_return(__wrap_w_uncompress_gzfile, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, last_entry);
-    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
-    will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
-    will_return(__wrap_OS_MD5_File, 0);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/home/test/state.1");
-    will_return(__wrap_unlink, 0);
-#endif
-
-    expect_string(__wrap_OS_MD5_File, fname, file_name);
-    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
-    will_return(__wrap_OS_MD5_File, "636fd4d56b21e95c6bde60277ed355ea");
-    will_return(__wrap_OS_MD5_File, 0);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/home/test/last-entry");
-    will_return(__wrap_unlink, 0);
-#endif
-
-    expect_string(__wrap_File_DateofChange, file, last_entry);
-    will_return(__wrap_File_DateofChange, 1);
-
-    expect_string(__wrap_rename, __old, last_entry);
-    expect_string(__wrap_rename, __new, state_file);
-    will_return(__wrap_rename, 1);
-
-    expect_string(__wrap_File_DateofChange, file, last_entry);
-    will_return(__wrap_File_DateofChange, 1);
-
-    // seechanges_dupfile()
-    expect_string(__wrap_wfopen, __filename, file_name);
-    expect_string(__wrap_wfopen, __modes, "rb");
-    will_return(__wrap_wfopen, 1);
-    expect_string(__wrap_wfopen, __filename, last_entry);
-    expect_string(__wrap_wfopen, __modes, "wb");
-    will_return(__wrap_wfopen, 1);
-    will_return(__wrap_fread, "test");
-    will_return(__wrap_fread, 13);
-    will_return(__wrap_fwrite, 13);
-    will_return(__wrap_fread, "");
-    will_return(__wrap_fread, 0);
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-
-#ifndef TEST_WINAGENT
-    // symlink_to_dir()
-    expect_string(__wrap_lstat, filename, file_name);
-    will_return(__wrap_lstat, 0120000);
-    will_return(__wrap_lstat, 0);
-    expect_string(__wrap_stat, __file, file_name);
-    will_return(__wrap_stat, 0040000);
-    will_return(__wrap_stat, 0);
-#endif
-
-    expect_string(__wrap_wfopen, __filename, diff_file);
-    expect_string(__wrap_wfopen, __modes, "wb");
-    will_return(__wrap_wfopen, 1);
-
-    will_return(__wrap_fwrite, 0);
-
-    snprintf(error_msg, OS_SIZE_256, FIM_ERROR_GENDIFF_WRITING_DATA, diff_file);
-    expect_string(__wrap__merror, formatted_msg, error_msg);
-
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/home/test/diff.1");
-    will_return(__wrap_unlink, 0);
-#endif
-
-    // gen_diff_alert()
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, "/var/ossec/queue/diff/local/home/test/last-entry.gz");
-    will_return(__wrap_FileSize, 1024 * 1024);
-    expect_string(__wrap_FileSize, path, "/home/test");
-    will_return(__wrap_FileSize, 10);
-#else
-    expect_string(__wrap_FileSizeWin, file, "queue/diff/local/c\\windows\\system32\\drivers\\etc\\test_/last-entry.gz");
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-    expect_string(__wrap_FileSizeWin, file, "c\\windows\\system32\\drivers\\etc\\test_");
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-#endif
-
-    // seechanges_createpath
-    for (i = 0; dirs_tmp[i]; i++) {
-        expect_string(__wrap_IsDir, file, dirs_tmp[i]);
-        will_return(__wrap_IsDir, 1);
-        expect_string(__wrap_mkdir, __path, dirs_tmp[i]);
-#ifndef TEST_WINAGENT
-        expect_value(__wrap_mkdir, __mode, 0770);
-#endif
-        will_return(__wrap_mkdir, 0);
-    }
-
-    expect_string(__wrap_wfopen, __filename, diff_file);
-    expect_string(__wrap_wfopen, __modes, "rb");
-    will_return(__wrap_wfopen, 1);
-#ifndef TEST_WINAGENT
-    will_return(__wrap_fread, "test diff");
-    will_return(__wrap_fread, 9);
-#else
-    will_return(__wrap_fread, diff_string);
-    will_return(__wrap_fread, strlen(diff_string));
-#endif
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-    expect_string(__wrap_w_compress_gzfile, filesrc, file_name);
-    expect_string(__wrap_w_compress_gzfile, filedst, last_entry_gz_tmp);
-    will_return(__wrap_w_compress_gzfile, 0);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, last_entry_gz_tmp);
-    will_return(__wrap_FileSize, 1024 * 1024);
-#else
-    expect_string(__wrap_FileSizeWin, file, last_entry_gz_tmp);
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-#endif
-
-    expect_string(__wrap_rename_ex, source, last_entry_gz_tmp);
-    expect_string(__wrap_rename_ex, destination, last_entry_gz);
-    will_return(__wrap_rename_ex, 0);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_rmdir_ex, name, "/var/ossec/queue/diff/localtmp");
-    will_return(__wrap_rmdir_ex, 0);
-#else
-    expect_string(__wrap_rmdir_ex, name, "queue/diff/localtmp");
-    will_return(__wrap_rmdir_ex, 0);
-#endif
-
-    char * diff = seechanges_addfile(file_name);
+void test_fim_diff_generate_filters_fail(void **state) {
+    diff_data *diff = *state;
+    diff->uncompress_file = "\%wrong path";
+    diff->file_origin = "\%wrong path";
+    diff->diff_file = "\%wrong path";
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6200): Diff execution skipped for containing insecure characters.");
+
+    char *diff_str = fim_diff_generate(diff);
+    assert_ptr_equal(diff_str, NULL);
 
     *state = diff;
-
-#ifndef TEST_WINAGENT
-    assert_string_equal(diff, "test diff");
-#else
-    assert_string_equal(diff, diff_adapted_string);
-#endif
 }
 
-void test_seechanges_addfile_run_diff_system_error(void **state) {
-    const char * diff_folder = "queue/diff/local";
+void test_fim_diff_generate_status_equal(void **state) {
+    diff_data *diff = *state;
+    diff->uncompress_file = "/path/to/uncompress/file";
+    diff->file_origin = "/path/to/file/origin";
+    diff->diff_file = "/path/to/diff/file";
 
-#ifndef TEST_WINAGENT
-    const char * file_name = "/home/test";
-    const char * file_name_abs = file_name;
-    const char * default_path = "/var/ossec/";
-    const char * diff_command = "diff \"/var/ossec/queue/diff/local/home/test/state.1\" "
-                                     "\"/var/ossec/queue/diff/local/home/test/last-entry\" > "
-                                     "\"/var/ossec/queue/diff/local/home/test/diff.1\" 2> "
-                                     "/dev/null";
+    expect_system("fc /n \"\\path\\to\\uncompress\\file\" \"\\path\\to\\file\\origin\" > \"\\path\\to\\diff\\file\" 2> nul", 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6352): Command diff/fc output 0, files are the same");
+
+    char *diff_str = fim_diff_generate(diff);
+    assert_ptr_equal(diff_str, NULL);
+
+    *state = diff;
+}
+#endif
+
+void test_fim_diff_generate_status_error(void **state) {
+    diff_data *diff = *state;
+    diff->uncompress_file = "/path/to/uncompress/file";
+    diff->file_origin = "/path/to/file/origin";
+    diff->diff_file = "/path/to/diff/file";
+
+#ifndef WIN32
+    expect_system("diff \"%s\" \"%s\" > \"%s\" 2> /dev/null", -1);
 #else
-    const char * file_name = "c:\\windows\\system32\\drivers\\etc\\test";
-    const char * file_name_abs = "c\\windows\\system32\\drivers\\etc\\test";
-    const char * default_path = "";
-    const char * diff_command = "fc /n \"queue\\diff\\local\\c\\windows\\system32\\drivers\\etc\\test\\state.1\" "
-                                      "\"queue\\diff\\local\\c\\windows\\system32\\drivers\\etc\\test\\last-entry\" > "
-                                      "\"queue\\diff\\local\\c\\windows\\system32\\drivers\\etc\\test\\diff.1\" 2> "
-                                      "nul";
+    expect_system("fc /n \"\\path\\to\\uncompress\\file\" \"\\path\\to\\file\\origin\" > \"\\path\\to\\diff\\file\" 2> nul", -1);
 #endif
 
-    char last_entry[OS_SIZE_128];
-    char last_entry_gz[OS_SIZE_128];
-    char state_file[OS_SIZE_128];
-    char error_msg[OS_SIZE_256];
+    expect_string(__wrap__merror, formatted_msg, "(6714): Command fc output an error");
 
-    snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
-    snprintf(state_file, OS_SIZE_128, "%s%s/%s/state.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
+    char *diff_str = fim_diff_generate(diff);
+    assert_ptr_equal(diff_str, NULL);
 
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, file_name_abs);
-    will_return(__wrap_FileSize, 2048);
-#else
-    expect_string(__wrap_FileSizeWin, file, file_name);
-    will_return(__wrap_FileSizeWin, 2048);
-#endif
-
-    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, last_entry_gz);
-    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, last_entry);
-    will_return(__wrap_w_uncompress_gzfile, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, last_entry);
-    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
-    will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
-    will_return(__wrap_OS_MD5_File, 0);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/home/test/state.1");
-    will_return(__wrap_unlink, 0);
-#endif
-
-    expect_string(__wrap_OS_MD5_File, fname, file_name);
-    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
-    will_return(__wrap_OS_MD5_File, "636fd4d56b21e95c6bde60277ed355ea");
-    will_return(__wrap_OS_MD5_File, 0);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/home/test/last-entry");
-    will_return(__wrap_unlink, 0);
-#endif
-
-    expect_string(__wrap_File_DateofChange, file, last_entry);
-    will_return(__wrap_File_DateofChange, 1);
-
-    expect_string(__wrap_rename, __old, last_entry);
-    expect_string(__wrap_rename, __new, state_file);
-    will_return(__wrap_rename, 1);
-
-    expect_string(__wrap_File_DateofChange, file, last_entry);
-    will_return(__wrap_File_DateofChange, 1);
-
-    // seechanges_dupfile()
-    expect_string(__wrap_wfopen, __filename, file_name);
-    expect_string(__wrap_wfopen, __modes, "rb");
-    will_return(__wrap_wfopen, 1);
-    expect_string(__wrap_wfopen, __filename, last_entry);
-    expect_string(__wrap_wfopen, __modes, "wb");
-    will_return(__wrap_wfopen, 1);
-    will_return(__wrap_fread, "test");
-    will_return(__wrap_fread, 13);
-    will_return(__wrap_fwrite, 13);
-    will_return(__wrap_fread, "");
-    will_return(__wrap_fread, 0);
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_unlink, file, "/var/ossec/queue/diff/local/home/test/diff.1");
-    will_return(__wrap_unlink, 0);
-    // symlink_to_dir()
-    expect_string(__wrap_lstat, filename, file_name);
-    will_return(__wrap_lstat, 0);
-    will_return(__wrap_lstat, 0);
-#endif
-
-    expect_string(__wrap_system, __command, diff_command);
-    will_return(__wrap_system, -1);
-
-    snprintf(error_msg, OS_SIZE_256, FIM_ERROR_GENDIFF_COMMAND, diff_command);
-    expect_string(__wrap__merror, formatted_msg, error_msg);
-
-    char * diff = seechanges_addfile(file_name);
-
-    assert_null(diff);
+    *state = diff;
 }
 
-void test_seechanges_addfile_file_size_exceeded(void **state) {
-#ifndef TEST_WINAGENT
-    const char * file_name = "/home/test";
-    const char * file_name_abs = file_name;
-    const char * default_path = "/var/ossec/";
+void test_fim_diff_generate_status_ok(void **state) {
+    gen_diff_struct *gen_diff_data_container = *state;
+    gen_diff_data_container->diff->uncompress_file = "/path/to/uncompress/file";
+    gen_diff_data_container->diff->file_origin = "/path/to/file/origin";
+    gen_diff_data_container->diff->diff_file = "/path/to/diff/file";
+
+#ifndef WIN32
+    expect_system("diff \"%s\" \"%s\" > \"%s\" 2> /dev/null", 256);
 #else
-    const char * file_name = "c:\\windows\\system32\\drivers\\etc\\test_";
-    const char * file_name_abs = "c\\windows\\system32\\drivers\\etc\\test_";
-    const char * default_path = "";
+    expect_system("fc /n \"\\path\\to\\uncompress\\file\" \"\\path\\to\\file\\origin\" > \"\\path\\to\\diff\\file\" 2> nul", 1);
 #endif
 
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
+    expect_gen_diff_generate(gen_diff_data_container);
 
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, file_name_abs);
-    will_return(__wrap_FileSize, syscheck.diff_size_limit[2] * 2 * 1024);
-#else
-    expect_string(__wrap_FileSizeWin, file, file_name);
-    will_return(__wrap_FileSizeWin, syscheck.diff_size_limit[2] * 2 * 1024);
-#endif
+    char *diff_str = fim_diff_generate(gen_diff_data_container->diff);
+    assert_string_equal(diff_str, gen_diff_data_container->strarray[1]);
 
-    char info_msg[OS_SIZE_128];
-    snprintf(info_msg,
-             OS_SIZE_128,
-             "(6349): File \'%s\' is too big for configured maximum size to perform diff operation.",
-             file_name_abs);
+    *state = gen_diff_data_container;
+}
 
-    expect_string(__wrap__mdebug2, formatted_msg, info_msg);
+#ifdef TEST_WINAGENT
+void test_fim_diff_registry_tmp_fopen_fail(void **state) {
+    diff_data *diff = *state;
+    diff->file_origin = "/path/to/file/origin";
+    diff->tmp_folder = "/path/to/tmp/folder";
+    FILE *fp = NULL;
+    const char *value_data = "value_data";
+    DWORD data_type = 0;
 
-    // seechanges_delete_compressed_file
-    const char * diff_folder = "queue/diff";
-    char containing_folder[PATH_MAX + 1];
-    char last_entry_file[PATH_MAX + 1];
-    float file_size = 0.0;
+    expect_mkdir_ex(diff->tmp_folder, 0);
 
-#ifndef TEST_WINAGENT
-    snprintf(containing_folder, OS_SIZE_128, "%s%s/local%s", default_path, diff_folder, file_name_abs);
-    snprintf(last_entry_file, OS_SIZE_128, "%s%s/local%s/last-entry.gz", default_path, diff_folder, file_name_abs);
-#else
-    snprintf(containing_folder, OS_SIZE_128, "%s%s/local/%s", default_path, diff_folder, file_name_abs);
-    snprintf(last_entry_file, OS_SIZE_128, "%s%s/local/%s/last-entry.gz", default_path, diff_folder, file_name_abs);
+    expect_fopen(diff->file_origin, "w", fp);
 
-    expect_string(__wrap_abspath, path, containing_folder);
-    will_return(__wrap_abspath, 1);
+    expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file '/path/to/file/origin' due to [(2)-(No such file or directory)].");
 
-    expect_string(__wrap_abspath, path, last_entry_file);
-    will_return(__wrap_abspath, 1);
-#endif
+    int ret = fim_diff_registry_tmp(value_data, data_type, diff);
+    assert_int_equal(ret, -1);
 
-    expect_string(__wrap_IsDir, file, containing_folder);
-    will_return(__wrap_IsDir, 1);
+    *state = diff;
+}
 
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, last_entry_file);
-    will_return(__wrap_FileSize, 1024);
-#else
-    expect_string(__wrap_FileSizeWin, file, last_entry_file);
-    will_return(__wrap_FileSizeWin, 1024);
-#endif
+void test_fim_diff_registry_tmp_REG_SZ(void **state) {
+    diff_data *diff = *state;
+    diff->file_origin = "/path/to/file/origin";
+    diff->tmp_folder = "/path/to/tmp/folder";
+    FILE *fp = (FILE*)2345;
+    const char *value_data = "value_data";
+    DWORD data_type = REG_EXPAND_SZ;
 
-    expect_string(__wrap_rmdir_ex, name, containing_folder);
+    expect_mkdir_ex(diff->tmp_folder, 0);
+
+    expect_fopen(diff->file_origin, "w", fp);
+
+    expect_fprintf(fp, value_data, 0);
+
+    expect_fclose(fp, 0);
+
+    int ret = fim_diff_registry_tmp(value_data, data_type, diff);
+    assert_int_equal(ret, 0);
+
+    *state = diff;
+}
+
+void test_fim_diff_registry_tmp_REG_MULTI_SZ(void **state) {
+    diff_data *diff = *state;
+    diff->file_origin = "/path/to/file/origin";
+    diff->tmp_folder = "/path/to/tmp/folder";
+    FILE *fp = (FILE*)2345;
+    const char *value_data = "value_data\0value_data2\0";
+    const char *value_data_formatted = "value_data\n";
+    const char *value_data_formatted2 = "value_data2\n";
+    DWORD data_type = REG_MULTI_SZ;
+
+    expect_mkdir_ex(diff->tmp_folder, 0);
+
+    expect_fopen(diff->file_origin, "w", fp);
+
+    expect_fprintf(fp, value_data_formatted, 0);
+    expect_fprintf(fp, value_data_formatted2, 0);
+
+    expect_fclose(fp, 0);
+
+    int ret = fim_diff_registry_tmp((char *)value_data, data_type, diff);
+    assert_int_equal(ret, 0);
+
+    *state = diff;
+}
+
+void test_fim_diff_registry_tmp_REG_DWORD(void **state) {
+    diff_data *diff = *state;
+    diff->file_origin = "/path/to/file/origin";
+    diff->tmp_folder = "/path/to/tmp/folder";
+    FILE *fp = (FILE*)2345;
+    unsigned int *value_data = (unsigned int *)12345;
+    DWORD data_type = REG_DWORD;
+
+    expect_mkdir_ex(diff->tmp_folder, 0);
+
+    expect_fopen(diff->file_origin, "w", fp);
+
+    expect_fprintf(fp, "3039", 0);
+
+    expect_fclose(fp, 0);
+
+    int ret = fim_diff_registry_tmp((char *)&value_data, data_type, diff);
+    assert_int_equal(ret, 0);
+
+    *state = diff;
+}
+
+void test_fim_diff_registry_tmp_REG_DWORD_BIG_ENDIAN(void **state) {
+    diff_data *diff = *state;
+    diff->file_origin = "/path/to/file/origin";
+    diff->tmp_folder = "/path/to/tmp/folder";
+    FILE *fp = (FILE*)2345;
+    unsigned int *value_data = (unsigned int *)12345;
+    DWORD data_type = REG_DWORD_BIG_ENDIAN;
+
+    expect_mkdir_ex(diff->tmp_folder, 0);
+
+    expect_fopen(diff->file_origin, "w", fp);
+
+    expect_fprintf(fp, "39300000", 0);
+
+    expect_fclose(fp, 0);
+
+    int ret = fim_diff_registry_tmp((char *)&value_data, data_type, diff);
+    assert_int_equal(ret, 0);
+
+    *state = diff;
+}
+
+void test_fim_diff_registry_tmp_REG_QWORD(void **state) {
+    diff_data *diff = *state;
+    diff->file_origin = "/path/to/file/origin";
+    diff->tmp_folder = "/path/to/tmp/folder";
+    FILE *fp = (FILE*)2345;
+    unsigned long long *value_data = (unsigned long long *)12345;
+    DWORD data_type = REG_QWORD;
+
+    expect_mkdir_ex(diff->tmp_folder, 0);
+
+    expect_fopen(diff->file_origin, "w", fp);
+
+    expect_fprintf(fp, "2311f400003039", 0);
+
+    expect_fclose(fp, 0);
+
+    int ret = fim_diff_registry_tmp((char *)&value_data, data_type, diff);
+    assert_int_equal(ret, 0);
+
+    *state = diff;
+}
+
+void test_fim_diff_registry_tmp_default_type(void **state) {
+    diff_data *diff = *state;
+    diff->file_origin = "/path/to/file/origin";
+    diff->tmp_folder = "/path/to/tmp/folder";
+    FILE *fp = (FILE*)2345;
+    const char *value_data = "value_data";
+    DWORD data_type = -1;
+
+    expect_mkdir_ex(diff->tmp_folder, 0);
+
+    expect_fopen(diff->file_origin, "w", fp);
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6935): Wrong registry value type processed for report_changes.");
+
+    expect_fclose(fp, 0);
+
+    int ret = fim_diff_registry_tmp((char *)&value_data, data_type, diff);
+    assert_int_equal(ret, -1);
+
+    *state = diff;
+}
+
+void test_fim_registry_value_diff_wrong_data_type(void **state) {
+    const char *key_name = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    const char *value_name = "valuename";
+    const char *value_data = "value_data";
+    DWORD data_type = REG_NONE;
+    registry *configuration = &syscheck.registry[0];
+
+    char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
+
+    assert_ptr_equal(diff_str, NULL);
+}
+
+void test_fim_registry_value_diff_wrong_registry_tmp(void **state) {
+    const char *key_name = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    const char *value_name = "valuename";
+    const char *value_data = "value_data";
+    DWORD data_type = REG_EXPAND_SZ;
+    registry *configuration = &syscheck.registry[0];
+
+    expect_fim_diff_registry_tmp("queue/diff/tmp", "queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", NULL, value_data);
+
+    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp");
     will_return(__wrap_rmdir_ex, 0);
 
-    char debug_msg[OS_SIZE_512];
-    snprintf(debug_msg, OS_SIZE_512, FIM_DIFF_FOLDER_DELETED, containing_folder);
+    char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
 
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-
-    seechanges_addfile(file_name);
+    assert_ptr_equal(diff_str, NULL);
 }
 
-void test_seechanges_addfile_disk_quota_exceeded(void **state) {
-    const char * diff_folder = "queue/diff/local";
-    const char * diff_tmp_folder = "queue/diff/localtmp";
-    int i = 0;
+void test_fim_registry_value_diff_wrong_too_big_file(void **state) {
+    const char *key_name = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    const char *value_name = "valuename";
+    const char *value_data = "value_data";
+    DWORD data_type = REG_EXPAND_SZ;
+    registry *configuration = &syscheck.registry[0];
+    configuration->diff_size_limit = 1024;
 
-#ifndef TEST_WINAGENT
-    const char * file_name = "/home/test";
-    const char * file_name_abs = file_name;
-    const char * default_path = "/var/ossec/";
+    expect_fim_diff_registry_tmp("queue/diff/tmp", "queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", (FILE *)1234, value_data);
 
-    char *dirs[] = {
-        "/var",
-        "/var/ossec",
-        "/var/ossec/queue",
-        "/var/ossec/queue/diff",
-        "/var/ossec/queue/diff/local",
-        "/var/ossec/queue/diff/local/home",
-        "/var/ossec/queue/diff/local/home/test",
-        NULL
-    };
+    expect_fim_diff_check_limits("queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", "queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0", 1);
 
-    char *dirs_tmp[] = {
-        "/var",
-        "/var/ossec",
-        "/var/ossec/queue",
-        "/var/ossec/queue/diff",
-        "/var/ossec/queue/diff/localtmp",
-        "/var/ossec/queue/diff/localtmp/home",
-        "/var/ossec/queue/diff/localtmp/home/test",
-        NULL
-    };
-#else
-    const char * file_name = "c:\\windows\\system32\\drivers\\etc\\test_";
-    const char * file_name_abs = "c\\windows\\system32\\drivers\\etc\\test_";
-    const char * default_path = "";
-    const char * diff_string = "Comparing files start.txt and end.txt\r\n"
-                               "***** start.txt\r\n"
-                               "    1:  First line\r\n"
-                               "***** END.TXT\r\n"
-                               "    1:  First Line 123\r\n"
-                               "    2:  Last line\r\n"
-                               "*****\r\n\r\n\r\n";
-    const char * diff_adapted_string = "< First line\n"
-                                       "---\n"
-                                       "> First Line 123\n"
-                                       "> Last line\n";
+    expect_string(__wrap__mdebug2, formatted_msg, "(6349): File 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\valuename' is too big for configured maximum size to perform diff operation.");
 
-    char *dirs[] = {
-        "queue",
-        "queue/diff",
-        "queue/diff/local",
-        "queue/diff/local/c",
-        "queue/diff/local/c/windows",
-        "queue/diff/local/c/windows/system32",
-        "queue/diff/local/c/windows/system32/drivers",
-        "queue/diff/local/c/windows/system32/drivers/etc",
-        "queue/diff/local/c/windows/system32/drivers/etc/test_",
-        NULL
-    };
-
-    char *dirs_tmp[] = {
-        "queue",
-        "queue/diff",
-        "queue/diff/localtmp",
-        "queue/diff/localtmp/c",
-        "queue/diff/localtmp/c/windows",
-        "queue/diff/localtmp/c/windows/system32",
-        "queue/diff/localtmp/c/windows/system32/drivers",
-        "queue/diff/localtmp/c/windows/system32/drivers/etc",
-        "queue/diff/localtmp/c/windows/system32/drivers/etc/test_",
-        NULL
-    };
-#endif
-
-    char last_entry[OS_SIZE_128];
-    char last_entry_gz[OS_SIZE_128];
-    char last_entry_tmp[OS_SIZE_128];
-    char last_entry_gz_tmp[OS_SIZE_128];
-    char state_file[OS_SIZE_128];
-    char diff_file[OS_SIZE_128];
-
-    snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
-    snprintf(last_entry_tmp, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_tmp_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz_tmp, OS_SIZE_128, "%.124s.gz", last_entry_tmp);
-    snprintf(state_file, OS_SIZE_128, "%s%s/%s/state.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(diff_file, OS_SIZE_128, "%s%s/%s/diff.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, file_name_abs);
-    will_return(__wrap_FileSize, 2048);
-#else
-    expect_string(__wrap_FileSizeWin, file, file_name);
-    will_return(__wrap_FileSizeWin, 2048);
-#endif
-
-    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, last_entry_gz);
-    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, last_entry);
-    will_return(__wrap_w_uncompress_gzfile, -1);
-
-    // seechanges_createpath
-
-    for (i = 0; dirs[i]; i++) {
-        expect_string(__wrap_IsDir, file, dirs[i]);
-        will_return(__wrap_IsDir, 0);
-    }
-
-    for (i = 0; dirs_tmp[i]; i++) {
-        expect_string(__wrap_IsDir, file, dirs_tmp[i]);
-        will_return(__wrap_IsDir, -1);
-        expect_string(__wrap_mkdir, __path, dirs_tmp[i]);
-#ifndef TEST_WINAGENT
-        expect_value(__wrap_mkdir, __mode, 0770);
-#endif
-        will_return(__wrap_mkdir, 0);
-    }
-
-    // seechanges_addfile
-    expect_string(__wrap_w_compress_gzfile, filesrc, file_name);
-    expect_string(__wrap_w_compress_gzfile, filedst, last_entry_gz_tmp);
-    will_return(__wrap_w_compress_gzfile, 0);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_DirSize, path, "/var/ossec/queue/diff/localtmp/home/test");
-#else
-    expect_string(__wrap_abspath, path, "queue/diff/localtmp/c\\windows\\system32\\drivers\\etc\\test_");
-    will_return(__wrap_abspath, 1);
-
-    expect_string(__wrap_DirSize, path, "queue/diff/localtmp/c\\windows\\system32\\drivers\\etc\\test_");
-#endif
-
-    will_return(__wrap_DirSize, syscheck.disk_quota_limit * 2 * 1024);
-
-    char info_msg[OS_SIZE_512];
-    snprintf(info_msg, OS_SIZE_512, FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
-
-    expect_string(__wrap__mdebug2, formatted_msg, info_msg);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_rmdir_ex, name, "/var/ossec/queue/diff/local/home/test");
-#else
-    expect_string(__wrap_abspath, path, "queue/diff/local/c\\windows\\system32\\drivers\\etc\\test_");
-    will_return(__wrap_abspath, 1);
-
-    expect_string(__wrap_rmdir_ex, name, "queue/diff/local/c\\windows\\system32\\drivers\\etc\\test_");
-#endif
+    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp");
     will_return(__wrap_rmdir_ex, 0);
 
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_rmdir_ex, name, "/var/ossec/queue/diff/localtmp");
-#else
-    expect_string(__wrap_abspath, path, "queue/diff/localtmp");
-    will_return(__wrap_abspath, 1);
+    char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
 
-    expect_string(__wrap_rmdir_ex, name, "queue/diff/localtmp");
-#endif
+    assert_ptr_equal(diff_str, NULL);
+}
+
+void test_fim_registry_value_diff_wrong_quota_reached(void **state) {
+    const char *key_name = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    const char *value_name = "valuename";
+    const char *value_data = "value_data";
+    DWORD data_type = REG_EXPAND_SZ;
+    registry *configuration = &syscheck.registry[0];
+    configuration->diff_size_limit = 1024;
+    syscheck.comp_estimation_perc = 0.4;
+
+    expect_fim_diff_registry_tmp("queue/diff/tmp", "queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", (FILE *)1234, value_data);
+
+    expect_fim_diff_check_limits("queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", "queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0", 2);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6350): The estimation of the file size 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\valuename' exceeds the disk_quota. Operation discarded.");
+
+    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp");
     will_return(__wrap_rmdir_ex, 0);
 
-    char * diff = seechanges_addfile(file_name);
+    char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
 
-    assert_null(diff);
+    assert_ptr_equal(diff_str, NULL);
 }
 
-void test_seechanges_addfile_disk_quota_exceeded_rmdir_ex_error1(void **state) {
-    const char * diff_folder = "queue/diff/local";
-    const char * diff_tmp_folder = "queue/diff/localtmp";
-    int i = 0;
+void test_fim_registry_value_diff_wrong_quota_reached(void **state) {
+    const char *key_name = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    const char *value_name = "valuename";
+    const char *value_data = "value_data";
+    DWORD data_type = REG_EXPAND_SZ;
+    registry *configuration = &syscheck.registry[0];
+    configuration->diff_size_limit = 1024;
+    syscheck.comp_estimation_perc = 0.4;
 
-#ifndef TEST_WINAGENT
-    const char * file_name = "/home/test";
-    const char * file_name_abs = file_name;
-    const char * default_path = "/var/ossec/";
+    expect_fim_diff_registry_tmp("queue/diff/tmp", "queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", (FILE *)1234, value_data);
 
-    char *dirs[] = {
-        "/var",
-        "/var/ossec",
-        "/var/ossec/queue",
-        "/var/ossec/queue/diff",
-        "/var/ossec/queue/diff/local",
-        "/var/ossec/queue/diff/local/home",
-        "/var/ossec/queue/diff/local/home/test",
-        NULL
-    };
+    expect_fim_diff_check_limits("queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", "queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0", 0);
 
-    char *dirs_tmp[] = {
-        "/var",
-        "/var/ossec",
-        "/var/ossec/queue",
-        "/var/ossec/queue/diff",
-        "/var/ossec/queue/diff/localtmp",
-        "/var/ossec/queue/diff/localtmp/home",
-        "/var/ossec/queue/diff/localtmp/home/test",
-        NULL
-    };
-#else
-    const char * file_name = "c:\\windows\\system32\\drivers\\etc\\test_";
-    const char * file_name_abs = "c\\windows\\system32\\drivers\\etc\\test_";
-    const char * default_path = "";
-    const char * diff_string = "Comparing files start.txt and end.txt\r\n"
-                               "***** start.txt\r\n"
-                               "    1:  First line\r\n"
-                               "***** END.TXT\r\n"
-                               "    1:  First Line 123\r\n"
-                               "    2:  Last line\r\n"
-                               "*****\r\n\r\n\r\n";
-    const char * diff_adapted_string = "< First line\n"
-                                       "---\n"
-                                       "> First Line 123\n"
-                                       "> Last line\n";
+    expect_w_uncompress_gzfile("aaa", "bbb", 1);
 
-    char *dirs[] = {
-        "queue",
-        "queue/diff",
-        "queue/diff/local",
-        "queue/diff/local/c",
-        "queue/diff/local/c/windows",
-        "queue/diff/local/c/windows/system32",
-        "queue/diff/local/c/windows/system32/drivers",
-        "queue/diff/local/c/windows/system32/drivers/etc",
-        "queue/diff/local/c/windows/system32/drivers/etc/test_",
-        NULL
-    };
+    char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
 
-    char *dirs_tmp[] = {
-        "queue",
-        "queue/diff",
-        "queue/diff/localtmp",
-        "queue/diff/localtmp/c",
-        "queue/diff/localtmp/c/windows",
-        "queue/diff/localtmp/c/windows/system32",
-        "queue/diff/localtmp/c/windows/system32/drivers",
-        "queue/diff/localtmp/c/windows/system32/drivers/etc",
-        "queue/diff/localtmp/c/windows/system32/drivers/etc/test_",
-        NULL
-    };
-#endif
-
-    char last_entry[OS_SIZE_128];
-    char last_entry_gz[OS_SIZE_128];
-    char last_entry_tmp[OS_SIZE_128];
-    char last_entry_gz_tmp[OS_SIZE_128];
-    char state_file[OS_SIZE_128];
-    char diff_file[OS_SIZE_128];
-
-    snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
-    snprintf(last_entry_tmp, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_tmp_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz_tmp, OS_SIZE_128, "%.124s.gz", last_entry_tmp);
-    snprintf(state_file, OS_SIZE_128, "%s%s/%s/state.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(diff_file, OS_SIZE_128, "%s%s/%s/diff.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, file_name_abs);
-    will_return(__wrap_FileSize, 2048);
-#else
-    expect_string(__wrap_FileSizeWin, file, file_name);
-    will_return(__wrap_FileSizeWin, 2048);
-#endif
-
-    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, last_entry_gz);
-    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, last_entry);
-    will_return(__wrap_w_uncompress_gzfile, -1);
-
-    // seechanges_createpath
-
-    for (i = 0; dirs[i]; i++) {
-        expect_string(__wrap_IsDir, file, dirs[i]);
-        will_return(__wrap_IsDir, 0);
-    }
-
-    for (i = 0; dirs_tmp[i]; i++) {
-        expect_string(__wrap_IsDir, file, dirs_tmp[i]);
-        will_return(__wrap_IsDir, -1);
-        expect_string(__wrap_mkdir, __path, dirs_tmp[i]);
-#ifndef TEST_WINAGENT
-        expect_value(__wrap_mkdir, __mode, 0770);
-#endif
-        will_return(__wrap_mkdir, 0);
-    }
-
-    // seechanges_addfile
-    expect_string(__wrap_w_compress_gzfile, filesrc, file_name);
-    expect_string(__wrap_w_compress_gzfile, filedst, last_entry_gz_tmp);
-    will_return(__wrap_w_compress_gzfile, 0);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_DirSize, path, "/var/ossec/queue/diff/localtmp/home/test");
-#else
-    expect_string(__wrap_abspath, path, "queue/diff/localtmp/c\\windows\\system32\\drivers\\etc\\test_");
-    will_return(__wrap_abspath, 1);
-
-    expect_string(__wrap_DirSize, path, "queue/diff/localtmp/c\\windows\\system32\\drivers\\etc\\test_");
-#endif
-
-    will_return(__wrap_DirSize, syscheck.disk_quota_limit * 2 * 1024);
-
-    char info_msg[OS_SIZE_512];
-    snprintf(info_msg, OS_SIZE_512, FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
-
-    expect_string(__wrap__mdebug2, formatted_msg, info_msg);
-
-    char containing_folder[OS_SIZE_128];
-    char containing_folder_tmp[OS_SIZE_128];
-
-#ifndef TEST_WINAGENT
-    snprintf(containing_folder, OS_SIZE_128, "%s", "/var/ossec/queue/diff/local/home/test");
-#else
-    expect_string(__wrap_abspath, path, "queue/diff/local/c\\windows\\system32\\drivers\\etc\\test_");
-    will_return(__wrap_abspath, 1);
-
-    snprintf(containing_folder, OS_SIZE_128, "%s", "queue/diff/local/c\\windows\\system32\\drivers\\etc\\test_");
-#endif
-    expect_string(__wrap_rmdir_ex, name, containing_folder);
-    will_return(__wrap_rmdir_ex, -1);
-
-    char debug_msg[OS_SIZE_512];
-
-#ifndef TEST_WINAGENT
-    snprintf(debug_msg, OS_SIZE_512, RMDIR_ERROR, containing_folder, 39, "Directory not empty");
-#else
-    snprintf(debug_msg, OS_SIZE_512, RMDIR_ERROR, containing_folder, 41, "Directory not empty");
-#endif
-
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-
-#ifndef TEST_WINAGENT
-    snprintf(containing_folder_tmp, OS_SIZE_128, "%s", "/var/ossec/queue/diff/localtmp");
-#else
-    expect_string(__wrap_abspath, path, "queue/diff/localtmp");
-    will_return(__wrap_abspath, 1);
-
-    snprintf(containing_folder_tmp, OS_SIZE_128, "%s", "queue/diff/localtmp");
-#endif
-    expect_string(__wrap_rmdir_ex, name, containing_folder_tmp);
-    will_return(__wrap_rmdir_ex, 0);
-
-    char * diff = seechanges_addfile(file_name);
-
-    assert_null(diff);
+    assert_ptr_equal(diff_str, NULL);
 }
 
-void test_seechanges_addfile_disk_quota_exceeded_rmdir_ex_error2(void **state) {
-    const char * diff_folder = "queue/diff/local";
-    const char * diff_tmp_folder = "queue/diff/localtmp";
-    int i = 0;
-
-#ifndef TEST_WINAGENT
-    const char * file_name = "/home/test";
-    const char * file_name_abs = file_name;
-    const char * default_path = "/var/ossec/";
-
-    char *dirs[] = {
-        "/var",
-        "/var/ossec",
-        "/var/ossec/queue",
-        "/var/ossec/queue/diff",
-        "/var/ossec/queue/diff/local",
-        "/var/ossec/queue/diff/local/home",
-        "/var/ossec/queue/diff/local/home/test",
-        NULL
-    };
-
-    char *dirs_tmp[] = {
-        "/var",
-        "/var/ossec",
-        "/var/ossec/queue",
-        "/var/ossec/queue/diff",
-        "/var/ossec/queue/diff/localtmp",
-        "/var/ossec/queue/diff/localtmp/home",
-        "/var/ossec/queue/diff/localtmp/home/test",
-        NULL
-    };
-#else
-    const char * file_name = "c:\\windows\\system32\\drivers\\etc\\test_";
-    const char * file_name_abs = "c\\windows\\system32\\drivers\\etc\\test_";
-    const char * default_path = "";
-    const char * diff_string = "Comparing files start.txt and end.txt\r\n"
-                               "***** start.txt\r\n"
-                               "    1:  First line\r\n"
-                               "***** END.TXT\r\n"
-                               "    1:  First Line 123\r\n"
-                               "    2:  Last line\r\n"
-                               "*****\r\n\r\n\r\n";
-    const char * diff_adapted_string = "< First line\n"
-                                       "---\n"
-                                       "> First Line 123\n"
-                                       "> Last line\n";
-
-    char *dirs[] = {
-        "queue",
-        "queue/diff",
-        "queue/diff/local",
-        "queue/diff/local/c",
-        "queue/diff/local/c/windows",
-        "queue/diff/local/c/windows/system32",
-        "queue/diff/local/c/windows/system32/drivers",
-        "queue/diff/local/c/windows/system32/drivers/etc",
-        "queue/diff/local/c/windows/system32/drivers/etc/test_",
-        NULL
-    };
-
-    char *dirs_tmp[] = {
-        "queue",
-        "queue/diff",
-        "queue/diff/localtmp",
-        "queue/diff/localtmp/c",
-        "queue/diff/localtmp/c/windows",
-        "queue/diff/localtmp/c/windows/system32",
-        "queue/diff/localtmp/c/windows/system32/drivers",
-        "queue/diff/localtmp/c/windows/system32/drivers/etc",
-        "queue/diff/localtmp/c/windows/system32/drivers/etc/test_",
-        NULL
-    };
 #endif
 
-    char last_entry[OS_SIZE_128];
-    char last_entry_gz[OS_SIZE_128];
-    char last_entry_tmp[OS_SIZE_128];
-    char last_entry_gz_tmp[OS_SIZE_128];
-    char state_file[OS_SIZE_128];
-    char diff_file[OS_SIZE_128];
-
-    snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
-    snprintf(last_entry_tmp, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_tmp_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz_tmp, OS_SIZE_128, "%.124s.gz", last_entry_tmp);
-    snprintf(state_file, OS_SIZE_128, "%s%s/%s/state.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(diff_file, OS_SIZE_128, "%s%s/%s/diff.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, file_name_abs);
-    will_return(__wrap_FileSize, 2048);
-#else
-    expect_string(__wrap_FileSizeWin, file, file_name);
-    will_return(__wrap_FileSizeWin, 2048);
-#endif
-
-    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, last_entry_gz);
-    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, last_entry);
-    will_return(__wrap_w_uncompress_gzfile, -1);
-
-    // seechanges_createpath
-
-    for (i = 0; dirs[i]; i++) {
-        expect_string(__wrap_IsDir, file, dirs[i]);
-        will_return(__wrap_IsDir, 0);
-    }
-
-    for (i = 0; dirs_tmp[i]; i++) {
-        expect_string(__wrap_IsDir, file, dirs_tmp[i]);
-        will_return(__wrap_IsDir, -1);
-        expect_string(__wrap_mkdir, __path, dirs_tmp[i]);
-#ifndef TEST_WINAGENT
-        expect_value(__wrap_mkdir, __mode, 0770);
-#endif
-        will_return(__wrap_mkdir, 0);
-    }
-
-    // seechanges_addfile
-    expect_string(__wrap_w_compress_gzfile, filesrc, file_name);
-    expect_string(__wrap_w_compress_gzfile, filedst, last_entry_gz_tmp);
-    will_return(__wrap_w_compress_gzfile, 0);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_DirSize, path, "/var/ossec/queue/diff/localtmp/home/test");
-#else
-    expect_string(__wrap_abspath, path, "queue/diff/localtmp/c\\windows\\system32\\drivers\\etc\\test_");
-    will_return(__wrap_abspath, 1);
-
-    expect_string(__wrap_DirSize, path, "queue/diff/localtmp/c\\windows\\system32\\drivers\\etc\\test_");
-#endif
-
-    will_return(__wrap_DirSize, syscheck.disk_quota_limit * 2 * 1024);
-
-    char info_msg[OS_SIZE_512];
-    snprintf(info_msg, OS_SIZE_512, FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
-
-    expect_string(__wrap__mdebug2, formatted_msg, info_msg);
-
-    char containing_folder[OS_SIZE_128];
-    char containing_folder_tmp[OS_SIZE_128];
-
-#ifndef TEST_WINAGENT
-    snprintf(containing_folder, OS_SIZE_128, "%s", "/var/ossec/queue/diff/local/home/test");
-#else
-    expect_string(__wrap_abspath, path, "queue/diff/local/c\\windows\\system32\\drivers\\etc\\test_");
-    will_return(__wrap_abspath, 1);
-
-    snprintf(containing_folder, OS_SIZE_128, "%s", "queue/diff/local/c\\windows\\system32\\drivers\\etc\\test_");
-#endif
-    expect_string(__wrap_rmdir_ex, name, containing_folder);
-    will_return(__wrap_rmdir_ex, 0);
-
-#ifndef TEST_WINAGENT
-    snprintf(containing_folder_tmp, OS_SIZE_128, "%s", "/var/ossec/queue/diff/localtmp");
-#else
-    expect_string(__wrap_abspath, path, "queue/diff/localtmp");
-    will_return(__wrap_abspath, 1);
-
-    snprintf(containing_folder_tmp, OS_SIZE_128, "%s", "queue/diff/localtmp");
-#endif
-    expect_string(__wrap_rmdir_ex, name, containing_folder_tmp);
-    will_return(__wrap_rmdir_ex, -1);
-
-    char debug_msg[OS_SIZE_512];
-
-#ifndef TEST_WINAGENT
-    snprintf(debug_msg, OS_SIZE_512, RMDIR_ERROR, containing_folder_tmp, 39, "Directory not empty");
-#else
-    snprintf(debug_msg, OS_SIZE_512, RMDIR_ERROR, containing_folder_tmp, 41, "Directory not empty");
-#endif
-
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-
-    char * diff = seechanges_addfile(file_name);
-
-    assert_null(diff);
-}
-
-void test_seechanges_addfile_disk_quota_exceeded_rmdir_ex_error3(void **state) {
-    const char * diff_folder = "queue/diff/local";
-    const char * diff_tmp_folder = "queue/diff/localtmp";
-    int i = 0;
-
-#ifndef TEST_WINAGENT
-    const char * file_name = "/home/test";
-    const char * file_name_abs = file_name;
-    const char * default_path = "/var/ossec/";
-
-    char *dirs[] = {
-        "/var",
-        "/var/ossec",
-        "/var/ossec/queue",
-        "/var/ossec/queue/diff",
-        "/var/ossec/queue/diff/local",
-        "/var/ossec/queue/diff/local/home",
-        "/var/ossec/queue/diff/local/home/test",
-        NULL
-    };
-
-    char *dirs_tmp[] = {
-        "/var",
-        "/var/ossec",
-        "/var/ossec/queue",
-        "/var/ossec/queue/diff",
-        "/var/ossec/queue/diff/localtmp",
-        "/var/ossec/queue/diff/localtmp/home",
-        "/var/ossec/queue/diff/localtmp/home/test",
-        NULL
-    };
-#else
-    const char * file_name = "c:\\windows\\system32\\drivers\\etc\\test_";
-    const char * file_name_abs = "c\\windows\\system32\\drivers\\etc\\test_";
-    const char * default_path = "";
-    const char * diff_string = "Comparing files start.txt and end.txt\r\n"
-                               "***** start.txt\r\n"
-                               "    1:  First line\r\n"
-                               "***** END.TXT\r\n"
-                               "    1:  First Line 123\r\n"
-                               "    2:  Last line\r\n"
-                               "*****\r\n\r\n\r\n";
-    const char * diff_adapted_string = "< First line\n"
-                                       "---\n"
-                                       "> First Line 123\n"
-                                       "> Last line\n";
-
-    char *dirs[] = {
-        "queue",
-        "queue/diff",
-        "queue/diff/local",
-        "queue/diff/local/c",
-        "queue/diff/local/c/windows",
-        "queue/diff/local/c/windows/system32",
-        "queue/diff/local/c/windows/system32/drivers",
-        "queue/diff/local/c/windows/system32/drivers/etc",
-        "queue/diff/local/c/windows/system32/drivers/etc/test_",
-        NULL
-    };
-
-    char *dirs_tmp[] = {
-        "queue",
-        "queue/diff",
-        "queue/diff/localtmp",
-        "queue/diff/localtmp/c",
-        "queue/diff/localtmp/c/windows",
-        "queue/diff/localtmp/c/windows/system32",
-        "queue/diff/localtmp/c/windows/system32/drivers",
-        "queue/diff/localtmp/c/windows/system32/drivers/etc",
-        "queue/diff/localtmp/c/windows/system32/drivers/etc/test_",
-        NULL
-    };
-#endif
-
-    char last_entry[OS_SIZE_128];
-    char last_entry_gz[OS_SIZE_128];
-    char last_entry_tmp[OS_SIZE_128];
-    char last_entry_gz_tmp[OS_SIZE_128];
-    char state_file[OS_SIZE_128];
-    char diff_file[OS_SIZE_128];
-
-    snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
-    snprintf(last_entry_tmp, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_tmp_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz_tmp, OS_SIZE_128, "%.124s.gz", last_entry_tmp);
-    snprintf(state_file, OS_SIZE_128, "%s%s/%s/state.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(diff_file, OS_SIZE_128, "%s%s/%s/diff.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-
-    expect_string(__wrap_abspath, path, file_name);
-    will_return(__wrap_abspath, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, file_name_abs);
-    will_return(__wrap_FileSize, 2048);
-#else
-    expect_string(__wrap_FileSizeWin, file, file_name);
-    will_return(__wrap_FileSizeWin, 2048);
-#endif
-
-    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, last_entry_gz);
-    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, last_entry);
-    will_return(__wrap_w_uncompress_gzfile, -1);
-
-    // seechanges_createpath
-
-    for (i = 0; dirs[i]; i++) {
-        expect_string(__wrap_IsDir, file, dirs[i]);
-        will_return(__wrap_IsDir, 0);
-    }
-
-    for (i = 0; dirs_tmp[i]; i++) {
-        expect_string(__wrap_IsDir, file, dirs_tmp[i]);
-        will_return(__wrap_IsDir, -1);
-        expect_string(__wrap_mkdir, __path, dirs_tmp[i]);
-#ifndef TEST_WINAGENT
-        expect_value(__wrap_mkdir, __mode, 0770);
-#endif
-        will_return(__wrap_mkdir, 0);
-    }
-
-    // seechanges_addfile
-    expect_string(__wrap_w_compress_gzfile, filesrc, file_name);
-    expect_string(__wrap_w_compress_gzfile, filedst, last_entry_gz_tmp);
-    will_return(__wrap_w_compress_gzfile, 0);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_DirSize, path, "/var/ossec/queue/diff/localtmp/home/test");
-#else
-    expect_string(__wrap_abspath, path, "queue/diff/localtmp/c\\windows\\system32\\drivers\\etc\\test_");
-    will_return(__wrap_abspath, 1);
-
-    expect_string(__wrap_DirSize, path, "queue/diff/localtmp/c\\windows\\system32\\drivers\\etc\\test_");
-#endif
-
-    will_return(__wrap_DirSize, syscheck.disk_quota_limit * 2 * 1024);
-
-    char info_msg[OS_SIZE_512];
-    snprintf(info_msg, OS_SIZE_512, FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
-
-    expect_string(__wrap__mdebug2, formatted_msg, info_msg);
-
-    char containing_folder[OS_SIZE_128];
-    char containing_folder_tmp[OS_SIZE_128];
-
-#ifndef TEST_WINAGENT
-    snprintf(containing_folder, OS_SIZE_128, "%s", "/var/ossec/queue/diff/local/home/test");
-#else
-    expect_string(__wrap_abspath, path, "queue/diff/local/c\\windows\\system32\\drivers\\etc\\test_");
-    will_return(__wrap_abspath, 1);
-
-    snprintf(containing_folder, OS_SIZE_128, "%s", "queue/diff/local/c\\windows\\system32\\drivers\\etc\\test_");
-#endif
-    expect_string(__wrap_rmdir_ex, name, containing_folder);
-    will_return(__wrap_rmdir_ex, -1);
-
-    char debug_msg1[OS_SIZE_512];
-    snprintf(debug_msg1, OS_SIZE_512, RMDIR_ERROR, containing_folder, errno, strerror(errno));
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg1);
-
-#ifndef TEST_WINAGENT
-    snprintf(containing_folder_tmp, OS_SIZE_128, "%s", "/var/ossec/queue/diff/localtmp");
-#else
-    expect_string(__wrap_abspath, path, "queue/diff/localtmp");
-    will_return(__wrap_abspath, 1);
-
-    snprintf(containing_folder_tmp, OS_SIZE_128, "%s", "queue/diff/localtmp");
-#endif
-    expect_string(__wrap_rmdir_ex, name, containing_folder_tmp);
-    will_return(__wrap_rmdir_ex, -1);
-
-    char debug_msg2[OS_SIZE_512];
-    snprintf(debug_msg2, OS_SIZE_512, RMDIR_ERROR, containing_folder_tmp, errno, strerror(errno));
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg2);
-
-    char * diff = seechanges_addfile(file_name);
-
-    assert_null(diff);
-}
-
-void test_seechanges_delete_compressed_file_not_dir(void **state) {
-    const char * diff_folder = "queue/diff";
-    char containing_folder[PATH_MAX + 1];
-    char last_entry_file[PATH_MAX + 1];
-    float file_size = 0.0;
-
-#ifndef TEST_WINAGENT
-    const char * file_name = "/folder/test";
-    const char * file_name_abs = file_name;
-    const char * default_path = "/var/ossec/";
-
-    snprintf(containing_folder, OS_SIZE_128, "%s%s/local%s", default_path, diff_folder, file_name_abs);
-    snprintf(last_entry_file, OS_SIZE_128, "%s%s/local%s/last-entry.gz", default_path, diff_folder, file_name_abs);
-#else
-    const char * file_name = "C:\\folder\\test";
-    const char * file_name_abs = "C\\folder\\test";
-    const char * default_path = "";
-
-    snprintf(containing_folder, OS_SIZE_128, "%s%s/local/%s", default_path, diff_folder, file_name_abs);
-    snprintf(last_entry_file, OS_SIZE_128, "%s%s/local/%s/last-entry.gz", default_path, diff_folder, file_name_abs);
-
-    expect_string(__wrap_abspath, path, containing_folder);
-    will_return(__wrap_abspath, 1);
-
-    expect_string(__wrap_abspath, path, last_entry_file);
-    will_return(__wrap_abspath, 1);
-#endif
-
-    expect_string(__wrap_IsDir, file, containing_folder);
-    will_return(__wrap_IsDir, -1);
-
-    seechanges_delete_compressed_file(file_name_abs);
-}
-
-void test_seechanges_delete_compressed_file_rm_error(void **state) {
-    const char * diff_folder = "queue/diff";
-    char containing_folder[PATH_MAX + 1];
-    char last_entry_file[PATH_MAX + 1];
-    float file_size = 0.0;
-
-#ifndef TEST_WINAGENT
-    const char * file_name = "/folder/test";
-    const char * file_name_abs = file_name;
-    const char * default_path = "/var/ossec/";
-
-    snprintf(containing_folder, OS_SIZE_128, "%s%s/local%s", default_path, diff_folder, file_name_abs);
-    snprintf(last_entry_file, OS_SIZE_128, "%s%s/local%s/last-entry.gz", default_path, diff_folder, file_name_abs);
-#else
-    const char * file_name = "C:\\folder\\test";
-    const char * file_name_abs = "C\\folder\\test";
-    const char * default_path = "";
-
-    snprintf(containing_folder, OS_SIZE_128, "%s%s/local/%s", default_path, diff_folder, file_name_abs);
-    snprintf(last_entry_file, OS_SIZE_128, "%s%s/local/%s/last-entry.gz", default_path, diff_folder, file_name_abs);
-
-    expect_string(__wrap_abspath, path, containing_folder);
-    will_return(__wrap_abspath, 1);
-
-    expect_string(__wrap_abspath, path, last_entry_file);
-    will_return(__wrap_abspath, 1);
-#endif
-
-    expect_string(__wrap_IsDir, file, containing_folder);
-    will_return(__wrap_IsDir, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, last_entry_file);
-    will_return(__wrap_FileSize, 1024);
-#else
-    expect_string(__wrap_FileSizeWin, file, last_entry_file);
-    will_return(__wrap_FileSizeWin, 1024);
-#endif
-
-    expect_string(__wrap_rmdir_ex, name, containing_folder);
-    will_return(__wrap_rmdir_ex, -1);
-
-    errno = 2;
-
-    char debug_msg[OS_SIZE_512];
-
-#ifndef TEST_WINAGENT
-    snprintf(debug_msg,
-             OS_SIZE_512,
-             RMDIR_ERROR,
-             "/var/ossec/queue/diff/local/folder/test",
-             39,
-             "Directory not empty");
-#else
-    snprintf(debug_msg,
-             OS_SIZE_512,
-             RMDIR_ERROR,
-             "queue/diff/local/C\\folder\\test",
-             41,
-             "Directory not empty");
-#endif
-
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-
-    seechanges_delete_compressed_file(file_name_abs);
-}
-
-void test_seechanges_delete_compressed_file_successful(void **state) {
-    const char * diff_folder = "queue/diff";
-    char containing_folder[PATH_MAX + 1];
-    char last_entry_file[PATH_MAX + 1];
-    float file_size = 0.0;
-
-#ifndef TEST_WINAGENT
-    const char * file_name = "/folder/test";
-    const char * file_name_abs = file_name;
-    const char * default_path = "/var/ossec/";
-
-    snprintf(containing_folder, OS_SIZE_128, "%s%s/local%s", default_path, diff_folder, file_name_abs);
-    snprintf(last_entry_file, OS_SIZE_128, "%s%s/local%s/last-entry.gz", default_path, diff_folder, file_name_abs);
-#else
-    const char * file_name = "C:\\folder\\test";
-    const char * file_name_abs = "C\\folder\\test";
-    const char * default_path = "";
-
-    snprintf(containing_folder, OS_SIZE_128, "%s%s/local/%s", default_path, diff_folder, file_name_abs);
-    snprintf(last_entry_file, OS_SIZE_128, "%s%s/local/%s/last-entry.gz", default_path, diff_folder, file_name_abs);
-
-    expect_string(__wrap_abspath, path, containing_folder);
-    will_return(__wrap_abspath, 1);
-
-    expect_string(__wrap_abspath, path, last_entry_file);
-    will_return(__wrap_abspath, 1);
-#endif
-
-    expect_string(__wrap_IsDir, file, containing_folder);
-    will_return(__wrap_IsDir, 1);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, last_entry_file);
-    will_return(__wrap_FileSize, 1024);
-#else
-    expect_string(__wrap_FileSizeWin, file, last_entry_file);
-    will_return(__wrap_FileSizeWin, 1024);
-#endif
-
-    expect_string(__wrap_rmdir_ex, name, containing_folder);
-    will_return(__wrap_rmdir_ex, 0);
-
-    char debug_msg[OS_SIZE_512];
-    snprintf(debug_msg, OS_SIZE_512, FIM_DIFF_FOLDER_DELETED, containing_folder);
-
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-
-    seechanges_delete_compressed_file(file_name_abs);
-}
-
-void test_seechanges_get_diff_path(void **state) {
-    char *path;
-    path = (char*)malloc(sizeof(char) * 15);
-
-#ifndef TEST_WINAGENT
-    snprintf(path, 11, "%s", "/home/test");
-#else
-    snprintf(path, 13, "%s", "c:\\home\\test");
-#endif
-
-    char *result = seechanges_get_diff_path(path);
-
-#ifndef TEST_WINAGENT
-    assert_string_equal(result, "/var/ossec/queue/diff/local/home/test");
-#else
-    assert_string_equal(result, "queue/diff\\local\\c\\home\\test");
-#endif
-
-    if (path) {
-        free(path);
-    }
-
-    if (result) {
-        free(result);
-    }
-}
-*/
 int main(void) {
     const struct CMUnitTest tests[] = {
 
@@ -3669,72 +1377,90 @@ int main(void) {
 
         // initialize_registry_diff_data
         cmocka_unit_test_teardown(test_initialize_registry_diff_data, teardown_free_diff_data),
-#else
-
-
 #endif
-        // test_initialize_file_diff_data
+        // initialize_file_diff_data
         cmocka_unit_test_teardown(test_initialize_file_diff_data, teardown_free_diff_data),
         cmocka_unit_test_teardown(test_initialize_file_diff_data_too_long_path, teardown_free_diff_data),
+        cmocka_unit_test_teardown(test_initialize_file_diff_data_abspath_fail, teardown_free_diff_data),
 
         // filter
         cmocka_unit_test_teardown(test_filter, teardown_free_string),
 
+        // fim_diff_check_limits
+        cmocka_unit_test_setup_teardown(test_fim_diff_check_limits, setup_diff_data, teardown_free_diff_data),
+        cmocka_unit_test_setup_teardown(test_fim_diff_check_limits_size_limit_reached, setup_diff_data, teardown_free_diff_data),
+        cmocka_unit_test_setup_teardown(test_fim_diff_check_limits_estimate_compression, setup_diff_data, teardown_free_diff_data),
+
+        // fim_diff_delete_compress_folder
+        cmocka_unit_test_teardown(test_fim_diff_delete_compress_folder, teardown_disk_quota_exceeded),
+        cmocka_unit_test(test_fim_diff_delete_compress_folder_no_dir),
+        cmocka_unit_test(test_fim_diff_delete_compress_folder_rmdir_ex_fail),
+        cmocka_unit_test_setup_teardown(test_fim_diff_delete_compress_folder_remove_folder_fail, setup_diff_data, teardown_free_diff_data),
+
+        // fim_diff_estimate_compression
+        cmocka_unit_test(test_fim_diff_estimate_compression_file_not_fit),
+        cmocka_unit_test(test_fim_diff_estimate_compression_ok),
+
+        // fim_diff_create_compress_file
+        cmocka_unit_test_setup_teardown(test_fim_diff_create_compress_file_fail_compress, setup_diff_data, teardown_free_diff_data),
+        cmocka_unit_test_setup_teardown(test_fim_diff_create_compress_file_ok, setup_diff_data, teardown_free_diff_data),
+        cmocka_unit_test_setup_teardown(test_fim_diff_create_compress_file_quota_reached, setup_diff_data, teardown_free_diff_data),
+
+        // fim_diff_modify_compress_estimation
+        cmocka_unit_test(test_fim_diff_modify_compress_estimation_small_compresion_rate),
+        cmocka_unit_test(test_fim_diff_modify_compress_estimation_MIN_COMP_ESTIM),
+        cmocka_unit_test(test_fim_diff_modify_compress_estimation_ok),
+
+        // fim_diff_compare
+        cmocka_unit_test_setup_teardown(test_fim_diff_compare_fail_uncompress_MD5, setup_diff_data, teardown_free_diff_data),
+        cmocka_unit_test_setup_teardown(test_fim_diff_compare_fail_origin_MD5, setup_diff_data, teardown_free_diff_data),
+        cmocka_unit_test_setup_teardown(test_fim_diff_compare_fail_not_match, setup_diff_data, teardown_free_diff_data),
+        cmocka_unit_test_setup_teardown(test_fim_diff_compare_fail_match, setup_diff_data, teardown_free_diff_data),
+
+        // save_compress_file
+        cmocka_unit_test_setup_teardown(test_save_compress_file_ok, setup_diff_data, teardown_free_diff_data),
+        cmocka_unit_test_setup_teardown(test_save_compress_file_rename_fail, setup_diff_data, teardown_free_diff_data),
+
+        // is_file_nodiff
+        cmocka_unit_test(test_is_file_nodiff_normal_check),
+        cmocka_unit_test(test_is_file_nodiff_regex_check),
+        cmocka_unit_test(test_is_file_nodiff_not_match),
+
+        // is_registry_nodiff
+        cmocka_unit_test(test_is_registry_nodiff_normal_check),
+        cmocka_unit_test(test_is_registry_nodiff_regex_check),
+        cmocka_unit_test(test_is_registry_nodiff_not_match),
+
+        // gen_diff_str
+        cmocka_unit_test_setup_teardown(test_gen_diff_str_wfropen_fail, setup_diff_data, teardown_free_diff_data),
+        cmocka_unit_test_setup_teardown(test_gen_diff_str_fread_fail, setup_diff_data, teardown_free_diff_data),
+        cmocka_unit_test_setup_teardown(test_gen_diff_str_ok, setup_gen_diff_str, teardown_free_gen_diff_str),
+
+        // fim_diff_generate
+        cmocka_unit_test_setup_teardown(test_fim_diff_generate_status_error, setup_diff_data, teardown_free_diff_data),
+        cmocka_unit_test_setup_teardown(test_fim_diff_generate_status_ok, setup_gen_diff_str, teardown_free_gen_diff_str),
+#ifdef TEST_WINAGENT
+        cmocka_unit_test_setup_teardown(test_fim_diff_generate_filters_fail, setup_diff_data, teardown_free_diff_data),
+        cmocka_unit_test_setup_teardown(test_fim_diff_generate_status_equal, setup_diff_data, teardown_free_diff_data),
+
+        // fim_diff_registry_tmp
+        cmocka_unit_test_setup_teardown(test_fim_diff_registry_tmp_fopen_fail, setup_diff_data, teardown_free_diff_data),
+        cmocka_unit_test_setup_teardown(test_fim_diff_registry_tmp_REG_SZ, setup_diff_data, teardown_free_diff_data),
+        cmocka_unit_test_setup_teardown(test_fim_diff_registry_tmp_REG_MULTI_SZ, setup_diff_data, teardown_free_diff_data),
+        cmocka_unit_test_setup_teardown(test_fim_diff_registry_tmp_REG_DWORD, setup_diff_data, teardown_free_diff_data),
+        cmocka_unit_test_setup_teardown(test_fim_diff_registry_tmp_REG_DWORD_BIG_ENDIAN, setup_diff_data, teardown_free_diff_data),
+        cmocka_unit_test_setup_teardown(test_fim_diff_registry_tmp_REG_QWORD, setup_diff_data, teardown_free_diff_data),
+        cmocka_unit_test_setup_teardown(test_fim_diff_registry_tmp_default_type, setup_diff_data, teardown_free_diff_data),
+
+        // fim_registry_value_diff
+        cmocka_unit_test(test_fim_registry_value_diff_wrong_data_type),
+        cmocka_unit_test(test_fim_registry_value_diff_wrong_registry_tmp),
+        cmocka_unit_test(test_fim_registry_value_diff_wrong_too_big_file),
+        cmocka_unit_test(test_fim_registry_value_diff_wrong_quota_reached),
+        cmocka_unit_test(test_fim_registry_value_diff_wrong_quota_reached),
 
 
-        // gen_diff_alert
-        // cmocka_unit_test_teardown(test_gen_diff_alert_big_size, teardown_free_string),
-        // cmocka_unit_test(test_gen_diff_alert_abspath_error),
-        // cmocka_unit_test(test_gen_diff_alert_fopen_error),
-        // cmocka_unit_test(test_gen_diff_alert_fread_error),
-        // cmocka_unit_test_teardown(test_gen_diff_alert_compress_error, teardown_free_string),
-        // cmocka_unit_test(test_gen_diff_alert_exceed_disk_quota_limit),
-
-        // seechanges_dupfile
-        // cmocka_unit_test(test_seechanges_dupfile),
-        // cmocka_unit_test(test_seechanges_dupfile_fopen_error1),
-        // cmocka_unit_test(test_seechanges_dupfile_fopen_error2),
-        // cmocka_unit_test(test_seechanges_dupfile_fwrite_error),
-        // cmocka_unit_test(test_seechanges_createpath),
-        // cmocka_unit_test(test_seechanges_createpath_invalid_path),
-        // cmocka_unit_test(test_seechanges_createpath_mkdir),
-        // cmocka_unit_test(test_seechanges_createpath_mkdir_error),
-
-        // seechanges_addfile
-        // cmocka_unit_test_teardown(test_seechanges_addfile, teardown_free_string),
-        // cmocka_unit_test_teardown(test_seechanges_addfile_run_diff, teardown_free_string),
-        // cmocka_unit_test(test_seechanges_addfile_create_gz_file),
-        // cmocka_unit_test(test_seechanges_addfile_same_md5),
-        // cmocka_unit_test(test_seechanges_addfile_abspath_error),
-        // cmocka_unit_test(test_seechanges_addfile_md5_error1),
-        // cmocka_unit_test(test_seechanges_addfile_md5_error2),
-        // cmocka_unit_test(test_seechanges_addfile_rename_error),
-        // cmocka_unit_test(test_seechanges_addfile_dupfile_error),
-        // cmocka_unit_test(test_seechanges_addfile_fopen_error),
-        // cmocka_unit_test(test_seechanges_addfile_file_size_exceeded),
-        // cmocka_unit_test_setup_teardown(test_seechanges_addfile_disk_quota_exceeded, setup_disk_quota_exceeded, teardown_disk_quota_exceeded),
-        // cmocka_unit_test_setup_teardown(test_seechanges_addfile_disk_quota_exceeded_rmdir_ex_error1, setup_disk_quota_exceeded, teardown_disk_quota_exceeded),
-        // cmocka_unit_test_setup_teardown(test_seechanges_addfile_disk_quota_exceeded_rmdir_ex_error2, setup_disk_quota_exceeded, teardown_disk_quota_exceeded),
-        // cmocka_unit_test_setup_teardown(test_seechanges_addfile_disk_quota_exceeded_rmdir_ex_error3, setup_disk_quota_exceeded, teardown_disk_quota_exceeded),
-        // cmocka_unit_test_teardown(test_seechanges_addfile_fwrite_error, teardown_free_string),
-        // cmocka_unit_test(test_seechanges_addfile_run_diff_system_error),
-
-        // seechanges_delete_compressed_file
-        // cmocka_unit_test(test_seechanges_delete_compressed_file_not_dir),
-        // cmocka_unit_test(test_seechanges_delete_compressed_file_rm_error),
-        // cmocka_unit_test(test_seechanges_delete_compressed_file_successful),
-
-        // seechanges_get_diff_path
-        // cmocka_unit_test(test_seechanges_get_diff_path),
-
-        /* Windows specific tests */
-
-        // is_nodiff
-        // cmocka_unit_test(test_is_nodiff_true),
-        // cmocka_unit_test(test_is_nodiff_false),
-        // cmocka_unit_test(test_is_nodiff_regex_true),
-        // cmocka_unit_test(test_is_nodiff_regex_false),
-        // cmocka_unit_test(test_is_nodiff_no_nodiff), // This test needs to be last, it messes with global variables
+#endif
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

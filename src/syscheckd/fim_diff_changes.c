@@ -14,6 +14,11 @@
 
 // Remove static qualifier from tests
 #ifdef WAZUH_UNIT_TESTING
+
+#ifdef WIN32
+#include "../unit_tests/wrappers/windows/libc/stdio_wrappers.h"
+#endif
+
 #define static
 #endif
 
@@ -573,7 +578,6 @@ int fim_diff_check_limits(diff_data *diff) {
             return 1;
         }
     }
-
     // Estimate if the file could fit in the disk_quota limit. If not, return.
     if (syscheck.disk_quota_enabled && !fim_diff_estimate_compression(diff->file_size)) {
         return 2;

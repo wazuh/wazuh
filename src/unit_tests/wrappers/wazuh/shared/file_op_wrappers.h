@@ -13,12 +13,14 @@
 
 #include <sys/types.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #ifdef WIN32
 #include <windows.h>
 #endif
 
 int __wrap_abspath(const char *path, char *buffer, size_t size);
+void expect_abspath(const char *path, int ret);
 
 int __wrap_check_path_type(const char *dir);
 
@@ -39,8 +41,10 @@ void expect_rmdir_ex_call(const char *dir, int ret);
 int __wrap_w_compress_gzfile(const char *filesrc, const char *filedst);
 
 int __wrap_w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst);
+void expect_w_uncompress_gzfile(const char * gzfilesrc, const char * gzfiledst, FILE *ret);
 
 FILE *__wrap_wfopen(const char * __filename, const char * __modes);
+void expect_wfopen(const char * __filename, const char * __modes, FILE *ret);
 
 char ** __wrap_wreaddir(const char * name);
 
@@ -53,9 +57,11 @@ DWORD __wrap_FileSizeWin(const char * file);
 #endif
 
 int __wrap_rename_ex(const char *source, const char *destination);
+void expect_rename_ex(const char *source, const char *destination, int ret);
 
 float __wrap_DirSize(const char *path);
 
-bool __wrap_isabspath(const char *path);
+int __wrap_mkdir_ex(const char *path);
+void expect_mkdir_ex(const char *path, int ret);
 
 #endif
