@@ -11,7 +11,148 @@
 #include "syscollectorImp.h"
 #include <iostream>
 
-constexpr auto PACKAGES_SQL_STATEMENT{ "CREATE TABLE packages(`name` TEXT, `version` TEXT, `vendor` TEXT, `install_time` TEXT, `location` TEXT, `architecture` TEXT, `groups` TEXT, `description` TEXT, `size` TEXT, `priority` TEXT, `multiarch` TEXT, `source` TEXT, `checksum` TEXT, PRIMARY KEY (`name`,'version','architecture')) WITHOUT ROWID;"};
+constexpr auto PACKAGES_SQL_STATEMENT
+{
+    R"(CREATE TABLE packages(
+    name TEXT,
+    version TEXT,
+    vendor TEXT,
+    install_time TEXT,
+    location TEXT,
+    architecture TEXT,
+    groups TEXT,
+    description TEXT,
+    size TEXT,
+    priority TEXT,
+    multiarch TEXT,
+    source TEXT,
+    checksum TEXT,
+    PRIMARY KEY (name,version,architecture)) WITHOUT ROWID;)"
+};
+constexpr auto PROCESSES_SQL_STATEMENT
+{
+    R"(CREATE TABLE processes (
+    pid BIGINT,
+    name TEXT,
+    state TEXT,
+    ppid BIGINT,
+    utime BIGINT,
+    stime BIGINT,
+    cmd TEXT,
+    argvs TEXT,
+    euser TEXT,
+    ruser TEXT,
+    suser TEXT,
+    egroup TEXT,
+    rgroup TEXT,
+    sgroup TEXT,
+    fgroup TEXT,
+    priority BIGINT,
+    nice BIGINT,
+    size BIGINT,
+    vm_size BIGINT,
+    resident BIGINT,
+    share BIGINT,
+    start_time BIGINT,
+    pgrp BIGINT,
+    session BIGINT,
+    nlwp BIGINT,
+    tgid BIGINT,
+    tty BIGINT,
+    processor BIGINT,
+    PRIMARY KEY (pid));)"
+};
+
+constexpr auto OS_SQL_STATEMENT
+{
+    R"(CREATE TABLE os (
+        hostname TEXT,
+        architecture TEXT,
+        os_name TEXT,
+        os_version TEXT,
+        os_codename TEXT,
+        os_major TEXT,
+        os_minor TEXT,
+        os_build TEXT,
+        os_platform TEXT,
+        sysname TEXT,
+        release TEXT,
+        version TEXT,
+        os_release TEXT,
+        PRIMARY KEY (os_name)
+    );)"
+};
+
+constexpr auto HARDWARE_SQL_STATEMENT
+{
+    R"(CREATE TABLE hardware (
+        board_serial TEXT,
+        cpu_name TEXT,
+        cpu_cores INTEGER CHECK (cpu_cores > 0),
+        cpu_mhz BIGINT CHECK (cpu_mhz > 0),
+        ram_total BIGINT CHECK (ram_total > 0),
+        ram_free BIGINT CHECK (ram_free > 0),
+        ram_usage INTEGER CHECK (ram_usage >= 0 AND ram_usage <= 100),
+        PRIMARY KEY (board_serial)
+    );)"
+};
+
+static void updateAndNotifyChanges(const DBSYNC_HANDLE handle, const std::string& table, const nlohmann::json& values)
+{
+    const std::map<ReturnTypeCallback, std::string> operationsMap
+    {
+        // LCOV_EXCL_START
+        {MODIFIED, "MODIFIED"},
+        {DELETED , "DELETED "},
+        {INSERTED, "INSERTED"},
+        {MAX_ROWS, "MAX_ROWS"},
+        {DB_ERROR, "DB_ERROR"},
+        {SELECTED, "SELECTED"},
+        // LCOV_EXCL_STOP
+    };
+    constexpr auto queueSize{4096};
+    const auto callback
+    {
+        [&table, &operationsMap](ReturnTypeCallback result, const nlohmann::json& data)
+        {
+            if (data.is_array())
+            {
+                for (const auto& item : data)
+                {
+                    nlohmann::json msg;
+                    msg["type"] = table;
+                    msg["operation"] = operationsMap.at(result);
+                    msg["data"] = item;
+                    std::cout << msg.dump() << std::endl;
+                }
+            }
+            else
+            {
+                // LCOV_EXCL_START
+                nlohmann::json msg;
+                msg["type"] = table;
+                msg["operation"] = operationsMap.at(result);
+                msg["data"] = data;
+                std::cout << msg.dump() << std::endl;
+                // LCOV_EXCL_STOP
+            }
+        }
+    };
+    DBSyncTxn txn
+    {
+        handle,
+        nlohmann::json{table},
+        0,
+        queueSize,
+        callback
+    };
+    nlohmann::json jsResult;
+    nlohmann::json input;
+    input["table"] = table;
+    input["data"] = values;
+    txn.syncTxnRow(input);
+    txn.getDeletedRows(callback);
+}
 
 bool Syscollector::sleepFor()
 {
@@ -44,9 +185,21 @@ bool Syscollector::sleepFor()
 std::string Syscollector::getCreateStatement() const
 {
     std::string ret;
+    if (m_hardware)
+    {
+        ret += HARDWARE_SQL_STATEMENT;
+    }
+    if (m_os)
+    {
+        ret += OS_SQL_STATEMENT;
+    }
     if (m_packages)
     {
         ret += PACKAGES_SQL_STATEMENT;
+    }
+    if (m_processes)
+    {
+        ret += PROCESSES_SQL_STATEMENT;
     }
     return ret;
 }
@@ -95,16 +248,16 @@ void Syscollector::scanHardware()
 {
     if (m_hardware)
     {
-        const auto& hw{m_spInfo->hardware()};
-        std::cout << hw.dump() << std::endl;
+        constexpr auto table{"hardware"};
+        updateAndNotifyChanges(m_dbSync.handle(), table, nlohmann::json{m_spInfo->hardware()});
     }
 }
 void Syscollector::scanOs()
 {
     if(m_os)
     {
-        const auto& os{m_spInfo->os()};
-        std::cout << os.dump() << std::endl;
+        constexpr auto table{"os"};
+        updateAndNotifyChanges(m_dbSync.handle(), table, nlohmann::json{m_spInfo->os()});
     }
 }
 void Syscollector::scanNetwork()
@@ -117,35 +270,10 @@ void Syscollector::scanNetwork()
 }
 void Syscollector::scanPackages()
 {
-    constexpr auto queueSize{1024};
-    constexpr auto table{"packages"};
-    const auto& tables { nlohmann::json::parse(R"({"tables": ["packages"]})") };
-
-    const auto callback
+    if (m_packages)
     {
-        [](ReturnTypeCallback result, const nlohmann::json& data)
-        {
-            //notify changes
-            std::cout << result << std::endl;
-            std::cout << data.dump() << std::endl;
-        }
-    };
-    DBSyncTxn txn
-    {
-        m_dbSync.handle(),
-        tables.at("tables"),
-        0,
-        queueSize,
-        callback
-    };
-    nlohmann::json jsResult;
-    nlohmann::json input;
-    input["table"] = table;
-    input["data"] = m_spInfo->packages();
-    txn.syncTxnRow(input);//synctxn
-    txn.getDeletedRows(callback);//synctxn
-    if (m_hotfixes)
-    {
+        constexpr auto table{"packages"};
+        updateAndNotifyChanges(m_dbSync.handle(), table, m_spInfo->packages());
     }
 }
 void Syscollector::scanPorts()
@@ -159,12 +287,13 @@ void Syscollector::scanPorts()
         }
     }
 }
+
 void Syscollector::scanProcesses()
 {
     if (m_processes)
     {
-        const auto& processes{m_spInfo->processes()};
-        std::cout << processes.dump() << std::endl;
+        constexpr auto table{"processes"};
+        updateAndNotifyChanges(m_dbSync.handle(), table, m_spInfo->processes());
     }
 }
 
@@ -173,10 +302,7 @@ void Syscollector::scan()
     scanHardware();
     scanOs();
     scanNetwork();
-    if (m_packages)
-    {
-        scanPackages();
-    }
+    scanPackages();
     scanPorts();
     scanProcesses();
 }
