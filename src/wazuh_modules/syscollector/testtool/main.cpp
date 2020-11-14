@@ -31,21 +31,31 @@ int main(int argc, const char* argv[])
     dbsync_initialize(logFunction);
     try
     {
-        Syscollector sysCollector
+        std::thread thread
         {
-            spInfo,
-            "15s",
-            true,
-            true,
-            true,
-            true,
-            true,
-            true,
-            true,
-            true,
-            true
+            []
+            {
+                while(std::cin.get() != 'q');
+                Syscollector::instance().destroy();
+            }
         };
-        while(std::cin.get() != 'q' );
+
+        Syscollector::instance().init(spInfo,
+                                      "15s",
+                                      true,
+                                      true,
+                                      true,
+                                      true,
+                                      true,
+                                      true,
+                                      true,
+                                      true,
+                                      true);
+
+        if (thread.joinable())
+        {
+            thread.join();
+        }
     }
     catch(const std::exception& ex)
     {

@@ -72,7 +72,7 @@ DISABLE_CISCAT?=no
 
 ifeq (${TARGET},winagent)
 WIN_CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=/usr/bin/${MING_BASE}${CC} -DCMAKE_CXX_COMPILER=/usr/bin/${MING_BASE}g++-posix
-WIN_CMAKE_LIBS+=${SYSINFO}build/lib/libsysinfo.a
+WIN_CMAKE_LIBS+=${SYSINFO}build/lib/libsysinfo.so
 WIN_CMAKE_RULES+=win32/sysinfo
 WIN_CMAKE_RULES+=win32/shared_modules
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
@@ -133,7 +133,7 @@ ifeq (${uname_S},Linux)
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		OSSEC_LIBS+=-lrt -ldl -lm
 #		OSSEC_LDFLAGS+=-lmagic
-		OSSEC_LDFLAGS+=-pthread -lrt -ldl
+		OSSEC_LDFLAGS+=-pthread -lrt -ldl -static-libgcc -static-libstdc++
 #		OSSEC_LDFLAGS+=-lmagic
 		OSSEC_CFLAGS+=-Wl,--start-group
 		USE_AUDIT=yes
@@ -238,7 +238,7 @@ else
 		SHARED=dll
 		DEFINES_EVENTCHANNEL=-D_WIN32_WINNT=0x600
 		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-pthread -static-libgcc -static-libstdc++ 
+		OSSEC_LDFLAGS+=-pthread -static-libgcc -static-libstdc++
 endif # winagent
 
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
@@ -267,10 +267,15 @@ endif #DEBUG
 OSSEC_CFLAGS+=${OFLAGS}
 OSSEC_LDFLAGS+=${OFLAGS}
 
+DBSYNC_LIB+=-ldbsync
+RSYNC_LIB+=-lrsync
+
 ifeq (${TARGET}, winagent)
-	SHARED_MODULES_LDFLAGS=-L${DBSYNC}build/bin -L${RSYNC}build/bin -ldbsync -lrsync
+	OSSEC_LDFLAGS+=-L${DBSYNC}build/bin 
+	OSSEC_LDFLAGS+=-L${RSYNC}build/bin
 else
-	SHARED_MODULES_LDFLAGS=-L${DBSYNC}build/lib -L${RSYNC}build/lib -ldbsync -lrsync
+	OSSEC_LDFLAGS+=-L${DBSYNC}build/lib 
+	OSSEC_LDFLAGS+=-L${RSYNC}build/lib
 endif
 
 ifneq (,$(filter ${CLEANFULL},YES yes y Y 1))
@@ -408,16 +413,11 @@ ifneq (,$(filter ${USE_GEOIP},YES auto yes y Y 1))
 	OSSEC_LIBS+=-lGeoIP
 endif # USE_GEOIP
 
-OSSEC_LIBS+=-L${SYSINFO}build/lib -lsysinfo
-
-ifneq (${uname_S},Darwin)
-OSSEC_LIBS+=-static-libstdc++
-endif
-
-OSSEC_LIBS+=-L${SYSCOLLECTOR}build/lib 
+SYSINFO_LIB+=-lsysinfo
+OSSEC_LDFLAGS+=-L${SYSCOLLECTOR}build/lib -L${SYSINFO}build/lib 
 
 ifeq (,$(filter ${DISABLE_SYSC}, YES yes y Y 1))
-	OSSEC_LIBS+=-lsyscollector
+	SYSCOLLECTOR_LIB+=-lsyscollector
 endif
 
 MI :=
@@ -1354,7 +1354,7 @@ ifeq (${uname_S},Darwin)
 WAZUH_SHFLAGS=-install_name @rpath/libwazuhext.$(SHARED)
 
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
-	$(OSSEC_CXXSHARED) $(OSSEC_CFLAGS) $(WAZUH_SHFLAGS) -o $@ -Wl,-all_load $^ -Wl,-noall_load $(OSSEC_LIBS) $(SHARED_MODULES_LDFLAGS)
+	$(OSSEC_CXXSHARED) $(OSSEC_CFLAGS) $(WAZUH_SHFLAGS) -o $@ -Wl,-all_load $^ -Wl,-noall_load $(OSSEC_LIBS)
 else
 ifeq (${TARGET}, winagent)
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
@@ -1426,7 +1426,7 @@ os_execd/%.o: os_execd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"ossec-execd\" -c $^ -o $@
 
 ossec-execd: ${os_execd_o}
-	${OSSEC_CXXBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CXXBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SYSINFO_LIB} ${SYSCOLLECTOR_LIB} ${DBSYNC_LIB} -o $@
 
 
 #### logcollectord ####
@@ -1442,7 +1442,7 @@ logcollector/%-event.o: logcollector/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DEVENTCHANNEL_SUPPORT -DARGV0=\"ossec-logcollector\" -c $^ -o $@
 
 ossec-logcollector: ${os_logcollector_o}
-	${OSSEC_CXXBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CXXBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SYSINFO_LIB} ${SYSCOLLECTOR_LIB} ${DBSYNC_LIB} -o $@
 
 #### remoted #########
 
@@ -1464,7 +1464,7 @@ client-agent/%.o: client-agent/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./client-agent -DARGV0=\"ossec-agentd\" -c $^ -o $@
 
 ossec-agentd: ${client_agent_o} monitord/rotate_log.o monitord/compress_log.o
-	${OSSEC_CXXBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CXXBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SYSINFO_LIB} ${SYSCOLLECTOR_LIB} ${DBSYNC_LIB} -o $@
 
 #### addagent ######
 
@@ -1562,7 +1562,7 @@ syscheckd/%-event.o: syscheckd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -DEVENTCHANNEL_SUPPORT -DARGV0=\"ossec-syscheckd\" -c $^ -o $@
 
 ossec-syscheckd: ${syscheck_o} rootcheck.a
-	${OSSEC_CXXBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CXXBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SYSINFO_LIB} ${SYSCOLLECTOR_LIB} ${DBSYNC_LIB} -o $@
 
 #### Monitor #######
 
@@ -1724,7 +1724,7 @@ wmodulesd_c := wazuh_modules/main.c
 wmodulesd_o := $(wmodulesd_c:.c=.o)
 
 wazuh-modulesd: ${wmodulesd_o}
-	${OSSEC_CXXBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SHARED_MODULES_LDFLAGS} -o $@
+	${OSSEC_CXXBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SYSCOLLECTOR_LIB} ${SYSINFO_LIB} ${DBSYNC_LIB} -o $@
 
 ### wazuh-framework ##
 ifneq (,$(filter ${USE_FRAMEWORK_LIB},YES yes y Y 1))
@@ -1974,11 +1974,11 @@ win32_ui_o := $(win32_ui_c:.c=.o)
 win32/ui/%.o: win32/ui/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"ossec-win32ui\" -c $^ -o $@
 
-win32/ossec-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o ${syscheck_o} ${rootcheck_o} $(WIN_CMAKE_LIBS) $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o
-	${OSSEC_CXXBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SHARED_MODULES_LDFLAGS} -o $@
+win32/ossec-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o
+	${OSSEC_CXXBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SYSINFO_LIB} ${SYSCOLLECTOR_LIB} ${DBSYNC_LIB} -o $@
 
-win32/ossec-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(WIN_CMAKE_LIBS) $(filter-out syscheckd/main-event.o, ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o
-	${OSSEC_CXXBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SHARED_MODULES_LDFLAGS} -o $@
+win32/ossec-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out syscheckd/main-event.o, ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o
+	${OSSEC_CXXBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SYSINFO_LIB} ${SYSCOLLECTOR_LIB} ${DBSYNC_LIB} -o $@
 
 win32/ossec-rootcheck.exe: win32/icon.o win32/win_service_rk.o ${rootcheck_rk_o}
 	${OSSEC_CCBIN} -DARGV0=\"ossec-rootcheck\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@

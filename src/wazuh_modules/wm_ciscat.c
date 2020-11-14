@@ -171,8 +171,8 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
             if (id < 0)
                 id = -id;
         #else
-            char random_id[RANDOM_SIZE];
-            snprintf(random_id, RANDOM_SIZE - 1, "%u%u", os_random(), os_random());
+            char random_id[RANDOM_LENGTH];
+            snprintf(random_id, RANDOM_LENGTH - 1, "%u%u", os_random(), os_random());
             int id = atoi(random_id);
 
             if (id < 0) {

@@ -10,6 +10,7 @@
  */
 #include "../../wmodules_def.h"
 #include "syscollector.h"
+#include "syscollectorImp.h"
 
 static void* wm_sys_main(wm_sys_t *sys);        // Module main function. It won't return
 static void wm_sys_destroy(wm_sys_t *sys);      // Destroy data
@@ -27,13 +28,13 @@ const wm_context WM_SYS_CONTEXT = {
 
 void* wm_sys_main(wm_sys_t */*sys*/) 
 {
-    
+    //Syscollector::instance().init();
     return nullptr;
 }
 
 void wm_sys_destroy(wm_sys_t *sys) 
 {
-    free(sys);
+    Syscollector::instance().destroy();
 }
 
 cJSON *wm_sys_dump(const wm_sys_t *sys) 

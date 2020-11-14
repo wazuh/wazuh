@@ -10,8 +10,7 @@
  */
 
 #include "../../wmodules_def.h"
-#include "shared.h"
-#include "version_op.h"
+#include "os_xml/os_xml.h"
 
 #ifndef WM_SYSCOLLECTOR
 #define WM_SYSCOLLECTOR

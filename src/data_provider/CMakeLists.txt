@@ -44,7 +44,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
       "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsInfoWin.cpp"
       "${CMAKE_SOURCE_DIR}/src/network/*Windows.cpp")
   add_definitions(-DWIN32=1
-                  -D_WIN32_WINNT=0x600)
+                  -D_WIN32_WINNT=0x600
+                  -DWIN_EXPORT)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   file(GLOB SYSINFO_SRC
       "${CMAKE_SOURCE_DIR}/src/*Linux.cpp"
@@ -73,7 +74,7 @@ else()
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 
-add_library(sysinfo STATIC 
+add_library(sysinfo SHARED 
     ${SYSINFO_SRC}
     ${CMAKE_SOURCE_DIR}/src/sysInfo.cpp )
 
@@ -85,12 +86,14 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     link_directories(${SRC_FOLDER}/external/googletest/lib/)
   endif(UNIT_TEST)
 else()
-    target_link_libraries(sysinfo sqlite3 cjson)
+    target_link_libraries(sysinfo cjson)
     add_subdirectory(testtool)
 endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_libraries(sysinfo proc)
+else()
+  target_link_libraries(sysinfo psapi iphlpapi ws2_32 -static-libgcc -static-libstdc++)
 endif(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(UNIT_TEST)

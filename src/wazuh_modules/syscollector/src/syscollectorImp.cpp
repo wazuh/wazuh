@@ -204,52 +204,49 @@ std::string Syscollector::getCreateStatement() const
     return ret;
 }
 
-Syscollector::Syscollector(const std::shared_ptr<ISysInfo>& spInfo,
-                           const std::string& interval,
-                           const bool scanOnStart,
-                           const bool hardware,
-                           const bool os,
-                           const bool network,
-                           const bool packages,
-                           const bool ports,
-                           const bool portsAll,
-                           const bool processes,
-                           const bool hotfixes)
-: m_spInfo{spInfo}
-, m_intervalUnit{interval.back()}
-, m_intervalValue{std::stoull(interval)}
-, m_scanOnStart{scanOnStart}
-, m_hardware{hardware}
-, m_os{os}
-, m_network{network}
-, m_packages{packages}
-, m_ports{ports}
-, m_portsAll{portsAll}
-, m_processes{processes}
-, m_hotfixes{hotfixes}
-, m_running{false}
-, m_dbSync{HostType::AGENT, DbEngineType::SQLITE3, "syscollector.db", getCreateStatement()}
-, m_thread{std::bind(&Syscollector::syncThread, this)}
+void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
+                        const std::string& interval,
+                        const bool scanOnStart,
+                        const bool hardware,
+                        const bool os,
+                        const bool network,
+                        const bool packages,
+                        const bool ports,
+                        const bool portsAll,
+                        const bool processes,
+                        const bool hotfixes)
 {
+    m_spInfo = spInfo;
+    m_intervalUnit = interval.back();
+    m_intervalValue = std::stoull(interval);
+    m_scanOnStart = scanOnStart;
+    m_hardware = hardware;
+    m_os = os;
+    m_network = network;
+    m_packages = packages;
+    m_ports = ports;
+    m_portsAll = portsAll;
+    m_processes = processes;
+    m_hotfixes = hotfixes;
+    m_running = false;
+    m_dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, "syscollector.db", getCreateStatement());
+
+    syncLoop();
 }
 
-Syscollector::~Syscollector()
+void Syscollector::destroy()
 {
     std::unique_lock<std::mutex> lock{m_mutex};
     m_running = true;
     m_cv.notify_all();
     lock.unlock();
-    if (m_thread.joinable())
-    {
-        m_thread.join();
-    }
 }
 void Syscollector::scanHardware()
 {
     if (m_hardware)
     {
         constexpr auto table{"hardware"};
-        updateAndNotifyChanges(m_dbSync.handle(), table, nlohmann::json{m_spInfo->hardware()});
+        updateAndNotifyChanges(m_dbSync->handle(), table, nlohmann::json{m_spInfo->hardware()});
     }
 }
 void Syscollector::scanOs()
@@ -257,7 +254,7 @@ void Syscollector::scanOs()
     if(m_os)
     {
         constexpr auto table{"os"};
-        updateAndNotifyChanges(m_dbSync.handle(), table, nlohmann::json{m_spInfo->os()});
+        updateAndNotifyChanges(m_dbSync->handle(), table, nlohmann::json{m_spInfo->os()});
     }
 }
 void Syscollector::scanNetwork()
@@ -273,7 +270,7 @@ void Syscollector::scanPackages()
     if (m_packages)
     {
         constexpr auto table{"packages"};
-        updateAndNotifyChanges(m_dbSync.handle(), table, m_spInfo->packages());
+        updateAndNotifyChanges(m_dbSync->handle(), table, m_spInfo->packages());
     }
 }
 void Syscollector::scanPorts()
@@ -293,7 +290,7 @@ void Syscollector::scanProcesses()
     if (m_processes)
     {
         constexpr auto table{"processes"};
-        updateAndNotifyChanges(m_dbSync.handle(), table, m_spInfo->processes());
+        updateAndNotifyChanges(m_dbSync->handle(), table, m_spInfo->processes());
     }
 }
 
@@ -307,7 +304,7 @@ void Syscollector::scan()
     scanProcesses();
 }
 
-void Syscollector::syncThread()
+void Syscollector::syncLoop()
 {
     if (m_scanOnStart)
     {
