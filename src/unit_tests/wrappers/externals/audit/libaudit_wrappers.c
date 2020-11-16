@@ -6,7 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
-
+#ifndef __MACH__
 #include "libaudit_wrappers.h"
 #include <stddef.h>
 #include <stdarg.h>
@@ -84,3 +84,4 @@ int __wrap_audit_update_watch_perms(__attribute__((unused)) struct audit_rule_da
 
     return mock();
 }
+#endif

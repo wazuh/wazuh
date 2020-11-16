@@ -434,23 +434,59 @@ cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, cJ
 
 int wm_agent_upgrade_parse_agent_response(const char* agent_response, char **data) {
     char *error = NULL;
-    int error_code = OS_SUCCESS;
+    int error_code = OS_INVALID;
 
     if (agent_response) {
         if (!strncmp(agent_response, "ok", 2)) {
+            error_code = OS_SUCCESS;
             if (data && strchr(agent_response, ' ')) {
-                *data = strchr(agent_response, ' ') + 1;
+                os_strdup(strchr(agent_response, ' ') + 1, *data);
             }
         } else {
             if (!strncmp(agent_response, "err", 3) && strchr(agent_response, ' ')) {
                 error = strchr(agent_response, ' ') + 1;
                 mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_AGENT_RESPONSE_MESSAGE_ERROR, error);
             }
-            error_code = OS_INVALID;
         }
-    } else {
-        error_code = OS_INVALID;
     }
+
+    return error_code;
+}
+
+int wm_agent_upgrade_parse_agent_upgrade_command_response(const char* agent_response, char **data) {
+    char *error = NULL;
+    int error_code = OS_INVALID;
+
+    cJSON *json_response = cJSON_Parse(agent_response);
+
+    if (json_response) {
+        cJSON *error_obj = cJSON_GetObjectItem(json_response, task_manager_json_keys[WM_TASK_ERROR]);
+        cJSON *data_obj = cJSON_GetObjectItem(json_response, task_manager_json_keys[WM_TASK_ERROR_MESSAGE]);
+
+        if (error_obj && (error_obj->type == cJSON_Number)) {
+            error_code = error_obj->valueint;
+        }
+
+        if (data_obj && (data_obj->type == cJSON_String)) {
+            if (data) {
+                os_strdup(data_obj->valuestring, *data);
+            }
+            error = data_obj->valuestring;
+        }
+    }
+
+    if (error_code != OS_SUCCESS) {
+        if (error) {
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_AGENT_RESPONSE_MESSAGE_ERROR, error);
+        } else {
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_AGENT_RESPONSE_UNKNOWN_ERROR);
+        }
+        if (data) {
+            os_free(*data);
+        }
+    }
+
+    cJSON_Delete(json_response);
 
     return error_code;
 }

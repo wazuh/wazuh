@@ -321,7 +321,7 @@ int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1) {
 
     //Agent Upgrade module
     if (!strcmp(node->element, WM_AGENT_UPGRADE_CONTEXT.name)) {
-        if (wm_agent_upgrade_read(children, cur_wmodule) < 0) {
+        if (wm_agent_upgrade_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
@@ -331,7 +331,7 @@ int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1) {
     return 0;
 }
 
-#if !defined(WIN32) && !defined(CLIENT) 
+#if !defined(WIN32) && !defined(CLIENT)
 int Read_TaskManager(const OS_XML *xml, xml_node *node, void *d1) {
     wmodule **wmodules = (wmodule**)d1;
     wmodule *cur_wmodule;
@@ -377,7 +377,7 @@ int Read_TaskManager(const OS_XML *xml, xml_node *node, void *d1) {
 
     //Task Manager module
     if (!strcmp(node->element, WM_TASK_MANAGER_CONTEXT.name)) {
-        if (wm_task_manager_read(children, cur_wmodule) < 0) {
+        if (wm_task_manager_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
