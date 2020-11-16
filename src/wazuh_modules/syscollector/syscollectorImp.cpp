@@ -345,7 +345,6 @@ void Syscollector::scanNetwork()
         constexpr auto netIfaceTable    { "network_iface"    };
         constexpr auto netProtocolTable { "network_protocol" };
         constexpr auto netAddressTable  { "network_address"  };
-        std::cout << "NETWORKS: " << m_spInfo->networks() << std::endl;
         const auto networks { m_spInfo->networks().at("iface") };
         nlohmann::json ifaceTableData{};
         nlohmann::json protoTableData{};
@@ -421,7 +420,6 @@ void Syscollector::scanPorts()
         constexpr auto table{"ports"};
         constexpr auto PORT_LISTENING_STATE { "listening" };
         constexpr auto TCP_PROTOCOL { "tcp" };
-        std::cout << "PORTS: " << m_spInfo->ports() << std::endl;        
         const auto data { m_spInfo->ports().at("ports") };
         nlohmann::json portsList{};
         for (const auto& item : data.at(0))
