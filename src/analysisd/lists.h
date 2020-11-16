@@ -24,6 +24,9 @@
 #define LR_ADDRESS_NOT_MATCH 11
 #define LR_ADDRESS_MATCH_VALUE 12
 
+/**
+ * @brief Struct to save the CDB lists
+ */
 typedef struct ListNode {
     int loaded;
     char *cdb_filename;
@@ -33,6 +36,9 @@ typedef struct ListNode {
     pthread_mutex_t mutex;
 } ListNode;
 
+/**
+ * @brief Struct to asociate rules and CDB lists
+ */
 typedef struct ListRule {
     int loaded;
     int field;
@@ -45,26 +51,97 @@ typedef struct ListRule {
     pthread_mutex_t mutex;
 } ListRule;
 
-/* Create the rule list */
+/**
+ * @brief Create the rule list
+ */
 void OS_CreateListsList(void);
 
-/* Add rule information to the list */
-int OS_AddList( ListNode *new_listnode );
+/**
+ * @brief Add new node to the CDB list
+ * @param new_listnode node to add in CDB list
+ * @param cdblists list where save the node
+ */
+void OS_AddList( ListNode *new_listnode, ListNode **cdblists);
 
-int Lists_OP_LoadList(char *listfile);
+/**
+ * @brief Load cdb list
+ * @param listfile file name where find cdb list
+ * @param cdblists ListNode where save cdb list
+ * @param log_msg list to save log messages
+ * @return 0 on success, otherwise -1
+ */
+int Lists_OP_LoadList(char *listfile, ListNode **cdblists, OSList* log_msg);
 
+/**
+ * @brief Search a key in a cdb list
+ * @param lrule list of rules and cdb lists associated
+ * @param key word which search in cdb list
+ * @return 1 if find it, otherwise 0
+ */
 int OS_DBSearchKey(ListRule *lrule, char *key);
 
-int OS_DBSearch(ListRule *lrule, char *key);
+/**
+ * @brief Search a word in a cdb list
+ * @param lrule list of rules and cdb lists associated
+ * @param key word which search in cdb list
+ * @param lnode list of cdb lists
+ * @return 1 if find it, otherwise 0
+ */
+int OS_DBSearch(ListRule *lrule, char *key, ListNode **l_node);
 
-void OS_ListLoadRules(void);
+/**
+ * @brief Asociate CDB lists and rules
+ * @param l_node list of cdb lists
+ * @param lrule list of rules and cdb lists associated
+ */
+void OS_ListLoadRules(ListNode **l_node, ListRule **lrule);
 
-ListRule *OS_AddListRule(ListRule *first_rule_list, int lookup_type, int field, const char *dfield, char *listname, OSMatch *matcher);
+/**
+ * @brief Add new node in list of rules and cdb lists associated
+ * @param first_rule_list list of rules and cdb lists associated
+ * @param lookup_type lookup option
+ * @param field
+ * @param dfield field extracted in the decodification phase
+ * @param listname the list name
+ * @param matcher word to match
+ * @param l_node list of cdb lists
+ * @return first_rule_list with the node added
+ */
+ListRule *OS_AddListRule(ListRule *first_rule_list, int lookup_type, int field,
+                         const char *dfield, char *listname, OSMatch *matcher,
+                         ListNode **l_node);
 
+/**
+ * @brief Get first listnode
+ *
+ * Only used for Analysisd
+ * @return cdb list
+ */
 ListNode *OS_GetFirstList(void);
 
-ListNode *OS_FindList(const char *listname);
+/**
+ * @brief Find a cdb list
+ * @param listname name of the list
+ * @param l_node list of cdb lists
+ * @return the cdb lists if find it, otherwise NULL
+ */
+ListNode *OS_FindList(const char *listname, ListNode **l_node);
 
+/**
+ * @brief Initialize the cdb lookup lists
+ */
 void Lists_OP_CreateLists(void);
+
+/**
+ * @brief Remove a list of cdb lists
+ * @param l_node list to remove
+ */
+void os_remove_cdblist(ListNode **l_node);
+
+/**
+ * @brief Remove a list of rules and cdb lists associated
+ * @param l_rule list to remove
+ */
+void os_remove_cdbrules(ListRule **l_rule);
 
 #endif /* LISTS_H */

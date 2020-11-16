@@ -160,3 +160,16 @@ def test_unmerge_agent_info(stat_mock, agent_info, exception):
         agent_infos = list(
             wazuh.core.cluster.cluster.unmerge_agent_info('agent-info', '/random/path', 'agent-info.merged'))
         assert len(agent_infos) == (1 if exception is None else 0)
+
+
+def test_update_cluster_control_with_failed():
+    """Check if cluster_control json is updated as expected"""
+    ko_files = {
+        'missing': {'/test_file0': 'test',
+                    '/test_file3': 'ok'},
+        'shared': {'/test_file1': 'test'},
+        'extra': {'/test_file2': 'test'}
+    }
+    wazuh.core.cluster.cluster.update_cluster_control_with_failed(['/test_file0', '/test_file1', 'test_file2'], ko_files)
+
+    assert ko_files == {'missing': {'/test_file3': 'ok'}, 'shared': {}, 'extra': {'/test_file2': 'test', '/test_file1': 'test'}}

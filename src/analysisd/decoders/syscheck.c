@@ -131,23 +131,23 @@ OSHash *fim_agentinfo;
 int fim_init(void) {
     //Create hash table for agent information
     fim_agentinfo = OSHash_Create();
-    fim_decoders[FILE_DECODER]->add_id = getDecoderfromlist(FIM_NEW);
+    fim_decoders[FILE_DECODER]->add_id = getDecoderfromlist(FIM_NEW, &os_analysisd_decoder_store);
     fim_decoders[FILE_DECODER]->add_name = FIM_NEW;
-    fim_decoders[FILE_DECODER]->modify_id = getDecoderfromlist(FIM_MOD);
+    fim_decoders[FILE_DECODER]->modify_id = getDecoderfromlist(FIM_MOD, &os_analysisd_decoder_store);
     fim_decoders[FILE_DECODER]->modify_name = FIM_MOD;
-    fim_decoders[FILE_DECODER]->delete_id = getDecoderfromlist(FIM_DEL);
+    fim_decoders[FILE_DECODER]->delete_id = getDecoderfromlist(FIM_DEL, &os_analysisd_decoder_store);
     fim_decoders[FILE_DECODER]->delete_name = FIM_DEL;
-    fim_decoders[REGISTRY_KEY_DECODER]->add_id = getDecoderfromlist(FIM_REG_KEY_NEW);
+    fim_decoders[REGISTRY_KEY_DECODER]->add_id = getDecoderfromlist(FIM_REG_KEY_NEW, &os_analysisd_decoder_store);
     fim_decoders[REGISTRY_KEY_DECODER]->add_name = FIM_REG_KEY_NEW;
-    fim_decoders[REGISTRY_KEY_DECODER]->modify_id = getDecoderfromlist(FIM_REG_KEY_MOD);
+    fim_decoders[REGISTRY_KEY_DECODER]->modify_id = getDecoderfromlist(FIM_REG_KEY_MOD, &os_analysisd_decoder_store);
     fim_decoders[REGISTRY_KEY_DECODER]->modify_name = FIM_REG_KEY_MOD;
-    fim_decoders[REGISTRY_KEY_DECODER]->delete_id = getDecoderfromlist(FIM_REG_KEY_DEL);
+    fim_decoders[REGISTRY_KEY_DECODER]->delete_id = getDecoderfromlist(FIM_REG_KEY_DEL, &os_analysisd_decoder_store);
     fim_decoders[REGISTRY_KEY_DECODER]->delete_name = FIM_REG_KEY_DEL;
-    fim_decoders[REGISTRY_VALUE_DECODER]->add_id = getDecoderfromlist(FIM_REG_VAL_NEW);
+    fim_decoders[REGISTRY_VALUE_DECODER]->add_id = getDecoderfromlist(FIM_REG_VAL_NEW, &os_analysisd_decoder_store);
     fim_decoders[REGISTRY_VALUE_DECODER]->add_name = FIM_REG_VAL_NEW;
-    fim_decoders[REGISTRY_VALUE_DECODER]->modify_id = getDecoderfromlist(FIM_REG_VAL_MOD);
+    fim_decoders[REGISTRY_VALUE_DECODER]->modify_id = getDecoderfromlist(FIM_REG_VAL_MOD, &os_analysisd_decoder_store);
     fim_decoders[REGISTRY_VALUE_DECODER]->modify_name = FIM_REG_VAL_MOD;
-    fim_decoders[REGISTRY_VALUE_DECODER]->delete_id = getDecoderfromlist(FIM_REG_VAL_DEL);
+    fim_decoders[REGISTRY_VALUE_DECODER]->delete_id = getDecoderfromlist(FIM_REG_VAL_DEL, &os_analysisd_decoder_store);
     fim_decoders[REGISTRY_VALUE_DECODER]->delete_name = FIM_REG_VAL_DEL;
     if (fim_agentinfo == NULL) return 0;
     return 1;
@@ -161,7 +161,7 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     sdb_clean(localsdb);
 
     // Create decoder
-    fim_decoder->id = getDecoderfromlist(FIM_MOD);
+    fim_decoder->id = getDecoderfromlist(FIM_MOD, &os_analysisd_decoder_store);
     fim_decoder->name = FIM_MOD;
     fim_decoder->type = OSSEC_RL;
     fim_decoder->fts = 0;

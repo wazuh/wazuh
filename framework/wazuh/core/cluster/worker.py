@@ -66,11 +66,11 @@ class SyncWorker:
         if isinstance(result, Exception):
             self.logger.error(f"Error asking for permission: {result}")
             return
-        elif result == b'False':
+        elif result == b'True':
+            self.logger.info("Permission to synchronize granted")
+        else:
             self.logger.info('Master didnt grant permission to synchronize')
             return
-        else:
-            self.logger.info("Permission to synchronize granted")
 
         self.logger.info("Compressing files")
         compressed_data_path = wazuh.core.cluster.cluster.compress_files(name=self.worker.name,
@@ -347,9 +347,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             try:
                 if self.connected:
                     before = time.time()
-                    await SyncWorker(cmd=b'sync_i_w_m', files_to_sync={}, checksums=wazuh.core.cluster.cluster.get_files_status('master',
-                                                                                                                                self.name),
-                                     logger=integrity_logger, worker=self).sync()
+                    await SyncWorker(cmd=b'sync_i_w_m', files_to_sync={}, logger=integrity_logger, worker=self,
+                                     checksums=wazuh.core.cluster.cluster.get_files_status('master', self.name)).sync()
                     after = time.time()
                     integrity_logger.debug("Time synchronizing integrity: {} s".format(after - before))
             except exception.WazuhException as e:
