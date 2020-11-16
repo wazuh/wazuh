@@ -1,25 +1,30 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.0.2] - 
+## [v4.0.2] -
 
 ### Added
+
+- **Core:**
+  - Added macOS Big Sur version detection in the agent. ([#6603](https://github.com/wazuh/wazuh/pull/6603))
 
 ### Changed
 
 - **API:**
   - `GET /agents/summary/os`, `GET /agents/summary/status` and `GET /overview/agents` will no longer consider `000` as an agent. ([#6574](https://github.com/wazuh/wazuh/pull/6574))
-- **Core:**
-  - Fix a bug in Remoted that limited the maximum agent number to `MAX_AGENTS-3` instead of `MAX_AGENTS-2`. ([#4560](https://github.com/wazuh/wazuh/pull/4560))
 
 ### Fixed
+
+- **Core:**
+  - Fixed a bug in Remoted that limited the maximum agent number to `MAX_AGENTS-3` instead of `MAX_AGENTS-2`. ([#4560](https://github.com/wazuh/wazuh/pull/4560))
+  - Fixed an error in the network library when handling disconnected sockets. ([#6444](https://github.com/wazuh/wazuh/pull/6444))
+  - Fixed a bug in Remoted that limited the maximum agent number to `MAX_AGENTS-3` instead of `MAX_AGENTS-2`. ([#4560](https://github.com/wazuh/wazuh/pull/4560))
+  - Fixed an error in FIM when handling temporary files and registry keys exceeding the path size limit. ([#6538](https://github.com/wazuh/wazuh/pull/6538))
 
 ### Removed
 
 
 ## [v4.0.1] - 2020-11-11
-
-### Added
 
 ### Changed
 
@@ -38,8 +43,6 @@ All notable changes to this project will be documented in this file.
   - Fixed version matching when assigning feed in Vulnerability Detector. ([#6505](https://github.com/wazuh/wazuh/pull/6505))
   - Prevent unprivileged users from accessing the Wazuh Agent folder in Windows. ([#3593](https://github.com/wazuh/wazuh/pull/3593))
   - Fix a bug that may lead the agent to crash when reading an invalid Logcollector configuration. ([#6463](https://github.com/wazuh/wazuh/pull/6463))
-
-### Removed
 
 
 ## [v4.0.0] - 2020-10-23
