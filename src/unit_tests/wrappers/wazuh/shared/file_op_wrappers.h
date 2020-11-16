@@ -55,6 +55,7 @@ off_t __wrap_FileSize(const char * path);
 #else
 DWORD __wrap_FileSizeWin(const char * file);
 #endif
+void expect_FileSize(const char *path, int ret);
 
 int __wrap_rename_ex(const char *source, const char *destination);
 void expect_rename_ex(const char *source, const char *destination, int ret);

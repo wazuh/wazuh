@@ -47,25 +47,46 @@ static registry default_reg_nodiff[] = { { "HKEY_LOCAL_MACHINE\\Software\\Ignore
 static char *default_reg_ignore_regex_patterns[] = { "IgnoreRegex", "batfile", NULL };
 static registry_ignore_regex default_reg_ignore_regex[] = { { NULL, ARCH_32BIT }, { NULL, ARCH_64BIT }, { NULL, 0 } };
 
+
+
+static char GENERIC_PATH [OS_SIZE_256] =        "c:\\file\\path";
+static char COMPRESS_FOLDER_REG [OS_SIZE_256] = "queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0";
+static char COMPRESS_FOLDER [OS_SIZE_256] =     "queue/diff/local/c\\file\\path";
+static char COMPRESS_FILE [OS_SIZE_256] =       "queue/diff/local/c\\file\\path/last-entry.gz";
+static char TMP_FOLDER [OS_SIZE_256] =          "queue/diff/tmp";
+static char UNCOMPRESS_FILE [OS_SIZE_256] =     "queue/diff/tmp/tmp-entry";
+static char COMPRESS_TMP_FILE [OS_SIZE_256] =   "queue/diff/tmp/tmp-entry.gz";
+
+#else
+
+static char GENERIC_PATH [OS_SIZE_256] =        "/path/to/file";
+static char COMPRESS_FOLDER [OS_SIZE_256] =     "/var/ossec/queue/diff/local/path/to/file";
+static char COMPRESS_FILE [OS_SIZE_256] =       "/var/ossec/queue/diff/local/path/to/file/last-entry.gz";
+static char TMP_FOLDER [OS_SIZE_256] =          "/var/ossec/queue/diff/tmp";
+static char UNCOMPRESS_FILE [OS_SIZE_256] =     "/var/ossec/queue/diff/tmp/tmp-entry";
+static char COMPRESS_TMP_FILE [OS_SIZE_256] =   "/var/ossec/queue/diff/tmp/tmp-entry.gz";
+
 #endif
 
-static char *syscheck_nodiff[] = {"/file/nodiff/", NULL};
+static char *syscheck_nodiff[] = {"c:\\file\\nodiff", "/path/to/ignore", NULL};
 
 static char *syscheck_nodiff_regex_patterns[] = {"regex", NULL};
 static OSMatch *syscheck_nodiff_regex[] = { NULL, NULL };
 
 static char *dir_config[] = {
-    "/path/to/file",
+    GENERIC_PATH,
     "C:\\path\\to\\file",
+    "c:\\file\\nodiff",
+    "/path/to/ignore",
     NULL,
 };
 
 static int diff_size_limit_config[] = {
-    50000,
-    50000,
-    50000,
-    50000,
-    50000,
+    1024,
+    1024,
+    1024,
+    1024,
+    1024,
 };
 
 typedef struct diff_data {
@@ -91,6 +112,7 @@ typedef struct gen_diff_struct {
 #ifdef TEST_WINAGENT
 char *adapt_win_fc_output(char *command_output);
 diff_data *initialize_registry_diff_data(const char *key_name, const char *value_name, const registry *configuration);
+int fim_diff_registry_tmp(const char *value_data, DWORD data_type, const diff_data *diff);
 #endif
 
 diff_data *initialize_file_diff_data(const char *filename);
@@ -107,11 +129,8 @@ int is_file_nodiff(const char *filename);
 int is_registry_nodiff(const char *key_name, const char *value_name, int arch);
 char *gen_diff_str(const diff_data *diff);
 char *fim_diff_generate(const diff_data *diff);
-int fim_diff_registry_tmp(const char *value_data, DWORD data_type, const diff_data *diff);
 
 void expect_gen_diff_generate(gen_diff_struct *gen_diff_data_container) {
-    gen_diff_data_container->diff->diff_file = "/path/to/diff/file";
-
     FILE *fp = (FILE*)2345;
     size_t n = 145;
 
@@ -120,10 +139,22 @@ void expect_gen_diff_generate(gen_diff_struct *gen_diff_data_container) {
     expect_fread(gen_diff_data_container->strarray[0], n);
 
     expect_fclose(fp, 0);
+
+#ifndef TEST_WINAGENT
+    expect_string(__wrap_unlink, file, gen_diff_data_container->diff->diff_file);
+    will_return(__wrap_unlink, 0);
+#endif
 }
 
 void expect_initialize_file_diff_data(const char *path, int ret_abspath){
     expect_abspath(path, ret_abspath);
+    if (!ret_abspath) {
+        expect_any(__wrap__merror, formatted_msg);
+    } else {
+#ifdef TEST_WINAGENT
+        expect_abspath("queue/diff", 1);
+#endif
+    }
 }
 
 void expect_fim_diff_registry_tmp(const char *folder, const char *file, FILE *fp, const char *value_data) {
@@ -139,8 +170,7 @@ void expect_fim_diff_registry_tmp(const char *folder, const char *file, FILE *fp
 }
 
 void expect_fim_diff_check_limits(const char *file_origin, const char *compress_folder, int ret) {
-    int file_size;
-    file_size = 512 * 1024;
+    int file_size = 512 * 1024;
     syscheck.file_size_enabled = 1;
     syscheck.disk_quota_enabled = 0;
     syscheck.disk_quota_limit = 1024;
@@ -153,44 +183,45 @@ void expect_fim_diff_check_limits(const char *file_origin, const char *compress_
         }
     }
 
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, file_origin);
-    will_return(__wrap_FileSize, file_size);
-#else
-    expect_string(__wrap_FileSizeWin, file, file_origin);
-    will_return(__wrap_FileSizeWin, file_size);
-#endif
+    expect_FileSize(file_origin, file_size);
+
     if (ret == 1){
         expect_string(__wrap_IsDir, file, compress_folder);
         will_return(__wrap_IsDir, -1);
     }
 }
 
-void expect_fim_diff_create_compress_file(const char *file_origin, const char *compress_folder, int ret) {
-    int file_size;
-    file_size = 512 * 1024;
-    syscheck.file_size_enabled = 1;
+void expect_fim_diff_create_compress_file(const char *file_origin, const char *compress_tmp_file, int ret) {
     syscheck.disk_quota_enabled = 0;
-    syscheck.disk_quota_limit = 1024;
 
-    if (ret) {
-        file_size = 2048 * 1024;
-        if (ret == 2) {
-            syscheck.file_size_enabled = 0;
-            syscheck.disk_quota_enabled = 1;
-        }
+    expect_string(__wrap_w_compress_gzfile, filesrc, file_origin);
+    expect_string(__wrap_w_compress_gzfile, filedst, compress_tmp_file);
+    will_return(__wrap_w_compress_gzfile, ret);
+}
+
+void expect_save_compress_file(const char *compress_tmp_file, const char *compress_file, int rename_fail) {
+    syscheck.disk_quota_enabled = 0;
+
+    expect_rename_ex(compress_tmp_file, compress_file, rename_fail);
+}
+
+void expect_fim_diff_compare(const char *uncompress_file, const char *file_origin, os_md5 md5sum_old, os_md5 md5sum_new, int ret) {
+    expect_OS_MD5_File_call(uncompress_file, md5sum_old, OS_BINARY, ret);
+    if (!ret) {
+        expect_OS_MD5_File_call(file_origin, md5sum_new, OS_BINARY, ret);
     }
+}
 
+void expect_fim_diff_generate(gen_diff_struct *gen_diff_data_container, int generate_fail) {
+    if (generate_fail) {
+        expect_system(-1);
+    } else {
 #ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, file_origin);
-    will_return(__wrap_FileSize, file_size);
+        expect_system(256);
 #else
-    expect_string(__wrap_FileSizeWin, file, file_origin);
-    will_return(__wrap_FileSizeWin, file_size);
+        expect_system(1);
 #endif
-    if (ret == 1){
-        expect_string(__wrap_IsDir, file, compress_folder);
-        will_return(__wrap_IsDir, -1);
+        expect_gen_diff_generate(gen_diff_data_container);
     }
 }
 
@@ -286,8 +317,7 @@ static int teardown_disk_quota_exceeded(void **state) {
     return 0;
 }
 
-#ifdef TEST_WINAGENT
-static int setup_adapt_win_fc_output(void **state) {
+static int setup_array_strings(void **state) {
     char **strarray = calloc(2, sizeof(char*));
 
     if(strarray == NULL)
@@ -298,7 +328,7 @@ static int setup_adapt_win_fc_output(void **state) {
     return 0;
 }
 
-static int teardown_adapt_win_fc_output(void **state) {
+static int teardown_array_strings(void **state) {
     char **strarray = *state;
 
     free(strarray[0]);
@@ -307,7 +337,6 @@ static int teardown_adapt_win_fc_output(void **state) {
 
     return 0;
 }
-#endif
 
 static int setup_gen_diff_str(void **state) {
     gen_diff_struct *gen_diff_data_container = calloc(1, sizeof(gen_diff_struct));
@@ -315,7 +344,7 @@ static int setup_gen_diff_str(void **state) {
     if(gen_diff_data_container == NULL)
         return -1;
 
-    setup_adapt_win_fc_output((void **)&gen_diff_data_container->strarray);
+    setup_array_strings((void **)&gen_diff_data_container->strarray);
     setup_diff_data((void **)&gen_diff_data_container->diff);
 
     char *input = strdup(
@@ -329,11 +358,24 @@ static int setup_gen_diff_str(void **state) {
     if(input == NULL) fail();
     gen_diff_data_container->strarray[0] = input;
 
+#ifndef TEST_WINAGENT
+    char *output = strdup(
+        "Comparing files start.txt and end.txt\r\n"
+        "***** start.txt\r\n"
+        "    1:  First line\r\n"
+        "***** END.TXT\r\n"
+        "    1:  First Line 123\r\n"
+        "    2:  Last line\r\n"
+        "*****\r\n\r\n\r\n");
+#else
     char *output = strdup(
         "< First line\n"
         "---\n"
         "> First Line 123\n"
         "> Last line\n");
+#endif
+
+
     if(output == NULL) fail();
     gen_diff_data_container->strarray[1] = output;
 
@@ -345,16 +387,43 @@ static int setup_gen_diff_str(void **state) {
 static int teardown_free_gen_diff_str(void **state) {
     gen_diff_struct *gen_diff_data_container = *state;
 
-    teardown_adapt_win_fc_output((void **)&gen_diff_data_container->strarray);
+#ifdef TEST_WINAGENT
+    teardown_array_strings((void **)&gen_diff_data_container->strarray);
+#endif
+
     teardown_free_diff_data((void **)&gen_diff_data_container->diff);
     os_free(gen_diff_data_container);
 
     return 0;
 }
 
+#ifdef TEST_WINAGENT
+static int setup_full_diff_functionality(void **state) {
+    gen_diff_struct *gen_diff_data_container;
 
+    setup_gen_diff_str((void **)&gen_diff_data_container);
 
+    syscheck.registry_nodiff = NULL;
+    syscheck.registry_nodiff_regex = NULL;
 
+    *state = gen_diff_data_container;
+
+    return 0;
+}
+
+static int teardown_full_diff_functionality(void **state) {
+    gen_diff_struct *gen_diff_data_container = *state;
+
+    teardown_free_gen_diff_str((void **)&gen_diff_data_container);
+
+    syscheck.registry_nodiff = default_reg_nodiff;
+    syscheck.registry_nodiff_regex = default_reg_ignore_regex;
+
+    *state = gen_diff_data_container;
+
+    return 0;
+}
+#endif
 
 /**********************************************************************************************************************\
  * Tests
@@ -475,7 +544,7 @@ void test_initialize_registry_diff_data(void **state) {
     diff = initialize_registry_diff_data("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", "valuename", configuration);
 
     assert_non_null(diff);
-    assert_string_equal(diff->compress_folder, "queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0");
+    assert_string_equal(diff->compress_folder, COMPRESS_FOLDER_REG);
     assert_string_equal(diff->compress_file, "queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0/last-entry.gz");
     assert_string_equal(diff->tmp_folder, "queue/diff/tmp");
     assert_string_equal(diff->file_origin, "queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0");
@@ -511,17 +580,17 @@ void test_initialize_file_diff_data(void **state) {
 void test_initialize_file_diff_data(void **state) {
     diff_data *diff = NULL;
 
-    expect_abspath("/path/to/file", 1);
+    expect_abspath(GENERIC_PATH, 1);
 
-    diff = initialize_file_diff_data("/path/to/file");
+    diff = initialize_file_diff_data(GENERIC_PATH);
 
     assert_non_null(diff);
-    assert_string_equal(diff->compress_folder, "/var/ossec/queue/diff/local/path/to/file");
-    assert_string_equal(diff->compress_file, "/var/ossec/queue/diff/local/path/to/file/last-entry.gz");
-    assert_string_equal(diff->tmp_folder, "/var/ossec/queue/diff/tmp");
-    assert_string_equal(diff->file_origin, "/path/to/file");
-    assert_string_equal(diff->uncompress_file, "/var/ossec/queue/diff/tmp/tmp-entry");
-    assert_string_equal(diff->compress_tmp_file, "/var/ossec/queue/diff/tmp/tmp-entry.gz");
+    assert_string_equal(diff->compress_folder, COMPRESS_FOLDER);
+    assert_string_equal(diff->compress_file, COMPRESS_FILE);
+    assert_string_equal(diff->tmp_folder, TMP_FOLDER);
+    assert_string_equal(diff->file_origin, GENERIC_PATH);
+    assert_string_equal(diff->uncompress_file, UNCOMPRESS_FILE);
+    assert_string_equal(diff->compress_tmp_file, COMPRESS_TMP_FILE);
     assert_string_equal(diff->diff_file, "/var/ossec/queue/diff/tmp/diff-file");
 
     *state = diff;
@@ -562,11 +631,13 @@ void test_initialize_file_diff_data_too_long_path(void **state) {
 void test_initialize_file_diff_data_abspath_fail(void **state) {
     diff_data *diff = NULL;
 
-    expect_abspath("/path/to/file", 0);
-
+    expect_abspath(GENERIC_PATH, 0);
+#ifdef TEST_WINAGENT
+    expect_string(__wrap__merror, formatted_msg, "(6711): Cannot get absolute path of 'c:\\file\\path': Success (0)");
+#else
     expect_string(__wrap__merror, formatted_msg, "(6711): Cannot get absolute path of '/path/to/file': Success (0)");
-
-    diff = initialize_file_diff_data("/path/to/file");
+#endif
+    diff = initialize_file_diff_data(GENERIC_PATH);
 
     assert_null(diff);
 
@@ -577,16 +648,10 @@ void test_fim_diff_check_limits(void **state) {
     diff_data *diff = *state;
 
     diff->size_limit = 2048;
-    diff->file_origin = "/path/to/file";
+    diff->file_origin = strdup(GENERIC_PATH);
     syscheck.file_size_enabled = 1;
 
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, diff->file_origin);
-    will_return(__wrap_FileSize, 1024 * 1024);
-#else
-    expect_string(__wrap_FileSizeWin, file, diff->file_origin);
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-#endif
+    expect_FileSize(diff->file_origin, 1024 * 1024);
 
     int ret = fim_diff_check_limits(diff);
 
@@ -599,17 +664,11 @@ void test_fim_diff_check_limits_size_limit_reached(void **state) {
     diff_data *diff = *state;
 
     diff->size_limit = 1024;
-    diff->file_origin = "/path/to/file";
-    diff->compress_folder = "/compress_folder";
+    diff->file_origin = strdup(GENERIC_PATH);
+    diff->compress_folder = strdup(COMPRESS_FOLDER);
     syscheck.file_size_enabled = 1;
 
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, diff->file_origin);
-    will_return(__wrap_FileSize, 2048 * 1024);
-#else
-    expect_string(__wrap_FileSizeWin, file, diff->file_origin);
-    will_return(__wrap_FileSizeWin, 2048 * 1024);
-#endif
+    expect_FileSize(diff->file_origin, 2048 * 1024);
 
     expect_string(__wrap_IsDir, file, diff->compress_folder);
     will_return(__wrap_IsDir, -1);
@@ -625,17 +684,11 @@ void test_fim_diff_check_limits_estimate_compression(void **state) {
     diff_data *diff = *state;
 
     diff->size_limit = 2048;
-    diff->file_origin = "/path/to/file";
+    diff->file_origin = strdup(GENERIC_PATH);
     syscheck.file_size_enabled = 0;
     syscheck.disk_quota_enabled = 1;
 
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, diff->file_origin);
-    will_return(__wrap_FileSize, 1024 * 1024);
-#else
-    expect_string(__wrap_FileSizeWin, file, diff->file_origin);
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-#endif
+    expect_FileSize(diff->file_origin, 1024 * 1024);
 
     int ret = fim_diff_check_limits(diff);
 
@@ -645,7 +698,7 @@ void test_fim_diff_check_limits_estimate_compression(void **state) {
 }
 
 void test_fim_diff_delete_compress_folder(void **state) {
-    char *folder = "/path/to/folder";
+    char *folder = strdup("/path/to/folder");
 
     syscheck.diff_folder_size = -1;
 
@@ -663,11 +716,13 @@ void test_fim_diff_delete_compress_folder(void **state) {
 
     int ret = fim_diff_delete_compress_folder(folder);
 
+    os_free(folder);
+
     assert_int_equal(ret, 0);
 }
 
 void test_fim_diff_delete_compress_folder_no_dir(void **state) {
-    char *folder = "/path/to/folder";
+    char *folder = strdup("/path/to/folder");
 
     syscheck.diff_folder_size = -1;
 
@@ -676,11 +731,13 @@ void test_fim_diff_delete_compress_folder_no_dir(void **state) {
 
     int ret = fim_diff_delete_compress_folder(folder);
 
+    os_free(folder);
+
     assert_int_equal(ret, -2);
 }
 
 void test_fim_diff_delete_compress_folder_rmdir_ex_fail(void **state) {
-    char *folder = "/path/to/folder";
+    char *folder = strdup("/path/to/folder");
 
     syscheck.diff_folder_size = -1;
 
@@ -693,15 +750,17 @@ void test_fim_diff_delete_compress_folder_rmdir_ex_fail(void **state) {
     expect_string(__wrap_rmdir_ex, name, folder);
     will_return(__wrap_rmdir_ex, -1);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(1143): Unable to delete folder '/path/to/folder' due to [(41)-(Directory not empty)].");
+    expect_any(__wrap__mdebug2, formatted_msg);
 
     int ret = fim_diff_delete_compress_folder(folder);
+
+    os_free(folder);
 
     assert_int_equal(ret, -1);
 }
 
 void test_fim_diff_delete_compress_folder_remove_folder_fail(void **state) {
-    char *folder = "/path/to/folder";
+    char *folder = strdup("/path/to/folder");
 
     syscheck.diff_folder_size = -1;
 
@@ -718,6 +777,8 @@ void test_fim_diff_delete_compress_folder_remove_folder_fail(void **state) {
     will_return(__wrap_remove_empty_folders, -1);
 
     int ret = fim_diff_delete_compress_folder(folder);
+
+    os_free(folder);
 
     assert_int_equal(ret, -1);
 }
@@ -742,8 +803,8 @@ void test_fim_diff_estimate_compression_ok(void **state) {
 
 void test_fim_diff_create_compress_file_fail_compress(void **state) {
     diff_data *diff = *state;
-    diff->file_origin = "/path/file/origin";
-    diff->compress_tmp_file = "/path/compress/tmp/file";
+    diff->file_origin = strdup("/path/file/origin");
+    diff->compress_tmp_file = strdup("/path/compress/tmp/file");
 
     expect_string(__wrap_w_compress_gzfile, filesrc, diff->file_origin);
     expect_string(__wrap_w_compress_gzfile, filedst, diff->compress_tmp_file);
@@ -760,8 +821,8 @@ void test_fim_diff_create_compress_file_fail_compress(void **state) {
 
 void test_fim_diff_create_compress_file_ok(void **state) {
     diff_data *diff = *state;
-    diff->file_origin = "/path/file/origin";
-    diff->compress_tmp_file = "/path/compress/tmp/file";
+    diff->file_origin = strdup("/path/file/origin");
+    diff->compress_tmp_file = strdup("/path/compress/tmp/file");
     syscheck.disk_quota_enabled = 1;
     syscheck.diff_folder_size = 5120;
     syscheck.disk_quota_limit = 10240;
@@ -770,13 +831,7 @@ void test_fim_diff_create_compress_file_ok(void **state) {
     expect_string(__wrap_w_compress_gzfile, filedst, diff->compress_tmp_file);
     will_return(__wrap_w_compress_gzfile, 0);
 
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, diff->compress_tmp_file);
-    will_return(__wrap_FileSize, 1024 * 1024);
-#else
-    expect_string(__wrap_FileSizeWin, file, diff->compress_tmp_file);
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-#endif
+    expect_FileSize(diff->compress_tmp_file, 1024 * 1024);
 
     int ret = fim_diff_create_compress_file(diff);
 
@@ -787,8 +842,8 @@ void test_fim_diff_create_compress_file_ok(void **state) {
 
 void test_fim_diff_create_compress_file_quota_reached(void **state) {
     diff_data *diff = *state;
-    diff->file_origin = "/path/file/origin";
-    diff->compress_tmp_file = "/path/compress/tmp/file";
+    diff->file_origin = strdup("/path/file/origin");
+    diff->compress_tmp_file = strdup("/path/compress/tmp/file");
     syscheck.disk_quota_enabled = 1;
     syscheck.diff_folder_size = 10240;
     syscheck.disk_quota_limit = 10240;
@@ -798,13 +853,7 @@ void test_fim_diff_create_compress_file_quota_reached(void **state) {
     expect_string(__wrap_w_compress_gzfile, filedst, diff->compress_tmp_file);
     will_return(__wrap_w_compress_gzfile, 0);
 
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, diff->compress_tmp_file);
-    will_return(__wrap_FileSize, 1024 * 1024);
-#else
-    expect_string(__wrap_FileSizeWin, file, diff->compress_tmp_file);
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-#endif
+    expect_FileSize(diff->compress_tmp_file, 1024 * 1024);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6350): The calculate of the file size '/path/file/origin' exceeds the disk_quota. Operation discarded.");
 
@@ -844,7 +893,7 @@ void test_fim_diff_modify_compress_estimation_ok(void **state) {
 
 void test_fim_diff_compare_fail_uncompress_MD5(void **state) {
     diff_data *diff = *state;
-    diff->uncompress_file = "/path/to/uncompress/file";
+    diff->uncompress_file = strdup("/path/to/uncompress/file");
     os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
 
     expect_OS_MD5_File_call(diff->uncompress_file, md5sum_old, OS_BINARY, -1);
@@ -858,8 +907,8 @@ void test_fim_diff_compare_fail_uncompress_MD5(void **state) {
 
 void test_fim_diff_compare_fail_origin_MD5(void **state) {
     diff_data *diff = *state;
-    diff->uncompress_file = "/path/to/uncompress/file";
-    diff->file_origin = "/path/to/uncompress/file";
+    diff->uncompress_file = strdup("/path/to/uncompress/file");
+    diff->file_origin = strdup("/path/to/original/file");
     os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
     os_md5 md5sum_new = "3c183a30cffcda1408daf1c61d47b274";
 
@@ -873,8 +922,8 @@ void test_fim_diff_compare_fail_origin_MD5(void **state) {
 
 void test_fim_diff_compare_fail_not_match(void **state) {
     diff_data *diff = *state;
-    diff->uncompress_file = "/path/to/uncompress/file";
-    diff->file_origin = "/path/to/uncompress/file";
+    diff->uncompress_file = strdup("/path/to/uncompress/file");
+    diff->file_origin = strdup("/path/to/original/file");
     os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
     os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
 
@@ -890,8 +939,8 @@ void test_fim_diff_compare_fail_not_match(void **state) {
 
 void test_fim_diff_compare_fail_match(void **state) {
     diff_data *diff = *state;
-    diff->uncompress_file = "/path/to/uncompress/file";
-    diff->file_origin = "/path/to/uncompress/file";
+    diff->uncompress_file = strdup("/path/to/uncompress/file");
+    diff->file_origin = strdup("/path/to/original/file");
     os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
     os_md5 md5sum_new = "3c183a30cffcda1408daf1c61d47b274";
 
@@ -907,20 +956,14 @@ void test_fim_diff_compare_fail_match(void **state) {
 
 void test_save_compress_file_ok(void **state) {
     diff_data *diff = *state;
-    diff->compress_tmp_file = "/path/to/compress/tmp/file";
-    diff->compress_file = "/path/to/compress/file";
+    diff->compress_tmp_file = strdup("/path/to/compress/tmp/file");
+    diff->compress_file = strdup("/path/to/compress/file");
     syscheck.disk_quota_enabled = 1;
     syscheck.diff_folder_size = 0;
 
     expect_rename_ex(diff->compress_tmp_file, diff->compress_file, 0);
 
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_FileSize, path, diff->compress_file);
-    will_return(__wrap_FileSize, 1024 * 1024);
-#else
-    expect_string(__wrap_FileSizeWin, file, diff->compress_file);
-    will_return(__wrap_FileSizeWin, 1024 * 1024);
-#endif
+    expect_FileSize(diff->compress_file, 1024 * 1024);
 
     save_compress_file(diff);
     assert_int_equal(syscheck.diff_folder_size, 1024);
@@ -930,8 +973,8 @@ void test_save_compress_file_ok(void **state) {
 
 void test_save_compress_file_rename_fail(void **state) {
     diff_data *diff = *state;
-    diff->compress_tmp_file = "/path/to/compress/tmp/file";
-    diff->compress_file = "/path/to/compress/file";
+    diff->compress_tmp_file = strdup("/path/to/compress/tmp/file");
+    diff->compress_file = strdup("/path/to/compress/file");
     syscheck.disk_quota_enabled = 1;
     syscheck.diff_folder_size = 0;
 
@@ -946,8 +989,11 @@ void test_save_compress_file_rename_fail(void **state) {
 }
 
 void test_is_file_nodiff_normal_check(void **state) {
-
-    int ret = is_file_nodiff("/file/nodiff/");
+#ifdef TEST_WINAGENT
+    int ret = is_file_nodiff("c:\\file\\nodiff");
+#else
+    int ret = is_file_nodiff("/path/to/ignore");
+#endif
     assert_int_equal(ret, 1);
 }
 
@@ -987,7 +1033,7 @@ void test_is_registry_nodiff_not_match(void **state) {
 
 void test_gen_diff_str_wfropen_fail(void **state) {
     diff_data *diff = *state;
-    diff->diff_file = "/path/to/diff/file";
+    diff->diff_file = strdup("/path/to/diff/file");
 
     expect_wfopen(diff->diff_file, "rb", NULL);
 
@@ -1001,7 +1047,7 @@ void test_gen_diff_str_wfropen_fail(void **state) {
 
 void test_gen_diff_str_fread_fail(void **state) {
     diff_data *diff = *state;
-    diff->diff_file = "/path/to/diff/file";
+    diff->diff_file = strdup("/path/to/diff/file");
     FILE *fp = (FILE*)2345;
     char *diff_contain = "diff_contain";
 
@@ -1010,6 +1056,11 @@ void test_gen_diff_str_fread_fail(void **state) {
     expect_fread(diff_contain, 0);
 
     expect_fclose(fp, 0);
+
+#ifndef TEST_WINAGENT
+    expect_string(__wrap_unlink, file, "/path/to/diff/file");
+    will_return(__wrap_unlink, 0);
+#endif
 
     expect_string(__wrap__merror, formatted_msg, "(6666): Unable to generate diff alert (fread).");
 
@@ -1021,7 +1072,7 @@ void test_gen_diff_str_fread_fail(void **state) {
 
 void test_gen_diff_str_ok(void **state) {
     gen_diff_struct *gen_diff_data_container = *state;
-    gen_diff_data_container->diff->diff_file = "/path/to/diff/file";
+    gen_diff_data_container->diff->diff_file = strdup("/path/to/diff/file");
 
     FILE *fp = (FILE*)2345;
     size_t n = 145;
@@ -1032,6 +1083,11 @@ void test_gen_diff_str_ok(void **state) {
 
     expect_fclose(fp, 0);
 
+#ifndef TEST_WINAGENT
+    expect_string(__wrap_unlink, file, "/path/to/diff/file");
+    will_return(__wrap_unlink, 0);
+#endif
+
     char *diff_str = gen_diff_str(gen_diff_data_container->diff);
     assert_string_equal(diff_str, gen_diff_data_container->strarray[1]);
 
@@ -1041,9 +1097,9 @@ void test_gen_diff_str_ok(void **state) {
 #ifdef TEST_WINAGENT
 void test_fim_diff_generate_filters_fail(void **state) {
     diff_data *diff = *state;
-    diff->uncompress_file = "\%wrong path";
-    diff->file_origin = "\%wrong path";
-    diff->diff_file = "\%wrong path";
+    diff->uncompress_file = strdup("\%wrong path");
+    diff->file_origin = strdup("\%wrong path");
+    diff->diff_file = strdup("\%wrong path");
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6200): Diff execution skipped for containing insecure characters.");
 
@@ -1055,11 +1111,11 @@ void test_fim_diff_generate_filters_fail(void **state) {
 
 void test_fim_diff_generate_status_equal(void **state) {
     diff_data *diff = *state;
-    diff->uncompress_file = "/path/to/uncompress/file";
-    diff->file_origin = "/path/to/file/origin";
-    diff->diff_file = "/path/to/diff/file";
+    diff->uncompress_file = strdup("/path/to/uncompress/file");
+    diff->file_origin = strdup("/path/to/file/origin");
+    diff->diff_file = strdup("/path/to/diff/file");
 
-    expect_system("fc /n \"\\path\\to\\uncompress\\file\" \"\\path\\to\\file\\origin\" > \"\\path\\to\\diff\\file\" 2> nul", 0);
+    expect_system(0);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6352): Command diff/fc output 0, files are the same");
 
@@ -1072,17 +1128,18 @@ void test_fim_diff_generate_status_equal(void **state) {
 
 void test_fim_diff_generate_status_error(void **state) {
     diff_data *diff = *state;
-    diff->uncompress_file = "/path/to/uncompress/file";
-    diff->file_origin = "/path/to/file/origin";
-    diff->diff_file = "/path/to/diff/file";
 
-#ifndef WIN32
-    expect_system("diff \"%s\" \"%s\" > \"%s\" 2> /dev/null", -1);
-#else
-    expect_system("fc /n \"\\path\\to\\uncompress\\file\" \"\\path\\to\\file\\origin\" > \"\\path\\to\\diff\\file\" 2> nul", -1);
-#endif
+    diff->uncompress_file = strdup("/path/to/uncompress/file");
+    diff->file_origin = strdup("/path/to/file/origin");
+    diff->diff_file = strdup("/path/to/diff/file");
 
+    expect_system(-1);
+
+#ifdef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg, "(6714): Command fc output an error");
+#else
+    expect_string(__wrap__merror, formatted_msg, "(6714): Command diff output an error");
+#endif
 
     char *diff_str = fim_diff_generate(diff);
     assert_ptr_equal(diff_str, NULL);
@@ -1092,14 +1149,15 @@ void test_fim_diff_generate_status_error(void **state) {
 
 void test_fim_diff_generate_status_ok(void **state) {
     gen_diff_struct *gen_diff_data_container = *state;
-    gen_diff_data_container->diff->uncompress_file = "/path/to/uncompress/file";
-    gen_diff_data_container->diff->file_origin = "/path/to/file/origin";
-    gen_diff_data_container->diff->diff_file = "/path/to/diff/file";
 
-#ifndef WIN32
-    expect_system("diff \"%s\" \"%s\" > \"%s\" 2> /dev/null", 256);
+    gen_diff_data_container->diff->uncompress_file = strdup("/path/to/uncompress/file");
+    gen_diff_data_container->diff->file_origin = strdup("/path/to/file/origin");
+    gen_diff_data_container->diff->diff_file = strdup("/path/to/diff/file");
+
+#ifndef TEST_WINAGENT
+    expect_system(256);
 #else
-    expect_system("fc /n \"\\path\\to\\uncompress\\file\" \"\\path\\to\\file\\origin\" > \"\\path\\to\\diff\\file\" 2> nul", 1);
+    expect_system(1);
 #endif
 
     expect_gen_diff_generate(gen_diff_data_container);
@@ -1113,8 +1171,8 @@ void test_fim_diff_generate_status_ok(void **state) {
 #ifdef TEST_WINAGENT
 void test_fim_diff_registry_tmp_fopen_fail(void **state) {
     diff_data *diff = *state;
-    diff->file_origin = "/path/to/file/origin";
-    diff->tmp_folder = "/path/to/tmp/folder";
+    diff->file_origin = strdup("/path/to/file/origin");
+    diff->tmp_folder = strdup("/path/to/tmp/folder");
     FILE *fp = NULL;
     const char *value_data = "value_data";
     DWORD data_type = 0;
@@ -1305,7 +1363,7 @@ void test_fim_registry_value_diff_wrong_too_big_file(void **state) {
 
     expect_fim_diff_registry_tmp("queue/diff/tmp", "queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", (FILE *)1234, value_data);
 
-    expect_fim_diff_check_limits("queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", "queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0", 1);
+    expect_fim_diff_check_limits("queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", COMPRESS_FOLDER_REG, 1);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6349): File 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\valuename' is too big for configured maximum size to perform diff operation.");
 
@@ -1328,7 +1386,7 @@ void test_fim_registry_value_diff_wrong_quota_reached(void **state) {
 
     expect_fim_diff_registry_tmp("queue/diff/tmp", "queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", (FILE *)1234, value_data);
 
-    expect_fim_diff_check_limits("queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", "queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0", 2);
+    expect_fim_diff_check_limits("queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", COMPRESS_FOLDER_REG, 2);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6350): The estimation of the file size 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\valuename' exceeds the disk_quota. Operation discarded.");
 
@@ -1340,27 +1398,500 @@ void test_fim_registry_value_diff_wrong_quota_reached(void **state) {
     assert_ptr_equal(diff_str, NULL);
 }
 
-void test_fim_registry_value_diff_wrong_quota_reached(void **state) {
+void test_fim_registry_value_diff_uncompress_fail(void **state) {
     const char *key_name = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
     const char *value_name = "valuename";
     const char *value_data = "value_data";
     DWORD data_type = REG_EXPAND_SZ;
     registry *configuration = &syscheck.registry[0];
-    configuration->diff_size_limit = 1024;
-    syscheck.comp_estimation_perc = 0.4;
 
     expect_fim_diff_registry_tmp("queue/diff/tmp", "queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", (FILE *)1234, value_data);
 
-    expect_fim_diff_check_limits("queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", "queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0", 0);
+    expect_fim_diff_check_limits("queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", COMPRESS_FOLDER_REG, 0);
 
-    expect_w_uncompress_gzfile("aaa", "bbb", 1);
+    expect_w_uncompress_gzfile("queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0/last-entry.gz", "queue/diff/tmp/tmp-entry", (FILE *)1234);
+
+    expect_fim_diff_create_compress_file("queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", "queue/diff/tmp/tmp-entry.gz", 0);
+
+    expect_mkdir_ex(COMPRESS_FOLDER_REG, 0);
+
+    expect_save_compress_file("queue/diff/tmp/tmp-entry.gz", "queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0/last-entry.gz", 0);
+
+    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp");
+    will_return(__wrap_rmdir_ex, 0);
 
     char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
 
     assert_ptr_equal(diff_str, NULL);
 }
 
+void test_fim_registry_value_diff_create_compress_fail(void **state) {
+    const char *key_name = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    const char *value_name = "valuename";
+    const char *value_data = "value_data";
+    DWORD data_type = REG_EXPAND_SZ;
+    registry *configuration = &syscheck.registry[0];
+
+    expect_fim_diff_registry_tmp("queue/diff/tmp", "queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", (FILE *)1234, value_data);
+
+    expect_fim_diff_check_limits("queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", COMPRESS_FOLDER_REG, 0);
+
+    expect_w_uncompress_gzfile("queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0/last-entry.gz", "queue/diff/tmp/tmp-entry", NULL);
+
+    expect_FileSize("queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0/last-entry.gz", 1024 * 1024);
+
+    expect_fim_diff_create_compress_file("queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", "queue/diff/tmp/tmp-entry.gz", -1);
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6914): Cannot create a snapshot of file 'queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0'");
+
+    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp");
+    will_return(__wrap_rmdir_ex, 0);
+
+    char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
+
+    assert_ptr_equal(diff_str, NULL);
+}
+
+void test_fim_registry_value_diff_compare_fail(void **state) {
+    const char *key_name = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    const char *value_name = "valuename";
+    const char *value_data = "value_data";
+    DWORD data_type = REG_EXPAND_SZ;
+    registry *configuration = &syscheck.registry[0];
+    os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
+    os_md5 md5sum_new = "3c183a30cffcda1408daf1c61d47b274";
+
+    expect_fim_diff_registry_tmp("queue/diff/tmp", "queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", (FILE *)1234, value_data);
+
+    expect_fim_diff_check_limits("queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", COMPRESS_FOLDER_REG, 0);
+
+    expect_w_uncompress_gzfile("queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0/last-entry.gz", "queue/diff/tmp/tmp-entry", NULL);
+
+    expect_FileSize("queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0/last-entry.gz", 1024 * 1024);
+
+    expect_fim_diff_create_compress_file("queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", "queue/diff/tmp/tmp-entry.gz", 0);
+
+    expect_fim_diff_compare("queue/diff/tmp/tmp-entry", "queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", md5sum_old, md5sum_new, -1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6351): The files are identical, don't compute differences");
+
+    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp");
+    will_return(__wrap_rmdir_ex, 0);
+
+    char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
+
+    assert_ptr_equal(diff_str, NULL);
+}
+
+void test_fim_registry_value_diff_nodiff(void **state) {
+    const char *key_name = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    const char *value_name = "valuename";
+    const char *value_data = "value_data";
+    DWORD data_type = REG_EXPAND_SZ;
+    registry *configuration = &syscheck.registry[0];
+    os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
+    os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
+
+    expect_fim_diff_registry_tmp("queue/diff/tmp", "queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", (FILE *)1234, value_data);
+
+    expect_fim_diff_check_limits("queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", COMPRESS_FOLDER_REG, 0);
+
+    expect_w_uncompress_gzfile("queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0/last-entry.gz", "queue/diff/tmp/tmp-entry", NULL);
+
+    expect_FileSize("queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0/last-entry.gz", 1024 * 1024);
+
+    expect_fim_diff_create_compress_file("queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", "queue/diff/tmp/tmp-entry.gz", 0);
+
+    expect_fim_diff_compare("queue/diff/tmp/tmp-entry", "queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", md5sum_old, md5sum_new, 0);
+
+    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp");
+    will_return(__wrap_rmdir_ex, 0);
+
+    char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
+
+    assert_string_equal(diff_str, "<Diff truncated because nodiff option>");
+}
+
+void test_fim_registry_value_diff_generate_fail(void **state) {
+    gen_diff_struct *gen_diff_data_container = *state;
+
+    const char *key_name = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    const char *value_name = "valuename";
+    const char *value_data = "value_data";
+    DWORD data_type = REG_EXPAND_SZ;
+    registry *configuration = &syscheck.registry[0];
+    os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
+    os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
+
+    gen_diff_data_container->diff->uncompress_file = "queue/diff/tmp/tmp-entry";
+    gen_diff_data_container->diff->file_origin = "queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0";
+    gen_diff_data_container->diff->diff_file = "queue/diff/tmp/diff-file";
+
+    expect_fim_diff_registry_tmp("queue/diff/tmp", "queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", (FILE *)1234, value_data);
+
+    expect_fim_diff_check_limits("queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", COMPRESS_FOLDER_REG, 0);
+
+    expect_w_uncompress_gzfile("queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0/last-entry.gz", "queue/diff/tmp/tmp-entry", NULL);
+
+    expect_FileSize("queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0/last-entry.gz", 1024 * 1024);
+
+    expect_fim_diff_create_compress_file("queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", "queue/diff/tmp/tmp-entry.gz", 0);
+
+    expect_fim_diff_compare("queue/diff/tmp/tmp-entry", "queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", md5sum_old, md5sum_new, 0);
+
+    expect_fim_diff_generate(gen_diff_data_container, 1);
+
+    expect_string(__wrap__merror, formatted_msg, "(6714): Command fc output an error");
+
+    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp");
+    will_return(__wrap_rmdir_ex, 0);
+
+    char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
+
+    assert_ptr_equal(diff_str, NULL);
+
+    *state = gen_diff_data_container;
+}
+
+void test_fim_registry_value_diff_generate_diff_str(void **state) {
+    gen_diff_struct *gen_diff_data_container = *state;
+
+    const char *key_name = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    const char *value_name = "valuename";
+    const char *value_data = "value_data";
+    DWORD data_type = REG_EXPAND_SZ;
+    registry *configuration = &syscheck.registry[0];
+    os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
+    os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
+
+    gen_diff_data_container->diff->uncompress_file = "queue/diff/tmp/tmp-entry";
+    gen_diff_data_container->diff->file_origin = "queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0";
+    gen_diff_data_container->diff->diff_file = "queue/diff/tmp/diff-file";
+
+    expect_fim_diff_registry_tmp("queue/diff/tmp", "queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", (FILE *)1234, value_data);
+
+    expect_fim_diff_check_limits("queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", COMPRESS_FOLDER_REG, 0);
+
+    expect_w_uncompress_gzfile("queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0/last-entry.gz", "queue/diff/tmp/tmp-entry", NULL);
+
+    expect_FileSize("queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0/last-entry.gz", 1024 * 1024);
+
+    expect_fim_diff_create_compress_file("queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", "queue/diff/tmp/tmp-entry.gz", 0);
+
+    expect_fim_diff_compare("queue/diff/tmp/tmp-entry", "queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0", md5sum_old, md5sum_new, 0);
+
+    expect_fim_diff_generate(gen_diff_data_container, 0);
+
+    expect_save_compress_file("queue/diff/tmp/tmp-entry.gz", "queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0/last-entry.gz", 0);
+
+    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp");
+    will_return(__wrap_rmdir_ex, 0);
+
+    char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
+
+    assert_string_equal(diff_str, gen_diff_data_container->strarray[1]);
+
+    *state = gen_diff_data_container;
+}
 #endif
+
+void test_fim_file_diff_wrong_initialize(void **state) {
+    const char *filename = GENERIC_PATH;
+
+    expect_initialize_file_diff_data(filename, 0);
+
+    char *diff_str = fim_file_diff(filename);
+
+    assert_ptr_equal(diff_str, NULL);
+}
+
+void test_fim_file_diff_wrong_too_big_file(void **state) {
+    const char *filename = GENERIC_PATH;
+
+    expect_initialize_file_diff_data(filename, 1);
+
+    expect_mkdir_ex(TMP_FOLDER, 0);
+
+    expect_fim_diff_check_limits(GENERIC_PATH, COMPRESS_FOLDER, 1);
+#ifdef TEST_WINAGENT
+    expect_string(__wrap__mdebug2, formatted_msg, "(6349): File 'c:\\file\\path' is too big for configured maximum size to perform diff operation.");
+#else
+    expect_string(__wrap__mdebug2, formatted_msg, "(6349): File '/path/to/file' is too big for configured maximum size to perform diff operation.");
+#endif
+    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
+    will_return(__wrap_rmdir_ex, 0);
+
+    char *diff_str = fim_file_diff(filename);
+
+    assert_ptr_equal(diff_str, NULL);
+}
+
+void test_fim_file_diff_wrong_quota_reached(void **state) {
+    const char *filename = GENERIC_PATH;
+    syscheck.comp_estimation_perc = 0.4;
+    syscheck.diff_folder_size = 512;
+
+    expect_initialize_file_diff_data(filename, 1);
+
+    expect_mkdir_ex(TMP_FOLDER, 0);
+
+    expect_fim_diff_check_limits(GENERIC_PATH, COMPRESS_FOLDER, 2);
+#ifdef TEST_WINAGENT
+    expect_string(__wrap__mdebug2, formatted_msg, "(6350): The estimation of the file size 'c:\\file\\path' exceeds the disk_quota. Operation discarded.");
+#else
+    expect_string(__wrap__mdebug2, formatted_msg, "(6350): The estimation of the file size '/path/to/file' exceeds the disk_quota. Operation discarded.");
+#endif
+
+    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
+    will_return(__wrap_rmdir_ex, 0);
+
+    char *diff_str = fim_file_diff(filename);
+
+    assert_ptr_equal(diff_str, NULL);
+}
+
+void test_fim_file_diff_uncompress_fail(void **state) {
+    const char *filename = GENERIC_PATH;
+    syscheck.comp_estimation_perc = 0.4;
+    syscheck.diff_folder_size = 512;
+
+    expect_initialize_file_diff_data(filename, 1);
+
+    expect_mkdir_ex(TMP_FOLDER, 0);
+
+    expect_fim_diff_check_limits(GENERIC_PATH, COMPRESS_FOLDER, 0);
+
+    expect_w_uncompress_gzfile(COMPRESS_FILE, UNCOMPRESS_FILE, (FILE *)1234);
+
+    expect_fim_diff_create_compress_file(GENERIC_PATH, COMPRESS_TMP_FILE, 0);
+
+    expect_mkdir_ex(COMPRESS_FOLDER, 0);
+
+    expect_save_compress_file(COMPRESS_TMP_FILE, COMPRESS_FILE, 0);
+
+    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
+    will_return(__wrap_rmdir_ex, 0);
+
+    char *diff_str = fim_file_diff(filename);
+
+    assert_ptr_equal(diff_str, NULL);
+}
+
+void test_fim_file_diff_create_compress_fail(void **state) {
+    const char *filename = GENERIC_PATH;
+    syscheck.comp_estimation_perc = 0.4;
+    syscheck.diff_folder_size = 512;
+
+    expect_initialize_file_diff_data(filename, 1);
+
+    expect_mkdir_ex(TMP_FOLDER, 0);
+
+    expect_fim_diff_check_limits(GENERIC_PATH, COMPRESS_FOLDER, 0);
+
+    expect_w_uncompress_gzfile(COMPRESS_FILE, UNCOMPRESS_FILE, NULL);
+
+    expect_FileSize(COMPRESS_FILE, 1024 * 1024);
+
+    expect_fim_diff_create_compress_file(GENERIC_PATH, COMPRESS_TMP_FILE, -1);
+
+#ifdef TEST_WINAGENT
+    expect_string(__wrap__mwarn, formatted_msg, "(6914): Cannot create a snapshot of file 'c:\\file\\path'");
+#else
+    expect_string(__wrap__mwarn, formatted_msg, "(6914): Cannot create a snapshot of file '/path/to/file'");
+#endif
+
+    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
+    will_return(__wrap_rmdir_ex, 0);
+
+    char *diff_str = fim_file_diff(filename);
+
+    assert_ptr_equal(diff_str, NULL);
+}
+
+void test_fim_file_diff_compare_fail(void **state) {
+    const char *filename = GENERIC_PATH;
+    os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
+    os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
+    syscheck.comp_estimation_perc = 0.4;
+    syscheck.diff_folder_size = 512;
+
+    expect_initialize_file_diff_data(filename, 1);
+
+    expect_mkdir_ex(TMP_FOLDER, 0);
+
+    expect_fim_diff_check_limits(GENERIC_PATH, COMPRESS_FOLDER, 0);
+
+    expect_w_uncompress_gzfile(COMPRESS_FILE, UNCOMPRESS_FILE, NULL);
+
+    expect_FileSize(COMPRESS_FILE, 1024 * 1024);
+
+    expect_fim_diff_create_compress_file(GENERIC_PATH, COMPRESS_TMP_FILE, 0);
+
+    expect_fim_diff_compare(UNCOMPRESS_FILE, GENERIC_PATH, md5sum_old, md5sum_new, -1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6351): The files are identical, don't compute differences");
+
+    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
+    will_return(__wrap_rmdir_ex, 0);
+
+    char *diff_str = fim_file_diff(filename);
+
+    assert_ptr_equal(diff_str, NULL);
+}
+
+#ifdef TEST_WINAGENT
+void test_fim_file_diff_nodiff(void **state) {
+    const char *filename = "c:\\file\\nodiff";
+    os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
+    os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
+    syscheck.comp_estimation_perc = 0.4;
+    syscheck.diff_folder_size = 512;
+
+    expect_initialize_file_diff_data(filename, 1);
+
+    expect_mkdir_ex(TMP_FOLDER, 0);
+
+    expect_fim_diff_check_limits("c:\\file\\nodiff", "aaa", 0);
+
+    expect_w_uncompress_gzfile("queue/diff/local/c\\file\\nodiff/last-entry.gz", UNCOMPRESS_FILE, NULL);
+
+    expect_FileSize("queue/diff/local/c\\file\\nodiff/last-entry.gz", 1024 * 1024);
+
+    expect_fim_diff_create_compress_file("c:\\file\\nodiff", COMPRESS_TMP_FILE, 0);
+
+    expect_fim_diff_compare(UNCOMPRESS_FILE, "c:\\file\\nodiff", md5sum_old, md5sum_new, 0);
+
+    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
+    will_return(__wrap_rmdir_ex, 0);
+
+    char *diff_str = fim_file_diff(filename);
+
+    assert_string_equal(diff_str, "<Diff truncated because nodiff option>");
+}
+#else
+void test_fim_file_diff_nodiff(void **state) {
+    const char *filename = "/path/to/ignore";
+    os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
+    os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
+    syscheck.comp_estimation_perc = 0.4;
+    syscheck.diff_folder_size = 512;
+
+    expect_initialize_file_diff_data(filename, 1);
+
+    expect_mkdir_ex(TMP_FOLDER, 0);
+
+    expect_fim_diff_check_limits("/path/to/ignore", "aaa", 0);
+
+    expect_w_uncompress_gzfile("/var/ossec/queue/diff/local/path/to/ignore/last-entry.gz", UNCOMPRESS_FILE, NULL);
+
+    expect_FileSize("/var/ossec/queue/diff/local/path/to/ignore/last-entry.gz", 1024 * 1024);
+
+    expect_fim_diff_create_compress_file("/path/to/ignore", COMPRESS_TMP_FILE, 0);
+
+    expect_fim_diff_compare(UNCOMPRESS_FILE, "/path/to/ignore", md5sum_old, md5sum_new, 0);
+
+    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
+    will_return(__wrap_rmdir_ex, 0);
+
+    char *diff_str = fim_file_diff(filename);
+
+    assert_string_equal(diff_str, "<Diff truncated because nodiff option>");
+}
+#endif
+
+void test_fim_file_diff_generate_fail(void **state) {
+    gen_diff_struct *gen_diff_data_container = *state;
+    os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
+    os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
+    syscheck.comp_estimation_perc = 0.4;
+    syscheck.diff_folder_size = 512;
+
+#ifndef TEST_WINAGENT
+    gen_diff_data_container->diff->uncompress_file = strdup(UNCOMPRESS_FILE);
+    gen_diff_data_container->diff->file_origin = strdup("/path/to/file/origin");
+    gen_diff_data_container->diff->diff_file = strdup("/var/ossec/queue/diff/tmp/diff-file");
+#else
+    gen_diff_data_container->diff->uncompress_file = strdup("queue/diff/tmp/tmp-entry");
+    gen_diff_data_container->diff->file_origin = strdup("queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0");
+    gen_diff_data_container->diff->diff_file = strdup("queue/diff/tmp/diff-file");
+#endif
+
+    expect_initialize_file_diff_data(GENERIC_PATH, 1);
+
+    expect_mkdir_ex(TMP_FOLDER, 0);
+
+    expect_fim_diff_check_limits(GENERIC_PATH, COMPRESS_FOLDER, 0);
+
+    expect_w_uncompress_gzfile(COMPRESS_FILE, UNCOMPRESS_FILE, NULL);
+
+    expect_FileSize(COMPRESS_FILE, 1024 * 1024);
+
+    expect_fim_diff_create_compress_file(GENERIC_PATH, COMPRESS_TMP_FILE, 0);
+
+    expect_fim_diff_compare(UNCOMPRESS_FILE, GENERIC_PATH, md5sum_old, md5sum_new, 0);
+
+    expect_fim_diff_generate(gen_diff_data_container, 1);
+
+#ifndef TEST_WINAGENT
+    expect_string(__wrap__merror, formatted_msg, "(6714): Command diff output an error");
+#else
+    expect_string(__wrap__merror, formatted_msg, "(6714): Command fc output an error");
+#endif
+
+    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
+    will_return(__wrap_rmdir_ex, 0);
+
+    char *diff_str = fim_file_diff(GENERIC_PATH);
+
+    assert_ptr_equal(diff_str, NULL);
+
+    *state = gen_diff_data_container;
+}
+
+void test_fim_file_diff_generate_diff_str(void **state) {
+    gen_diff_struct *gen_diff_data_container = *state;
+    os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
+    os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
+    syscheck.comp_estimation_perc = 0.4;
+    syscheck.diff_folder_size = 512;
+
+#ifndef TEST_WINAGENT
+    gen_diff_data_container->diff->uncompress_file = strdup(UNCOMPRESS_FILE);
+    gen_diff_data_container->diff->file_origin = strdup("/path/to/file/origin");
+    gen_diff_data_container->diff->diff_file = strdup("/var/ossec/queue/diff/tmp/diff-file");
+#else
+    gen_diff_data_container->diff->uncompress_file = strdup("queue/diff/tmp/tmp-entry");
+    gen_diff_data_container->diff->file_origin = strdup("queue/diff/tmp/[x64] b9b175e8810d3475f15976dd3b5f9210f3af66043f17670fd80d6563a3d4283adfe14140907b75b0");
+    gen_diff_data_container->diff->diff_file = strdup("queue/diff/tmp/diff-file");
+#endif
+
+    expect_initialize_file_diff_data(GENERIC_PATH, 1);
+
+    expect_mkdir_ex(TMP_FOLDER, 0);
+
+    expect_fim_diff_check_limits(GENERIC_PATH, COMPRESS_FOLDER, 0);
+
+    expect_w_uncompress_gzfile(COMPRESS_FILE, UNCOMPRESS_FILE, NULL);
+
+    expect_FileSize(COMPRESS_FILE, 1024 * 1024);
+
+    expect_fim_diff_create_compress_file(GENERIC_PATH, COMPRESS_TMP_FILE, 0);
+
+    expect_fim_diff_compare(UNCOMPRESS_FILE, GENERIC_PATH, md5sum_old, md5sum_new, 0);
+
+    expect_fim_diff_generate(gen_diff_data_container, 0);
+
+    expect_save_compress_file(COMPRESS_TMP_FILE, COMPRESS_FILE, 0);
+
+    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
+    will_return(__wrap_rmdir_ex, 0);
+
+    char *diff_str = fim_file_diff(GENERIC_PATH);
+
+    assert_string_equal(diff_str, gen_diff_data_container->strarray[1]);
+
+    *state = gen_diff_data_container;
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -1371,9 +1902,9 @@ int main(void) {
         cmocka_unit_test(test_filter_percentage_char),
 
         // adapt_win_fc_output
-        cmocka_unit_test_setup_teardown(test_adapt_win_fc_output_success, setup_adapt_win_fc_output, teardown_adapt_win_fc_output),
-        cmocka_unit_test_setup_teardown(test_adapt_win_fc_output_invalid_input, setup_adapt_win_fc_output, teardown_adapt_win_fc_output),
-        cmocka_unit_test_setup_teardown(test_adapt_win_fc_output_no_differences, setup_adapt_win_fc_output, teardown_adapt_win_fc_output),
+        cmocka_unit_test_setup_teardown(test_adapt_win_fc_output_success, setup_array_strings, teardown_array_strings),
+        cmocka_unit_test_setup_teardown(test_adapt_win_fc_output_invalid_input, setup_array_strings, teardown_array_strings),
+        cmocka_unit_test_setup_teardown(test_adapt_win_fc_output_no_differences, setup_array_strings, teardown_array_strings),
 
         // initialize_registry_diff_data
         cmocka_unit_test_teardown(test_initialize_registry_diff_data, teardown_free_diff_data),
@@ -1426,10 +1957,12 @@ int main(void) {
         cmocka_unit_test(test_is_file_nodiff_regex_check),
         cmocka_unit_test(test_is_file_nodiff_not_match),
 
+#ifdef TEST_WINAGENT
         // is_registry_nodiff
         cmocka_unit_test(test_is_registry_nodiff_normal_check),
         cmocka_unit_test(test_is_registry_nodiff_regex_check),
         cmocka_unit_test(test_is_registry_nodiff_not_match),
+#endif
 
         // gen_diff_str
         cmocka_unit_test_setup_teardown(test_gen_diff_str_wfropen_fail, setup_diff_data, teardown_free_diff_data),
@@ -1457,10 +1990,30 @@ int main(void) {
         cmocka_unit_test(test_fim_registry_value_diff_wrong_registry_tmp),
         cmocka_unit_test(test_fim_registry_value_diff_wrong_too_big_file),
         cmocka_unit_test(test_fim_registry_value_diff_wrong_quota_reached),
-        cmocka_unit_test(test_fim_registry_value_diff_wrong_quota_reached),
-
-
+        cmocka_unit_test(test_fim_registry_value_diff_uncompress_fail),
+        cmocka_unit_test(test_fim_registry_value_diff_create_compress_fail),
+        cmocka_unit_test(test_fim_registry_value_diff_compare_fail),
+        cmocka_unit_test(test_fim_registry_value_diff_nodiff),
+        cmocka_unit_test_setup_teardown(test_fim_registry_value_diff_generate_fail, setup_full_diff_functionality, teardown_full_diff_functionality),
+        cmocka_unit_test_setup_teardown(test_fim_registry_value_diff_generate_diff_str, setup_full_diff_functionality, teardown_full_diff_functionality),
 #endif
+
+        // fim_file_diff
+        cmocka_unit_test(test_fim_file_diff_wrong_initialize),
+        cmocka_unit_test(test_fim_file_diff_wrong_too_big_file),
+        cmocka_unit_test(test_fim_file_diff_wrong_quota_reached),
+        cmocka_unit_test(test_fim_file_diff_uncompress_fail),
+        cmocka_unit_test(test_fim_file_diff_create_compress_fail),
+        cmocka_unit_test(test_fim_file_diff_compare_fail),
+        cmocka_unit_test(test_fim_file_diff_nodiff),
+#ifdef TEST_WINAGENT
+        cmocka_unit_test_setup_teardown(test_fim_file_diff_generate_fail, setup_full_diff_functionality, teardown_full_diff_functionality),
+        cmocka_unit_test_setup_teardown(test_fim_file_diff_generate_diff_str, setup_full_diff_functionality, teardown_full_diff_functionality),
+#else
+        cmocka_unit_test_setup_teardown(test_fim_file_diff_generate_fail, setup_gen_diff_str, teardown_free_gen_diff_str),
+        cmocka_unit_test_setup_teardown(test_fim_file_diff_generate_diff_str, setup_gen_diff_str, teardown_free_gen_diff_str),
+#endif
+
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

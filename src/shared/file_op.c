@@ -3106,7 +3106,6 @@ int trail_path_separator(char * dest, const char * src, size_t n) {
 
 // Check if a path is absolute
 bool isabspath(const char * path) {
-    printf("~~~~~~2\n");
 #ifdef WIN32
     return strlen(path) >= 3 && isalpha(path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/');
 #else
@@ -3125,7 +3124,6 @@ void win_path_backslash(char * path) {
 // Get an absolute path
 char * abspath(const char * path, char * buffer, size_t size) {
     // If the path is already absolute, copy and return
-    printf("~~~~~~1\n");
     if (isabspath(path)) {
         strncpy(buffer, path, size);
         buffer[size - 1] = '\0';

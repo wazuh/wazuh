@@ -131,6 +131,16 @@ DWORD __wrap_FileSizeWin(const char * file) {
 }
 #endif
 
+void expect_FileSize(const char *path, int ret) {
+#ifndef WIN32
+    expect_string(__wrap_FileSize, path, path);
+    will_return(__wrap_FileSize, ret);
+#else
+    expect_string(__wrap_FileSizeWin, file, path);
+    will_return(__wrap_FileSizeWin, ret);
+#endif
+}
+
 int __wrap_rename_ex(const char *source, const char *destination) {
     check_expected(source);
     check_expected(destination);
