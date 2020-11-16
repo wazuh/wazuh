@@ -540,7 +540,7 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
                 if (real_path) {
                     // Check if link has changed
                     if (strcmp(real_path, syscheck.symbolic_links[i])) {
-                        minfo(FIM_LINKCHECK_CHANGED, syscheck.symbolic_links[i], syscheck.dir[i], real_path);
+                        minfo(FIM_LINKCHECK_CHANGED, syscheck.dir[i], syscheck.symbolic_links[i], real_path);
                         fim_link_update(i, real_path);
                     }
                     else {
@@ -589,7 +589,7 @@ STATIC void fim_link_update(int pos, char *new_path) {
     // Check if the updated path of the link is already in the configuration
     for (i = 0; syscheck.dir[i] != NULL; i++) {
         if (strcmp(new_path, syscheck.dir[i]) == 0) {
-            mdebug1(FIM_LINK_ALREADY_ADDED, syscheck.symbolic_links[i], syscheck.dir[pos]);
+            mdebug1(FIM_LINK_ALREADY_ADDED, syscheck.dir[i]);
             *syscheck.symbolic_links[pos] = '\0';
             return;
         }
@@ -716,7 +716,7 @@ STATIC void fim_link_reload_broken_link(char *path, int index) {
     for (element = 0; syscheck.dir[element]; element++) {
         if (strcmp(path, syscheck.dir[element]) == 0) {
             // If a configuration directory exists don't reload
-            mdebug1(FIM_LINK_ALREADY_ADDED, syscheck.dir[element], syscheck.symbolic_links[index]);
+            mdebug1(FIM_LINK_ALREADY_ADDED, syscheck.dir[element]);
             found = 1;
         }
     }
