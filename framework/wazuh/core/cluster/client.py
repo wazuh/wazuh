@@ -267,7 +267,7 @@ class AbstractClient(common.Handler):
         while not self.on_con_lost.done():
             before = time.time()
             for i in range(n_msgs):
-                result = await self.send_request(b'echo', 'concurrency {}'.format(i).encode())
+                await self.send_request(b'echo', 'concurrency {}'.format(i).encode())
             after = time.time()
             self.logger.info("Time sending {} messages: {}".format(n_msgs, after - before))
             await asyncio.sleep(10)

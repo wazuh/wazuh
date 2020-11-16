@@ -429,21 +429,36 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             logger.info("Analyzing worker integrity: Files checked. KO files compressed.")
             try:
                 task_name = await self.send_request(command=b'sync_m_c', data=b'')
+                if isinstance(task_name, Exception):
+                    exc_info = task_name
+                    task_name = b'None'
+                    raise exc_info
+                elif task_name.startswith(b'Error'):
+                    exc_info = exception.WazuhClusterError(code=3016, extra_message=str(task_name))
+                    task_name = b'None'
+                    raise exc_info
 
-                result = await self.send_file(compressed_data)
+                await self.send_file(compressed_data)
                 result = await self.send_request(command=b'sync_m_c_e',
                                                  data=task_name + b' ' + os.path.relpath(
                                                      compressed_data, common.ossec_path).encode())
+                if isinstance(result, Exception):
+                    raise result
+                elif result.startswith(b'Error'):
+                    raise exception.WazuhClusterError(3016, extra_message=result.decode())
             except exception.WazuhException as e:
+                # Notify error to worker and delete its received file.
                 self.logger.error(f"Error sending files information: {e}")
                 result = await self.send_request(command=b'sync_m_c_r', data=task_name + b' ' +
                                                  json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
             except Exception as e:
+                # Notify error to worker and delete its received file.
                 self.logger.error(f"Error sending files information: {e}")
                 exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
                                       cls=c_common.WazuhJSONEncoder).encode()
                 result = await self.send_request(command=b'sync_m_c_r', data=task_name + b' ' + exc_info)
             finally:
+                # Remove local file
                 os.unlink(compressed_data)
 
         self.sync_integrity_status['date_end_master'] = str(datetime.now())
