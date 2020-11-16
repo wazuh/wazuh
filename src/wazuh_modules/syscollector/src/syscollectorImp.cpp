@@ -8,7 +8,8 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#include "syscollectorImp.h"
+#include "syscollector.hpp"
+#include "json.hpp"
 #include <iostream>
 
 constexpr auto PACKAGES_SQL_STATEMENT
@@ -156,30 +157,8 @@ static void updateAndNotifyChanges(const DBSYNC_HANDLE handle, const std::string
 
 bool Syscollector::sleepFor()
 {
-    bool ret{false};
     std::unique_lock<std::mutex> lock{m_mutex};
-    if (m_intervalUnit == "s")
-    {
-        ret = !m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&](){return m_running;});
-    }
-    else if (m_intervalUnit == "m")
-    {
-        ret = !m_cv.wait_for(lock, std::chrono::minutes{m_intervalValue}, [&](){return m_running;});
-    }
-    else if (m_intervalUnit == "h")
-    {
-        ret = !m_cv.wait_for(lock, std::chrono::hours{m_intervalValue}, [&](){return m_running;});
-    }
-    else if (m_intervalUnit == "d")
-    {
-        const auto daysToHours{m_intervalValue * 24ul};
-        ret = !m_cv.wait_for(lock, std::chrono::hours{daysToHours}, [&](){return m_running;});
-    }
-    else
-    {
-        ret = !m_cv.wait_for(lock, std::chrono::hours{1}, [&](){return m_running;});
-    }
-    return ret;
+    return !m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&](){return m_running;});;
 }
 
 std::string Syscollector::getCreateStatement() const
@@ -205,7 +184,7 @@ std::string Syscollector::getCreateStatement() const
 }
 
 void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
-                        const std::string& interval,
+                        const unsigned int interval,
                         const bool scanOnStart,
                         const bool hardware,
                         const bool os,
@@ -217,8 +196,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const bool hotfixes)
 {
     m_spInfo = spInfo;
-    m_intervalUnit = interval.back();
-    m_intervalValue = std::stoull(interval);
+    m_intervalValue = interval;
     m_scanOnStart = scanOnStart;
     m_hardware = hardware;
     m_os = os;

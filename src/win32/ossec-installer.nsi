@@ -216,6 +216,8 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=libwazuhext.dll ../libwazuhext.dll
     File /oname=dbsync.dll ../shared_modules/dbsync/build/bin/dbsync.dll
     File /oname=rsync.dll ../shared_modules/rsync/build/bin/rsync.dll
+    File /oname=sysinfo.dll ../data_provider/build/bin/sysinfo.dll
+    File /oname=syscollector.dll ../wazuh_modules/syscollector/build/bin/syscollector.dll
     File /oname=ruleset\sca\sca_win_audit.yml ../../etc/sca/windows/sca_win_audit.yml
     File VERSION
     File REVISION

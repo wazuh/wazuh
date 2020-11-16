@@ -16,11 +16,23 @@
 #include <mutex>
 #include <memory>
 #include "sysInfoInterface.h"
-#include "json.hpp"
 #include "commonDefs.h"
 #include "dbsync.hpp"
 
-class Syscollector final
+// Define EXPORTED for any platform
+#ifdef _WIN32
+#ifdef WIN_EXPORT
+#define EXPORTED __declspec(dllexport)
+#else
+#define EXPORTED __declspec(dllimport)
+#endif
+#elif __GNUC__ >= 4
+#define EXPORTED __attribute__((visibility("default")))
+#else
+#define EXPORTED
+#endif
+
+class EXPORTED Syscollector final
 {
 public:
     static Syscollector& instance()
@@ -30,7 +42,7 @@ public:
     }
 
     void init(const std::shared_ptr<ISysInfo>& spInfo,
-              const std::string& inverval = "1h",
+              const unsigned int inverval = 3600ul,
               const bool scanOnStart = true,
               const bool hardware = true,
               const bool os = true,
@@ -59,8 +71,7 @@ private:
     void scan();
     void syncLoop();
     std::shared_ptr<ISysInfo>                      m_spInfo;
-    std::string                                    m_intervalUnit;
-    unsigned long long                             m_intervalValue;
+    unsigned int                                   m_intervalValue;
     bool                                           m_scanOnStart;
     bool                                           m_hardware;
     bool                                           m_os;

@@ -16,7 +16,7 @@
 #include "dbsync.h"
 #include "rsync.h"
 #include "sysInfo.hpp"
-#include "syscollectorImp.h"
+#include "syscollector.hpp"
 
 static void logFunction(const char* msg)
 {
@@ -41,7 +41,7 @@ int main(int argc, const char* argv[])
         };
 
         Syscollector::instance().init(spInfo,
-                                      "15s",
+                                      15ul,
                                       true,
                                       true,
                                       true,

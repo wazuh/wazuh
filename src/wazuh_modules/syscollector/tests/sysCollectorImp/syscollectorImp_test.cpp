@@ -9,7 +9,7 @@
  * Foundation.
  */
 #include "syscollectorImp_test.h"
-#include "syscollectorImp.h"
+#include "syscollector.hpp"
 
 void SyscollectorImpTest::SetUp() {};
 

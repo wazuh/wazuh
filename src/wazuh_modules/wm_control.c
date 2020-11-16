@@ -12,6 +12,7 @@
 #if defined (__linux__) || defined (__MACH__) || defined (sun)
 #include "wm_control.h"
 #include "sysInfo.h"
+#include "sym_load.h"
 #include "external/cJSON/cJSON.h"
 #include "file_op.h"
 #include "../os_net/os_net.h"
@@ -27,6 +28,9 @@ const wm_context WM_CONTROL_CONTEXT = {
     (cJSON * (*)(const void *))wm_control_dump,
     0
 };
+void *sysinfo_module = NULL;
+sysinfo_networks_func sysinfo_network_ptr = NULL;
+sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
 
 #if defined (__linux__) || defined (__MACH__)
 #include <ifaddrs.h>
@@ -75,32 +79,34 @@ char* getPrimaryIP(){
 
 #if defined __linux__ || defined __MACH__
     cJSON *object;
-    sysinfo_networks(&object);
-    if (object) {
-        const cJSON *iface = cJSON_GetObjectItem(object, "iface");
-        if (iface) {
-            const int size_ids = cJSON_GetArraySize(iface);
-            for (int i = 0; i < size_ids; i++){
-                const cJSON *element = cJSON_GetArrayItem(iface, i);
-                if(!element) {
-                    continue;
-                }
-                cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
-                if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring,"unkwown")) {
-                    const cJSON *ipv4 = cJSON_GetObjectItem(element, "IPv4");
-                    if (!ipv4) {
+    if (sysinfo_network_ptr && sysinfo_free_result_ptr) {
+        sysinfo_network_ptr(&object);
+        if (object) {
+            const cJSON *iface = cJSON_GetObjectItem(object, "iface");
+            if (iface) {
+                const int size_ids = cJSON_GetArraySize(iface);
+                for (int i = 0; i < size_ids; i++){
+                    const cJSON *element = cJSON_GetArrayItem(iface, i);
+                    if(!element) {
                         continue;
                     }
-                    cJSON *address = cJSON_GetObjectItem(ipv4, "address");
-                    if (address && cJSON_GetStringValue(address))
-                    {
-                        os_strdup(address->valuestring, agent_ip);
-                        break;
+                    cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
+                    if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring,"unkwown")) {
+                        const cJSON *ipv4 = cJSON_GetObjectItem(element, "IPv4");
+                        if (!ipv4) {
+                            continue;
+                        }
+                        cJSON *address = cJSON_GetObjectItem(ipv4, "address");
+                        if (address && cJSON_GetStringValue(address))
+                        {
+                            os_strdup(address->valuestring, agent_ip);
+                            break;
+                        }
                     }
                 }
             }
+            sysinfo_free_result_ptr(&object);
         }
-        sysinfo_free_result(&object);
     }
 #elif defined sun
 
@@ -174,15 +180,23 @@ end:
 
 
 void *wm_control_main(){
-
     mtinfo(WM_CONTROL_LOGTAG, "Starting control thread.");
-
+    if (sysinfo_module = so_get_module_handle("sysinfo"), sysinfo_module)
+    {
+        sysinfo_free_result_ptr = so_get_function_sym(sysinfo_module, "sysinfo_free_result");
+        sysinfo_network_ptr = so_get_function_sym(sysinfo_module, "sysinfo_networks");
+    }
+    
     send_ip();
 
     return NULL;
 }
 
-void wm_control_destroy(){}
+void wm_control_destroy(){
+    if (sysinfo_module){
+        so_free_library(sysinfo_module);
+    }
+}
 
 wmodule *wm_control_read(){
     wmodule * module;

@@ -39,6 +39,9 @@ EXPORTED void sysinfo_networks(cJSON** js_result);
 EXPORTED void sysinfo_ports(cJSON** js_result);
 EXPORTED void sysinfo_free_result(cJSON** js_data);
 
+typedef void(*sysinfo_networks_func)(cJSON** jsresult);
+typedef void(*sysinfo_free_result_func)(cJSON** jsresult);
+
 #ifdef __cplusplus
 }
 #endif

@@ -90,11 +90,22 @@ else()
     add_subdirectory(testtool)
 endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
-if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  target_link_libraries(sysinfo psapi iphlpapi ws2_32)
+  set_target_properties(sysinfo PROPERTIES
+        PREFIX ""
+        SUFFIX ".dll"
+        LINK_FLAGS "-Wl,--add-stdcall-alias -static-libgcc -static-libstdc++"
+        POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
+        # MinGW generates position-independent-code for DLL by default
+  )
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_link_libraries(sysinfo proc)
+  set_target_properties(sysinfo PROPERTIES
+          LINK_FLAGS "-static-libgcc -static-libstdc++")
 else()
-  target_link_libraries(sysinfo psapi iphlpapi ws2_32 -static-libgcc -static-libstdc++)
-endif(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  target_link_libraries(sysinfo proc)
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(UNIT_TEST)
 add_subdirectory(tests)
