@@ -964,18 +964,21 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             }
 
             while (g.gl_pathv[gindex]) {
-                char *resolved_path = NULL;
+                char *resolved_path = realpath(g.gl_pathv[gindex], NULL);
 
-                if (resolved_path = realpath(g.gl_pathv[gindex], NULL), resolved_path) {
-                    if (!strcmp(resolved_path, g.gl_pathv[gindex])) {
-                        dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0, restrictfile, recursion_limit,
-                                            clean_tag, NULL, tmp_diff_size);
-                    } else {
+                if (resolved_path != NULL) {
+                    if (strcmp(resolved_path, g.gl_pathv[gindex]) != 0 && (opts & CHECK_FOLLOW)) {
                         dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile, recursion_limit, clean_tag,
                                             g.gl_pathv[gindex], tmp_diff_size);
                     }
+                    else {
+                        dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0, restrictfile, recursion_limit,
+                                            clean_tag, NULL, tmp_diff_size);
+                    }
+
                     os_free(resolved_path);
-                } else {
+                }
+                else {
                     mdebug1("Could not check the real path of '%s' due to [(%d)-(%s)].",
                             g.gl_pathv[gindex], errno, strerror(errno));
                 }
@@ -988,7 +991,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         else {
             char *resolved_path = realpath(real_path, NULL);
 
-            if (resolved_path && strcmp(resolved_path, real_path)) {
+            if (resolved_path != NULL && strcmp(resolved_path, real_path) != 0 && (opts & CHECK_FOLLOW)) {
                 dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile, recursion_limit, clean_tag,
                                     real_path, tmp_diff_size);
             }
