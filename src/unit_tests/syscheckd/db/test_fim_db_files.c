@@ -247,7 +247,8 @@ void test_fim_db_insert_fail_to_remove_existing_entry(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "Step error deleting data: ERROR MESSAGE");
 
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data, test_data->saved);
+    ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data,
+                        test_data->saved);
 
     assert_int_equal(ret, FIMDB_ERR);
 }
@@ -292,7 +293,8 @@ void test_fim_db_insert_update_inode_with_single_entry(void **state) {
 
     expect_fim_db_check_transaction();
 
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data, test_data->saved);
+    ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data,
+                        test_data->saved);
 
     assert_int_equal(ret, FIMDB_OK);   // Success
     assert_int_equal(test_data->fim_sql->transaction.last_commit, 192837465);
@@ -332,7 +334,8 @@ void test_fim_db_insert_update_inode_with_multiple_entries(void **state) {
 
     expect_fim_db_check_transaction();
 
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data, test_data->saved);
+    ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data,
+                        test_data->saved);
 
     assert_int_equal(ret, FIMDB_OK);   // Success
     assert_int_equal(test_data->fim_sql->transaction.last_commit, 192837465);
@@ -377,8 +380,9 @@ void test_fim_db_insert_inode_id_null(void **state) {
 
     expect_fim_db_check_transaction();
 
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data, test_data->saved);
-    assert_int_equal(ret, FIMDB_OK);   // Success
+    ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data,
+                        test_data->saved);
+    assert_int_equal(ret, FIMDB_OK); // Success
 }
 #endif
 
@@ -401,7 +405,8 @@ void test_fim_db_insert_inode_id_null_error(void **state) {
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "Step error getting data row: ERROR MESSAGE");
 
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data, test_data->saved);
+    ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data,
+                        test_data->saved);
     assert_int_equal(ret, FIMDB_ERR);
 }
 
