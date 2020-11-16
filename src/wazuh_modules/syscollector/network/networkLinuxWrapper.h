@@ -156,7 +156,7 @@ public:
         return m_interfaceAddress->ifa_name ? m_interfaceAddress->ifa_name : "";
     }
 
-    std::string description() const override
+    std::string adapter() const override
     {
         return "unknown";
     }

@@ -63,9 +63,67 @@ constexpr auto PROCESSES_SQL_STATEMENT
     tty BIGINT,
     processor BIGINT,
     checksum TEXT,
-    PRIMARY KEY (pid));)"
+    PRIMARY KEY (pid)) WITHOUT ROWID;)"
 };
-
+constexpr auto PORTS_SQL_STATEMENT
+{
+    R"(CREATE TABLE ports (
+       protocol TEXT,
+       local_ip TEXT,
+       local_port BIGINT,
+       remote_ip TEXT,
+       remote_port BIGINT,
+       tx_queue BIGINT,
+       rx_queue BIGINT,
+       inode BIGINT,
+       state TEXT,
+       pid BIGINT,
+       process_name TEXT,
+       checksum TEXT,
+       PRIMARY KEY (inode, protocol, local_port)) WITHOUT ROWID;)"
+};
+constexpr auto NETIFACE_SQL_STATEMENT
+{
+    R"(CREATE TABLE network_iface (
+       name TEXT,
+       adapter TEXT,
+       type TEXT,
+       state TEXT,
+       mtu TEXT,
+       mac TEXT,
+       tx_packets INTEGER,
+       rx_packets INTEGER,
+       tx_bytes INTEGER,
+       rx_bytes INTEGER,
+       tx_errors INTEGER,
+       rx_errors INTEGER,
+       tx_dropped INTEGER,
+       rx_dropped INTEGER,
+       checksum TEXT,
+       PRIMARY KEY (name)) WITHOUT ROWID;)"
+};
+constexpr auto NETPROTO_SQL_STATEMENT
+{
+    R"(CREATE TABLE network_protocol (
+       iface TEXT,
+       type TEXT,
+       gateway TEXT,
+       dhcp TEXT NOT NULL CHECK (dhcp IN ('enabled', 'disabled', 'unknown', 'BOOTP')) DEFAULT 'unknown',
+       metric TEXT,
+       checksum TEXT,
+       PRIMARY KEY (iface,type)) WITHOUT ROWID;)"
+};
+constexpr auto NETADDR_SQL_STATEMENT
+{
+    R"(CREATE TABLE network_address (
+       iface TEXT,
+       proto TEXT,
+       address TEXT,
+       netmask TEXT,
+       broadcast TEXT,
+       checksum TEXT,
+       PRIMARY KEY (iface,proto,address)) WITHOUT ROWID;)"
+};
 constexpr auto OS_SQL_STATEMENT
 {
     R"(CREATE TABLE os (
@@ -83,10 +141,8 @@ constexpr auto OS_SQL_STATEMENT
         version TEXT,
         os_release TEXT,
         checksum TEXT,
-        PRIMARY KEY (os_name)
-    );)"
+        PRIMARY KEY (os_name)) WITHOUT ROWID;)"
 };
-
 constexpr auto HARDWARE_SQL_STATEMENT
 {
     R"(CREATE TABLE hardware (
@@ -98,8 +154,7 @@ constexpr auto HARDWARE_SQL_STATEMENT
         ram_free BIGINT CHECK (ram_free > 0),
         ram_usage INTEGER CHECK (ram_usage >= 0 AND ram_usage <= 100),
         checksum TEXT,
-        PRIMARY KEY (board_serial)
-    );)"
+        PRIMARY KEY (board_serial)) WITHOUT ROWID;)"
 };
 
 static void updateAndNotifyChanges(const DBSYNC_HANDLE handle, const std::string& table, const nlohmann::json& values)
@@ -213,6 +268,16 @@ std::string Syscollector::getCreateStatement() const
     {
         ret += PROCESSES_SQL_STATEMENT;
     }
+    if (m_ports)
+    {
+        ret += PORTS_SQL_STATEMENT;
+    }
+    if (m_network)
+    {
+        ret += NETIFACE_SQL_STATEMENT;
+        ret += NETPROTO_SQL_STATEMENT;
+        ret += NETADDR_SQL_STATEMENT;
+    }
     return ret;
 }
 
@@ -272,14 +337,74 @@ void Syscollector::scanOs()
         updateAndNotifyChanges(m_dbSync.handle(), table, nlohmann::json{m_spInfo->os()});
     }
 }
+
 void Syscollector::scanNetwork()
 {
     if (m_network)
     {
-        const auto& networks{m_spInfo->networks()};
-        std::cout << networks.dump() << std::endl;
+        constexpr auto netIfaceTable    { "network_iface"    };
+        constexpr auto netProtocolTable { "network_protocol" };
+        constexpr auto netAddressTable  { "network_address"  };
+        std::cout << "NETWORKS: " << m_spInfo->networks() << std::endl;
+        const auto networks { m_spInfo->networks().at("iface") };
+        nlohmann::json ifaceTableData{};
+        nlohmann::json protoTableData{};
+        nlohmann::json addressTableDataList{};
+
+        for (const auto& item : networks.at(0))
+        {
+            // Split the resulting networks data into the specific DB tables
+
+            // "network_iface" table data to update and notify
+            ifaceTableData["name"]       = item.at("name");
+            ifaceTableData["adapter"]    = item.at("adapter");
+            ifaceTableData["type"]       = item.at("type");
+            ifaceTableData["state"]      = item.at("state");
+            ifaceTableData["mtu"]        = item.at("mtu");
+            ifaceTableData["mac"]        = item.at("mac");
+            ifaceTableData["tx_packets"] = item.at("tx_packets");
+            ifaceTableData["rx_packets"] = item.at("rx_packets");
+            ifaceTableData["tx_errors"]  = item.at("tx_errors");
+            ifaceTableData["rx_errors"]  = item.at("rx_errors");
+            ifaceTableData["tx_dropped"] = item.at("tx_dropped");
+            ifaceTableData["rx_dropped"] = item.at("rx_dropped");
+
+            // "network_protocol" table data to update and notify
+            protoTableData["iface"]   = item.at("name");
+            protoTableData["type"]    = item.at("type");
+            protoTableData["gateway"] = item.at("gateway");
+
+            if (item.find("IPv4") != item.end())
+            {
+                nlohmann::json addressTableData(item.at("IPv4"));
+                protoTableData["dhcp"]    = addressTableData.at("dhcp");
+                protoTableData["metric"]  = addressTableData.at("metric");
+
+                // "network_address" table data to update and notify
+                addressTableData["iface"]   = item.at("name");
+                addressTableData["proto"]     = "IPv4";
+                addressTableDataList.push_back(addressTableData);
+            }
+
+            if (item.find("IPv6") != item.end())
+            {
+                nlohmann::json addressTableData(item.at("IPv6"));
+                protoTableData["dhcp"]    = addressTableData.at("dhcp");
+                protoTableData["metric"]  = addressTableData.at("metric");
+
+                // "network_address" table data to update and notify
+                addressTableData["iface"] = item.at("name");
+                addressTableData["proto"] = "IPv6";
+                addressTableDataList.push_back(addressTableData);
+            }
+        }
+
+        updateAndNotifyChanges(m_dbSync.handle(), netIfaceTable,    nlohmann::json{ifaceTableData});
+        updateAndNotifyChanges(m_dbSync.handle(), netProtocolTable, nlohmann::json{protoTableData});
+        updateAndNotifyChanges(m_dbSync.handle(), netAddressTable,  addressTableDataList);
     }
 }
+
 void Syscollector::scanPackages()
 {
     if (m_packages)
@@ -288,15 +413,40 @@ void Syscollector::scanPackages()
         updateAndNotifyChanges(m_dbSync.handle(), table, m_spInfo->packages());
     }
 }
+
 void Syscollector::scanPorts()
 {
     if (m_ports)
     {
-        const auto& ports{m_spInfo->ports()};
-        std::cout << ports.dump() << std::endl;
-        if (m_portsAll)
+        constexpr auto table{"ports"};
+        constexpr auto PORT_LISTENING_STATE { "listening" };
+        constexpr auto TCP_PROTOCOL { "tcp" };
+        std::cout << "PORTS: " << m_spInfo->ports() << std::endl;        
+        const auto data { m_spInfo->ports().at("ports") };
+        nlohmann::json portsList{};
+        for (const auto& item : data.at(0))
         {
+            const auto isListeningState { item.at("state") == PORT_LISTENING_STATE };
+            if(isListeningState)
+            {
+                // Only update and notify "Listening" state ports
+                if (m_portsAll)
+                {
+                    // TCP and UDP ports
+                    portsList.push_back(item);
+                }
+                else
+                {
+                    // Only TCP ports
+                    const auto isTCPProto { item.at("protocol") == TCP_PROTOCOL };
+                    if (isTCPProto)
+                    {
+                        portsList.push_back(item);
+                    }
+                }
+            }
         }
+        updateAndNotifyChanges(m_dbSync.handle(), table, portsList);
     }
 }
 

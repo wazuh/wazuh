@@ -76,7 +76,7 @@ void WindowsNetworkImpl<Utils::NetworkWindowsHelper::IPV4>::buildNetworkData(nlo
         const auto metrics { m_interfaceAddress->metrics() };
         if (!metrics.empty())
         {
-            networkV4["IPv4"]["metrics"] = metrics;
+            networkV4["IPv4"]["metric"] = metrics;
         }
 
         const auto dhcp { m_interfaceAddress->dhcp() };
@@ -113,7 +113,7 @@ void WindowsNetworkImpl<Utils::NetworkWindowsHelper::IPV6>::buildNetworkData(nlo
         const auto metrics { m_interfaceAddress->metricsV6() };
         if (!metrics.empty())
         {
-            networkV6["IPv6"]["metrics"] = metrics;
+            networkV6["IPv6"]["metric"] = metrics;
         }
 
         const auto dhcp { m_interfaceAddress->dhcp() };
@@ -133,9 +133,10 @@ void WindowsNetworkImpl<Utils::NetworkWindowsHelper::COMMON_DATA>::buildNetworkD
 {
     // Extraction of common adapter data
     networkCommon["name"]       = m_interfaceAddress->name();
+    networkCommon["adapter"]    = m_interfaceAddress->adapter();
     networkCommon["state"]      = m_interfaceAddress->state();
     networkCommon["type"]       = m_interfaceAddress->type();
-    networkCommon["MAC"]        = m_interfaceAddress->MAC();
+    networkCommon["mac"]        = m_interfaceAddress->MAC();
 
     const auto stats { m_interfaceAddress->stats() };
     networkCommon["tx_packets"] = stats.txPackets;
@@ -145,8 +146,8 @@ void WindowsNetworkImpl<Utils::NetworkWindowsHelper::COMMON_DATA>::buildNetworkD
     networkCommon["tx_errors"]  = stats.txErrors;
     networkCommon["rx_errors"]  = stats.rxErrors;
     networkCommon["tx_dropped"] = stats.txDropped;
-    networkCommon["rx_dropped"] = stats.rxDropped;    
+    networkCommon["rx_dropped"] = stats.rxDropped;
 
-    networkCommon["MTU"]        = m_interfaceAddress->mtu();
+    networkCommon["mtu"]        = m_interfaceAddress->mtu();
     networkCommon["gateway"]    = m_interfaceAddress->gateway();
 }

@@ -665,7 +665,7 @@ nlohmann::json SysInfo::getNetworks() const
 }
 
 template <class T, typename TableClass>
-void getTablePorts(TableClass ownerId, int32_t tcpipVersion, std::unique_ptr<T []>& tableList, std::function<DWORD(T*,DWORD *,bool, int32_t, TableClass)> GetTable)
+void getTablePorts(TableClass ownerId, int32_t tcpipVersion, std::unique_ptr<T []>& tableList, std::function<DWORD(T*,DWORD*,bool, int32_t, TableClass)> GetTable)
 {
     TableClass classId { ownerId };
     DWORD size { 0 };
@@ -712,7 +712,7 @@ nlohmann::json SysInfo::getPorts() const
         TCP_TABLE_OWNER_PID_ALL,
         AF_INET, 
         portTable.tcp,
-        [](MIB_TCPTABLE_OWNER_PID* table, DWORD * size, bool order, int32_t tcpipVersion, TCP_TABLE_CLASS tableClass)
+        [](MIB_TCPTABLE_OWNER_PID* table, DWORD* size, bool order, int32_t tcpipVersion, TCP_TABLE_CLASS tableClass)
         {
             return GetExtendedTcpTable(table, size, order, tcpipVersion, tableClass, 0);
         } );
@@ -722,7 +722,7 @@ nlohmann::json SysInfo::getPorts() const
         TCP_TABLE_OWNER_PID_ALL,
         AF_INET6, 
         portTable.tcp6,
-        [](MIB_TCP6TABLE_OWNER_PID* table, DWORD * size, bool order, int32_t tcpipVersion, TCP_TABLE_CLASS tableClass)
+        [](MIB_TCP6TABLE_OWNER_PID* table, DWORD* size, bool order, int32_t tcpipVersion, TCP_TABLE_CLASS tableClass)
         {
             return GetExtendedTcpTable(table, size, order, tcpipVersion, tableClass, 0);
         } );
@@ -732,7 +732,7 @@ nlohmann::json SysInfo::getPorts() const
         UDP_TABLE_OWNER_PID,
         AF_INET, 
         portTable.udp,
-        [](MIB_UDPTABLE_OWNER_PID* table, DWORD * size, bool order, int32_t tcpipVersion, UDP_TABLE_CLASS tableClass)
+        [](MIB_UDPTABLE_OWNER_PID* table, DWORD* size, bool order, int32_t tcpipVersion, UDP_TABLE_CLASS tableClass)
         {
             return GetExtendedUdpTable(table, size, order, tcpipVersion, tableClass, 0);
         } );
@@ -742,7 +742,7 @@ nlohmann::json SysInfo::getPorts() const
         UDP_TABLE_OWNER_PID,
         AF_INET6, 
         portTable.udp6,
-        [](MIB_UDP6TABLE_OWNER_PID* table, DWORD * size, bool order, int32_t tcpipVersion, UDP_TABLE_CLASS tableClass)
+        [](MIB_UDP6TABLE_OWNER_PID* table, DWORD* size, bool order, int32_t tcpipVersion, UDP_TABLE_CLASS tableClass)
         {
             return GetExtendedUdpTable(table, size, order, tcpipVersion, tableClass, 0);
         } );
