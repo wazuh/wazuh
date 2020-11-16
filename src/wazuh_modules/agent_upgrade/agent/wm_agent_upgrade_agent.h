@@ -26,12 +26,31 @@ typedef enum _wm_upgrade_agent_state {
     WM_UPGRADE_MAX_STATE
 } wm_upgrade_agent_state;
 
+extern char **wcom_ca_store;
+
+extern bool allow_upgrades;
+
 /**
- * Checks if an agent has been recently upgraded, by reading upgrade_results file
- * If there has been an upgrade, dispatchs a message to notificate the manager.
- * This method will block the thread if the agent is not connected to the manager
+ * Start main loop of the upgrade module for the agent
  * @param agent_config Agent configuration parameters
+ * @param enabled Wheter the module will allow or not upgrades
  * */
-void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config) __attribute__((nonnull));
+void wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config, const int enabled) __attribute__((nonnull));
+
+/**
+ * Receives a string and process it with the available commands
+ * Request format:
+ *{
+ *   "command": "upgrade",
+ *   "parameters" : {
+ *       "file" : "file_path",
+ *       "installer" : "installer_path"
+ *    }
+ *}
+ * @param buffer string with the information
+ * @param output response to command
+ * @return size of the response
+ * */
+size_t wm_agent_upgrade_process_command(const char *buffer, char **output);
 
 #endif

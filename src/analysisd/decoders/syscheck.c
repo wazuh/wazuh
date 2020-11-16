@@ -115,9 +115,9 @@ OSHash *fim_agentinfo;
 int fim_init(void) {
     //Create hash table for agent information
     fim_agentinfo = OSHash_Create();
-    decode_event_add = getDecoderfromlist(SYSCHECK_NEW);
-    decode_event_modify = getDecoderfromlist(SYSCHECK_MOD);
-    decode_event_delete = getDecoderfromlist(SYSCHECK_DEL);
+    decode_event_add = getDecoderfromlist(SYSCHECK_NEW, &os_analysisd_decoder_store);
+    decode_event_modify = getDecoderfromlist(SYSCHECK_MOD, &os_analysisd_decoder_store);
+    decode_event_delete = getDecoderfromlist(SYSCHECK_DEL, &os_analysisd_decoder_store);
     if (fim_agentinfo == NULL) return 0;
     return 1;
 }
@@ -130,7 +130,7 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     sdb_clean(localsdb);
 
     // Create decoder
-    fim_decoder->id = getDecoderfromlist(SYSCHECK_MOD);
+    fim_decoder->id = getDecoderfromlist(SYSCHECK_MOD, &os_analysisd_decoder_store);
     fim_decoder->name = SYSCHECK_MOD;
     fim_decoder->type = OSSEC_RL;
     fim_decoder->fts = 0;

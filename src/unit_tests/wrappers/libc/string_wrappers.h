@@ -11,7 +11,9 @@
 #ifndef STRING_WRAPPERS_H
 #define STRING_WRAPPERS_H
 
+#include <string.h>
 
 char *__wrap_strerror (int __errnum);
 
+size_t __wrap_strlen(const char *s);
 #endif

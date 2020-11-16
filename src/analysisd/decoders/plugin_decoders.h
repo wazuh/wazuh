@@ -11,7 +11,7 @@
 #ifndef PLUGINDECODER_H
 #define PLUGINDECODER_H
 
-#include "eventinfo.h"
+#include "../eventinfo.h"
 
 /* Plugin decoder for OpenBSD PF */
 void *PF_Decoder_Init(void);
@@ -27,7 +27,7 @@ void *SonicWall_Decoder_Exec(Eventinfo *lf, regex_matching *decoder_match);
 
 /* Plugin for OSSEC alert */
 void *OSSECAlert_Decoder_Init(void);
-void *OSSECAlert_Decoder_Exec(Eventinfo *lf, regex_matching *decoder_match);
+void *OSSECAlert_Decoder_Exec(Eventinfo *lf, OSHash *rules_hash, regex_matching *decoder_match);
 
 /* Plugin for JSON */
 void *JSON_Decoder_Init(void);

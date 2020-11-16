@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 
 - Allow negation of expressions in rules ([#6258](https://github.com/wazuh/wazuh/pull/6258))
 - Support for PCRE2 regular expressions in rules and decoders ([#6480](https://github.com/wazuh/wazuh/pull/6480))
+- Added new **ruleset test module**. Allow testing and verification of rules and decoders using Wazuh User Interface. ([#5337](https://github.com/wazuh/wazuh/issues/5337))
+
 - Added new **upgrade module**. WPK upgrade feature has been moved to this module, which offers support for cluster architecture and simultaneous upgrades. ([#5387](https://github.com/wazuh/wazuh/issues/5387))
 - Added new **task module**. This module stores and manages all the tasks that are executed in the agents or managers. ([#5386](https://github.com/wazuh/wazuh/issues/5386))
 - Let the time interval to detect that an agent got disconnected configurable. Deprecate parameter `DISCON_TIME`. ([#6396](https://github.com/wazuh/wazuh/pull/6396))
@@ -66,8 +68,13 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 
+### Added
 
-## [v4.0.0] - 2020-10-23
+- Wazuh API:
+    - Added new endpoints to run the logtest tool and delete a logtest session ([#5984](https://github.com/wazuh/wazuh/pull/5984))  
+- Added new framework modules to use the logtest tool ([#5870](https://github.com/wazuh/wazuh/pull/5870))
+
+## [v4.0.0] -
 
 ### Added
 

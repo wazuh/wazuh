@@ -54,6 +54,8 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *ossca = "sca";                          /* Security Configuration Assessment */
     const char *osvulndet = "vulnerability-detector";   /* Vulnerability Detector Config */
     const char *osgcp = "gcp-pubsub";                   /* Google Cloud - Wazuh Module */
+    const char *wlogtest = "rule_test";                  /* Wazuh Logtest */
+
     const char *agent_upgrade = "agent-upgrade";        /* Agent Upgrade Module */
     const char *task_manager = "task-manager";          /* Task Manager Module */
 #ifndef WIN32
@@ -185,6 +187,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (chld_node && (strcmp(node[i]->element, ossocket) == 0)) {
             if ((modules & CSOCKET) && (Read_Socket(chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
+        } else if (chld_node && (strcmp(node[i]->element, wlogtest) == 0)) {
+            if ((modules & CLOGTEST) && (Read_Logtest(chld_node) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, agent_upgrade) == 0)) {
