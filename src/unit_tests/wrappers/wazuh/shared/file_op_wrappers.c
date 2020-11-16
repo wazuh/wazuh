@@ -69,6 +69,11 @@ int __wrap_rmdir_ex(const char *name) {
     return ret;
 }
 
+void expect_rmdir_ex_call(const char *dir, int ret) {
+    expect_string(__wrap_rmdir_ex, name, dir);
+    will_return(__wrap_rmdir_ex, ret);
+}
+
 int __wrap_w_compress_gzfile(const char *filesrc, const char *filedst) {
     check_expected(filesrc);
     check_expected(filedst);
@@ -90,6 +95,11 @@ FILE *__wrap_wfopen(const char * __filename, const char * __modes) {
 char ** __wrap_wreaddir(const char * name) {
     check_expected(name);
     return mock_type(char**);
+}
+
+void expect_wreaddir_call(const char *dir, char **files) {
+    expect_string(__wrap_wreaddir, name, dir);
+    will_return(__wrap_wreaddir, files);
 }
 
 #ifndef WIN32

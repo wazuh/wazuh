@@ -170,3 +170,7 @@ void expect_sqlite3_step_call(int ret) {
     will_return(__wrap_sqlite3_step, 0);    // This will_return prevents from calling the real function
     will_return(__wrap_sqlite3_step, ret);
 }
+
+int __wrap_sqlite3_column_count(__attribute__((unused)) sqlite3_stmt *stmt) {
+    return mock();
+}

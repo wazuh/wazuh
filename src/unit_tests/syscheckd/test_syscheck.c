@@ -308,7 +308,7 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state)
 
     will_return(__wrap_rootcheck_init, 0);
 
-    expect_string(__wrap__minfo, formatted_msg, "(6002): Monitoring registry entry: 'Entry1 [x64]'.");
+    expect_string(__wrap__minfo, formatted_msg, "(6002): Monitoring registry entry: 'Entry1 [x64]', with options ''");
 
     expect_string(__wrap__minfo, formatted_msg, "(6003): Monitoring path: 'Dir1', with options ''.");
 
@@ -409,7 +409,7 @@ int main(void) {
             cmocka_unit_test(test_Start_win32_Syscheck_corrupted_config_file),
             cmocka_unit_test(test_Start_win32_Syscheck_syscheck_disabled_1),
             cmocka_unit_test(test_Start_win32_Syscheck_syscheck_disabled_2),
-            // cmocka_unit_test(test_Start_win32_Syscheck_dirs_and_registry),
+            cmocka_unit_test(test_Start_win32_Syscheck_dirs_and_registry),
             cmocka_unit_test(test_Start_win32_Syscheck_whodata_active),
 #endif
     };

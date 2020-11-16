@@ -30,8 +30,13 @@
 #define FIM_DB_TMPDIR       "tmp/"
 #endif
 #else
+#ifndef WIN32
 #define FIM_DB_DISK_PATH    "./fim.db"
 #define FIM_DB_TMPDIR       "./"
+#else
+#define FIM_DB_DISK_PATH    ".\\fim.db"
+#define FIM_DB_TMPDIR       ".\\"
+#endif
 #endif
 
 

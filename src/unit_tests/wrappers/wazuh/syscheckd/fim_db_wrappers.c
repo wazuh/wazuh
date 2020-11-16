@@ -20,13 +20,14 @@ int __wrap_fim_db_get_checksum_range(fdb_t *fim_sql,
                                      int n,
                                      __attribute__ ((__unused__)) EVP_MD_CTX *ctx_left,
                                      __attribute__ ((__unused__)) EVP_MD_CTX *ctx_right,
-                                     __attribute__ ((__unused__)) char **str_pathlh,
-                                     __attribute__ ((__unused__)) char **str_pathuh){
+                                     char **str_pathlh,
+                                     char **str_pathuh){
     check_expected_ptr(fim_sql);
     check_expected(start);
     check_expected(top);
     check_expected(n);
-
+    *str_pathlh = mock_type(char *);
+    *str_pathuh = mock_type(char *);
     return mock();
 }
 
@@ -55,10 +56,12 @@ int __wrap_fim_db_get_count_file_entry(__attribute__((unused)) fdb_t * fim_sql){
 }
 
 int __wrap_fim_db_get_count_range(fdb_t *fim_sql,
+                                  fim_type type,
                                   char *start,
                                   char *top,
                                   int *count) {
     check_expected_ptr(fim_sql);
+    check_expected(type);
     check_expected(start);
     check_expected(top);
 
@@ -91,13 +94,32 @@ fim_entry *__wrap_fim_db_get_path(fdb_t *fim_sql,
 
     return mock_type(fim_entry*);
 }
+int __wrap_fim_db_get_last_path(fdb_t * fim_sql, int type, char **path) {
+    check_expected_ptr(fim_sql);
+    check_expected(type);
+
+    *path = mock_type(char *);
+
+    return mock_type(int);
+}
+
+int __wrap_fim_db_get_first_path(fdb_t * fim_sql, int type, char **path) {
+    check_expected_ptr(fim_sql);
+    check_expected(type);
+
+    *path = mock_type(char *);
+
+    return mock_type(int);
+}
 
 int __wrap_fim_db_get_path_range(fdb_t *fim_sql,
+                                 int type,
                                  char *start,
                                  char *top,
                                  fim_tmp_file **file,
                                  int storage) {
     check_expected_ptr(fim_sql);
+    check_expected(type);
     check_expected(start);
     check_expected(top);
     check_expected(storage);
@@ -189,4 +211,63 @@ int __wrap_fim_db_sync_path_range(fdb_t *fim_sql,
     check_expected_ptr(fim_sql);
 
     return mock();
+}
+
+void expect_fim_db_get_path_range_call(const fdb_t *db,
+                                       const char *start_str,
+                                       const char *top_str,
+                                       int storage,
+                                       fim_tmp_file *tmp_file,
+                                       int ret) {
+
+    expect_value(__wrap_fim_db_get_path_range, fim_sql, db);
+    expect_value(__wrap_fim_db_get_path_range, type, FIM_TYPE_FILE);
+    expect_string(__wrap_fim_db_get_path_range, start, start_str);
+    expect_string(__wrap_fim_db_get_path_range, top, top_str);
+    expect_value(__wrap_fim_db_get_path_range, storage, storage);
+    will_return(__wrap_fim_db_get_path_range, tmp_file);
+    will_return(__wrap_fim_db_get_path_range, ret);
+}
+
+void expect_fim_db_delete_range_call(const fdb_t *db, int storage, const fim_tmp_file *file, int ret){
+    expect_value(__wrap_fim_db_delete_range, fim_sql, db);
+    expect_value(__wrap_fim_db_delete_range, storage, storage);
+    expect_memory(__wrap_fim_db_delete_range, file, file, sizeof(file));
+    will_return(__wrap_fim_db_delete_range, ret);
+}
+
+#ifndef WIN32
+fim_entry *__wrap_fim_db_get_entry_from_sync_msg(fdb_t *fim_sql,
+                                                 __attribute__((unused)) fim_type type,
+                                                 const char *path) {
+    check_expected_ptr(fim_sql);
+    check_expected(path);
+
+    return mock_type(fim_entry *);
+}
+
+#else
+fim_entry *__wrap_fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const char *path) {
+    check_expected_ptr(fim_sql);
+    check_expected(type);
+    check_expected(path);
+
+    return mock_type(fim_entry *);
+}
+#endif
+
+int __wrap_fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **buffer) {
+    check_expected_ptr(file);
+    check_expected(storage);
+    check_expected(it);
+
+    *buffer = mock_type(char *);
+
+    return mock();
+
+}
+
+void __wrap_fim_db_clean_file(fim_tmp_file **file, int storage) {
+    check_expected_ptr(file);
+    check_expected(storage);
 }
