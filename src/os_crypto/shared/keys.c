@@ -306,7 +306,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
             __memclear(id, name, ip, key, KEYSIZE + 1);
 
             /* Check for maximum agent size */
-            if ( !no_limit && keys->keysize >= (MAX_AGENTS - 2) ) {
+            if (!no_limit && keys->keysize > (MAX_AGENTS - 2)) {
                 merror(AG_MAX_ERROR, MAX_AGENTS - 2);
                 merror_exit(CONFIG_ERROR, keys_file);
             }

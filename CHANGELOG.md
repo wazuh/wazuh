@@ -9,6 +9,8 @@ All notable changes to this project will be documented in this file.
 
 - **API:**
   - `GET /agents/summary/os`, `GET /agents/summary/status` and `GET /overview/agents` will no longer consider `000` as an agent. ([#6574](https://github.com/wazuh/wazuh/pull/6574))
+- **Core:**
+  - Fix a bug in Remoted that limited the maximum agent number to `MAX_AGENTS-3` instead of `MAX_AGENTS-2`. ([#4560](https://github.com/wazuh/wazuh/pull/4560))
 
 ### Fixed
 
