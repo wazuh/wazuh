@@ -46,7 +46,7 @@ int __wrap_sqlite3_bind_text(__attribute__((unused)) sqlite3_stmt* pStmt,
 int __wrap_sqlite3_bind_parameter_index(__attribute__((unused)) sqlite3_stmt * stmt,
                                         const char *zName) {
     check_expected(zName);
-    
+
     return mock();
 }
 
@@ -137,6 +137,22 @@ int __wrap_sqlite3_reset(__attribute__((unused)) sqlite3_stmt *pStmt) {
 
 int __wrap_sqlite3_step(__attribute__((unused)) sqlite3_stmt * stmt){
     return mock();
+}
+
+int __wrap_sqlite3_column_count(__attribute__((unused)) sqlite3_stmt *pStmt){
+    return mock();
+}
+
+int __wrap_sqlite3_column_type(__attribute__((unused)) sqlite3_stmt *pStmt,
+                               int i){
+    check_expected(i);
+    return mock();
+}
+
+const char* __wrap_sqlite3_column_name(__attribute__((unused)) sqlite3_stmt *pStmt,
+                                       int N){
+    check_expected(N);
+    return mock_ptr_type(char *);
 }
 
 int __wrap_sqlite3_changes(__attribute__((unused)) sqlite3 * db){

@@ -40,6 +40,7 @@ int setup_wdb(void **state) {
     os_strdup("000",init_data->wdb->id);
     os_calloc(256,sizeof(char),init_data->output);
     os_calloc(1,sizeof(sqlite3 *),init_data->wdb->db);
+    init_data->wdb->stmt[0] = (sqlite3_stmt*)1;
     *state = init_data;
     return 0;
 }
@@ -108,12 +109,216 @@ void test_wdb_open_global_create_fail(void **state)
     assert_null(ret);
 }
 
+/* Tests db_exec_row_stmt */
+
+void test_wdb_exec_row_stmt_one_int(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char* json_str = "COLUMN";
+    double json_value = 10;
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    will_return(__wrap_sqlite3_column_count, 1);
+    expect_value(__wrap_sqlite3_column_type, i, 0);
+    will_return(__wrap_sqlite3_column_type, SQLITE_INTEGER);
+    expect_value(__wrap_sqlite3_column_name, N, 0);
+    will_return(__wrap_sqlite3_column_name, json_str);
+    expect_value(__wrap_sqlite3_column_double, iCol, 0);
+    will_return(__wrap_sqlite3_column_double, json_value);
+
+    int status = 0;
+    cJSON* result = wdb_exec_row_stmt(*data->wdb->stmt, &status);
+
+    assert_int_equal(status, SQLITE_ROW);
+    assert_non_null(result);
+    assert_string_equal(result->child->string, json_str);
+    assert_int_equal(result->child->valuedouble, json_value);
+
+    cJSON_Delete(result);
+}
+
+void test_wdb_exec_row_stmt_multiple_int(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    const int columns = 10;
+    char json_strs[columns][OS_SIZE_256];
+    for (int column=0; column < columns; column++){
+        snprintf(json_strs[column], OS_SIZE_256, "COLUMN%d",column);
+    }
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    will_return(__wrap_sqlite3_column_count, columns);
+    for (int column=0; column < columns; column++){
+        expect_value(__wrap_sqlite3_column_type, i, column);
+        will_return(__wrap_sqlite3_column_type, SQLITE_INTEGER);
+        expect_value(__wrap_sqlite3_column_name, N, column);
+        will_return(__wrap_sqlite3_column_name, json_strs[column]);
+        expect_value(__wrap_sqlite3_column_double, iCol, column);
+        will_return(__wrap_sqlite3_column_double, column);
+    }
+
+    int status = 0;
+    cJSON* result = wdb_exec_row_stmt(*data->wdb->stmt, &status);
+
+    assert_int_equal(status, SQLITE_ROW);
+    assert_non_null(result);
+    cJSON* json_column = NULL;
+    int column = 0;
+    cJSON_ArrayForEach(json_column, result) {
+        assert_string_equal(json_column->string, json_strs[column]);
+        assert_int_equal(json_column->valuedouble, column);
+        column++;
+    }
+
+    cJSON_Delete(result);
+}
+
+void test_wdb_exec_row_stmt_one_text(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char* json_str = "COLUMN";
+    const char*  json_value = "VALUE";
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    will_return(__wrap_sqlite3_column_count, 1);
+    expect_value(__wrap_sqlite3_column_type, i, 0);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_value(__wrap_sqlite3_column_name, N, 0);
+    will_return(__wrap_sqlite3_column_name, json_str);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, json_value);
+
+    int status = 0;
+    cJSON* result = wdb_exec_row_stmt(*data->wdb->stmt, &status);
+    assert_int_equal(status, SQLITE_ROW);
+    assert_non_null(result);
+    assert_string_equal(result->child->string, json_str);
+    assert_string_equal(result->child->valuestring, json_value);
+
+    cJSON_Delete(result);
+}
+
+void test_wdb_exec_row_stmt_done(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    int status = 0;
+    cJSON* result = wdb_exec_row_stmt(*data->wdb->stmt, &status);assert_null(result);
+    assert_int_equal(status, SQLITE_DONE);
+    assert_null(result);
+}
+
+void test_wdb_exec_row_stmt_error(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    expect_string(__wrap__mdebug1, formatted_msg, "SQL statement execution failed");
+
+    int status = 0;
+    cJSON* result = wdb_exec_row_stmt(*data->wdb->stmt, &status);
+    assert_int_equal(status, SQLITE_ERROR);
+    assert_null(result);
+}
+
+/* Tests wdb_exec_stmt_sized */
+
+void test_wdb_exec_stmt_sized_success(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char* json_str = "COLUMN";
+    double json_value = 10;
+
+    //Calling wdb_exec_row_stmt
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return_count(__wrap_sqlite3_column_count, 1, -1);
+    expect_any(__wrap_sqlite3_column_type, i);
+    will_return_count(__wrap_sqlite3_column_type, SQLITE_INTEGER,-1);
+    expect_any(__wrap_sqlite3_column_name, N);
+    will_return_count(__wrap_sqlite3_column_name, json_str, -1);
+    expect_any(__wrap_sqlite3_column_double, iCol);
+    will_return_count(__wrap_sqlite3_column_double, json_value, -1);
+
+    int status = 0;
+    cJSON* result = wdb_exec_stmt_sized(*data->wdb->stmt, WDB_MAX_RESPONSE_SIZE, &status);
+
+    assert_int_equal(status, SQLITE_DONE);
+    assert_non_null(result);
+    assert_string_equal(result->child->child->string, json_str);
+    assert_int_equal(result->child->child->valuedouble, json_value);
+
+    cJSON_Delete(result);
+}
+
+void test_wdb_exec_stmt_sized_success_limited(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char* json_str = "COLUMN";
+    double json_value = 10;
+    const int rows = 20;
+    const int max_size = 282;
+
+    //Calling wdb_exec_row_stmt
+    will_return_count(__wrap_sqlite3_step, SQLITE_ROW, rows);
+    will_return_count(__wrap_sqlite3_column_count, 1, -1);
+    expect_any_count(__wrap_sqlite3_column_type, i, -1);
+    will_return_count(__wrap_sqlite3_column_type, SQLITE_INTEGER, -1);
+    expect_any_count(__wrap_sqlite3_column_name, N, -1);
+    will_return_count(__wrap_sqlite3_column_name, json_str, -1);
+    expect_any_count(__wrap_sqlite3_column_double, iCol, -1);
+    will_return_count(__wrap_sqlite3_column_double, json_value, -1);
+
+    int status = 0;
+    cJSON* result = wdb_exec_stmt_sized(*data->wdb->stmt, max_size, &status);
+
+    assert_int_equal(status, SQLITE_ROW);
+    assert_non_null(result);
+    assert_int_equal(cJSON_GetArraySize(result), rows-1);
+
+    cJSON_Delete(result);
+}
+
+void test_wdb_exec_stmt_sized_invalid_statement(void **state) {
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid SQL statement.");
+
+    int status = 0;
+    cJSON* result = wdb_exec_stmt_sized(NULL, WDB_MAX_RESPONSE_SIZE, &status);
+
+    assert_int_equal(status, SQLITE_ERROR);
+    assert_null(result);
+}
+
+void test_wdb_exec_stmt_sized_error(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    //Calling wdb_exec_row_stmt
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    expect_string(__wrap__mdebug1, formatted_msg, "SQL statement execution failed");
+
+    int status = 0;
+    cJSON* result = wdb_exec_stmt_sized(*data->wdb->stmt, WDB_MAX_RESPONSE_SIZE, &status);
+
+    assert_int_equal(status, SQLITE_ERROR);
+    assert_null(result);
+
+    cJSON_Delete(result);
+}
+
+//JJP: Hacer UT a wdb_exec_stmt
 int main()
 {
     const struct CMUnitTest tests[] =
     {
+        //wdb_open_global
         cmocka_unit_test_setup_teardown(test_wdb_open_global_pool_success, setup_wdb, teardown_wdb),
-        cmocka_unit_test_setup_teardown(test_wdb_open_global_create_fail, setup_wdb, teardown_wdb)
+        cmocka_unit_test_setup_teardown(test_wdb_open_global_create_fail, setup_wdb, teardown_wdb),
+        //wdb_exec_row_stm
+        cmocka_unit_test_setup_teardown(test_wdb_exec_row_stmt_one_int, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_exec_row_stmt_multiple_int, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_exec_row_stmt_one_text, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_exec_row_stmt_done, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_exec_row_stmt_error, setup_wdb, teardown_wdb),
+        //wdb_exec_stmt_sized
+        cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_sized_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_sized_success_limited, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_sized_invalid_statement, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_sized_error, setup_wdb, teardown_wdb),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

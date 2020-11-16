@@ -141,10 +141,8 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_GET_AGENTS] = "SELECT id FROM agent WHERE id > ? LIMIT 1;",
     [WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS] = "SELECT id FROM agent WHERE id > ? AND connection_status = ? LIMIT 1;",
     [WDB_STMT_GLOBAL_GET_AGENT_INFO] = "SELECT * FROM agent WHERE id = ?;",
-    [WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT] = "SELECT id FROM agent WHERE id > ? AND connection_status = 'active' AND last_keepalive < ?;",
     [WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS] = "UPDATE agent SET connection_status = 'disconnected', sync_status = ? where connection_status != 'disconnected' AND connection_status != 'never_connected' AND id != 0;",
     [WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT] = "SELECT id FROM agent WHERE id > ? AND connection_status = 'active' AND last_keepalive < ?;",
-    [WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS] = "UPDATE agent SET connection_status = 'disconnected' where connection_status != 'disconnected' AND connection_status != 'never_connected' AND id != 0;",
     [WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE] = "SELECT COUNT(*) FROM agent WHERE id=0 AND last_keepalive=253402300799;",
     [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
 };
@@ -798,12 +796,6 @@ void wdb_close_old() {
 cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status) {
     cJSON* result = NULL;
 
-    //JJP: Puedo sacar esto
-    if (!stmt) {
-        mdebug1("Invalid SQL statement.");
-        return NULL;
-    }
-
     int _status = sqlite3_step(stmt);
     if (SQLITE_ROW == _status) {
         int count = sqlite3_column_count(stmt);
@@ -841,6 +833,7 @@ cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status) {
 }
 
 cJSON* wdb_exec_stmt_sized(sqlite3_stmt * stmt, size_t max_size, int* status) {
+    //JJP: TODO When socket limit is finally eliminated, this logic can add the last item that didnt fetch in response.
     if (!stmt) {
         mdebug1("Invalid SQL statement.");
         *status = SQLITE_ERROR;
@@ -868,6 +861,11 @@ cJSON* wdb_exec_stmt_sized(sqlite3_stmt * stmt, size_t max_size, int* status) {
             os_free(row_str);
         }
     }while (row != NULL);
+
+    if (*status != SQLITE_DONE && *status != SQLITE_ROW) {
+        cJSON_Delete(result);
+        result = NULL;
+    }
 
     return result;
 }
