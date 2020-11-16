@@ -1240,9 +1240,9 @@ static void test_fim_file_add(void **state) {
     struct stat buf;
 
 #ifdef TEST_WINAGENT
-    char file_path[256] = "c:\\windows\\system32\\cmd.exe";
+    char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
 #else
-    char file_path[256] = "/bin/ls";
+    char file_path[OS_SIZE_256] = "/bin/ls";
 #endif
 
     buf.st_mode = S_IFREG | 00444 ;
@@ -1298,9 +1298,9 @@ static void test_fim_file_modify(void **state) {
     int ret;
 
 #ifdef TEST_WINAGENT
-    char file_path[256] = "c:\\windows\\system32\\cmd.exe";
+    char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
 #else
-    char file_path[256] = "/bin/ls";
+    char file_path[OS_SIZE_256] = "/bin/ls";
 #endif
     fim_data->item->index = 1;
     fim_data->item->configuration = CHECK_SIZE |
@@ -1380,13 +1380,13 @@ static void test_fim_file_modify(void **state) {
 static void test_fim_file_no_attributes(void **state) {
     fim_data_t *fim_data = *state;
     int ret;
-    char buffer1[295];
-    char buffer2[300];
+    char buffer1[OS_SIZE_512];
+    char buffer2[OS_SIZE_512];
 
 #ifdef TEST_WINAGENT
-    char file_path[256] = "c:\\windows\\system32\\cmd.exe";
+    char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
 #else
-    char file_path[256] = "/bin/ls";
+    char file_path[OS_SIZE_256] = "/bin/ls";
 #endif
     fim_data->item->index = 1;
 
@@ -1416,8 +1416,8 @@ static void test_fim_file_no_attributes(void **state) {
                                         0x400,
                                         -1);
 
-    snprintf(buffer1, 295, FIM_HASHES_FAIL, file_path);
-    snprintf(buffer2, 300, FIM_GET_ATTRIBUTES, file_path);
+    snprintf(buffer1, OS_SIZE_256, FIM_HASHES_FAIL, file_path);
+    snprintf(buffer2, OS_SIZE_256, FIM_GET_ATTRIBUTES, file_path);
 
     expect_string(__wrap__mdebug1, formatted_msg, buffer1);
     expect_string(__wrap__mdebug1, formatted_msg, buffer2);
@@ -1435,9 +1435,9 @@ static void test_fim_file_error_on_insert(void **state) {
     int ret;
 
 #ifdef TEST_WINAGENT
-    char file_path[256] = "c:\\windows\\system32\\cmd.exe";
+    char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
 #else
-    char file_path[256] = "/bin/ls";
+    char file_path[OS_SIZE_256] = "/bin/ls";
 #endif
 
     fim_data->item->index = 1;
@@ -2510,14 +2510,13 @@ static void test_fim_checker_fim_regular(void **state) {
 
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
 
-    char expanded_path[100];
+    char expanded_path[OS_SIZE_128];
 
     fim_data->item->index = 7;
 
     fim_data->item->statbuf.st_size = 1500;
 
-    if(!ExpandEnvironmentStrings(path, expanded_path, 100)){
-
+    if(!ExpandEnvironmentStrings(path, expanded_path, OS_SIZE_128)){
         fail();
     }
     expect_string(__wrap_stat, __file, expanded_path);
@@ -2770,7 +2769,7 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
 static void test_fim_scan_db_full_double_scan(void **state) {
 
     struct dirent *file = *state;
-    char test_file_path[160];
+    char test_file_path[OS_SIZE_256];
 
     char expanded_dirs[10][OS_SIZE_1024];
     char directories[10][OS_SIZE_256] = {
@@ -3816,11 +3815,11 @@ static void test_fim_realtime_event_file_exists(void **state) {
 
 static void test_fim_realtime_event_file_missing(void **state) {
 #ifdef TEST_WINAGENT
-    char start[10] = "/test\\";
-    char top[10] = "/test]";
+    char start[OS_SIZE_32] = "/test\\";
+    char top[OS_SIZE_32] = "/test]";
 #else
-    char start[10] = "/test/";
-    char top[10] = "/test0";
+    char start[OS_SIZE_32] = "/test/";
+    char top[OS_SIZE_32] = "/test0";
 #endif
 
 #ifndef TEST_WINAGENT
@@ -3874,11 +3873,11 @@ static void test_fim_whodata_event_file_exists(void **state) {
 static void test_fim_whodata_event_file_missing(void **state) {
     fim_data_t *fim_data = *state;
 #ifdef TEST_WINAGENT
-    char start[20] = "./test/test.file\\";
-    char top[20] = "./test/test.file]";
+    char start[OS_SIZE_32] = "./test/test.file\\";
+    char top[OS_SIZE_32] = "./test/test.file]";
 #else
-    char start[20] = "./test/test.file/";
-    char top[20] = "./test/test.file0";
+    char start[OS_SIZE_32] = "./test/test.file/";
+    char top[OS_SIZE_32] = "./test/test.file0";
 #endif
 
 #ifndef TEST_WINAGENT
@@ -3939,11 +3938,11 @@ static void test_fim_whodata_event_file_missing(void **state) {
 
 static void test_fim_process_missing_entry_no_data(void **state) {
 #ifdef TEST_WINAGENT
-    char start[10] = "/test\\";
-    char top[10] = "/test]";
+    char start[OS_SIZE_32] = "/test\\";
+    char top[OS_SIZE_32] = "/test]";
 #else
-    char start[10] = "/test/";
-    char top[10] = "/test0";
+    char start[OS_SIZE_32] = "/test/";
+    char top[OS_SIZE_32] = "/test0";
 #endif
 
 #ifdef TEST_WINAGENT
@@ -3966,11 +3965,11 @@ static void test_fim_process_missing_entry_no_data(void **state) {
 
 static void test_fim_process_missing_entry_failure(void **state) {
 #ifdef TEST_WINAGENT
-    char start[10] = "/test\\";
-    char top[10] = "/test]";
+    char start[OS_SIZE_32] = "/test\\";
+    char top[OS_SIZE_32] = "/test]";
 #else
-    char start[10] = "/test/";
-    char top[10] = "/test0";
+    char start[OS_SIZE_32] = "/test/";
+    char top[OS_SIZE_32] = "/test0";
 #endif
 
     fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
