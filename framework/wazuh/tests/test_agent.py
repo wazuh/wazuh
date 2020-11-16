@@ -1178,6 +1178,7 @@ def test_agent_upload_group_file(mock_upload, group_list):
 
 
 @pytest.mark.parametrize('agent_list, group_list, index_error, last_agent', [
+    (['000', '001'], ['group-2'], False, '001'),
     (['001'], ['group-2'], False, '001'),
     (['001', '002'], ['group-2', 'group-1'], False, '002'),
     (['001', '002', '003'], ['group-2', 'group-1'], False, '002'),
@@ -1208,8 +1209,8 @@ def test_agent_get_full_overview(socket_mock, send_mock, get_mock, summary_mock,
     """
     expected_fields = ['nodes', 'groups', 'agent_os', 'agent_status', 'agent_version', 'last_registered_agent']
 
-    def mocked_get_distinct_agents(fields):
-        return get_distinct_agents(agent_list=agent_list, fields=fields)
+    def mocked_get_distinct_agents(fields, q):
+        return get_distinct_agents(agent_list=agent_list, fields=fields, q=q)
 
     def mocked_get_agent_groups():
         return get_agent_groups(group_list=group_list)
