@@ -14,6 +14,5 @@ void expect_fim_send_msg(char mq, const char *location, const char *msg, int ret
 void expect_send_syscheck_msg(const char *msg);
 
 void expect_fim_diff_delete_compress_folder(struct dirent *dir);
-void expect_fim_diff_process_delete_file(struct dirent *dir);
 
 #endif // __TEST_FIM_H

@@ -13,14 +13,24 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-char *__wrap_seechanges_addfile(const char *filename) {
+char *__wrap_fim_file_diff(const char *filename) {
     check_expected(filename);
 
-    return mock_type(char*);
+    return mock_type(char *);
 }
 
-char *__wrap_seechanges_get_diff_path(char *path) {
-    check_expected(path);
+char *__wrap_fim_diff_process_delete_file(const char *filename) {
+    check_expected(filename);
 
-    return mock_type(char*);
+    return mock_type(char *);
+}
+
+void expect_fim_file_diff(const char *filename, char *ret) {
+    expect_string(__wrap_fim_file_diff, filename, filename);
+    will_return(__wrap_fim_file_diff, ret);
+}
+
+void expect_fim_diff_process_delete_file(const char *filename, char *ret) {
+    expect_string(__wrap_fim_diff_process_delete_file, filename, filename);
+    will_return(__wrap_fim_diff_process_delete_file, ret);
 }

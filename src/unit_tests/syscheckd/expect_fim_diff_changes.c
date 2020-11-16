@@ -28,7 +28,3 @@ void expect_fim_diff_delete_compress_folder(struct dirent *dir) {
     will_return(__wrap_readdir, dir);
     will_return(__wrap_readdir, NULL);
 }
-
-void expect_fim_diff_process_delete_file(struct dirent *dir) {
-    expect_fim_diff_delete_compress_folder(dir);
-}

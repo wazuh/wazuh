@@ -108,20 +108,24 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn
                           -Wl,--wrap,HasFilesystem -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_get_paths_from_inode \
                           -Wl,--wrap,delete_target_file -Wl,--wrap,fim_db_insert -Wl,--wrap,OS_MD5_SHA1_SHA256_File \
                           -Wl,--wrap,seechanges_addfile -Wl,--wrap,fim_db_delete_not_scanned \
-                          -Wl,--wrap,fim_db_set_all_unscanned -Wl,--wrap,fim_db_set_scanned -Wl,--wrap,get_user \
+                          -Wl,--wrap,fim_db_set_all_unscanned -Wl,--wrap,fim_db_set_scanned \
                           -Wl,--wrap,get_group -Wl,--wrap,fim_db_remove_path -Wl,--wrap,isChroot \
                           -Wl,--wrap,fim_db_get_not_scanned -Wl,--wrap,fim_db_set_all_unscanned \
                           -Wl,--wrap,fim_db_get_count_file_entry -Wl,--wrap,fim_db_get_path_range \
                           -Wl,--wrap,fim_db_process_missing_entry -Wl,--wrap,send_log_msg -Wl,--wrap,IsDir \
-                          -Wl,--wrap,DirSize -Wl,--wrap,seechanges_get_diff_path -Wl,--wrap,stat")
+                          -Wl,--wrap,DirSize -Wl,--wrap,seechanges_get_diff_path -Wl,--wrap,stat \
+                          -Wl,--wrap,fim_file_diff -Wl,--wrap,fim_diff_process_delete_file \
+                          -Wl,--wrap,fim_db_get_count_entries")
 
 list(APPEND syscheckd_tests_names "test_create_db")
 if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=w_get_file_permissions \
                                      -Wl,--wrap=decode_win_permissions,--wrap=pthread_mutex_lock \
-                                     -Wl,--wrap=pthread_mutex_unlock,--wrap=w_get_file_attrs,--wrap=os_winreg_check")
+                                     -Wl,--wrap=pthread_mutex_unlock,--wrap=w_get_file_attrs,--wrap=os_winreg_check \
+                                     -Wl,--wrap,get_file_user -Wl,--wrap,fim_registry_scan")
 else()
-  list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches")
+  list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches \
+                                     -Wl,--wrap,get_user")
 endif()
 
 if(NOT ${TARGET} STREQUAL "winagent")
