@@ -560,30 +560,30 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         //Test wdb_syscheck_save2
         cmocka_unit_test(test_wdb_syscheck_save2_wbs_null),
-        cmocka_unit_test_setup_teardown(test_wdb_syscheck_save2_payload_null, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdb_syscheck_save2_data_null, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdb_syscheck_save2_fail_transaction, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdb_syscheck_save2_fail_file_entry, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdb_syscheck_save2_success, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test(test_wdb_syscheck_save2_payload_null),
+        cmocka_unit_test(test_wdb_syscheck_save2_data_null),
+        cmocka_unit_test(test_wdb_syscheck_save2_fail_transaction),
+        cmocka_unit_test(test_wdb_syscheck_save2_fail_file_entry),
+        cmocka_unit_test(test_wdb_syscheck_save2_success),
 
         //Test wdb_fim_insert_entry2
         cmocka_unit_test(test_wdb_fim_insert_entry2_wdb_null),
-        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_data_null, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_path_null, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_timestamp_null, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_attributes_null, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_fail_cache, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_fail_element_null, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_fail_element_string, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_fail_element_number, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_fail_sqlite3_stmt, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_registry_arch_null, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_registry_value_name_null, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_registry_item_type_null, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_registry_value_succesful, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_success, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_large_inode, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_data_null),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_path_null),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_timestamp_null),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_attributes_null),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_fail_cache),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_fail_element_null),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_fail_element_string),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_fail_element_number),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_fail_sqlite3_stmt),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_registry_arch_null),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_registry_value_name_null),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_registry_item_type_null),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_registry_value_succesful),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_success),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_large_inode),
     };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup_wdb_t, teardown_wdb_t);
 }
