@@ -1,28 +1,26 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-# Tests list and flags
-list(APPEND tests_names "test_wmodules_scheduling")
-list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror")
-list(APPEND use_shared_libs 1)
-
-list(APPEND shared_libs "wmodules_scheduling_helpers.h")
-list(APPEND shared_libs "wmodules_scheduling_helpers.c")
+if(${uname} STREQUAL "Darwin")
+  # Tests list and flags
+  list(APPEND tests_names "test_syscollector_bsd")
+  list(APPEND tests_flags " ")
+  list(APPEND use_shared_libs 1)
 
 # Generate modulesd library
-file(GLOB modulesd_files ../../../wazuh_modules/*.o)
-list(REMOVE_ITEM modulesd_files ../../../wazuh_modules/main.o)
-file(GLOB syscollector_files ../../../wazuh_modules/syscollector/*.o)
+file(GLOB syscollector_files
+    ${SRC_FOLDER}/wazuh_modules/*.o
+    ${SRC_FOLDER}/wazuh_modules/vulnerability_detector/*.o
+    ${SRC_FOLDER}/wrapper/macos/libc/*.o)
+list(REMOVE_ITEM vulndetector_files ${SRC_FOLDER}/wazuh_modules/main.o)
 
-add_library(SCHEDULING_MODULESD_O STATIC ${modulesd_files})
-add_library(SCHEDULING_SYSCOLLECTOR_O STATIC ${syscollector_files})
+add_library(SYSCOLLECTOR_O STATIC ${syscollector_files})
 
 set_source_files_properties(
-  ${modulesd_files}
   ${syscollector_files}
   PROPERTIES
   EXTERNAL_OBJECT true
@@ -30,14 +28,12 @@ set_source_files_properties(
   )
 
 set_target_properties(
-  SCHEDULING_MODULESD_O
-  SCHEDULING_SYSCOLLECTOR_O
+  SYSCOLLECTOR_O
   PROPERTIES
   LINKER_LANGUAGE C
 )
 
-target_link_libraries(SCHEDULING_MODULESD_O SCHEDULING_SYSCOLLECTOR_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
-
+target_link_libraries(SYSCOLLECTOR_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 # Compiling tests
 list(LENGTH tests_names count)
@@ -58,8 +54,7 @@ foreach(counter RANGE ${count})
         ${test_name}
         ${WAZUHLIB}
         ${WAZUHEXT}
-        SCHEDULING_MODULESD_O
-        SCHEDULING_SYSCOLLECTOR_O
+        SYSCOLLECTOR_O
         -lcmocka
         -fprofile-arcs
         -ftest-coverage
@@ -72,3 +67,4 @@ foreach(counter RANGE ${count})
     endif()
     add_test(${test_name} ${test_name})
 endforeach()
+endif()
