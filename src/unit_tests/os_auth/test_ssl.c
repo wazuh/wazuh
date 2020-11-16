@@ -16,22 +16,19 @@
 
 #include "shared.h"
 #include "os_auth/auth.h"
-/* redefinitons/wrapping */
 
-int __wrap_SSL_read(SSL *ssl, void *buf, int num) {
-    check_expected_ptr(buf);
-    check_expected(num);
-    return mock_type(int);
-}
+#include "../wrappers/externals/openssl/ssl_lib_wrappers.h"
 
 /*************************/
 /* setup/teardown        */
 
 void test_wrap_SSL_read_error_code(void **state) {
     char buffer[OS_SIZE_4096];
-    
+
+    expect_any(__wrap_SSL_read, ssl);
     expect_value(__wrap_SSL_read, buf, buffer);
     expect_value(__wrap_SSL_read, num, OS_SIZE_4096);
+    will_return(__wrap_SSL_read, "");
     will_return(__wrap_SSL_read, -1);
 
     int ret =wrap_SSL_read(NULL, buffer, OS_SIZE_4096);
@@ -40,9 +37,11 @@ void test_wrap_SSL_read_error_code(void **state) {
 
 void test_wrap_SSL_read_success(void **state) {
     char buffer[OS_SIZE_4096];
-    
+
+    expect_any(__wrap_SSL_read, ssl);
     expect_value(__wrap_SSL_read, buf, buffer);
     expect_value(__wrap_SSL_read, num, OS_SIZE_4096);
+    will_return(__wrap_SSL_read, "");
     will_return(__wrap_SSL_read, 256);
 
     int ret =wrap_SSL_read(NULL, buffer, OS_SIZE_4096);
@@ -52,12 +51,16 @@ void test_wrap_SSL_read_success(void **state) {
 void test_wrap_SSL_read_full_single_record(void **state) {
     char buffer[OS_SIZE_65536 + OS_SIZE_4096];
 
+    expect_any(__wrap_SSL_read, ssl);
     expect_value(__wrap_SSL_read, buf, buffer);
     expect_value(__wrap_SSL_read, num, OS_SIZE_65536 + OS_SIZE_4096);
+    will_return(__wrap_SSL_read, "");
     will_return(__wrap_SSL_read, MAX_SSL_PACKET_SIZE); // One record
 
+    expect_any(__wrap_SSL_read, ssl);
     expect_value(__wrap_SSL_read, buf, buffer + MAX_SSL_PACKET_SIZE);
     expect_value(__wrap_SSL_read, num, OS_SIZE_65536 + OS_SIZE_4096 - MAX_SSL_PACKET_SIZE);
+    will_return(__wrap_SSL_read, "");
     will_return(__wrap_SSL_read, -1); // One record
 
     int ret  =wrap_SSL_read(NULL, buffer, OS_SIZE_65536 + OS_SIZE_4096);
@@ -67,20 +70,28 @@ void test_wrap_SSL_read_full_single_record(void **state) {
 void test_wrap_SSL_read_multi_record(void **state) {
     char buffer[OS_SIZE_65536 + OS_SIZE_4096];
 
+    expect_any(__wrap_SSL_read, ssl);
     expect_value(__wrap_SSL_read, buf, buffer);
     expect_value(__wrap_SSL_read, num, OS_SIZE_65536 + OS_SIZE_4096);
+    will_return(__wrap_SSL_read, "");
     will_return(__wrap_SSL_read, MAX_SSL_PACKET_SIZE); // One record
 
+    expect_any(__wrap_SSL_read, ssl);
     expect_value(__wrap_SSL_read, buf, buffer + MAX_SSL_PACKET_SIZE);
     expect_value(__wrap_SSL_read, num, OS_SIZE_65536 + OS_SIZE_4096 - MAX_SSL_PACKET_SIZE);
+    will_return(__wrap_SSL_read, "");
     will_return(__wrap_SSL_read, MAX_SSL_PACKET_SIZE); // Second record
 
+    expect_any(__wrap_SSL_read, ssl);
     expect_value(__wrap_SSL_read, buf, buffer + (2* MAX_SSL_PACKET_SIZE));
     expect_value(__wrap_SSL_read, num, OS_SIZE_65536 + OS_SIZE_4096 - (2* MAX_SSL_PACKET_SIZE) );
+    will_return(__wrap_SSL_read, "");
     will_return(__wrap_SSL_read, MAX_SSL_PACKET_SIZE); // Third record
 
+    expect_any(__wrap_SSL_read, ssl);
     expect_value(__wrap_SSL_read, buf, buffer + (3* MAX_SSL_PACKET_SIZE));
     expect_value(__wrap_SSL_read, num, OS_SIZE_65536 + OS_SIZE_4096 - (3* MAX_SSL_PACKET_SIZE) );
+    will_return(__wrap_SSL_read, "");
     will_return(__wrap_SSL_read, 1024); // Part of fourth record
 
     int ret = wrap_SSL_read(NULL, buffer, OS_SIZE_65536 + OS_SIZE_4096);
@@ -89,8 +100,8 @@ void test_wrap_SSL_read_multi_record(void **state) {
 
 /*************************/
 int main(void) {
-        
-    const struct CMUnitTest tests[] = { 
+
+    const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_wrap_SSL_read_error_code),
         cmocka_unit_test(test_wrap_SSL_read_success),
         cmocka_unit_test(test_wrap_SSL_read_full_single_record),

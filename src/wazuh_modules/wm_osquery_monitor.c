@@ -585,16 +585,10 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
     osquery->msg_delay = 1000000 / wm_max_eps;
 
 #ifndef WIN32
-    int i;
-
     // Connect to queue
 
-    for (i = 0; i < WM_MAX_ATTEMPTS && (osquery->queue_fd = StartMQ(DEFAULTQPATH, WRITE), osquery->queue_fd < 0); i++) {
-        // Trying to connect to queue
-        sleep(WM_MAX_WAIT);
-    }
-
-    if (i == WM_MAX_ATTEMPTS) {
+    osquery->queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
+    if (osquery->queue_fd < 0) {
         mterror(WM_OSQUERYMONITOR_LOGTAG, "Can't connect to queue. Closing module.");
         return NULL;
     }

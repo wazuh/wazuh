@@ -10,11 +10,19 @@ variables:
   host: localhost
   port: 55000
   user: testing
+  user_auth_context: testing_auth_context
   pass: wazuh
-  version: v4
+  basic_auth: dGVzdGluZzp3YXp1aA== # b64 encoded user:pass, update if user or pass changes
+  basic_auth_context: dGVzdGluZ19hdXRoX2NvbnRleHQ6d2F6dWg== # b64 encoded user:pass, update if user or pass changes
   login_endpoint: /security/user/authenticate
 
-  custom_wpk_path: "/var/ossec/test_custom_upgrade_3.10.2.wpk"
+  # delays
+  restart_delay: 30
+  upgrade_delay: 45
+  global_db_delay: 20
+  active_reponse_delay: 5
+
+  custom_wpk_path: "/var/ossec/test_custom_upgrade_3.12.2.wpk"
 
   new_rules:
     "<!-- Local rules -->\n <group name=\"local,\">\n    <!--   NEW RULE    -->\n    <rule id=\"111111\" level=\"5\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
@@ -124,4 +132,19 @@ variables:
 
     </syscheck>
 
+    </agent_config>
+
+  query_list_xml:
+    <agent_config>
+    <localfile>
+    <location>System</location>
+    <log_format>eventchannel</log_format>
+    <query>
+    \<QueryList>
+    \<Query Id='0' Path='System'>
+    \<Select Path='System'>*[System[(Level&lt;=3)]]\</Select>
+    \</Query>
+    \</QueryList>
+    </query>
+    </localfile>
     </agent_config>

@@ -15,6 +15,14 @@
 #include <string.h>
 
 #include "../wrappers/common.h"
+#include "../wrappers/posix/pthread_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/queue_op_wrappers.h"
+#include "../wrappers/wazuh/shared/integrity_op_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/run_check_wrappers.h"
+
 #include "../syscheckd/syscheck.h"
 #include "../syscheckd/fim_db.h"
 
@@ -35,177 +43,41 @@ int __wrap_time() {
 }
 #endif
 
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-int __wrap_queue_push_ex(w_queue_t * queue, void * data) {
-    int retval = mock();
-
-    check_expected_ptr(queue);
-    check_expected(data);
-
-    if(retval != -1)
-        free(data);     //  This won't be used, free it
-
-    return retval;
-}
-
-int __wrap_fim_db_get_row_path(fdb_t * fim_sql, int mode, char **path) {
-    check_expected_ptr(fim_sql);
-    check_expected(mode);
-
-    *path = mock_type(char*);
-
-    return mock();
-}
-
-int __wrap_fim_db_get_data_checksum(fdb_t *fim_sql, void * arg) {
-    check_expected_ptr(fim_sql);
-
-    return mock();
-}
-
-char * __wrap_dbsync_check_msg(const char * component, dbsync_msg msg, long id, const char * start, const char * top, const char * tail, const char * checksum) {
-    check_expected(component);
-    check_expected(msg);
-    check_expected(id);
-    check_expected(start);
-    check_expected(top);
-    check_expected(tail);
-
-    return mock_type(char*);
-}
-
-void __wrap_fim_send_sync_msg(const char * msg) {
-    check_expected(msg);
-}
-
-
-int __wrap_fim_db_get_count_range(fdb_t *fim_sql, char *start, char *top, int *count) {
-    check_expected_ptr(fim_sql);
-    check_expected(start);
-    check_expected(top);
-
-    *count = mock();
-    return mock();
-}
-
-fim_entry *__wrap_fim_db_get_path(fdb_t *fim_sql, const char *file_path) {
-    check_expected_ptr(fim_sql);
-    check_expected(file_path);
-
-    return mock_type(fim_entry*);
-}
-
-cJSON *__wrap_fim_entry_json(const char * path, fim_entry_data * data) {
-    check_expected(path);
-
-    return mock_type(cJSON*);
-}
-
-int __wrap_fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *top,
-                                      const long id, const int n) {
-    check_expected_ptr(fim_sql);
-    check_expected(start);
-    check_expected(top);
-    check_expected(id);
-    check_expected(n);
-
-    return mock();
-}
-
-char * __wrap_dbsync_state_msg(const char * component, cJSON * data) {
-    check_expected(component);
-    check_expected_ptr(data);
-
-    return mock_type(char*);
-}
-
-int __wrap_fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int storage) {
-    check_expected_ptr(fim_sql);
-    check_expected(start);
-    check_expected(top);
-    check_expected(storage);
-
-    *file = mock_type(fim_tmp_file *);
-
-    return mock();
-}
-
-int __wrap_fim_db_sync_path_range(fdb_t *fim_sql) {
-    check_expected_ptr(fim_sql);
-
-    return mock();
-}
-
-#ifdef TEST_WINAGENT // mutex_lock has problems on running with wine
-int __wrap_pthread_mutex_lock(pthread_mutex_t *mutex) {
-    return 0;
-}
-int __wrap_pthread_mutex_unlock(pthread_mutex_t *mutex) {
-    return 0;
-}
-#endif
-
 /* setup/teardown */
 static int setup_group(void **state) {
-    #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
     time_mock_value = 1572521857;
-    #endif
+#endif
 
     return 0;
 }
 
 static int setup_fim_sync_queue(void **state) {
+    char *msg = (char *)malloc(sizeof(char) * 45);
+
+    snprintf(msg, 45, "%s", "This is a mock message, it won't go anywhere");
+
+    *state = msg;
+
     fim_sync_queue = queue_init(10);
 
     return 0;
 }
 
 static int teardown_fim_sync_queue(void **state) {
-    queue_free(fim_sync_queue);
+    char *msg = *state;
 
+    free(msg);
+    msg = NULL;
+
+    char *copy = (char *)queue_pop(fim_sync_queue);
+
+    if (copy) {
+        free(copy);
+        copy = NULL;
+    }
+
+    queue_free(fim_sync_queue);
     fim_sync_queue = NULL;
 
     return 0;
@@ -250,7 +122,7 @@ static int teardown_json_payload(void **state) {
 /* tests */
 /* fim_sync_push_msg */
 static void test_fim_sync_push_msg_success(void **state) {
-    char *msg = "This is a mock message, it won't go anywhere";
+    char *msg = *state;
 
     expect_value(__wrap_queue_push_ex, queue, fim_sync_queue);
     expect_string(__wrap_queue_push_ex, data, msg);
@@ -260,7 +132,7 @@ static void test_fim_sync_push_msg_success(void **state) {
 }
 
 static void test_fim_sync_push_msg_queue_full(void **state) {
-    char *msg = "This is a mock message, it won't go anywhere";
+    char *msg = *state;
 
     expect_value(__wrap_queue_push_ex, queue, fim_sync_queue);
     expect_string(__wrap_queue_push_ex, data, msg);
@@ -280,17 +152,25 @@ static void test_fim_sync_push_msg_no_response(void **state) {
 
 /* fim_sync_checksum */
 static void test_fim_sync_checksum_first_row_error(void **state) {
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_lock);
+#endif
     expect_value(__wrap_fim_db_get_row_path, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_row_path, mode, FIM_FIRST_ROW);
     will_return(__wrap_fim_db_get_row_path, NULL);
     will_return(__wrap_fim_db_get_row_path, FIMDB_ERR);
-
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_unlock);
+#endif
     expect_string(__wrap__merror, formatted_msg, "(6706): Couldn't get FIRST row's path.");
 
     fim_sync_checksum();
 }
 
 static void test_fim_sync_checksum_last_row_error(void **state) {
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_lock);
+#endif
     expect_value_count(__wrap_fim_db_get_row_path, fim_sql, syscheck.database, 2);
     expect_value(__wrap_fim_db_get_row_path, mode, FIM_FIRST_ROW);
     expect_value(__wrap_fim_db_get_row_path, mode, FIM_LAST_ROW);
@@ -298,13 +178,18 @@ static void test_fim_sync_checksum_last_row_error(void **state) {
     will_return(__wrap_fim_db_get_row_path, FIMDB_OK);
     will_return(__wrap_fim_db_get_row_path, NULL);
     will_return(__wrap_fim_db_get_row_path, FIMDB_ERR);
-
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_unlock);
+#endif
     expect_string(__wrap__merror, formatted_msg, "(6706): Couldn't get LAST row's path.");
 
     fim_sync_checksum();
 }
 
 static void test_fim_sync_checksum_checksum_error(void **state) {
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_lock);
+#endif
     expect_value_count(__wrap_fim_db_get_row_path, fim_sql, syscheck.database, 2);
     expect_value(__wrap_fim_db_get_row_path, mode, FIM_FIRST_ROW);
     expect_value(__wrap_fim_db_get_row_path, mode, FIM_LAST_ROW);
@@ -315,13 +200,18 @@ static void test_fim_sync_checksum_checksum_error(void **state) {
 
     expect_value(__wrap_fim_db_get_data_checksum, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_get_data_checksum, FIMDB_ERR);
-
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_unlock);
+#endif
     expect_string(__wrap__merror, formatted_msg, FIM_DB_ERROR_CALC_CHECKSUM);
 
     fim_sync_checksum();
 }
 
 static void test_fim_sync_checksum_empty_db(void **state) {
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_lock);
+#endif
     expect_value_count(__wrap_fim_db_get_row_path, fim_sql, syscheck.database, 2);
     expect_value(__wrap_fim_db_get_row_path, mode, FIM_FIRST_ROW);
     expect_value(__wrap_fim_db_get_row_path, mode, FIM_LAST_ROW);
@@ -332,7 +222,9 @@ static void test_fim_sync_checksum_empty_db(void **state) {
 
     expect_value(__wrap_fim_db_get_data_checksum, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_get_data_checksum, FIMDB_OK);
-
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_unlock);
+#endif
     expect_string(__wrap_dbsync_check_msg, component, "syscheck");
     expect_value(__wrap_dbsync_check_msg, msg, INTEGRITY_CLEAR);
     expect_value(__wrap_dbsync_check_msg, id, 1572521857);
@@ -346,6 +238,9 @@ static void test_fim_sync_checksum_empty_db(void **state) {
     fim_sync_checksum();
 }
 static void test_fim_sync_checksum_success(void **state) {
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_lock);
+#endif
     expect_value_count(__wrap_fim_db_get_row_path, fim_sql, syscheck.database, 2);
     expect_value(__wrap_fim_db_get_row_path, mode, FIM_FIRST_ROW);
     expect_value(__wrap_fim_db_get_row_path, mode, FIM_LAST_ROW);
@@ -356,7 +251,9 @@ static void test_fim_sync_checksum_success(void **state) {
 
     expect_value(__wrap_fim_db_get_data_checksum, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_get_data_checksum, FIMDB_OK);
-
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_unlock);
+#endif
     expect_string(__wrap_dbsync_check_msg, component, "syscheck");
     expect_value(__wrap_dbsync_check_msg, msg, INTEGRITY_CHECK_GLOBAL);
     expect_value(__wrap_dbsync_check_msg, id, 1572521857);
@@ -372,24 +269,34 @@ static void test_fim_sync_checksum_success(void **state) {
 
 /* fim_sync_checksum_split */
 static void test_fim_sync_checksum_split_get_count_range_error(void **state) {
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_lock);
+#endif
     expect_value(__wrap_fim_db_get_count_range, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_count_range, start, "start");
     expect_string(__wrap_fim_db_get_count_range, top, "top");
     will_return(__wrap_fim_db_get_count_range, 0);
     will_return(__wrap_fim_db_get_count_range, FIMDB_ERR);
-
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_unlock);
+#endif
     expect_string(__wrap__merror, formatted_msg, "(6703): Couldn't get range size between 'start' and 'top'");
 
     fim_sync_checksum_split("start", "top", 1234);
 }
 
 static void test_fim_sync_checksum_split_range_size_0(void **state) {
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_lock);
+#endif
     expect_value(__wrap_fim_db_get_count_range, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_count_range, start, "start");
     expect_string(__wrap_fim_db_get_count_range, top, "top");
     will_return(__wrap_fim_db_get_count_range, 0);
     will_return(__wrap_fim_db_get_count_range, FIMDB_OK);
-
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_unlock);
+#endif
     fim_sync_checksum_split("start", "top", 1234);
 }
 
@@ -398,17 +305,24 @@ static void test_fim_sync_checksum_split_range_size_1(void **state) {
 
     if(mock_entry == NULL)
         fail();
-
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_lock);
+#endif
     expect_value(__wrap_fim_db_get_count_range, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_count_range, start, "start");
     expect_string(__wrap_fim_db_get_count_range, top, "top");
     will_return(__wrap_fim_db_get_count_range, 1);
     will_return(__wrap_fim_db_get_count_range, FIMDB_OK);
-
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_lock);
+#endif
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "start");
     will_return(__wrap_fim_db_get_path, mock_entry);
-
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_unlock);
+#endif
     expect_string(__wrap_fim_entry_json, path, "start");
     will_return(__wrap_fim_entry_json, (cJSON*)2345);
 
@@ -422,27 +336,41 @@ static void test_fim_sync_checksum_split_range_size_1(void **state) {
 }
 
 static void test_fim_sync_checksum_split_range_size_1_get_path_error(void **state) {
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_lock);
+#endif
     expect_value(__wrap_fim_db_get_count_range, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_count_range, start, "start");
     expect_string(__wrap_fim_db_get_count_range, top, "top");
     will_return(__wrap_fim_db_get_count_range, 1);
     will_return(__wrap_fim_db_get_count_range, FIMDB_OK);
-
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_lock);
+#endif
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "start");
     will_return(__wrap_fim_db_get_path, NULL);
-
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_unlock);
+#endif
     expect_string(__wrap__merror, formatted_msg, "(6704): Couldn't get path of 'start'");
 
     fim_sync_checksum_split("start", "top", 1234);
 }
 
 static void test_fim_sync_checksum_split_range_size_default(void **state) {
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_lock);
+#endif
     expect_value(__wrap_fim_db_get_count_range, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_count_range, start, "start");
     expect_string(__wrap_fim_db_get_count_range, top, "top");
     will_return(__wrap_fim_db_get_count_range, 2);
     will_return(__wrap_fim_db_get_count_range, FIMDB_OK);
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_unlock);
+#endif
 
     expect_value(__wrap_fim_db_data_checksum_range, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_data_checksum_range, start, "start");
@@ -456,12 +384,18 @@ static void test_fim_sync_checksum_split_range_size_default(void **state) {
 
 /* fim_sync_send_list */
 static void test_fim_sync_send_list_sync_path_range_error(void **state) {
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_lock);
+#endif
     expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path_range, start, "start");
     expect_string(__wrap_fim_db_get_path_range, top, "top");
     expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_path_range, NULL);
     will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_unlock);
+#endif
 
     expect_string(__wrap__merror, formatted_msg, FIM_DB_ERROR_SYNC_DB);
 
@@ -471,13 +405,18 @@ static void test_fim_sync_send_list_sync_path_range_error(void **state) {
 static void test_fim_sync_send_list_success(void **state) {
     fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
     file->elements = 1;
-
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_lock);
+#endif
     expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path_range, start, "start");
     expect_string(__wrap_fim_db_get_path_range, top, "top");
     expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_path_range, file);
     will_return(__wrap_fim_db_get_path_range, FIMDB_OK);
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_unlock);
+#endif
 
     expect_value(__wrap_fim_db_sync_path_range, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_sync_path_range, FIMDB_OK);
@@ -575,12 +514,17 @@ static void test_fim_sync_dispatch_checksum_fail(void **state) {
     fim_sync_cur_id = 1234;
 
     // Inside fim_sync_checksum_split
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_lock);
+#endif
     expect_value(__wrap_fim_db_get_count_range, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_count_range, start, "start");
     expect_string(__wrap_fim_db_get_count_range, top, "top");
     will_return(__wrap_fim_db_get_count_range, 0);
     will_return(__wrap_fim_db_get_count_range, FIMDB_OK);
-
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_unlock);
+#endif
     fim_sync_dispatch(payload);
 }
 
@@ -595,14 +539,18 @@ static void test_fim_sync_dispatch_no_data(void **state) {
     // Inside fim_sync_send_list
     fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
     file->elements = 1;
-
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_lock);
+#endif
     expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path_range, start, "start");
     expect_string(__wrap_fim_db_get_path_range, top, "top");
     expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_path_range, file);
     will_return(__wrap_fim_db_get_path_range, FIMDB_OK);
-
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_unlock);
+#endif
     expect_value(__wrap_fim_db_sync_path_range, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_sync_path_range, FIMDB_OK);
 

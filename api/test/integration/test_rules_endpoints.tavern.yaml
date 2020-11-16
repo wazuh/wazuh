@@ -9,7 +9,7 @@ stages:
   - name: Try to show the rules of the system
     request: &general_rules_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
+      url: "{protocol:s}://{host:s}:{port:d}/rules"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -19,6 +19,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: &rules_response
             - description: !anystr
@@ -50,6 +51,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -75,6 +77,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - description: "{second_rule_description}"
@@ -92,6 +95,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -105,6 +109,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -121,11 +126,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json: &error_response
-        detail: !anystr
-        status: 400
-        title: "Bad Request"
-        type: "about:blank"
 
   - name: Sort without limit
     request:
@@ -136,6 +136,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -157,6 +158,7 @@ stages:
           select_key: 'id,filename,details.noalert' # required_fields={'id'}
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
           failed_items: []
@@ -171,12 +173,7 @@ stages:
     response:
       status_code: 400
       json: &invalid_select
-        type: !anystr
-        detail: !anystr
-        status: 400
-        remediation: !anystr
-        code: 1724
-        dapi_errors: !anything
+        error: 1724
 
   - name: Show rules of the system using select (one select is invalid)
     request:
@@ -189,10 +186,27 @@ stages:
       json:
         <<: *invalid_select
 
+  - name: Show lists using select and specifying a non-existent file in the filename parameter
+    request:
+      verify: False
+      <<: *general_rules_request
+      params:
+        select: 'id'
+        filename: 'invalid'
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
   - name: Search in rules
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
+      url: "{protocol:s}://{host:s}:{port:d}/rules"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -202,6 +216,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -224,6 +239,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - id: !int "{rule_id}"
@@ -239,11 +255,6 @@ stages:
         noexist: nothing
     response:
       status_code: 400
-      json: &error_null
-        detail: "Extra query parameter(s) noexist not in spec"
-        status: 400
-        title: null
-        type: "about:blank"
 
   - name: Invalid status
     request:
@@ -253,8 +264,6 @@ stages:
         status: aCtIvE
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Invalid parameters - Extra fields
     request:
@@ -265,8 +274,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
   - name: Filters status
     request:
@@ -278,6 +285,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -295,13 +303,14 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
   - name: Try to show the rules of the system with a non-existent state
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
+      url: "{protocol:s}://{host:s}:{port:d}/rules"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -309,8 +318,6 @@ stages:
         status: notexist
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Test q
     request:
@@ -321,6 +328,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -338,6 +346,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -364,6 +373,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: *rules_response
           failed_items: []
@@ -379,6 +389,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -392,6 +403,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -409,6 +421,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -421,6 +434,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -432,8 +446,6 @@ stages:
         level: 2-4-5
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Filter relative_dirname
     request:
@@ -445,6 +457,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -462,6 +475,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -475,6 +489,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -506,6 +521,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - pci_dss:
@@ -524,6 +540,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - pci_dss:
@@ -541,6 +558,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -554,6 +572,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - gdpr:
@@ -571,6 +590,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -584,6 +604,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - gpg13:
@@ -601,6 +622,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -614,6 +636,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - hipaa:
@@ -631,6 +654,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -644,6 +668,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - nist_800_53:
@@ -661,6 +686,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -674,6 +700,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - tsc:
@@ -691,6 +718,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -703,6 +731,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - mitre:
@@ -719,6 +748,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -730,7 +760,7 @@ stages:
   - name: Try to show the rules by requirement pci_dss
     request: &pci_dss_rules_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/pci_dss"
+      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/pci_dss"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -739,6 +769,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - !anystr
@@ -746,7 +777,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the rules by requirement pci_dss, limit and offset
     request:
@@ -758,13 +788,13 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - !anystr
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the rules by requirement pci_dss, limit = 0
     request:
@@ -774,24 +804,22 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Filter sort
     request:
       verify: False
       <<: *pci_dss_rules_request
       params:
-        limit: 1000
+        limit: 500
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
       save:
         json:
           affected_items: data.affected_items
@@ -817,6 +845,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -831,8 +860,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
 ---
 test_name: GET /rules/requirement/gdpr
@@ -842,7 +869,7 @@ stages:
   - name: Try to show the rules by requirement gdpr
     request: &gdpr_rules_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/gdpr"
+      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/gdpr"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -851,6 +878,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - !anystr
@@ -858,7 +886,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the rules by requirement gdpr, limit and offset
     request:
@@ -870,13 +897,13 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - !anystr
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the rules by requirement gdpr, limit = 0
     request:
@@ -886,24 +913,22 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Filter sort
     request:
       verify: False
       <<: *gdpr_rules_request
       params:
-        limit: 1000
+        limit: 500
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
       save:
         json:
           affected_items: data.affected_items
@@ -913,7 +938,7 @@ stages:
       verify: False
       <<: *gdpr_rules_request
       params:
-        limit: 1000
+        limit: 500
         sort: "-"
     response:
       verify_response_with:
@@ -930,6 +955,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -944,8 +970,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
 ---
 test_name: GET /rules/requirement/gpg13
@@ -955,13 +979,14 @@ stages:
   - name: Try to show the rules by requirement gpg13
     request: &gpg13_rules_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/gpg13"
+      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/gpg13"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -975,6 +1000,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - !anystr
@@ -982,7 +1008,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the rules by requirement gpg13, limit = 0
     request:
@@ -992,8 +1017,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Filter sort
     request:
@@ -1002,12 +1025,12 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: !anyint
-        message: !anystr
       save:
         json:
           affected_items: data.affected_items
@@ -1017,16 +1040,16 @@ stages:
       verify: False
       <<: *gpg13_rules_request
       params:
-        limit: 1000
+        limit: 500
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
       save:
         json:
           affected_items: data.affected_items
@@ -1052,6 +1075,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1066,8 +1090,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
 ---
 test_name: GET /rules/requirement/hipaa
@@ -1077,13 +1099,14 @@ stages:
   - name: Try to show the rules by requirement hipaa
     request: &hipaa_rules_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/hipaa"
+      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/hipaa"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1100,6 +1123,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1114,8 +1138,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Filter sort
     request:
@@ -1126,6 +1148,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1141,6 +1164,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1155,8 +1179,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
 ---
 test_name: GET /rules/requirement/nist-800-53
@@ -1166,13 +1188,14 @@ stages:
   - name: Try to show the rules by requirement nist-800-53
     request: &nist-800-53_rules_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/nist-800-53"
+      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/nist-800-53"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1189,6 +1212,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1203,8 +1227,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Filter sort
     request:
@@ -1215,6 +1237,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1230,6 +1253,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1244,8 +1268,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
 ---
 test_name: GET /rules/requirement/tsc
@@ -1255,13 +1277,14 @@ stages:
   - name: Try to show the rules by requirement tsc
     request: &tsc_rules_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/tsc"
+      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/tsc"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1278,6 +1301,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1292,8 +1316,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Filter sort
     request:
@@ -1304,6 +1326,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1319,6 +1342,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1333,8 +1357,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
 ---
 test_name: GET /rules/requirement/mitre
@@ -1344,13 +1366,14 @@ stages:
   - name: Try to show the rules by requirement mitre
     request: &mitre_rules_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/mitre"
+      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/mitre"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1367,6 +1390,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1381,8 +1405,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Filter sort
     request:
@@ -1393,6 +1415,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1408,6 +1431,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1422,8 +1446,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
 ---
 test_name: GET /rules/groups
@@ -1433,13 +1455,14 @@ stages:
   - name: Try to show the rules groups
     request: &groups_rules_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/groups"
+      url: "{protocol:s}://{host:s}:{port:d}/rules/groups"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1456,6 +1479,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1470,8 +1494,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Filter sort
     request:
@@ -1482,6 +1504,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1497,6 +1520,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1511,8 +1535,6 @@ stages:
         noexist: nothing
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
 ---
 test_name: GET /rules/files
@@ -1522,13 +1544,14 @@ stages:
   - name: Get the rules files
     request: &files_rules_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/files"
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1548,6 +1571,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1562,8 +1586,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Filter sort
     request:
@@ -1585,8 +1607,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
   - name: Invalid filter - Extra field
     request:
@@ -1597,8 +1617,6 @@ stages:
         noexist: True
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
   - name: Filter status
     request:
@@ -1609,6 +1627,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -1623,7 +1642,7 @@ stages:
   - name: Download rule
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/files/0350-amazon_rules.xml/download"
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0350-amazon_rules.xml/download"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -1639,7 +1658,7 @@ stages:
   - name: Try to show a rule with a existent id
     request: &id_rules_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
+      url: "{protocol:s}://{host:s}:{port:d}/rules"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1648,6 +1667,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -1664,6 +1684,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -1681,19 +1702,17 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
           failed_items:
             - error:
                 code: 1208
-                message: !anystr
-                remediation: !anystr
               id:
                 - 99999999
           total_affected_items: !anyint
           total_failed_items: 1
-        message: !anystr
 
   - name: Try to show a rule with a existent id but with a wrong file in file filter
     request:
@@ -1705,12 +1724,12 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items: []
           total_affected_items: 0
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show a rule with a existent id, limit = 0
     request:
@@ -1721,8 +1740,6 @@ stages:
         rule_ids: 1
     response:
       status_code: 400
-      json:
-        <<: *error_response
 
   - name: Filter sort
     request:
@@ -1734,6 +1751,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *rules_response
@@ -1751,6 +1769,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items: []
@@ -1766,13 +1785,11 @@ stages:
         rule_ids: 201
     response:
       status_code: 400
-      json:
-        <<: *error_null
 
   - name: No rule
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
+      url: "{protocol:s}://{host:s}:{port:d}/rules"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1781,15 +1798,13 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
             - error:
                 code: 1208
-                message: !anystr
-                remediation: !anystr
               id:
                 - 9999999999
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr

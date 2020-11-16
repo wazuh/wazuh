@@ -57,6 +57,8 @@ int Read_Syscheck_Config(const char *cfgfile)
 #ifdef WIN32
     syscheck.realtime_change = 0;
     syscheck.registry       = NULL;
+    syscheck.registry_ignore = NULL;
+    syscheck.registry_ignore_regex = NULL;
     syscheck.max_fd_win_rt  = 0;
 #endif
     syscheck.prefilter_cmd  = NULL;
@@ -67,6 +69,14 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.sync_max_eps = 10;
     syscheck.max_eps        = 100;
     syscheck.allow_remote_prefilter_cmd  = false;
+    syscheck.disk_quota_enabled = true;
+    syscheck.disk_quota_limit = 1024 * 1024; // 1 GB
+    syscheck.file_size_enabled = true;
+    syscheck.file_size_limit = 50 * 1024; // 50 MB
+    syscheck.diff_folder_size = 0;
+    syscheck.comp_estimation_perc = 0.9;    // 90%
+    syscheck.disk_quota_full_msg = true;
+    syscheck.audit_key = NULL;
 
     mdebug1(FIM_CONFIGURATION_FILE, cfgfile);
 
@@ -90,6 +100,14 @@ int Read_Syscheck_Config(const char *cfgfile)
                 syscheck.enable_whodata = 1;
 
                 break;  // Exit loop with the first whodata directory
+            }
+        }
+    }
+
+    if (syscheck.diff_size_limit) {
+        for (it = 0; syscheck.diff_size_limit[it]; it++) {
+            if (syscheck.diff_size_limit[it] == -1) {
+                syscheck.diff_size_limit[it] = syscheck.file_size_limit;
             }
         }
     }
@@ -129,26 +147,25 @@ int Read_Syscheck_Config(const char *cfgfile)
 }
 
 void free_whodata_event(whodata_evt *w_evt) {
+    if (w_evt == NULL) return;
     if (w_evt->user_name) free(w_evt->user_name);
-    if (w_evt->user_id) {
 #ifndef WIN32
-        free(w_evt->user_id);
-#else
-        LocalFree(w_evt->user_id);
-#endif
-    }
     if (w_evt->cwd) free(w_evt->cwd);
     if (w_evt->audit_name) free(w_evt->audit_name);
     if (w_evt->audit_uid) free(w_evt->audit_uid);
     if (w_evt->effective_name) free(w_evt->effective_name);
     if (w_evt->effective_uid) free(w_evt->effective_uid);
     if (w_evt->group_id) free(w_evt->group_id);
-    if (w_evt->path) free(w_evt->path);
-    if (w_evt->process_name) free(w_evt->process_name);
     if (w_evt->parent_name) free(w_evt->parent_name);
     if (w_evt->parent_cwd) free(w_evt->parent_cwd);
     if (w_evt->inode) free(w_evt->inode);
     if (w_evt->dev) free(w_evt->dev);
+    if (w_evt->user_id) free(w_evt->user_id);
+#else
+    if (w_evt->user_id) LocalFree(w_evt->user_id);
+#endif
+    if (w_evt->path) free(w_evt->path);
+    if (w_evt->process_name) free(w_evt->process_name);
     free(w_evt);
 }
 
@@ -176,6 +193,20 @@ cJSON *getSyscheckConfig(void) {
     cJSON_AddStringToObject(file_limit, "enabled", syscheck.file_limit_enabled ? "yes" : "no");
     cJSON_AddNumberToObject(file_limit, "entries", syscheck.file_limit);
     cJSON_AddItemToObject(syscfg, "file_limit", file_limit);
+
+    cJSON *diff = cJSON_CreateObject();
+
+    cJSON *disk_quota = cJSON_CreateObject();
+    cJSON_AddStringToObject(disk_quota, "enabled", syscheck.disk_quota_enabled ? "yes" : "no");
+    cJSON_AddNumberToObject(disk_quota, "limit", syscheck.disk_quota_limit);
+    cJSON_AddItemToObject(diff, "disk_quota", disk_quota);
+
+    cJSON *file_size = cJSON_CreateObject();
+    cJSON_AddStringToObject(file_size, "enabled", syscheck.file_size_enabled ? "yes" : "no");
+    cJSON_AddNumberToObject(file_size, "limit", syscheck.file_size_limit);
+    cJSON_AddItemToObject(diff, "file_size", file_size);
+
+    cJSON_AddItemToObject(syscfg, "diff", diff);
 
     if (syscheck.dir) {
         cJSON *dirs = cJSON_CreateArray();
@@ -208,6 +239,11 @@ cJSON *getSyscheckConfig(void) {
             if (syscheck.tag && syscheck.tag[i]) {
                 cJSON_AddStringToObject(pair,"tags",syscheck.tag[i]);
             }
+
+            if (syscheck.file_size_enabled && syscheck.diff_size_limit[i]) {
+                cJSON_AddNumberToObject(pair, "diff_size_limit", syscheck.diff_size_limit[i]);
+            }
+
             cJSON_AddItemToArray(dirs, pair);
         }
         cJSON_AddItemToObject(syscfg,"directories",dirs);

@@ -8,10 +8,10 @@ from typing import Dict
 import more_itertools
 
 from wazuh.core.common import database_limit
-from wazuh.core.exception import WazuhException
-from wazuh.rbac.decorators import expose_resources
+from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.utils import WazuhDBBackend, WazuhDBQuery, sort_array
+from wazuh.rbac.decorators import expose_resources
 
 mitre_fields = {'id': 'id', 'json': 'json', 'phase_name': 'phase_name', 'platform_name': 'platform_name'}
 from_fields = "attack LEFT JOIN has_phase ON attack.id = has_phase.attack_id" \
@@ -59,7 +59,7 @@ class WazuhDBQueryMitre(WazuhDBQuery):
     def _add_limit_to_query(self):
         if self.limit:
             if self.limit > database_limit:
-                raise WazuhException(1405, str(self.limit))
+                raise WazuhError(1405, str(self.limit))
 
             # We add offset and limit only to the inner SELECT (subquery)
             self.query += ' LIMIT :inner_limit OFFSET :inner_offset'
@@ -68,7 +68,7 @@ class WazuhDBQueryMitre(WazuhDBQuery):
             self.request['offset'] = 0
             self.request['limit'] = 0
         elif self.limit == 0:  # 0 is not a valid limit
-            raise WazuhException(1406)
+            raise WazuhError(1406)
 
     def _execute_data_query(self):
         self.query = self.query.format(inner_select)
@@ -112,8 +112,8 @@ def get_attack(id_: str = None, phase_name: str = None, platform_name: str = Non
     :param q: Query to filter by
     :return: AffectedItemsWazuhResult with the data of the query from Mitre database
     """
-    result = AffectedItemsWazuhResult(all_msg='All selected MITRE information is shown',
-                                      none_msg='No MITRE information is shown'
+    result = AffectedItemsWazuhResult(all_msg='All selected MITRE information was returned',
+                                      none_msg='No MITRE information was returned'
                                       )
 
     # Set default limit to 500 if json is not selected and 10 otherwise in order to avoid congesting wdb socket

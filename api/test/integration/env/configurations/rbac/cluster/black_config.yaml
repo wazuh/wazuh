@@ -1,6 +1,6 @@
 ---
 - actions:
-  - cluster:read_config
+  - cluster:read
   resources:
   - node:id:master-node
   - node:id:worker2
@@ -41,6 +41,7 @@
 - actions:
   - cluster:delete_file
   resources:
-  - node:id:master-node&file:path:ruleset/decoders/0005-wazuh_decoders.xml
+  - node:id:master-node&file:path:etc/decoders/0005-wazuh_decoders.xml
   - node:id:worker2&file:path:etc/ossec.conf
+  - node:id:worker2&file:path:etc/decoders/0005-wazuh_decoders.xml
   effect: deny

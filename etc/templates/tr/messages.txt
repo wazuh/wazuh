@@ -102,7 +102,6 @@ tostart="Wazuh'i başlatmak için"
 tostop="Wazuh'i durdurmak için"
 configat="Yapılandırma buradan görülebilir veya değiştirilebilir:"
 addserveragent="Her bir aracıyı/istemciyi erişim için yetkilendirmeden önce eklemeniz gerekmektedir."
-runma="Eklemek ve çıkarmak için 'manage_agents' komutunu kullanın."
 presskey="Devam etmek için ENTER tuşuna basınız"
 
 # Update

@@ -179,13 +179,21 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
 w_message_t * w_msg_queue_pop(w_msg_queue_t * queue);
 
 /* Output processing thread*/
+#ifdef WIN32
+DWORD WINAPI w_output_thread(void * args);
+#else
 void * w_output_thread(void * args);
+#endif
 
 /* Prepare pool of output threads */
 void w_create_output_threads();
 
 /* Input processing thread */
+#ifdef WIN32
+DWORD WINAPI w_input_thread(__attribute__((unused)) void * t_id);
+#else
 void * w_input_thread(__attribute__((unused)) void * t_id);
+#endif
 
 /* Prepare pool of input threads */
 void w_create_input_threads();

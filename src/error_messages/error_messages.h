@@ -31,7 +31,7 @@
 #define FREAD_ERROR   "(1115): Could not read from file '%s' due to [(%d)-(%s)]."
 #define FSEEK_ERROR   "(1116): Could not set position in file '%s' due to [(%d)-(%s)]."
 #define FILE_ERROR    "(1117): Error handling file '%s' (date)."
-#define FSTAT_ERROR   "(1117): Could not retrieve informations of file '%s' due to [(%d)-(%s)]."
+#define FSTAT_ERROR   "(1117): Could not retrieve information of file '%s' due to [(%d)-(%s)]."
 #define FGETS_ERROR   "(1119): Invalid line on file '%s': %s."
 //#define PIPE_ERROR    "%s(1120): ERROR: Pipe error."
 #define GLOB_ERROR    "(1121): Glob error. Invalid pattern: '%s'."
@@ -56,6 +56,7 @@
 #define FCLOSE_ERROR  "(1140): Could not close file '%s' due to [(%d)-(%s)]."
 #define GLOB_ERROR_WIN "(1141): Glob error. Invalid pattern: '%s' or no files found."
 #define NICE_ERROR      "(1142): Cannot set process priority: %s (%d)."
+#define RMDIR_ERROR     "(1143): Unable to delete folder '%s' due to [(%d)-(%s)]."
 
 /* COMMON ERRORS */
 #define CONN_ERROR      "(1201): No remote connection configured."
@@ -71,7 +72,7 @@
 #define DENYIP_WARN     "(1213): Message from '%s' not allowed. Cannot find the ID of the agent."
 #define MSG_ERROR       "(1214): Problem receiving message from '%s'."
 #define CLIENT_ERROR    "(1215): No client configured. Exiting."
-#define CONNS_ERROR     "(1216): Unable to connect to '%s': '%s'."
+#define CONNS_ERROR     "(1216): Unable to connect to '%s:%d/%s': '%s'."
 #define UNABLE_CONN     "(1242): Unable to connect to server. Exhausted all options."
 #define SEC_ERROR       "(1217): Error creating encrypted message."
 #define SEND_ERROR      "(1218): Unable to send message to '%s': %s"
@@ -103,6 +104,7 @@
 #define SHARED_ERROR    "(1246): Unable to send file '%s' to agent ID '%s'."
 #define TCP_NOT_SUPPORT "(1247): TCP not supported for this operating system."
 #define TCP_EPIPE       "(1248): Unable to send message. Connection has been closed by remote server."
+#define CONN_REF        "(1249): Unable to send message. Connection with remote server refused."
 
 #define MAILQ_ERROR     "(1221): No Mail queue at %s"
 #define IMSG_ERROR      "(1222): Invalid msg: %s"
@@ -167,6 +169,9 @@
 #define LIST_SIZE_ERROR "(1292): Error setting error size."
 #define LIST_FREE_ERROR "(1293): Error setting data free pointer."
 
+/* Hash operation */
+#define HASH_ERROR      "(1295): Unable to create a new hash (calloc)."
+
 /* Log collector messages */
 #define MISS_LOG_FORMAT "(1901): Missing 'log_format' element."
 #define MISS_FILE       "(1902): Missing 'location' element."
@@ -212,6 +217,7 @@
 /* Regex errors */
 #define REGEX_COMPILE   "(1450): Syntax error on regex: '%s': %d."
 #define REGEX_SUBS      "(1451): Missing sub_strings on regex: '%s'."
+#define REGEX_SYNTAX    "(1452): Syntax error on regex: '%s'"
 
 /* Mail errors */
 #define INVALID_SMTP    "(1501): Invalid SMTP Server: %s"
@@ -232,6 +238,8 @@
 
 #define INV_OFFSET      "(2120): Invalid offset value: '%s'"
 #define INV_ATTR        "(2121): Invalid decoder attribute: '%s'"
+#define INV_VAL         "(2122): Invalid value for attribute: '%s'"
+#define INV_VAL_ATTR    "(2123): Invalid value '%s' for attribute: '%s'"
 
 /* os_zlib */
 #define COMPRESS_ERR    "(2201): Error compressing string: '%s'."
@@ -251,10 +259,8 @@
 #define EVTLOG_GETLAST  "(4107): Unable to query last event log from: '%s'."
 #define EVTLOG_DUP      "(4108): Duplicated event log entry: '%s'."
 #define AG_NOKEYS_EXIT  "(4109): Unable to start without auth keys. Exiting."
-#define AG_MAX_ERROR    "(4110): Maximum number of agents '%d' reached."
-#define AG_AX_AGENTS    "(4111): Maximum number of agents allowed: '%d'."
 #define AG_INV_MNGIP    "(4112): Invalid server address found: '%s'"
-#define AG_ENROLL_FAIL  "(4113): Auto Enrollment configuration failed." 
+#define AG_ENROLL_FAIL  "(4113): Auto Enrollment configuration failed."
 
 /* Rules reading errors */
 #define RL_INV_ROOT     "(5101): Invalid root element: '%s'."
@@ -264,6 +270,7 @@
 #define RL_INV_ATTR     "(5105): Invalid rule attributes inside file: '%s'."
 #define RL_NO_OPT       "(5106): Rule '%d' without any options. "\
                         "It may lead to false positives. Exiting. "
+#define RL_REGEX_SYNTAX "(5107): Syntax error on tag '%s' in rule %d"
 
 /* Syslog output */
 #define XML_INV_CSYSLOG "(5301): Invalid client-syslog configuration."
@@ -373,9 +380,11 @@
 #define VU_REPORT_NVD_SCORE_ERROR   "(5580): Could not fill the report with the CVE score from the NVD for agent '%.3d'"
 #define VU_REPORT_OVAL_ERROR        "(5581): Could not fill the report with the CVE info from the Vendor feed for agent '%.3d'"
 #define VU_NVD_EMPTY                "(5582): Unavailable vulnerabilities at the NVD database. The scan is aborted."
-#define VU_GET_DEB_STATUS_FEED      "(5583): Couldn't get the Debian feed '%s' to check the status of the packages. This can lead to many false positives."
+#define VU_DEB_STATUS_FEED_ERROR    "(5583): Couldn't get the Debian feed '%s' to check the vulnerable packages."
 #define VU_FILTER_VULN_NVD_ERROR    "(5584): Couldn't verify if the vulnerability '%s' is reported in the NVD feed."
 #define VU_GET_NVD_YEAR_ERROR       "(5585): Couldn't get the NVD configured year."
+#define VU_NO_ENABLED_FEEDS         "(5586): No feeds specified for '%s' provider. Enabling all the available ones."
+#define VU_OFFLINE_CONFLICT         "(5587): Feed conflict. Only '%s' will be updated offline."
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
@@ -388,7 +397,7 @@
 #define FIM_ERROR_NFS_INOTIFY                       "(6608): '%s' NFS Directories do not support iNotify."
 #define FIM_ERROR_GENDIFF_COMMAND                   "(6609): Unable to run diff command '%s'"
 #define FIM_ERROR_REALTIME_WAITSINGLE_OBJECT        "(6610): WaitForSingleObjectEx failed (for real time file integrity monitoring)."
-#define FIM_ERROR_REALTIME_ADDDIR_FAILED            "(6611): 'realtime_adddir' failed, the directory '%s'could't be added to real time mode."
+#define FIM_ERROR_REALTIME_ADDDIR_FAILED            "(6611): 'realtime_adddir' failed, the directory '%s' couldn't be added to real time mode."
 #define FIM_ERROR_REALTIME_READ_BUFFER              "(6612): Unable to read from real time buffer."
 #define FIM_ERROR_REALTIME_WINDOWS_CALLBACK         "(6613): Real time Windows callback process: '%s' (%lx)."
 #define FIM_ERROR_REALTIME_WINDOWS_CALLBACK_EMPTY   "(6614): Real time call back called, but hash is empty."
@@ -400,8 +409,8 @@
 #define FIM_ERROR_WHODATA_AUDIT_SUPPORT             "(6620): Audit support not built. Whodata is not available."
 #define FIM_ERROR_WHODATA_EVENTCHANNEL              "(6621): Event Channel subscription could not be made. Whodata scan is disabled."
 #define FIM_ERROR_WHODATA_RESTORE_POLICIES          "(6622): There is no backup of audit policies. Policies will not be restored."
-#define FIM_ERROR_WHODATA_RENDER_EVENT              "(6623): Error rendering the event. Error %lu."
-#define FIM_ERROR_WHODATA_RENDER_PARAM              "(6624): Invalid number of rendered parameters."
+
+
 #define FIM_ERROR_WHODATA_NOTFIND_DIRPOS            "(6625): The '%s' file does not have an associated directory."
 #define FIM_ERROR_WHODATA_HANDLER_REMOVE            "(6626): The handler '%s' could not be removed from the whodata hash table."
 #define FIM_ERROR_WHODATA_HANDLER_EVENT             "(6627): Could not get the time of the event whose handler is '%llu'."
@@ -420,8 +429,8 @@
 #define FIM_ERROR_WHODATA_MAXNUM_WATCHES            "(6640): Unable to monitor who-data for directory: '%s' - Maximum size permitted (%d)."
 #define FIM_ERROR_WHODATA_COMPILE_REGEX             "(6641): Cannot compile '%s' regular expression."
 #define FIM_ERROR_WHODATA_HEALTHCHECK_START         "(6642): Audit health check couldn't be completed correctly."
-#define FIM_ERROR_WHODATA_EVENT_TOOLONG             "(6643): Caching Audit message: event too long."
-#define FIM_ERROR_WHODATA_GETID                     "(6644): Couldn't get event ID from Audit message. Line: '%s'."
+
+
 #define FIM_ERROR_WHODATA_CONTEXT                   "(6645): Error creating the whodata context. Error %lu."
 #define FIM_ERROR_SACL_ACE_DELETE                   "(6646): DeleteAce() failed restoring the SACLs. Error '%ld'"
 #define FIM_ERROR_SACL_FIND_PRIVILEGE               "(6647): Could not find the '%s' privilege. Error: %lu"
@@ -453,12 +462,12 @@
 #define FIM_ERROR_SYSCOM_ACCEPT                     "(6673): In accept(): '%s'"
 #define FIM_ERROR_SYSCOM_RECV                       "(6674): In OS_RecvSecureTCP(): '%s'"
 #define FIM_ERROR_SYSCOM_RECV_TOOLONG               "(6675): In OS_RecvSecureTCP(): response size is bigger than expected"
-#define FIM_ERROR_SYSCOM_RECV_MAXLEN                "(6676): The received message exeed maximum permited > '%i'"
+#define FIM_ERROR_SYSCOM_RECV_MAXLEN                "(6676): The received message exceeds maximum permitted > '%i'"
 #define FIM_NO_OPTIONS                              "(6677): No option provided for directories: '%s', ignoring it."
 #define FIM_DIRECTORY_NOPROVIDED                    "(6678): No directory provided for syscheck to monitor."
 #define FIM_INVALID_ATTRIBUTE                       "(6679): Invalid attribute '%s' for '%s' option."
 #define FIM_INVALID_OPTION                          "(6680): Invalid option '%s' for attribute '%s'"
-#define FIM_WHODATA_PARAMETER                       "(6681): Invalid parameter type (%ld) for '%s'."
+
 #define FIM_ERROR_WHODATA_WIN_ARCH                  "(6682): Error reading 'Architecture' from Windows registry. (Error %u)"
 #define FIM_ERROR_WHODATA_WIN_SIDERROR              "(6683): Could not obtain the sid of Everyone. Error '%lu'."
 #define FIM_ERROR_WHODATA_OPEN_TOKEN                "(6684): OpenProcessToken() failed. Error '%lu'."
@@ -489,6 +498,89 @@
 #define FIM_DB_ERROR_RM_RANGE                       "(6708): Failed to delete a range of paths between '%s' and '%s'"
 #define FIM_DB_ERROR_RM_NOT_SCANNED                 "(6709): Failed to delete from db all unscanned files."
 #define FIM_ERROR_WHODATA_INIT                      "(6710): Failed to start the Whodata engine. Directories/files will be monitored in Realtime mode"
+
+/* Wazuh Logtest error messsages */
+#define LOGTEST_ERROR_BIND_SOCK                     "(7300): Unable to bind to socket '%s'. Errno: (%d) %s"
+#define LOGTEST_ERROR_ACCEPT_CONN                   "(7301): Failure to accept connection. Errno: %s"
+#define LOGTEST_ERROR_RECV_MSG_ERRNO                "(7302): Failure to receive message: Errno: %s"
+#define LOGTEST_ERROR_INIT_HASH                     "(7303): Failure to initialize all_sessions hash"
+#define LOGTEST_ERROR_INV_CONF                      "(7304): Invalid wazuh-logtest configuration"
+#define LOGTEST_ERROR_SIZE_HASH                     "(7305): Failure to resize all_sessions hash"
+#define LOGTEST_ERROR_COMMAND_NOT_ALLOWED           "(7306): Unable to process command"
+#define LOGTEST_ERROR_JSON_PARSE_POS                "(7307): Error parsing JSON in position %i, ... %s ..."
+#define LOGTEST_ERROR_JSON_REQUIRED_SFIELD          "(7308): '%s' JSON field is required and must be a string"
+#define LOGTEST_ERROR_TOKEN_INVALID                 "(7309): '%s' is not a valid token"
+#define LOGTEST_ERROR_RESPONSE                      "(7310): Failure to sending response to client [%i] %s."
+#define LOGTEST_ERROR_INITIALIZE_SESSION            "(7311): Failure to initializing session"
+#define LOGTEST_ERROR_PROCESS_EVENT                 "(7312): Failed to process the event"
+#define LOGTEST_ERROR_FIELD_NOT_FOUND               "(7313): '%s' JSON field not found"
+#define LOGTEST_ERROR_RECV_MSG_EMPTY_TO             "(7314): Failure to receive message: empty or reception timeout"
+#define LOGTEST_ERROR_RECV_MSG_OVERSIZE             "(7315): Failure to receive message: size is bigger than expected"
+#define LOGTEST_ERROR_TOKEN_INVALID_TYPE            "(7316): Failure to remove session. token JSON field must be a string"
+#define LOGTEST_ERROR_FIELD_NOT_VALID               "(7317): '%s' JSON field value is not valid"
+#define LOGTEST_ERROR_REMOVE_SESSION                "(7318): Failure to remove session '%s'"
+
+/* Modules messages */
+#define WM_UPGRADE_JSON_PARSE_ERROR                 "(8101): Cannot parse JSON: '%s'"
+#define WM_UPGRADE_UNDEFINED_ACTION_ERRROR          "(8102): No action defined for command: '%s'"
+#define WM_UPGRADE_COMMAND_PARSE_ERROR              "(8103): Error parsing command: '%s'"
+#define WM_UPGRADE_UNREACHEABLE_TASK_MANAGER        "(8104): Cannot connect to '%s'. Could not reach task manager module."
+#define WM_UPGRADE_INVALID_TASK_MAN_JSON            "(8105): Response from task manager does not have a valid JSON format."
+#define WM_UPGRADE_TASK_EMPTY_MESSAGE               "(8106): Empty message from task manager module."
+#define WM_UPGRADE_REQUIRED_PARAMETERS              "(8107): Required parameters in message are missing."
+#define WM_UPGRADE_BIND_SOCK_ERROR                  "(8108): Unable to bind to socket '%s': '%s'"
+#define WM_UPGRADE_SELECT_ERROR                     "(8109): Error in select(): '%s'. Exiting..."
+#define WM_UPGRADE_ACCEPT_ERROR                     "(8110): Error in accept(): '%s'"
+#define WM_UPGRADE_RECV_ERROR                       "(8111): Error in recv(): '%s'"
+#define WM_UPGRADE_SOCKTERR_ERROR                   "(8112): Response size is bigger than expected."
+#define WM_UPGRADE_QUEUE_FD                         "(8113): Could not open default queue to send upgrade notification."
+#define WM_UPGRADE_UNREACHEABLE_REQUEST             "(8114): Cannot connect to '%s'. Could not reach agent."
+#define WM_UPGRADE_EMPTY_AGENT_RESPONSE             "(8115): Response from agent is empty."
+#define WM_UPGRADE_AGENT_RESPONSE_MESSAGE_ERROR     "(8116): Error response from agent: '%s'"
+#define WM_UPGRADE_AGENT_RESPONSE_UNKNOWN_ERROR     "(8117): Unknown error from agent."
+#define WM_UPGRADE_AGENT_RESPONSE_SHA1_ERROR        "(8118): The SHA1 of the file doesn't match in the agent."
+#define WM_UPGRADE_TASK_UPDATE_ERROR                "(8119): There has been an error updating task state. Error code: '%d', message: '%s'"
+#define WM_UPGRADE_RESULT_FILE_ERROR                "(8120): Agent was unable to erase upgrade_result file. Reason: '%s'"
+#define WM_UPGRADE_AGENT_RESPONSE_SCRIPT_ERROR      "(8121): Script execution failed in the agent."
+#define WM_UPGRADE_UPGRADE_QUEUE_FULL               "(8122): Upgrade queue is full. Agent '%d' won't be upgraded."
+#define WM_UPGRADE_TASK_MANANAGER_ERROR             "(8123): There has been an error executing the request in the tasks manager."
+#define WM_UPGRADE_FILE_OPENED                      "(8124): At %s: File '%s' was opened. Closing."
+#define WM_UPGRADE_UNSUPPORTED_MODE                 "(8125): At %s: Unsupported mode."
+#define WM_UPGRADE_INVALID_FILE_NAME                "(8126): At %s: Invalid file name."
+#define WM_UPGRADE_FILE_NOT_OPENED_AUTO             "(8127): At %s: File not opened. Agent might have been auto-restarted during upgrade."
+#define WM_UPGRADE_DIFFERENT_FILE                   "(8128): At %s: The target file doesn't match the opened file '%s'"
+#define WM_UPGRADE_CANNOT_WRITE                     "(8129): At %s: Cannot write on '%s'"
+#define WM_UPGRADE_FILE_NOT_OPENED                  "(8130): At %s: No file is opened."
+#define WM_UPGRADE_GERENIC_ERROR                    "(8131): At %s: '%s'"
+#define WM_UPGRADE_GENERATING_SHA1_ERROR            "(8132): At %s: Error generating SHA1."
+#define WM_UPGRADE_UNMERGING_FILE_ERROR             "(8133): At %s: Error unmerging file: '%s'"
+#define WM_UPGRADE_CHMOD_ERROR                      "(8134): At %s: Could not chmod '%s'"
+#define WM_UPGRADE_COMMAND_ERROR                    "(8135): At %s: Error executing command [%s]"
+#define WM_UPGRADE_ERASE_FILE_ERROR                 "(8136): At %s: Could not erase file '%s'"
+#define WM_UPGRADE_TOO_LONG_TEMP_FILE               "(8137): At %s: Too long temp file."
+#define WM_UPGRADE_COMPRESSED_FILE_ERROR            "(8138): At %s: Could not create temporary compressed file."
+#define WM_UPGRADE_UNSIGN_FILE_ERROR                "(8139): At %s: Could not unsign package file '%s'"
+#define WM_UPGRADE_FILE_OPEN_ERROR                  "(8140): At %s: Unable to open '%s'"
+#define WM_UPGRADE_CANNOT_READ                      "(8141): At %s: Unable to read '%s'"
+
+#define MOD_TASK_CHECK_DB_ERROR                     "(8250): DB integrity is invalid. Exiting..."
+#define MOD_TASK_CREATE_SOCK_ERROR                  "(8251): Queue '%s' not accessible: '%s'. Exiting..."
+#define MOD_TASK_SELECT_ERROR                       "(8252): Error in select(): '%s'. Exiting..."
+#define MOD_TASK_ACCEPT_ERROR                       "(8253): Error in accept(): '%s'"
+#define MOD_TASK_RECV_ERROR                         "(8254): Error in recv(): '%s'"
+#define MOD_TASK_SOCKTERR_ERROR                     "(8255): Response size is bigger than expected."
+#define MOD_TASK_LENGTH_ERROR                       "(8256): Received message > '%i'"
+#define MOD_TASK_PARSE_JSON_ERROR                   "(8257): Error parsing JSON event: '%s'"
+#define MOD_TASK_UNDEFINED_ACTION_ERRROR            "(8258): No action defined for command provided."
+#define MOD_TASK_PARSE_KEY_ERROR                    "(8259): Invalid message. '%s' not found."
+#define MOD_TASK_INVALID_ELEMENT_ERROR              "(8260): Invalid element in array."
+#define MOD_TASK_DB_ERROR                           "(8261): Database error."
+
+#define MOD_TASK_CREATE_DB_ERROR                    "(8275): DB couldn't be checked or created."
+#define MOD_TASK_OPEN_DB_ERROR                      "(8276): DB couldn't be opened."
+#define MOD_TASK_SQL_ERROR                          "(8277): SQL error: '%s'"
+#define MOD_TASK_SQL_PREPARE_ERROR                  "(8278): Couldn't prepare SQL statement."
+#define MOD_TASK_SQL_STEP_ERROR                     "(8279): Couldn't execute SQL statement."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."

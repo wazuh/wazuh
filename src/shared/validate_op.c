@@ -10,8 +10,14 @@
 
 #include "shared.h"
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 #define static
+
+#undef OSSEC_DEFINES
+#define OSSEC_DEFINES   "./internal_options.conf"
+
+#undef OSSEC_LDEFINES
+#define OSSEC_LDEFINES   "./local_internal_options.conf"
 #endif
 
 static char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
@@ -745,7 +751,6 @@ char *OS_IsValidDay(const char *day_str)
         }
 
         if (!days[i]) {
-            merror(INVALID_DAY, day_str);
             return (NULL);
         }
 
@@ -757,7 +762,6 @@ char *OS_IsValidDay(const char *day_str)
         } else if (*day_str == '\0') {
             break;
         } else {
-            merror(INVALID_DAY, day_str);
             return (NULL);
         }
     }
@@ -781,7 +785,6 @@ char *OS_IsValidDay(const char *day_str)
     /* At least one day must be checked */
     if (ng == 0) {
         free(ret);
-        merror(INVALID_DAY, day_str);
         return (NULL);
     }
 

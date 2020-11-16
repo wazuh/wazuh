@@ -345,8 +345,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
                     break;
                 case UI_MENU_MANAGE_RESTART:
 
-                    if ((strcmp(config_inst.key, FL_NOKEY) == 0) ||
-                            (strcmp(config_inst.server, FL_NOSERVER) == 0)) {
+                    if (strcmp(config_inst.server, FL_NOSERVER) == 0) {
                         MessageBox(hwnd, "Unable to restart agent (check config)",
                                    "Error -- Unable to Restart Agent", MB_OK);
                         break;

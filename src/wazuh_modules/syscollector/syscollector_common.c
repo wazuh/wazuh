@@ -412,12 +412,10 @@ static void wm_sys_setup(wm_sys_t *_sys) {
 
     #ifndef WIN32
 
-    int i;
     // Connect to socket
-    for (i = 0; (queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        w_time_delay(1000 * WM_MAX_WAIT);
+    queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
-    if (i == WM_MAX_ATTEMPTS) {
+    if (queue_fd < 0) {
         mterror(WM_SYS_LOGTAG, "Can't connect to queue.");
         pthread_exit(NULL);
     }
@@ -474,29 +472,37 @@ void wm_sys_check() {
 
     // Check if interval
 
-    if (!sys->default_interval)
+    if (!sys->default_interval) {
         sys->default_interval = WM_SYS_DEF_INTERVAL;
+    }
 
-    if (!sys->hw_interval)
+    if (!sys->hw_interval) {
         sys->hw_interval = sys->default_interval;
+    }
 
-    if (!sys->os_interval)
+    if (!sys->os_interval) {
         sys->os_interval = sys->default_interval;
+    }
 
-    if (!sys->interfaces_interval)
+    if (!sys->interfaces_interval) {
         sys->interfaces_interval = sys->default_interval;
+    }
 
-    if (!sys->programs_interval)
+    if (!sys->programs_interval) {
         sys->programs_interval = sys->default_interval;
+    }
 
-    if (!sys->hotfixes_interval)
+    if (!sys->hotfixes_interval) {
         sys->hotfixes_interval = sys->default_interval;
+    }
 
-    if (!sys->ports_interval)
+    if (!sys->ports_interval) {
         sys->ports_interval = sys->default_interval;
+    }
 
-    if (!sys->processes_interval)
+    if (!sys->processes_interval) {
         sys->processes_interval = sys->default_interval;
+    }
 }
 
 // Get read data
@@ -558,7 +564,6 @@ int wm_sys_get_random_id() {
 
     return ID;
 }
-
 
 // Initialize syscollector datastores
 void sys_initialize_datastores() {
@@ -1090,6 +1095,7 @@ char * analyze_interface(interface_entry_data * entry_data, const char * timesta
         if (json_event = interface_json_event(saved_data, entry_data, SYS_MODIFY, timestamp), json_event) {
             if (update_entry(sys->interfaces_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->interfaces_entry_mutex);
+                cJSON_Delete(json_event);
                 free_interface_data(entry_data);
                 mdebug1("Couldn't update interface in hash table: '%s'", key);
                 free(key);
@@ -1162,6 +1168,7 @@ char * analyze_program(program_entry_data * entry_data, const char * timestamp) 
         if (json_event = program_json_event(saved_data, entry_data, SYS_MODIFY, timestamp), json_event) {
             if (update_entry(sys->programs_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->programs_entry_mutex);
+                cJSON_Delete(json_event);
                 free_program_data(entry_data);
                 mdebug1("Couldn't update program in hash table: '%s'", key);
                 free(key);
@@ -1222,6 +1229,7 @@ char * analyze_hotfix(hotfix_entry_data * entry_data, const char * timestamp) {
         if (json_event = hotfix_json_event(saved_data, entry_data, SYS_MODIFY, timestamp), json_event) {
             if (update_entry(sys->hotfixes_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->hotfixes_entry_mutex);
+                cJSON_Delete(json_event);
                 free_hotfix_data(entry_data);
                 mdebug1("Couldn't update hotfix in hash table: '%s'", key);
                 free(key);
@@ -1288,6 +1296,7 @@ char * analyze_port(port_entry_data * entry_data, const char * timestamp) {
         if (json_event = port_json_event(saved_data, entry_data, SYS_MODIFY, timestamp), json_event) {
             if (update_entry(sys->ports_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->ports_entry_mutex);
+                cJSON_Delete(json_event);
                 free_port_data(entry_data);
                 mdebug1("Couldn't update port in hash table: '%s'", key);
                 free(key);
@@ -1349,6 +1358,7 @@ char * analyze_process(process_entry_data * entry_data, const char * timestamp) 
         if (json_event = process_json_event(saved_data, entry_data, SYS_MODIFY, timestamp), json_event) {
             if (update_entry(sys->processes_entry, key, (void *) entry_data) == -1) {
                 w_mutex_unlock(&sys->processes_entry_mutex);
+                cJSON_Delete(json_event);
                 free_process_data(entry_data);
                 mdebug1("Couldn't update process in hash table: '%s'", key);
                 free(key);

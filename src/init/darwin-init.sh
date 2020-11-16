@@ -12,6 +12,8 @@ LAUNCHER_SCRIPT=/Library/StartupItems/WAZUH/launcher.sh
 STARTUP_SCRIPT=/Library/StartupItems/WAZUH/WAZUH
 
 launchctl unload /Library/LaunchDaemons/com.wazuh.agent.plist 2> /dev/null
+mkdir -p /Library/StartupItems/WAZUH
+chown root:wheel /Library/StartupItems/WAZUH
 rm -f $STARTUP $STARTUP_SCRIPT $SERVICE
 echo > $LAUNCHER_SCRIPT
 chown root:wheel $LAUNCHER_SCRIPT
@@ -35,9 +37,6 @@ echo '<?xml version="1.0" encoding="UTF-8"?>
 chown root:wheel $SERVICE
 chmod u=rw-,go=r-- $SERVICE
 launchctl load $SERVICE
-
-mkdir -p /Library/StartupItems/WAZUH
-chown root:wheel /Library/StartupItems/WAZUH
 
 echo '
 #!/bin/sh

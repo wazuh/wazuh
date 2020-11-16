@@ -1,5 +1,8 @@
 import json
+import re
 import time
+from base64 import b64decode
+from json import loads
 
 from box import Box
 
@@ -9,7 +12,15 @@ def test_distinct_key(response):
     :param response: Request response
     :return: True if all request response items are unique
     """
-    assert not any(response.json()["data"]["affected_items"].count(item) > 1 for item in response.json()["data"]["affected_items"])
+    assert not any(
+        response.json()["data"]["affected_items"].count(item) > 1 for item in response.json()["data"]["affected_items"])
+
+
+def test_token_raw_format(response):
+    """
+    :param response: Request response
+    """
+    assert type(response.text) is str
 
 
 def test_select_key_affected_items(response, select_key):
@@ -53,7 +64,8 @@ def test_select_key_affected_items_with_agent_id(response, select_key):
         expected_keys_level0 = {'agent_id', select_key.split('.')[0]}
         expected_keys_level1 = {select_key.split('.')[1]}
         assert set(response.json()["data"]["affected_items"][0].keys()) == expected_keys_level0
-        assert set(response.json()["data"]["affected_items"][0][select_key.split('.')[0]].keys()) == expected_keys_level1
+        assert set(
+            response.json()["data"]["affected_items"][0][select_key.split('.')[0]].keys()) == expected_keys_level1
     else:
         expected_keys = {'agent_id', select_key}
         assert set(response.json()["data"]["affected_items"][0].keys()) == expected_keys
@@ -85,29 +97,6 @@ def test_validate_data_dict_field(response, fields_dict):
                 assert isinstance(element['count'], int)
 
 
-def test_validate_upgrade(response):
-    # We accept the test as passed if it either ugprades correctly or the version is not available
-    assert response.json().get('message', None) == "Upgrade procedure started" \
-           or response.json().get('code', None) == 1718
-    if response.json().get('message', None) == "Upgrade procedure started":
-        time.sleep(45)
-        return Box({"upgraded": True})
-    else:
-        return Box({"upgraded": False})
-
-
-def test_validate_upgrade_result(response, upgraded):
-    if upgraded == 1:
-        assert response.json().get('message', None) == "Agent upgraded successfully"
-    else:
-        # If upgrade didnt work because no version was available, we expect an empty upgrade_result with error 1716
-        assert response.json().get('code', None) == 1716
-
-
-def test_validate_update_latest_version(response):
-    assert response.json().get('code', None) == 1749 or response.json().get('code', None) == 1718
-
-
 def test_count_elements(response, n_expected_items):
     """
     :param response: Request response
@@ -136,3 +125,76 @@ def test_response_is_different(response, response_value, unexpected_value):
     :param unexpected_value: Response value should be different to this.
     """
     assert response_value != unexpected_value, f"{response_value} and {unexpected_value} shouldn't be the same"
+
+
+def test_save_response_data(response):
+    return Box({'response_data': response.json()['data']})
+
+
+def test_validate_restart_by_node(response, data):
+    data = json.loads(data.replace("'", '"'))
+    affected_items = list()
+    failed_items = list()
+    for item in data['affected_items']:
+        if item['status'] == 'active':
+            affected_items.append(item['id'])
+        else:
+            failed_items.append(item['id'])
+    assert response.json()['data']['affected_items'] == affected_items
+    assert response.json()['data']['failed_items'] == failed_items
+
+
+def test_validate_restart_by_node_rbac(response, permitted_agents):
+    data = response.json().get('data', None)
+    if data:
+        if data['affected_items']:
+            for agent in data['affected_items']:
+                assert agent in permitted_agents
+        else:
+            assert data['total_affected_items'] == 0
+    else:
+        assert response.status_code == 403
+        assert response.json()['error'] == 4000
+        assert 'agent:id' in response.json()['detail']
+
+
+def test_validate_auth_context(response, expected_roles=None):
+    """Check that the authorization context has been matched with the correct rules
+
+    Parameters
+    ----------
+    response : Request response
+    expected_roles : list
+        List of expected roles after checking the authorization context
+    """
+    token = response.json()['data']['token'].split('.')[1]
+    payload = loads(b64decode(token + '===').decode())
+    assert payload['rbac_roles'] == expected_roles
+
+
+def test_validate_syscollector_hotfix(response, hotfix_filter=None, experimental=False):
+    hotfixes_keys = {'hotfix', 'scan_id', 'scan_time'}
+    if experimental:
+        hotfixes_keys.add('agent_id')
+    affected_items = response.json()['data']['affected_items']
+    if affected_items:
+        for item in affected_items:
+            assert set(item.keys()) == hotfixes_keys
+            if hotfix_filter:
+                assert item['hotfix'] == hotfix_filter
+
+
+def test_validate_group_configuration(response, expected_field, expected_value):
+    response_json = response.json()
+    assert len(response_json['data']['affected_items']) > 0 and\
+           'config' in response_json['data']['affected_items'][0] and \
+           'localfile' in response_json['data']['affected_items'][0]['config'],\
+           'No config or localfile fields were found in the affected_items. Response: {}'.format(response_json)
+
+    response_config = response_json['data']['affected_items'][0]['config']['localfile'][0]
+    assert expected_field in set(response_config.keys()), \
+        'The expected config key is not present in the received response.'
+
+    assert response_config[expected_field] == expected_value, \
+        'The received value for query does not match with the expected one. ' \
+        'Received: {}. Expected: {}'.format(response_config[expected_field], expected_value)

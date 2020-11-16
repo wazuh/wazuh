@@ -191,7 +191,16 @@
                     }
                 ]
             },
-            "user": "deep"
+            "user": "deep",
+            "office": "20"
+        }
+    },
+    {
+        "name": "Eleventh_auth",
+        "auth": {
+            "test": "New",
+            "department": ["Technical1"],
+            "authLevel": ["basic1"]
         }
     }
 ]

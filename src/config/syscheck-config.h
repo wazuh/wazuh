@@ -19,7 +19,7 @@ typedef enum fim_event_mode {
 
 typedef enum fdb_stmt {
     FIMDB_STMT_INSERT_DATA,
-    FIMDB_STMT_INSERT_PATH,
+    FIMDB_STMT_REPLACE_PATH,
     FIMDB_STMT_GET_PATH,
     FIMDB_STMT_UPDATE_DATA,
     FIMDB_STMT_UPDATE_PATH,
@@ -54,6 +54,7 @@ typedef enum fdb_stmt {
 #define MAX_DIR_ENTRY   128
 #define SYSCHECK_WAIT   1
 #define MAX_FILE_LIMIT  2147483647
+#define MIN_COMP_ESTIM  0.4         // Minimum value to be taken by syscheck.comp_estimation_perc
 
 /* Checking options */
 #define CHECK_SIZE          00000001
@@ -111,12 +112,12 @@ typedef enum fdb_stmt {
 #include "external/sqlite/sqlite3.h"
 
 #ifdef WIN32
-typedef struct whodata_event_node whodata_event_node;
 typedef struct whodata_dir_status whodata_dir_status;
 #endif
 
 typedef struct _rtfim {
     int fd;
+    unsigned int queue_overflow:1;
     OSHash *dirtb;
 #ifdef WIN32
     HANDLE evt;
@@ -127,10 +128,11 @@ typedef struct _rtfim {
 typedef struct whodata_evt {
     char *user_id;
     char *user_name;
-    char *group_id;  // Linux
-    char *group_name;  // Linux
     char *process_name;
     char *path;
+#ifndef WIN32
+    char *group_id;  // Linux
+    char *group_name;  // Linux
     char *audit_uid;  // Linux
     char *audit_name;  // Linux
     char *effective_uid;  // Linux
@@ -141,16 +143,12 @@ typedef struct whodata_evt {
     char *parent_cwd;
     int ppid;  // Linux
     char *cwd; // Linux
-#ifndef WIN32
     unsigned int process_id;
 #else
     unsigned __int64 process_id;
     unsigned int mask;
-    int dir_position;
-    char deleted;
-    char ignore_remove_event;
     char scan_directory;
-    whodata_event_node *wnode;
+    int config_node;
 #endif
 } whodata_evt;
 
@@ -162,32 +160,7 @@ typedef struct whodata_dir_status {
     SYSTEMTIME last_check;
 } whodata_dir_status;
 
-typedef struct whodata_event_node {
-    struct whodata_event_node *next;
-    struct whodata_event_node *prev;
-    char *id;
-    time_t insert_time;
-} whodata_event_node;
-
-typedef struct whodata_event_list {
-    whodata_event_node *first;
-    whodata_event_node *last;
-    union {
-        struct {
-            size_t current_size;
-            size_t max_size;
-            size_t alert_threshold;
-            size_t max_remove;
-            char alerted;
-        };
-        time_t queue_time;
-    };
-} whodata_event_list;
-
-typedef struct whodata_directory {
-    SYSTEMTIME timestamp;
-    int position;
-} whodata_directory;
+typedef ULARGE_INTEGER whodata_directory;
 
 typedef struct whodata {
     OSHash *fd;                         // Open file descriptors
@@ -263,6 +236,7 @@ typedef struct fdb_t
     sqlite3 *db;
     sqlite3_stmt *stmt[FIMDB_STMT_SIZE];
     fdb_transaction_t transaction;
+    volatile bool full;
 } fdb_t;
 
 typedef struct _config {
@@ -292,6 +266,15 @@ typedef struct _config {
     char **ignore;                  /* list of files/dirs to ignore */
     OSMatch **ignore_regex;         /* regex of files/dirs to ignore */
 
+    int disk_quota_enabled;         /* Enable diff disk quota limit */
+    int disk_quota_limit;           /* Controls the increase of the size of the queue/diff/local folder (in KB) */
+    int file_size_enabled;          /* Enable diff file size limit */
+    int file_size_limit;            /* Avoids generating a backup from a file bigger than this limit (in KB) */
+    int *diff_size_limit;           /* Apply the file size limit option in a specific directory */
+    float diff_folder_size;         /* Save size of queue/diff/local folder */
+    float comp_estimation_perc;     /* Estimation of the percentage of compression each file will have */
+    uint16_t disk_quota_full_msg;   /* Specify if the full disk_quota message can be written (Once per scan) */
+
     char **nodiff;                  /* list of files/dirs to never output diff */
     OSMatch **nodiff_regex;         /* regex of files/dirs to never output diff */
 
@@ -316,7 +299,6 @@ typedef struct _config {
     registry *registry;                         /* array of registry entries to be scanned */
     int max_fd_win_rt;
     whodata wdata;
-    whodata_event_list w_clist; // List of events cached from Whodata mode in the last seconds
 #endif
     int max_audit_entries;          /* Maximum entries for Audit (whodata) */
     char **audit_key;               // Listen audit keys
@@ -344,6 +326,26 @@ typedef struct _config {
 void organize_syscheck_dirs(syscheck_config *syscheck) __attribute__((nonnull(1)));
 
 /**
+ * @brief Converts the value written in the configuration to a determined data unit in KB
+ *
+ * @param content Read content from the configuration
+ *
+ * @return Read value on success, -1 on failure
+ */
+int read_data_unit(const char *content);
+
+/**
+ * @brief Read diff configuration
+ *
+ * Read disk_quota, file_size and nodiff options
+ *
+ * @param xml XML structure containing Wazuh's configuration
+ * @param syscheck Syscheck configuration structure
+ * @param node XML node to continue reading the configuration file
+ */
+void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node);
+
+/**
  * @brief Adds (or overwrite if exists) an entry to the syscheck configuration structure
  *
  * @param syscheck Syscheck configuration structure
@@ -354,8 +356,11 @@ void organize_syscheck_dirs(syscheck_config *syscheck) __attribute__((nonnull(1)
  * @param recursion_level The recursion level to be set
  * @param tag The tag to be set
  * @param link If the added entry is pointed by a symbolic link
+ * @param diff_size Maximum size to calculate diff for files in the directory
  */
-void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg, const char *restrictfile, int recursion_level, const char *tag, const char *link) __attribute__((nonnull(1, 2)));
+void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg, const char *restrictfile,
+                            int recursion_level, const char *tag, const char *link,
+                            int diff_size) __attribute__((nonnull(1, 2)));
 
 /**
  * @brief Converts a bit mask with syscheck options to a human readable format

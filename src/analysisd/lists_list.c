@@ -16,49 +16,42 @@
 #include <string.h>
 #include <errno.h>
 
-/* Local variables */
-static ListNode *global_listnode;
-static ListRule *global_listrule;
-
+ListNode *os_analysisd_cdblists;
+ListRule *os_analysisd_cdbrules;
 
 /* Create the ListRule */
-void OS_CreateListsList()
-{
-    global_listnode = NULL;
-    global_listrule = NULL;
-
-    return;
+void OS_CreateListsList() {
+    os_analysisd_cdblists = NULL;
+    os_analysisd_cdbrules = NULL;
 }
 
 /* Get first listnode  */
-ListNode *OS_GetFirstList()
-{
-    ListNode *listnode_pt = global_listnode;
-
-    return (listnode_pt);
+ListNode *OS_GetFirstList() {
+    return os_analysisd_cdblists;
 }
 
-void OS_ListLoadRules()
-{
-    ListRule *lrule = global_listrule;
-    while (lrule != NULL) {
-        if (!lrule->loaded) {
-            lrule->db = OS_FindList(lrule->filename);
-            lrule->loaded = 1;
+void OS_ListLoadRules(ListNode **l_node, ListRule **lrule) {
+
+    while (*lrule != NULL) {
+
+        if (!(*lrule)->loaded) {
+            (*lrule)->db = OS_FindList((*lrule)->filename, l_node);
+            (*lrule)->loaded = 1;
         }
-        lrule = lrule->next;
+
+        *lrule = (*lrule)->next;
     }
 }
 
 /* External AddList */
-int OS_AddList(ListNode *new_listnode)
-{
-    if (global_listnode == NULL) {
+void OS_AddList(ListNode *new_listnode, ListNode **cdblists) {
+
+    if (*cdblists == NULL) {
         /* First list */
-        global_listnode = new_listnode;
+        *cdblists = new_listnode;
     } else {
         /* Add new list to the end */
-        ListNode *last_list_node = global_listnode;
+        ListNode *last_list_node = *cdblists;
 
         while (last_list_node->next != NULL) {
             last_list_node = last_list_node->next;
@@ -66,12 +59,11 @@ int OS_AddList(ListNode *new_listnode)
         last_list_node->next = new_listnode;
 
     }
-    return 0;
 }
 
-ListNode *OS_FindList(const char *listname)
-{
-    ListNode *last_list_node = OS_GetFirstList();
+ListNode *OS_FindList(const char *listname, ListNode **l_node) {
+
+    ListNode *last_list_node = *l_node;
     if (last_list_node != NULL) {
         do {
             if (strcmp(last_list_node->txt_filename, listname) == 0 ||
@@ -85,13 +77,10 @@ ListNode *OS_FindList(const char *listname)
     return (NULL);
 }
 
-ListRule *OS_AddListRule(ListRule *first_rule_list,
-                         int lookup_type,
-                         int field,
-                         const char *dfield,
-                         char *listname,
-                         OSMatch *matcher)
-{
+ListRule *OS_AddListRule(ListRule *first_rule_list, int lookup_type, int field,
+                         const char *dfield, char *listname, OSMatch *matcher,
+                         ListNode **l_node) {
+
     ListRule *new_rulelist_pt = NULL;
     new_rulelist_pt = (ListRule *)calloc(1, sizeof(ListRule));
     if (!new_rulelist_pt) {
@@ -105,7 +94,7 @@ ListRule *OS_AddListRule(ListRule *first_rule_list,
     new_rulelist_pt->filename = strdup(listname);
     new_rulelist_pt->dfield = field == RULE_DYNAMIC ? strdup(dfield) : NULL;
     new_rulelist_pt->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
-    if ((new_rulelist_pt->db = OS_FindList(listname)) == NULL) {
+    if ((new_rulelist_pt->db = OS_FindList(listname, l_node)) == NULL) {
         new_rulelist_pt->loaded = 0;
     } else {
         new_rulelist_pt->loaded = 1;
@@ -246,7 +235,7 @@ static int OS_DBSearchKeyAddressValue(ListRule *lrule, char *key)
         if (cdb_find(&lrule->db->cdb, key, strlen(key)) > 0 ) {
             vpos = cdb_datapos(&lrule->db->cdb);
             vlen = cdb_datalen(&lrule->db->cdb);
-            val = (char *) malloc(vlen);
+            os_calloc(vlen, sizeof(char), val);
             w_mutex_lock(&lrule->db->cdb.mutex)
             cdb_read(&lrule->db->cdb, val, vlen, vpos);
             w_mutex_unlock(&lrule->db->cdb.mutex)
@@ -262,7 +251,7 @@ static int OS_DBSearchKeyAddressValue(ListRule *lrule, char *key)
                     if ( cdb_find(&lrule->db->cdb, tmpkey, strlen(tmpkey)) > 0 ) {
                         vpos = cdb_datapos(&lrule->db->cdb);
                         vlen = cdb_datalen(&lrule->db->cdb);
-                        val = (char *) malloc(vlen);
+                        os_calloc(vlen, sizeof(char), val);
                         w_mutex_lock(&lrule->db->cdb.mutex)
                         cdb_read(&lrule->db->cdb, val, vlen, vpos);
                         w_mutex_unlock(&lrule->db->cdb.mutex)
@@ -283,12 +272,12 @@ static int OS_DBSearchKeyAddressValue(ListRule *lrule, char *key)
     return 0;
 }
 
-int OS_DBSearch(ListRule *lrule, char *key)
+int OS_DBSearch(ListRule *lrule, char *key, ListNode **l_node)
 {
     //XXX - god damn hack!!! Jeremy Rossi
     w_mutex_lock(&lrule->mutex);
     if (lrule->loaded == 0) {
-        lrule->db = OS_FindList(lrule->filename);
+        lrule->db = OS_FindList(lrule->filename, l_node);
         lrule->loaded = 1;
     }
     w_mutex_unlock(&lrule->mutex);
@@ -325,4 +314,38 @@ int OS_DBSearch(ListRule *lrule, char *key)
             mdebug1("lists_list.c::OS_DBSearch should never hit default");
             return 0;
     }
+}
+
+void os_remove_cdblist(ListNode **l_node) {
+
+    ListNode *tmp;
+
+    while (*l_node) {
+
+        tmp = *l_node;
+        *l_node = (*l_node)->next;
+
+        os_free(tmp->cdb_filename);
+        os_free(tmp->txt_filename);
+        os_free(tmp);
+    }
+
+}
+
+void os_remove_cdbrules(ListRule **l_rule) {
+
+    ListRule *tmp;
+
+    while (*l_rule) {
+
+        tmp = *l_rule;
+        *l_rule = (*l_rule)->next;
+
+        if (tmp->matcher) OSMatch_FreePattern(tmp->matcher);
+        os_free(tmp->matcher);
+        os_free(tmp->dfield);
+        os_free(tmp->filename);
+        os_free(tmp);
+    }
+
 }

@@ -17,7 +17,6 @@
 
 #include "../wazuh_modules/wmodules.h"
 
-void wm_sys_check();
 time_t get_sleep_time(int *run);
 void update_next_time(int *run);
 
@@ -94,7 +93,37 @@ static int init_sys_scan_config(void **state)
 {
     init_sys_config(state);
 
-    wm_sys_check();
+    if (!sys->default_interval) {
+        sys->default_interval = WM_SYS_DEF_INTERVAL;
+    }
+
+    if (!sys->hw_interval) {
+        sys->hw_interval = sys->default_interval;
+    }
+
+    if (!sys->os_interval) {
+        sys->os_interval = sys->default_interval;
+    }
+
+    if (!sys->interfaces_interval) {
+        sys->interfaces_interval = sys->default_interval;
+    }
+
+    if (!sys->programs_interval) {
+        sys->programs_interval = sys->default_interval;
+    }
+
+    if (!sys->hotfixes_interval) {
+        sys->hotfixes_interval = sys->default_interval;
+    }
+
+    if (!sys->ports_interval) {
+        sys->ports_interval = sys->default_interval;
+    }
+
+    if (!sys->processes_interval) {
+        sys->processes_interval = sys->default_interval;
+    }
 
     time_t time_start = time(NULL);
     sys->state.hw_next_time = time_start + sys->hw_interval;

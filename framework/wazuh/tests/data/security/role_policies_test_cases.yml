@@ -2,43 +2,42 @@
 set_role_policy:
   - params:
       role_id:
-        - "1"
+        - 1
       policy_ids:
-        - "16"
-        - "15"
-        - "17"
+        - 16
+        - 15
+        - 17
     result:
       affected_items: []
       failed_items:
         "4008":
-          - "1"
+          - 1
   - params:
       role_id:
-        - "999"
+        - 999
       policy_ids:
-        - "101"
-        - "100"
-        - "102"
+        - 101
+        - 100
+        - 102
     result:
       affected_items: []
       failed_items:
         "4002":
-          - "999"
+          - 999
   - params:
       role_id:
-        - "102"
+        - 102
       policy_ids:
-        - "101"
-        - "104"
-        - "107"
-        - "103"
+        - 101
+        - 104
+        - 107
+        - 103
     result:
       affected_items:
         - id: 102
           name: technical
-          rule:
-            MATCH:
-              definition: technicalRule
+          rules:
+            - 102
           policies:
             - 101
             - 100
@@ -46,28 +45,27 @@ set_role_policy:
             - 104
             - 103
           users:
-            - "104"
+            - 104
       failed_items:
         "4011":
-          - "101"
-          - "107"
-          - "104"
+          - 101
+          - 107
+          - 104
   - params:
       role_id:
-        - "102"
+        - 102
       policy_ids:
-        - "106"
-        - "102"
-        - "108"
-        - "103"
+        - 106
+        - 102
+        - 108
+        - 103
       position: 2
     result:
       affected_items:
         - id: 102
           name: technical
-          rule:
-            MATCH:
-              definition: technicalRule
+          rules:
+            - 102
           policies:
             - 101
             - 100
@@ -78,91 +76,89 @@ set_role_policy:
             - 107
             - 104
           users:
-            - "104"
+            - 104
       failed_items: {}
   - params:
       role_id:
-        - "103"
+        - 103
       policy_ids:
-        - "103"
-        - "105"
-        - "999"
+        - 103
+        - 105
+        - 999
     result:
       affected_items:
         - id: 103
           name: administrator_test
-          rule:
-            MATCH:
-              definition: administratorRule
+          rules:
+            - 103
           policies:
             - 104
             - 103
             - 105
           users:
-            - "101"
-            - "104"
+            - 101
+            - 104
       failed_items:
         "4007":
-          - "999"
+          - 999
         "4011":
-          - "103"
+          - 103
 remove_role_policy:
   - params:
       role_id:
-        - "1"
+        - 1
       policy_ids:
-        - "104"
-        - "103"
-        - "105"
+        - 104
+        - 103
+        - 105
     result:
       affected_items: []
       failed_items:
         "4008":
-          - "1"
+          - 1
   - params:
       role_id:
-        - "999"
+        - 999
       policy_ids:
-        - "104"
-        - "103"
-        - "105"
+        - 104
+        - 103
+        - 105
     result:
       affected_items: []
       failed_items:
         "4002":
-          - "999"
+          - 999
   - params:
       role_id:
-        - "102"
+        - 102
       policy_ids:
-        - "104"
-        - "103"
-        - "105"
+        - 104
+        - 103
+        - 105
     result:
       affected_items:
         - id: 102
           name: technical
-          rule:
-            MATCH:
-              definition: technicalRule
+          rules:
+            - 102
           policies:
             - 101
             - 100
             - 107
           users:
-            - "104"
+            - 104
       failed_items:
         "4010":
-          - "103"
-          - "105"
+          - 103
+          - 105
   - params:
       role_id:
-        - "105"
+        - 105
       policy_ids:
-        - "101"
-        - "104"
-        - "105"
-        - "999"
+        - 101
+        - 104
+        - 105
+        - 999
     result:
       affected_items:
         - id: 105
@@ -175,11 +171,10 @@ remove_role_policy:
             - 100
             - 102
             - 103
-          rule:
-            MATCH:
-              definition: ossecRule
+          rules:
+            - 105
           users:
-            - "101"
+            - 101
       failed_items:
         "4007":
-          - "999"
+          - 999

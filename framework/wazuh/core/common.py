@@ -88,9 +88,18 @@ EXECQ = os.path.join(ossec_path, 'queue', 'alerts', 'execq')
 # Socket
 AUTHD_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'auth')
 REQUEST_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'request')
+LOGTEST_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'logtest')
+UPGRADE_SOCKET = os.path.join(ossec_path, 'queue', 'tasks', 'upgrade')
+
+TASKS_SOCKET = os.path.join(ossec_path, 'queue', 'tasks', 'task')
+
+# Wdb
+MAX_SOCKET_BUFFER_SIZE = 64 * 1024  # 64KB
+MAX_QUERY_FILTERS_RESERVED_SIZE = MAX_SOCKET_BUFFER_SIZE - 4 * 1024  # MAX_BUFFER_SIZE - 4KB
 
 # Agent upgrading variables
-wpk_repo_url = "packages.wazuh.com/wpk/"
+wpk_repo_url_4_x = "packages.wazuh.com/4.x/wpk/"
+wpk_repo_url_3_x = "packages.wazuh.com/wpk/"
 
 wpk_chunk_size = 512
 
@@ -128,7 +137,7 @@ max_groups_per_multigroup = 256
 rbac: ContextVar[Dict] = ContextVar('rbac', default={'rbac_mode': 'black'})
 current_user: ContextVar[str] = ContextVar('current_user', default='')
 broadcast: ContextVar[bool] = ContextVar('broadcast', default=False)
-cluster_nodes: ContextVar[set] = ContextVar('cluster_nodes', default=set())
+cluster_nodes: ContextVar[list] = ContextVar('cluster_nodes', default=list())
 
 _context_cache = dict()
 

@@ -15,18 +15,13 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 
-from api.api_exception import APIException
+from api.api_exception import APIError
 from api.constants import SECURITY_CONFIG_PATH
 from wazuh.core import common
 
-
-need_revoke_config = ["auth_token_exp_timeout", "rbac_mode"]
 default_security_configuration = {
-    "auth_token_exp_timeout": 36000,
-    "rbac_mode": "black",
-    "max_login_attempts": 5,
-    "block_time": 300,
-    "max_request_per_minute": 300
+    "auth_token_exp_timeout": 3600,
+    "rbac_mode": "white"
 }
 
 default_api_configuration = {
@@ -54,6 +49,11 @@ default_api_configuration = {
     "cache": {
         "enabled": True,
         "time": 0.750
+    },
+    "access": {
+        "max_login_attempts": 50,
+        "block_time": 300,
+        "max_request_per_minute": 300
     },
     "use_only_authd": False,
     "drop_privileges": True,
@@ -98,9 +98,11 @@ def fill_dict(default: Dict, config: Dict) -> Dict:
     # Check there aren't extra configuration values in user's configuration:
     for k in config.keys():
         if k not in default.keys():
-            raise APIException(2000, details=', '.join(config.keys() - default.keys()))
+            raise APIError(2000, details=', '.join(config.keys() - default.keys()))
 
     for k, val in filter(lambda x: isinstance(x[1], dict), config.items()):
+        for item, value in config[k].items():
+            config[k][item] = default[k][item] if value == "" else config[k][item]
         config[k] = {**default[k], **config[k]}
 
     return {**default, **config}
@@ -134,6 +136,8 @@ def generate_private_key(private_key_path, public_exponent=65537, key_size=2048)
             format=serialization.PrivateFormat.PKCS8,
             encryption_algorithm=serialization.NoEncryption()
         ))
+    os.chmod(private_key_path, 0o400)
+
     return key
 
 
@@ -179,6 +183,7 @@ def generate_self_signed_certificate(private_key, certificate_path):
     # Write our certificate out to disk.
     with open(certificate_path, 'wb') as f:
         f.write(cert.public_bytes(serialization.Encoding.PEM))
+    os.chmod(certificate_path, 0o400)
 
 
 def read_yaml_config(config_file=common.api_config_path, default_conf=None) -> Dict:
@@ -194,7 +199,7 @@ def read_yaml_config(config_file=common.api_config_path, default_conf=None) -> D
             with open(config_file) as f:
                 configuration = yaml.safe_load(f)
         except IOError as e:
-            raise APIException(2004, details=e.strerror)
+            raise APIError(2004, details=e.strerror)
     else:
         configuration = None
 
@@ -212,5 +217,5 @@ def read_yaml_config(config_file=common.api_config_path, default_conf=None) -> D
 
 
 # Configuration - global object
-api_conf = read_yaml_config()
+api_conf = dict()
 security_conf = read_yaml_config(config_file=SECURITY_CONFIG_PATH, default_conf=default_security_configuration)

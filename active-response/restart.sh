@@ -36,14 +36,14 @@ echo "`date` $0 $1 $2 $3 $4 $5" >> ${PWD}/logs/active-responses.log
 
 # Run logtest in managers
 if [ "$TYPE" = "manager" ]; then
-    if !(/var/ossec/bin/ossec-logtest -t > /dev/null 2>&1); then
+    if !(${PWD}/bin/ossec-logtest -t > /dev/null 2>&1); then
         exit 1;
     fi
 fi
 
 # Restart Wazuh
 if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
-    touch ${PWD}/var/run/.restart     
+    touch ${PWD}/var/run/.restart
     systemctl restart wazuh-$TYPE
     rm -f ${PWD}/var/run/.restart
 elif command -v service > /dev/null 2>&1; then
@@ -55,4 +55,3 @@ else
 fi
 
 exit $?;
-

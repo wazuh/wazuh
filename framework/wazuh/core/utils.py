@@ -20,12 +20,37 @@ from xml.etree.ElementTree import fromstring
 
 from wazuh.core import common
 from wazuh.core.database import Connection
-from wazuh.core.exception import WazuhError, WazuhException
+from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection
 
 # Python 2/3 compatibility
 if sys.version_info[0] == 3:
     unicode = str
+
+
+def find_nth(string, substring, n):
+    """Return the index corresponding to the n'th occurrence of a substring within a string.
+
+    Parameters
+    ----------
+    string : str
+        String where the substring is searched.
+    substring : str
+        String to be found in "string".
+    n : int
+        Occurrence to be found.
+
+    Returns
+    -------
+    int
+        Index of the n'th occurrence of a substring within a string.
+    """
+
+    start = string.find(substring)
+    while start >= 0 and n > 1:
+        start = string.find(substring, start + len(substring))
+        n -= 1
+    return start
 
 
 def previous_month(n=1):
@@ -49,25 +74,24 @@ def execute(command):
     :param command: Command as list.
     :return: If output.error !=0 returns output.data, otherwise launches a WazuhException with output.error as error code and output.message as description.
     """
-
     try:
         output = check_output(command)
     except CalledProcessError as error:
         output = error.output
     except Exception as e:
-        raise WazuhException(1002, "{0}: {1}".format(command, e))  # Error executing command
+        raise WazuhInternalError(1002, "{0}: {1}".format(command, e))  # Error executing command
 
     try:
         output_json = json.loads(output)
     except Exception as e:
-        raise WazuhException(1003, command)  # Command output not in json
+        raise WazuhInternalError(1003, command)  # Command output not in json
 
     keys = output_json.keys()  # error and (data or message)
     if 'error' not in keys or ('data' not in keys and 'message' not in keys):
-        raise WazuhException(1004, command)  # Malformed command output
+        raise WazuhInternalError(1004, command)  # Malformed command output
 
     if output_json['error'] != 0:
-        raise WazuhException(output_json['error'], output_json['message'], True)
+        raise WazuhInternalError(output_json['error'], output_json['message'], True)
     else:
         return output_json['data']
 
@@ -90,6 +114,9 @@ def process_array(array, search_text=None, complementary_search=False, search_in
     :param required_fields: Required fields that must appear in the response
     :return: Dictionary: {'items': Processed array, 'totalItems': Number of items, before applying offset and limit)}
     """
+    if not array:
+        return {'items': list(), 'totalItems': 0}
+
     if select:
         array = select_array(array, select=select, required_fields=required_fields)
 
@@ -131,9 +158,9 @@ def cut_array(array, offset=0, limit=common.database_limit):
     limit = int(limit)
 
     if offset < 0:
-        raise WazuhException(1400)
+        raise WazuhError(1400)
     elif limit < 1:
-        raise WazuhException(1401)
+        raise WazuhError(1401)
     else:
         return array[offset:offset + limit]
 
@@ -269,6 +296,7 @@ def select_array(array, select=None, required_fields=None):
     result_list : list
         Filtered array of dicts with only the selected (and required) fields as keys.
     """
+
     def get_nested_fields(dikt, select_field):
         split_select = select_field.split('.')
         if len(split_select) == 1:
@@ -499,7 +527,7 @@ def _get_hashing_algorithm(hash_algorithm):
     # check hash algorithm
     algorithm_list = hashlib.algorithms_available
     if hash_algorithm not in algorithm_list:
-        raise WazuhException(1723, "Available algorithms are {0}.".format(', '.join(algorithm_list)))
+        raise WazuhError(1723, "Available algorithms are {0}.".format(', '.join(algorithm_list)))
 
     return hashlib.new(hash_algorithm)
 
@@ -609,7 +637,8 @@ def load_wazuh_xml(xml_path):
         good_comment = comment.group(2).replace('--', '..')
         data = data.replace(comment.group(2), good_comment)
 
-    # < characters should be scaped as &lt; unless < is starting a <tag> or a comment
+    # Replace &lt; and &gt; currently present in the config
+    data = data.replace('&lt;', '_custom_amp_lt_').replace('&gt;', '_custom_amp_gt_')
 
     custom_entities = {
         'backslash': '\\'
@@ -619,18 +648,19 @@ def load_wazuh_xml(xml_path):
     for character, replacement in custom_entities.items():
         data = re.sub(replacement.replace('\\', '\\\\'), f'&{character};', data)
 
+    # < characters should be escaped as &lt; unless < is starting a <tag> or a comment
     data = re.sub(r"<(?!/?\w+.+>|!--)", "&lt;", data)
 
     # replace \< by &lt;
-    data = re.sub(r'\\<', '&lt;', data)
+    data = re.sub(r'&backslash;<', '&backslash;&lt;', data)
 
     # replace \> by &gt;
-    data = re.sub(r'\\>', '&gt;', data)
+    data = re.sub(r'&backslash;>', '&backslash;&gt;', data)
 
     # default entities
     default_entities = ['amp', 'lt', 'gt', 'apos', 'quot']
 
-    # & characters should be scaped if they don't represent an &entity;
+    # & characters should be escaped if they don't represent an &entity;
     data = re.sub(f"&(?!({'|'.join(default_entities + list(custom_entities))});)", "&amp;", data)
 
     entities = '<!DOCTYPE xmlfile [\n' + \
@@ -719,7 +749,7 @@ def get_timeframe_in_seconds(timeframe):
     """
     if not timeframe.isdigit():
         if 'h' not in timeframe and 'd' not in timeframe and 'm' not in timeframe and 's' not in timeframe:
-            raise WazuhException(1411, timeframe)
+            raise WazuhError(1411, timeframe)
 
         regex, seconds = re.compile(r'(\d+)(\w)'), 0
         time_equivalence_seconds = {'d': 86400, 'h': 3600, 'm': 60, 's': 1}
@@ -741,6 +771,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
     :return: list with processed query
     """
+
     def check_clause(value1: typing.Union[str, int], op: str, value2: str) -> bool:
         """
         Checks an operation between value1 and value2. 'value1' could be an
@@ -772,7 +803,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
             return False
 
     # compile regular expression only one time when function is called
-    re_get_elements = re.compile(r'([\w\-]+)(?:\.?)((?:[\w\-]*))(=|!=|<|>|~)([\w\-./]+)') # get elements in a clause
+    re_get_elements = re.compile(r'([\w\-]+)(?:\.?)((?:[\w\-]*))(=|!=|<|>|~)([\w\-./:]+)')  # get elements in a clause
     # get a list with OR clauses
     or_clauses = q.split(',')
     output_array = []
@@ -838,7 +869,7 @@ class SQLiteBackend(AbstractDatabaseBackend):
 
     def connect_to_db(self):
         if not glob.glob(self.db_path):
-            raise WazuhException(1600)
+            raise WazuhInternalError(1600)
         return Connection(self.db_path)
 
     def _get_data(self):
@@ -868,13 +899,29 @@ class WazuhDBBackend(AbstractDatabaseBackend):
         parameters by itself.
         """
         for k, v in request.items():
-            query = query.replace(f':{k}', f"{v}" if isinstance(v, int) else f"'{v}'")
+            if isinstance(v, list):
+                values = list()
+                for element in v:
+                    if isinstance(element, (int, float)) or (isinstance(element, str) and element.isnumeric()):
+                        values.append(element)
+                    else:
+                        values.append(f"'{element}'")
+                value = f"{','.join(values)}"
+            elif isinstance(v, (int, float)):
+                value = f"{v}"
+            elif isinstance(v, str):
+                value = f"'{v}'"
+            else:
+                raise TypeError(f'Invalid type for request parameters: {type(v)}')
+            query = re.sub(r':\b' + re.escape(str(k)) + r'\b', value, query)
         return query
 
     def _render_query(self, query):
         """Render query attending the format."""
         if self.query_format == 'mitre':
             return f'mitre sql {query}'
+        elif self.query_format == 'global':
+            return f'global sql {query}'
         else:
             return f'agent {self.agent_id} sql {query}'
 
@@ -890,7 +937,7 @@ class WazuhDBQuery(object):
 
     def __init__(self, offset, limit, table, sort, search, select, query, fields, default_sort_field, count,
                  get_data, backend, default_sort_order='ASC', filters={}, min_select_fields=set(), date_fields=set(),
-                 extra_fields=set(), distinct=False):
+                 extra_fields=set(), distinct=False, rbac_negate=True):
         """
         Wazuh DB Query constructor
 
@@ -914,6 +961,7 @@ class WazuhDBQuery(object):
         :param distinct: Look for distinct values.
         :param agent_id: Agent to fetch information about.
         :param distinct: Look for distinct values
+        :param rbac_negate: Whether to use IN or NOT IN on RBAC resources
         """
         self.offset = offset
         self.limit = limit
@@ -956,6 +1004,7 @@ class WazuhDBQuery(object):
         self.legacy_filters = filters
         self.inverse_fields = {v: k for k, v in self.fields.items()}
         self.backend = backend
+        self.rbac_negate = rbac_negate
 
     def _clean_filter(self, query_filter):
         # Replace special characters with wildcards
@@ -1037,7 +1086,7 @@ class WazuhDBQuery(object):
         :return: A list with processed query (self.fields)
         """
         if not self.query_regex.match(self.q):
-            raise WazuhException(1407, self.q)
+            raise WazuhError(1407, self.q)
 
         level = 0
         for open_level, field, operator, value, close_level, separator in self.query_regex.findall(self.q):
@@ -1063,6 +1112,7 @@ class WazuhDBQuery(object):
     def _parse_legacy_filters(self):
         """Parses legacy filters."""
         # some legacy filters can contain multiple values to filter separated by commas. That must split in a list.
+        self.legacy_filters.get('older_than', None) == '0s' and self.legacy_filters.pop('older_than')
         legacy_filters_as_list = {
             name: value if isinstance(value, list) else [value] for name, value in self.legacy_filters.items()
         }
@@ -1097,12 +1147,13 @@ class WazuhDBQuery(object):
             self.query += " WHERE " if 'WHERE' not in self.query else ' AND '
 
     def _process_filter(self, field_name, field_filter, q_filter):
-        if field_name == "status":
-            self._filter_status(q_filter)
-        elif field_name in self.date_fields and not isinstance(q_filter['value'], (int, float)):
+        if field_name in self.date_fields and not isinstance(q_filter['value'], (int, float)):
             # Filter a date, but only if it is in string (YYYY-MM-DD hh:mm:ss) format.
             # If it matches the same format as DB (timestamp integer), filter directly by value (next if cond).
             self._filter_date(q_filter, field_name)
+        elif 'rbac' in field_name:
+            self.query += f"{field_name.lstrip('rbac_')} {q_filter['operator']} (:{field_filter})"
+            self.request[field_filter] = q_filter['value']
         else:
             if q_filter['value'] is not None:
                 self.request[field_filter] = q_filter['value'] if field_name != "version" else re.sub(
@@ -1168,9 +1219,9 @@ class WazuhDBQuery(object):
                                                                     date_filter['operator'], date_filter['field'])
             self.request[date_filter['field']] = date_filter['value']
         else:
-            raise WazuhException(1412, date_filter['value'])
+            raise WazuhError(1412, date_filter['value'])
 
-    def run(self):
+    def general_run(self):
         """Builds the query and runs it on the database"""
         self._add_select_to_query()
         self._add_filters_to_query()
@@ -1184,6 +1235,67 @@ class WazuhDBQuery(object):
         if self.data:
             self._execute_data_query()
             return self._format_data_into_dictionary()
+
+    def oversized_run(self):
+        """Method used when the size of the query exceeds the maximum available in the communication.
+        Builds the query and runs it on the database"""
+        self._add_select_to_query()
+        original_select = self.select
+        rbac_ids = set(self.legacy_filters.pop('rbac_ids', set()))
+        self._add_filters_to_query()
+        self._add_search_to_query()
+        self._add_sort_to_query()
+
+        resource = None
+        final_ids = list()
+        resources = list()
+        if self.__class__.__name__ == 'WazuhDBQueryAgents':
+            resource = 'id'
+        elif self.__class__.__name__ == 'WazuhDBQueryGroups':
+            resource = 'name'
+        else:
+            raise WazuhInternalError(1123)
+        self.select = [resource]
+        self._add_select_to_query()
+        self._execute_data_query()
+        try:
+            resources = list(map(lambda d: str(d[resource]).zfill(3), self._data))
+            maximum_value = min(self.limit, len(resources)) if self.limit is not None else len(resources)
+            for item in resources:
+                if self.rbac_negate:
+                    if item.zfill(3) not in rbac_ids:
+                        final_ids.append(item)
+                else:
+                    if item.zfill(3) in rbac_ids:
+                        final_ids.append(item)
+                if len(final_ids) >= maximum_value:
+                    break
+        except NameError:
+            pass
+
+        count = len(resources) - len(set(rbac_ids).intersection(set(resources))) if self.rbac_negate else \
+            len(set(rbac_ids).intersection(set(resources)))
+
+        self.select = original_select
+        self.reset()
+        self.legacy_filters['rbac_ids'] = final_ids
+        original_count = self.count
+        self.count = False
+        result = self.general_run()
+        if original_count:
+            result['totalItems'] = count
+
+        return result
+
+    def run(self):
+        """Generic function that will redirect the information
+        to the function that needs to be used for the specific case"""
+        if self.legacy_filters is None:
+            return self.general_run()
+
+        rbac_ids = set(self.legacy_filters.get('rbac_ids', set()))
+        return self.general_run() if len(str(rbac_ids)) < common.MAX_QUERY_FILTERS_RESERVED_SIZE else \
+            self.oversized_run()
 
     def reset(self):
         """Resets query to its initial value. Useful when doing several requests to the same DB."""
@@ -1223,7 +1335,7 @@ class WazuhDBQueryDistinct(WazuhDBQuery):
 
     def _add_select_to_query(self):
         if len(self.select) > 1:
-            raise WazuhException(1410)
+            raise WazuhError(1410)
 
         WazuhDBQuery._add_select_to_query(self)
 
@@ -1270,3 +1382,28 @@ def get_files():
     files.add('etc/ossec.conf')
 
     return files
+
+
+def add_dynamic_detail(detail, value, attribs, details):
+    """Add a detail with attributes (i.e. regex with negate or type).
+
+    Parameters
+    ----------
+    detail : str
+        Name of the detail.
+    value : str
+        Detail value.
+    attribs : dict
+        Dictionary with the XML attributes.
+    details : dict
+        Dictionary with all the current details.
+    """
+    if detail in details:
+        new_pattern = details[detail]['pattern'] + value
+        details[detail].clear()
+        details[detail]['pattern'] = new_pattern
+    else:
+        details[detail] = dict()
+        details[detail]['pattern'] = value
+
+    details[detail].update(attribs)

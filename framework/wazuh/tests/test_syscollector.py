@@ -10,13 +10,11 @@ import pytest
 
 from wazuh.tests.util import InitWDBSocketMock
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
-        sys.modules['api'] = MagicMock()
         import wazuh.rbac.decorators
         del sys.modules['wazuh.rbac.orm']
-        del sys.modules['api']
 
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -34,7 +32,7 @@ with patch('wazuh.common.ossec_uid'):
 ])
 @patch("wazuh.syscollector.get_agents_info", return_value=['000', '001'])
 @patch("wazuh.core.agent.Agent.get_basic_information", return_value=None)
-@patch('wazuh.core.agent.Agent.get_agent_attr', return_value='Linux')
+@patch('wazuh.core.agent.Agent.get_agent_os_name', return_value='Linux')
 def test_get_item_agent(mock_agent_attr, mock_basic_info, mock_agents_info, select, search):
     """Test get_item_agent method.
 
@@ -66,7 +64,7 @@ def test_get_item_agent(mock_agent_attr, mock_basic_info, mock_agents_info, sele
 ])
 @patch("wazuh.syscollector.get_agents_info", return_value=['000', '001'])
 @patch("wazuh.core.agent.Agent.get_basic_information", return_value=None)
-@patch('wazuh.core.agent.Agent.get_agent_attr', return_value='Linux')
+@patch('wazuh.core.agent.Agent.get_agent_os_name', return_value='Linux')
 def test_failed_get_item_agent(mock_agent_attr, mock_basic_info, mock_agents_info, agent_list, expected_exception):
     """Test if get_item_agent method handle exceptions properly.
 
@@ -97,7 +95,7 @@ def test_failed_get_item_agent(mock_agent_attr, mock_basic_info, mock_agents_inf
 ])
 @patch("wazuh.syscollector.get_agents_info", return_value=['000', '001'])
 @patch("wazuh.core.agent.Agent.get_basic_information", return_value=None)
-@patch('wazuh.core.agent.Agent.get_agent_attr', return_value='Linux')
+@patch('wazuh.core.agent.Agent.get_agent_os_name', return_value='Linux')
 def test_agent_elements(mock_agent_attr, mock_basic_info, mock_agents_info, element_type):
     """Tests every possible type of agent element
 

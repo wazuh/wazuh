@@ -79,6 +79,12 @@
 #define WM_SYS_NET_DIR  "/proc/net/"
 #define RPM_DATABASE    "/var/lib/rpm/Packages"
 
+#define WIN_REG_HOTFIX    "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Component Based Servicing\\Packages"
+#define VISTA_REG_HOTFIX  "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\HotFix"
+#define HOTFIX_INSTALLED  112
+#define HOTFIX_SUPERSEDED 80
+#define HOTFIX_STAGED     64
+
 /* MAC package search paths */
 
 #define MAC_APPS        "/Applications"

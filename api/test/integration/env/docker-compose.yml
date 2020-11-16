@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: base/manager/manager.Dockerfile
       args:
-        wazuhbranch: ${WAZUH_BRANCH}
+        manager_branch: ${MANAGER_BRANCH}
         manager_type: master
     image: wazuh-master
     hostname: wazuh-master
@@ -23,7 +23,7 @@ services:
       context: .
       dockerfile: base/manager/manager.Dockerfile
       args:
-        wazuhbranch: ${WAZUH_BRANCH}
+        manager_branch: ${MANAGER_BRANCH}
         manager_type: worker
     image: wazuh-worker
     hostname: wazuh-worker1
@@ -40,7 +40,7 @@ services:
       context: .
       dockerfile: base/manager/manager.Dockerfile
       args:
-        wazuhbranch: ${WAZUH_BRANCH}
+        manager_branch: ${MANAGER_BRANCH}
         manager_type: worker
     image: wazuh-worker
     hostname: wazuh-worker2
@@ -56,12 +56,15 @@ services:
     build:
       context: .
       dockerfile: base/agent/Dockerfile
+      args:
+        agent_branch: ${AGENT_BRANCH}
     image: wazuh-agent
     hostname: wazuh-agent1
     entrypoint:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent1
+      - 4.x
     depends_on:
       - wazuh-worker1
       - wazuh-worker2
@@ -71,12 +74,15 @@ services:
     build:
       context: .
       dockerfile: base/agent/Dockerfile
+      args:
+        agent_branch: ${AGENT_BRANCH}
     image: wazuh-agent
     hostname: wazuh-agent2
     entrypoint:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent2
+      - 4.x
     depends_on:
       - wazuh-worker1
       - wazuh-worker2
@@ -87,12 +93,15 @@ services:
     build:
       context: .
       dockerfile: base/agent/Dockerfile
+      args:
+        agent_branch: ${AGENT_BRANCH}
     image: wazuh-agent
     hostname: wazuh-agent3
     entrypoint:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent3
+      - 4.x
     depends_on:
       - wazuh-worker1
       - wazuh-worker2
@@ -103,12 +112,15 @@ services:
     build:
       context: .
       dockerfile: base/agent/Dockerfile
+      args:
+        agent_branch: ${AGENT_BRANCH}
     image: wazuh-agent
     hostname: wazuh-agent4
     entrypoint:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent4
+      - 4.x
     depends_on:
       - wazuh-worker1
       - wazuh-worker2
@@ -119,7 +131,9 @@ services:
     build:
       context: .
       dockerfile: base/agent/Dockerfile
-    image: wazuh-agent
+      args:
+        agent_branch: ${AGENT_BRANCH_OLD}
+    image: wazuh-agent_old
     hostname: wazuh-agent5
     entrypoint:
       - /scripts/entrypoint.sh
@@ -135,7 +149,9 @@ services:
     build:
       context: .
       dockerfile: base/agent/Dockerfile
-    image: wazuh-agent
+      args:
+        agent_branch: ${AGENT_BRANCH_OLD}
+    image: wazuh-agent_old
     hostname: wazuh-agent6
     entrypoint:
       - /scripts/entrypoint.sh
@@ -151,7 +167,9 @@ services:
     build:
       context: .
       dockerfile: base/agent/Dockerfile
-    image: wazuh-agent
+      args:
+        agent_branch: ${AGENT_BRANCH_OLD}
+    image: wazuh-agent_old
     hostname: wazuh-agent7
     entrypoint:
       - /scripts/entrypoint.sh
@@ -167,7 +185,9 @@ services:
     build:
       context: .
       dockerfile: base/agent/Dockerfile
-    image: wazuh-agent
+      args:
+        agent_branch: ${AGENT_BRANCH_OLD}
+    image: wazuh-agent_old
     hostname: wazuh-agent8
     entrypoint:
       - /scripts/entrypoint.sh

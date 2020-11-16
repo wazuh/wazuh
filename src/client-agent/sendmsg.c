@@ -53,13 +53,20 @@ int send_msg(const char *msg, ssize_t msg_length)
     } else {
 #ifdef WIN32
         error = WSAGetLastError();
-        merror(SEND_ERROR, "server", win_strerror(error));
+        mwarn(SEND_ERROR, "server", win_strerror(error));
 #else
-        if(error == EPIPE) {
+        switch (error) {
+        case EPIPE:
             mdebug2(TCP_EPIPE);
-        } else {
-            merror(SEND_ERROR, "server", strerror(error));
+            break;
+        case ECONNREFUSED:
+            mdebug2(CONN_REF);
+            break;
+        default:
+            mwarn(SEND_ERROR, "server", strerror(error));
+            break;
         }
+
 #endif
         sleep(1);
     }

@@ -10,12 +10,13 @@ stages:
     request: &os_request_000
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/000/os"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/os"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - architecture: !anystr
@@ -50,18 +51,9 @@ stages:
       params:
         select: wrongParam
     response: &error_response_1724
-      status_code: 200
+      status_code: 400
       json:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1724
-              id:
-                - '000'
-          total_affected_items: 0
-          total_failed_items: 1
-        message: !anystr
+        error: 1724
 
 ---
 test_name: GET /syscollector/{agent_id}/os?{select}
@@ -108,13 +100,14 @@ stages:
   - name: Hardware of an agent
     request: &hardware_request_000
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/000/hardware"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/hardware"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - board_serial: !anything
@@ -189,7 +182,7 @@ stages:
   - name: Packages of and agent
     request: &packages_request_000
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/000/packages"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/packages"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -198,6 +191,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: &packages_response
             - architecture: !anystr
@@ -215,7 +209,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
       save:
         json:
           expected_scan_id: data.affected_items[0].scan.id
@@ -233,6 +226,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - architecture: "{expected_architecture}"
@@ -242,7 +236,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Not allowed selector
     request:
@@ -262,6 +255,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - architecture: "{expected_architecture}"
@@ -283,6 +277,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *packages_response
@@ -311,6 +306,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - architecture: "{offset_test_architecture}"
@@ -340,11 +336,6 @@ stages:
         limit: 1a
     response:
       status_code: 400
-      json: &bad_request
-        detail: !anystr
-        status: 400
-        title: "Bad Request"
-        type: "about:blank"
 
   - name: Invalid limit
     request:
@@ -355,8 +346,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *bad_request
 
   - name: Filter sort
     request:
@@ -368,6 +357,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *packages_response
@@ -383,6 +373,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *packages_response
@@ -393,20 +384,11 @@ stages:
       verify: False
       <<: *packages_request_000
       params:
-        sort: wronParam
+        sort: wrongParam
     response: &error_response_1403
-      status_code: 200
+      status_code: 400
       json:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1403
-              id:
-                - '000'
-          total_affected_items: 0
-          total_failed_items: 1
-        message: !anystr
+        error: 1403
 
   - name: Search an expected name
     request:
@@ -417,6 +399,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *packages_response
@@ -431,6 +414,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *packages_response
@@ -445,6 +429,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *packages_response
@@ -459,6 +444,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *packages_response
@@ -476,6 +462,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *packages_response
@@ -493,6 +480,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *packages_response
@@ -511,6 +499,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *packages_response
@@ -525,6 +514,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *packages_response
@@ -539,6 +529,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *packages_response
@@ -586,7 +577,7 @@ stages:
   - name: Processes of an agent with limit = 1
     request: &processes_request_000
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/000/processes"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/processes"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -595,6 +586,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: &processes_response_000
             - cmd: !anystr
@@ -630,7 +622,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
       save:
         json:
           expected_tty: data.affected_items[0].tty
@@ -662,6 +653,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - pid: "{expected_pid}"
@@ -676,6 +668,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - ppid: !int "{expected_ppid}"
@@ -690,6 +683,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - state: "{expected_state}"
@@ -704,6 +698,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - egroup: "{expected_egroup}"
@@ -718,6 +713,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - fgroup: "{expected_fgroup}"
@@ -732,6 +728,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - sgroup: "{expected_sgroup}"
@@ -746,6 +743,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - rgroup: "{expected_rgroup}"
@@ -760,6 +758,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - euser: "{expected_euser}"
@@ -774,6 +773,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - ruser: "{expected_ruser}"
@@ -788,6 +788,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - suser: "{expected_suser}"
@@ -802,6 +803,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - nlwp: !int "{expected_nlwp}"
@@ -816,6 +818,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - pgrp: !int "{expected_pgrp}"
@@ -830,6 +833,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - priority: !int "{expected_priority}"
@@ -844,6 +848,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - name: "{expected_name}"
@@ -858,6 +863,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - scan:
@@ -876,6 +882,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - state: "{expected_state}"
@@ -899,6 +906,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *processes_response_000
@@ -946,6 +954,7 @@ stages:
       status_code: 200
       strict: false
       json:
+        error: !anyint
         data:
           affected_items:
             - cmd: "{offset_test_cmd}"
@@ -987,11 +996,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json: &error_spec
-        detail: !anystr
-        status: !anyint
-        title: !anything
-        type: !anystr
 
 ---
 test_name: GET /syscollector/{agent_id}/processes?{sort,select}
@@ -1041,6 +1045,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -1068,12 +1073,13 @@ stages:
     request: &port_request_000
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/000/ports"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/ports"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -1086,6 +1092,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: &port_response
             - inode: !anyint
@@ -1121,6 +1128,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *port_response
@@ -1135,6 +1143,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *port_response
@@ -1149,6 +1158,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *port_response
@@ -1163,6 +1173,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *port_response
@@ -1177,6 +1188,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *port_response
@@ -1191,6 +1203,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *port_response
@@ -1215,6 +1228,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *port_response
@@ -1236,8 +1250,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Wrong filter
     request:
@@ -1293,6 +1305,7 @@ stages:
         extra_kwargs:
           select_key: "{field:s}"
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -1306,6 +1319,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -1318,7 +1332,7 @@ stages:
     request: &netaddr_request_000
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/000/netaddr"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netaddr"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -1326,6 +1340,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: &netaddr_response
             - address: !anystr
@@ -1353,6 +1368,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netaddr_response
@@ -1366,6 +1382,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: 0
 
@@ -1378,6 +1395,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netaddr_response
@@ -1391,6 +1409,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: 0
 
@@ -1403,6 +1422,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netaddr_response
@@ -1416,6 +1436,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: 0
 
@@ -1428,6 +1449,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netaddr_response
@@ -1441,6 +1463,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: 0
 
@@ -1453,6 +1476,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netaddr_response
@@ -1466,6 +1490,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: 0
 
@@ -1479,6 +1504,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - broadcast: "{expected_broadcast}"
@@ -1493,6 +1519,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - proto: "{expected_proto}"
@@ -1507,6 +1534,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - address: "{expected_address}"
@@ -1521,6 +1549,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - netmask: "{expected_netmask}"
@@ -1535,6 +1564,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - iface: "{expected_iface}"
@@ -1548,6 +1578,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - proto: !anystr
@@ -1573,6 +1604,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: 1
@@ -1585,8 +1617,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Wrong param
     request:
@@ -1607,6 +1637,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netaddr_response
@@ -1629,6 +1660,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netaddr_response
@@ -1665,6 +1697,7 @@ stages:
         extra_kwargs:
           select_key: "{field:s}"
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -1678,6 +1711,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -1690,7 +1724,7 @@ stages:
     request: &netproto_request_000
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/000/netproto"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netproto"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -1698,6 +1732,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: &netproto_response_000
             - dhcp: !anystr
@@ -1724,6 +1759,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netproto_response_000
@@ -1737,6 +1773,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: 0
 
@@ -1749,6 +1786,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netproto_response_000
@@ -1762,6 +1800,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: 0
 
@@ -1774,6 +1813,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netproto_response_000
@@ -1787,6 +1827,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: 0
 
@@ -1799,6 +1840,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netproto_response_000
@@ -1821,6 +1863,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - iface: !anystr
@@ -1837,6 +1880,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - dhcp: "{expected_dhcp}"
@@ -1851,6 +1895,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - gateway: "{expected_gateway}"
@@ -1865,6 +1910,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - type: "{expected_type}"
@@ -1879,6 +1925,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - scan:
@@ -1894,6 +1941,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - iface: "{expected_iface}"
@@ -1915,8 +1963,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Wrong param
     request:
@@ -1937,6 +1983,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netproto_response_000
@@ -1980,6 +2027,7 @@ stages:
         extra_kwargs:
           select_key: "{field:s}"
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -1994,6 +2042,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -2006,7 +2055,7 @@ stages:
     request: &netiface_request_000
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/000/netiface"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netiface"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -2014,6 +2063,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: &netiface_response_000
             - mac: !anystr
@@ -2060,6 +2110,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - type: !anystr
@@ -2080,6 +2131,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - mac: "{expected_mac}"
@@ -2094,6 +2146,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - rx:
@@ -2110,6 +2163,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - tx:
@@ -2125,6 +2179,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - tx:
@@ -2147,8 +2202,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Wrong param
     request:
@@ -2169,6 +2222,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2192,6 +2246,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2207,6 +2262,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: !anyint
@@ -2220,6 +2276,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2244,6 +2301,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2258,6 +2316,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2272,6 +2331,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2286,6 +2346,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2300,6 +2361,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2314,6 +2376,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2328,6 +2391,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2342,6 +2406,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2356,6 +2421,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2370,6 +2436,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2384,6 +2451,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2398,6 +2466,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - mac: "{expected_mac}"
@@ -2411,8 +2480,6 @@ stages:
         tx.packets: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid tx.packets
     request:
@@ -2423,6 +2490,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: 0
@@ -2435,8 +2503,6 @@ stages:
         rx.packets: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid rx.packets
     request:
@@ -2447,6 +2513,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: 0
@@ -2459,8 +2526,6 @@ stages:
         tx.dropped: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid tx.dropped
     request:
@@ -2471,6 +2536,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: 0
@@ -2483,8 +2549,6 @@ stages:
         rx.dropped: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid rx.dropped
     request:
@@ -2495,6 +2559,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: 0
@@ -2507,8 +2572,6 @@ stages:
         tx.bytes: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid tx.bytes
     request:
@@ -2519,6 +2582,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: 0
@@ -2531,8 +2595,6 @@ stages:
         rx.bytes: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid rx.bytes
     request:
@@ -2543,6 +2605,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: 0
@@ -2555,8 +2618,6 @@ stages:
         tx.errors: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid tx.errors
     request:
@@ -2567,6 +2628,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: 0
@@ -2579,8 +2641,6 @@ stages:
         rx.errors: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid rx.errors
     request:
@@ -2591,6 +2651,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: 0
@@ -2635,6 +2696,7 @@ stages:
         extra_kwargs:
           select_key: "{field:s}"
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -2648,6 +2710,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -2660,12 +2723,13 @@ stages:
     request: &os_request
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/002/os"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/os"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - architecture: !anystr
@@ -2695,19 +2759,8 @@ stages:
       <<: *os_request
       params:
         select: wrongParam
-    response: &error_response_1724_002
-      status_code: 200
-      json:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1724
-              id:
-                - '002'
-          total_affected_items: 0
-          total_failed_items: 1
-        message: !anystr
+    response:
+       <<: *error_response_1724
 
 ---
 test_name: GET /syscollector/{agent_id}/os?{select}
@@ -2756,13 +2809,14 @@ stages:
   - name: Hardware of an agent
     request: &hardware_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/002/hardware"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/hardware"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - board_serial: !anything
@@ -2790,7 +2844,7 @@ stages:
       params:
         select: wrongParam
     response:
-      <<: *error_response_1724_002
+      <<: *error_response_1724
 
 ---
 test_name: GET /syscollector/{agent_id}/hardware?{select}
@@ -2834,7 +2888,7 @@ stages:
     request: &netaddr_request
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/002/netaddr"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/netaddr"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -2842,6 +2896,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netaddr_response
@@ -2863,6 +2918,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netaddr_response
@@ -2876,6 +2932,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: 0
 
@@ -2888,6 +2945,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netaddr_response
@@ -2901,6 +2959,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: 0
 
@@ -2913,6 +2972,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netaddr_response
@@ -2926,6 +2986,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: 0
 
@@ -2938,6 +2999,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netaddr_response
@@ -2951,6 +3013,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: 0
 
@@ -2963,6 +3026,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netaddr_response
@@ -2976,6 +3040,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: 0
 
@@ -2989,6 +3054,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - broadcast: "{expected_broadcast}"
@@ -3003,6 +3069,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - proto: "{expected_proto}"
@@ -3017,6 +3084,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - address: "{expected_address}"
@@ -3031,6 +3099,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - netmask: "{expected_netmask}"
@@ -3045,6 +3114,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - iface: "{expected_iface}"
@@ -3058,6 +3128,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - proto: !anystr
@@ -3071,7 +3142,7 @@ stages:
       params:
         select: wrongSelector
     response:
-      <<: *error_response_1724_002
+      <<: *error_response_1724
 
   - name: Pagination
     request:
@@ -3083,6 +3154,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: 1
@@ -3095,8 +3167,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Wrong param
     request:
@@ -3117,6 +3187,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netaddr_response
@@ -3127,19 +3198,8 @@ stages:
       <<: *netaddr_request
       params:
         sort: -wrong
-    response: &error_response_1403_002
-      status_code: 200
-      json:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1403
-              id:
-                - '002'
-          total_affected_items: 0
-          total_failed_items: 1
-        message: !anystr
+    response:
+      <<: *error_response_1403
 
 ---
 test_name: GET /syscollector/{agent_id}/netaddr?{sort,select}
@@ -3172,6 +3232,7 @@ stages:
         extra_kwargs:
           select_key: "{field:s}"
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -3185,6 +3246,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -3197,7 +3259,7 @@ stages:
     request: &netproto_request
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/002/netproto"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/netproto"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -3205,6 +3267,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: &netproto_response
             - dhcp: !anystr
@@ -3231,6 +3294,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netproto_response
@@ -3244,6 +3308,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: 0
 
@@ -3256,6 +3321,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netproto_response
@@ -3269,6 +3335,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: 0
 
@@ -3281,6 +3348,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netproto_response
@@ -3294,6 +3362,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: 0
 
@@ -3306,6 +3375,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netproto_response
@@ -3328,6 +3398,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - iface: !anystr
@@ -3344,6 +3415,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - dhcp: "{expected_dhcp}"
@@ -3358,6 +3430,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - gateway: "{expected_gateway}"
@@ -3372,6 +3445,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - type: "{expected_type}"
@@ -3386,6 +3460,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - scan:
@@ -3401,6 +3476,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - iface: "{expected_iface}"
@@ -3414,6 +3490,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - gateway: "{expected_gateway}"
@@ -3426,7 +3503,7 @@ stages:
       params:
         select: wrongSelector
     response:
-      <<: *error_response_1724_002
+      <<: *error_response_1724
 
   - name: Wrong limit
     request:
@@ -3436,8 +3513,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Wrong param
     request:
@@ -3458,6 +3533,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netproto_response
@@ -3469,7 +3545,7 @@ stages:
       params:
         sort: -wrong
     response:
-      <<: *error_response_1403_002
+      <<: *error_response_1403
 
 ---
 test_name: GET /syscollector/{agent_id}/netproto?{sort,select}
@@ -3501,6 +3577,7 @@ stages:
         extra_kwargs:
           select_key: "{field:s}"
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -3514,6 +3591,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -3526,7 +3604,7 @@ stages:
     request: &netiface_request
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/002/netiface"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/netiface"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -3534,6 +3612,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: &netiface_response
             - mac: !anystr
@@ -3580,6 +3659,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - type: !anystr
@@ -3600,6 +3680,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - mac: "{expected_mac}"
@@ -3614,6 +3695,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - rx:
@@ -3629,6 +3711,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - tx:
@@ -3644,6 +3727,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - tx:
@@ -3656,7 +3740,7 @@ stages:
       params:
         select: wrongSelector
     response:
-      <<: *error_response_1724_002
+      <<: *error_response_1724
 
   - name: Wrong limit
     request:
@@ -3666,8 +3750,6 @@ stages:
         limit: 0
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Wrong param
     request:
@@ -3688,6 +3770,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response
@@ -3699,7 +3782,7 @@ stages:
       params:
         sort: -wrong
     response:
-      <<: *error_response_1403_002
+      <<: *error_response_1403
 
   - name: Offset and limit
     request:
@@ -3711,6 +3794,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response
@@ -3726,6 +3810,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: !anyint
@@ -3739,6 +3824,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response
@@ -3763,6 +3849,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response
@@ -3777,6 +3864,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response
@@ -3791,6 +3879,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response
@@ -3805,6 +3894,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response
@@ -3819,6 +3909,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response
@@ -3833,6 +3924,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response
@@ -3847,6 +3939,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response
@@ -3861,6 +3954,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response
@@ -3875,6 +3969,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response
@@ -3889,6 +3984,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response
@@ -3903,6 +3999,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response
@@ -3916,8 +4013,6 @@ stages:
         tx.packets: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid tx.packets
     request:
@@ -3928,6 +4023,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: 0
@@ -3940,8 +4036,6 @@ stages:
         rx.packets: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid rx.packets
     request:
@@ -3952,6 +4046,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: 0
@@ -3964,8 +4059,6 @@ stages:
         tx.dropped: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid tx.dropped
     request:
@@ -3976,6 +4069,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: 0
@@ -3988,8 +4082,6 @@ stages:
         rx.dropped: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid rx.dropped
     request:
@@ -4000,6 +4092,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: 0
@@ -4012,8 +4105,6 @@ stages:
         tx.bytes: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid tx.bytes
     request:
@@ -4024,6 +4115,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: 0
@@ -4036,8 +4128,6 @@ stages:
         rx.bytes: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid rx.bytes
     request:
@@ -4048,6 +4138,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: 0
@@ -4060,8 +4151,6 @@ stages:
         tx.errors: -1
     response:
       status_code: 400
-      json:
-        <<: *error_spec
 
   - name: Filter invalid tx.errors
     request:
@@ -4072,33 +4161,33 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           total_affected_items: 0
 
-#  - name: Filter invalid rx.errors
-#    request:
-#      verify: False
-#      <<: *netiface_request
-#      params:
-#        rx.errors: -1
-#    response:
-#      status_code: 400
-#      json:
-#        <<: *error_spec
-#
-#  - name: Filter invalid rx.errors
-#    request:
-#      verify: False
-#      <<: *netiface_request
-#      params:
-#        rx.errors: 999999
-#    response:
-#      status_code: 200
-#      json:
-#        data:
-#          affected_affected_items: []
-#          total_affected_items: 0
+  - name: Filter invalid rx.errors
+    request:
+      verify: False
+      <<: *netiface_request
+      params:
+        rx.errors: -1
+    response:
+      status_code: 400
+
+  - name: Filter invalid rx.errors
+    request:
+      verify: False
+      <<: *netiface_request
+      params:
+        rx.errors: 999999
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          total_affected_items: 0
 
 ---
 test_name: GET /syscollector/{agent_id}/netiface?{sort,select}
@@ -4140,6 +4229,7 @@ stages:
         extra_kwargs:
           select_key: "{field:s}"
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -4153,6 +4243,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 ---
@@ -4164,38 +4255,17 @@ stages:
     request: &hotfix_request_000
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/000/hotfixes"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/hotfixes"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_validate_syscollector_hotfix
       json:
+        error: !anyint
         data:
-          affected_items:
-            - hotfix: !anystr
-              scan_id: !anyint
-              scan_time: !anystr
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
-      save:
-        json:
-          hotfix_filter: data.affected_items[0].hotfix
-
-  - name: Filter hotfix
-    request:
-      verify: False
-      <<: *hotfix_request_000
-      params:
-        hotfix: "{hotfix_filter}"
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - hotfix: "{hotfix_filter}"
-              scan_id: !anyint
-              scan_time: !anystr
+          affected_items: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -4209,6 +4279,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items: []

@@ -20,30 +20,11 @@ if [ $? = 0 ]; then
 . ${PLIST};
 fi
 
-is_rhel_le_5() {
-    RPM_RELEASE="/etc/redhat-release"
-
-    # If SO is not RHEL, return (false)
-    [ -r $RPM_RELEASE ] || return
-
-    DIST_NAME=$(sed -rn 's/^(.*) release ([[:digit:]]+)[. ].*/\1/p' /etc/redhat-release)
-    DIST_VER=$(sed -rn 's/^(.*) release ([[:digit:]]+)[. ].*/\2/p' /etc/redhat-release)
-
-    [[ "$DIST_NAME" =~ ^CentOS ]] || [[ "$DIST_NAME" =~ ^"Red Hat" ]] && [ -n "$DIST_VER" ] && [ $DIST_VER -le 5 ]
-}
-
-
 AUTHOR="Wazuh Inc."
 USE_JSON=false
 INITCONF="/etc/ossec-init.conf"
-DAEMONS="wazuh-modulesd ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ossec-authd ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd"
-OP_DAEMONS="ossec-maild ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd"
-
-if ! is_rhel_le_5
-then
-    DAEMONS="wazuh-clusterd $DAEMONS"
-    OP_DAEMONS="wazuh-clusterd $OP_DAEMONS"
-fi
+DAEMONS="wazuh-clusterd wazuh-modulesd ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ossec-authd ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd wazuh-apid"
+OP_DAEMONS="wazuh-clusterd ossec-maild ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
@@ -61,6 +42,7 @@ LOCK_PID="${LOCK}/pid"
 MAX_ITERATION="10"
 
 MAX_KILL_TRIES=600
+
 
 checkpid()
 {
@@ -273,7 +255,6 @@ testconfig()
 # Start function
 start()
 {
-    incompatible=false
 
     if [ $USE_JSON = false ]; then
         echo "Starting $NAME $VERSION..."
@@ -288,15 +269,6 @@ start()
         fi
         touch ${DIR}/var/run/ossec-analysisd.failed
         exit 1;
-    fi
-
-    if is_rhel_le_5
-    then
-        if [ $USE_JSON = true ]; then
-            incompatible=true
-        else
-            echo "Cluster daemon is incompatible with CentOS 5 and RHEL 5... Skipping wazuh-clusterd."
-        fi
     fi
 
     checkpid;
@@ -343,18 +315,6 @@ start()
              else
                 continue
              fi
-             # If it is a worker node, don't try to start authd.
-             start_config="$(grep -n "<cluster>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
-             end_config="$(grep -n "</cluster>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
-             if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
-                sed -n "${start_config},${end_config}p" ${DIR}/etc/ossec.conf | grep "<disabled>yes" >/dev/null 2>&1
-                if [ $? != 0 ]; then
-                    sed -n "${start_config},${end_config}p" ${DIR}/etc/ossec.conf | grep "<node_type>worker" >/dev/null 2>&1
-                    if [ $? = 0 ]; then
-                        continue
-                    fi
-                fi
-             fi
         fi
         if [ $USE_JSON = true ] && [ $first = false ]; then
             echo -n ','
@@ -386,7 +346,7 @@ start()
                         fi
                         sleep 1;
                         j=`expr $j + 1`;
-                        if [ "$j" = "${MAX_ITERATION}" ]; then
+                        if [ "$j" -ge "${MAX_ITERATION}" ]; then
                             failed=true
                         fi
                     done
@@ -418,10 +378,7 @@ start()
             fi
         fi
     done
-    if $incompatible
-    then
-        echo -n '{"daemon":"wazuh-clusterd","status":"incompatible"}'
-    fi
+
     # After we start we give 2 seconds for the daemons
     # to internally create their PID files.
     sleep 2;
@@ -456,17 +413,17 @@ pstatus()
 
     ls ${DIR}/var/run/${pfile}*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
-        for j in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
-            ps -p $j > /dev/null 2>&1
+        for pid in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
+            ps -p ${pid} > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 if [ $USE_JSON = false ]; then
-                    echo "${pfile}: Process $j not used by Wazuh, removing..."
+                    echo "${pfile}: Process ${pid} not used by Wazuh, removing..."
                 fi
-                rm -f ${DIR}/var/run/${pfile}-$j.pid
+                rm -f ${DIR}/var/run/${pfile}-${pid}.pid
                 continue;
             fi
 
-            kill -0 $j > /dev/null 2>&1
+            kill -0 ${pid} > /dev/null 2>&1
             if [ $? = 0 ]; then
                 return 1;
             fi

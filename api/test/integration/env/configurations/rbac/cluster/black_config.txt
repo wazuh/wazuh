@@ -7,11 +7,11 @@
 
 | Actions                  | Resources         | Allow               | Deny                                                                                                           |
 |--------------------------|-------------------|---------------------|----------------------------------------------------------------------------------------------------------------|
-| cluster:read_config      | node:id           | worker1             | master-node,worker2                                                                                            |
+| cluster:read             | node:id           | worker1             | master-node,worker2                                                                                            |
 | cluster:restart          | node:id           | master-node,worker2 | worker1                                                                                                        |
 | cluster:status           | *:*               |                     | *                                                                                                              |
 | cluster:read_file        | node:id&file:path |                     | master-node,worker2 & etc/ossec.conf,etc/rules/local_rules.xml,ruleset/rules/0350-amazon_rules.xml             |
 | cluster:upload_file      | node:id           |                     | master-node,worker2                                                                                            |
-| cluster:delete_file      | node:id&file:path |                     | master-node,worker2 & ruleset/decoders/0005-wazuh_decoders.xml                                                 |
+| cluster:delete_file      | node:id&file:path |                     | master-node,worker2 & etc/decoders/0005-wazuh_decoders.xml, etc/ossec.conf                                     |
 | cluster:read_api_config  | node:id           | worker1             | master-node,worker2                                                                                            |
 | cluster:update_api_config| node:id           | worker1             | master-node,worker2                                                                                            |

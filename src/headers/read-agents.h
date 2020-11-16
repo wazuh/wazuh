@@ -13,6 +13,15 @@
 
 #include <external/cJSON/cJSON.h>
 
+/* Status */
+typedef enum agent_status_t {
+    GA_STATUS_ACTIVE = 12,
+    GA_STATUS_NACTIVE,
+    GA_STATUS_NEVER,
+    GA_STATUS_PENDING,
+    GA_STATUS_UNKNOWN
+} agent_status_t;
+
 /* Unique key for each agent */
 typedef struct _agent_info {
     char *last_keepalive;
@@ -22,17 +31,10 @@ typedef struct _agent_info {
     char *rootcheck_endtime;
     char *os;
     char *version;
+    char *config_sum;
     char *merged_sum;
+    agent_status_t connection_status;
 } agent_info;
-
-/* Status */
-
-typedef enum agent_status_t {
-    GA_STATUS_ACTIVE = 12,
-    GA_STATUS_NACTIVE,
-    GA_STATUS_INV,
-    GA_STATUS_PENDING
-} agent_status_t;
 
 /* Print syscheck db (of modified files) */
 int print_syscheck(const char *sk_name, const char *sk_ip, const char *fname, int print_registry,
@@ -54,8 +56,11 @@ int delete_agentinfo(const char *id, const char *name) __attribute__((nonnull));
 /* Delete agent SQLite db */
 void delete_sqlite(const char *id, const char *name);
 
+/* Delete diff folders */
+void delete_diff(const char *name);
+
 /* Get all available agents */
-char **get_agents(int flag, int mon_time);
+char **get_agents(int flag);
 
 /* Free the agent list */
 void free_agents(char **agent_list);
@@ -63,8 +68,8 @@ void free_agents(char **agent_list);
 /* Print the text representation of the agent status */
 const char *print_agent_status(agent_status_t status);
 
-/* Gets the status of an agent, based on the name/IP address */
-agent_status_t get_agent_status(const char *agent_name, const char *agent_ip);
+/* Gets the status of an agent, based on the agent ID */
+agent_status_t get_agent_status(int agent_id);
 
 /* Get information from an agent */
 agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const char *agent_id) __attribute__((nonnull(2)));

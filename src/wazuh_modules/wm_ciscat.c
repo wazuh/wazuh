@@ -230,14 +230,9 @@ void wm_ciscat_setup(wm_ciscat *_ciscat) {
 
 #ifndef WIN32
 
-    int i;
+    queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
-    // Connect to socket
-
-    for (i = 0; (queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        w_time_delay(1000 * WM_MAX_WAIT);
-
-    if (i == WM_MAX_ATTEMPTS) {
+    if (queue_fd < 0) {
         mterror(WM_CISCAT_LOGTAG, "Can't connect to queue.");
         pthread_exit(NULL);
     }
@@ -1456,7 +1451,7 @@ cJSON *wm_ciscat_dump(const wm_ciscat * ciscat) {
 
 
     sched_scan_dump(&(ciscat->scan_config), wm_cscat);
-    
+
     if (ciscat->java_path) cJSON_AddStringToObject(wm_cscat,"java_path",ciscat->java_path);
     if (ciscat->ciscat_path) cJSON_AddStringToObject(wm_cscat,"ciscat_path",ciscat->ciscat_path);
     cJSON_AddNumberToObject(wm_cscat,"timeout",ciscat->timeout);

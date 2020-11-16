@@ -18,33 +18,20 @@
 #include <sys/inotify.h>
 #endif
 
-#ifdef UNIT_TESTING
-// Remove static qualifier when unit testing
-#define STATIC
-#else
-#define STATIC static
-#endif
-
 #include "shared.h"
 #include "syscheck.h"
 #include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 #include "rootcheck/rootcheck.h"
 #include "fim_db.h"
 
-#ifdef UNIT_TESTING
-#include "unit_tests/wrappers/syscheckd/run_check.h"
+#ifdef WAZUH_UNIT_TESTING
+#ifdef WIN32
+#include "unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
+#include "unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
+#include "unit_tests/wrappers/windows/synchapi_wrappers.h"
+#endif
 // Remove static qualifier when unit testing
 #define STATIC
-
-#ifdef WIN32
-// Replace windows system calls with wrappers
-#define SetThreadPriority   wrap_SetThreadPriority
-#define GetCurrentThread    wrap_GetCurrentThread
-#define GetLastError        wrap_GetLastError
-#undef  sleep
-#define sleep               wrap_Sleep
-#define CreateThread        wrap_run_check_CreateThread
-#endif
 #else
 #define STATIC static
 #endif
@@ -72,15 +59,12 @@ STATIC void fim_link_reload_broken_link(char *path, int index);
 STATIC void fim_delete_realtime_watches(int pos);
 #endif
 
-// Global variables
-static int _base_line = 0;
-
 // Send a message
 STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
     if (SendMSG(syscheck.queue, msg, location, mq) < 0) {
         merror(QUEUE_SEND);
 
-        if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+        if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
             merror_exit(QUEUE_FATAL, DEFAULTQPATH);
         }
 
@@ -334,6 +318,8 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 
 #if defined INOTIFY_ENABLED || defined WIN32
 
+static int _base_line = 0;
+
 #ifdef WIN32
     set_priority_windows_thread();
 #endif
@@ -350,7 +336,14 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 
         if (_base_line == 0) {
             _base_line = 1;
-            mdebug2(FIM_NUM_WATCHES, count_watches());
+
+            if (syscheck.realtime != NULL) {
+                if (syscheck.realtime->queue_overflow) {
+                    realtime_sanitize_watch_map();
+                    syscheck.realtime->queue_overflow = false;
+                }
+                mdebug2(FIM_NUM_WATCHES, syscheck.realtime->dirtb->elements);
+            }
         }
 
 #ifdef WIN_WHODATA
@@ -397,7 +390,13 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
     }
 
 #else
-    mwarn(FIM_WARN_REALTIME_UNSUPPORTED);
+    for (int i = 0; syscheck.dir[i]; i++) {
+        if (syscheck.opts[i] & REALTIME_ACTIVE) {
+            mwarn(FIM_WARN_REALTIME_UNSUPPORTED);
+            break;
+        }
+    }
+
     pthread_exit(NULL);
 #endif
 
@@ -485,7 +484,9 @@ int fim_whodata_initialize() {
 #endif
 
 #else
-    mwarn(FIM_WARN_WHODATA_UNSUPPORTED);
+    if (syscheck.enable_whodata) {
+        mwarn(FIM_WARN_WHODATA_UNSUPPORTED);
+    }
 #endif
 
     return retval;
@@ -537,24 +538,17 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
 
         w_mutex_lock(&syscheck.fim_scan_mutex);
         for (i = 0; syscheck.dir[i]; i++) {
-            if (!syscheck.symbolic_links[i]) {
+            if (!syscheck.symbolic_links[i] || !(CHECK_FOLLOW & syscheck.opts[i])) {
                 continue;
             }
 
-            if (CHECK_FOLLOW & syscheck.opts[i]) {
-                real_path = realpath(syscheck.symbolic_links[i], NULL);
-            }
-            else {
-                // Taking the link itself if follow_symbolic_link is not enabled
-                os_calloc(strlen(syscheck.symbolic_links[i]) + 1, sizeof(char), real_path);
-                snprintf(real_path, strlen(syscheck.symbolic_links[i]) + 1, "%s", syscheck.symbolic_links[i]);
-            }
+            real_path = realpath(syscheck.symbolic_links[i], NULL);
 
             if (*syscheck.dir[i]) {
                 if (real_path) {
                     // Check if link has changed
                     if (strcmp(real_path, syscheck.dir[i])) {
-                        minfo(FIM_LINKCHECK_CHANGED, syscheck.dir[i], syscheck.symbolic_links[i], real_path);
+                        minfo(FIM_LINKCHECK_CHANGED, syscheck.symbolic_links[i], syscheck.dir[i], real_path);
                         fim_link_update(i, real_path);
                     } else {
                         mdebug1(FIM_LINKCHECK_NOCHANGE, syscheck.dir[i]);

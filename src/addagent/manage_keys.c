@@ -16,6 +16,8 @@
   #include <wincrypt.h>
 #endif
 
+#define DEFAULT_ID   132512
+
 /* Prototypes */
 static char *trimwhitespace(char *str);
 
@@ -407,7 +409,7 @@ int k_bulkload(const char *cmdbulk)
 
         if (sock < 0) {
             /* Default ID */
-            i = MAX_AGENTS + 32512;
+            i = DEFAULT_ID;
             snprintf(id, 8, "%03d", i);
             while (sock < 0 && !IDExist(id, 0)) {
                 i--;
@@ -455,8 +457,8 @@ int k_bulkload(const char *cmdbulk)
              * Random 5: Final key
              */
 
-            snprintf(str1, STR_SIZE, "%d%s%d", (int)(time3 - time2), name, (int)rand1);
-            snprintf(str2, STR_SIZE, "%d%s%s%d", (int)(time2 - time1), ip, id, (int)rand2);
+            os_snprintf(str1, STR_SIZE, "%d%s%d", (int)(time3 - time2), name, (int)rand1);
+            os_snprintf(str2, STR_SIZE, "%d%s%s%d", (int)(time2 - time1), ip, id, (int)rand2);
 
             OS_MD5_Str(str1, -1, md1);
             OS_MD5_Str(str2, -1, md2);

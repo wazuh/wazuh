@@ -60,7 +60,7 @@ static int send_intcheck_msg(const char *script, const char *host, const char *m
     if (SendMSG(lessdc.queue, msg, sys_location, SYSCHECK_MQ) < 0) {
         merror(QUEUE_SEND);
 
-        if ((lessdc.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+        if ((lessdc.queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
             merror_exit(QUEUE_FATAL, DEFAULTQPATH);
         }
 
@@ -81,7 +81,7 @@ static int send_log_msg(const char *script, const char *host, const char *msg)
 
     if (SendMSG(lessdc.queue, msg, sys_location, LOCALFILE_MQ) < 0) {
         merror(QUEUE_SEND);
-        if ((lessdc.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+        if ((lessdc.queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
             merror_exit(QUEUE_FATAL, DEFAULTQPATH);
         }
 
@@ -137,7 +137,7 @@ static int gen_diff_alert(const char *host, const char *script, time_t alert_dif
     if (SendMSG(lessdc.queue, diff_alert, buf, LOCALFILE_MQ) < 0) {
         merror(QUEUE_SEND);
 
-        if ((lessdc.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+        if ((lessdc.queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
             merror_exit(QUEUE_FATAL, DEFAULTQPATH);
         }
 
@@ -455,7 +455,7 @@ void Agentlessd()
     today = tm_result.tm_mday;
 
     /* Connect to the message queue. Exit if it fails. */
-    if ((lessdc.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+    if ((lessdc.queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 

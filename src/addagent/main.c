@@ -81,9 +81,6 @@ int main(int argc, char **argv)
 {
     char *user_msg;
     int c = 0, cmdlist = 0, json_output = 0;
-#ifndef CLIENT
-    int no_limit = 0;
-#endif
     int force_antiquity;
     char *end;
     const char *cmdexport = NULL;
@@ -184,7 +181,7 @@ int main(int argc, char **argv)
                 break;
             case 'L':
 #ifndef CLIENT
-                no_limit = 1;
+                mwarn("This option no longer applies. The agent limit has been removed.");
 #endif
                 break;
             default:
@@ -231,11 +228,6 @@ int main(int argc, char **argv)
     /* Set the group */
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
-    }
-
-    /* Load ossec uid and gid for creating backups */
-    if (OS_LoadUid() < 0) {
-        merror_exit("Couldn't get user and group id.");
     }
 
     /* Chroot to the default directory */
@@ -298,7 +290,7 @@ int main(int argc, char **argv)
 #ifdef CLIENT
                 printf("\n ** Agent adding only available on a master ** \n\n");
 #else
-                add_agent(json_output, no_limit);
+                add_agent(json_output);
 #endif
                 break;
             case 'e':

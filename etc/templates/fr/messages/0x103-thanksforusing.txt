@@ -8,7 +8,6 @@
 
     Pour plus d'informations:
                - http://www.wazuh.com
-               - http://www.ossec.net
 
          --- Appuyez sur ENTER pour terminer. ---
     --- (Peut-être plus d'informations ci-dessous). ---

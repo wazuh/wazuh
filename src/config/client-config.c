@@ -23,7 +23,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     char f_ip[128] = {'\0'};
     char * rip = NULL;
     int port = DEFAULT_SECURE;
-    int protocol = IPPROTO_UDP;
+    int protocol = IPPROTO_TCP;
 
     /* XML definitions */
     const char *xml_client_server = "server";
@@ -34,7 +34,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     const char *xml_profile_name = "config-profile";
     const char *xml_auto_restart = "auto_restart";
     const char *xml_crypto_method = "crypto_method";
-    const char *xml_client_auto_enrollment = "auto_enrollment";
+    const char *xml_client_enrollment = "enrollment";
 
     /* Old XML definitions */
     const char *xml_client_ip = "server-ip";
@@ -110,7 +110,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 return (OS_INVALID);
             }
             OS_ClearNode(chld_node);
-        } else if (strcmp(node[i]->element, xml_client_auto_enrollment) == 0) {
+        } else if (strcmp(node[i]->element, xml_client_enrollment) == 0) {
             if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
                 if (Read_Client_Enrollment(chld_node, logr) < 0) {
                     OS_ClearNode(chld_node);
@@ -229,7 +229,7 @@ int Read_Client_Server(XML_NODE node, agent * logr)
     char * rip = NULL;
     /* Default values */
     int port = DEFAULT_SECURE;
-    int protocol = IPPROTO_UDP;
+    int protocol = IPPROTO_TCP;
     int max_retries = DEFAULT_MAX_RETRIES; 
     int retry_interval = DEFAULT_RETRY_INTERVAL;
 
@@ -328,7 +328,7 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
     const char *xml_server_ca_path = "server_ca_path";
     const char *xml_agent_certif_path = "agent_certificate_path";
     const char *xml_agent_key_path = "agent_key_path";
-    const char *xml_auth_password = "authorization_pass_path";
+    const char *xml_auth_password_path = "authorization_pass_path";
     const char *xml_auto_method = "auto_method";
     const char *xml_delay_after_enrollment = "delay_after_enrollment";
     const char *xml_use_source_ip = "use_source_ip";
@@ -420,7 +420,7 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
         } else if (strcmp(node[j]->element, xml_agent_key_path) == 0) {
             os_free(cert_cfg->agent_key);
             os_strdup(node[j]->content, cert_cfg->agent_key);
-        } else if (strcmp(node[j]->element, xml_auth_password) == 0) {
+        } else if (strcmp(node[j]->element, xml_auth_password_path) == 0) {
             os_free(cert_cfg->authpass_file);
             os_strdup(node[j]->content, cert_cfg->authpass_file);
         } else if (strcmp(node[j]->element, xml_auto_method) == 0) {

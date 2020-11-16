@@ -185,6 +185,11 @@ extern const char *__local_name;
 
 #define os_strdup(x,y) ((y = strdup(x)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
 
+/* Windows doesn't support strndup function */
+#ifndef WIN32
+#define os_strndup(x,y,z) ((z = strndup(x,y)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
+#endif
+
 #define os_malloc(x,y) ((y = (__typeof__(y)) malloc(x)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
 
 #define os_free(x) if(x){free(x);x=NULL;}
@@ -207,7 +212,7 @@ extern const char *__local_name;
 #define isAgent 0
 #endif
 
-#ifndef UNIT_TESTING
+#ifndef WAZUH_UNIT_TESTING
 #define FOREVER() 1
 #else
 #include "unit_tests/wrappers/common.h"
@@ -230,6 +235,7 @@ extern const char *__local_name;
 #include "hash_op.h"
 #include "rbtree_op.h"
 #include "queue_op.h"
+#include "queue_linked_op.h"
 #include "store_op.h"
 #include "rc.h"
 #include "ar.h"

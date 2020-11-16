@@ -72,7 +72,7 @@ void SecurityConfigurationAssessmentInit()
 {
 
     os_calloc(1, sizeof(OSDecoderInfo), sca_json_dec);
-    sca_json_dec->id = getDecoderfromlist(SCA_MOD);
+    sca_json_dec->id = getDecoderfromlist(SCA_MOD, &os_analysisd_decoder_store);
     sca_json_dec->type = OSSEC_RL;
     sca_json_dec->name = SCA_MOD;
     sca_json_dec->fts = 0;
@@ -147,7 +147,7 @@ end:
 
 static int ConnectToSecurityConfigurationAssessmentSocket() {
 
-    if ((cfga_socket = StartMQ(CFGAQUEUE, WRITE)) < 0) {
+    if ((cfga_socket = StartMQ(CFGAQUEUE, WRITE, 1)) < 0) {
         merror(QUEUE_ERROR, CFGAQUEUE, strerror(errno));
         return -1;
     }
@@ -157,7 +157,7 @@ static int ConnectToSecurityConfigurationAssessmentSocket() {
 
 static int ConnectToSecurityConfigurationAssessmentSocketRemoted() {
 
-    if ((cfgar_socket = StartMQ(CFGARQUEUE, WRITE)) < 0) {
+    if ((cfgar_socket = StartMQ(CFGARQUEUE, WRITE, 1)) < 0) {
         merror(QUEUE_ERROR, CFGARQUEUE, strerror(errno));
         return -1;
     }

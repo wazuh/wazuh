@@ -20,6 +20,7 @@ HEADER_TEMPLATE="./etc/templates/config/generic/header-comments.template"
 GLOBAL_TEMPLATE="./etc/templates/config/generic/global.template"
 GLOBAL_AR_TEMPLATE="./etc/templates/config/generic/global-ar.template"
 RULES_TEMPLATE="./etc/templates/config/generic/rules.template"
+RULE_TEST_TEMPLATE="./etc/templates/config/generic/rule_test.template"
 AR_COMMANDS_TEMPLATE="./etc/templates/config/generic/ar-commands.template"
 AR_DEFINITIONS_TEMPLATE="./etc/templates/config/generic/ar-definitions.template"
 ALERTS_TEMPLATE="./etc/templates/config/generic/alerts.template"
@@ -84,7 +85,6 @@ DisableAuthd()
     echo "    <force_time>0</force_time>" >> $NEWCONFIG
     echo "    <purge>yes</purge>" >> $NEWCONFIG
     echo "    <use_password>no</use_password>" >> $NEWCONFIG
-    echo "    <limit_maxagents>yes</limit_maxagents>" >> $NEWCONFIG
     echo "    <ciphers>HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH</ciphers>" >> $NEWCONFIG
     echo "    <!-- <ssl_agent_ca></ssl_agent_ca> -->" >> $NEWCONFIG
     echo "    <ssl_verify_host>no</ssl_verify_host>" >> $NEWCONFIG
@@ -343,7 +343,7 @@ WriteAgent()
       echo "      <address>$HNAME</address>" >> $NEWCONFIG
     fi
     echo "      <port>1514</port>" >> $NEWCONFIG
-    echo "      <protocol>udp</protocol>" >> $NEWCONFIG
+    echo "      <protocol>tcp</protocol>" >> $NEWCONFIG
     echo "    </server>" >> $NEWCONFIG
     if [ "X${USER_AGENT_CONFIG_PROFILE}" != "X" ]; then
          PROFILE=${USER_AGENT_CONFIG_PROFILE}
@@ -550,6 +550,10 @@ WriteManager()
     cat ${RULES_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
+    # Writting wazuh-logtest configuration
+    cat ${RULE_TEST_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
     # Writting auth configuration
     if [ "X${AUTHD}" = "Xyes" ]; then
         sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${AUTH_TEMPLATE}" >> $NEWCONFIG
@@ -665,6 +669,10 @@ WriteLocal()
 
     # Writting rules configuration
     cat ${RULES_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
+    # Writting wazuh-logtest configuration
+    cat ${RULE_TEST_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     echo "</ossec_config>" >> $NEWCONFIG
@@ -841,6 +849,7 @@ InstallLocal()
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/archives
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/alerts
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/firewall
+    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/api
     ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/rootcheck
 
     ${INSTALL} -m 0750 -o root -g 0 ossec-agentlessd ${PREFIX}/bin
@@ -901,8 +910,6 @@ InstallLocal()
     fi
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
-    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rootcheck
-    ${INSTALL} -d -m 0770 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-info
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agentless
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/db
 
@@ -922,19 +929,26 @@ InstallLocal()
     ${INSTALL} -d -m 0660 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/vulnerabilities
     ${INSTALL} -d -m 0440 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/vulnerabilities/dictionaries
     ${INSTALL} -m 0440 -o root -g ${OSSEC_GROUP} wazuh_modules/vulnerability_detector/cpe_helper.json ${PREFIX}/queue/vulnerabilities/dictionaries
-    ${INSTALL} -m 0440 -o root -g ${OSSEC_GROUP} wazuh_modules/vulnerability_detector/msu.json.gz ${PREFIX}/queue/vulnerabilities/dictionaries
+
+    # Install Task Manager files
+    ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/tasks
 
     ### Install Python
     ${MAKEBIN} wpython PREFIX=${PREFIX} TARGET=${INSTYPE}
 
     ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${LIB_FLAG}
 
+    ### Backup old API
+    if [ "X${update_only}" = "Xyes" ]; then
+      ${MAKEBIN} --quiet -C ../api backup PREFIX=${PREFIX} REVISION=${REVISION}
+    fi
+
     ### Install API
     ${MAKEBIN} --quiet -C ../api install PREFIX=${PREFIX}
 
-    ### Install API service
-    if [ "X${INSTALL_API_DAEMON}" = "X" ] || [ "X${INSTALL_API_DAEMON}" = "Xy" ]; then
-        ${MAKEBIN} --quiet -C ../api service PREFIX=${PREFIX}
+    ### Restore old API
+    if [ "X${update_only}" = "Xyes" ]; then
+      ${MAKEBIN} --quiet -C ../api restore PREFIX=${PREFIX} REVISION=${REVISION}
     fi
 }
 
@@ -983,14 +997,6 @@ InstallServer()
     fi
 
     # Install the plugins files
-    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap
-    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap/content
-
-    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/oscap.py ${PREFIX}/wodles/oscap
-    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${PREFIX}/wodles/oscap/oscap
-    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/template_*.xsl ${PREFIX}/wodles/oscap
-
-
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/aws
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws_s3.py ${PREFIX}/wodles/aws/aws-s3.py
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${PREFIX}/wodles/aws/aws-s3
@@ -1036,15 +1042,6 @@ InstallAgent()
     # Install the plugins files
     # Don't install the plugins if they are already installed. This check affects
     # hybrid installation mode
-    if [ ! -d ${PREFIX}/wodles/oscap ]; then
-        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap
-        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap/content
-
-        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/oscap.py ${PREFIX}/wodles/oscap
-        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/template_*.xsl ${PREFIX}/wodles/oscap
-
-    fi
-
     if [ ! -d ${PREFIX}/wodles/aws ]; then
         ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/aws
         ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws_s3.py ${PREFIX}/wodles/aws/aws-s3

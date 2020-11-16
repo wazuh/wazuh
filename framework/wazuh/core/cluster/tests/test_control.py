@@ -11,7 +11,7 @@ with patch('wazuh.common.getgrnam'):
 
                 from wazuh.core.cluster import control
                 from wazuh.core.cluster.local_client import LocalClient
-                from wazuh import WazuhInternalError
+                from wazuh import WazuhInternalError, WazuhError
 
 
 async def async_local_client(command, data, wait_for_complete):
@@ -93,14 +93,11 @@ async def test_get_system_nodes():
     with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=async_local_client):
         expected_result = [{'items': [{'name': 'master'}]}]
         for expected in expected_result:
-            with patch('json.loads', return_value=expected):
+            with patch('wazuh.core.cluster.control.get_nodes', return_value=expected):
                 result = await control.get_system_nodes()
                 assert result == [expected['items'][0]['name']]
 
         expected_exception = WazuhInternalError(3012)
-        with patch('json.loads', return_value=expected_exception):
-            try:
-                await control.get_system_nodes()
-                assert False
-            except WazuhInternalError as e:
-                assert e == expected_exception
+        with patch('wazuh.core.cluster.control.get_nodes', side_effect=WazuhInternalError(3012)):
+            result = await control.get_system_nodes()
+            assert result == WazuhError(3013)

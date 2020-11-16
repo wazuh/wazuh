@@ -33,7 +33,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
     char agent_id[KEYSIZE + 1] = "";
 
     /* Create the unix queue */
-    if ((arq = StartMQ(path, READ)) < 0) {
+    if ((arq = StartMQ(path, READ, 0)) < 0) {
         merror_exit(QUEUE_ERROR, path, strerror(errno));
     }
 
@@ -126,7 +126,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
                 key_lock_read();
 
                 for (i = 0; i < keys.keysize; i++) {
-                    if (keys.keyentries[i]->rcvd >= (time(0) - DISCON_TIME)) {
+                    if (keys.keyentries[i]->rcvd >= (time(0) - logr.global.agents_disconnection_time)) {
                         strncpy(agent_id, keys.keyentries[i]->id, KEYSIZE);
                         key_unlock();
                         send_msg(agent_id, msg_to_send, -1);

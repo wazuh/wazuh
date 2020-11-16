@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
 
-/var/ossec/bin/ossec-control stop
+# Modify ossec.conf
+python3 /scripts/xml_parser.py /var/ossec/etc/ossec.conf /scripts/xml_templates/ossec.conf
+if [ $3  == "4.x" ]; then
+  python3 /scripts/xml_parser.py /var/ossec/etc/ossec.conf /scripts/xml_templates/ossec_4.x.conf
+fi
 
-sed -i "s:MANAGER_IP:$1:g" /var/ossec/etc/ossec.conf
-sed -i "s:<protocol>udp</protocol>:<protocol>tcp</protocol>:g" /var/ossec/etc/ossec.conf
+sed -i "s:<address>MANAGER_IP</address>:<address>$1</address>:g" /var/ossec/etc/ossec.conf
 sed -n "/$2 /p" /var/ossec/etc/test.keys > /var/ossec/etc/client.keys
 chown root:ossec /var/ossec/etc/client.keys
 rm /var/ossec/etc/test.keys
 
 # Agent configuration
-. /configuration_files/*.sh
-sleep 1
+for sh_file in /configuration_files/*.sh; do
+  . $sh_file
+done
 
 /var/ossec/bin/ossec-control start
 

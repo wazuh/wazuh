@@ -49,7 +49,7 @@ void send_buffer(sockbuffer_t *socket_buffer, char *srcip) {
         if (SendMSG(logr.m_queue, data_pt, srcip, SYSLOG_MQ) < 0) {
             merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
-            if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
+            if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
                 merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
             }
         }
@@ -111,7 +111,7 @@ void HandleSyslogTCP()
     /* Connecting to the message queue
      * Exit if it fails.
      */
-    if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
+    if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 

@@ -75,19 +75,6 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
     strText = objFile.ReadAll
     objFile.Close
 
-    ' Enable syscheck in a fresh installation
-    strNewText = Replace(strText, "<teststring>", "<teststring>")
-    If InStr(strText,"<address>0.0.0.0</address>") > 0 Then
-        Set re = new regexp
-        re.Pattern = "<disabled>yes</disabled>"
-        re.Global = False
-        strNewText = re.Replace(strNewText, "<disabled>no</disabled>")
-        Set re = new regexp
-        re.Pattern = "<!-- By default it is disabled. In the Install you must choose to enable it. -->"
-        re.Global = True
-        strNewText = re.Replace(strNewText, "")
-    End If
-
     If address <> "" or server_port <> "" or protocol <> "" or notify_time <> "" or time_reconnect <> "" Then
         If address <> "" and InStr(address,";") > 0 Then 'list of address
             ip_list=Split(address,";")
@@ -95,87 +82,86 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
             not_replaced = True
             for each ip in ip_list
                 If not_replaced Then
-                  strNewText = Replace(strNewText, "<address>0.0.0.0</address>", "<address>" & ip & "</address>")
+                  strText = Replace(strText, "<address>0.0.0.0</address>", "<address>" & ip & "</address>")
                   not_replaced = False
                 Else
                     formatted_list = formatted_list & "    <server>" & vbCrLf
                     formatted_list = formatted_list & "      <address>" & ip & "</address>" & vbCrLf
                     formatted_list = formatted_list & "      <port>1514</port>" & vbCrLf
-                    formatted_list = formatted_list & "      <protocol>udp</protocol>" & vbCrLf
+                    formatted_list = formatted_list & "      <protocol>tcp</protocol>" & vbCrLf
                     formatted_list = formatted_list & "    </server>" & vbCrLf
                 End If
             next
-            strNewText = Replace(strNewText, "    </server>", formatted_list)
+            strText = Replace(strText, "    </server>", formatted_list)
         ElseIf address <> "" and InStr(strText,"<address>") > 0 Then
-            strNewText = Replace(strNewText, "<address>0.0.0.0</address>", "<address>" & address & "</address>")
+            strText = Replace(strText, "<address>0.0.0.0</address>", "<address>" & address & "</address>")
 
         ElseIf address <> "" Then 'single address
             ' Fix for the legacy server-ip and server-hostname keynames
             Set re = new regexp
             re.Pattern = "<server-ip>.*</server-ip>"
             re.Global = True
-            strNewText = re.Replace(strNewText, "<server-ip>" & address & "</server-ip>")
+            strText = re.Replace(strText, "<server-ip>" & address & "</server-ip>")
             re.Pattern = "<server-hostname>.*</server-hostname>"
             re.Global = True
-            strNewText = re.Replace(strNewText, "<server-hostname>" & address & "</server-hostname>")
-            strNewText = Replace(strNewText, "<address>0.0.0.0</address>", "<address>" & address & "</address>")
+            strText = re.Replace(strText, "<server-hostname>" & address & "</server-hostname>")
+            strText = Replace(strText, "<address>0.0.0.0</address>", "<address>" & address & "</address>")
         End If
 
         If server_port <> "" Then ' manager server_port
-            If InStr(strNewText, "<port>") > 0 Then
-                strNewText = Replace(strNewText, "<port>1514</port>", "<port>" & server_port & "</port>")
+            If InStr(strText, "<port>") > 0 Then
+                strText = Replace(strText, "<port>1514</port>", "<port>" & server_port & "</port>")
             Else
                 ' Fix for the legacy files (not including the key)
-                strNewText = Replace(strNewText, "</client>", "  <port>" & server_port & "</port>"& vbCrLf &"  </client>")
+                strText = Replace(strText, "</client>", "  <port>" & server_port & "</port>"& vbCrLf &"  </client>")
             End If
 
         End If
 
         If protocol <> "" Then
-            If InStr(strNewText, "<protocol>") > 0 Then
+            If InStr(strText, "<protocol>") > 0 Then
                 Set re = new regexp
                 re.Pattern = "<protocol>.*</protocol>"
                 re.Global = True
-                strNewText = re.Replace(strNewText, "<protocol>" & LCase(protocol) & "</protocol>")
+                strText = re.Replace(strText, "<protocol>" & LCase(protocol) & "</protocol>")
             Else
             ' Fix for the legacy files (not including the key)
-                strNewText = Replace(strNewText, "</client>", "   <protocol>" & LCase(protocol) & "</protocol>"& vbCrLf &"  </client>")
+                strText = Replace(strText, "</client>", "   <protocol>" & LCase(protocol) & "</protocol>"& vbCrLf &"  </client>")
             End If
         End If
 
         If notify_time <> "" Then
-            If InStr(strNewText, "<notify_time>") > 0 Then
+            If InStr(strText, "<notify_time>") > 0 Then
                 Set re = new regexp
                 re.Pattern = "<notify_time>.*</notify_time>"
                 re.Global = True
-                strNewText = re.Replace(strNewText, "<notify_time>" & notify_time & "</notify_time>")
+                strText = re.Replace(strText, "<notify_time>" & notify_time & "</notify_time>")
             Else
                 ' Fix for the legacy files (not including the key)
-                strNewText = Replace(strNewText, "</client>", "   <notify_time>" & notify_time & "</notify_time>"& vbCrLf &"  </client>")
+                strText = Replace(strText, "</client>", "   <notify_time>" & notify_time & "</notify_time>"& vbCrLf &"  </client>")
             End If
         End If
 
         If time_reconnect <> "" Then 'TODO fix the - and use _
-            If InStr(strNewText, "<time-reconnect>") > 0 Then
+            If InStr(strText, "<time-reconnect>") > 0 Then
                 Set re = new regexp
                 re.Pattern = "<time-reconnect>.*</time-reconnect>"
                 re.Global = True
-                strNewText = re.Replace(strNewText, "<time-reconnect>" & time_reconnect & "</time-reconnect>")
+                strText = re.Replace(strText, "<time-reconnect>" & time_reconnect & "</time-reconnect>")
             Else
                 ' Fix for the legacy files (not including the key)
-                strNewText = Replace(strNewText, "</client>", "   <time-reconnect>" & time_reconnect & "</time-reconnect>"& vbCrLf &"  </client>")
+                strText = Replace(strText, "</client>", "   <time-reconnect>" & time_reconnect & "</time-reconnect>"& vbCrLf &"  </client>")
 
             End If
         End If
 
+        ' Writing the ossec.conf file
+        const ForWriting = 2
+        Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForWriting)
+        objFile.WriteLine strText
+        objFile.Close
 
     End If
-
-    ' Writing the ossec.conf file
-    const ForWriting = 2
-    Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForWriting)
-    objFile.WriteLine strNewText
-    objFile.Close
 
 	If Not objFSO.fileExists(home_dir & "local_internal_options.conf") Then
 
@@ -208,6 +194,32 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
 
 End If
 
+If GetVersion() >= 6 Then
+	Set WshShell = CreateObject("WScript.Shell")
+
+	' Remove last backslash from home_dir
+	install_dir = Left(home_dir, Len(home_dir) - 1)
+
+	setPermsInherit = "icacls """ & install_dir & """ /inheritancelevel:d"
+	WshShell.run setPermsInherit
+
+	remUserPerm = "icacls """ & install_dir & """ /remove *S-1-5-32-545"
+	WshShell.run remUserPerm
+
+	' Remove Everyone group for ossec.conf
+	remEveryonePerms = "icacls """ & home_dir & "ossec.conf" & """ /remove *S-1-1-0"
+	WshShell.run remEveryonePerms
+End If
+
 config = 0
 
+End Function
+
+Private Function GetVersion()
+	Set objWMIService = GetObject("winmgmts:\\.\root\cimv2")
+	Set colItems = objWMIService.ExecQuery("Select * from Win32_OperatingSystem",,48)
+
+	For Each objItem in colItems
+		GetVersion = Split(objItem.Version,".")(0)
+	Next
 End Function

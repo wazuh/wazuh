@@ -27,7 +27,7 @@ extern w_queue_t * winexec_queue;
 OSList *timeout_list;
 OSListNode *timeout_node;
 
-void *win_exec_main(void * args);
+DWORD WINAPI win_exec_main(void * args);
 
 /* Shut down win-execd properly */
 static void WinExecd_Shutdown()
@@ -70,8 +70,6 @@ int WinExecd_Start()
         return (0);
     }
 
-    CheckExecConfig();
-
     /* Create list for timeout */
     timeout_list = OSList_Create();
     if (!timeout_list) {
@@ -84,14 +82,14 @@ int WinExecd_Start()
     /* Start up message */
     minfo(STARTUP_MSG, getpid());
 
-    w_create_thread(NULL, 0, (LPTHREAD_START_ROUTINE)win_exec_main,
-            winexec_queue, 0, NULL);
+    w_create_thread(NULL, 0, win_exec_main,
+                    winexec_queue, 0, NULL);
 
     return (1);
 }
 
 // Create a thread to run windows AR simultaneous
-void *win_exec_main(__attribute__((unused)) void * args) {
+DWORD WINAPI win_exec_main(__attribute__((unused)) void * args) {
     while(1) {
         WinExecdRun(queue_pop_ex(winexec_queue));
     }

@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 from unittest.mock import patch, MagicMock
 
@@ -42,6 +43,7 @@ def test_read_cluster_config():
             utils.read_cluster_config()
 
     with patch('wazuh.core.cluster.utils.get_ossec_conf', return_value={'cluster': default_cluster_config}):
+        utils.read_config.cache_clear()
         default_cluster_config.pop('hidden')
         default_cluster_config['disabled'] = 'no'
         config = utils.read_cluster_config()
@@ -108,6 +110,8 @@ def test_manager_restart():
 
 def test_get_cluster_items():
     """Verify the cluster files information."""
+    utils.get_cluster_items.cache_clear()
+
     with patch('os.path.abspath', side_effect=FileNotFoundError):
         with pytest.raises(WazuhException, match='.* 3005 .*'):
             utils.get_cluster_items()
@@ -132,10 +136,6 @@ def test_get_cluster_items():
                                '/etc/lists/': {'permissions': 432, 'source': 'master', 'files': ['all'],
                                                'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
                                                'extra_valid': False, 'description': 'user CDB lists'},
-                               '/queue/agent-info/': {'permissions': 432, 'source': 'worker',
-                                                      'files': ['agent-info.merged'], 'recursive': False,
-                                                      'restart': False, 'remove_subdirs_if_empty': False,
-                                                      'extra_valid': False, 'description': 'agent status'},
                                '/queue/agent-groups/': {'permissions': 432, 'source': 'master', 'files': ['all'],
                                                         'recursive': True, 'restart': False,
                                                         'remove_subdirs_if_empty': False, 'extra_valid': True,
@@ -163,7 +163,11 @@ def test_ClusterFilter():
 
 def test_ClusterLogger():
     """Verify that ClusterLogger defines the logger used by wazuh-clusterd."""
-    cluster_logger = utils.ClusterLogger(foreground_mode=False, log_path='remove.log', tag='{asctime} {levelname}: [{tag}] [{subtag}] {message}', debug_level=1)
+    current_logger_path = os.path.join(os.path.dirname(__file__), 'testing.log')
+    cluster_logger = utils.ClusterLogger(foreground_mode=False, log_path=current_logger_path,
+                                         tag='{asctime} {levelname}: [{tag}] [{subtag}] {message}', debug_level=1)
     cluster_logger.setup_logger()
 
     assert cluster_logger.logger.level == logging.DEBUG
+
+    os.path.exists(current_logger_path) and os.remove(current_logger_path)

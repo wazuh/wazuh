@@ -18,7 +18,7 @@ int sock_fail_time;
 #ifndef WIN32
 
 /* Start the Message Queue. type: WRITE||READ */
-int StartMQ(const char *path, short int type)
+int StartMQ(const char *path, short int type, short int n_attempts)
 {
     if (type == READ) {
         return (OS_BindUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 512));
@@ -26,23 +26,25 @@ int StartMQ(const char *path, short int type)
 
     /* We give up to 21 seconds for the other end to start */
     else {
-        int rc = 0;
-        int i;
+        int rc = 0, sleep_time = 5;
+        short int attempt = 0;
 
-        /* Wait up to connect to the unix domain.
-         * After three errors, exit.
-         */
-         for (i = 0; i < MAX_OPENQ_ATTEMPS; i++) {
-             if (rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256), rc >= 0) {
-                 break;
-             }
-             sleep(1);
-         }
-         if (i == MAX_OPENQ_ATTEMPS) {
-             merror(QUEUE_ERROR, path, strerror(errno));
-             return OS_INVALID;
-         }
+        // If n_attempts is 0, trying to reconnect infinitely
+        while ((rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256)), rc < 0){
+            attempt++;
+            mdebug1("Can't connect to '%s': %s (%d). Attempt: %d", path, strerror(errno), errno, attempt);
+            if (n_attempts != INFINITE_OPENQ_ATTEMPTS && attempt == n_attempts) {
+                break;
+            }
+            sleep(sleep_time += 5);
+        }
 
+        if (rc < 0) {
+            merror(QUEUE_ERROR, path, strerror(errno));
+            return OS_INVALID;
+        }
+
+        mdebug1("Connected succesfully to '%s' after %d attempts", path, attempt);
         mdebug1(MSG_SOCKET_SIZE, OS_getsocketsize(rc));
         return (rc);
     }

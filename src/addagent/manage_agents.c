@@ -74,7 +74,7 @@ char *chomp(char *str)
 
 #ifndef CLIENT
 
-int add_agent(int json_output, int no_limit)
+int add_agent(int json_output)
 {
     int i = 1;
     FILE *fp;
@@ -223,7 +223,6 @@ int add_agent(int json_output, int no_limit)
             double antiquity = OS_AgentAntiquity_ID(id_exist);
 
             if (env_remove_dup && (antiquity >= force_antiquity || antiquity < 0)) {
-                OS_BackupAgentInfo_ID(id_exist);
                 OS_RemoveAgent(id_exist);
             } else {
                 if (json_output) {
@@ -312,11 +311,6 @@ int add_agent(int json_output, int no_limit)
         /* If user accepts to add */
         if (user_input[0] == 'y' || user_input[0] == 'Y') {
             if (!authd_running) {
-                if ( !no_limit && limitReached() ) {
-                    merror(AG_MAX_ERROR, MAX_AGENTS - 2);
-                    merror_exit(CONFIG_ERROR, KEYS_FILE);
-                }
-
                 time3 = time(0);
                 rand2 = os_random();
 
@@ -340,8 +334,8 @@ int add_agent(int json_output, int no_limit)
                  * Random 5: Final key
                  */
 
-                snprintf(str1, STR_SIZE, "%d%s%d", (int)(time3 - time2), name, (int)rand1);
-                snprintf(str2, STR_SIZE, "%d%s%s%d", (int)(time2 - time1), ip, id, (int)rand2);
+                os_snprintf(str1, STR_SIZE, "%d%s%d", (int)(time3 - time2), name, (int)rand1);
+                os_snprintf(str2, STR_SIZE, "%d%s%s%d", (int)(time2 - time1), ip, id, (int)rand2);
 
                 OS_MD5_Str(str1, -1, md1);
                 OS_MD5_Str(str2, -1, md2);
@@ -650,9 +644,6 @@ int limitReached() {
 
     fclose(fp);
 
-    /* Check for maximum agent size */
-    if ( counter >= (MAX_AGENTS - 2) )
-        return 1;
     return 0;
 
 }

@@ -9,7 +9,7 @@ stages:
   - name: Try to show the decoders of the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -18,6 +18,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - &full_item_decoders
@@ -38,12 +39,11 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the decoders of the system (try q parameter to bypass a denied resource)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -52,17 +52,17 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the decoders of the system (list)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -71,6 +71,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -84,7 +85,6 @@ stages:
                 - wazuh
           total_affected_items: 0
           total_failed_items: 5
-        message: !anystr
 
 ---
 test_name: GET DECODERS FILES RBAC
@@ -94,7 +94,7 @@ stages:
   - name: Try to show the decoders files of the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -103,6 +103,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - filename: 0006-json_decoders.xml
@@ -123,12 +124,11 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Try to show the decoders files of the system (list)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -137,6 +137,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - filename: 0006-json_decoders.xml
@@ -152,29 +153,20 @@ stages:
                 - 0005-wazuh_decoders.xml
           total_affected_items: 2
           total_failed_items: 1
-        message: !anystr
 
   - name: Try to show the decoders files of the system (no permissions)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
         filename: 0160-netscaler_decoders.xml,0005-wazuh_decoders.xml
-    response:
-      status_code: 400
-      json: &permissions_denied
-        code: 4000
-        dapi_errors:
-          master-node:
-            error: !anystr
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
+    response: &permissions_denied
+      status_code: 403
+      json:
+        error: 4000
 
 ---
 test_name: GET DECODERS FILES RBAC (Download)
@@ -184,7 +176,7 @@ stages:
   - name: Try to get one decoder file
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files/0025-apache_decoders.xml/download"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0025-apache_decoders.xml/download"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -196,14 +188,12 @@ stages:
   - name: Try to get one decoder file (no permissions)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files/0005-wazuh_decoders.xml/download"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0005-wazuh_decoders.xml/download"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
-      status_code: 400
-      json:
-        <<: *permissions_denied
+      <<: *permissions_denied
 
 ---
 test_name: GET DECODERS PARENTS RBAC
@@ -213,7 +203,7 @@ stages:
   - name: Try to show the decoder parents in the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/parents"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/parents"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -222,6 +212,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - &full_item_decoders_parent
@@ -242,4 +233,3 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr

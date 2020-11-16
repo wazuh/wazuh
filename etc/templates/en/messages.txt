@@ -105,7 +105,6 @@ tostart="To start Wazuh"
 tostop="To stop Wazuh"
 configat="The configuration can be viewed or modified at"
 addserveragent="In order to connect agent and server, you need to add each agent to the server."
-runma="Run the 'manage_agents' to add or remove them"
 presskey="Press ENTER to continue"
 
 # Update

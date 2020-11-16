@@ -28,6 +28,7 @@ int wdb_inventory_save_hw(wdb_t * wdb, const char * payload) {
 
     if (scan_time == NULL) {
         merror("DB(%s) HW save request with no timestamp path argument.", wdb->id);
+        cJSON_Delete(data);
         return -1;
     }
 
@@ -35,6 +36,7 @@ int wdb_inventory_save_hw(wdb_t * wdb, const char * payload) {
 
     if (!cJSON_IsObject(attributes)) {
         merror("DB(%s) HW save request with no attributes argument.", wdb->id);
+        cJSON_Delete(data);
         return -1;
     }
 
@@ -84,6 +86,7 @@ int wdb_inventory_save_os(wdb_t * wdb, const char * payload) {
 
     if (scan_time == NULL) {
         merror("DB(%s) OS save request with no timestamp path argument.", wdb->id);
+        cJSON_Delete(data);
         return -1;
     }
 
@@ -91,6 +94,7 @@ int wdb_inventory_save_os(wdb_t * wdb, const char * payload) {
 
     if (!cJSON_IsObject(attributes)) {
         merror("DB(%s) OS save request with no attributes argument.", wdb->id);
+        cJSON_Delete(data);
         return -1;
     }
 
@@ -145,6 +149,7 @@ int wdb_inventory_save_network(wdb_t * wdb, const char * payload) {
 
     if (scan_time == NULL) {
         merror("DB(%s) network save request with no timestamp path argument.", wdb->id);
+        cJSON_Delete(data);
         return -1;
     }
 
@@ -152,6 +157,7 @@ int wdb_inventory_save_network(wdb_t * wdb, const char * payload) {
 
     if (!cJSON_IsObject(attributes)) {
         merror("DB(%s) network save request with no attributes argument.", wdb->id);
+        cJSON_Delete(data);
         return -1;
     }
 
@@ -279,6 +285,7 @@ int wdb_inventory_delete_network(wdb_t * wdb, const char * payload) {
 
     if (!cJSON_IsObject(attributes)) {
         merror("DB(%s) network delete request with no attributes argument.", wdb->id);
+        cJSON_Delete(data);
         return -1;
     }
 
@@ -309,6 +316,7 @@ int wdb_inventory_save_program(wdb_t * wdb, const char * payload) {
 
     if (scan_time == NULL) {
         merror("DB(%s) program save request with no timestamp path argument.", wdb->id);
+        cJSON_Delete(data);
         return -1;
     }
 
@@ -316,6 +324,7 @@ int wdb_inventory_save_program(wdb_t * wdb, const char * payload) {
 
     if (!cJSON_IsObject(attributes)) {
         merror("DB(%s) program save request with no attributes argument.", wdb->id);
+        cJSON_Delete(data);
         return -1;
     }
 
@@ -370,6 +379,7 @@ int wdb_inventory_delete_program(wdb_t * wdb, const char * payload) {
 
     if (!cJSON_IsObject(attributes)) {
         merror("DB(%s) program delete request with no attributes argument.", wdb->id);
+        cJSON_Delete(data);
         return -1;
     }
 
@@ -404,6 +414,7 @@ int wdb_inventory_save_hotfix(wdb_t * wdb, const char * payload) {
 
     if (scan_time == NULL) {
         merror("DB(%s) hotfix save request with no timestamp path argument.", wdb->id);
+        cJSON_Delete(data);
         return -1;
     }
 
@@ -411,6 +422,7 @@ int wdb_inventory_save_hotfix(wdb_t * wdb, const char * payload) {
 
     if (!cJSON_IsObject(attributes)) {
         merror("DB(%s) hotfix save request with no attributes argument.", wdb->id);
+        cJSON_Delete(data);
         return -1;
     }
 
@@ -443,6 +455,7 @@ int wdb_inventory_delete_hotfix(wdb_t * wdb, const char * payload) {
 
     if (!cJSON_IsObject(attributes)) {
         merror("DB(%s) hotfix delete request with no attributes argument.", wdb->id);
+        cJSON_Delete(data);
         return -1;
     }
 
@@ -473,6 +486,7 @@ int wdb_inventory_save_port(wdb_t * wdb, const char * payload) {
 
     if (scan_time == NULL) {
         merror("DB(%s) port save request with no timestamp path argument.", wdb->id);
+        cJSON_Delete(data);
         return -1;
     }
 
@@ -480,6 +494,7 @@ int wdb_inventory_save_port(wdb_t * wdb, const char * payload) {
 
     if (!cJSON_IsObject(attributes)) {
         merror("DB(%s) port save request with no attributes argument.", wdb->id);
+        cJSON_Delete(data);
         return -1;
     }
 
@@ -530,6 +545,7 @@ int wdb_inventory_delete_port(wdb_t * wdb, const char * payload) {
 
     if (!cJSON_IsObject(attributes)) {
         merror("DB(%s) port delete request with no attributes argument.", wdb->id);
+        cJSON_Delete(data);
         return -1;
     }
 
@@ -566,6 +582,7 @@ int wdb_inventory_save_process(wdb_t * wdb, const char * payload) {
 
     if (scan_time == NULL) {
         merror("DB(%s) process save request with no timestamp path argument.", wdb->id);
+        cJSON_Delete(data);
         return -1;
     }
 
@@ -573,6 +590,7 @@ int wdb_inventory_save_process(wdb_t * wdb, const char * payload) {
 
     if (!cJSON_IsObject(attributes)) {
         merror("DB(%s) process save request with no attributes argument.", wdb->id);
+        cJSON_Delete(data);
         return -1;
     }
 
@@ -666,6 +684,7 @@ int wdb_inventory_delete_process(wdb_t * wdb, const char * payload) {
 
     if (!cJSON_IsObject(attributes)) {
         merror("DB(%s) process delete request with no attributes argument.", wdb->id);
+        cJSON_Delete(data);
         return -1;
     }
 

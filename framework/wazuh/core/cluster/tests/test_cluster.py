@@ -66,6 +66,7 @@ def test_read_empty_configuration():
     Test reading an empty cluster configuration
     """
     with patch('wazuh.core.cluster.utils.get_ossec_conf') as m:
+        wazuh.core.cluster.utils.read_config.cache_clear()
         m.side_effect = WazuhException(1106)
         configuration = wazuh.core.cluster.utils.read_config()
         configuration['disabled'] = 'yes' if configuration['disabled'] else 'no'
@@ -159,3 +160,16 @@ def test_unmerge_agent_info(stat_mock, agent_info, exception):
         agent_infos = list(
             wazuh.core.cluster.cluster.unmerge_agent_info('agent-info', '/random/path', 'agent-info.merged'))
         assert len(agent_infos) == (1 if exception is None else 0)
+
+
+def test_update_cluster_control_with_failed():
+    """Check if cluster_control json is updated as expected"""
+    ko_files = {
+        'missing': {'/test_file0': 'test',
+                    '/test_file3': 'ok'},
+        'shared': {'/test_file1': 'test'},
+        'extra': {'/test_file2': 'test'}
+    }
+    wazuh.core.cluster.cluster.update_cluster_control_with_failed(['/test_file0', '/test_file1', 'test_file2'], ko_files)
+
+    assert ko_files == {'missing': {'/test_file3': 'ok'}, 'shared': {}, 'extra': {'/test_file2': 'test', '/test_file1': 'test'}}

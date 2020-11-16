@@ -179,7 +179,7 @@ os_info *get_win_version()
                 info->os_name = strdup("Microsoft Windows XP");
             }
             else if (osvi.dwMinorVersion == 2) {
-                pGNSI = (PGNSI) GetProcAddress(GetModuleHandle("kernel32.dll"),"GetNativeSystemInfo");
+                pGNSI = (PGNSI)(LPSYSTEM_INFO)GetProcAddress(GetModuleHandle("kernel32.dll"),"GetNativeSystemInfo");
                 if (NULL != pGNSI) {
                     pGNSI(&si);
                 } else {

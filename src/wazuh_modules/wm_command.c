@@ -152,13 +152,10 @@ void * wm_command_main(wm_command_t * command) {
 
 #ifndef WIN32
     if (!command->ignore_output) {
-        int i;
 
-        for (i = 0; command->queue_fd = StartMQ(DEFAULTQPATH, WRITE), command->queue_fd < 0 && i < WM_MAX_ATTEMPTS; i++) {
-            w_time_delay(1000 * WM_MAX_WAIT);
-        }
+        command->queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
-        if (i == WM_MAX_ATTEMPTS) {
+        if (command->queue_fd < 0) {
             mterror(WM_COMMAND_LOGTAG, "Can't connect to queue.");
             pthread_exit(NULL);
         }
@@ -181,7 +178,7 @@ void * wm_command_main(wm_command_t * command) {
         }
 
         mtinfo(WM_COMMAND_LOGTAG, "Starting command '%s'.", command->tag);
-        
+
         int status = 0;
         char *output = NULL;
         switch (wm_exec(command->full_command, command->ignore_output ? NULL : &output, &status, command->timeout, NULL)) {

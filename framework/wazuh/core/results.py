@@ -55,8 +55,8 @@ class AbstractWazuhResult(collections.abc.MutableMapping):
         del self.dikt[key]
 
     def __deepcopy__(self, memodict=None):
-        obj = self.__class__({})
-        obj.__dict__ = deepcopy(dict(self.__dict__))
+        obj = type(self)(self.__dict__)
+        obj.__dict__.update(self.__dict__)
         return obj
 
     def __eq__(self, other):
@@ -259,6 +259,7 @@ class WazuhResult(AbstractWazuhResult):
         return result
 
     def render(self):
+        self.dikt['error'] = 0
         return self.dikt
 
 
@@ -526,6 +527,20 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
                 return sorted(list(ids), key=int)
             except ValueError:
                 return sorted(list(ids))
+
+        def set_error_code():
+            COMPLETE = 0
+            FAILED = 1
+            PARTIAL = 2
+
+            if self.total_affected_items > 0 and self.total_failed_items > 0:
+                return PARTIAL
+            elif self.total_affected_items > 0:
+                return COMPLETE
+            elif self.total_failed_items > 0:
+                return FAILED
+            return COMPLETE
+
         ordered_failed_items = sorted(self.failed_items.items(), key=lambda x: x[0].code)
         result = {
             'affected_items': self.affected_items,
@@ -540,8 +555,10 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
                              for exc, ids in ordered_failed_items],
             **self.dikt
         }
+
         return {'data': result,
-                'message': self.message
+                'message': self.message,
+                'error': set_error_code()
                 }
 
 

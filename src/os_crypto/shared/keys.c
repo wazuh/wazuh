@@ -102,6 +102,8 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
     keys->keyentries[keys->keysize]->fp = NULL;
     keys->keyentries[keys->keysize]->inode = 0;
     keys->keyentries[keys->keysize]->sock = -1;
+    keys->keyentries[keys->keysize]->updating_time = 0;
+    keys->keyentries[keys->keysize]->rids_node = NULL;
     w_mutex_init(&keys->keyentries[keys->keysize]->mutex, NULL);
 
     if (keys->flags.rehash_keys) {
@@ -164,7 +166,7 @@ int OS_CheckKeys()
 }
 
 /* Read the authentication keys */
-void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit)
+void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
 {
     FILE *fp;
 
@@ -305,12 +307,6 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
             /* Clear the memory */
             __memclear(id, name, ip, key, KEYSIZE + 1);
 
-            /* Check for maximum agent size */
-            if ( !no_limit && keys->keysize >= (MAX_AGENTS - 2) ) {
-                merror(AG_MAX_ERROR, MAX_AGENTS - 2);
-                merror_exit(CONFIG_ERROR, keys_file);
-            }
-
             continue;
         }
 
@@ -320,7 +316,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
         /* Clear one last time before leaving */
         __memclear(id, name, ip, key, KEYSIZE + 1);
     }
-    
+
     /* Check if there are any agents available */
     if (keys->keysize == 0) {
         if (pass_empty_keyfile) {
@@ -354,6 +350,10 @@ void OS_FreeKey(keyentry *key) {
     /* Close counter */
     if (key->fp) {
         fclose(key->fp);
+    }
+
+    if (key->rids_node) {
+        free(key->rids_node);
     }
 
     w_mutex_destroy(&key->mutex);
@@ -398,6 +398,8 @@ void OS_FreeKeys(keystore *keys)
         keys->removed_keys_size = 0;
     }
 
+    linked_queue_free(keys->opened_fp_queue);
+
     /* Free structure */
     free(keys->keyentries);
     keys->keyentries = NULL;
@@ -426,7 +428,7 @@ void OS_UpdateKeys(keystore *keys)
     /* Read keys */
     mdebug2("OS_ReadKeys");
     minfo(ENC_READ);
-    OS_ReadKeys(keys, keys->flags.rehash_keys, keys->flags.save_removed, 0);
+    OS_ReadKeys(keys, keys->flags.rehash_keys, keys->flags.save_removed);
 
     mdebug2("OS_StartCounter");
     OS_StartCounter(keys);
@@ -659,7 +661,9 @@ int OS_DeleteSocket(keystore * keys, int sock) {
     snprintf(strsock, sizeof(strsock), "%d", sock);
 
     if (entry = OSHash_Delete_ex(keys->keyhash_sock, strsock), entry) {
-        entry->sock = -1;
+        if (sock == entry->sock) {
+            entry->sock = -1;
+        }
         return 0;
     } else {
         return -1;

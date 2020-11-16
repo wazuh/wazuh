@@ -748,9 +748,7 @@ int OS_SetSocketSize(int sock, int mode, int max_msg_size) {
 }
 
 
-/* Send secure TCP to Cluster message
- * Return 0 on success or OS_SOCKTERR on error.
- */
+/* Send secure TCP Cluster message */
 int OS_SendSecureTCPCluster(int sock, const void * command, const void * payload, size_t length) {
     const unsigned COMMAND_SIZE = 12;
     const unsigned HEADER_SIZE =  8;
@@ -795,9 +793,7 @@ int OS_SendSecureTCPCluster(int sock, const void * command, const void * payload
 }
 
 
-/* Receive secure TCP message
- * Return recvval on success or OS_SOCKTERR on error.
- */
+/* Receive secure TCP Cluster message */
 int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length) {
     int recvval;
     const unsigned CMD_SIZE = 12;
@@ -810,20 +806,21 @@ int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length) {
     switch(recvval){
         case -1:
             return recvval;
-            break;
 
         case 0:
             return recvval;
-            break;
 
         default:
             if ((uint32_t)recvval != HEADER_SIZE) {
                 return -1;
             }
     }
+   
+    if (strncmp(buffer+8, "err --------", CMD_SIZE) == 0) {
+        return -2;
+    }
 
     size = wnet_order_big(*(uint32_t*)(buffer + 4));
-
     if (size > length) {
         mwarn("Cluster message size (%u) exceeds buffer length (%u)", (unsigned)size, (unsigned)length);
         return -1;

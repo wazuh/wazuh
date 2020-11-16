@@ -10,7 +10,7 @@ from datetime import datetime
 from time import strftime
 
 from wazuh.core import common
-from wazuh.core.database import Connection
+from wazuh.core.wdb import WazuhDBConnection
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
 
 """
@@ -20,7 +20,7 @@ Wazuh is a python package to manage OSSEC.
 
 """
 
-__version__ = '4.0.0'
+__version__ = '4.1.0'
 
 
 msg = "\n\nPython 2.7 or newer not found."
@@ -31,9 +31,9 @@ msg += "\n  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rh/python27/root/usr/li
 try:
     from sys import version_info as python_version
     if python_version.major < 2 or (python_version.major == 2 and python_version.minor < 7):
-        raise WazuhException(999, msg)
+        raise WazuhInternalError(999, msg)
 except Exception as e:
-    raise WazuhException(999, msg)
+    raise WazuhInternalError(999, msg)
 
 
 class Wazuh:
@@ -51,7 +51,7 @@ class Wazuh:
         self.installation_date = common.installation_date
         self.type = common.install_type
         self.path = common.ossec_path
-        self.max_agents = 'N/A'
+        self.max_agents = 'unlimited'
         self.openssl_support = 'N/A'
         self.ruleset_version = None
         self.tz_offset = None
@@ -90,18 +90,10 @@ class Wazuh:
         """
         # info DB if possible
         try:
-            conn = Connection(common.database_path_global)
-
-            query = "SELECT * FROM info"
-            conn.execute(query)
-
-            for tuple_ in conn:
-                if tuple_[0] == 'max_agents':
-                    self.max_agents = tuple_[1]
-                elif tuple_[0] == 'openssl_support':
-                    self.openssl_support = tuple_[1]
+            wdb_conn = WazuhDBConnection()
+            open_ssl = wdb_conn.execute("global sql SELECT value FROM info WHERE key = 'openssl_support'")[0]['value']
+            self.openssl_support = open_ssl
         except Exception:
-            self.max_agents = "N/A"
             self.openssl_support = "N/A"
 
         # Ruleset version

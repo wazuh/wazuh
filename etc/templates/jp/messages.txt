@@ -108,7 +108,6 @@ tostart="Wazuh を開始させます"
 tostop="Wazuh を停止させます"
 configat="以下のファイルで設定についての確認と変更ができます"
 addserveragent="エージェントを追加する前にアクセスするための認証が必要になります．"
-runma="エージェントを追加するか削除する際は 'manage_agents' を実行してください"
 presskey="続けるには ENTER を押してください"
 
 # Update

@@ -52,6 +52,12 @@ class LocalClientHandler(client.AbstractClient):
             self.response = self.in_str[data].payload
             self.response_available.set()
             return b'ok', b'Distributed api response received'
+        elif command == b'ok':
+            if data.startswith(b'Error'):
+                return b'err', self.process_error_from_peer(data)
+            self.response = data
+            self.response_available.set()
+            return b'ok', b'Sendsync response received'
         elif command == b'control_res':
             if data.startswith(b'Error'):
                 return b'err', self.process_error_from_peer(data)
@@ -62,6 +68,10 @@ class LocalClientHandler(client.AbstractClient):
             self.response = data
             self.response_available.set()
             return b'ok', b'Response received'
+        elif command == b'err':
+            self.response = data
+            self.response_available.set()
+            return b'ok', b'Error response received'
         else:
             return super().process_request(command, data)
 
@@ -75,6 +85,9 @@ class LocalClientHandler(client.AbstractClient):
         self.response = data
         self.response_available.set()
         return data
+
+    def connection_lost(self, exc):
+        self.on_con_lost.set_result(True)
 
     def connection_lost(self, exc):
         self.on_con_lost.set_result(True)
@@ -111,10 +124,10 @@ class LocalClient(client.AbstractClientManager):
                                                                                          fernet_key='', manager=self,
                                                                                          cluster_items=self.cluster_items),
                                              path='{}/queue/cluster/c-internal.sock'.format(common.ossec_path))
-        except ConnectionRefusedError:
-            raise exception.WazuhException(3012)
+        except (ConnectionRefusedError, FileNotFoundError):
+            raise exception.WazuhInternalError(3012)
         except MemoryError:
-            raise exception.WazuhException(1119)
+            raise exception.WazuhInternalError(1119)
         except Exception as e:
             raise exception.WazuhInternalError(3009, str(e))
 
@@ -131,15 +144,15 @@ class LocalClient(client.AbstractClientManager):
         if result == 'There are no connected worker nodes':
             request_result = {}
         else:
-            if command == b'dapi' or command == b'dapi_forward' or command == b'send_file' or \
-                    result == 'Sent request to master node':
+            if command == b'dapi' or command == b'dapi_forward' or command == b'send_file' or command == b'sendasync' \
+                    or result == 'Sent request to master node':
                 try:
                     timeout = None if wait_for_complete \
                         else self.cluster_items['intervals']['communication']['timeout_api_request']
                     await asyncio.wait_for(self.protocol.response_available.wait(), timeout=timeout)
                     request_result = self.protocol.response.decode()
                 except asyncio.TimeoutError:
-                    raise exception.WazuhException(3020)
+                    raise exception.WazuhInternalError(3020)
             else:
                 request_result = result
         return request_result

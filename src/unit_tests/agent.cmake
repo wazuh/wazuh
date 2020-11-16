@@ -13,3 +13,4 @@ set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -lcmocka -fprofile-arcs -ftest-c
 
 add_subdirectory(wazuh_modules/syscollector)
 add_subdirectory(client-agent)
+add_subdirectory(wazuh_modules)

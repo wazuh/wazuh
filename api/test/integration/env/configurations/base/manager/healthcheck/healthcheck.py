@@ -1,6 +1,5 @@
 import os
 import socket
-import time
 
 
 def check(result):
@@ -12,12 +11,14 @@ def check(result):
 
 def get_master_health():
     os.system("/var/ossec/bin/agent_control -ls > /tmp/output.txt")
-    return check(os.popen("diff -q /tmp/output.txt /configuration_files/healthcheck/agent_control_check.txt").read())
+    os.system("/var/ossec/bin/ossec-control status > /tmp/daemons.txt")
+    return check(os.popen("diff -q /tmp/output.txt /configuration_files/healthcheck/agent_control_check.txt").read()) or \
+           check(os.popen("diff -q /tmp/daemons.txt /configuration_files/healthcheck/master_daemons_check.txt").read())
 
 
 def get_manager_health():
     os.system("/var/ossec/bin/ossec-control status > /tmp/daemons.txt")
-    return check(os.popen("diff -q /tmp/daemons.txt /tmp/daemons.txt").read())
+    return check(os.popen("diff -q /tmp/daemons.txt /configuration_files/healthcheck/master_daemons_check.txt").read())
 
 
 if __name__ == "__main__":

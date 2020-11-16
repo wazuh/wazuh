@@ -90,9 +90,9 @@ char *get_agent_ip();
 void start_agent(int is_startup);
 
 /* Connect to the server */
-bool connect_server(int initial_id);
+bool connect_server(int initial_id, bool verbose);
 
-/** 
+/**
  * Tries to enroll to a server indicated by server_rip
  * @return 0 on success
  *         -1 on error

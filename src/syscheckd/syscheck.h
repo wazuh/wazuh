@@ -257,7 +257,6 @@ void fim_rt_delay();
 
 /**
  * @brief Checks for deleted files, deletes them from the agent's database and sends a deletion event on scheduled scans
- *
  */
 void check_deleted_files();
 
@@ -360,11 +359,9 @@ void free_syscheck_dirtb_data(char *data);
 void delete_subdirectories_watches(char *dir);
 
 /**
- * @brief Count inotify watches
- *
- * @return Number of inotify watches
+ * @brief Remove stale watches from the realtime hashmap
  */
-unsigned int count_watches();
+void realtime_sanitize_watch_map();
 
 /**
  * @brief Check if a file has changed
@@ -373,6 +370,49 @@ unsigned int count_watches();
  * @return The diff alert generated, NULL on error
  */
 char *seechanges_addfile(const char *filename) __attribute__((nonnull));
+
+/**
+ * @brief Delete stored compressed file for "path"
+ *
+ * @param path Path to the file which compressed version needs to be deleted
+ */
+void seechanges_delete_compressed_file(const char *path);
+
+/**
+ * @brief Get queue/diff/local path from file path
+ *
+ * @param path Path to the file
+ * @return Path to the queue/diff/local folder
+ */
+char *seechanges_get_diff_path(char *path);
+
+/**
+ * @brief Estimate whether the compressed file will fit in the disk_quota limit
+ *
+ * @param file_size Uncompressed file size
+ * @return true for files which compressed version could fit, false otherwise
+ */
+int seechanges_estimate_compression(const float file_size);
+
+/**
+ * @brief Changed the value of syscheck.comp_estimation_perc based on the actual compression rate
+ *
+ * @param compressed_size Size of the compressed file
+ * @param uncompressed_size Size of the file before the compression
+ */
+void seechanges_modify_estimation_percentage(const float compressed_size, const float uncompressed_size);
+
+#ifndef WIN32
+
+/**
+ * @brief Check if the filename is symlink to a directory
+ *
+ * @param filename Path to file
+ * @return TRUE if filename is a symlink to a directory, FALSE otherwise
+ */
+int symlink_to_dir(const char *filename);
+
+#endif
 
 /**
  * @brief Frees the memory of a Whodata event structure
@@ -855,5 +895,11 @@ void fim_send_scan_info(fim_scan_event event);
  *
  */
 void fim_check_db_state();
+
+/**
+ * @brief Checks the size of the queue/diff/local folder
+ *
+ */
+void fim_diff_folder_size();
 
 #endif /* SYSCHECK_H */

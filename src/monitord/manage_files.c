@@ -47,11 +47,13 @@ void manage_log(const char * logdir, int cday, int cmon, int cyear, const struct
     OS_SignLog(logfile, logfile_old, ext);
 
     if (mond.compress) {
-        snprintf(logfile_r, OS_FLSIZE + 1, "%s.%s", logfile, ext);
+        os_snprintf(logfile_r, OS_FLSIZE + 1, "%s.%s", logfile, ext);
         OS_CompressLog(logfile_r);
 
-        for (i = 1; snprintf(logfile_r, OS_FLSIZE + 1, "%s-%.3d.%s", logfile, i, ext), !IsFile(logfile_r) && FileSize(logfile_r) > 0; i++) {
-            OS_CompressLog(logfile_r);
+        for (i = 1; !IsFile(logfile_r) && FileSize(logfile_r) > 0; i++) {
+            if (os_snprintf(logfile_r, OS_FLSIZE + 1, "%s-%.3d.%s", logfile, i, ext) < OS_FLSIZE + 1) {
+                OS_CompressLog(logfile_r);
+            }
         }
     }
 }

@@ -54,7 +54,7 @@ static void help_makelists(void)
     exit(1);
 }
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 __attribute((weak))
 #endif
 int main(int argc, char **argv)
@@ -165,8 +165,23 @@ int main(int argc, char **argv)
     {
         char **listfiles;
         listfiles = Config.lists;
+        OSList * list_msg = OSList_Create();
+        OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
+
         while (listfiles && *listfiles) {
-            if (Lists_OP_LoadList(*listfiles) < 0) {
+            if (Lists_OP_LoadList(*listfiles, &os_analysisd_cdblists, list_msg) < 0) {
+                char * msg;
+                OSListNode * node_log_msg;
+                node_log_msg = OSList_GetFirstNode(list_msg);
+                while (node_log_msg) {
+                    os_analysisd_log_msg_t * data_msg = node_log_msg->data;
+                    msg = os_analysisd_string_log_msg(data_msg);
+                    merror("%s", msg);
+                    os_free(msg);
+                    os_analysisd_free_log_msg(&data_msg);
+                    OSList_DeleteCurrentlyNode(list_msg);
+                    node_log_msg = OSList_GetFirstNode(list_msg);
+                }
                 merror_exit(LISTS_ERROR, *listfiles);
             }
             free(*listfiles);
@@ -174,10 +189,11 @@ int main(int argc, char **argv)
         }
         free(Config.lists);
         Config.lists = NULL;
+        os_free(list_msg);
     }
 
     printf(" Since Wazuh v3.11.0, this binary is deprecated\n");
     printf(" CDB lists are now compiled at manager start-up time as well as each time ossec-logtest is run.\n");
-    Lists_OP_MakeAll(force, 1);
+    Lists_OP_MakeAll(force, 1, &os_analysisd_cdblists);
     exit(0);
 }

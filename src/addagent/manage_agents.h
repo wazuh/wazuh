@@ -18,7 +18,7 @@
 char *read_from_user(void);
 
 /* Add or remove an agent */
-int add_agent(int json_output, int no_limit);
+int add_agent(int json_output);
 int remove_agent(int json_output);
 
 /* Extract or import a key */
@@ -29,8 +29,8 @@ int k_bulkload(const char *cmdbulk);
 /**
  * @brief Converts invalid hostnames to valid by eliminating
  * invalid characters
- * 
- * @param u_name name to be converted 
+ *
+ * @param u_name name to be converted
  * */
 void OS_ConvertToValidAgentName(char *u_name);
 
@@ -45,20 +45,10 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
 int OS_RemoveAgent(const char *id);
 double OS_AgentAntiquity(const char *name, const char *ip);
 double OS_AgentAntiquity_ID(const char *id);
-void OS_BackupAgentInfo(const char *id, const char *name, const char *ip);
-void OS_BackupAgentInfo_ID(const char *id);
-char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_t now);
 void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time_t now);
 void OS_RemoveAgentTimestamp(const char *id);
 void OS_RemoveAgentGroup(const char *id);
 void FormatID(char *id);
-
-/* Load gid and uid.
- * Call before OS_BackupAgentInfo(), OS_BackupAgentInfo_ID() or OS_CreateBackupDir().
- * Should be called before chroot().
- * Returns 0 on success or -1 on failure.
- */
-int OS_LoadUid();
 
 /* Print available agents */
 int print_agents(int print_status, int active_only, int inactive_only, int csv_output, cJSON *json_output);

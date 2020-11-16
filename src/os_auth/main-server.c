@@ -29,6 +29,7 @@
 #include <sys/wait.h>
 #include "check_cert.h"
 #include "os_crypto/md5/md5_op.h"
+#include "wazuh_db/wdb.h"
 #include "wazuhdb_op.h"
 #include "os_err.h"
 
@@ -60,10 +61,8 @@ volatile int write_pending = 0;
 volatile int running = 1;
 
 extern struct keynode *queue_insert;
-extern struct keynode *queue_backup;
 extern struct keynode *queue_remove;
 extern struct keynode * volatile *insert_tail;
-extern struct keynode * volatile *backup_tail;
 extern struct keynode * volatile *remove_tail;
 
 pthread_mutex_t mutex_keys = PTHREAD_MUTEX_INITIALIZER;
@@ -117,7 +116,7 @@ char *__generatetmppass()
     OS_MD5_Str(rand3, -1, md3);
     OS_MD5_Str(rand4, -1, md4);
 
-    snprintf(str1, STR_SIZE, "%d%d%s%d%s%s",(int)time(0), rand1, getuname(), rand2, md3, md4);
+    os_snprintf(str1, STR_SIZE, "%d%d%s%d%s%s",(int)time(0), rand1, getuname(), rand2, md3, md4);
     OS_MD5_Str(str1, -1, md1);
     fstring = strdup(md1);
     free(rand3);
@@ -161,9 +160,9 @@ int main(int argc, char **argv)
     struct sockaddr_in _nc;
     struct timeval timeout;
     socklen_t _ncl;
-    pthread_t thread_dispatcher;
-    pthread_t thread_writer;
-    pthread_t thread_local_server;
+    pthread_t thread_dispatcher = 0;
+    pthread_t thread_writer = 0;
+    pthread_t thread_local_server = 0;
     fd_set fdset;
 
     /* Initialize some variables */
@@ -179,7 +178,6 @@ int main(int argc, char **argv)
         int use_pass = 0;
         int auto_method = 0;
         int validate_host = 0;
-        int no_limit = 0;
         const char *ciphers = NULL;
         const char *ca_cert = NULL;
         const char *server_cert = NULL;
@@ -286,7 +284,7 @@ int main(int argc, char **argv)
                     break;
 
                 case 'L':
-                    no_limit = 1;
+                    mwarn("This option no longer applies. The agent limit has been removed.");
                     break;
 
                 default:
@@ -341,10 +339,6 @@ int main(int argc, char **argv)
         if (port) {
             config.port = port;
         }
-
-        if (no_limit) {
-            config.flags.register_limit = 0;
-        }
     }
 
     /* Exit here if test config is set */
@@ -367,9 +361,16 @@ int main(int argc, char **argv)
         }
     }
 
-    if (w_is_worker()) {
-        minfo("Cluster worker node: Disabling Authd daemon.");
+    switch(w_is_worker()){
+    case -1:
+        merror("Invalid option at cluster configuration");
         exit(0);
+    case 1:
+        config.worker_node = TRUE;
+        break;
+    case 0:
+        config.worker_node = FALSE;
+        break;
     }
 
     /* Start daemon -- NB: need to double fork and setsid */
@@ -448,7 +449,7 @@ int main(int argc, char **argv)
         exit(1);
     }
     fclose(fp);
-    
+
     /* Start SSL */
     ctx = os_ssl_keys(1, dir, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate);
     if (!ctx) {
@@ -472,11 +473,6 @@ int main(int argc, char **argv)
         shost[sizeof(shost) - 1] = '\0';
     }
 
-    /* Load ossec uid and gid for creating backups */
-    if (OS_LoadUid() < 0) {
-        merror_exit("Couldn't get user and group id.");
-    }
-
     /* Chroot */
     if (Privsep_Chroot(dir) < 0)
         merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
@@ -492,7 +488,6 @@ int main(int argc, char **argv)
     /* Initialize queues */
     client_queue = queue_init(AUTH_POOL);
     insert_tail = &queue_insert;
-    backup_tail = &queue_backup;
     remove_tail = &queue_remove;
 
     /* Start working threads */
@@ -581,7 +576,7 @@ int main(int argc, char **argv)
     w_cond_signal(&cond_pending);
     w_mutex_unlock(&mutex_keys);
 
-    
+
     pthread_join(thread_dispatcher, NULL);
     if (!config.worker_node) {
         pthread_join(thread_writer, NULL);
@@ -595,7 +590,7 @@ int main(int argc, char **argv)
 
 /* Thread for dispatching connection pool */
 void* run_dispatcher(__attribute__((unused)) void *arg) {
-    char ip[IPSIZE + 1];    
+    char ip[IPSIZE + 1];
     int ret;
     char* buf = NULL;
     SSL *ssl;
@@ -606,10 +601,10 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
     /* Initialize some variables */
     memset(ip, '\0', IPSIZE + 1);
-    
+
     if (!config.worker_node) {
         OS_PassEmptyKeyfile();
-        OS_ReadKeys(&keys, 0, !config.flags.clear_removed, 1);
+        OS_ReadKeys(&keys, 0, !config.flags.clear_removed);
     }
     mdebug1("Dispatch thread ready");
 
@@ -649,7 +644,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         }
 
         os_calloc(OS_SIZE_65536 + OS_SIZE_4096 + 1, sizeof(char), buf);
-        buf[0] = '\0'; 
+        buf[0] = '\0';
         ret = wrap_SSL_read(ssl, buf, OS_SIZE_65536 + OS_SIZE_4096);
         if (ret <= 0) {
             switch (ssl_error(ssl, ret)) {
@@ -664,9 +659,9 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             os_free(client);
             free(buf);
             continue;
-        }      
-        buf[ret] = '\0';  
-             
+        }
+        buf[ret] = '\0';
+
         mdebug2("Request received: <%s>", buf);
         bool enrollment_ok = FALSE;
         char *agentname = NULL;
@@ -674,34 +669,34 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         char* new_id = NULL;
         char* new_key = NULL;
         if(OS_SUCCESS == w_auth_parse_data(buf, response, authpass, ip, &agentname, &centralized_group)){
-            if (config.worker_node) {                
+            if (config.worker_node) {
                 minfo("Dispatching request to master node");
                 if( 0 == w_request_agent_add_clustered(response, agentname, ip, centralized_group, &new_id, &new_key, config.flags.force_insert?config.force_time:-1, NULL) ) {
                     enrollment_ok = TRUE;
-                } 
+                }
             }
             else {
-                w_mutex_lock(&mutex_keys);                
+                w_mutex_lock(&mutex_keys);
                 if(OS_SUCCESS == w_auth_validate_data(response, ip, agentname, centralized_group)){
                     if(OS_SUCCESS == w_auth_add_agent(response, ip, agentname, centralized_group, &new_id, &new_key)){
                         enrollment_ok = TRUE;
                     }
                 }
-                w_mutex_unlock(&mutex_keys); 
+                w_mutex_unlock(&mutex_keys);
             }
         }
 
         if(enrollment_ok)
         {
-            snprintf(response, 2048, "OSSEC K:'%s %s %s %s'\n\n", new_id, agentname, ip, new_key);
+            snprintf(response, 2048, "OSSEC K:'%s %s %s %s'", new_id, agentname, ip, new_key);
             minfo("Agent key generated for '%s' (requested by %s)", agentname, ip);
             ret = SSL_write(ssl, response, strlen(response));
 
             if (config.worker_node) {
                 if (ret < 0) {
                     merror("SSL write error (%d)", ret);
-                    
-                    ERR_print_errors_fp(stderr);       
+
+                    ERR_print_errors_fp(stderr);
                     if (0 != w_request_agent_remove_clustered(NULL, new_id, TRUE)) {
                         merror("Agent key unable to be shared with %s and unable to delete from master node", agentname);
                     }
@@ -710,7 +705,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     }
                 }
             }
-            else{     
+            else{
                 if (ret < 0) {
                     merror("SSL write error (%d)", ret);
                     merror("Agent key not saved for %s", agentname);
@@ -722,16 +717,16 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     write_pending = 1;
                     w_cond_signal(&cond_pending);
                 }
-            }  
+            }
         }
         else {
             SSL_write(ssl, response, strlen(response));
-            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-            SSL_write(ssl, response, strlen(response));  
+            snprintf(response, 2048, "ERROR: Unable to add agent");
+            SSL_write(ssl, response, strlen(response));
         }
-            
+
         SSL_free(ssl);
-        close(client->socket);   
+        close(client->socket);
         os_free(client);
         os_free(buf);
         os_free(agentname);
@@ -750,7 +745,6 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 void* run_writer(__attribute__((unused)) void *arg) {
     keystore *copy_keys;
     struct keynode *copy_insert;
-    struct keynode *copy_backup;
     struct keynode *copy_remove;
     struct keynode *cur;
     struct keynode *next;
@@ -769,13 +763,10 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
         copy_keys = OS_DupKeys(&keys);
         copy_insert = queue_insert;
-        copy_backup = queue_backup;
         copy_remove = queue_remove;
         queue_insert = NULL;
-        queue_backup = NULL;
         queue_remove = NULL;
         insert_tail = &queue_insert;
-        backup_tail = &queue_backup;
         remove_tail = &queue_remove;
         write_pending = 0;
         w_mutex_unlock(&mutex_keys);
@@ -806,19 +797,6 @@ void* run_writer(__attribute__((unused)) void *arg) {
             free(cur);
         }
 
-        for (cur = copy_backup; cur; cur = next) {
-            next = cur->next;
-            OS_BackupAgentInfo(cur->id, cur->name, cur->ip);
-
-            snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
-            wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-            free(cur->id);
-            free(cur->name);
-            free(cur->ip);
-            free(cur);
-        }
-
         for (cur = copy_remove; cur; cur = next) {
             char full_name[FILE_SIZE + 1];
             next = cur->next;
@@ -827,6 +805,10 @@ void* run_writer(__attribute__((unused)) void *arg) {
             OS_RemoveCounter(cur->id);
             OS_RemoveAgentTimestamp(cur->id);
             OS_RemoveAgentGroup(cur->id);
+
+            if (wdb_remove_agent(atoi(cur->id), &wdb_sock) != OS_SUCCESS) {
+                mdebug1("Could not remove the information stored in Wazuh DB of the agent %s.", cur->id);
+            }
 
             snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
             wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));

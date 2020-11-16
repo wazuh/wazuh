@@ -1,10 +1,10 @@
 
 | Actions                  | Resources | Allow  | Deny                         |
 |--------------------------|-----------|--------|------------------------------|
-| manager:read_config      | *         |        | *                            |
+| manager:read             | *         | *      |                              |
 | manager:delete_file      | file:path |        | etc/rules/local_rules.xml    |
 | manager:read_file        | file:path |        | *                            |
 | manager:upload_file      | *         | *      |                              |
-| manager:restart          | *         |        | *                            |
+| manager:restart          | *         | *      |                              |
 | manager:read_api_config  | *         |        | *                            |
 | manager:update_api_config| *         |        | *                            |

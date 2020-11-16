@@ -15,6 +15,7 @@
 #define SECURE_CONN 2
 
 #include "shared.h"
+#include "global-config.h"
 
 /* socklen_t header */
 typedef struct _remoted {
@@ -33,6 +34,9 @@ typedef struct _remoted {
     int nocmerged;
     socklen_t peer_size;
     long queue_size;
+    bool worker_node;
+    int rids_closing_time;
+    _Config global;
 } remoted;
 
 #endif /* CLOGREMOTE_H */

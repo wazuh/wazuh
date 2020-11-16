@@ -9,13 +9,16 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscheck"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscheck"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: all
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '000'
@@ -34,20 +37,20 @@ stages:
           failed_items: []
           total_affected_items: 13
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscheck"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscheck"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '001'
@@ -57,7 +60,6 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/ciscat/results
@@ -67,13 +69,14 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/ciscat/results"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - &ciscat_response
@@ -99,20 +102,20 @@ stages:
           failed_items: []
           total_affected_items: 8
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/ciscat/results"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003'
+        agents_list: '001,003'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *ciscat_response
@@ -122,7 +125,6 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/hardware
@@ -132,13 +134,14 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hardware"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - &hardware_response
@@ -166,20 +169,20 @@ stages:
           failed_items: []
           total_affected_items: 9
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hardware"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *hardware_response
@@ -193,7 +196,6 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/netaddr
@@ -203,13 +205,14 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netaddr"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netaddr"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - &netaddr_response
@@ -231,20 +234,20 @@ stages:
           failed_items: []
           total_affected_items: 9
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netaddr"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netaddr"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netaddr_response
@@ -258,7 +261,6 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/netiface
@@ -268,13 +270,14 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netiface"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - &netiface_response
@@ -307,20 +310,20 @@ stages:
           failed_items: []
           total_affected_items: 9
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netiface"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response
@@ -334,7 +337,6 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/netproto
@@ -344,13 +346,14 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netproto"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netproto"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - &netproto_response
@@ -371,20 +374,20 @@ stages:
           failed_items: []
           total_affected_items: 9
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netproto"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netproto"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netproto_response
@@ -398,7 +401,6 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/os
@@ -408,13 +410,14 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/os"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/os"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - &os_response
@@ -444,20 +447,20 @@ stages:
           failed_items: []
           total_affected_items: 9
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/os"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/os"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *os_response
@@ -471,7 +474,6 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/packages
@@ -481,38 +483,38 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/packages"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages?wait_for_complete=true"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/packages"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/ports
@@ -522,13 +524,14 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/ports"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - &ports_response
@@ -548,33 +551,41 @@ stages:
                 state: !anystr
                 tx_queue: !anyint
             - <<: *ports_response
+              agent_id: '000'
             - <<: *ports_response
+              agent_id: '001'
             - <<: *ports_response
+              agent_id: '002'
             - <<: *ports_response
+              agent_id: '003'
             - <<: *ports_response
+              agent_id: '004'
             - <<: *ports_response
+              agent_id: '005'
             - <<: *ports_response
+              agent_id: '006'
             - <<: *ports_response
+              agent_id: '007'
             - <<: *ports_response
-            - <<: *ports_response
-            - <<: *ports_response
+              agent_id: '008'
           failed_items: []
-          total_affected_items: 12
+          total_affected_items: !anyint
           total_failed_items: 0
         message: !anystr
 
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/ports"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *ports_response
@@ -588,7 +599,6 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/processes
@@ -598,38 +608,38 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/processes"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/processes"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
 ---
 test_name: GET /experimental/syscollector/hotfixes
@@ -639,35 +649,41 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hotfixes"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hotfixes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_validate_syscollector_hotfix
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: 1 # Only the agent 000 will have results
+          total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr
 
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hotfixes"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hotfixes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '000,003,005,007' # Only the agent 000 will have results
+        agents_list: '000,003,005,007' # Only the agent 000 will have results
     response:
       status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_validate_syscollector_hotfix
+        extra_kwargs:
+          experimental: true
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: 1 # Only the agent 000 will have results
+          total_affected_items: !anyint
           total_failed_items: 0
-        message: !anystr

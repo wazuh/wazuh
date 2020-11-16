@@ -14,10 +14,11 @@ from xml.etree import ElementTree
 
 import pytest
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         from wazuh.core.utils import *
         from wazuh.core import exception
+        from wazuh.core.agent import WazuhDBQueryAgents
 
 # all necessary params
 
@@ -114,6 +115,19 @@ def test_previous_moth(month):
     result = previous_month(month)
 
     assert isinstance(result, datetime)
+
+
+@pytest.mark.parametrize('string, substring, n, expected_index', [
+    ("string_1_", "_", 1, 6),
+    ("string_2_", "_", 2, 8),
+    ("string_3_", "_", 3, -1),
+    ("string4", "_", 1, -1)
+])
+def test_find_nth(string, substring, n, expected_index):
+    """Test find_nth function."""
+    result = find_nth(string, substring, n)
+
+    assert result == expected_index
 
 
 @patch('wazuh.core.utils.check_output', return_value='{"data": "Some data", "message": "Some message", "error":0}')
@@ -865,12 +879,11 @@ def test_WazuhDBQuery_parse_filters(mock_query, mock_filter, mock_socket_conn, m
 
 
 @pytest.mark.parametrize('field_name, field_filter, q_filter', [
-    ('status', None, None),
+    ('status', 'field', {'value': 'active', 'operator': 'LIKE', 'field': 'status$0'}),
     ('date1', None, {'value': '1', 'operator': None}),
     ('os.name', 'field', {'value': '2019-07-16 09:21:56', 'operator': 'LIKE', 'field': 'status$0'}),
     ('os.name', None, {'value': None, 'operator': 'LIKE', 'field': 'status$0'}),
-    ('os.name', 'field', {'value': '2019-07-16 09:21:56', 'operator': 'LIKE', 'field': 'status$0'}),
-
+    ('os.name', 'field', {'value': '2019-07-16 09:21:56', 'operator': 'LIKE', 'field': 'status$0'})
 ])
 @patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
@@ -883,7 +896,7 @@ def test_WazuhDBQuery_protected_process_filter(mock_date, mock_status, mock_sock
     """Tests WazuhDBQuery._process_filter."""
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                          search=None, select=None,
-                         fields={'os.name': 'ubuntu', 'os.version': '18.04'},
+                         fields={'os.name': 'ubuntu', 'os.version': '18.04', 'status': 'active'},
                          default_sort_field=None, query=None,
                          backend=WazuhDBBackend(agent_id=0), count=5,
                          get_data=None, date_fields=['date1', 'date2'])
@@ -891,9 +904,7 @@ def test_WazuhDBQuery_protected_process_filter(mock_date, mock_status, mock_sock
     query._process_filter(field_name, field_filter, q_filter)
 
     mock_conn_db.assert_called_once_with()
-    if field_name == 'status':
-        mock_status.assert_any_call(q_filter)
-    elif field_name in ['date1', 'date2']:
+    if field_name in ['date1', 'date2']:
         mock_date.assert_any_call(q_filter, field_name)
 
 
@@ -1065,38 +1076,41 @@ def test_WazuhDBQuery_protected_filter_date(mock_socket_conn, mock_isfile, mock_
         mock_conn_db.assert_called_once_with()
 
 
-@patch('wazuh.core.utils.glob.glob', return_value=True)
+@pytest.mark.parametrize('execute_value, expected_result', [
+    ([{'id': 99}, {'id': 100}], {'items': [{'id': '099'}, {'id': '100'}], 'totalItems': 0}),
+    ([{'id': 1}], {'items': [{'id': '001'}], 'totalItems': 0}),
+    ([{'id': i} for i in range(30000)], {'items': [{'id': str(i).zfill(3)} for i in range(30000)], 'totalItems': 0})
+])
 @patch("wazuh.core.database.isfile", return_value=True)
-@patch('sqlite3.connect')
-@patch('wazuh.core.utils.WazuhDBQuery._add_select_to_query')
-@patch('wazuh.core.utils.WazuhDBQuery._add_filters_to_query')
-@patch('wazuh.core.utils.WazuhDBQuery._add_search_to_query')
-@patch('wazuh.core.utils.WazuhDBQuery._get_total_items')
-@patch('wazuh.core.utils.WazuhDBQuery._add_sort_to_query')
-@patch('wazuh.core.utils.WazuhDBQuery._add_limit_to_query')
-@patch('wazuh.core.utils.WazuhDBQuery._format_data_into_dictionary')
-@patch('wazuh.core.utils.SQLiteBackend._get_data')
-def test_WazuhDBQuery_run(mock_data, mock_dict, mock_limit, mock_sort, mock_items, mock_search, mock_filters,
-                          mock_select, mock_sqli_conn, mock_isfile, mock_glob):
-    """Test WazuhDBQuery.run function."""
-    query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
-                         search=None, select={'os.name'},
-                         fields={'os.name': 'ubuntu', 'os.version': '18.04'},
-                         default_sort_field=None, query=None, count=5,
-                         backend=SQLiteBackend(common.database_path),
-                         get_data=True, min_select_fields={'os.version'})
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_general_run(mock_socket_conn, mock_isfile, execute_value, expected_result):
+    """Test WazuhDBQuery.general_run function."""
+    with patch('wazuh.core.utils.WazuhDBBackend.execute', return_value=execute_value):
+        query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select={'id'},
+                                   query=None, count=False, get_data=True, remove_extra_fields=False)
 
-    query.run()
+        assert query.general_run() == expected_result
 
-    mock_sqli_conn.assert_called_once()
-    mock_select.assert_called_once_with()
-    mock_filters.assert_called_once_with()
-    mock_search.assert_called_once_with()
-    mock_items.assert_called_once_with()
-    mock_sort.assert_called_once_with()
-    mock_limit.assert_called_once_with()
-    mock_data.assert_called_once_with()
-    mock_dict.assert_called_once_with()
+
+@pytest.mark.parametrize('execute_value, rbac_ids, negate, final_rbac_ids, expected_result', [
+    ([{'id': 99}, {'id': 100}], ['001', '099', '101'], False, [{'id': 99}], {'items': [{'id': '099'}], 'totalItems': 1}),
+    ([{'id': 1}], [], True, [{'id': 1}], {'items': [{'id': '001'}], 'totalItems': 1}),
+    ([{'id': i} for i in range(30000)], [str(i).zfill(3) for i in range(15001)], True,
+     [{'id': i} for i in range(15001, 30000)],
+     {'items': [{'id': str(i).zfill(3)} for i in range(15001, 30000)], 'totalItems': 14999})
+])
+@patch("wazuh.core.database.isfile", return_value=True)
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_oversized_run(mock_socket_conn, mock_isfile, execute_value, rbac_ids, negate,
+                                    final_rbac_ids, expected_result):
+    """Test WazuhDBQuery.oversized_run function."""
+    with patch('wazuh.core.utils.WazuhDBBackend.execute', side_effect=[execute_value, final_rbac_ids]):
+        query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select={'id'},
+                                   query=None, count=True, get_data=True, remove_extra_fields=False)
+        query.legacy_filters['rbac_ids'] = rbac_ids
+        query.rbac_negate = negate
+
+        assert query.oversized_run() == expected_result
 
 
 @patch('wazuh.core.utils.glob.glob', return_value=True)
@@ -1458,7 +1472,8 @@ def test_select_array(select, required_fields, expected_result):
     except WazuhError as e:
         assert e.code == 1724
 
-@patch('wazuh.common.ossec_path', new='/var/ossec')
+
+@patch('wazuh.core.common.ossec_path', new='/var/ossec')
 @patch('wazuh.core.utils.glob.glob')
 def test_get_files(mock_glob):
     """Test whether get_files() returns expected paths."""
@@ -1470,3 +1485,19 @@ def test_get_files(mock_glob):
 
     assert 'etc/ossec.conf' in result
     assert all('/var/ossec' not in x for x in result)
+
+
+@pytest.mark.parametrize('detail, value, attribs, details', [
+    ('new', '4', {'attrib': 'attrib_value'}, {'actual': '3'}),
+    ('actual', '4', {'new_attrib': 'attrib_value', 'new_attrib2': 'whatever'}, {'actual': {'pattern': '3'}}),
+])
+def test_add_dynamic_detail(detail, value, attribs, details):
+    """Test add_dynamic_detail core rule function."""
+    add_dynamic_detail(detail, value, attribs, details)
+    assert detail in details.keys()
+    if detail == next(iter(details.keys())):
+        assert details[detail]['pattern'].endswith(value)
+    else:
+        assert details[detail]['pattern'] == value
+    for key, value in attribs.items():
+        assert details[detail][key] == value

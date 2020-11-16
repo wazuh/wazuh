@@ -114,19 +114,29 @@ int OS_SendSecureTCP(int sock, uint32_t size, const void * msg);
  */
 int OS_RecvSecureTCP(int sock, char * ret,uint32_t size);
 
-
-/* Send secure TCP Cluster message
- * Return 0 on success or OS_SOCKTERR on error.
- */
+/**
+ * @brief Send secure TCP Cluster message 
+ * @param sock Socket to write on
+ * @param command Command to send
+ * @param payload Payload of the command to send
+ * @param length Length of the message to send
+ * @return recvval on success
+ * @return OS_SOCKTERR on error
+ * */
 int OS_SendSecureTCPCluster(int sock, const void * command, const void * payload, size_t length);
 
-/* Receive secure TCP message
- * Return recvval on success or OS_SOCKTERR on error.
- */
-int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length);
+/**
+ * @brief Receive secure TCP Cluster message
+ * @param sock Socket to read from
+ * @param ret Response read
+ * @param length Max length to be read
+ * @return recvval on success
+ * @return -1 on socket errors
+ * @return -2 on cluster errors
+ * */
+int OS_RecvSecureClusterTCP(int sock, char* ret, size_t length);
 
-// Byte ordering
-
+/* Byte ordering */
 uint32_t wnet_order(uint32_t value);
 
 /* Set the maximum buffer size for the socket */

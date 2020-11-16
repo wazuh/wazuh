@@ -93,7 +93,7 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
     /* Listen socket */
     server_sock = OS_BindUnixDomain(fluent->sock_path, SOCK_DGRAM, OS_MAXSTR);
     if (server_sock < 0) {
-        merror("Unable to bind to socket '%s': (%d) %s.", WM_LOCAL_SOCK, errno, strerror(errno));
+        merror("Unable to bind to socket '%s': (%d) %s.", fluent->sock_path, errno, strerror(errno));
         pthread_exit(NULL);
     }
 

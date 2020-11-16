@@ -83,7 +83,6 @@ void* wm_oscap_main(wm_oscap *oscap) {
 // Setup module
 
 void wm_oscap_setup(wm_oscap *_oscap) {
-    int i;
 
     oscap = _oscap;
     wm_oscap_check();
@@ -98,10 +97,9 @@ void wm_oscap_setup(wm_oscap *_oscap) {
 
     // Connect to socket
 
-    for (i = 0; (queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        w_time_delay(1000 * WM_MAX_WAIT);
+    queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
-    if (i == WM_MAX_ATTEMPTS) {
+    if (queue_fd < 0) {
         mterror(WM_OSCAP_LOGTAG, "Can't connect to queue.");
         pthread_exit(NULL);
     }
@@ -300,7 +298,7 @@ cJSON *wm_oscap_dump(const wm_oscap *oscap) {
     cJSON *wm_scp = cJSON_CreateObject();
 
     sched_scan_dump(&(oscap->scan_config), wm_scp);
-    
+
     if (oscap->flags.enabled) cJSON_AddStringToObject(wm_scp,"disabled","no"); else cJSON_AddStringToObject(wm_scp,"disabled","yes");
     if (oscap->flags.scan_on_start) cJSON_AddStringToObject(wm_scp,"scan-on-start","yes"); else cJSON_AddStringToObject(wm_scp,"scan-on-start","no");
     cJSON_AddNumberToObject(wm_scp,"timeout",oscap->timeout);

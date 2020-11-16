@@ -5,9 +5,10 @@ import json
 
 from wazuh import WazuhInternalError
 from wazuh.core import common
+from wazuh.core.agent import Agent
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.common import as_wazuh_object, WazuhJSONEncoder
-from wazuh.core.agent import Agent
+from wazuh.core.exception import WazuhError
 from wazuh.core.utils import filter_array_by_query
 
 
@@ -32,7 +33,7 @@ async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, li
         # get totalItems after applying q filter
         result['totalItems'] = len(result['items'])
         # apply offset and limit filters
-        result['items'] = result['items'][offset:offset+limit]
+        result['items'] = result['items'][offset:offset + limit]
 
     return result
 
@@ -73,7 +74,7 @@ async def get_agents(lc: local_client.LocalClient, filter_node=None, filter_stat
                       'filters': {'status': ','.join(filter_status), 'node_name': ','.join(filter_node)},
                       'limit': None,
                       'select': list(select_fields)
-                      },
+                  },
                   'from_cluster': False,
                   'wait_for_complete': False
                   }
@@ -97,5 +98,7 @@ async def get_system_nodes():
         lc = local_client.LocalClient()
         result = await get_nodes(lc)
         return [node['name'] for node in result['items']]
-    except Exception:
-        raise WazuhInternalError(3012)
+    except WazuhInternalError as e:
+        if e.code == 3012:
+            return WazuhError(3013)
+        raise e

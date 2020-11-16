@@ -113,7 +113,7 @@ int main(int argc, char **argv)
             if (!test_config) {
                 minfo(FIM_DIRECTORY_NOPROVIDED);
             }
-            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL, NULL);
+            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL, NULL, -1);
         } else if (!syscheck.dir[0]) {
             if (!test_config) {
                 minfo(FIM_DIRECTORY_NOPROVIDED);
@@ -175,22 +175,12 @@ int main(int argc, char **argv)
     }
 
     /* Connect to the queue */
-    if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-        minfo(FIM_WAITING_QUEUE, DEFAULTQPATH, errno, strerror(errno), 5);
 
-        sleep(5);
-        if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            /* more 10 seconds of wait */
-            minfo(FIM_WAITING_QUEUE, DEFAULTQPATH, errno, strerror(errno), 10);
-            sleep(10);
-            if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                merror_exit(QUEUE_FATAL, DEFAULTQPATH);
-            }
-        }
+    if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+        merror_exit(QUEUE_FATAL, DEFAULTQPATH);
     }
 
     if (!syscheck.disabled) {
-
         /* Start up message */
         minfo(STARTUP_MSG, (int)getpid());
 
@@ -207,7 +197,25 @@ int main(int argc, char **argv)
 
             if (syscheck.tag && syscheck.tag[r] != NULL)
                 mdebug1(FIM_TAG_ADDED, syscheck.tag[r], syscheck.dir[r]);
+
+            // Print diff file size limit
+            if ((syscheck.opts[r] & CHECK_SEECHANGES) && syscheck.file_size_enabled) {
+                mdebug2(FIM_DIFF_FILE_SIZE_LIMIT, syscheck.diff_size_limit[r], syscheck.dir[r]);
+            }
+
             r++;
+        }
+
+        if (!syscheck.file_size_enabled) {
+            minfo(FIM_FILE_SIZE_LIMIT_DISABLED);
+        }
+
+        // Print maximum disk quota to be used by the queue/diff/local folder
+        if (syscheck.disk_quota_enabled) {
+            mdebug2(FIM_DISK_QUOTA_LIMIT, syscheck.disk_quota_limit);
+        }
+        else {
+            minfo(FIM_DISK_QUOTA_LIMIT_DISABLED);
         }
 
         /* Print ignores. */

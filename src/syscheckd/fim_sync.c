@@ -19,8 +19,7 @@
 #include "integrity_op.h"
 #include "fim_db.h"
 
-#ifdef UNIT_TESTING
-#include "unit_tests/wrappers/common.h"
+#ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when unit testing */
 #define static
 

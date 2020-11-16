@@ -51,6 +51,8 @@ typedef struct wm_aws_service {
     char *aws_account_alias;            // AWS account alias
     char *only_logs_after;              // Date (YYYY-MMM-DD) to only parse logs after
     char *regions;                      // CSV of regions to parse
+    char *aws_log_groups;               // CSV of log groups to parse
+    unsigned int remove_log_streams:1;  // Remove the log stream from the log group
     struct wm_aws_service *next;     // Pointer to next
 } wm_aws_service;
 

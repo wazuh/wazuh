@@ -166,6 +166,7 @@ def manager_restart():
     finally:
         fcntl.lockf(lock_file, fcntl.LOCK_UN)
         lock_file.close()
+        read_config.cache_clear()
 
     return WazuhResult({'message': 'Restart request sent'})
 
@@ -180,7 +181,7 @@ def get_cluster_items():
                  filter(lambda x: 'permissions' in x, cluster_items['files'].values())))
         return cluster_items
     except Exception as e:
-        raise WazuhException(3005, str(e))
+        raise WazuhError(3005, str(e))
 
 
 @lru_cache()

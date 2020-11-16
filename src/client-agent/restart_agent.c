@@ -59,7 +59,7 @@ void * restartAgent() {
 	#else
 
 	char *output = NULL;
-	wcom_dispatch(req, length, &output);
+	wcom_dispatch(req, &output);
 	if (output) free(output);
 
 	#endif

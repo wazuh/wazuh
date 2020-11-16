@@ -11,6 +11,14 @@
 #include "shared.h"
 #include "os_net/os_net.h"
 #include "remoted.h"
+#include "wazuh_db/wdb.h"
+
+#ifdef WAZUH_UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
 
 /* Global variables */
 int sender_pool;
@@ -26,10 +34,12 @@ static void * rem_handler_main(__attribute__((unused)) void * args);
 void * rem_keyupdate_main(__attribute__((unused)) void * args);
 
 /* Handle each message received */
-static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client);
+static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock);
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
+
+STATIC void * close_fp_main(void * args);
 
 /* Status of keypolling wodle */
 static char key_request_available = 0;
@@ -103,6 +113,10 @@ void HandleSecure()
         }
     }
 
+    // Reset all the agents' connection status in Wazuh DB
+    if (OS_SUCCESS != wdb_reset_agents_connection(NULL))
+        mwarn("Unable to reset the agents' connection status. Possible incorrect statuses until the agents get connected to the manager.");
+
     // Create message handler thread pool
     {
         int worker_pool = getDefine_Int("remoted", "worker_pool", 1, 16);
@@ -118,19 +132,20 @@ void HandleSecure()
     /* Connect to the message queue
      * Exit if it fails.
      */
-    if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
+    if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
-    minfo(AG_AX_AGENTS, MAX_AGENTS);
-
     /* Read authentication keys */
     minfo(ENC_READ);
-    OS_ReadKeys(&keys, 1, 0, 0);
+    OS_ReadKeys(&keys, 1, 0);
     OS_StartCounter(&keys);
 
     // Key reloader thread
     w_create_thread(rem_keyupdate_main, NULL);
+
+    // fp closer thread
+    w_create_thread(close_fp_main, &keys);
 
     /* Set up peer size */
     logr.peer_size = sizeof(peer_info);
@@ -233,19 +248,22 @@ void HandleSecure()
             }
         }
     }
+
+    manager_free();
 }
 
 // Message handler thread
 void * rem_handler_main(__attribute__((unused)) void * args) {
     message_t * message;
     char buffer[OS_MAXSTR + 1] = "";
+    int wdb_sock = -1;
     mdebug1("Message handler thread started.");
 
     while (1) {
         message = rem_msgpop();
         if (message->sock == -1 || message->counter > rem_getCounter(message->sock)) {
             memcpy(buffer, message->buffer, message->size);
-            HandleSecureMessage(buffer, message->size, &message->addr, message->sock);
+            HandleSecureMessage(buffer, message->size, &message->addr, message->sock, &wdb_sock);
         } else {
             rem_inc_dequeued();
         }
@@ -269,7 +287,54 @@ void * rem_keyupdate_main(__attribute__((unused)) void * args) {
     }
 }
 
-static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client) {
+// Closer rids thread
+STATIC void * close_fp_main(void * args) {
+    keystore * keys = (keystore *)args;
+    int seconds;
+    int flag;
+
+    mdebug1("Rids closer thread started.");
+    seconds = logr.rids_closing_time;
+
+    while (1) {
+        sleep(seconds);
+        key_lock_read();
+        flag = 1;
+        while (flag) {
+            w_linked_queue_node_t * first_node = keys->opened_fp_queue->first;
+            mdebug2("Opened rids queue size: %d", keys->opened_fp_queue->elements);
+            if (first_node) {
+                int now = time(0);
+                keyentry * first_node_key = (keyentry *)first_node->data;
+                mdebug2("Checking rids_node of agent %s.", first_node_key->id);
+                if ((now - seconds) > first_node_key->updating_time) {
+                    first_node_key = (keyentry *)linked_queue_pop_ex(keys->opened_fp_queue);
+                    w_mutex_lock(&first_node_key->mutex);
+                    mdebug2("Pop rids_node of agent %s.", first_node_key->id);
+                    if (first_node_key->fp != NULL) {
+                        mdebug2("Closing rids for agent %s.", first_node_key->id);
+                        fclose(first_node_key->fp);
+                        first_node_key->fp = NULL;
+                    }
+                    first_node_key->updating_time = 0;
+                    first_node_key->rids_node = NULL;
+                    w_mutex_unlock(&first_node_key->mutex);
+                } else {
+                    flag = 0;
+                }
+            } else {
+                flag = 0;
+            }
+        }
+        key_unlock();
+    #ifdef WAZUH_UNIT_TESTING
+        break;
+    #endif
+    }
+    return NULL;
+}
+
+static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock) {
     int agentid;
     int protocol = logr.proto[logr.position];
     char cleartext_msg[OS_MAXSTR + 1];
@@ -340,6 +405,23 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
             return;
         }
+    } else if (strncmp(buffer, "#ping", 5) == 0) {
+            int retval = 0;
+            char *msg = "#pong";
+            ssize_t msg_size = strlen(msg);
+
+            if (protocol == IPPROTO_UDP) {
+                retval = sendto(logr.sock, msg, msg_size, 0, (struct sockaddr *)peer_info, logr.peer_size) == msg_size ? 0 : -1;
+            } else {
+                retval = OS_SendSecureTCP(sock_client, msg_size, msg);
+            }
+
+            if (retval < 0) {
+                mwarn("Ping operation could not be delivered completely (%d)", retval);
+            }
+
+            return;
+
     } else {
         key_lock_read();
         agentid = OS_IsAllowedIP(&keys, srcip);
@@ -404,7 +486,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         key_unlock();
 
         // The critical section for readers closes within this function
-        save_controlmsg(key, tmp_msg, msg_length - 3);
+        save_controlmsg(key, tmp_msg, msg_length - 3, wdb_sock);
         rem_inc_ctrl_msg();
 
         OS_FreeKey(key);
@@ -425,8 +507,14 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
                 SECURE_MQ) < 0) {
         merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
-        if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
-            merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
+        // Try to reconnect infinitely
+        logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+
+        minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
+
+        if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
+            // Something went wrong sending a message after an immediate reconnection...
+            merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
         }
     } else {
         rem_inc_evt();

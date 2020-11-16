@@ -17,55 +17,10 @@
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 
+#include "../wrappers/common.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+
 /* redefinitons/wrapping */
-
-int __wrap__merror()
-{
-    return 0;
-}
-
-#ifdef TEST_AGENT
-char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
-
-int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, int max) {
-    int ret;
-    char *value;
-    char *pt;
-
-    /* Try to read from the local define file */
-    value = _read_file(high_name, low_name, "./internal_options.conf");
-    if (!value) {
-        merror_exit(DEF_NOT_FOUND, high_name, low_name);
-    }
-
-    pt = value;
-    while (*pt != '\0') {
-        if (!isdigit((int)*pt)) {
-            merror_exit(INV_DEF, high_name, low_name, value);
-        }
-        pt++;
-    }
-
-    ret = atoi(value);
-    if ((ret < min) || (ret > max)) {
-        merror_exit(INV_DEF, high_name, low_name, value);
-    }
-
-    /* Clear memory */
-    free(value);
-
-    return (ret);
-}
-
-int __wrap_isChroot() {
-    return 1;
-}
-#endif
-
-int __wrap__mdebug1()
-{
-    return 0;
-}
 
 static int restart_syscheck(void **state)
 {
@@ -86,7 +41,14 @@ void test_Read_Syscheck_Config_success(void **state)
     (void) state;
     int ret;
 
-    ret = Read_Syscheck_Config("test_syscheck.conf");
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__mwarn, formatted_msg);
+
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
+#endif
+
+    ret = Read_Syscheck_Config("test_syscheck_max_dir.conf");
 
     assert_int_equal(ret, 0);
     assert_int_equal(syscheck.rootcheck, 0);
@@ -105,6 +67,12 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_null(syscheck.scan_day);
     assert_null(syscheck.scan_time);
     assert_non_null(syscheck.dir);
+    // Directories configuration have 100 directories in one line. It only can monitor 64 per line.
+    // With the first 10 directories in other lines, the count should be 74 (75 should be NULL)
+    for (int i = 0; i < 74; i++){
+        assert_non_null(syscheck.dir[i]);
+    }
+    assert_null(syscheck.dir[74]);
     assert_non_null(syscheck.opts);
     assert_int_equal(syscheck.enable_synchronization, 1);
     assert_int_equal(syscheck.restart_audit, 1);
@@ -118,6 +86,12 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_int_equal(syscheck.sync_response_timeout, 30);
     assert_int_equal(syscheck.sync_queue_size, 64);
     assert_int_equal(syscheck.max_eps, 200);
+    assert_int_equal(syscheck.disk_quota_enabled, true);
+    assert_int_equal(syscheck.disk_quota_limit, 1024 * 1024);
+    assert_int_equal(syscheck.file_size_enabled, true);
+    assert_int_equal(syscheck.file_size_limit, 50 * 1024);
+    assert_int_equal(syscheck.diff_folder_size, 0);
+    assert_non_null(syscheck.diff_size_limit);
 }
 
 void test_Read_Syscheck_Config_invalid(void **state)
@@ -125,6 +99,8 @@ void test_Read_Syscheck_Config_invalid(void **state)
     (void) state;
     int ret;
 
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_string(__wrap__merror, formatted_msg, "(1226): Error reading XML file 'invalid.conf': XMLERR: File 'invalid.conf' not found. (line 0).");
     ret = Read_Syscheck_Config("invalid.conf");
 
     assert_int_equal(ret, OS_INVALID);
@@ -134,6 +110,11 @@ void test_Read_Syscheck_Config_undefined(void **state)
 {
     (void) state;
     int ret;
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
+#endif
 
     ret = Read_Syscheck_Config("test_syscheck2.conf");
 
@@ -167,12 +148,23 @@ void test_Read_Syscheck_Config_undefined(void **state)
     assert_int_equal(syscheck.sync_response_timeout, 30);
     assert_int_equal(syscheck.sync_queue_size, 64);
     assert_int_equal(syscheck.max_eps, 200);
+    assert_int_equal(syscheck.disk_quota_enabled, true);
+    assert_int_equal(syscheck.disk_quota_limit, 2 * 1024 * 1024);
+    assert_int_equal(syscheck.file_size_enabled, true);
+    assert_int_equal(syscheck.file_size_limit, 5);
+    assert_int_equal(syscheck.diff_folder_size, 0);
+    assert_non_null(syscheck.diff_size_limit);
 }
 
 void test_Read_Syscheck_Config_unparsed(void **state)
 {
     (void) state;
     int ret;
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
+#endif
 
     ret = Read_Syscheck_Config("test_empty_config.conf");
 
@@ -193,11 +185,11 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_null(syscheck.nodiff_regex);
     assert_null(syscheck.scan_day);
     assert_null(syscheck.scan_time);
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     assert_null(syscheck.dir);
-    #else
+#else
     assert_non_null(syscheck.dir);
-    #endif
+#endif
     assert_null(syscheck.opts);
     assert_int_equal(syscheck.enable_synchronization, 1);
     assert_int_equal(syscheck.restart_audit, 1);
@@ -211,12 +203,23 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_int_equal(syscheck.sync_response_timeout, 30);
     assert_int_equal(syscheck.sync_queue_size, 16384);
     assert_int_equal(syscheck.max_eps, 100);
+    assert_int_equal(syscheck.disk_quota_enabled, true);
+    assert_int_equal(syscheck.disk_quota_limit, 1024 * 1024);
+    assert_int_equal(syscheck.file_size_enabled, true);
+    assert_int_equal(syscheck.file_size_limit, 50 * 1024);
+    assert_int_equal(syscheck.diff_folder_size, 0);
+    assert_null(syscheck.diff_size_limit);
 }
 
 void test_getSyscheckConfig(void **state)
 {
     (void) state;
     cJSON * ret;
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
+#endif
 
     Read_Syscheck_Config("test_syscheck.conf");
 
@@ -228,9 +231,9 @@ void test_getSyscheckConfig(void **state)
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
     #if defined(TEST_SERVER) || defined(TEST_AGENT)
-    assert_int_equal(cJSON_GetArraySize(sys_items), 19);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 20);
     #elif defined(TEST_WINAGENT)
-    assert_int_equal(cJSON_GetArraySize(sys_items), 22);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 23);
     #endif
 
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
@@ -244,6 +247,20 @@ void test_getSyscheckConfig(void **state)
     cJSON *file_limit_entries = cJSON_GetObjectItem(file_limit, "entries");
     assert_int_equal(file_limit_entries->valueint, 50000);
 
+    cJSON *diff = cJSON_GetObjectItem(sys_items, "diff");
+
+    cJSON *disk_quota = cJSON_GetObjectItem(diff, "disk_quota");
+    cJSON *disk_quota_enabled = cJSON_GetObjectItem(disk_quota, "enabled");
+    assert_string_equal(cJSON_GetStringValue(disk_quota_enabled), "yes");
+    cJSON *disk_quota_limit = cJSON_GetObjectItem(disk_quota, "limit");
+    assert_int_equal(disk_quota_limit->valueint, 1024 * 1024);
+
+    cJSON *file_size = cJSON_GetObjectItem(diff, "file_size");
+    cJSON *file_size_enabled = cJSON_GetObjectItem(file_size, "enabled");
+    assert_string_equal(cJSON_GetStringValue(file_size_enabled), "yes");
+    cJSON *file_size_limit = cJSON_GetObjectItem(file_size, "limit");
+    assert_int_equal(file_size_limit->valueint, 50 * 1024);
+
     cJSON *skip_nfs = cJSON_GetObjectItem(sys_items, "skip_nfs");
     assert_string_equal(cJSON_GetStringValue(skip_nfs), "yes");
     cJSON *skip_dev = cJSON_GetObjectItem(sys_items, "skip_dev");
@@ -256,24 +273,24 @@ void test_getSyscheckConfig(void **state)
     assert_string_equal(cJSON_GetStringValue(scan_on_start), "yes");
 
     cJSON *sys_dir = cJSON_GetObjectItem(sys_items, "directories");
-    #if defined(TEST_SERVER) || defined(TEST_AGENT)
+#if defined(TEST_SERVER) || defined(TEST_AGENT)
     assert_int_equal(cJSON_GetArraySize(sys_dir), 6);
     #elif defined(TEST_WINAGENT)
     assert_int_equal(cJSON_GetArraySize(sys_dir), 10);
-    #endif
+#endif
 
 
     cJSON *sys_nodiff = cJSON_GetObjectItem(sys_items, "nodiff");
     assert_int_equal(cJSON_GetArraySize(sys_nodiff), 1);
 
     cJSON *sys_ignore = cJSON_GetObjectItem(sys_items, "ignore");
-    #if defined(TEST_SERVER) || defined(TEST_AGENT)
+#if defined(TEST_SERVER) || defined(TEST_AGENT)
     assert_int_equal(cJSON_GetArraySize(sys_ignore), 12);
     #elif defined(TEST_WINAGENT)
     assert_int_equal(cJSON_GetArraySize(sys_ignore), 2);
-    #endif
+#endif
 
-    #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
     cJSON *sys_ignore_regex = cJSON_GetObjectItem(sys_items, "ignore_sregex");
     assert_int_equal(cJSON_GetArraySize(sys_ignore_regex), 1);
 
@@ -286,9 +303,9 @@ void test_getSyscheckConfig(void **state)
     assert_int_equal(cJSON_GetArraySize(sys_registry_ignore), 11);
     cJSON *sys_registry_ignore_sregex = cJSON_GetObjectItem(sys_items, "registry_ignore_sregex");
     assert_int_equal(cJSON_GetArraySize(sys_registry_ignore_sregex), 1);
-    #endif
+#endif
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     cJSON *sys_whodata = cJSON_GetObjectItem(sys_items, "whodata");
     cJSON *whodata_restart_audit = cJSON_GetObjectItem(sys_whodata, "restart_audit");
     assert_string_equal(cJSON_GetStringValue(whodata_restart_audit), "yes");
@@ -296,16 +313,16 @@ void test_getSyscheckConfig(void **state)
     assert_int_equal(cJSON_GetArraySize(whodata_audit_key), 2);
     cJSON *whodata_startup_healthcheck = cJSON_GetObjectItem(sys_whodata, "startup_healthcheck");
     assert_string_equal(cJSON_GetStringValue(whodata_startup_healthcheck), "yes");
-    #endif
+#endif
 
     cJSON *allow_remote_prefilter_cmd = cJSON_GetObjectItem(sys_items, "allow_remote_prefilter_cmd");
     assert_string_equal(cJSON_GetStringValue(allow_remote_prefilter_cmd), "yes");
     cJSON *prefilter_cmd = cJSON_GetObjectItem(sys_items, "prefilter_cmd");
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     assert_string_equal(cJSON_GetStringValue(prefilter_cmd), "/bin/ls");
-    #else
+#else
     assert_string_equal(cJSON_GetStringValue(prefilter_cmd), "c:\\windows\\system32\\cmd.exe");
-    #endif
+#endif
 
     cJSON *sys_synchronization = cJSON_GetObjectItem(sys_items, "synchronization");
     cJSON *synchronization_enabled = cJSON_GetObjectItem(sys_synchronization, "enabled");
@@ -333,6 +350,11 @@ void test_getSyscheckConfig_no_audit(void **state)
     (void) state;
     cJSON * ret;
 
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
+#endif
+
     Read_Syscheck_Config("test_syscheck2.conf");
 
     ret = getSyscheckConfig();
@@ -343,9 +365,9 @@ void test_getSyscheckConfig_no_audit(void **state)
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
     #ifndef TEST_WINAGENT
-    assert_int_equal(cJSON_GetArraySize(sys_items), 15);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 16);
     #else
-    assert_int_equal(cJSON_GetArraySize(sys_items), 18);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 19);
     #endif
 
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
@@ -359,6 +381,20 @@ void test_getSyscheckConfig_no_audit(void **state)
     cJSON *file_limit_entries = cJSON_GetObjectItem(file_limit, "entries");
     assert_int_equal(file_limit_entries->valueint, 50000);
 
+    cJSON *diff = cJSON_GetObjectItem(sys_items, "diff");
+
+    cJSON *disk_quota = cJSON_GetObjectItem(diff, "disk_quota");
+    cJSON *disk_quota_enabled = cJSON_GetObjectItem(disk_quota, "enabled");
+    assert_string_equal(cJSON_GetStringValue(disk_quota_enabled), "yes");
+    cJSON *disk_quota_limit = cJSON_GetObjectItem(disk_quota, "limit");
+    assert_int_equal(disk_quota_limit->valueint, 2 * 1024 * 1024);
+
+    cJSON *file_size = cJSON_GetObjectItem(diff, "file_size");
+    cJSON *file_size_enabled = cJSON_GetObjectItem(file_size, "enabled");
+    assert_string_equal(cJSON_GetStringValue(file_size_enabled), "yes");
+    cJSON *file_size_limit = cJSON_GetObjectItem(file_size, "limit");
+    assert_int_equal(file_size_limit->valueint, 5);
+
     cJSON *skip_nfs = cJSON_GetObjectItem(sys_items, "skip_nfs");
     assert_string_equal(cJSON_GetStringValue(skip_nfs), "no");
     cJSON *skip_dev = cJSON_GetObjectItem(sys_items, "skip_dev");
@@ -371,11 +407,11 @@ void test_getSyscheckConfig_no_audit(void **state)
     assert_string_equal(cJSON_GetStringValue(scan_on_start), "no");
 
     cJSON *sys_dir = cJSON_GetObjectItem(sys_items, "directories");
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     assert_int_equal(cJSON_GetArraySize(sys_dir), 8);
-    #else
+#else
     assert_int_equal(cJSON_GetArraySize(sys_dir), 10);
-    #endif
+#endif
 
     cJSON *sys_nodiff = cJSON_GetObjectItem(sys_items, "nodiff");
     assert_null(sys_nodiff);
@@ -383,7 +419,7 @@ void test_getSyscheckConfig_no_audit(void **state)
     cJSON *sys_ignore = cJSON_GetObjectItem(sys_items, "ignore");
     assert_null(sys_ignore);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     cJSON *sys_whodata = cJSON_GetObjectItem(sys_items, "whodata");
     cJSON *whodata_restart_audit = cJSON_GetObjectItem(sys_whodata, "restart_audit");
     assert_string_equal(cJSON_GetStringValue(whodata_restart_audit), "no");
@@ -391,7 +427,7 @@ void test_getSyscheckConfig_no_audit(void **state)
     assert_null(whodata_audit_key);
     cJSON *whodata_startup_healthcheck = cJSON_GetObjectItem(sys_whodata, "startup_healthcheck");
     assert_string_equal(cJSON_GetStringValue(whodata_startup_healthcheck), "no");
-    #else
+#else
     cJSON *windows_audit_interval = cJSON_GetObjectItem(sys_items, "windows_audit_interval");
     assert_int_equal(windows_audit_interval->valueint, 0);
     cJSON *win_registry = cJSON_GetObjectItem(sys_items, "registry");
@@ -400,7 +436,7 @@ void test_getSyscheckConfig_no_audit(void **state)
     assert_int_equal(cJSON_GetArraySize(win_registry_ignore), 11);
     cJSON *win_registry_ignore_regex = cJSON_GetObjectItem(sys_items, "registry_ignore_sregex");
     assert_int_equal(cJSON_GetArraySize(win_registry_ignore_regex), 1);
-    #endif
+#endif
 
     cJSON *allow_remote_prefilter_cmd = cJSON_GetObjectItem(sys_items, "allow_remote_prefilter_cmd");
     assert_string_equal(cJSON_GetStringValue(allow_remote_prefilter_cmd), "no");
@@ -429,6 +465,11 @@ void test_getSyscheckConfig_no_directories(void **state)
     (void) state;
     cJSON * ret;
 
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
+#endif
+
     Read_Syscheck_Config("test_empty_config.conf");
 
     ret = getSyscheckConfig();
@@ -441,6 +482,12 @@ void test_getSyscheckConfig_no_directories(void **state)
     (void) state;
     cJSON * ret;
 
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
+#endif
+
     Read_Syscheck_Config("test_empty_config.conf");
 
     ret = getSyscheckConfig();
@@ -450,17 +497,31 @@ void test_getSyscheckConfig_no_directories(void **state)
     assert_int_equal(cJSON_GetArraySize(ret), 1);
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
-    assert_int_equal(cJSON_GetArraySize(sys_items), 16);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 17);
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
     assert_string_equal(cJSON_GetStringValue(disabled), "yes");
     cJSON *frequency = cJSON_GetObjectItem(sys_items, "frequency");
     assert_int_equal(frequency->valueint, 43200);
-    
+
     cJSON *file_limit = cJSON_GetObjectItem(sys_items, "file_limit");
     cJSON *file_limit_enabled = cJSON_GetObjectItem(file_limit, "enabled");
     assert_string_equal(cJSON_GetStringValue(file_limit_enabled), "yes");
     cJSON *file_limit_entries = cJSON_GetObjectItem(file_limit, "entries");
     assert_int_equal(file_limit_entries->valueint, 100000);
+
+    cJSON *diff = cJSON_GetObjectItem(sys_items, "diff");
+
+    cJSON *disk_quota = cJSON_GetObjectItem(diff, "disk_quota");
+    cJSON *disk_quota_enabled = cJSON_GetObjectItem(disk_quota, "enabled");
+    assert_string_equal(cJSON_GetStringValue(disk_quota_enabled), "yes");
+    cJSON *disk_quota_limit = cJSON_GetObjectItem(disk_quota, "limit");
+    assert_int_equal(disk_quota_limit->valueint, 1024 * 1024);
+
+    cJSON *file_size = cJSON_GetObjectItem(diff, "file_size");
+    cJSON *file_size_enabled = cJSON_GetObjectItem(file_size, "enabled");
+    assert_string_equal(cJSON_GetStringValue(file_size_enabled), "yes");
+    cJSON *file_size_limit = cJSON_GetObjectItem(file_size, "limit");
+    assert_int_equal(file_size_limit->valueint, 50 * 1024);
 
     cJSON *skip_nfs = cJSON_GetObjectItem(sys_items, "skip_nfs");
     assert_string_equal(cJSON_GetStringValue(skip_nfs), "yes");
@@ -502,10 +563,39 @@ void test_getSyscheckConfig_no_directories(void **state)
 }
 #endif
 
+void test_SyscheckConf_DirectoriesWithCommas(void **state) {
+    (void) state;
+    int ret;
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
+#endif
+
+    ret = Read_Syscheck_Config("test_syscheck3.conf");
+    assert_int_equal(ret, 0);
+
+    #ifdef WIN32
+    assert_string_equal(syscheck.dir[0], "c:\\,testcommas");
+    assert_string_equal(syscheck.dir[1], "c:\\test,commas");
+    assert_string_equal(syscheck.dir[2], "c:\\testcommas,");
+    #else
+    assert_string_equal(syscheck.dir[0], "/,testcommas");
+    assert_string_equal(syscheck.dir[1], "/test,commas");
+    assert_string_equal(syscheck.dir[2], "/testcommas,");
+    #endif
+}
+
 void test_getSyscheckInternalOptions(void **state)
 {
     (void) state;
     cJSON * ret;
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
+#endif
 
     Read_Syscheck_Config("test_syscheck.conf");
 
@@ -533,6 +623,7 @@ int main(void) {
         cmocka_unit_test_teardown(test_getSyscheckConfig_no_audit, restart_syscheck),
         cmocka_unit_test_teardown(test_getSyscheckConfig_no_directories, restart_syscheck),
         cmocka_unit_test_teardown(test_getSyscheckInternalOptions, restart_syscheck),
+        cmocka_unit_test_teardown(test_SyscheckConf_DirectoriesWithCommas, restart_syscheck),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

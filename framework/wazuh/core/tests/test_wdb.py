@@ -2,11 +2,17 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from struct import pack
 from unittest.mock import patch
+
 import pytest
 
 from wazuh.core import exception
 from wazuh.core.wdb import WazuhDBConnection
+
+
+def format_msg(msg):
+    return pack('<I', len(bytes(msg)))
 
 
 def test_failed_connection():
@@ -32,7 +38,7 @@ def test_wrong_character_encodings_wdb(send_mock, connect_mock):
     """
     def recv_mock(size_to_receive):
         bad_string = b' {"bad": "\x96bad"}'
-        return bytes(len(bad_string)) if size_to_receive == 4 else bad_string
+        return format_msg(bad_string) if size_to_receive == 4 else bad_string
 
     with patch('socket.socket.recv', side_effect=recv_mock):
         mywdb = WazuhDBConnection()
@@ -48,7 +54,7 @@ def test_null_values_are_removed(send_mock, connect_mock):
     """
     def recv_mock(size_to_receive):
         nulls_string = b' {"a": "a", "b": "(null)", "c": [1, 2, 3], "d": {"e": "(null)"}}'
-        return bytes(len(nulls_string)) if size_to_receive == 4 else nulls_string
+        return format_msg(nulls_string) if size_to_receive == 4 else nulls_string
 
     with patch('socket.socket.recv', side_effect=recv_mock):
         mywdb = WazuhDBConnection()
@@ -64,7 +70,7 @@ def test_failed_send_private(send_mock, connect_mock):
     """
     def recv_mock(size_to_receive):
         error_string = b'err {"agents": {"001": "Error"}}'
-        return bytes(len(error_string)) if size_to_receive == 4 else error_string
+        return format_msg(error_string) if size_to_receive == 4 else error_string
 
     with patch('socket.socket.recv', side_effect=recv_mock):
         mywdb = WazuhDBConnection()
@@ -85,7 +91,7 @@ def test_remove_agents_database(send_mock, connect_mock, content):
     Tests delete_agents_db method handle exceptions properly
     """
     def recv_mock(size_to_receive):
-        return bytes(len(content)) if size_to_receive == 4 else content
+        return format_msg(content) if size_to_receive == 4 else content
 
     with patch('socket.socket.recv', side_effect=recv_mock):
         mywdb = WazuhDBConnection()
@@ -117,13 +123,31 @@ def test_query_lower_private(send_mock, connect_mock):
 
 
 @patch("socket.socket.connect")
+def test_run_wdb_command(connect_mock):
+    with patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=[['due', 'chunk1'], ['due', 'chunk2'],
+                                                                      ['ok', 'chunk3'], ['due', 'chunk4']]):
+        mywdb = WazuhDBConnection()
+        result = mywdb.run_wdb_command("global sync-agent-info-get ")
+        assert result == ['chunk1', 'chunk2', 'chunk3']
+
+
+@patch("socket.socket.connect")
+def test_run_wdb_command_ko(connect_mock):
+    with patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=[['due', 'chunk1'], ['err', 'chunk2'],
+                                                                      ['ok', 'chunk3'], ['due', 'chunk4']]):
+        mywdb = WazuhDBConnection()
+        with pytest.raises(exception.WazuhInternalError, match=".* 2007 .* chunk2"):
+            mywdb.run_wdb_command("global sync-agent-info-get ")
+
+
+@patch("socket.socket.connect")
 @patch("socket.socket.send")
 @patch("wazuh.core.wdb.WazuhDBConnection._send")
 def test_execute(send_mock, socket_send_mock, connect_mock):
     mywdb = WazuhDBConnection()
     mywdb.execute('agent 000 sql delete from test', delete=True)
     mywdb.execute("agent 000 sql update test set value = 'test' where key = 'test'", update=True)
-    with patch("wazuh.core.wdb.WazuhDBConnection._send", return_value=[{'total':5}]):
+    with patch("wazuh.core.wdb.WazuhDBConnection._send", return_value=[{'total': 5}]):
         mywdb.execute("agent 000 sql select test from test offset 1 limit 1")
         mywdb.execute("agent 000 sql select test from test offset 1 limit 1", count=True)
         mywdb.execute("agent 000 sql select test from test offset 1 count")

@@ -21,7 +21,7 @@ static const char * COMPONENT_NAMES[] = {
     [WDB_FIM] = "fim"
 };
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when unit testing */
 #define static
 

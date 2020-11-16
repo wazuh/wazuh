@@ -9,11 +9,10 @@ import pytest
 from connexion import ProblemException
 
 from api import util
-from api.api_exception import APIException, APIError
-from wazuh.core.exception import WazuhException, WazuhError
+from wazuh.core.exception import WazuhError, WazuhPermissionError, WazuhResourceNotFound, WazuhInternalError
 
 
-class TestClass():
+class TestClass:
     def __init__(self, origin=None):
         self.swagger_types = {
             'api_response': 'test_api_response',
@@ -185,10 +184,10 @@ def test_to_relative_path(mock_real_path):
 
 @pytest.mark.parametrize('exception_type, code, extra_fields, returned_code, returned_exception', [
     (ValueError, 100, None, ValueError(100), ValueError),
-    (WazuhError, 1000, ['remediation', 'code', 'dapi_errors'], 400, ProblemException),
-    (WazuhException, 3004, ['remediation', 'code', 'dapi_errors'], 500, ProblemException),
-    (APIException, 2000, ['code'], 500, ProblemException),
-    (APIError, 2000, ['code'], 400, ProblemException),
+    (WazuhError, 1000, ['remediation', 'code'], 400, ProblemException),
+    (WazuhPermissionError, 4000, ['remediation', 'code'], 403, ProblemException),
+    (WazuhResourceNotFound, 1710, ['remediation', 'code'], 404, ProblemException),
+    (WazuhInternalError, 1000, ['remediation', 'code'], 500, ProblemException)
 ])
 def test_create_problem(exception_type, code, extra_fields, returned_code, returned_exception):
     """Check that _create_problem returns exception with expected data"""
@@ -202,15 +201,17 @@ def test_create_problem(exception_type, code, extra_fields, returned_code, retur
         assert None not in exc_info.value.ext.values()
 
 
-@pytest.mark.parametrize('obj', [
-    WazuhError(1000), ['value0', 'value1']
+@pytest.mark.parametrize('obj, code', [
+    ((WazuhError(6001), ['value0', 'value1']), 429),
+    ((WazuhInternalError(1000), ['value0', 'value1']), None),
+    ((WazuhPermissionError(4000), ['value0', 'value1']), None),
+    ((WazuhResourceNotFound(1710), ['value0', 'value1']), None)
 ])
 @patch('api.util._create_problem')
-def test_raise_if_exc(mock_create_problem, obj):
+def test_raise_if_exc(mock_create_problem, obj, code):
     """Check that raise_if_exc calls _create_problem when an exception is given"""
     result = util.raise_if_exc(obj)
-
     if isinstance(obj, Exception):
-        mock_create_problem.assert_called_once_with(obj)
+        mock_create_problem.assert_called_once_with(obj, code)
     else:
         assert result == obj

@@ -1,8 +1,8 @@
 # Generate syscollector library
 file(GLOB syscollector_files
-  ../../../wazuh_modules/*.o
-  ../../../wazuh_modules/syscollector/*.o)
-list(REMOVE_ITEM syscollector_files ../../../wazuh_modules/main.o)
+    ${SRC_FOLDER}/wazuh_modules/*.o
+    ${SRC_FOLDER}/wazuh_modules/syscollector/*.o)
+list(REMOVE_ITEM syscollector_files ${SRC_FOLDER}/wazuh_modules/main.o)
 
 add_library(SYSCOLLECTOR_O STATIC ${syscollector_files})
 

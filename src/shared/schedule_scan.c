@@ -7,7 +7,7 @@ static const char *XML_SCAN_DAY = "day";
 static const char *XML_WEEK_DAY = "wday";
 static const char *XML_TIME = "time";
 
-#ifdef UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
 // Remove static for unit testing
 #define static
 #endif
@@ -23,7 +23,7 @@ int is_sched_tag(const char* tag){
 }
 
 /**
- * Initializes sched_scan_config structure with 
+ * Initializes sched_scan_config structure with
  * default values
  * */
 void sched_scan_init(sched_scan_config *scan_config){
@@ -142,11 +142,11 @@ static time_t _get_next_time(const sched_scan_config *config, const char *MODULE
 
         if ((time_t)config->interval >= last_run_time) {
             return  (time_t)config->interval - last_run_time;
-        } else if(!config->next_scheduled_scan_time) { 
+        } else if(!config->next_scheduled_scan_time) {
             // First time defined by run_on_start
             if(run_on_start) {
                 return 0;
-            } else {  
+            } else {
                 return (time_t)config->interval;
             }
         } else {
