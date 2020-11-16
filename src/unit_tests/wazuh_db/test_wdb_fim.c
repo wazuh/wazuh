@@ -496,14 +496,145 @@ static void test_wdb_fim_insert_entry2_registry_item_type_null(void **state) {
     assert_int_equal(ret, -1);
 }
 
+static void test_wdb_fim_insert_entry2_invalid_item_type(void **state) {
+    int ret;
+    wdb_t * wdb = *state;
+    cJSON* data = cJSON_Parse(VALID_ENTRY);
+
+    if (data == NULL) {
+        fail_msg("Unable to parse base json");
+    }
+
+    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\clave"));
+
+    expect_cJSON_GetStringValue_call("[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\clave");
+    expect_cJSON_IsNumber_call(true);
+    expect_cJSON_IsObject_call(true);
+    expect_cJSON_GetStringValue_call("invalid");
+
+    expect_string(__wrap__merror, formatted_msg, "DB(000) fim/save request with invalid 'invalid' type argument.");
+
+    ret = wdb_fim_insert_entry2(wdb, data);
+
+    cJSON_Delete(data);
+    assert_int_equal(ret, -1);
+}
+
+static void test_wdb_fim_insert_entry2_registry_invalid_item_type(void **state) {
+    int ret;
+    wdb_t * wdb = *state;
+    cJSON* data = cJSON_Parse(VALID_ENTRY);
+
+    if (data == NULL) {
+        fail_msg("Unable to parse base json");
+    }
+
+    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\clave"));
+    cJSON_AddItemToObject(data, "arch", cJSON_CreateString("[x32]"));
+
+    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\clave");
+    expect_cJSON_IsNumber_call(true);
+    expect_cJSON_IsObject_call(true);
+    expect_cJSON_GetStringValue_call("registry_invalid");
+    expect_cJSON_GetStringValue_call("[x32]");
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "DB(000) fim/save request with invalid 'registry_invalid' type argument.");
+
+    ret = wdb_fim_insert_entry2(wdb, data);
+
+    cJSON_Delete(data);
+    assert_int_equal(ret, -1);
+}
+
+static void test_wdb_fim_insert_entry2_registry_succesful(void **state) {
+    int ret;
+    wdb_t * wdb = *state;
+    cJSON* data = cJSON_Parse(VALID_ENTRY);
+
+    if (data == NULL) {
+        fail_msg("Unable to parse base json");
+    }
+
+    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\clave"));
+
+    expect_wdb_stmt_cache_call(1);
+
+    expect_cJSON_GetStringValue_call("[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\clave");
+    expect_cJSON_IsNumber_call(true);
+    expect_cJSON_IsObject_call(true);
+    expect_cJSON_GetStringValue_call("registry");
+
+    expect_sqlite3_bind_text_call(1, "[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\clave", 1);
+    expect_sqlite3_bind_text_call(2, "registry_key", 1);
+    expect_sqlite3_bind_int64_call(3, 10, 0);
+    expect_sqlite3_bind_text_call(18, NULL, 1);
+    expect_sqlite3_bind_text_call(19, NULL, 1);
+    expect_sqlite3_bind_text_call(21, "[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\clave", 1);
+
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    ret = wdb_fim_insert_entry2(wdb, data);
+
+    cJSON_Delete(data);
+    assert_int_equal(ret, 0);
+}
+
+static void test_wdb_fim_insert_entry2_registry_key_succesful(void **state) {
+    int ret;
+    wdb_t * wdb = *state;
+    cJSON* data = cJSON_Parse(VALID_ENTRY);
+
+    if (data == NULL) {
+        fail_msg("Unable to parse base json");
+    }
+
+    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\clave"));
+    cJSON_AddItemToObject(data, "arch", cJSON_CreateString("[x32]"));
+
+    expect_wdb_stmt_cache_call(1);
+
+    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\clave");
+    expect_cJSON_IsNumber_call(true);
+    expect_cJSON_IsObject_call(true);
+    expect_cJSON_GetStringValue_call("registry_key");
+    expect_cJSON_GetStringValue_call("[x32]");
+
+    expect_sqlite3_bind_text_call(1, "HKEY_LOCAL_MACHINE\\System\\TEST\\clave", 1);
+    expect_sqlite3_bind_text_call(2, "registry_key", 1);
+    expect_sqlite3_bind_int64_call(3, 10, 0);
+    expect_sqlite3_bind_text_call(18, "[x32]", 1);
+    expect_sqlite3_bind_text_call(19, NULL, 1);
+    expect_sqlite3_bind_text_call(21, "[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\clave:", 1);
+
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    ret = wdb_fim_insert_entry2(wdb, data);
+
+    cJSON_Delete(data);
+    assert_int_equal(ret, 0);
+}
+
 static void test_wdb_fim_insert_entry2_registry_value_succesful(void **state) {
     int ret;
     wdb_t * wdb = *state;
     cJSON* data = cJSON_Parse(VALID_ENTRY);
 
+    if (data == NULL) {
+        fail_msg("Unable to parse base json");
+    }
+
+    cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
+
+    if (attributes == NULL) {
+        cJSON_Delete(data);
+        fail_msg("Unable to retrieve 'attributes'");
+    }
+
     cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\clave"));
     cJSON_AddItemToObject(data, "arch", cJSON_CreateString("[x32]"));
     cJSON_AddItemToObject(data, "value_name", cJSON_CreateObject());
+    cJSON_AddStringToObject(attributes, "value_type", "REG_SZ");
 
     expect_wdb_stmt_cache_call(1);
 
@@ -520,6 +651,7 @@ static void test_wdb_fim_insert_entry2_registry_value_succesful(void **state) {
     expect_sqlite3_bind_text_call(18, "[x32]", 1);
     expect_sqlite3_bind_text_call(19, "testname", 1);
     expect_sqlite3_bind_text_call(21, "[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\clave:testname", 1);
+    expect_sqlite3_bind_text_call(20, "REG_SZ", 1);
 
     expect_sqlite3_step_call(SQLITE_DONE);
 
@@ -580,6 +712,10 @@ int main(void) {
         cmocka_unit_test(test_wdb_fim_insert_entry2_registry_arch_null),
         cmocka_unit_test(test_wdb_fim_insert_entry2_registry_value_name_null),
         cmocka_unit_test(test_wdb_fim_insert_entry2_registry_item_type_null),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_invalid_item_type),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_registry_invalid_item_type),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_registry_succesful),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_registry_key_succesful),
         cmocka_unit_test(test_wdb_fim_insert_entry2_registry_value_succesful),
         cmocka_unit_test(test_wdb_fim_insert_entry2_success),
         cmocka_unit_test(test_wdb_fim_insert_entry2_large_inode),
