@@ -327,6 +327,7 @@ void fim_sync_send_list(const char *start, const char *top) {
         if (file != NULL) {
             fim_db_clean_file(&file, syscheck.database_store);
         }
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
         return;
     }
     w_mutex_unlock(&syscheck.fim_entry_mutex);

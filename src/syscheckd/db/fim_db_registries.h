@@ -290,21 +290,6 @@ int fim_db_get_count_registry_key(fdb_t *fim_sql);
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  *
  */
-int fim_db_get_registry_keys_range(fdb_t *fim_sql, const char *start, const char *top, fim_tmp_file **file,
-                                   int storage);
-
-/**
- * @brief Get registry keys between @start and @top. (stored in @file).
- *
- * @param fim_sql FIM database struct.
- * @param start First entry of the range.
- * @param top Last entry of the range.
- * @param file  Structure of the storage which contains all the paths.
- * @param storage 1 Store database in memory, disk otherwise.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- *
- */
 int fim_db_get_registry_value_range(fdb_t *fim_sql, const char *start, const char *top, fim_tmp_file **file,
                                     int storage);
 

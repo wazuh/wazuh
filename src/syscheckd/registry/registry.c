@@ -268,15 +268,15 @@ void fim_registry_get_checksum_value(fim_registry_value_data *data) {
  * @param sha256_ctx An uninitialized sha256 context.
  */
 void fim_registry_init_digests(int opts, MD5_CTX *md5_ctx, SHA_CTX *sha1_ctx, SHA256_CTX *sha256_ctx) {
-    if (opts | CHECK_MD5SUM) {
+    if (opts & CHECK_MD5SUM) {
         MD5_Init(md5_ctx);
     }
 
-    if (opts | CHECK_SHA1SUM) {
+    if (opts & CHECK_SHA1SUM) {
         SHA1_Init(sha1_ctx);
     }
 
-    if (opts | CHECK_SHA256SUM) {
+    if (opts & CHECK_SHA256SUM) {
         SHA256_Init(sha256_ctx);
     }
 }
@@ -297,15 +297,15 @@ void fim_registry_update_digests(const BYTE *buffer,
                                  MD5_CTX *md5_ctx,
                                  SHA_CTX *sha1_ctx,
                                  SHA256_CTX *sha256_ctx) {
-    if (opts | CHECK_MD5SUM) {
+    if (opts & CHECK_MD5SUM) {
         MD5_Update(md5_ctx, buffer, (unsigned)length);
     }
 
-    if (opts | CHECK_SHA1SUM) {
+    if (opts & CHECK_SHA1SUM) {
         SHA1_Update(sha1_ctx, buffer, length);
     }
 
-    if (opts | CHECK_SHA256SUM) {
+    if (opts & CHECK_SHA256SUM) {
         SHA256_Update(sha256_ctx, buffer, length);
     }
 }
@@ -333,7 +333,7 @@ void fim_registry_final_digests(int opts,
     unsigned char sha256_digest[SHA256_DIGEST_LENGTH];
     int n;
 
-    if (opts | CHECK_MD5SUM) {
+    if (opts & CHECK_MD5SUM) {
         MD5_Final(md5_digest, md5_ctx);
         for (n = 0; n < 16; n++) {
             snprintf(md5_output, 3, "%02x", md5_digest[n]);
@@ -341,7 +341,7 @@ void fim_registry_final_digests(int opts,
         }
     }
 
-    if (opts | CHECK_SHA1SUM) {
+    if (opts & CHECK_SHA1SUM) {
         SHA1_Final(sha1_digest, sha1_ctx);
         for (n = 0; n < SHA_DIGEST_LENGTH; n++) {
             snprintf(sha1_output, 3, "%02x", sha1_digest[n]);
@@ -349,7 +349,7 @@ void fim_registry_final_digests(int opts,
         }
     }
 
-    if (opts | CHECK_SHA256SUM) {
+    if (opts & CHECK_SHA256SUM) {
         SHA256_Final(sha256_digest, sha256_ctx);
         for (n = 0; n < SHA256_DIGEST_LENGTH; n++) {
             snprintf(sha256_output, 3, "%02x", sha256_digest[n]);
