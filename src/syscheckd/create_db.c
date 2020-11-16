@@ -56,11 +56,14 @@ void fim_scan() {
     struct timespec end;
     clock_t cputime_start;
     unsigned int nodes_count;
+    struct fim_element item;
+    char *path;
 
     cputime_start = clock();
     gettime(&start);
     minfo(FIM_FREQUENCY_STARTED);
     fim_send_scan_info(FIM_SCAN_START);
+
 
     fim_diff_folder_size();
     syscheck.disk_quota_full_msg = true;
@@ -70,18 +73,20 @@ void fim_scan() {
     w_mutex_lock(&syscheck.fim_scan_mutex);
 
     while (syscheck.dir[it] != NULL) {
-        struct fim_element *item;
-        os_calloc(1, sizeof(fim_element), item);
-        item->mode = FIM_SCHEDULED;
-        item->index = it;
+        memset(&item, 0, sizeof(fim_element));
+        item.mode = FIM_SCHEDULED;
+        item.index = it;
+
+        // Assign to `path` the resolved link path if there is one, `dir` instead
+        os_strdup(fim_get_real_path(it), path);
+
+        fim_checker(path, &item, NULL, 1);
 #ifndef WIN32
         if (syscheck.opts[it] & REALTIME_ACTIVE) {
-            realtime_adddir(syscheck.dir[it], 0, (syscheck.opts[it] & CHECK_FOLLOW) ? 1 : 0);
+            realtime_adddir(path, 0, (syscheck.opts[it] & CHECK_FOLLOW) ? 1 : 0);
         }
 #endif
-        fim_checker(syscheck.dir[it], item, NULL, 1);
         it++;
-        os_free(item);
     }
 
     w_mutex_unlock(&syscheck.fim_scan_mutex);
@@ -104,13 +109,14 @@ void fim_scan() {
             w_mutex_lock(&syscheck.fim_scan_mutex);
 
             while ((syscheck.dir[it] != NULL) && (nodes_count < syscheck.file_limit)) {
-                struct fim_element *item;
-                os_calloc(1, sizeof(fim_element), item);
-                item->mode = FIM_SCHEDULED;
-                item->index = it;
-                fim_checker(syscheck.dir[it], item, NULL, 0);
+                memset(&item, 0, sizeof(fim_element));
+                item.mode = FIM_SCHEDULED;
+                item.index = it;
+
+                os_strdup(fim_get_real_path(it), path);
+
+                fim_checker(path, &item, NULL, 0);
                 it++;
-                os_free(item);
 
                 w_mutex_lock(&syscheck.fim_entry_mutex);
                 nodes_count = fim_db_get_count_entry_path(syscheck.database);
@@ -662,7 +668,7 @@ int fim_configuration_directory(const char *path, const char *entry) {
 
     if (strcmp("file", entry) == 0) {
         while(syscheck.dir[it]) {
-            trail_path_separator(full_entry, syscheck.dir[it], sizeof(full_entry));
+            trail_path_separator(full_entry, fim_get_real_path(it), sizeof(full_entry));
             match = w_compare_str(full_entry, full_path);
 
             if (top < match && full_path[match - 1] == PATH_SEP) {
@@ -702,11 +708,11 @@ int fim_check_depth(char * path, int dir_position) {
     int depth = -1;
     unsigned int parent_path_size;
 
-    if (!syscheck.dir[dir_position]) {
+    if (syscheck.dir[dir_position] == NULL && syscheck.symbolic_links[dir_position] == NULL) {
         return -1;
     }
 
-    parent_path_size = strlen(syscheck.dir[dir_position]);
+    parent_path_size = strlen(fim_get_real_path(dir_position));
 
     if (parent_path_size > strlen(path)) {
         return -1;
@@ -1323,6 +1329,10 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
 #endif
 
     return;
+}
+
+char *fim_get_real_path(int position) {
+    return syscheck.symbolic_links[position] == NULL ? syscheck.dir[position] : syscheck.symbolic_links[position];
 }
 
 // Sleep during rt_delay milliseconds
