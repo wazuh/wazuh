@@ -14,8 +14,8 @@ from xml.etree import ElementTree
 
 import pytest
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         from wazuh.core.utils import *
         from wazuh.core import exception
         from wazuh.core.agent import WazuhDBQueryAgents
@@ -879,12 +879,11 @@ def test_WazuhDBQuery_parse_filters(mock_query, mock_filter, mock_socket_conn, m
 
 
 @pytest.mark.parametrize('field_name, field_filter, q_filter', [
-    ('status', None, None),
+    ('status', 'field', {'value': 'active', 'operator': 'LIKE', 'field': 'status$0'}),
     ('date1', None, {'value': '1', 'operator': None}),
     ('os.name', 'field', {'value': '2019-07-16 09:21:56', 'operator': 'LIKE', 'field': 'status$0'}),
     ('os.name', None, {'value': None, 'operator': 'LIKE', 'field': 'status$0'}),
-    ('os.name', 'field', {'value': '2019-07-16 09:21:56', 'operator': 'LIKE', 'field': 'status$0'}),
-
+    ('os.name', 'field', {'value': '2019-07-16 09:21:56', 'operator': 'LIKE', 'field': 'status$0'})
 ])
 @patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
@@ -897,7 +896,7 @@ def test_WazuhDBQuery_protected_process_filter(mock_date, mock_status, mock_sock
     """Tests WazuhDBQuery._process_filter."""
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                          search=None, select=None,
-                         fields={'os.name': 'ubuntu', 'os.version': '18.04'},
+                         fields={'os.name': 'ubuntu', 'os.version': '18.04', 'status': 'active'},
                          default_sort_field=None, query=None,
                          backend=WazuhDBBackend(agent_id=0), count=5,
                          get_data=None, date_fields=['date1', 'date2'])
@@ -905,9 +904,7 @@ def test_WazuhDBQuery_protected_process_filter(mock_date, mock_status, mock_sock
     query._process_filter(field_name, field_filter, q_filter)
 
     mock_conn_db.assert_called_once_with()
-    if field_name == 'status':
-        mock_status.assert_any_call(q_filter)
-    elif field_name in ['date1', 'date2']:
+    if field_name in ['date1', 'date2']:
         mock_date.assert_any_call(q_filter, field_name)
 
 
@@ -1475,7 +1472,8 @@ def test_select_array(select, required_fields, expected_result):
     except WazuhError as e:
         assert e.code == 1724
 
-@patch('wazuh.common.ossec_path', new='/var/ossec')
+
+@patch('wazuh.core.common.ossec_path', new='/var/ossec')
 @patch('wazuh.core.utils.glob.glob')
 def test_get_files(mock_glob):
     """Test whether get_files() returns expected paths."""
@@ -1487,3 +1485,19 @@ def test_get_files(mock_glob):
 
     assert 'etc/ossec.conf' in result
     assert all('/var/ossec' not in x for x in result)
+
+
+@pytest.mark.parametrize('detail, value, attribs, details', [
+    ('new', '4', {'attrib': 'attrib_value'}, {'actual': '3'}),
+    ('actual', '4', {'new_attrib': 'attrib_value', 'new_attrib2': 'whatever'}, {'actual': {'pattern': '3'}}),
+])
+def test_add_dynamic_detail(detail, value, attribs, details):
+    """Test add_dynamic_detail core rule function."""
+    add_dynamic_detail(detail, value, attribs, details)
+    assert detail in details.keys()
+    if detail == next(iter(details.keys())):
+        assert details[detail]['pattern'].endswith(value)
+    else:
+        assert details[detail]['pattern'] == value
+    for key, value in attribs.items():
+        assert details[detail][key] == value

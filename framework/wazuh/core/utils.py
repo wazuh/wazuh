@@ -637,7 +637,8 @@ def load_wazuh_xml(xml_path):
         good_comment = comment.group(2).replace('--', '..')
         data = data.replace(comment.group(2), good_comment)
 
-    # < characters should be scaped as &lt; unless < is starting a <tag> or a comment
+    # Replace &lt; and &gt; currently present in the config
+    data = data.replace('&lt;', '_custom_amp_lt_').replace('&gt;', '_custom_amp_gt_')
 
     custom_entities = {
         'backslash': '\\'
@@ -647,18 +648,19 @@ def load_wazuh_xml(xml_path):
     for character, replacement in custom_entities.items():
         data = re.sub(replacement.replace('\\', '\\\\'), f'&{character};', data)
 
+    # < characters should be escaped as &lt; unless < is starting a <tag> or a comment
     data = re.sub(r"<(?!/?\w+.+>|!--)", "&lt;", data)
 
     # replace \< by &lt;
-    data = re.sub(r'\\<', '&lt;', data)
+    data = re.sub(r'&backslash;<', '&backslash;&lt;', data)
 
     # replace \> by &gt;
-    data = re.sub(r'\\>', '&gt;', data)
+    data = re.sub(r'&backslash;>', '&backslash;&gt;', data)
 
     # default entities
     default_entities = ['amp', 'lt', 'gt', 'apos', 'quot']
 
-    # & characters should be scaped if they don't represent an &entity;
+    # & characters should be escaped if they don't represent an &entity;
     data = re.sub(f"&(?!({'|'.join(default_entities + list(custom_entities))});)", "&amp;", data)
 
     entities = '<!DOCTYPE xmlfile [\n' + \
@@ -1145,9 +1147,7 @@ class WazuhDBQuery(object):
             self.query += " WHERE " if 'WHERE' not in self.query else ' AND '
 
     def _process_filter(self, field_name, field_filter, q_filter):
-        if field_name == "status":
-            self._filter_status(q_filter)
-        elif field_name in self.date_fields and not isinstance(q_filter['value'], (int, float)):
+        if field_name in self.date_fields and not isinstance(q_filter['value'], (int, float)):
             # Filter a date, but only if it is in string (YYYY-MM-DD hh:mm:ss) format.
             # If it matches the same format as DB (timestamp integer), filter directly by value (next if cond).
             self._filter_date(q_filter, field_name)
@@ -1382,3 +1382,28 @@ def get_files():
     files.add('etc/ossec.conf')
 
     return files
+
+
+def add_dynamic_detail(detail, value, attribs, details):
+    """Add a detail with attributes (i.e. regex with negate or type).
+
+    Parameters
+    ----------
+    detail : str
+        Name of the detail.
+    value : str
+        Detail value.
+    attribs : dict
+        Dictionary with the XML attributes.
+    details : dict
+        Dictionary with all the current details.
+    """
+    if detail in details:
+        new_pattern = details[detail]['pattern'] + value
+        details[detail].clear()
+        details[detail]['pattern'] = new_pattern
+    else:
+        details[detail] = dict()
+        details[detail]['pattern'] = value
+
+    details[detail].update(attribs)

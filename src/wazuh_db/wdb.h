@@ -33,11 +33,8 @@
 #define WDB_FIM_READDED 3
 #define WDB_FIM_DELETED 4
 
-#define WDB_SYSCHECK 0
-#define WDB_SYSCHECK_REGISTRY 1
-#define WDB_ROOTCHECK 2
-#define WDB_GROUPS 3
-#define WDB_SHARED_GROUPS 4
+#define WDB_GROUPS 0
+#define WDB_SHARED_GROUPS 1
 #define WDB_NETADDR_IPV4 0
 
 #define WDB_MULTI_GROUP_DELIM '-'
@@ -48,6 +45,11 @@
 
 #define WDB_MAX_COMMAND_SIZE    512
 #define WDB_MAX_RESPONSE_SIZE   OS_MAXSTR-WDB_MAX_COMMAND_SIZE
+
+#define AGENT_CS_NEVER_CONNECTED "never_connected"
+#define AGENT_CS_PENDING         "pending"
+#define AGENT_CS_ACTIVE          "active"
+#define AGENT_CS_DISCONNECTED    "disconnected"
 
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
@@ -133,6 +135,9 @@ typedef enum wdb_stmt {
     WDB_STMT_FIM_REGISTRY_CLEAR,
     WDB_STMT_FIM_REGISTRY_DELETE_AROUND,
     WDB_STMT_FIM_REGISTRY_DELETE_RANGE,
+    WDB_STMT_ROOTCHECK_INSERT_PM,
+    WDB_STMT_ROOTCHECK_UPDATE_PM,
+    WDB_STMT_ROOTCHECK_DELETE_PM,
     WDB_STMT_GLOBAL_INSERT_AGENT,
     WDB_STMT_GLOBAL_UPDATE_AGENT_NAME,
     WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION,
@@ -141,16 +146,11 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_LABELS_DEL,
     WDB_STMT_GLOBAL_LABELS_SET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE,
+    WDB_STMT_GLOBAL_UPDATE_AGENT_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_DELETE_AGENT,
     WDB_STMT_GLOBAL_SELECT_AGENT_NAME,
     WDB_STMT_GLOBAL_SELECT_AGENT_GROUP,
     WDB_STMT_GLOBAL_FIND_AGENT,
-    WDB_STMT_GLOBAL_SELECT_FIM_OFFSET,
-    WDB_STMT_GLOBAL_SELECT_REG_OFFSET,
-    WDB_STMT_GLOBAL_UPDATE_FIM_OFFSET,
-    WDB_STMT_GLOBAL_UPDATE_REG_OFFSET,
-    WDB_STMT_GLOBAL_SELECT_AGENT_STATUS,
-    WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS,
     WDB_STMT_GLOBAL_FIND_GROUP,
     WDB_STMT_GLOBAL_UPDATE_AGENT_GROUP,
     WDB_STMT_GLOBAL_INSERT_AGENT_GROUP,
@@ -163,12 +163,14 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_SYNC_SET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
-    WDB_STMT_GLOBAL_GET_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS,
-    WDB_STMT_GLOBAL_GET_AGENTS_BY_GREATER_KEEPALIVE,
-    WDB_STMT_GLOBAL_GET_AGENTS_BY_LESS_KEEPALIVE,
-    WDB_STMT_SIZE,
+    WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS,
+    WDB_STMT_GLOBAL_GET_AGENT_INFO,
+    WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT,
+    WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS,
+    WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
+    WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
 
 typedef enum global_db_access {
@@ -178,28 +180,25 @@ typedef enum global_db_access {
     WDB_UPDATE_AGENT_NAME,
     WDB_UPDATE_AGENT_DATA,
     WDB_UPDATE_AGENT_KEEPALIVE,
-    WDB_UPDATE_AGENT_STATUS,
+    WDB_UPDATE_AGENT_CONNECTION_STATUS,
     WDB_UPDATE_AGENT_GROUP,
-    WDB_UPDATE_FIM_OFFSET,
-    WDB_UPDATE_REG_OFFSET,
     WDB_SET_AGENT_LABELS,
     WDB_GET_ALL_AGENTS,
-    WDB_GET_AGENTS_BY_KEEPALIVE,
     WDB_FIND_AGENT,
     WDB_GET_AGENT_INFO,
     WDB_GET_AGENT_LABELS,
     WDB_SELECT_AGENT_NAME,
     WDB_SELECT_AGENT_GROUP,
-    WDB_SELECT_AGENT_STATUS,
     WDB_SELECT_KEEPALIVE,
-    WDB_SELECT_FIM_OFFSET,
-    WDB_SELECT_REG_OFFSET,
     WDB_FIND_GROUP,
     WDB_SELECT_GROUPS,
     WDB_DELETE_AGENT,
     WDB_DELETE_GROUP,
     WDB_DELETE_AGENT_BELONG,
-    WDB_DELETE_GROUP_BELONG
+    WDB_DELETE_GROUP_BELONG,
+    WDB_RESET_AGENTS_CONNECTION,
+    WDB_GET_AGENTS_BY_CONNECTION_STATUS,
+    WDB_DISCONNECT_AGENTS
 } global_db_access;
 
 typedef struct wdb_t {
@@ -238,6 +237,7 @@ extern char *schema_upgrade_v4_sql;
 extern char *schema_upgrade_v5_sql;
 extern char *schema_upgrade_v6_sql;
 extern char *schema_global_upgrade_v1_sql;
+extern char *schema_global_upgrade_v2_sql;
 
 extern wdb_config wconfig;
 extern pthread_mutex_t pool_mutex;
@@ -267,6 +267,7 @@ typedef struct agent_info_data {
     char *node_name;
     char *agent_ip;
     char *labels;
+    char *connection_status;
     char *sync_status;
 } agent_info_data;
 
@@ -325,10 +326,10 @@ int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum);
 int wdb_fim_delete(wdb_t * wdb, const char * file);
 
 /* Insert configuration assessment entry. Returns ID on success or -1 on error. */
-int wdb_insert_pm(sqlite3 *db, const rk_event_t *event);
+int wdb_rootcheck_insert(wdb_t * wdb, const rk_event_t *event);
 
 /* Update configuration assessment last date. Returns number of affected rows on success or -1 on error. */
-int wdb_update_pm(sqlite3 *db, const rk_event_t *event);
+int wdb_rootcheck_update(wdb_t * wdb, const rk_event_t *event);
 
 /* Look for a configuration assessment entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
 int wdb_sca_find(wdb_t * wdb, int pm_id, char * output);
@@ -460,24 +461,25 @@ int wdb_update_agent_name(int id, const char *name, int *sock);
 int wdb_update_agent_data(agent_info_data *agent_data, int *sock);
 
 /**
- * @brief Update agent's last keepalive ond modifies the cluster synchronization status.
+ * @brief Update agent's last keepalive and modifies the cluster synchronization status.
  *
  * @param[in] id Id of the agent for whom the keepalive must be updated.
+ * @param[in] connection_status String with the connection status to be set.
  * @param[in] sync_status String with the cluster synchronization status to be set.
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_update_agent_keepalive(int id, const char *sync_status, int *sock);
+int wdb_update_agent_keepalive(int id, const char *connection_status, const char *sync_status, int *sock);
 
 /**
- * @brief Set agent updating status.
+ * @brief Update agent's connection status.
  *
- * @param[in] id ID of the agent.
- * @param[in] status The status to be set. WDB_AGENT_EMPTY, WDB_AGENT_PENDING or WDB_AGENT_UPDATED.
+ * @param[in] id Id of the agent for whom the connection status must be updated.
+ * @param[in] connection_status String with the connection status to be set.
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Returns OS_SUCCESS if success. OS_INVALID on error.
+ * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_set_agent_status(int id_agent, int status, int *sock);
+int wdb_update_agent_connection_status(int id, const char *connection_status, int *sock);
 
 /**
  * @brief Update agent group. If the group is not specified, it is set to NULL.
@@ -488,17 +490,6 @@ int wdb_set_agent_status(int id_agent, int status, int *sock);
  * @return Returns OS_SUCCESS if success. OS_INVALID on error.
  */
 int wdb_update_agent_group(int id,char *group, int *sock);
-
-/**
- * @brief Set the file offset either for syscheck as well as registry.
- *
- * @param[in] id ID of the agent.
- * @param[in] type An enumerator indicating the offset type. WDB_SYSCHECK or WDB_SYSCHECK_REGISTRY.
- * @param[in] offset to be set in the database.
- * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Returns OS_SUCCESS if success. OS_INVALID on error.
- */
-int wdb_set_agent_offset(int id, int type, long offset, int *sock);
 
 /**
  * @brief Update agent's labels.
@@ -522,20 +513,6 @@ int wdb_set_agent_labels(int id, const char *labels, int *sock);
  * @retval NULL on errors.
  */
 int* wdb_get_all_agents(bool include_manager, int *sock);
-
-/**
- * @brief Returns an array containing the ID of every agent (except 0), ended with -1 based on its keep_alive.
- * This method creates and sends a command to WazuhDB to receive the ID of every agent.
- * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent ID is obtained.
- * The array is heap allocated memory that must be freed by the caller.
- *
- * @param [in] condition The symbol ">" or "<". The condition to match keep alive.
- * @param [in] keepalive The keep_alive to search the agents.
- * @param [in] include_manager flag to include the manager on agents list.
- * @param [in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Pointer to the array, on success. NULL on errors.
- */
-int* wdb_get_agents_by_keepalive(const char* condition, int keepalive, bool include_manager, int *sock);
 
 /**
  * @brief Find agent id by name and address.
@@ -584,15 +561,6 @@ char* wdb_get_agent_name(int id, int *sock);
 char* wdb_get_agent_group(int id, int *sock);
 
 /**
- * @brief Get agent updating status.
- *
- * @param[in] id_agent ID of the agent.
- * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Returns the WDB_AGENT_* status if success. OS_INVALID on error.
- */
-int wdb_get_agent_status(int id_agent, int *sock);
-
-/**
  * @brief Function to get the agent last keepalive.
  *
  * @param [in] name String with the name of the agent.
@@ -601,16 +569,6 @@ int wdb_get_agent_status(int id_agent, int *sock);
  * @return Returns this value, 0 on NULL or OS_INVALID on error.
  */
 time_t wdb_get_agent_keepalive(const char *name, const char *ip, int *sock);
-
-/**
- * @brief Get the file offset either for syscheck as well as registry.
- *
- * @param[in] id ID of the agent.
- * @param[in] type An enumerator indicating the offset type. WDB_SYSCHECK or WDB_SYSCHECK_REGISTRY.
- * @param [in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Returns the offset if success. OS_INVALID on error.
- */
-long wdb_get_agent_offset(int id, int type, int *sock);
 
 /**
  * @brief Find group by name.
@@ -665,6 +623,37 @@ int wdb_delete_agent_belongs(int id, int *sock);
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
 int wdb_remove_group_from_belongs_db(const char *name, int *sock);
+
+/**
+ * @brief Reset the connection_status column of every agent (excluding the manager).
+ *        If connection_status is pending or connected it will be changed to disconnected.
+ *        If connection_status is disconnected or never_connected it will not be changed.
+ *
+ * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_reset_agents_connection(int *sock);
+
+/**
+ * @brief Get every agent (excluding the manager) that matches the specified connection status.
+ *
+ * @param[in] status The connection status.
+ * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @return Pointer to the array, on success. NULL on errors.
+ */
+int* wdb_get_agents_by_connection_status(const char* status, int *sock);
+
+/**
+ * @brief This method creates and sends a command to WazuhDB to set as disconnected all the
+ * agents (excluding the manager) with a last_keepalive before the specified keepalive
+ * threshold. Returns an array containing the ID of all the agents that had been set as disconnected.
+ * The array is heap allocated memory that must be freed by the caller.
+ *
+ * @param [in] keepalive The keepalive threshold before which an agent should be set as disconnected.
+ * @param [in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @return Pointer to the array, on success. NULL if no agents were set as disconnected or an error ocurred.
+ */
+int* wdb_disconnect_agents(int keepalive, int *sock);
 
 /**
  * @brief Create database for agent from profile.
@@ -786,7 +775,10 @@ void wdb_delete_fim_all();
 /* Delete PM events of an agent. Returns number of affected rows on success or -1 on error. */
 int wdb_delete_pm(int id);
 
-/* Delete PM events of all agents */
+/* Delete PM events of an agent. Returns number of affected rows on success or -1 on error. */
+int wdb_rootcheck_delete(wdb_t * wdb);
+
+/* Deletes PM events of all agents */
 void wdb_delete_pm_all();
 
 /* Rebuild database. Returns 0 on success or -1 on error. */
@@ -927,6 +919,20 @@ int wdb_parse(char * input, char * output);
 
 int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, char * output);
 
+/**
+ * @brief Parses a rootcheck command
+ * Commands:
+ * 1. delete: Deletes pm table
+ * 2. save: Inserts the entry or updates if it already exists
+ * @param wdb Database of an agent
+ * @param input buffer input
+ * @param output buffer output, on success responses are:
+ *        "ok 0" -> If entry was deleted
+ *        "ok 1" -> If entry was updated
+ *        "ok 2" -> If entry was inserted
+ * */
+int wdb_parse_rootcheck(wdb_t * wdb, char * input , char * output) __attribute__((nonnull));
+
 int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_netproto(wdb_t * wdb, char * input, char * output);
@@ -965,7 +971,8 @@ int wdb_parse_mitre_get(wdb_t * wdb, char * input, char * output);
  * @param [in] wdb The global struct database.
  * @param [in] input String with the agent data in JSON format.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output);
 
@@ -975,7 +982,8 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output);
  * @param [in] wdb The global struct database.
  * @param [in] input String with the agent data in JSON format.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_update_agent_name(wdb_t * wdb, char * input, char * output);
 
@@ -985,7 +993,8 @@ int wdb_parse_global_update_agent_name(wdb_t * wdb, char * input, char * output)
  * @param [in] wdb The global struct database.
  * @param [in] input String with the agent data in JSON format.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output);
 
@@ -995,7 +1004,8 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
  * @param [in] wdb The global struct database.
  * @param [in] input String with 'agent_id'.
  * @param [out] output Response of the query in JSON format.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_get_agent_labels(wdb_t * wdb, char * input, char * output);
 
@@ -1016,7 +1026,8 @@ int wdb_parse_global_get_agent_info(wdb_t * wdb, char * input, char * output);
  * @param [in] wdb The global struct database.
  * @param [in] input String with 'agent_id labels_string'.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output);
 
@@ -1026,9 +1037,21 @@ int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output);
  * @param [in] wdb The global struct database.
  * @param [in] input String with the agent data in JSON format.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Function to parse the update agent connection status.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the agent data in JSON format.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_global_update_connection_status(wdb_t * wdb, char * input, char * output);
 
 /**
  * @brief Function to parse the agent delete from agent table request.
@@ -1036,7 +1059,8 @@ int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * ou
  * @param [in] wdb The global struct database.
  * @param [in] input String with 'agent_id'.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_delete_agent(wdb_t * wdb, char * input, char * output);
 
@@ -1046,7 +1070,8 @@ int wdb_parse_global_delete_agent(wdb_t * wdb, char * input, char * output);
  * @param [in] wdb The global struct database.
  * @param [in] input String with 'agent_id'.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_select_agent_name(wdb_t * wdb, char * input, char * output);
 
@@ -1056,7 +1081,8 @@ int wdb_parse_global_select_agent_name(wdb_t * wdb, char * input, char * output)
  * @param [in] wdb The global struct database.
  * @param [in] input String with 'agent_id'.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_select_agent_group(wdb_t * wdb, char * input, char * output);
 
@@ -1066,7 +1092,8 @@ int wdb_parse_global_select_agent_group(wdb_t * wdb, char * input, char * output
  * @param [in] wdb The global struct database.
  * @param [in] input String with 'agent_id'.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_delete_agent_belong(wdb_t * wdb, char * input, char * output);
 
@@ -1076,69 +1103,10 @@ int wdb_parse_global_delete_agent_belong(wdb_t * wdb, char * input, char * outpu
  * @param [in] wdb The global struct database.
  * @param [in] input String JSON with the agent name and ip.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_find_agent(wdb_t * wdb, char * input, char * output);
-
-/**
- * @brief Function to parse the select agent fim offset request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with 'agent_id'.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK followed by a JSON with the offset. -1 On error: invalid DB query syntax.
- */
-int wdb_parse_global_select_fim_offset(wdb_t * wdb, char * input, char * output);
-
-/**
- * @brief Function to parse the select agent reg offset request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with 'agent_id'.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK followed by a JSON with the offset. -1 On error: invalid DB query syntax.
- */
-int wdb_parse_global_select_reg_offset(wdb_t * wdb, char * input, char * output);
-
-/**
- * @brief Function to parse the update agent fim offset request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the agent and offset data in JSON format.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
- */
-int wdb_parse_global_update_fim_offset(wdb_t * wdb, char * input, char * output);
-
-/**
- * @brief Function to parse the update agent reg offset request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the agent and offset data in JSON format.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
- */
-int wdb_parse_global_update_reg_offset(wdb_t * wdb, char * input, char * output);
-
-/**
- * @brief Function to parse the select agent update status request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with 'agent_id'.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK followed by a JSON with the status. -1 On error: invalid DB query syntax.
- */
-int wdb_parse_global_select_agent_status(wdb_t * wdb, char * input, char * output);
-
-/**
- * @brief Function to parse the update agent update status request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the agent and update status data in JSON format.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
- */
-int wdb_parse_global_update_agent_status(wdb_t * wdb, char * input, char * output);
 
 /**
  * @brief Function to parse the update agent group request.
@@ -1146,7 +1114,8 @@ int wdb_parse_global_update_agent_status(wdb_t * wdb, char * input, char * outpu
  * @param [in] wdb The global struct database.
  * @param [in] input String with the agent and group data in JSON format.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_update_agent_group(wdb_t * wdb, char * input, char * output);
 
@@ -1156,7 +1125,8 @@ int wdb_parse_global_update_agent_group(wdb_t * wdb, char * input, char * output
  * @param [in] wdb The global struct database.
  * @param [in] input String with the group name.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_find_group(wdb_t * wdb, char * input, char * output);
 
@@ -1166,7 +1136,8 @@ int wdb_parse_global_find_group(wdb_t * wdb, char * input, char * output);
  * @param [in] wdb The global struct database.
  * @param [in] input String with the group name.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_insert_agent_group(wdb_t * wdb, char * input, char * output);
 
@@ -1176,7 +1147,8 @@ int wdb_parse_global_insert_agent_group(wdb_t * wdb, char * input, char * output
  * @param [in] wdb The global struct database.
  * @param [in] input String with the group id and agent id in JSON format.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_insert_agent_belong(wdb_t * wdb, char * input, char * output);
 
@@ -1186,7 +1158,8 @@ int wdb_parse_global_insert_agent_belong(wdb_t * wdb, char * input, char * outpu
  * @param [in] wdb The global struct database.
  * @param [in] input String with the group name.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_delete_group_belong(wdb_t * wdb, char * input, char * output);
 
@@ -1196,7 +1169,8 @@ int wdb_parse_global_delete_group_belong(wdb_t * wdb, char * input, char * outpu
  * @param [in] wdb The global struct database.
  * @param [in] input String with the group name.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_delete_group(wdb_t * wdb, char * input, char * output);
 
@@ -1205,7 +1179,8 @@ int wdb_parse_global_delete_group(wdb_t * wdb, char * input, char * output);
  *
  * @param [in] wdb The global struct database.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_select_groups(wdb_t * wdb, char * output);
 
@@ -1215,7 +1190,8 @@ int wdb_parse_global_select_groups(wdb_t * wdb, char * output);
  * @param [in] wdb The global struct database.
  * @param [in] input String with 'agent_name agent_ip'.
  * @param [out] output Response of the query.
- * @return 0 Success: response contains the value OK. -1 On error: invalid DB query syntax.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_select_agent_keepalive(wdb_t * wdb, char * input, char * output);
 
@@ -1241,14 +1217,15 @@ int wdb_parse_global_sync_agent_info_get(wdb_t * wdb, char * input, char * outpu
 int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to parse last_id, condition and keepalive for get-agents-by-keepalive.
+ * @brief Function to parse the disconnect-agents command data.
  *
  * @param [in] wdb The global struct database.
- * @param [in] input String with last_id, condition, and keepalive.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains the value. -1 On error: invalid DB query syntax.
+ * @param [in] input String with the time threshold before which consider an agent as disconnected.
+ * @param [out] output Response of the command in JSON format with the list of agents that were set as disconnected.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
-int wdb_parse_global_get_agents_by_keepalive(wdb_t* wdb, char* input, char* output);
+int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output);
 
 /**
  * @brief Function to parse last_id get-all-agents.
@@ -1259,6 +1236,28 @@ int wdb_parse_global_get_agents_by_keepalive(wdb_t* wdb, char* input, char* outp
  * @return 0 Success: response contains the value. -1 On error: invalid DB query syntax.
  */
 int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output);
+
+/**
+ * @brief Function to parse the reset agent connection status request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_reset_agents_connection(wdb_t * wdb, char * output);
+
+/**
+ * @brief Function to parse the get agents by connection status request.
+ *
+ * @param wdb The global struct database.
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with 'connection_status'.
+ * @param [out] output Response of the query in JSON format.
+ * @retval 0 Success: Response contains the value.
+ * @retval -1 On error: Response contains details of the error.
+ */
+int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, char* output);
 
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);
 
@@ -1406,6 +1405,7 @@ int wdb_global_update_agent_name(wdb_t *wdb, int id, char* name);
  * @param [in] manager_host The agent's manager host name.
  * @param [in] node_name The agent's manager node name.
  * @param [in] agent_ip The agent's IP address.
+ * @param [in] connection_status The agent's connection status.
  * @param [in] sync_status The agent's synchronization status in cluster.
  * @return Returns 0 on success or -1 on error.
  */
@@ -1426,6 +1426,7 @@ int wdb_global_update_agent_version(wdb_t *wdb,
                                     const char *manager_host,
                                     const char *node_name,
                                     const char *agent_ip,
+                                    const char *connection_status,
                                     const char *sync_status);
 
 /**
@@ -1462,10 +1463,21 @@ int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value);
  *
  * @param [in] wdb The Global struct database.
  * @param [in] id The agent ID
+ * @param [in] connection_status The agent's connection status.
  * @param [in] status The value of sync_status
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *sync_status);
+int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection_status, const char *sync_status);
+
+/**
+ * @brief Function to update an agent connection status.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id The agent ID.
+ * @param [in] connection_status The connection status to be set.
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char* connection_status);
 
 /**
  * @brief Function to delete an agent from the agent table.
@@ -1512,63 +1524,6 @@ int wdb_global_delete_agent_belong(wdb_t *wdb, int id);
  * @return JSON with id on success. NULL on error.
  */
 cJSON* wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip);
-
-/**
- * @brief Function to get the fim offset of a particular agent.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] id Agent id.
- * @return JSON with the agent fim offset on success. NULL on error.
- */
-cJSON* wdb_global_select_agent_fim_offset(wdb_t *wdb, int id);
-
-/**
- * @brief Function to get the reg offset of a particular agent.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] id Agent id.
- * @return JSON with the agent reg offset on success. NULL on error.
- */
-cJSON* wdb_global_select_agent_reg_offset(wdb_t *wdb, int id);
-
-/**
- * @brief Function to update an agent fim offset.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] id The agent ID
- * @param [in] offset The value of the offset
- * @return Returns 0 on success or -1 on error.
- */
-int wdb_global_update_agent_fim_offset(wdb_t *wdb, int id, long offset);
-
-/**
- * @brief Function to update an agent reg offset.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] id The agent ID
- * @param [in] offset The value of the offset
- * @return Returns 0 on success or -1 on error.
- */
-int wdb_global_update_agent_reg_offset(wdb_t *wdb, int id, long offset);
-
-/**
- * @brief Function to get the update status of a particular agent.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] id Agent id.
- * @return JSON with the agent update status on success. NULL on error.
- */
-cJSON* wdb_global_select_agent_status(wdb_t *wdb, int id);
-
-/**
- * @brief Function to update an agent update status.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] id The agent ID
- * @param [in] status The value of the status
- * @return Returns 0 on success or -1 on error.
- */
-int wdb_global_update_agent_status(wdb_t *wdb, int id, char *status);
 
 /**
  * @brief Function to update an agent group.
@@ -1686,21 +1641,6 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
  */
 cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id);
 
-/*
- * @brief Gets every agent ID based on the keepalive.
- *        Response is prepared in one chunk,
- *        if the size of the chunk exceeds WDB_MAX_RESPONSE_SIZE parsing stops and reports the amount of agents obtained.
- *        Multiple calls to this function can be required to fully obtain all agents.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] last_agent_id ID where to start querying.
- * @param [in] condition The symbol '<' or '>' condition used to compare keepalive.
- * @param [in] keep_alive The value of keepalive to search for agents.
- * @param [out] output A buffer where the response is written. Must be de-allocated by the caller.
- * @return wdbc_result to represent if all agents has being obtained or any error occurred.
- */
-wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, char condition, int keep_alive, char **output);
-
 /**
  * @brief Gets every agent ID.
  *        Response is prepared in one chunk,
@@ -1714,7 +1654,49 @@ wdbc_result wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, c
  */
 wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **output);
 
+/**
+ * @brief Function to reset connection_status column of every agent (excluding the manager).
+ *        If connection_status is pending or connected it will be changed to disconnected.
+ *        If connection_status is disconnected or never_connected it will not be changed.
+ *
+ * @param [in] wdb The Global struct database.
+ * @return 0 On success. -1 On error.
+ */
+int wdb_global_reset_agents_connection(wdb_t *wdb);
+
+/**
+ * @brief Function to get the id of every agent with a specific connection_status.
+ *
+ * @param wdb The Global struct database.
+ * @param status Connection status of the agents requested.
+ * @retval JSON with every agent ID on success.
+ * @retval NULL on error.
+ */
+
+cJSON* wdb_global_get_agents_by_connection_status(wdb_t *wdb, const char* status);
+/*
+ * @brief Gets all the agents' IDs (excluding the manager) that satisfy the keepalive condition to be disconnected.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] keep_alive The value of keepalive threshold before which consider an agent as disconnected.
+ * @return A pointer to a JSON with all the agents that satisfy the keepalive condition. Must be de-allocated by the caller.
+ */
+cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int keep_alive);
+
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
+
+/**
+ * @brief Check the agent 0 status in the global database
+ *
+ * The table "agent" must have a tuple with id=0 and last_keepalive=1999/12/31 23:59:59 UTC.
+ * Otherwise, the database is either corrupt or old.
+ *
+ * @return Number of tuples matching that condition.
+ * @retval 1 The agent 0 status is OK.
+ * @retval 0 No tuple matching conditions exists.
+ * @retval -1 The table "agent" is missing or an error occurred.
+ */
+int wdb_global_check_manager_keepalive(wdb_t *wdb);
 
 #endif

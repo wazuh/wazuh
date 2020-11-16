@@ -2,8 +2,8 @@
 get_policies:
   - params:
       policy_ids:
-        - "100"
-        - "103"
+        - 100
+        - 103
     result:
       affected_items:
         - id: 100
@@ -34,10 +34,10 @@ get_policies:
       failed_items: {}
   - params:
       policy_ids:
-        - "102"
-        - "104"
-        - "105"
-        - "110"
+        - 102
+        - 104
+        - 105
+        - 110
     result:
       affected_items:
         - id: 102
@@ -76,21 +76,21 @@ get_policies:
             - 105
       failed_items:
         "4007":
-          - "110"
+          - 110
   - params:
       policy_ids:
-        - "999"
-        - "800"
-        - "700"
-        - "600"
+        - 999
+        - 800
+        - 700
+        - 600
     result:
       affected_items: []
       failed_items:
         "4007":
-          - "999"
-          - "800"
-          - "700"
-          - "600"
+          - 999
+          - 800
+          - 700
+          - 600
 add_policy:
   - params:
       name: new_policy
@@ -141,15 +141,15 @@ add_policy:
 update_policy:
   - params:
       policy_id:
-        - "105"
+        - 105
     result:
       affected_items: []
       failed_items:
         "4001":
-          - "105"
+          - 105
   - params:
       policy_id:
-        - "105"
+        - 105
       name: ossecPolicy1
       policy:
         actions:
@@ -172,7 +172,7 @@ update_policy:
       failed_items: {}
   - params:
       policy_id:
-        - "950"
+        - 950
       name: normalPolicy2
       policy:
         actions:
@@ -184,10 +184,10 @@ update_policy:
       affected_items: []
       failed_items:
         "4007":
-          - "950"
+          - 950
   - params:
       policy_id:
-        - "103"
+        - 103
       name: normalPolicy
       policy:
         actions:
@@ -199,10 +199,10 @@ update_policy:
       affected_items: []
       failed_items:
         "4013":
-          - "103"
+          - 103
   - params:
       policy_id:
-        - "1"
+        - 1
       name: wazuhPolicy
       policy:
         actions:
@@ -214,12 +214,12 @@ update_policy:
       affected_items: []
       failed_items:
         "4008":
-          - "1"
+          - 1
 remove_policies:
   - params:
       policy_ids:
-        - "1"
-        - "103"
+        - 1
+        - 103
     result:
       affected_items:
         - id: 103
@@ -236,13 +236,13 @@ remove_policies:
             - 105
       failed_items:
         "4008":
-          - "1"
+          - 1
   - params:
       policy_ids:
-        - "102"
-        - "104"
-        - "105"
-        - "200"
+        - 102
+        - 104
+        - 105
+        - 200
     result:
       affected_items:
         - id: 102
@@ -281,13 +281,13 @@ remove_policies:
             - 105
       failed_items:
         "4007":
-          - "200"
+          - 200
   - params:
       policy_ids:
-        - "109"
-        - "901"
-        - "902"
-        - "903"
+        - 109
+        - 901
+        - 902
+        - 903
     result:
       affected_items:
         - id: 109
@@ -303,6 +303,6 @@ remove_policies:
             - 105
       failed_items:
         "4007":
-          - "901"
-          - "902"
-          - "903"
+          - 901
+          - 902
+          - 903

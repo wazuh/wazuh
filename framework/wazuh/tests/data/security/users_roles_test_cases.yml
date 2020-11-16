@@ -2,8 +2,8 @@
 get_users:
   - params:
       user_ids:
-        - "100"
-        - "101"
+        - 100
+        - 101
     result:
       affected_items:
         - id: 100
@@ -22,10 +22,10 @@ get_users:
       failed_items: {}
   - params:
       user_ids:
-        - "100"
-        - "101"
-        - "102"
-        - "103"
+        - 100
+        - 101
+        - 102
+        - 103
     result:
       affected_items:
         - id: 100
@@ -55,9 +55,9 @@ get_users:
       failed_items: {}
   - params:
       user_ids:
-        - "103"
-        - "101"
-        - "999"
+        - 103
+        - 101
+        - 999
     result:
       affected_items:
         - id: 103
@@ -74,7 +74,7 @@ get_users:
             - 103
       failed_items:
         "5001":
-          - "999"
+          - 999
   - params:
       user_ids:
         - 55
@@ -112,8 +112,16 @@ create_user:
     result:
       affected_items: []
       failed_items:
-        "5007":
+        "5009":
           - new_user1
+  - params:
+      username: new_user2
+      password: WazuhWazuh1
+    result:
+      affected_items: []
+      failed_items:
+        "5007":
+          - new_user2
 update_user:
   - params:
       user_id:
@@ -144,7 +152,7 @@ update_user:
     result:
       affected_items: []
       failed_items:
-        "5007":
+        "5009":
           - 106
 remove_users:
   - params:

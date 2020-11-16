@@ -58,11 +58,22 @@
 #define FIM_REGISTRY_FAIL_TO_INSERT_VALUE       "(6943): Failed to insert value '%s %s\\%s'"
 #define FIM_REGISTRY_FAIL_TO_GET_KEY_ID         "(6944): Unable to get id for registry key '%s %s'"
 
-
 /* Monitord warning messages */
 #define ROTATE_LOG_LONG_PATH                    "(7500): The path of the rotated log is too long."
 #define ROTATE_JSON_LONG_PATH                   "(7501): The path of the rotated json is too long."
 #define COMPRESSED_LOG_LONG_PATH                "(7502): The path of the compressed log is too long."
 #define COMPRESSED_JSON_LONG_PATH               "(7503): The path of the compressed json is too long."
+
+/* Wazuh-logtest warning messages*/
+#define LOGTEST_INV_NUM_THREADS                 "(7000): Number of logtest threads too high. Only creates %d threads"
+#define LOGTEST_INV_NUM_USERS                   "(7001): Number of maximum users connected in logtest too high. Only allows %d users"
+#define LOGTEST_INV_NUM_TIMEOUT                 "(7002): Number of maximum user timeouts in logtest too high. Only allows %ds maximum timeouts"
+#define LOGTEST_WARN_TOKEN_EXPIRED              "(7003): '%s' token expires"
+#define LOGTEST_WARN_SESSION_NOT_FOUND          "(7004): No session found for token '%s'"
+
+/* Ruleset reading warnings */
+#define ANALYSISD_INV_VALUE_RULE                "(7600): Invalid value '%s' for attribute '%s' in rule %d"
+#define ANALYSISD_INV_VALUE_DEFAULT             "(7601): Invalid value for attribute '%s' in '%s' option " \
+                                                "(decoder `%s`). Default value will be taken"
 
 #endif /* WARN_MESSAGES_H */

@@ -64,6 +64,7 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
 wdb_t * wdb_upgrade_global(wdb_t *wdb) {
     const char * UPDATES[] = {
         schema_global_upgrade_v1_sql,
+        schema_global_upgrade_v2_sql
     };
 
     char db_version[OS_SIZE_256 + 2];
@@ -75,7 +76,11 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
         wdb = wdb_backup_global(wdb, -1);
         return wdb;
     case 0:
-        // The table doesn't exist, this is the global.db version 0
+        // The table doesn't exist. Checking if version is 3.10 to upgrade or recreate
+        if (wdb_global_check_manager_keepalive(wdb) != 1) {
+            wdb = wdb_backup_global(wdb, -1);
+            return wdb;
+        }
         break;
     default:
         if( wdb_metadata_get_entry(wdb, "db_version", db_version) == 1) {
@@ -152,7 +157,7 @@ wdb_t * wdb_backup_global(wdb_t *wdb, int version) {
         if (wdb_create_backup_global(version) != -1) {
             mwarn("Creating Global DB backup and creating empty DB");
             unlink(path);
-            
+
             if (OS_SUCCESS != wdb_create_global(path)) {
                 merror("Couldn't create SQLite database '%s'", path);
                 return NULL;
@@ -250,7 +255,7 @@ int wdb_create_backup_global(int version) {
     }
 
     while (nbytes = fread(buffer, 1, 4096, source), nbytes) {
-        if (fwrite(buffer, 1, nbytes, dest) != nbytes) {            
+        if (fwrite(buffer, 1, nbytes, dest) != nbytes) {
             result = OS_INVALID;
             break;
         }

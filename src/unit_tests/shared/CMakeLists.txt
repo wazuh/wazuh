@@ -31,6 +31,11 @@ list(APPEND shared_tests_names "test_queue_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock,--wrap=pthread_cond_wait \
                                 -Wl,--wrap=pthread_cond_signal,--wrap=pthread_cond_timedwait")
 
+list(APPEND shared_tests_names "test_queue_linked_op")
+list(APPEND shared_tests_flags "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock,--wrap=pthread_cond_wait \
+                                -Wl,--wrap=pthread_cond_signal")
+
+
 list(APPEND shared_tests_names "test_agent_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,_merror")
 
@@ -44,7 +49,8 @@ set(ENROLLMENT_OP_BASE_FLAGS "-Wl,--wrap=OS_IsValidIP,--wrap=_merror,--wrap=_mwa
 if(${TARGET} STREQUAL "winagent")
     list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS}")
 else()
-    list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS} -Wl,--wrap=fprintf,--wrap=gethostname,--wrap=getpid")
+    list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS} -Wl,--wrap=fprintf,--wrap=gethostname,--wrap=getpid \
+                                -Wl,--wrap=fgets,--wrap=chmod,--wrap=stat")
 endif()
 
 list(APPEND shared_tests_names "test_time_op")
@@ -59,7 +65,11 @@ list(APPEND shared_tests_flags "-Wl,--wrap=fopen,--wrap=fread,--wrap=fclose,--wr
 
 list(APPEND shared_tests_names "test_schedule_scan")
 list(APPEND shared_tests_flags "-Wl,--wrap=OS_StrIsNum,--wrap=_merror,--wrap=w_time_delay,--wrap=time,--wrap=_mwarn \
-                                -Wl,--wrap=OSRegex_Compile -Wl,--wrap=OSRegex_Execute")
+                                -Wl,--wrap=OSRegex_Compile -Wl,--wrap=OSRegex_Execute -Wl,--wrap,OSMatch_Execute \
+                                -Wl,--wrap,OSRegex_Execute_ex")
+
+list(APPEND shared_tests_names "test_rootcheck_op")
+list(APPEND shared_tests_flags "-Wl,--wrap=wdbc_query_ex -Wl,--wrap=_merror,--wrap=close,--wrap=getpid")
 endif()
 
 list(APPEND shared_tests_names "test_syscheck_op")

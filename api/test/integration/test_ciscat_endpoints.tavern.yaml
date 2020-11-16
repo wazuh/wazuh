@@ -18,6 +18,7 @@ stages:
       status_code: 200
       json:
         # We get totalItems number of arrays in items, using !anything to check items is in the response
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: !anything
@@ -45,6 +46,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: &full_items_array_001
             - profile: !anystr
@@ -73,6 +75,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: *full_items_array_001
           total_affected_items: !anyint
@@ -90,6 +93,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - profile: "{tavern.request_vars.params.profile}"
@@ -108,6 +112,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - score: !int "{tavern.request_vars.params.score}"
@@ -126,6 +131,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - error: !int "{tavern.request_vars.params.error}"
@@ -144,6 +150,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - fail: !int "{tavern.request_vars.params.fail}"
@@ -162,6 +169,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - pass: !int "{tavern.request_vars.params.pass}"
@@ -180,6 +188,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - benchmark: "{tavern.request_vars.params.benchmark}"
@@ -198,6 +207,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - notchecked: !int "{tavern.request_vars.params.notchecked}"
@@ -216,6 +226,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - unknown: !int "{tavern.request_vars.params.unknown}"
@@ -233,6 +244,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           total_affected_items: 1
@@ -257,6 +269,7 @@ stages:
       status_code: 200
       json:
         # We get totalItems number of arrays in items, using !anything to check items is in the response
+        error: !anyint
         data:
           affected_items: !anything
           total_affected_items: !anyint
@@ -284,6 +297,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: &full_items_array_002
             - profile: !anystr
@@ -312,6 +326,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: *full_items_array_002
           total_affected_items: !anyint
@@ -329,6 +344,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - profile: "{tavern.request_vars.params.profile}"
@@ -347,6 +363,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - score: !int "{tavern.request_vars.params.score}"
@@ -365,6 +382,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - error: !int "{tavern.request_vars.params.error}"
@@ -383,6 +401,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - fail: !int "{tavern.request_vars.params.fail}"
@@ -401,6 +420,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - pass: !int "{tavern.request_vars.params.pass}"
@@ -419,6 +439,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - benchmark: "{tavern.request_vars.params.benchmark}"
@@ -437,6 +458,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - notchecked: !int "{tavern.request_vars.params.notchecked}"
@@ -455,6 +477,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - unknown: !int "{tavern.request_vars.params.unknown}"
@@ -479,6 +502,7 @@ stages:
       status_code: 200
       json:
         # We get totalItems number of arrays in items, using !anything to check items is in the response
+        error: !anyint
         data:
           affected_items: !anything
           total_affected_items: !anyint
@@ -506,6 +530,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: &full_items_array_003
             - profile: !anystr
@@ -534,6 +559,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: *full_items_array_003
           total_affected_items: !anyint
@@ -551,6 +577,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - profile: "{tavern.request_vars.params.profile}"
@@ -569,6 +596,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - score: !int "{tavern.request_vars.params.score}"
@@ -587,6 +615,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - error: !int "{tavern.request_vars.params.error}"
@@ -605,6 +634,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - fail: !int "{tavern.request_vars.params.fail}"
@@ -624,6 +654,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - pass: !int "{tavern.request_vars.params.pass}"
@@ -642,6 +673,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - benchmark: "{tavern.request_vars.params.benchmark}"
@@ -660,6 +692,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - notchecked: !int "{tavern.request_vars.params.notchecked}"
@@ -678,6 +711,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - unknown: !int "{tavern.request_vars.params.unknown}"
@@ -717,6 +751,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: *full_items_array_001
           total_affected_items: !anyint
@@ -739,6 +774,7 @@ stages:
         extra_kwargs:
           select_key: "{field:s}"
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
           failed_items: !anything
@@ -757,6 +793,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: *full_items_array_002
           total_affected_items: !anyint
@@ -779,6 +816,7 @@ stages:
         extra_kwargs:
           select_key: "{field:s}"
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
 
@@ -795,6 +833,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: *full_items_array_003
           total_affected_items: !anyint
@@ -817,5 +856,6 @@ stages:
         extra_kwargs:
           select_key: "{field:s}"
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint

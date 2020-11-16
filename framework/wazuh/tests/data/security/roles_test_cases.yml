@@ -2,8 +2,8 @@
 get_roles:
   - params:
       role_ids:
-        - "100"
-        - "103"
+        - 100
+        - 103
     result:
       affected_items:
         - id: 100
@@ -27,10 +27,10 @@ get_roles:
       failed_items: {}
   - params:
       role_ids:
-        - "102"
-        - "104"
-        - "105"
-        - "200"
+        - 102
+        - 104
+        - 105
+        - 200
     result:
       affected_items:
         - id: 102
@@ -75,19 +75,19 @@ get_roles:
             - 101
       failed_items:
         "4002":
-          - "200"
+          - 200
   - params:
       role_ids:
-        - "200"
-        - "201"
-        - "202"
+        - 200
+        - 201
+        - 202
     result:
       affected_items: []
       failed_items:
         "4002":
-          - "200"
-          - "201"
-          - "202"
+          - 200
+          - 201
+          - 202
 add_role:
   - params:
       name: new_role
@@ -116,7 +116,7 @@ add_role:
 update_role:
   - params:
       role_id:
-        - "105"
+        - 105
       name: ossec1
     result:
       affected_items:
@@ -140,44 +140,44 @@ update_role:
       failed_items: {}
   - params:
       role_id:
-        - "89"
+        - 89
       name: normalUserw
     result:
       affected_items: []
       failed_items:
         "4002":
-          - "89"
+          - 89
   - params:
       role_id:
-        - "102"
+        - 102
     result:
       affected_items: []
       failed_items:
         "4001":
-          - "102"
+          - 102
   - params:
       role_id:
-        - "104"
+        - 104
       name: ossec
     result:
       affected_items: []
       failed_items:
         "4005":
-          - "104"
+          - 104
   - params:
       role_id:
-        - "1"
+        - 1
       name: administrator
     result:
       affected_items: []
       failed_items:
         "4008":
-          - "1"
+          - 1
 remove_roles:
   - params:
       role_ids:
-        - "1"
-        - "103"
+        - 1
+        - 103
     result:
       affected_items:
         - id: 103
@@ -192,13 +192,13 @@ remove_roles:
             - 104
       failed_items:
         "4008":
-          - "1"
+          - 1
   - params:
       role_ids:
-        - "102"
-        - "104"
-        - "105"
-        - "200"
+        - 102
+        - 104
+        - 105
+        - 200
     result:
       affected_items:
         - id: 102
@@ -243,16 +243,16 @@ remove_roles:
             - 101
       failed_items:
         "4002":
-          - "200"
+          - 200
   - params:
       role_ids:
-        - "200"
-        - "201"
-        - "202"
+        - 200
+        - 201
+        - 202
     result:
       affected_items: []
       failed_items:
         "4002":
-          - "200"
-          - "201"
-          - "202"
+          - 200
+          - 201
+          - 202

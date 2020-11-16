@@ -203,6 +203,9 @@ def _read_option(section_name, opt):
         opt_value = {'value': opt.text}
         for a in opt.attrib:
             opt_value[a] = opt.attrib[a]
+    elif section_name == 'localfile' and opt_name == 'query':
+        # Remove new lines, empty spaces and backslashes
+        opt_value = re.sub(r'(?:(\n) +)|.*\n$', '', re.sub(r'\\+<', '<', re.sub(r'\\+>', '>', opt.text)))
     else:
         if opt.attrib:
             opt_value = {}
@@ -217,7 +220,20 @@ def _read_option(section_name, opt):
         else:
             opt_value = opt.text
 
-    return opt_name, opt_value
+    return opt_name, _replace_custom_values(opt_value)
+
+
+def _replace_custom_values(opt_value):
+    """Replaces custom values introduced by 'load_wazuh_xml' with their real values."""
+    if type(opt_value) is list:
+        for i in range(0, len(opt_value)):
+            opt_value[i] = _replace_custom_values(opt_value[i])
+    elif type(opt_value) is dict:
+        for key in opt_value.keys():
+            opt_value[key] = _replace_custom_values(opt_value[key])
+    elif type(opt_value) is str:
+        return opt_value.replace('_custom_amp_lt_', '&lt;').replace('_custom_amp_gt_', '&gt;')
+    return opt_value
 
 
 def _conf2json(src_xml, dst_json):
@@ -483,7 +499,7 @@ def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
         except KeyError:
             raise WazuhError(1103)
 
-    return WazuhResult(data)
+    return data
 
 
 def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename='agent.conf', return_format=None):
@@ -638,27 +654,42 @@ def upload_group_configuration(group_id, file_content):
     """
     if not os_path.exists(os_path.join(common.shared_path, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
-
     # path of temporary files for parsing xml input
     tmp_file_path = os_path.join(common.ossec_path, "tmp", f"api_tmp_file_{time.time()}_{random.randint(0, 1000)}.xml")
-
     # create temporary file for parsing xml input and validate XML format
     try:
         with open(tmp_file_path, 'w') as tmp_file:
-            # beauty xml file
+            custom_entities = {
+                '_custom_open_tag_': '\\<',
+                '_custom_close_tag_': '\\>',
+                '_custom_amp_lt_': '&lt;',
+                '_custom_amp_gt_': '&gt;'
+            }
+
+            # Replace every custom entity
+            for character, replacement in custom_entities.items():
+                file_content = re.sub(replacement.replace('\\', '\\\\'), character, file_content)
+
+            # Beautify xml file using a minidom.Document
             xml = parseString(f'<root>\n{file_content}\n</root>')
-            # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
+
+            # Remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
             pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
-            # revert xml.dom replacements
+
+            # Revert xml.dom replacements and remove any whitespaces and '\n' between '\' and '<' if present
             # github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305
-            pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
-                .replace("&gt;", ">")
+            pretty_xml = re.sub(r'(?:(?<=\\) +)', '', pretty_xml.replace("&amp;", "&").replace("&lt;", "<")
+                                .replace("&quot;", "\"", ).replace("&gt;", ">").replace("\\\n", "\\"))
+
+            # Restore the replaced custom entities
+            for replacement, character in custom_entities.items():
+                pretty_xml = re.sub(replacement, character.replace('\\', '\\\\'), pretty_xml)
+
             tmp_file.write(pretty_xml)
     except Exception as e:
         raise WazuhError(1113, str(e))
 
     try:
-
         # check Wazuh xml format
         try:
             subprocess.check_output([os_path.join(common.ossec_path, "bin", "verify-agent-conf"), '-f', tmp_file_path],

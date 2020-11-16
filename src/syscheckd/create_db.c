@@ -76,12 +76,13 @@ void fim_scan() {
         os_calloc(1, sizeof(fim_element), item);
         item->mode = FIM_SCHEDULED;
         item->index = it;
+
+        fim_checker(syscheck.dir[it], item, NULL, 1);
 #ifndef WIN32
         if (syscheck.opts[it] & REALTIME_ACTIVE) {
             realtime_adddir(syscheck.dir[it], 0, (syscheck.opts[it] & CHECK_FOLLOW) ? 1 : 0);
         }
 #endif
-        fim_checker(syscheck.dir[it], item, NULL, 1);
         it++;
         os_free(item);
     }
@@ -143,7 +144,13 @@ void fim_scan() {
     else {
         // In the first scan, the fim inicialization is different between Linux and Windows.
         // Realtime watches are set after the first scan in Windows.
-        mdebug2(FIM_NUM_WATCHES, count_watches());
+        if (syscheck.realtime != NULL) {
+            if (syscheck.realtime->queue_overflow) {
+                realtime_sanitize_watch_map();
+                syscheck.realtime->queue_overflow = false;
+            }
+            mdebug2(FIM_NUM_WATCHES, syscheck.realtime->dirtb->elements);
+        }
     }
 
     minfo(FIM_FREQUENCY_ENDED);

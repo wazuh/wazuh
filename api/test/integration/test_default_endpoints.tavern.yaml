@@ -17,6 +17,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           api_version: !anystr
           hostname: !anystr

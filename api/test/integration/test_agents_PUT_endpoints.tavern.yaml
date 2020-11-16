@@ -21,13 +21,13 @@ stages:
       json:
         error: 1710
 
-    # PUT /agents/group?group_id=wrong_group&list_agents=wrong_agent
+    # PUT /agents/group?group_id=wrong_group&agents_list=wrong_agent
   - name: Try to assign an invalid agent_id to a non existing group
     request:
       verify: False
       <<: *put_agents_group
       params:
-        list_agents: "wrong_agent"
+        agents_list: "wrong_agent"
         group_id: "wrong_group"
     response:
       status_code: 400
@@ -50,7 +50,7 @@ stages:
       json:
         <<: *error_spec
 
-    # PUT /agents/group?group_id=default&list_agents=998,999
+    # PUT /agents/group?group_id=default&agents_list=998,999
   - name: Try to assign non existing agents to group default
     request:
       verify: False
@@ -59,11 +59,12 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: "998,999"
+        agents_list: "998,999"
         group_id: default
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -75,7 +76,7 @@ stages:
           total_affected_items: 0
           total_failed_items: 2
 
-    # PUT /agents/group?group_id=default&list_agents=000,999
+    # PUT /agents/group?group_id=default&agents_list=000,999
   - name: Try to assign 000 and a non existing agent to group default
     request:
       verify: False
@@ -84,11 +85,12 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: "000,999"
+        agents_list: "000,999"
         group_id: default
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -103,7 +105,7 @@ stages:
           total_affected_items: 0
           total_failed_items: 2
 
-    # PUT /agents/group?group_id=default&list_agents=001,002
+    # PUT /agents/group?group_id=default&agents_list=001,002
   - name: Try to assign agents 001 and 002 to group default where they already belong
     request:
       verify: False
@@ -112,11 +114,12 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: "001,002"
+        agents_list: "001,002"
         group_id: default
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -128,7 +131,7 @@ stages:
           total_affected_items: 0
           total_failed_items: 2
 
-    # PUT /agents/group?group_id=group1&list_agents=003,004,005
+    # PUT /agents/group?group_id=group1&agents_list=003,004,005
   - name: Assign agents 003, 004 and 005 to group1
     request:
       verify: False
@@ -137,11 +140,12 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: "003,004,005"
+        agents_list: "003,004,005"
         group_id: group1
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "003"
@@ -153,6 +157,7 @@ stages:
                 - "005"
           total_affected_items: 2
           total_failed_items: 1
+    delay_after: !float "{restart_delay}"
 
     # PUT /agents/group?group_id=group2
   - name: Assign all agents to group2
@@ -167,6 +172,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "001"
@@ -175,6 +181,7 @@ stages:
             - "007"
             - "009"
           total_affected_items: 5
+    delay_after: !float "{restart_delay}"
 
     # PUT /agents/group?group_id=group2&force_single_group=true
   - name: Assign all agents to group2 with force_single_group
@@ -190,6 +197,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "001"
@@ -203,7 +211,7 @@ stages:
             - "009"
             - "010"
           total_affected_items: 10
-    delay_after: !float "{global_db_delay}"
+    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /groups/{group_id}/configuration
@@ -223,6 +231,7 @@ stages:
         "{file_xml:s}"
     response:
       status_code: 200
+    delay_after: !float "{restart_delay}"
 
     # PUT /groups/wrong_group/configuration
   - name: Try to update configuration of a non existing group
@@ -284,6 +293,42 @@ stages:
       json:
         error: 1114
 
+  - name: Try to update configuration using a complex configuration file
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups/group1/configuration"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        '{query_list_xml:s}'
+    response:
+      status_code: 200
+    delay_after: !float "{restart_delay}"
+
+  - name: Ensure the config now has the expected value
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups/group1/configuration"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_validate_group_configuration
+        extra_kwargs:
+          expected_field: "query"
+          expected_value: " <QueryList> <Query Id='0' Path='System'> <Select Path='System'>*[System[(Level&lt;=3)]]</Select> </Query> </QueryList> "
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - filters: !anything
+              config: !anything
+          total_affected_items: !anyint
+
 ---
 test_name: PUT /agents/group/{group_id}/restart
 
@@ -315,6 +360,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "001"
@@ -352,7 +398,7 @@ test_name: PUT /agents/restart
 
 stages:
 
-  # PUT /agents/restart?list_agents=wrong_id
+  # PUT /agents/restart?agents_list=wrong_id
   - name: Try to restart agent with wrong_id
     request: &agent_restart_request
       verify: False
@@ -361,22 +407,23 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: "wrong_id"
+        agents_list: "wrong_id"
     response:
       status_code: 400
       json:
         <<: *error_spec
 
-    # PUT /agents/restart?list_agents=998,999
+    # PUT /agents/restart?agents_list=998,999
   - name: Try to restart non existing agents
     request:
       verify: False
       <<: *agent_restart_request
       params:
-        list_agents: "998,999"
+        agents_list: "998,999"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -387,16 +434,17 @@ stages:
           total_failed_items: 2
 
 
-    # PUT /agents/restart?list_agents=000,999
+    # PUT /agents/restart?agents_list=000,999
   - name: Try to restart agent 000 and a non existing agent
     request:
       verify: False
       <<: *agent_restart_request
       params:
-        list_agents: "000,999"
+        agents_list: "000,999"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -411,16 +459,17 @@ stages:
           total_affected_items: 0
           total_failed_items: 2
 
-    # PUT /agents/restart?list_agents=001,002,999
+    # PUT /agents/restart?agents_list=001,002,999
   - name: Try to restart agents 001,002 and 999
     request:
       verify: False
       <<: *agent_restart_request
       params:
-        list_agents: "001,002,999"
+        agents_list: "001,002,999"
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "001"
@@ -445,6 +494,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "001"
@@ -476,10 +526,12 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "001"
           total_affected_items: 1
+    delay_after: !float "{restart_delay}"
 
     # PUT /agents/wrong_id/group/group1
   - name: Try to assign an agent with an invalid id
@@ -505,6 +557,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -528,10 +581,12 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "001"
           total_affected_items: 1
+    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /agents/{agent_id}/restart
@@ -549,6 +604,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -570,6 +626,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -604,10 +661,12 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - "002"
           total_affected_items: 1
+    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /agents/node/{node_id}/restart
@@ -640,10 +699,13 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
+      json:
+        error: !anyint
       verify_response_with:
         - function: tavern_utils:test_validate_restart_by_node
           extra_kwargs:
             data: "{response_data}"
+    delay_after: !float "{restart_delay}"
 
   - name: Restart all agents belonging to a node (it does not exist)
     request:
@@ -655,6 +717,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -664,90 +727,128 @@ stages:
                 - "notexists"
 
 ---
-test_name: PUT /agents/{agent_id}/upgrade
+test_name: PUT /agents/upgrade
 
 stages:
 
-  # PUT /agents/002/upgrade
   - name: Try to upgrade a non existing agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/999/upgrade"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '999'
     response: &resource_not_found
-      status_code: 404
+      status_code: 200
       json:
-        error: 1701
+        error: 1
+        data:
+          affected_items: [ ]
+          total_affected_items: 0
+          total_failed_items: 1
+          failed_items:
+            - error:
+                code: 1816
+                message: !anystr
+                remediation: !anything
+              id:
+                - '999'
+        message: !anystr
 
-    # PUT /agents/000/upgrade
   - name: Try to upgrade agent 000 (manager)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/upgrade"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '000'
     response:
-      status_code: 400
+      status_code: 200
       json:
-        error: 1703
+        data:
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 1
+          failed_items:
+            - error:
+                code: 1703
+                message: !anystr
+                remediation: !anystr
+              id:
+                - '000'
+        message: !anystr
 
-    # PUT /agents/wrong_id/upgrade
   - name: Try to upgrade an agent using an invalid id
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/wrong_id/upgrade"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: 'wrong_id'
     response:
       status_code: 400
       json:
         <<: *error_spec
 
-    # PUT /agents/006/upgrade
   - name: Upgrade an agent
+    skip: True # At this time this test does not work because the 4.1.0 packages of the agents are not in production server
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/006/upgrade"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         force: True
-        wait_for_complete: 'true'
-        version: 3.13.2
+        agents_list: '006'
     response:
-      status_code:
-        - 200
-        - 500
-      verify_response_with:
-        function: tavern_utils:test_validate_upgrade
-    delay_after: !float "{upgrade_delay}"
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - agent: '006'
+              task_id: !anyint
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: [ ]
+        message: !anystr
 
-    # PUT /agents/006/upgrade
   - name: Try to upgrade an agent that is updated to the latest version
-    skip: True # At this time this test does not work because the 4.0.0 packages of the agents are not in production server
+    skip: True # At this time this test does not work because the 4.1.0 packages of the agents are not in production server
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/006/upgrade"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '006'
     response:
-      status_code:
-        - 400
-        - 500
-      verify_response_with:
-        function: tavern_utils:test_validate_update_latest_version
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 1
+          failed_items:
+            - error:
+                code: 1819
+                message: !anystr
+                remediation: !anything
+              id:
+                - '006'
+        message: !anystr
 
-    # PUT /agents/003/upgrade
   - name: Downgrade agent to an specific version using force
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/003/upgrade"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -755,113 +856,122 @@ stages:
         version: v3.9.3
         force: true
         wait_for_complete: 'true'
+        agents_list: '003'
     response:
       status_code: 200
-    delay_after: !float "{upgrade_delay}"
+      json:
+        data:
+          affected_items:
+            - agent: '003'
+              task_id: !anyint
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: [ ]
+        message: !anystr
 
-    # PUT /agents/004/upgrade
   - name: Upgrade an agent using http
-    skip: True # At this time this test does not work because the 4.0.0 packages of the agents are not in production server
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/004/upgrade"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
+        agents_list: '004'
         use_http: true
         force: true
         wait_for_complete: 'true'
+        version: 4.0.0
     response:
-      status_code:
-        - 200
-        - 500
-      verify_response_with:
-        function: tavern_utils:test_validate_upgrade
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - agent: '004'
+              task_id: !anyint
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: [ ]
+        message: !anystr
 
-    # PUT /agents/005/upgrade
   - name: Upgrade an agent using wkp repo to a 4.x version
-    skip: True # At this time this test does not work because the 4.0.0 packages of the agents are not in production server
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/005/upgrade"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
+        agents_list: '005'
         version: 4.0.0
         force: true
-        wait_for_complete: 'true'
     response:
-      status_code:
-        - 200
-        - 500
-      verify_response_with:
-        function: tavern_utils:test_validate_upgrade
-
-    # PUT /agents/005/upgrade
-  - name: Upgrade an agent using wkp repo to a <4.0.0 version
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/005/upgrade"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        version: 3.11.1
-        force: true
-        wait_for_complete: 'true'
-    response:
-      status_code:
-        - 200
-        - 500
-      verify_response_with:
-        function: tavern_utils:test_validate_upgrade
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - agent: '005'
+              task_id: !anyint
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: [ ]
+        message: !anystr
 
 ---
 test_name: PUT /agents/{agent_id}/upgrade_custom
 
 stages:
 
-  # PUT /agents/002/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
   - name: Try to customly upgrade a non existing agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/999/upgrade_custom"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         installer: upgrade.sh
         file_path: "{custom_wpk_path:s}"
+        agents_list: 999
     response:
       <<: *resource_not_found
 
-    # PUT /agents/000/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
   - name: Try to customly upgrade agent 000 (manager)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/upgrade_custom"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
+        agents_list: '000'
         installer: upgrade.sh
         file_path: "{custom_wpk_path:s}"
     response:
-      status_code: 400
+      status_code: 200
       json:
-        error: 1703
+        data:
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 1
+          failed_items:
+            - error:
+                code: 1703
+                message: !anystr
+                remediation: !anystr
+              id:
+                - '000'
+        message: !anystr
 
-    # PUT /agents/wrong_id/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
   - name: Try to customly upgrade an agent using an invalid id
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/wrong_id/upgrade_custom"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
+        agents_list: wrong_id
         installer: upgrade.sh
         file_path: "{custom_wpk_path:s}"
     response:
@@ -869,84 +979,107 @@ stages:
       json:
         <<: *error_spec
 
-    # PUT /agents/006/upgrade_custom
   - name: Try to customly upgrade an agent without parameters
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/006/upgrade_custom"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: 006
     response:
       status_code: 400
       json:
         <<: *error_spec
 
-    # PUT /agents/007/upgrade_custom?installer=invalid.sh&file_path=custom_wpk_path
-  - name: Try to customly upgrade an agent with an invalid installer
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/007/upgrade_custom"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        installer: invalid.sh
-        file_path: "{custom_wpk_path:s}"
-    response:
-      status_code: 400
-      json:
-        error: 1716
-
-    # PUT /agents/007/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
   - name: Customly upgrade agent 007 selecting installer
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/007/upgrade_custom"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
+        agents_list: '007'
         installer: upgrade.sh
         file_path: "{custom_wpk_path:s}"
         wait_for_complete: 'true'
     response:
       status_code: 200
-    delay_after: !float "{upgrade_delay}"
+      json:
+        data:
+          affected_items:
+            - agent: '007'
+              task_id: !anyint
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: [ ]
+        message: !anystr
 
-    # PUT /agents/008/upgrade_custom?file_path=custom_wpk_path
   - name: Customly upgrade agent 008 using default installer
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/008/upgrade_custom"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
+        agents_list: 008
         file_path: "{custom_wpk_path:s}"
         wait_for_complete: 'true'
     response:
       status_code: 200
+      json:
+        data:
+          affected_items:
+            - agent: '008'
+              task_id: !anyint
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: [ ]
+        message: !anystr
     delay_after: !float "{upgrade_delay}"
 
   - name: Get agent 007 upgrade result
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/007/upgrade_result"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '007'
     response: &upgrade_result
       status_code: 200
       json:
+        data:
+          affected_items:
+            - message: Success
+              agent: '007'
+              task_id: !anyint
+              module: upgrade_module
+              command: upgrade_custom
+              status: Updating
+              create_time: !anystr
+              update_time: !anystr
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
         message: !anystr
 
   - name: Get agent 008 upgrade result
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/008/upgrade_result"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '008'
     response:
       <<: *upgrade_result
+      json:
+        data:
+          affected_items:
+            - agent: '008'

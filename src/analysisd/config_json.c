@@ -91,15 +91,32 @@ void _getDecodersListJSON(OSDecoderNode *list, cJSON *array) {
 
         if (node->osdecoder->accumulate) cJSON_AddStringToObject(decoder,"accumulate","yes"); else cJSON_AddStringToObject(decoder,"accumulate","no");
 
-        if (node->osdecoder->prematch) cJSON_AddStringToObject(decoder,"prematch",node->osdecoder->prematch->raw);
+        if (node->osdecoder->prematch) {
+            cJSON * prematch = cJSON_CreateObject();
+            cJSON_AddStringToObject(prematch, "pattern", w_expression_get_regex_pattern(node->osdecoder->prematch));
+            cJSON_AddStringToObject(prematch, "type", w_expression_get_regex_type(node->osdecoder->prematch));
+            cJSON_AddItemToObject(decoder, "prematch", prematch);
+        }
+
         if (node->osdecoder->prematch_offset & AFTER_PARENT) cJSON_AddStringToObject(decoder,"prematch_offset","after_parent");
 
-        if (node->osdecoder->regex) cJSON_AddStringToObject(decoder,"regex",node->osdecoder->regex->raw);
+        if (node->osdecoder->regex) {
+            cJSON * regex = cJSON_CreateObject();
+            cJSON_AddStringToObject(regex, "pattern", w_expression_get_regex_pattern(node->osdecoder->regex));
+            cJSON_AddStringToObject(regex, "type", w_expression_get_regex_type(node->osdecoder->regex));
+            cJSON_AddItemToObject(decoder, "regex", regex);
+        }
+
         if (node->osdecoder->regex_offset & AFTER_PARENT) cJSON_AddStringToObject(decoder,"regex_offset","after_parent");
         else if (node->osdecoder->regex_offset & AFTER_PREVREGEX) cJSON_AddStringToObject(decoder,"regex_offset","after_regex");
         else if (node->osdecoder->regex_offset & AFTER_PREMATCH) cJSON_AddStringToObject(decoder,"regex_offset","after_prematch");
 
-        if (node->osdecoder->program_name) cJSON_AddStringToObject(decoder,"program_name",node->osdecoder->program_name->raw);
+        if (node->osdecoder->program_name) {
+            cJSON * program_name = cJSON_CreateObject();
+            cJSON_AddStringToObject(program_name, "pattern", w_expression_get_regex_pattern(node->osdecoder->program_name));
+            cJSON_AddStringToObject(program_name, "type", w_expression_get_regex_type(node->osdecoder->program_name));
+            cJSON_AddItemToObject(decoder, "program_name", program_name);
+        }
 
         if (node->osdecoder->fts) {
             cJSON *_list = cJSON_CreateArray();
@@ -234,24 +251,151 @@ void _getRulesListJSON(RuleNode *list, cJSON *array) {
         cJSON_AddNumberToObject(rule,"ignore_time",node->ruleinfo->ignore_time);
         cJSON_AddNumberToObject(rule,"decoded_as",node->ruleinfo->decoded_as);
         cJSON_AddNumberToObject(rule,"if_matched_sid",node->ruleinfo->if_matched_sid);
+
         if (node->ruleinfo->group) cJSON_AddStringToObject(rule,"group",node->ruleinfo->group);
-        if (node->ruleinfo->regex) cJSON_AddStringToObject(rule,"regex",node->ruleinfo->regex->raw);
-        if (node->ruleinfo->match) cJSON_AddStringToObject(rule,"match",node->ruleinfo->match->raw);
-        if (node->ruleinfo->srcgeoip) cJSON_AddStringToObject(rule,"srcgeoip",node->ruleinfo->srcgeoip->raw);
-        if (node->ruleinfo->dstgeoip) cJSON_AddStringToObject(rule,"dstgeoip",node->ruleinfo->dstgeoip->raw);
-        if (node->ruleinfo->srcport) cJSON_AddStringToObject(rule,"srcport",node->ruleinfo->srcport->raw);
-        if (node->ruleinfo->dstport) cJSON_AddStringToObject(rule,"dstport",node->ruleinfo->dstport->raw);
-        if (node->ruleinfo->user) cJSON_AddStringToObject(rule,"user",node->ruleinfo->user->raw);
-        if (node->ruleinfo->url) cJSON_AddStringToObject(rule,"url",node->ruleinfo->url->raw);
-        if (node->ruleinfo->id) cJSON_AddStringToObject(rule,"id",node->ruleinfo->id->raw);
-        if (node->ruleinfo->system_name) cJSON_AddStringToObject(rule,"system_name",node->ruleinfo->system_name->raw);
-        if (node->ruleinfo->protocol) cJSON_AddStringToObject(rule,"protocol",node->ruleinfo->protocol->raw);
-        if (node->ruleinfo->data) cJSON_AddStringToObject(rule, "data", node->ruleinfo->data->raw);     
-        if (node->ruleinfo->status) cJSON_AddStringToObject(rule,"status",node->ruleinfo->status->raw);
-        if (node->ruleinfo->hostname) cJSON_AddStringToObject(rule,"hostname",node->ruleinfo->hostname->raw);
-        if (node->ruleinfo->program_name) cJSON_AddStringToObject(rule,"program_name",node->ruleinfo->program_name->raw);
-        if (node->ruleinfo->extra_data) cJSON_AddStringToObject(rule,"extra_data",node->ruleinfo->extra_data->raw);
-        if (node->ruleinfo->action) cJSON_AddStringToObject(rule,"action",node->ruleinfo->action);
+
+        if (node->ruleinfo->regex) {
+            cJSON * regex = cJSON_CreateObject();
+            cJSON_AddStringToObject(regex, "pattern", w_expression_get_regex_pattern(node->ruleinfo->regex));
+            cJSON_AddStringToObject(regex, "type", w_expression_get_regex_type(node->ruleinfo->regex));
+            cJSON_AddBoolToObject(regex, "negate", node->ruleinfo->regex->negate);
+            cJSON_AddItemToObject(rule, "regex", regex);
+        }
+
+        if (node->ruleinfo->match) {
+            cJSON * match = cJSON_CreateObject();
+            cJSON_AddStringToObject(match, "pattern", node->ruleinfo->match->match->raw);
+            cJSON_AddBoolToObject(match, "negate", node->ruleinfo->match->negate);
+            cJSON_AddItemToObject(rule, "match", match);
+        }
+
+        if (node->ruleinfo->srcgeoip) {
+            cJSON * srcgeoip = cJSON_CreateObject();
+            cJSON_AddStringToObject(srcgeoip, "pattern", w_expression_get_regex_pattern(node->ruleinfo->srcgeoip));
+            cJSON_AddStringToObject(srcgeoip, "type", w_expression_get_regex_type(node->ruleinfo->srcgeoip));
+            cJSON_AddBoolToObject(srcgeoip, "negate", node->ruleinfo->srcgeoip->negate);
+            cJSON_AddItemToObject(rule, "srcgeoip", srcgeoip);
+        }
+
+        if (node->ruleinfo->dstgeoip) {
+            cJSON * dstgeoip = cJSON_CreateObject();
+            cJSON_AddStringToObject(dstgeoip, "pattern", w_expression_get_regex_pattern(node->ruleinfo->dstgeoip));
+            cJSON_AddStringToObject(dstgeoip, "type", w_expression_get_regex_type(node->ruleinfo->dstgeoip));
+            cJSON_AddBoolToObject(dstgeoip, "negate", node->ruleinfo->dstgeoip->negate);
+            cJSON_AddItemToObject(rule, "dstgeoip", dstgeoip);
+        }
+
+        if (node->ruleinfo->srcport) {
+            cJSON * srcport = cJSON_CreateObject();
+            cJSON_AddStringToObject(srcport, "pattern", w_expression_get_regex_pattern(node->ruleinfo->srcport));
+            cJSON_AddStringToObject(srcport, "type", w_expression_get_regex_type(node->ruleinfo->srcport));
+            cJSON_AddBoolToObject(srcport, "negate", node->ruleinfo->srcport->negate);
+            cJSON_AddItemToObject(rule, "srcport", srcport);
+        }
+
+        if (node->ruleinfo->dstport) {
+            cJSON * dstport = cJSON_CreateObject();
+            cJSON_AddStringToObject(dstport, "pattern", w_expression_get_regex_pattern(node->ruleinfo->dstport));
+            cJSON_AddStringToObject(dstport, "type", w_expression_get_regex_type(node->ruleinfo->dstport));
+            cJSON_AddBoolToObject(dstport, "negate", node->ruleinfo->dstport->negate);
+            cJSON_AddItemToObject(rule, "dstport", dstport);
+        }
+
+        if (node->ruleinfo->user) {
+            cJSON * user = cJSON_CreateObject();
+            cJSON_AddStringToObject(user, "pattern", w_expression_get_regex_pattern(node->ruleinfo->user));
+            cJSON_AddStringToObject(user, "type", w_expression_get_regex_type(node->ruleinfo->user));
+            cJSON_AddBoolToObject(user, "negate", node->ruleinfo->user->negate);
+            cJSON_AddItemToObject(rule, "user", user);
+        }
+
+        if (node->ruleinfo->url) {
+            cJSON * url = cJSON_CreateObject();
+            cJSON_AddStringToObject(url, "pattern", w_expression_get_regex_pattern(node->ruleinfo->url));
+            cJSON_AddStringToObject(url, "type", w_expression_get_regex_type(node->ruleinfo->url));
+            cJSON_AddBoolToObject(url, "negate", node->ruleinfo->url->negate);
+            cJSON_AddItemToObject(rule, "url", url);
+        }
+
+        if (node->ruleinfo->id) {
+            cJSON * id = cJSON_CreateObject();
+            cJSON_AddStringToObject(id, "pattern", w_expression_get_regex_pattern(node->ruleinfo->id));
+            cJSON_AddStringToObject(id, "type", w_expression_get_regex_type(node->ruleinfo->id));
+            cJSON_AddBoolToObject(id, "negate", node->ruleinfo->id->negate);
+            cJSON_AddItemToObject(rule, "id", id);
+        }
+
+        if (node->ruleinfo->system_name) {
+            cJSON * system_name = cJSON_CreateObject();
+            cJSON_AddStringToObject(system_name, "pattern", w_expression_get_regex_pattern(node->ruleinfo->system_name));
+            cJSON_AddStringToObject(system_name, "type", w_expression_get_regex_type(node->ruleinfo->system_name));
+            cJSON_AddBoolToObject(system_name, "negate", node->ruleinfo->system_name->negate);
+            cJSON_AddItemToObject(rule, "system_name", system_name);
+        }
+
+        if (node->ruleinfo->protocol) {
+            cJSON * protocol = cJSON_CreateObject();
+            cJSON_AddStringToObject(protocol, "pattern", w_expression_get_regex_pattern(node->ruleinfo->protocol));
+            cJSON_AddStringToObject(protocol, "type", w_expression_get_regex_type(node->ruleinfo->protocol));
+            cJSON_AddBoolToObject(protocol, "negate", node->ruleinfo->protocol->negate);
+            cJSON_AddItemToObject(rule, "protocol", protocol);
+        }
+
+        if (node->ruleinfo->data) {
+            cJSON * data = cJSON_CreateObject();
+            cJSON_AddStringToObject(data, "pattern", w_expression_get_regex_pattern(node->ruleinfo->data));
+            cJSON_AddStringToObject(data, "type", w_expression_get_regex_type(node->ruleinfo->data));
+            cJSON_AddBoolToObject(data, "negate", node->ruleinfo->data->negate);
+            cJSON_AddItemToObject(rule, "data", data);
+        }
+        if (node->ruleinfo->status) {
+            cJSON * status = cJSON_CreateObject();
+            cJSON_AddStringToObject(status, "pattern", w_expression_get_regex_pattern(node->ruleinfo->status));
+            cJSON_AddStringToObject(status, "type", w_expression_get_regex_type(node->ruleinfo->status));
+            cJSON_AddBoolToObject(status, "negate", node->ruleinfo->status->negate);
+            cJSON_AddItemToObject(rule, "status", status);
+        }
+
+        if (node->ruleinfo->hostname) {
+            cJSON * hostname = cJSON_CreateObject();
+            cJSON_AddStringToObject(hostname, "pattern", w_expression_get_regex_pattern(node->ruleinfo->hostname));
+            cJSON_AddStringToObject(hostname, "type", w_expression_get_regex_type(node->ruleinfo->hostname));
+            cJSON_AddBoolToObject(hostname, "negate", node->ruleinfo->hostname->negate);
+            cJSON_AddItemToObject(rule, "hostname", hostname);
+        }
+
+        if (node->ruleinfo->program_name) {
+            cJSON * program_name = cJSON_CreateObject();
+            cJSON_AddStringToObject(program_name, "pattern", w_expression_get_regex_pattern(node->ruleinfo->program_name));
+            cJSON_AddStringToObject(program_name, "type", w_expression_get_regex_type(node->ruleinfo->program_name));
+            cJSON_AddBoolToObject(program_name, "negate", node->ruleinfo->program_name->negate);
+            cJSON_AddItemToObject(rule, "program_name", program_name);
+        }
+
+        if (node->ruleinfo->extra_data) {
+            cJSON * extra_data = cJSON_CreateObject();
+            cJSON_AddStringToObject(extra_data, "pattern", w_expression_get_regex_pattern(node->ruleinfo->extra_data));
+            cJSON_AddStringToObject(extra_data, "type", w_expression_get_regex_type(node->ruleinfo->extra_data));
+            cJSON_AddBoolToObject(extra_data, "negate", node->ruleinfo->extra_data->negate);
+            cJSON_AddItemToObject(rule, "extra_data", extra_data);
+        }
+
+        if (node->ruleinfo->location) {
+            cJSON * location = cJSON_CreateObject();
+            cJSON_AddStringToObject(location, "pattern", w_expression_get_regex_pattern(node->ruleinfo->location));
+            cJSON_AddStringToObject(location, "type", w_expression_get_regex_type(node->ruleinfo->location));
+            cJSON_AddBoolToObject(location, "negate", node->ruleinfo->location->negate);
+            cJSON_AddItemToObject(rule, "location", location);
+        }
+
+        if (node->ruleinfo->action) {
+            cJSON * action = cJSON_CreateObject();
+            cJSON_AddStringToObject(action, "pattern", w_expression_get_regex_pattern(node->ruleinfo->action));
+            cJSON_AddStringToObject(action, "type", w_expression_get_regex_type(node->ruleinfo->action));
+            cJSON_AddBoolToObject(action, "negate", node->ruleinfo->action->negate);
+            cJSON_AddItemToObject(rule, "action", action);
+        }
+
         if (node->ruleinfo->comment) cJSON_AddStringToObject(rule,"comment",node->ruleinfo->comment);
         if (node->ruleinfo->info) cJSON_AddStringToObject(rule,"info",node->ruleinfo->info);
         if (node->ruleinfo->cve) cJSON_AddStringToObject(rule,"cve",node->ruleinfo->cve);
@@ -261,6 +405,7 @@ void _getRulesListJSON(RuleNode *list, cJSON *array) {
         if (node->ruleinfo->if_matched_regex) cJSON_AddStringToObject(rule,"if_matched_regex",node->ruleinfo->if_matched_regex->raw);
         if (node->ruleinfo->if_matched_group) cJSON_AddStringToObject(rule,"if_matched_group",node->ruleinfo->if_matched_group->raw);
         if (node->ruleinfo->file) cJSON_AddStringToObject(rule,"rule_file",node->ruleinfo->file);
+
         if (node->ruleinfo->category == FIREWALL) {
             cJSON_AddStringToObject(rule,"category","firewall");
         } else if (node->ruleinfo->category == IDS) {
@@ -276,27 +421,53 @@ void _getRulesListJSON(RuleNode *list, cJSON *array) {
         } else if (node->ruleinfo->category == OSSEC_RL) {
             cJSON_AddStringToObject(rule,"category","ossec");
         }
+
         if (node->ruleinfo->fields && node->ruleinfo->fields[0]) {
-            cJSON *_list = cJSON_CreateArray();
-            for (i=0;node->ruleinfo->fields[i];i++) {
-                cJSON_AddItemToArray(_list,cJSON_CreateString(node->ruleinfo->fields[i]->name));
+
+            cJSON * _list = cJSON_CreateArray();
+            for (i = 0; node->ruleinfo->fields[i]; i++) {
+                cJSON * field = cJSON_CreateObject();
+
+                cJSON_AddStringToObject(field, "name", node->ruleinfo->fields[i]->name);
+                cJSON_AddStringToObject(field, "pattern", w_expression_get_regex_pattern(node->ruleinfo->fields[i]->regex));
+                cJSON_AddStringToObject(field, "type", w_expression_get_regex_type(node->ruleinfo->fields[i]->regex));
+                cJSON_AddBoolToObject(field, "negate", node->ruleinfo->fields[i]->regex->negate);
+
+                cJSON_AddItemToArray(_list, field);
             }
-            cJSON_AddItemToObject(rule,"field",_list);
+
+            cJSON_AddItemToObject(rule, "field", _list);
         }
-        if (node->ruleinfo->srcip && node->ruleinfo->srcip[0]) {
-            cJSON *_list = cJSON_CreateArray();
-            for (i=0;node->ruleinfo->srcip[i];i++) {
-                cJSON_AddItemToArray(_list,cJSON_CreateString(node->ruleinfo->srcip[i]->ip));
+
+        if (node->ruleinfo->srcip && node->ruleinfo->srcip->ips[0]) {
+
+            cJSON * _list = cJSON_CreateArray();
+            for (i = 0; node->ruleinfo->srcip->ips[i]; i++) {
+                cJSON * ip = cJSON_CreateObject();
+
+                cJSON_AddStringToObject(ip, "ip", node->ruleinfo->srcip->ips[i]->ip);
+                cJSON_AddBoolToObject(ip, "negate", node->ruleinfo->srcip->negate);
+
+                cJSON_AddItemToArray(_list, ip);
             }
-            cJSON_AddItemToObject(rule,"srcip",_list);
+
+            cJSON_AddItemToObject(rule, "srcip", _list);
         }
-        if (node->ruleinfo->dstip && node->ruleinfo->dstip[0]) {
-            cJSON *_list = cJSON_CreateArray();
-            for (i=0;node->ruleinfo->dstip[i];i++) {
-                cJSON_AddItemToArray(_list,cJSON_CreateString(node->ruleinfo->dstip[i]->ip));
+
+        if (node->ruleinfo->dstip && node->ruleinfo->dstip->ips[0]) {
+
+            cJSON * _list = cJSON_CreateArray();
+            for (i = 0; node->ruleinfo->dstip->ips[i]; i++) {
+                cJSON * ip = cJSON_CreateObject();
+
+                cJSON_AddStringToObject(ip, "ip", node->ruleinfo->dstip->ips[i]->ip);
+                cJSON_AddBoolToObject(ip, "negate", node->ruleinfo->dstip->negate);
+
+                cJSON_AddItemToArray(_list, ip);
             }
-            cJSON_AddItemToObject(rule,"dstip",_list);
+            cJSON_AddItemToObject(rule, "dstip", _list);
         }
+
         if (same = node->ruleinfo->same_field, same) {
             for (i = 0; same != 0; i++) {
                 if ((same & 1) == 1) {
@@ -305,6 +476,7 @@ void _getRulesListJSON(RuleNode *list, cJSON *array) {
                 same >>= 1;
             }
         }
+
         if (different = node->ruleinfo->same_field, different) {
             for (i = 0; different != 0; i++) {
                 if ((different & 1) == 1) {

@@ -11,14 +11,12 @@ import pytest
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..', '..', '..', 'api'))
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
-        sys.modules['api'] = MagicMock()
         import wazuh.rbac.decorators
 
         del sys.modules['wazuh.rbac.orm']
-        del sys.modules['api']
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -72,8 +70,8 @@ def test_check_status(status, expected_result):
     ('0350-amazon_rules.xml', 'tests/data/rules', 'enabled', None),
     ('noexists.xml', 'tests/data/rules', 'enabled', WazuhError(1201))
 ])
-@patch("wazuh.common.ossec_path", new=parent_directory)
-@patch("wazuh.common.ruleset_rules_path", new=data_path)
+@patch("wazuh.core.common.ossec_path", new=parent_directory)
+@patch("wazuh.core.common.ruleset_rules_path", new=data_path)
 def test_load_rules_from_file(rule_file, rule_path, rule_status, exception):
     """Test set_groups rule core function."""
     try:
@@ -84,6 +82,33 @@ def test_load_rules_from_file(rule_file, rule_path, rule_status, exception):
             assert r['status'] == rule_status
     except WazuhError as e:
         assert e.code == exception.code
+
+
+@patch("wazuh.core.common.ossec_path", new=parent_directory)
+@patch("wazuh.core.common.ruleset_rules_path", new=data_path)
+def test_load_rules_from_file_details():
+    """Test set_groups rule core function."""
+    rule_file = '9999-rules_regex_test.xml'
+    rule_path = 'tests/data/rules'
+    details_result = {
+        'id': {
+            'pattern': 'this is a wildcard'
+        },
+        'test_field_name': {
+            'pattern': 'test_field_value',
+            'type': 'osmatch'
+        },
+        'match': {
+            'pattern': 'test_match_1test_match_2test_match_3',
+            'negate': 'yes'
+        },
+        'regex': {
+            'pattern': 'test_regex',
+            'type': 'osregex'
+        }
+    }
+    result = rule.load_rules_from_file(rule_file, rule_path, 'enabled')
+    assert result[0]['details'] == details_result
 
 
 @patch("wazuh.core.rule.load_wazuh_xml", side_effect=OSError(13, 'Error', 'Permissions'))

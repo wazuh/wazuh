@@ -66,11 +66,11 @@ class SyncWorker:
         if isinstance(result, Exception):
             self.logger.error(f"Error asking for permission: {result}")
             return
-        elif result == b'False':
+        elif result == b'True':
+            self.logger.info("Permission to synchronize granted")
+        else:
             self.logger.info('Master didnt grant permission to synchronize')
             return
-        else:
-            self.logger.info("Permission to synchronize granted")
 
         self.logger.info("Compressing files")
         compressed_data_path = wazuh.core.cluster.cluster.compress_files(name=self.worker.name,
@@ -105,7 +105,7 @@ class RetrieveAndSendToMaster:
     """
 
     def __init__(self, worker, destination_daemon, data_retriever: callable, logger=None, msg_format='{payload}',
-                 n_retries=3, max_retry_time_allowed=10, cmd=None, expected_res='ok'):
+                 n_retries=3, retry_time=0.2, max_retry_time_allowed=10, cmd=None, expected_res='ok'):
         """Class constructor
 
         Parameters
@@ -126,7 +126,9 @@ class RetrieveAndSendToMaster:
             I. e: 'global sync-agent-info-set {payload}'
         n_retries : int
             Number of times a chunk has to be resent when it fails.
-        max_retry_time_allowed : int
+        retry_time : float
+            Time between resend attempts. It is multiplied by the number of retries carried out.
+        max_retry_time_allowed : float
             Maximum total time allowed to retry failed requests. If this time has already been
             elapsed, no new attempts will be made to resend all the chunks which response
             does not begin with {expected_res}.
@@ -140,6 +142,7 @@ class RetrieveAndSendToMaster:
         self.data_retriever = data_retriever
         self.logger = logger if logger is not None else self.worker.setup_task_logger('Default logger')
         self.n_retries = n_retries
+        self.retry_time = retry_time
         self.max_retry_time_allowed = max_retry_time_allowed
         self.cmd = cmd
         self.expected_res = expected_res
@@ -188,20 +191,21 @@ class RetrieveAndSendToMaster:
 
                 # Retry self.n_retries if result was not ok
                 if not result.startswith(self.expected_res):
-                    if (time.time() - start_time) < self.max_retry_time_allowed:
-                        for i in range(self.n_retries):
-                            await asyncio.sleep(i * (len(chunks_to_send)/self.max_retry_time_allowed))
-                            self.logger.error(f"Error sending chunk to master's {self.daemon}. Response does not start "
-                                              f"with {self.expected_res}. Retrying... {i}.")
+                    for i in range(self.n_retries):
+                        if (time.time() - start_time) < self.max_retry_time_allowed:
+                            await asyncio.sleep(i * self.retry_time)
+                            self.logger.info(f"Error sending chunk to master's {self.daemon}. Response does not start "
+                                             f"with {self.expected_res}. Retrying... {i}.")
                             result = await self.lc.execute(command=b'sendasync', data=data, wait_for_complete=False)
                             self.logger.debug(f"Master's {self.daemon} response: {result}.")
                             if result.startswith(self.expected_res):
                                 chunks_sent += 1
                                 break
-                    else:
-                        self.logger.error(f"Error sending chunk to master's {self.daemon}. Response does not start "
-                                          f"with {self.expected_res}. Not retrying because total time exceeded "
-                                          f"{self.max_retry_time_allowed} seconds.")
+                        else:
+                            self.logger.info(f"Error sending chunk to master's {self.daemon}. Response does not start "
+                                             f"with {self.expected_res}. Not retrying because total time exceeded "
+                                             f"{self.max_retry_time_allowed} seconds.")
+                            break
                 else:
                     chunks_sent += 1
 
@@ -343,9 +347,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             try:
                 if self.connected:
                     before = time.time()
-                    await SyncWorker(cmd=b'sync_i_w_m', files_to_sync={}, checksums=wazuh.core.cluster.cluster.get_files_status('master',
-                                                                                                                                self.name),
-                                     logger=integrity_logger, worker=self).sync()
+                    await SyncWorker(cmd=b'sync_i_w_m', files_to_sync={}, logger=integrity_logger, worker=self,
+                                     checksums=wazuh.core.cluster.cluster.get_files_status('master', self.name)).sync()
                     after = time.time()
                     integrity_logger.debug("Time synchronizing integrity: {} s".format(after - before))
             except exception.WazuhException as e:
