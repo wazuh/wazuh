@@ -175,7 +175,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             w_mutex_unlock(&lastmsg_mutex);
             agent_id = atoi(key->id);
 
-            result = wdb_update_agent_keepalive(agent_id, AGENT_CS_PENDING, logr.worker_node?"syncreq":"synced", wdb_sock);
+            result = wdb_update_agent_connection_status(agent_id, AGENT_CS_PENDING, logr.worker_node?"syncreq":"synced", wdb_sock);
 
             if (OS_SUCCESS != result) {
                 mwarn("Unable to save last keepalive and set connection status as pending for agent: %s", key->id);
