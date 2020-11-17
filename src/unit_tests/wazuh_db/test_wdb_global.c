@@ -4685,8 +4685,9 @@ void test_wdb_global_get_agents_to_disconnect_ok(void **state)
     cJSON* root = cJSON_CreateArray();
     for (int i=0; i<agents_amount; i++){
         cJSON* json_agent = cJSON_CreateObject();
-        cJSON_AddItemToArray(root, json_agent = cJSON_CreateObject());
         cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(i));
+        cJSON_AddItemToArray(root, json_agent);
+
     }
 
     //Preparing statement
@@ -4732,8 +4733,8 @@ void test_wdb_global_get_agents_to_disconnect_due(void **state)
     cJSON* root = cJSON_CreateArray();
     for (int i=0; i<agents_amount; i++){
         cJSON* json_agent = cJSON_CreateObject();
-        cJSON_AddItemToArray(root, json_agent = cJSON_CreateObject());
         cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(i));
+        cJSON_AddItemToArray(root, json_agent);
     }
 
     //Preparing statement
@@ -4804,7 +4805,7 @@ void test_wdb_global_get_agents_to_disconnect_invalid_elements(void **state)
     const char *sync_status = "synced";
     cJSON* root = cJSON_CreateArray();
     cJSON* json_agent = cJSON_CreateObject();
-    cJSON_AddItemToArray(root, json_agent = cJSON_CreateObject());
+    cJSON_AddItemToArray(root, json_agent);
 
     //Preparing statement
     will_return(__wrap_wdb_begin2, 1);
@@ -4839,8 +4840,8 @@ void test_wdb_global_get_agents_to_disconnect_update_status_fail(void **state)
     const char *sync_status = "synced";
     cJSON* root = cJSON_CreateArray();
     cJSON* json_agent = cJSON_CreateObject();
-    cJSON_AddItemToArray(root, json_agent = cJSON_CreateObject());
->>>>>>> Add wdb_global_get_agents_to_disconnect UT
+    cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(10));
+    cJSON_AddItemToArray(root, json_agent);
 
     //Preparing statement
     will_return(__wrap_wdb_begin2, 1);
@@ -4926,8 +4927,8 @@ void test_wdb_global_get_all_agents_ok(void **state)
     cJSON* root = cJSON_CreateArray();
     for (int i=0; i<agents_amount; i++){
         cJSON* json_agent = cJSON_CreateObject();
-        cJSON_AddItemToArray(root, json_agent = cJSON_CreateObject());
         cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(i));
+        cJSON_AddItemToArray(root, json_agent);
     }
 
     //Preparing statement
@@ -4958,8 +4959,9 @@ void test_wdb_global_get_all_agents_due(void **state)
     cJSON* root = cJSON_CreateArray();
     for (int i=0; i<agents_amount; i++){
         cJSON* json_agent = cJSON_CreateObject();
-        cJSON_AddItemToArray(root, json_agent = cJSON_CreateObject());
         cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(i));
+        cJSON_AddItemToArray(root, json_agent);
+
     }
 
     //Preparing statement
@@ -5220,8 +5222,8 @@ void test_wdb_global_get_agents_by_connection_status_ok(void **state)
     cJSON* root = cJSON_CreateArray();
     for (int i=0; i<agents_amount; i++){
         cJSON* json_agent = cJSON_CreateObject();
-        cJSON_AddItemToArray(root, json_agent = cJSON_CreateObject());
         cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(i));
+        cJSON_AddItemToArray(root, json_agent);
     }
 
     //Preparing statement
@@ -5256,8 +5258,8 @@ void test_wdb_global_get_agents_by_connection_status_due(void **state)
     cJSON* root = cJSON_CreateArray();
     for (int i=0; i<agents_amount; i++){
         cJSON* json_agent = cJSON_CreateObject();
-        cJSON_AddItemToArray(root, json_agent = cJSON_CreateObject());
         cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(i));
+        cJSON_AddItemToArray(root, json_agent);
     }
 
     //Preparing statement

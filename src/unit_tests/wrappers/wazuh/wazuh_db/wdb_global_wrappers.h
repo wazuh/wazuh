@@ -83,11 +83,7 @@ cJSON* __wrap_wdb_global_get_agent_info(wdb_t *wdb, int id);
 
 int __wrap_wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status);
 
-<<<<<<< HEAD
-wdbc_result __wrap_wdb_global_get_agents_by_connection_status(wdb_t *wdb, int last_agent_id, const char* connection_status, char **output);
-=======
 cJSON* __wrap_wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, wdbc_result* status);
->>>>>>> Add wdb_agent and wdb_global_parser UT
 
 cJSON* __wrap_wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int keep_alive, const char *sync_status, wdbc_result* status);
 
