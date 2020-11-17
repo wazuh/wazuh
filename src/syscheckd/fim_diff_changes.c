@@ -32,20 +32,6 @@
 
 static const char *STR_MORE_CHANGES = "More changes...";
 
-typedef struct diff_data {
-    int file_size;
-    int size_limit;
-
-    char *compress_folder;
-    char *compress_file;
-
-    char *tmp_folder;
-    char *file_origin;
-    char *uncompress_file;
-    char *compress_tmp_file;
-    char *diff_file;
-} diff_data;
-
 #ifdef WIN32
 
 /* Prototypes */

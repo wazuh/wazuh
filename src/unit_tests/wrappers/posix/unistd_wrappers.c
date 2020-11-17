@@ -19,7 +19,7 @@
 #ifndef WIN32
 int __wrap_unlink(const char *file) {
 #else
-int __wrap__unlink(const char *file) {
+int wrap__unlink(const char *file) {
 #endif
     check_expected_ptr(file);
     return mock();

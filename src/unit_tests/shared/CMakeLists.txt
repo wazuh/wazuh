@@ -17,10 +17,10 @@ list(APPEND shared_tests_names "test_integrity_op")
 list(APPEND shared_tests_flags " ")
 
 list(APPEND shared_tests_names "test_rbtree_op")
-list(APPEND shared_tests_flags " ")
+list(APPEND shared_tests_flags "-Wl,--wrap,getpid ")
 
 list(APPEND shared_tests_names "test_string_op")
-list(APPEND shared_tests_flags "-Wl,--wrap,_mwarn")
+list(APPEND shared_tests_flags "-Wl,--wrap,_mwarn -Wl,--wrap,getpid")
 
 list(APPEND shared_tests_names "test_version_op")
 set(VERSION_OP_BASE_FLAGS "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
@@ -29,10 +29,10 @@ list(APPEND shared_tests_flags "${VERSION_OP_BASE_FLAGS}")
 
 list(APPEND shared_tests_names "test_queue_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock,--wrap=pthread_cond_wait \
-                                -Wl,--wrap=pthread_cond_signal,--wrap=pthread_cond_timedwait")
+                                -Wl,--wrap=pthread_cond_signal,--wrap=pthread_cond_timedwait -Wl,--wrap,getpid")
 
 list(APPEND shared_tests_names "test_agent_op")
-list(APPEND shared_tests_flags "-Wl,--wrap,_merror")
+list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,getpid")
 
 list(APPEND shared_tests_names "test_enrollment_op")
 set(ENROLLMENT_OP_BASE_FLAGS "-Wl,--wrap=OS_IsValidIP,--wrap=_merror,--wrap=_mwarn,--wrap=check_x509_cert \
@@ -40,7 +40,7 @@ set(ENROLLMENT_OP_BASE_FLAGS "-Wl,--wrap=OS_IsValidIP,--wrap=_merror,--wrap=_mwa
                                 -Wl,--wrap=SSL_new,--wrap=SSL_connect,--wrap=SSL_get_error,--wrap=SSL_set_bio \
                                 -Wl,--wrap=SSL_write,--wrap=fopen,--wrap=fclose,--wrap=SSL_read \
                                 -Wl,--wrap=BIO_new_socket,--wrap=_merror_exit,--wrap=TempFile,--wrap=OS_MoveFile \
-                                -Wl,--wrap=fgets")
+                                -Wl,--wrap=fgets -Wl,--wrap,getpid")
 if(${TARGET} STREQUAL "winagent")
     list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS}")
 else()
@@ -49,7 +49,7 @@ else()
 endif()
 
 list(APPEND shared_tests_names "test_time_op")
-list(APPEND shared_tests_flags " ")
+list(APPEND shared_tests_flags "-Wl,--wrap,getpid ")
 
 if(${TARGET} STREQUAL "server")
 list(APPEND shared_tests_names "test_bzip2_op")
