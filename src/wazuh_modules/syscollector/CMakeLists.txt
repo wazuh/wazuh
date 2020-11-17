@@ -74,10 +74,10 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         LINK_FLAGS "-static-libgcc -static-libstdc++")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-target_link_libraries(syscollector crypto dbsync sysinfo cjson)
+target_link_libraries(syscollector crypto dbsync rsync sysinfo cjson)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  target_link_libraries(syscollector crypto ws2_32 ssl crypt32 sqlite3 cjson gcov proc)
+  target_link_libraries(syscollector crypto ws2_32 ssl crypt32 sqlite3 cjson gcov)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")

@@ -340,9 +340,16 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
         const auto packages{root.enumerate()};
         for (const auto& package : packages)
         {
-            std::string value;
+            std::string value { "unknown" };
             nlohmann::json packageJson;
             Utils::Registry packageReg{key, subKey + "\\" + package, access | KEY_READ};
+
+            packageJson["name"] = value;
+            packageJson["version"] = value;
+            packageJson["vendor"] = value;
+            packageJson["install_time"] = value;
+            packageJson["location"] = value;
+
             if (packageReg.string("DisplayName", value))
             {
                 packageJson["name"] = value;
@@ -363,7 +370,7 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
             {
                 packageJson["location"] = value;
             }
-            if (!packageJson.empty())
+            if (packageJson.at("name") != "unknown")
             {
                 if (access & KEY_WOW64_32KEY)
                 {
@@ -415,7 +422,9 @@ static void getHotFixFromReg(const HKEY key, const std::string& subKey, nlohmann
         }
         for (const auto& hotfix : hotfixes)
         {
-            data.push_back({{"hotfix", hotfix}});
+            nlohmann::json hotfixValue;
+            hotfixValue["hotfix"] = hotfix;
+            data.push_back(hotfixValue);
         }
     }
     catch(...)

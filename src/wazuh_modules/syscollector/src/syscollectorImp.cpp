@@ -527,6 +527,7 @@ void Syscollector::scanPackages()
                 packages.push_back(item);
             }
         }
+
         updateAndNotifyChanges(m_dbSync->handle(), tablePackages, packages, m_reportFunction);
         m_rsync.startSync(m_dbSync->handle(), nlohmann::json::parse(PACKAGES_START_CONFIG_STATEMENT), m_reportFunction);
         if (m_hotfixes)
