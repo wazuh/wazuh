@@ -20,11 +20,13 @@ relationships:
         - ciscat_read
         - decoders_read
         - lists_read
+        - rootcheck_all
         - rules_read
         - mitre_read
         - sca_read
         - syscheck_all
         - syscollector_read
+        - logtest_all
       rule_ids:
         - wui_elastic_admin
         - wui_opendistro_admin
@@ -36,6 +38,7 @@ relationships:
         - cluster_read
         - decoders_read
         - lists_read
+        - rootcheck_read
         - rules_read
         - mitre_read
         - sca_read

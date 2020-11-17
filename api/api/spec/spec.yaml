@@ -338,6 +338,41 @@ x-rbac-catalog:
         actions: ['lists:read']
         resources: ['list:path:etc/lists/audit-keys']
         effect: "deny"
+    'logtest:run':
+      description: "Run logtest tool or end a logtest session"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'logtest:run' ]
+        resources: [ '*:*:*' ]
+        effect: "allow"
+    'rootcheck:read':
+      description: "Access information from agents rootcheck database"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
+      example:
+        actions: [ 'rootcheck:read' ]
+        resources: [ 'agent:id:011' ]
+        effect: "allow"
+    'rootcheck:clear':
+      description: "Clear the agents rootcheck database"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
+      example:
+        actions: [ 'rootcheck:clear' ]
+        resources: [ 'agent:id:*' ]
+        effect: "deny"
+    'rootcheck:run':
+      description: "Run agents rootcheck scan"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
+      example:
+        actions: [ 'rootcheck:run' ]
+        resources: [ 'agent:id:*' ]
+        effect: "allow"
     'rules:read':
       description: "Read rules files"
       resources:
@@ -1619,6 +1654,27 @@ components:
       - stopped
       - running
 
+    # Logtest models
+    LogtestRequest:
+      type: object
+      required:
+        - event
+        - log_format
+        - location
+      properties:
+        token:
+          type: string
+          description: "Token for the logtest session"
+        log_format:
+          type: string
+          description: "Allowed values: syslog, json, snort-full, squid, eventlog, eventchannel, audit, mysql_log, postgresql_log, nmapg, iis, command, full_command, djb-multilog, multi-line"
+        location:
+          type: string
+          description: "Path string"
+        event:
+          type: string
+          description: "Event to look for"
+
     # Security models
     Role_id:
       type: string
@@ -1869,7 +1925,7 @@ components:
         max_agents:
           type: string
           minimum: 0
-          description: "Maximum number of agents that can be registered. This variable is defined at compilation time"
+          description: "Maximum number of agents that can be registered."
         openssl_support:
           type: string
         ruleset_version:
@@ -2310,6 +2366,8 @@ components:
             - wazuh-modulesd:agent-key-polling
             - wazuh-modulesd:aws-s3
             - wazuh-modulesd:azure-logs
+            - wazuh-modulesd:agent-upgrade
+            - wazuh-modulesd:task-manager
             - wazuh-modulesd:ciscat
             - wazuh-modulesd:control
             - wazuh-modulesd:command
@@ -4251,6 +4309,14 @@ components:
       schema:
         type: string
         format: alphanumeric_symbols
+    logtest_token:
+      in: path
+      name: token
+      description: "Token of the logtest saved session"
+      required: true
+      schema:
+        type: string
+        format: alphanumeric
     type_agents:
       in: query
       name: type
@@ -4541,6 +4607,13 @@ components:
       in: query
       name: mitre
       description: "Filters by MITRE attack ID"
+      schema:
+        type: string
+        format: alphanumeric
+    cis:
+      in: query
+      name: cis
+      description: "Filter by CIS requirement"
       schema:
         type: string
         format: alphanumeric
@@ -5075,12 +5148,16 @@ tags:
     description: "Group of agents and centralized configurations"
   - name: Lists
     description: "CDB lists management"
+  - name: Logtest
+    description: "Logtest: testing and verification tool for rules and decoders"
   - name: Manager
     description: "Wazuh manager management"
   - name: Mitre
     description: "Attacks information from MITRE database"
   - name: Overview
     description: "Overview of Wazuh"
+  - name: Rootcheck
+    description: "Rootcheck management"
   - name: Rules
     description: "Rules management"
   - name: SCA
@@ -7872,7 +7949,7 @@ paths:
                       version: v3.9.0
                       compilation_date: "2019-03-06T11:24:59Z"
                       type: manager
-                      max_agents: 14000
+                      max_agents: unlimited
                       openssl_support: yes
                       ruleset_version: 3905
                       tz_offset: +0000
@@ -9047,6 +9124,118 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
+  /logtest:
+    put:
+      tags:
+        - Logtest
+      summary: "Run logtest"
+      description: "Run logtest tool to check if a specified log raises any alert among other information"
+      operationId: api.controllers.logtest_controller.run_logtest_tool
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/logtest:run'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        description: "Run logtest with the parameters below"
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogtestRequest'
+      responses:
+        '200':
+          description: "Successfully run the logtest tool"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                token:  bd83b45f
+                message: ["INFO: (7202): Session initialized with token 'bd83b45f'"]
+                output:
+                  timestamp: 2020-06-24T11:28:09.308+0200
+                  rule:
+                    description: "Systemd rules"
+                    id: 40700
+                    firedtimes: 1
+                    mail: false
+                    groups: ["local", "systemd"]
+                  agent:
+                    id: 000
+                    name: wazuh-master
+                  manager:
+                    name: wazuh-master
+                  id: "1598517414.1892559"
+                  cluster:
+                    name: wazuh
+                    node: master-node
+                  full_log: "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."
+                  predecoder:
+                    program_name: systemd
+                    timestamp: "Jun 24 11:54:19"
+                    hostname: Master
+                  decoder:
+                    name: systemd
+                  location: "master->/var/log/syslog"
+                alert: false
+                codemsg: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /logtest/sessions/{token}:
+    delete:
+      tags:
+        - Logtest
+      summary: "End session"
+      description: "Delete the saved logtest session corresponding to {token}"
+      operationId: api.controllers.logtest_controller.end_logtest_session
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/logtest:run'
+      parameters:
+        - $ref: '#/components/parameters/logtest_token'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Successfully deleted the saved session or no session found"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                error: 0
+                data:
+                  messages: ["INFO: (7206): The session '573ed2ca' was closed successfully"]
+                  codemsg: 0
+
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
   /manager/status:
     get:
       tags:
@@ -9138,7 +9327,7 @@ paths:
                       version: v3.9.0
                       compilation_date: "2019-03-06T11:24:59Z"
                       type: manager
-                      max_agents: 14000
+                      max_agents: unlimited
                       openssl_support: yes
                       ruleset_version: 3905
                       tz_offset: +0000
@@ -10360,6 +10549,207 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "All selected MITRE information was returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /rootcheck:
+    delete:
+      tags:
+      - Rootcheck
+      summary: "Clear results"
+      description: "Clear rootcheck database for all agents or a list of them"
+      operationId: api.controllers.rootcheck_controller.delete_rootcheck
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rootcheck:clear'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agents_list'
+      responses:
+        '200':
+          description: "Clear rootcheck database for all agents or a list of them"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - "002"
+                    - "003"
+                  total_affected_items: 2
+                  failed_items: []
+                  total_failed_items: 0
+                message: "Rootcheck database was cleared on returned agents"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    put:
+      tags:
+        - Rootcheck
+      summary: "Run scan"
+      description: "Run rootcheck scan in all agents or a list of them"
+      operationId: api.controllers.rootcheck_controller.put_rootcheck
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rootcheck:run'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agents_list'
+      responses:
+        '200':
+          description: "Run rootcheck scan in all agents or a list of them"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - "000"
+                    - "001"
+                    - "002"
+                    - "003"
+                  total_affected_items: 4
+                  failed_items: []
+                  total_failed_items: 0
+                message: "Rootcheck scan was restarted on returned agents"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /rootcheck/{agent_id}:
+    get:
+      tags:
+      - Rootcheck
+      summary: "Get results"
+      description: "Return the rootcheck database of an agent"
+      operationId: api.controllers.rootcheck_controller.get_rootcheck_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rootcheck:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
+        - $ref: '#/components/parameters/status'
+        - $ref: '#/components/parameters/pci_dss'
+        - $ref: '#/components/parameters/cis'
+      responses:
+        '200':
+          description: "Return the rootcheck database of an agent"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - date_first: "2020-10-23 10:34:09"
+                      log: "Ending CIS-CAT scan. File: /var/ossec/wodles/ciscat/benchmarks/CIS_Ubuntu_Linux_16.04_LTS_Benchmark_v1.0.0-xccdf.xml."
+                      date_last: "2020-10-23 10:34:09"
+                      status: "outstanding"
+                    - date_first: "2020-10-23 10:33:43"
+                      log: "Starting CIS-CAT scan. File: /var/ossec/wodles/ciscat/benchmarks/CIS_Ubuntu_Linux_16.04_LTS_Benchmark_v1.0.0-xccdf.xml."
+                      date_last: "2020-10-23 10:33:49"
+                      status: "outstanding"
+                  total_affected_items: 2
+                  failed_items: []
+                  total_failed_items: 0
+                message: "All selected rootcheck information was returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /rootcheck/{agent_id}/last_scan:
+    get:
+      tags:
+      - Rootcheck
+      summary: "Get last scan datetime"
+      description: "Return the timestamp of the last rootcheck scan of an agent"
+      operationId: api.controllers.rootcheck_controller.get_last_scan_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rootcheck:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: "Return the timestamp of the last rootcheck scan of an agent"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - end: "2020-10-23 11:53:47"
+                      start: "2020-10-23 11:53:39"
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
+                message: "Last rootcheck scan of the agent was returned"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -13565,8 +13955,6 @@ paths:
                   format: names
                 password:
                   type: string
-                  maxLength: 64
-                  minLength: 8
                   format: password
                 allow_run_as:
                   type: boolean
@@ -13680,8 +14068,6 @@ paths:
               properties:
                 password:
                   type: string
-                  maxLength: 64
-                  minLength: 8
                   format: password
                 allow_run_as:
                   type: boolean

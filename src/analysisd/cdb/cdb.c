@@ -16,7 +16,6 @@
 #define EPROTO -15  /* cdb 0.75's default for PROTOless systems */
 #endif
 
-
 void cdb_free(struct cdb *c)
 {
     if (c->map) {

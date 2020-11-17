@@ -26,6 +26,7 @@ EXTERNAL_LIBYAML=external/libyaml/
 EXTERNAL_CURL=external/curl/
 EXTERNAL_AUDIT=external/audit-userspace/
 EXTERNAL_LIBFFI=external/libffi/
+EXTERNAL_LIBPLIST=external/libplist/
 EXTERNAL_CPYTHON=external/cpython/
 EXTERNAL_MSGPACK=external/msgpack/
 EXTERNAL_BZIP2=external/bzip2/
@@ -34,7 +35,6 @@ ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
 endif
-MAXAGENTS?=100000
 # XXX Becareful NO EXTRA Spaces here
 PREFIX?=/var/ossec
 PG_CONFIG?=pg_config
@@ -76,7 +76,7 @@ endif
 ONEWAY?=no
 CLEANFULL?=no
 
-DEFINES=-DMAX_AGENTS=${MAXAGENTS} -DOSSECHIDS
+DEFINES=-DOSSECHIDS
 DEFINES+=-DDEFAULTDIR=\"${PREFIX}\"
 DEFINES+=-DUSER=\"${OSSEC_USER}\"
 DEFINES+=-DREMUSER=\"${OSSEC_USER_REM}\"
@@ -468,7 +468,6 @@ help: failtarget
 	@echo "   make DEBUG=yes               Build with symbols and without optimization. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DEBUGAD=yes             Enables extra debugging logging in ossec-analysisd. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make PREFIX=/path            Install OSSEC to '/path'. Defaults to /var/ossec"
-	@echo "   make MAXAGENTS=NUMBER        Set the number of maximum agents to NUMBER. Defaults to 2048"
 	@echo "   make ONEWAY=yes              Disables manager's ACK towards agent. It allows connecting agents without backward connection from manager. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make CLEANFULL=yes           Makes the alert mailing subject clear in the format: '<location> - <level> - <description>'. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make RESOURCES_URL           Set the Wazuh resources URL"
@@ -513,7 +512,6 @@ settings:
 	@echo "    DEBUG:              ${DEBUG}"
 	@echo "    DEBUGAD             ${DEBUGAD}"
 	@echo "    PREFIX:             ${PREFIX}"
-	@echo "    MAXAGENTS:          ${MAXAGENTS}"
 	@echo "    DATABASE:           ${DATABASE}"
 	@echo "    ONEWAY:             ${ONEWAY}"
 	@echo "    CLEANFULL:          ${CLEANFULL}"
@@ -656,7 +654,7 @@ win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 ZLIB_LIB    = $(EXTERNAL_ZLIB)/libz.a
 OPENSSL_LIB = $(EXTERNAL_OPENSSL)libssl.a
 CRYPTO_LIB = $(EXTERNAL_OPENSSL)libcrypto.a
-
+LIBPLIST_LIB = $(EXTERNAL_LIBPLIST)/bin/lib/libplist-2.0.a
 SQLITE_LIB  = $(EXTERNAL_SQLITE)libsqlite3.a
 JSON_LIB    = $(EXTERNAL_JSON)libcjson.a
 PROCPS_LIB  = $(EXTERNAL_PROCPS)/libproc.a
@@ -683,6 +681,9 @@ endif
 
 EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB)
 endif
+endif
+ifeq (${uname_S},Darwin)
+EXTERNAL_LIBS += ${LIBPLIST_LIB}
 endif
 
 .PHONY: external test_external
@@ -727,6 +728,11 @@ endif
 endif
 endif
 endif
+
+#### libplist ##########
+
+${LIBPLIST_LIB}:
+	cd ${EXTERNAL_LIBPLIST} && ./autogen.sh --prefix=${ROUTE_PATH}/${EXTERNAL_LIBPLIST}bin && ${MAKE} && ${MAKE} install
 
 #### libffi ##########
 
@@ -912,7 +918,7 @@ endif
 endif
 
 
-EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 libpcre2
+EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 libpcre2 libplist
 EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
@@ -1017,6 +1023,15 @@ wrappers_libc_o := $(wrappers_libc_c:.c=.o)
 wrappers_linux_c := $(wildcard unit_tests/wrappers/linux/*.c)
 wrappers_linux_o := $(wrappers_linux_c:.c=.o)
 
+wrappers_macos_c := $(wildcard unit_tests/wrappers/macos/*.c)
+wrappers_macos_o := $(wrappers_macos_c:.c=.o)
+
+wrappers_macos_libc_c := $(wildcard unit_tests/wrappers/macos/libc/*.c)
+wrappers_macos_libc_o := $(wrappers_macos_libc_c:.c=.o)
+
+wrappers_macos_posix_c := $(wildcard unit_tests/wrappers/macos/posix/*.c)
+wrappers_macos_posix_o := $(wrappers_macos_posix_c:.c=.o)
+
 wrappers_posix_c := $(wildcard unit_tests/wrappers/posix/*.c)
 wrappers_posix_o := $(wrappers_posix_c:.c=.o)
 
@@ -1095,6 +1110,10 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 		UNIT_TEST_WRAPPERS+=${wrappers_windows_o}
 		UNIT_TEST_WRAPPERS+=${wrappers_windows_lib_o}
 		UNIT_TEST_WRAPPERS+=${wrappers_windows_posix_o}
+	else ifeq (${uname_S},Darwin)
+	    UNIT_TEST_WRAPPERS+=${wrappers_macos_o}
+		UNIT_TEST_WRAPPERS+=${wrappers_macos_libc_o}
+		UNIT_TEST_WRAPPERS+=${wrappers_macos_posix_o}
 	else
 		UNIT_TEST_WRAPPERS+=${wrappers_externals_audit_o}
 		UNIT_TEST_WRAPPERS+=${wrappers_externals_procpc_o}
@@ -1715,8 +1734,6 @@ LIBS_TEST=-lcmocka
 
 # LIBS_TEST = -lcheck -lm -lrt -lsubunit
 
-
-
 unit_tests/wrappers/%.o: unit_tests/wrappers/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
@@ -1745,6 +1762,12 @@ unit_tests/wrappers/libc/%.o: unit_tests/wrappers/libc/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
 unit_tests/wrappers/linux/%.o: unit_tests/wrappers/linux/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/macos/%.o: unit_tests/wrappers/macos/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/macos/libc/%.o: unit_tests/wrappers/macos/libc/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
 unit_tests/wrappers/posix/%.o: unit_tests/wrappers/posix/%.c
@@ -1943,6 +1966,7 @@ ifneq ($(wildcard external/*/*),)
 	-cd ${EXTERNAL_LIBFFI} && ${MAKE} clean
 	rm -f $(msgpack_o) $(EXTERNAL_MSGPACK)libmsgpack.a
 	-${MAKE} -C $(EXTERNAL_BZIP2) clean
+	-cd ${EXTERNAL_LIBPLIST} && ${MAKE} clean && rm -rf bin/*
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && ${MAKE} realclean
@@ -2003,6 +2027,9 @@ clean-unit-tests:
 	rm -f ${wrappers_externals_pcre2_o}
 	rm -f ${wrappers_libc_o}
 	rm -f ${wrappers_linux_o}
+	rm -f ${wrappers_macos_o}
+	rm -f ${wrappers_macos_libc_o}
+	rm -f ${wrappers_macos_posix_o}
 	rm -f ${wrappers_posix_o}
 	rm -f ${wrappers_wazuh_o}
 	rm -f ${wrappers_wazuh_os_crypto_o}

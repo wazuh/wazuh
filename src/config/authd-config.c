@@ -51,7 +51,6 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     config->flags.force_insert = 0;
     config->flags.clear_removed = 0;
     config->flags.use_password = 0;
-    config->flags.register_limit = 1;
     config->ciphers = strdup("HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH");
     config->flags.verify_host = 0;
     config->manager_cert = strdup(manager_cert);
@@ -129,18 +128,11 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
 
             config->flags.use_password = b;
         } else if (!strcmp(node[i]->element, xml_limit_maxagents)) {
-            short b = eval_bool(node[i]->content);
-
-            if (b < 0) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return OS_INVALID;
-            }
-
-            config->flags.register_limit = b;
+            minfo("The <%s> tag is deprecated since version 4.1.0.", xml_limit_maxagents);
         } else if (!strcmp(node[i]->element, xml_ciphers)) {
             free(config->ciphers);
             config->ciphers = strdup(node[i]->content);
-        }else if (!strcmp(node[i]->element, xml_ssl_agent_ca)) {
+        } else if (!strcmp(node[i]->element, xml_ssl_agent_ca)) {
             free(config->agent_ca);
             config->agent_ca = strdup(node[i]->content);
         } else if (!strcmp(node[i]->element, xml_ssl_verify_host)) {

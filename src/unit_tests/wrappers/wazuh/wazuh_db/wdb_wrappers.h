@@ -53,13 +53,13 @@ int __wrap_wdbi_query_clear(wdb_t *wdb, wdb_component_t component, const char *p
 
 cJSON* __wrap_wdbc_query_parse_json(int *sock, const char *query, char *response, const int len);
 
+wdbc_result __wrap_wdbc_query_parse(int *sock, const char *query, char *response, const int len, char** payload);
+
 cJSON* __wrap_wdb_exec(sqlite3 *db, const char *sql);
 
 void __wrap_wdb_leave(wdb_t *wdb);
 
 int __wrap_wdb_sql_exec(wdb_t *wdb, const char *sql_exec);
-
-cJSON* __wrap_wdb_get_agent_info(int id);
 
 wdb_t* __wrap_wdb_init(sqlite3* db, const char* id);
 

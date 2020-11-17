@@ -392,12 +392,12 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
     OSRegex_FreePattern(&regex);
 
 cleanup:
-    free(exclude_decoders);
-    free(exclude_rules);
-    free(decoder_dirs);
-    free(rules_dirs);
-    free(decoder_dirs_pattern);
-    free(rules_dirs_pattern);
+    free_strarray(exclude_decoders);
+    free_strarray(exclude_rules);
+    free_strarray(decoder_dirs);
+    free_strarray(rules_dirs);
+    free_strarray(decoder_dirs_pattern);
+    free_strarray(rules_dirs_pattern);
 
     return retval;
 }

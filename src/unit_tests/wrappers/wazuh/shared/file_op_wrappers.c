@@ -116,3 +116,20 @@ float __wrap_DirSize(const char *path) {
 
     return mock();
 }
+
+int __wrap_w_ref_parent_folder(const char * path) {
+    check_expected(path);
+
+    return mock();
+}
+
+int __wrap_cldir_ex(__attribute__((unused)) const char *name) {
+    return mock();
+}
+
+int __wrap_UnmergeFiles(const char *finalpath, const char *optdir, int mode) {
+    check_expected(finalpath);
+    check_expected(optdir);
+    check_expected(mode);
+    return mock();
+}
