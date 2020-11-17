@@ -15,15 +15,18 @@
 #include <condition_variable>
 #include <mutex>
 #include <memory>
+#include <functional>
 #include "sysInfoInterface.h"
 #include "json.hpp"
 #include "commonDefs.h"
 #include "dbsync.hpp"
+#include "rsync.hpp"
 
 class Syscollector final
 {
 public:
     Syscollector(const std::shared_ptr<ISysInfo>& spInfo,
+                 const std::function<void(const std::string&)> reportFunction,
                  const std::string& inverval = "1h",
                  const bool scanOnStart = true,
                  const bool hardware = true,
@@ -47,6 +50,7 @@ private:
     void scan();
     void syncThread();
     const std::shared_ptr<ISysInfo>                m_spInfo;
+    std::function<void(const std::string&)>        m_reportFunction;
     const std::string                              m_intervalUnit;
     const unsigned long long                       m_intervalValue;
     const bool                                     m_scanOnStart;
@@ -60,6 +64,7 @@ private:
     const bool                                     m_hotfixes;
     bool                                           m_running;
     DBSync                                         m_dbSync;
+    RemoteSync                                     m_rsync;
     std::condition_variable                        m_cv;
     std::mutex                                     m_mutex;
     std::thread                                    m_thread;
