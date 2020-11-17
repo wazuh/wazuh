@@ -29,8 +29,11 @@ All notable changes to this project will be documented in this file.
 - **Framework:**
   - Refactored framework to work with new upgrade module. ([#5537](https://github.com/wazuh/wazuh/issues/5537))
   - Refactored agent upgrade CLI to work with new ugprade module. It distributes petitions in a clustered environment. ([#5675](https://github.com/wazuh/wazuh/issues/5675))
-  - Refactored cluster response handling in Integrity synchronization process. ([#6614](https://github.com/wazuh/wazuh/pull/6614))
   - Changed rule and decoder details structure to support PCRE2. ([#6318](https://github.com/wazuh/wazuh/issues/6318))
+
+### Changed
+
+- **Framework:**
   - Changed access to agent's status ([#6326](https://github.com/wazuh/wazuh/issues/6326))
 
 ### Fixed
