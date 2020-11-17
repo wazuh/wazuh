@@ -429,12 +429,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             logger.info("Analyzing worker integrity: Files checked. KO files compressed.")
             try:
                 task_name = await self.send_request(command=b'sync_m_c', data=b'')
-                if isinstance(task_name, Exception):
-                    exc_info = task_name
-                    task_name = b'None'
-                    raise exc_info
-                elif task_name.startswith(b'Error'):
-                    exc_info = exception.WazuhClusterError(code=3016, extra_message=str(task_name))
+                if isinstance(task_name, Exception) or task_name.startswith(b'Error'):
+                    exc_info = task_name if isinstance(task_name, Exception) else \
+                        exception.WazuhClusterError(code=3016, extra_message=str(task_name))
                     task_name = b'None'
                     raise exc_info
 
