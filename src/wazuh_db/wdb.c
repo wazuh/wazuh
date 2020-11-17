@@ -832,7 +832,7 @@ cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status) {
     return result;
 }
 
-cJSON* wdb_exec_stmt_sized(sqlite3_stmt * stmt, size_t max_size, int* status) {
+cJSON* wdb_exec_stmt_sized(sqlite3_stmt * stmt, const size_t max_size, int* status) {
     if (!stmt) {
         mdebug1("Invalid SQL statement.");
         *status = SQLITE_ERROR;

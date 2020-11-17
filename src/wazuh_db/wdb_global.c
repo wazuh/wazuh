@@ -12,7 +12,7 @@
 #include "wdb.h"
 
 // List of agent information fields in global DB
-// The ":" is used for paramter binding
+// The ":" is used for parameter binding
 static const char *global_db_agent_fields[] = {
     ":config_sum",
     ":ip",
@@ -1197,7 +1197,7 @@ int wdb_global_check_manager_keepalive(wdb_t *wdb) {
 }
 
 cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, wdbc_result* status) {
-    //Prepare SQL queryi
+    //Prepare SQL query
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
         *status = WDBC_ERROR;
