@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 
 - **API:**
   - Fixed an error with `POST /security/roles/{role_id}/rules` when removing role-rule relationships with admin resources. ([#6594](https://github.com/wazuh/wazuh/issues/6594))
+  - Fixed a timeout error with `GET /manager/configuration/validation` when using it in a slow environment. ([#6530](https://github.com/wazuh/wazuh/issues/6530))
 - **Framework:**
   - Fixed an error with some distributed requests when the cluster configuration is empty. ([#6612](https://github.com/wazuh/wazuh/pull/6612))
   - Fixed special characters in default policies. ([#6575](https://github.com/wazuh/wazuh/pull/6575))
