@@ -114,7 +114,7 @@ def get_sca_checks(policy_id=None, agent_list=None, q="", offset=0, limit=common
             # Workaround for too long sca_checks results until the chunk algorithm is implemented (1/2)
             db_query = WazuhDBQuerySCA(agent_id=agent_list[0], offset=0, limit=None, sort=None, filters=filters,
                                        search=None, select=full_select, count=True, get_data=True,
-                                       query=f"policy_id={policy_id}" if q == "" else f"policy_id={policy_id};{q}",
+                                       query=f"policy_id={policy_id}",
                                        default_query=default_query_sca_check,
                                        default_sort_field='policy_id', fields=fields_translation, count_field='id')
             result_dict = db_query.run()
@@ -156,7 +156,8 @@ def get_sca_checks(policy_id=None, agent_list=None, q="", offset=0, limit=common
                              sort_by=sort['fields'] if sort else ['policy_id'],
                              sort_ascending=False if sort and sort['order'] == 'desc' else True,
                              offset=offset,
-                             limit=limit)
+                             limit=limit,
+                             q=q)
 
         result.affected_items = data['items']
         result.total_affected_items = data['totalItems']
