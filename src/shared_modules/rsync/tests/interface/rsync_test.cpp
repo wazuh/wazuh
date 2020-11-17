@@ -782,15 +782,6 @@ TEST_F(RSyncTest, startSyncWithIntegrityClearCPP)
 
 TEST_F(RSyncTest, startSyncWithIntegrityClearCPPSelectByInode)
 {
-    const auto sql
-    {
-        R"(
-        PRAGMA foreign_keys=OFF;
-        BEGIN TRANSACTION;
-        CREATE TABLE entry_path (path TEXT NOT NULL, inode_id INTEGER, mode INTEGER, last_event INTEGER, entry_type INTEGER, scanned INTEGER, options INTEGER, checksum TEXT NOT NULL, PRIMARY KEY(path));
-        COMMIT;)"
-    };
-
     std::unique_ptr<DBSync> dbSync;
     EXPECT_NO_THROW(dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, SQL_STMT_INFO));
 

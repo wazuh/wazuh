@@ -29,7 +29,7 @@ public:
     virtual ~SysInfoNetworkLinuxWrapperMock() = default;
     MOCK_METHOD(int, family, (), (const override));
     MOCK_METHOD(std::string, name, (), (const override));
-    MOCK_METHOD(std::string, description, (), (const override));    
+    MOCK_METHOD(std::string, adapter, (), (const override));
     MOCK_METHOD(std::string, address, (), (const override));
     MOCK_METHOD(std::string, netmask, (), (const override));
     MOCK_METHOD(std::string, broadcast, (), (const override));
@@ -38,7 +38,7 @@ public:
     MOCK_METHOD(std::string, broadcastV6, (), (const override));
     MOCK_METHOD(std::string, gateway, (), (const override));
     MOCK_METHOD(std::string, metrics, (), (const override));
-    MOCK_METHOD(std::string, metricsV6, (), (const override));        
+    MOCK_METHOD(std::string, metricsV6, (), (const override));
     MOCK_METHOD(std::string, dhcp, (), (const override));
     MOCK_METHOD(std::string, mtu, (), (const override));
     MOCK_METHOD(LinkStats, stats, (), (const override));
@@ -117,7 +117,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_PACKET)
     EXPECT_EQ("eth01",ifaddr.at("name").get_ref<const std::string&>());
     EXPECT_EQ("ethernet",ifaddr.at("type").get_ref<const std::string&>());
     EXPECT_EQ("up",ifaddr.at("state").get_ref<const std::string&>());
-    EXPECT_EQ("00:A0:C9:14:C8:29",ifaddr.at("MAC").get_ref<const std::string&>());
+    EXPECT_EQ("00:A0:C9:14:C8:29",ifaddr.at("mac").get_ref<const std::string&>());
     
     EXPECT_EQ(1,ifaddr.at("tx_packets").get<int32_t>());
     EXPECT_EQ(0,ifaddr.at("rx_packets").get<int32_t>());
@@ -128,7 +128,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_PACKET)
     EXPECT_EQ(7,ifaddr.at("tx_dropped").get<int32_t>());
     EXPECT_EQ(6,ifaddr.at("rx_dropped").get<int32_t>());
 
-    EXPECT_EQ("1500",ifaddr.at("MTU").get_ref<const std::string&>());
+    EXPECT_EQ("1500",ifaddr.at("mtu").get_ref<const std::string&>());
     EXPECT_EQ("10.2.2.50",ifaddr.at("gateway").get_ref<const std::string&>());
 }
 

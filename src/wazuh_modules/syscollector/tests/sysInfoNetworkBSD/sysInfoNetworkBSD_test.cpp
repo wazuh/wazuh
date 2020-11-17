@@ -28,6 +28,7 @@ public:
     virtual ~SysInfoNetworkBSDWrapperMock() = default;
     MOCK_METHOD(int, family, (), (const override));
     MOCK_METHOD(std::string, name, (), (const override));
+    MOCK_METHOD(std::string, adapter, (), (const override));
     MOCK_METHOD(std::string, address, (), (const override));
     MOCK_METHOD(std::string, netmask, (), (const override));
     MOCK_METHOD(std::string, broadcast, (), (const override));
@@ -110,7 +111,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_LINK)
     EXPECT_EQ("eth01",ifaddr.at("name").get_ref<const std::string&>());
     EXPECT_EQ("ethernet",ifaddr.at("type").get_ref<const std::string&>());
     EXPECT_EQ("up",ifaddr.at("state").get_ref<const std::string&>());
-    EXPECT_EQ("00:A0:C9:14:C8:29",ifaddr.at("MAC").get_ref<const std::string&>());
+    EXPECT_EQ("00:A0:C9:14:C8:29",ifaddr.at("mac").get_ref<const std::string&>());
     
     EXPECT_EQ(1,ifaddr.at("tx_packets").get<int32_t>());
     EXPECT_EQ(0,ifaddr.at("rx_packets").get<int32_t>());
@@ -120,7 +121,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_LINK)
     EXPECT_EQ(4,ifaddr.at("rx_errors").get<int32_t>());
     EXPECT_EQ(6,ifaddr.at("rx_dropped").get<int32_t>());
 
-    EXPECT_EQ("1500",ifaddr.at("MTU").get_ref<const std::string&>());
+    EXPECT_EQ("1500",ifaddr.at("mtu").get_ref<const std::string&>());
 
     EXPECT_EQ("8.8.4.4",ifaddr.at("gateway").get_ref<const std::string&>());
 }

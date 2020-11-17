@@ -71,7 +71,7 @@ public:
         return Utils::NetworkWindowsHelper::getAdapterNameStr(m_interfaceAddress->FriendlyName);
     }
 
-    std::string description() const override
+    std::string adapter() const override
     {
         return Utils::NetworkWindowsHelper::getAdapterNameStr(m_interfaceAddress->Description);
     }
@@ -83,7 +83,7 @@ public:
 
     std::string address() const override
     {
-        std::string retVal;
+        std::string retVal { "unknown" };
         if (m_currentUnicastAddress)
         {
             retVal = Utils::NetworkWindowsHelper::IAddressToString(this->adapterFamily(), 
@@ -94,7 +94,7 @@ public:
 
     std::string addressV6() const override
     {
-        std::string retVal;
+        std::string retVal { "unknown" };
         if (m_currentUnicastAddress)
         {
             if (Utils::isVistaOrLater())
@@ -143,7 +143,7 @@ public:
 
     std::string netmaskV6() const override
     {
-        std::string retVal;
+        std::string retVal { "unknown" };
         if (m_currentUnicastAddress && Utils::isVistaOrLater())
         {
             // Get ipv6Netmask based on current OnLinkPrefixLength value
@@ -172,7 +172,7 @@ public:
 
     std::string gateway() const override
     {
-        std::string retVal;
+        std::string retVal { "unknown" };
         constexpr auto GATEWAY_SEPARATOR { "," };
         if (Utils::isVistaOrLater())
         {
@@ -222,7 +222,7 @@ public:
                 currentAdapterInfo = currentAdapterInfo->Next;
             }
         }
-        if (!retVal.empty())
+        if (retVal != "unknown")
         {
             // Remove last GATEWAY_SEPARATOR (,)
             retVal = retVal.substr(0, retVal.size()-1);
@@ -235,7 +235,7 @@ public:
         std::string retVal { "unknown" };
         if (Utils::isVistaOrLater())
         {
-            retVal = m_interfaceAddress->Ipv4Metric;
+            retVal = std::to_string(m_interfaceAddress->Ipv4Metric);
         }
         // XP structure does not support Ipv4Metric information
         return retVal;
@@ -246,7 +246,7 @@ public:
         std::string retVal { "unknown" };
         if (Utils::isVistaOrLater())
         {
-            retVal = m_interfaceAddress->Ipv6Metric;
+            retVal = std::to_string(m_interfaceAddress->Ipv6Metric);
         }
         // XP structure does not support Ipv6Metric information
         return retVal;
@@ -277,7 +277,7 @@ public:
 
     std::string mtu() const override
     {
-        std::string retVal;
+        std::string retVal { "unknown" };
         const auto mtu { m_interfaceAddress->Mtu };
         if (mtu)
         {
