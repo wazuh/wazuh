@@ -513,7 +513,8 @@ void Syscollector::scanPackages()
         constexpr auto tablePackages{"packages"};
         nlohmann::json packages;
         nlohmann::json hotfixes;
-        for (const auto& item : m_spInfo->packages())
+        const auto& packagesData { m_spInfo->packages() };
+        for (const auto& item : packagesData)
         {
             if(item.find("hotfix") != item.end())
             {
@@ -527,7 +528,6 @@ void Syscollector::scanPackages()
                 packages.push_back(item);
             }
         }
-
         updateAndNotifyChanges(m_dbSync->handle(), tablePackages, packages, m_reportFunction);
         m_rsync.startSync(m_dbSync->handle(), nlohmann::json::parse(PACKAGES_START_CONFIG_STATEMENT), m_reportFunction);
         if (m_hotfixes)

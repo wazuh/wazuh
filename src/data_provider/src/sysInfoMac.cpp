@@ -172,9 +172,16 @@ static void parseAppInfo(const std::string& path, nlohmann::json& data)
     {
         std::string line;
         nlohmann::json package;
+        constexpr auto DEFAULT_STRING_VALUE {"unknown"};
+        package["name"] = DEFAULT_STRING_VALUE;
+        package["version"] = DEFAULT_STRING_VALUE;
+        package["groups"] = DEFAULT_STRING_VALUE;
+        package["description"] = DEFAULT_STRING_VALUE;
+        package["architecture"] = DEFAULT_STRING_VALUE;
         while(std::getline(file, line))
         {
             line = Utils::trim(line," \t");
+
             if (line == "<key>CFBundleName</key>" &&
                 std::getline(file, line))
             {
@@ -196,7 +203,7 @@ static void parseAppInfo(const std::string& path, nlohmann::json& data)
                 package["description"] = getValueFnc(line);
             }
         }
-        if(!package.empty())
+        if(package.at("name") != DEFAULT_STRING_VALUE)
         {
             data.push_back(package);
         }
@@ -343,9 +350,15 @@ nlohmann::json SysInfo::getPorts() const
         {
             nlohmann::json port;
             std::make_unique<PortImpl>(std::make_shared<BSDPortWrapper>(processInfo.first, fdSocket))->buildPortData(port);
-            ports["ports"].push_back(port);
+            if (ports["ports"].end() == std::find_if(ports["ports"].begin(), ports["ports"].end(),
+                [&port](const auto& element)
+                {
+                    return 0 == port.dump().compare(element.dump());
+                }))
+            {
+                ports["ports"].push_back(port);
+            }
         }
     }
-
     return ports;
 }
