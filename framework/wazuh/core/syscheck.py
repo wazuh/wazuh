@@ -8,10 +8,12 @@ from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend, get_fields_to_nest, p
 
 
 class WazuhDBQuerySyscheck(WazuhDBQuery):
+    nested_fields = ['value']
 
-    def __init__(self, agent_id, default_sort_field='mtime', *args, **kwargs):
+    def __init__(self, nested, agent_id, default_sort_field='mtime', *args, **kwargs):
         super().__init__(backend=WazuhDBBackend(agent_id), default_sort_field=default_sort_field, count=True,
                          get_data=True, date_fields={'mtime', 'date'}, *args, **kwargs)
+        self.nested = nested
 
     def _filter_date(self, date_filter, filter_db_name):
         # dates are stored as timestamps

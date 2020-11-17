@@ -192,7 +192,7 @@ def files(agent_list=None, offset=0, limit=common.database_limit, sort=None, sea
     """
     if filters is None:
         filters = {}
-    parameters = {"date": "date", "arch": "arch", "value.type": "value.type", "value.name": "value.name",
+    parameters = {"date": "date", "arch": "arch", "value.type": "value_type", "value.name": "value_name",
                   "mtime": "mtime", "file": "file", "size": "size", "perm": "perm",
                   "uname": "uname", "gname": "gname", "md5": "md5", "sha1": "sha1", "sha256": "sha256",
                   "inode": "inode", "gid": "gid", "uid": "uid", "type": "type", "changes": "changes",
