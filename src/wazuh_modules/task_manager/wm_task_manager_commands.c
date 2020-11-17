@@ -19,7 +19,6 @@
 #ifndef WIN32
 
 #include "../wmodules.h"
-#include "wm_task_manager_db.h"
 #include "wm_task_manager_parsing.h"
 
 /**
@@ -98,7 +97,7 @@ STATIC cJSON* wm_task_manager_command_upgrade(wm_task_manager_upgrade *task, int
 
     while (agent_id = task->agent_ids[agent_it++], agent_id != OS_INVALID) {
         // Insert upgrade task into DB
-        if (task_id = wm_task_manager_insert_task(agent_id, task->node, task->module, task_manager_commands_list[command]), task_id == OS_INVALID) {
+        if (task_id = /*wm_task_manager_insert_task(agent_id, task->node, task->module, task_manager_commands_list[command])*/0, task_id == OS_INVALID) {
             *error_code = WM_TASK_DATABASE_ERROR;
             cJSON_Delete(response);
             break;
@@ -119,7 +118,7 @@ STATIC cJSON* wm_task_manager_command_upgrade_get_status(wm_task_manager_upgrade
 
     while (agent_id = task->agent_ids[agent_it++], agent_id != OS_INVALID) {
         // Get upgrade task status
-        if (result = wm_task_manager_get_upgrade_task_status(agent_id, task->node, &status_result), result == OS_INVALID) {
+        if (result = /*wm_task_manager_get_upgrade_task_status(agent_id, task->node, &status_result)*/0, result == OS_INVALID) {
             *error_code = WM_TASK_DATABASE_ERROR;
             cJSON_Delete(response);
             break;
@@ -141,7 +140,7 @@ STATIC cJSON* wm_task_manager_command_upgrade_update_status(wm_task_manager_upgr
 
     while (agent_id = task->agent_ids[agent_it++], agent_id != OS_INVALID) {
         // Update upgrade task status
-        if (result = wm_task_manager_update_upgrade_task_status(agent_id, task->node, task->status, task->error_msg), result == OS_INVALID) {
+        if (result = /*wm_task_manager_update_upgrade_task_status(agent_id, task->node, task->status, task->error_msg)*/0, result == OS_INVALID) {
             *error_code = WM_TASK_DATABASE_ERROR;
             cJSON_Delete(response);
             break;
@@ -167,7 +166,7 @@ STATIC cJSON* wm_task_manager_command_upgrade_result(wm_task_manager_upgrade_res
     int task_id = OS_INVALID;
 
     while (agent_id = task->agent_ids[agent_it++], agent_id != OS_INVALID) {
-        if (task_id = wm_task_manager_get_upgrade_task_by_agent_id(agent_id, &node_result, &module_result, &command_result, &status, &error, &create_time, &last_update_time), task_id == OS_INVALID) {
+        if (task_id = /*wm_task_manager_get_upgrade_task_by_agent_id(agent_id, &node_result, &module_result, &command_result, &status, &error, &create_time, &last_update_time)*/0, task_id == OS_INVALID) {
             *error_code = WM_TASK_DATABASE_ERROR;
             cJSON_Delete(response);
             break;
@@ -194,7 +193,7 @@ STATIC cJSON* wm_task_manager_command_upgrade_cancel_tasks(wm_task_manager_upgra
     int result = 0;
 
     // Cancel pending tasks for this node
-    if (result = wm_task_manager_cancel_upgrade_tasks(task->node), result == OS_INVALID) {
+    if (result = /*wm_task_manager_cancel_upgrade_tasks(task->node)*/0, result == OS_INVALID) {
         *error_code = WM_TASK_DATABASE_ERROR;
     } else {
         response = wm_task_manager_parse_data_response(WM_TASK_SUCCESS, OS_INVALID, OS_INVALID, NULL);
@@ -215,13 +214,13 @@ void* wm_task_manager_clean_tasks(void *arg) {
         if (now >= next_timeout) {
             // Set the status of old tasks IN PROGRESS to TIMEOUT
             next_timeout = now + config->task_timeout;
-            wm_task_manager_set_timeout_status(now, config->task_timeout, &next_timeout);
+            //wm_task_manager_set_timeout_status(now, config->task_timeout, &next_timeout);
         }
 
         if (now >= next_clean) {
             // Delete entries older than cleanup_time
             next_clean = now + WM_TASK_CLEANUP_DB_SLEEP_TIME;
-            wm_task_manager_delete_old_entries((now - config->cleanup_time));
+            //wm_task_manager_delete_old_entries((now - config->cleanup_time));
         }
 
         if (next_timeout < next_clean) {

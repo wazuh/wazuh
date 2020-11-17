@@ -19,7 +19,6 @@
 #ifndef WIN32
 
 #include "../wmodules.h"
-#include "wm_task_manager_db.h"
 #include "wm_task_manager_parsing.h"
 #include "wm_task_manager_tasks.h"
 #include "../os_net/os_net.h"
