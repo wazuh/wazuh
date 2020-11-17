@@ -13,6 +13,48 @@
 #include "stringHelper.h"
 #include "hashHelper.h"
 
+constexpr auto HOTFIXES_SQL_STATEMENT
+{
+    R"(CREATE TABLE hotfixes(
+    hotfix TEXT,
+    checksum TEXT,
+    PRIMARY KEY (hotfix)) WITHOUT ROWID;)"
+};
+
+constexpr auto HOTFIXES_START_CONFIG_STATEMENT
+{
+    R"({"table":"hotfixes",
+        "first_query":
+            {
+                "column_list":["hotfix"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"hotfix ASC",
+                "count_opt":1
+            },
+        "last_query":
+            {
+                "column_list":["hotfix"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"hotfix DESC",
+                "count_opt":1
+            },
+        "component":"hotfixes",
+        "index":"hotfix",
+        "last_event":"last_event",
+        "checksum_field":"checksum",
+        "range_checksum_query_json":
+            {
+                "row_filter":"WHERE hotfix BETWEEN '?' and '?' ORDER BY hotfix",
+                "column_list":["hotfix, checksum"],
+                "distinct_opt":false,
+                "order_by_opt":"",
+                "count_opt":100
+            }
+        })"
+};
+
 constexpr auto PACKAGES_SQL_STATEMENT
 {
     R"(CREATE TABLE packages(
@@ -31,6 +73,41 @@ constexpr auto PACKAGES_SQL_STATEMENT
     checksum TEXT,
     PRIMARY KEY (name,version,architecture)) WITHOUT ROWID;)"
 };
+
+constexpr auto PACKAGES_START_CONFIG_STATEMENT
+{
+    R"({"table":"packages",
+        "first_query":
+            {
+                "column_list":["name"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"name ASC",
+                "count_opt":1
+            },
+        "last_query":
+            {
+                "column_list":["name"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"name DESC",
+                "count_opt":1
+            },
+        "component":"packages",
+        "index":"name",
+        "last_event":"last_event",
+        "checksum_field":"checksum",
+        "range_checksum_query_json":
+            {
+                "row_filter":"WHERE name BETWEEN '?' and '?' ORDER BY name",
+                "column_list":["name, checksum"],
+                "distinct_opt":false,
+                "order_by_opt":"",
+                "count_opt":100
+            }
+        })"
+};
+
 constexpr auto PROCESSES_SQL_STATEMENT
 {
     R"(CREATE TABLE processes (
@@ -66,43 +143,44 @@ constexpr auto PROCESSES_SQL_STATEMENT
     PRIMARY KEY (pid));)"
 };
 
-constexpr auto OS_SQL_STATEMENT
+constexpr auto PROCESSES_START_CONFIG_STATEMENT
 {
-    R"(CREATE TABLE os (
-        hostname TEXT,
-        architecture TEXT,
-        os_name TEXT,
-        os_version TEXT,
-        os_codename TEXT,
-        os_major TEXT,
-        os_minor TEXT,
-        os_build TEXT,
-        os_platform TEXT,
-        sysname TEXT,
-        release TEXT,
-        version TEXT,
-        os_release TEXT,
-        checksum TEXT,
-        PRIMARY KEY (os_name)
-    );)"
+    R"({"table":"processes",
+        "first_query":
+            {
+                "column_list":["pid"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"pid DESC",
+                "count_opt":1
+            },
+        "last_query":
+            {
+                "column_list":["pid"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"pid ASC",
+                "count_opt":1
+            },
+        "component":"processes",
+        "index":"pid",
+        "last_event":"last_event",
+        "checksum_field":"checksum",
+        "range_checksum_query_json":
+            {
+                "row_filter":"WHERE pid BETWEEN '?' and '?' ORDER BY pid",
+                "column_list":["pid, checksum"],
+                "distinct_opt":false,
+                "order_by_opt":"",
+                "count_opt":1000
+            }
+        })"
 };
 
-constexpr auto HARDWARE_SQL_STATEMENT
-{
-    R"(CREATE TABLE hardware (
-        board_serial TEXT,
-        cpu_name TEXT,
-        cpu_cores INTEGER CHECK (cpu_cores > 0),
-        cpu_mhz BIGINT CHECK (cpu_mhz > 0),
-        ram_total BIGINT CHECK (ram_total > 0),
-        ram_free BIGINT CHECK (ram_free > 0),
-        ram_usage INTEGER CHECK (ram_usage >= 0 AND ram_usage <= 100),
-        checksum TEXT,
-        PRIMARY KEY (board_serial)
-    );)"
-};
-
-static void updateAndNotifyChanges(const DBSYNC_HANDLE handle, const std::string& table, const nlohmann::json& values)
+static void updateAndNotifyChanges(const DBSYNC_HANDLE handle,
+                                   const std::string& table,
+                                   const nlohmann::json& values,
+                                   const std::function<void(const std::string&)> reportFunction)
 {
     const std::map<ReturnTypeCallback, std::string> operationsMap
     {
@@ -118,7 +196,7 @@ static void updateAndNotifyChanges(const DBSYNC_HANDLE handle, const std::string
     constexpr auto queueSize{4096};
     const auto callback
     {
-        [&table, &operationsMap](ReturnTypeCallback result, const nlohmann::json& data)
+        [&table, &operationsMap, reportFunction](ReturnTypeCallback result, const nlohmann::json& data)
         {
             if (data.is_array())
             {
@@ -128,7 +206,7 @@ static void updateAndNotifyChanges(const DBSYNC_HANDLE handle, const std::string
                     msg["type"] = table;
                     msg["operation"] = operationsMap.at(result);
                     msg["data"] = item;
-                    std::cout << msg.dump() << std::endl;
+                    reportFunction(msg.dump());
                 }
             }
             else
@@ -138,7 +216,7 @@ static void updateAndNotifyChanges(const DBSYNC_HANDLE handle, const std::string
                 msg["type"] = table;
                 msg["operation"] = operationsMap.at(result);
                 msg["data"] = data;
-                std::cout << msg.dump() << std::endl;
+                reportFunction(msg.dump());
                 // LCOV_EXCL_STOP
             }
         }
@@ -197,17 +275,13 @@ bool Syscollector::sleepFor()
 std::string Syscollector::getCreateStatement() const
 {
     std::string ret;
-    if (m_hardware)
-    {
-        ret += HARDWARE_SQL_STATEMENT;
-    }
-    if (m_os)
-    {
-        ret += OS_SQL_STATEMENT;
-    }
     if (m_packages)
     {
         ret += PACKAGES_SQL_STATEMENT;
+        if (m_hotfixes)
+        {
+            ret += HOTFIXES_SQL_STATEMENT;
+        }
     }
     if (m_processes)
     {
@@ -217,6 +291,7 @@ std::string Syscollector::getCreateStatement() const
 }
 
 Syscollector::Syscollector(const std::shared_ptr<ISysInfo>& spInfo,
+                           const std::function<void(const std::string&)> reportFunction,
                            const std::string& interval,
                            const bool scanOnStart,
                            const bool hardware,
@@ -228,6 +303,7 @@ Syscollector::Syscollector(const std::shared_ptr<ISysInfo>& spInfo,
                            const bool processes,
                            const bool hotfixes)
 : m_spInfo{spInfo}
+, m_reportFunction{reportFunction}
 , m_intervalUnit{interval.back()}
 , m_intervalValue{std::stoull(interval)}
 , m_scanOnStart{scanOnStart}
@@ -260,16 +336,22 @@ void Syscollector::scanHardware()
 {
     if (m_hardware)
     {
-        constexpr auto table{"hardware"};
-        updateAndNotifyChanges(m_dbSync.handle(), table, nlohmann::json{m_spInfo->hardware()});
+        nlohmann::json msg;
+        msg["type"] = "hardware";
+        msg["operation"] = "MODIFIED";
+        msg["data"] = m_spInfo->hardware();
+        m_reportFunction(msg.dump());
     }
 }
 void Syscollector::scanOs()
 {
     if(m_os)
     {
-        constexpr auto table{"os"};
-        updateAndNotifyChanges(m_dbSync.handle(), table, nlohmann::json{m_spInfo->os()});
+        nlohmann::json msg;
+        msg["type"] = "os";
+        msg["operation"] = "MODIFIED";
+        msg["data"] = m_spInfo->os();
+        m_reportFunction(msg.dump());
     }
 }
 void Syscollector::scanNetwork()
@@ -284,8 +366,31 @@ void Syscollector::scanPackages()
 {
     if (m_packages)
     {
-        constexpr auto table{"packages"};
-        updateAndNotifyChanges(m_dbSync.handle(), table, m_spInfo->packages());
+        constexpr auto tablePackages{"packages"};
+        nlohmann::json packages;
+        nlohmann::json hotfixes;
+        for (const auto& item : m_spInfo->packages())
+        {
+            if(item.find("hotfix") != item.end())
+            {
+                if (m_hotfixes)
+                {
+                    hotfixes.push_back(item);
+                }
+            }
+            else
+            {
+                packages.push_back(item);
+            }
+        }
+        updateAndNotifyChanges(m_dbSync.handle(), tablePackages, packages, m_reportFunction);
+        m_rsync.startSync(m_dbSync.handle(), nlohmann::json::parse(PACKAGES_START_CONFIG_STATEMENT), m_reportFunction);
+        if (m_hotfixes)
+        {
+            constexpr auto tableHotfixes{"hotfixes"};
+            updateAndNotifyChanges(m_dbSync.handle(), tableHotfixes, hotfixes, m_reportFunction);
+            m_rsync.startSync(m_dbSync.handle(), nlohmann::json::parse(HOTFIXES_START_CONFIG_STATEMENT), m_reportFunction);
+        }
     }
 }
 void Syscollector::scanPorts()
@@ -305,7 +410,8 @@ void Syscollector::scanProcesses()
     if (m_processes)
     {
         constexpr auto table{"processes"};
-        updateAndNotifyChanges(m_dbSync.handle(), table, m_spInfo->processes());
+        updateAndNotifyChanges(m_dbSync.handle(), table, m_spInfo->processes(), m_reportFunction);
+        m_rsync.startSync(m_dbSync.handle(), nlohmann::json::parse(PROCESSES_START_CONFIG_STATEMENT), m_reportFunction);
     }
 }
 
