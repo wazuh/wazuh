@@ -2003,8 +2003,8 @@ void test_wdb_parse_global_disconnect_agents_success(void **state)
     char query[OS_BUFFER_SIZE] = "global disconnect-agents 0 100 syncreq";
     cJSON* root = cJSON_CreateArray();
     cJSON* json_agent = cJSON_CreateObject();
-    cJSON_AddItemToArray(root, json_agent = cJSON_CreateObject());
     cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(10));
+    cJSON_AddItemToArray(root, json_agent);
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect-agents 0 100 syncreq");
@@ -2078,8 +2078,8 @@ void test_wdb_parse_global_get_all_agents_success(void **state)
     char query[OS_BUFFER_SIZE] = "global get-all-agents last_id 1";
     cJSON* root = cJSON_CreateArray();
     cJSON* json_agent = cJSON_CreateObject();
-    cJSON_AddItemToArray(root, json_agent = cJSON_CreateObject());
     cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(10));
+    cJSON_AddItemToArray(root, json_agent);
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-all-agents last_id 1");
@@ -2248,8 +2248,9 @@ void test_wdb_parse_global_get_agents_by_connection_status_query_success(void **
     char query[OS_BUFFER_SIZE] = "global get-agents-by-connection-status 0 active";
     cJSON* root = cJSON_CreateArray();
     cJSON* json_agent = cJSON_CreateObject();
-    cJSON_AddItemToArray(root, json_agent = cJSON_CreateObject());
     cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(10));
+    cJSON_AddItemToArray(root, json_agent);
+
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-connection-status 0 active");
