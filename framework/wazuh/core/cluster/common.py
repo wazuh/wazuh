@@ -18,7 +18,7 @@ import cryptography.fernet
 
 import wazuh.core.cluster.utils
 import wazuh.core.results as wresults
-from wazuh import Wazuh, WazuhException
+from wazuh import Wazuh
 from wazuh.core import common, exception
 
 
@@ -300,15 +300,15 @@ class Handler(asyncio.Protocol):
 
         filename = filename.encode()
         relative_path = filename.replace(common.ossec_path.encode(), b'')
-        response = await self.send_request(command=b'new_file', data=relative_path)
+        await self.send_request(command=b'new_file', data=relative_path)
 
         file_hash = hashlib.sha256()
         with open(filename, 'rb') as f:
             for chunk in iter(lambda: f.read(self.request_chunk - len(relative_path) - 1), b''):
-                response = await self.send_request(command=b'file_upd', data=relative_path + b' ' + chunk)
+                await self.send_request(command=b'file_upd', data=relative_path + b' ' + chunk)
                 file_hash.update(chunk)
 
-        response = await self.send_request(command=b'file_end', data=relative_path + b' ' + file_hash.digest())
+        await self.send_request(command=b'file_end', data=relative_path + b' ' + file_hash.digest())
 
         return b'File sent'
 
@@ -325,8 +325,7 @@ class Handler(asyncio.Protocol):
 
         local_req_chunk = self.request_chunk - len(task_id) - 1
         for c in range(0, total, local_req_chunk):
-            response = await self.send_request(command=b'str_upd', data=task_id + b' ' +
-                                                                        my_str[c:c + local_req_chunk])
+            await self.send_request(command=b'str_upd', data=task_id + b' ' + my_str[c:c + local_req_chunk])
 
         return task_id
 
@@ -579,6 +578,13 @@ class WazuhCommon:
     def end_receiving_file(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
         task_name, filename = task_and_file_names.split(' ', 1)
         if task_name not in self.sync_tasks:
+            # Remove filename if task_name does not exists, before raising exception
+            if os.path.exists(os.path.join(common.ossec_path, filename)):
+                try:
+                    os.remove(os.path.join(common.ossec_path, filename))
+                except Exception as e:
+                    self.get_logger(self.logger_tag).error(
+                        f"Attempt to delete file {os.path.join(common.ossec_path, filename)} failed: {e}")
             raise exception.WazuhClusterError(3027, extra_message=task_name)
 
         self.sync_tasks[task_name].filename = os.path.join(common.ossec_path, filename)
@@ -594,6 +600,13 @@ class WazuhCommon:
         taskname, error_details = taskname_and_error_details.split(' ', 1)
         error_details_json = json.loads(error_details, object_hook=as_wazuh_object)
         if taskname != 'None':
+            # Remove filename if exists
+            if os.path.exists(self.sync_tasks[taskname].filename):
+                try:
+                    os.remove(self.sync_tasks[taskname].filename)
+                except Exception as e:
+                    self.get_logger(self.logger_tag).error(f"Attempt to delete file {self.sync_tasks[taskname].filename}"
+                                                           f" failed: {e}")
             self.sync_tasks[taskname].filename = error_details_json
             self.sync_tasks[taskname].received_information.set()
         else:
