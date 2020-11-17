@@ -30,6 +30,7 @@ All notable changes to this project will be documented in this file.
   - Refactored framework to work with new upgrade module. ([#5537](https://github.com/wazuh/wazuh/issues/5537))
   - Refactored agent upgrade CLI to work with new ugprade module. It distributes petitions in a clustered environment. ([#5675](https://github.com/wazuh/wazuh/issues/5675))
   - Changed rule and decoder details structure to support PCRE2. ([#6318](https://github.com/wazuh/wazuh/issues/6318))
+  - Improved LocalServer code and added agent key polling methods. ([#6477](https://github.com/wazuh/wazuh/issues/6477))
 
 ### Changed
 
