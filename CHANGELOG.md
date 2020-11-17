@@ -19,7 +19,7 @@ All notable changes to this project will be documented in this file.
   - Fixed an error with `POST /security/roles/{role_id}/rules` when removing role-rule relationships with admin resources. ([#6594](https://github.com/wazuh/wazuh/issues/6594))
 - **Framework:**
   - Fixed an error with some distributed requests when the cluster configuration is empty. ([#6612](https://github.com/wazuh/wazuh/pull/6612))
-  - Fixed special characters in default policies. ([#6612](https://github.com/wazuh/wazuh/pull/6575))
+  - Fixed special characters in default policies. ([#6575](https://github.com/wazuh/wazuh/pull/6575))
 - **Core:**
   - Fixed a bug in Remoted that limited the maximum agent number to `MAX_AGENTS-3` instead of `MAX_AGENTS-2`. ([#4560](https://github.com/wazuh/wazuh/pull/4560))
   - Fixed an error in the network library when handling disconnected sockets. ([#6444](https://github.com/wazuh/wazuh/pull/6444))
