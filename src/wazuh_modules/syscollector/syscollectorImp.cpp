@@ -381,7 +381,7 @@ void Syscollector::scanNetwork()
 
                 // "network_address" table data to update and notify
                 addressTableData["iface"]   = item.at("name");
-                addressTableData["proto"]     = "IPv4";
+                addressTableData["proto"]   = "IPv4";
                 addressTableDataList.push_back(addressTableData);
             }
 
