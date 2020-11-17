@@ -466,10 +466,11 @@ int wdb_update_agent_keepalive(int id, const char *connection_status, const char
  *
  * @param[in] id Id of the agent for whom the connection status must be updated.
  * @param[in] connection_status String with the connection status to be set.
+ * @param[in] sync_status String with the cluster synchronization status to be set.
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_update_agent_connection_status(int id, const char *connection_status, int *sock);
+int wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, int *sock);
 
 /**
  * @brief Update agent group. If the group is not specified, it is set to NULL.
@@ -618,11 +619,13 @@ int wdb_remove_group_from_belongs_db(const char *name, int *sock);
  * @brief Reset the connection_status column of every agent (excluding the manager).
  *        If connection_status is pending or connected it will be changed to disconnected.
  *        If connection_status is disconnected or never_connected it will not be changed.
+ *        It also set the 'sync_status' with the specified value.
  *
+ * @param[in] sync_status String with the cluster synchronization status to be set.
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_reset_agents_connection(int *sock);
+int wdb_reset_agents_connection(const char *sync_status, int *sock);
 
 /**
  * @brief Returns an array containing the ID of every agent (excluding the manager) that matches
@@ -638,10 +641,10 @@ int wdb_reset_agents_connection(int *sock);
 int* wdb_get_agents_by_connection_status(const char* connection_status, int *sock);
 
 /**
- * @brief Set agents as disconnected based on the keepalive and return an array containing 
- * the ID of every agent that had been set as disconnected. 
+ * @brief Set agents as disconnected based on the keepalive and return an array containing
+ * the ID of every agent that had been set as disconnected.
  * This method creates and sends a command to WazuhDB to set as disconnected all the
- * agents (excluding the manager) with a last_keepalive before the specified keepalive threshold. 
+ * agents (excluding the manager) with a last_keepalive before the specified keepalive threshold.
  * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent is covered.
  * The array is heap-allocated memory that must be freed by the caller.
  *
@@ -1237,11 +1240,12 @@ int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output);
  * @brief Function to parse the reset agent connection status request.
  *
  * @param [in] wdb The global struct database.
+ * @param [in] input String with the 'sync_status'.
  * @param [out] output Response of the query.
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
-int wdb_parse_reset_agents_connection(wdb_t * wdb, char * output);
+int wdb_parse_reset_agents_connection(wdb_t * wdb, char* input, char * output);
 
 /**
  * @brief Function to parse the get agents by connection status request.
@@ -1460,20 +1464,21 @@ int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value);
  * @param [in] wdb The Global struct database.
  * @param [in] id The agent ID
  * @param [in] connection_status The agent's connection status.
- * @param [in] status The value of sync_status
+ * @param [in] sync_status The value of sync_status
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection_status, const char *sync_status);
 
 /**
- * @brief Function to update an agent connection status.
+ * @brief Function to update an agent connection status and the synchronization status.
  *
  * @param [in] wdb The Global struct database.
  * @param [in] id The agent ID.
  * @param [in] connection_status The connection status to be set.
+ * @param [in] sync_status The value of sync_status
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char* connection_status);
+int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char* connection_status, const char *sync_status);
 
 /**
  * @brief Function to delete an agent from the agent table.
@@ -1600,7 +1605,7 @@ cJSON* wdb_global_select_agent_keepalive(wdb_t *wdb, char* name, char* ip);
  *
  * @param [in] wdb The Global struct database.
  * @param [in] id The agent ID
- * @param [in] status The value of sync_status
+ * @param [in] sync_status The value of sync_status
  * @return 0 On success. -1 On error.
  */
 int wdb_global_set_sync_status(wdb_t *wdb, int id, const char *sync_status);
@@ -1654,11 +1659,13 @@ wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **out
  * @brief Function to reset connection_status column of every agent (excluding the manager).
  *        If connection_status is pending or connected it will be changed to disconnected.
  *        If connection_status is disconnected or never_connected it will not be changed.
+ *        It also set the 'sync_status' with the specified value.
  *
  * @param [in] wdb The Global struct database.
+ * @param [in] sync_status The value of sync_status.
  * @return 0 On success. -1 On error.
  */
-int wdb_global_reset_agents_connection(wdb_t *wdb);
+int wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status);
 
 /**
  * @brief Function to get the id of every agent with a specific connection_status.

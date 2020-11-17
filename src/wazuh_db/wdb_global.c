@@ -386,7 +386,7 @@ int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection
     }
 }
 
-int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char* connection_status) {
+int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char* connection_status, const char *sync_status) {
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
@@ -405,7 +405,11 @@ int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char* co
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
-    if (sqlite3_bind_int(stmt, 2, id) != SQLITE_OK) {
+    if (sqlite3_bind_text(stmt, 2, sync_status, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+    if (sqlite3_bind_int(stmt, 3, id) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
@@ -1111,8 +1115,9 @@ wdbc_result wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, i
                     //Save size and last ID
                     response_size += id_len+1;
                     last_agent_id = json_id->valueint;
-                    //Set connection status as disconnected                    
-                    if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb, last_agent_id, "disconnected")) {
+                    //Set connection status as disconnected. The disconnections only happen in the master node
+                    //so, is not necessary to set the agent as syncreq
+                    if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb, last_agent_id, "disconnected", "synced")) {
                         merror("Cannot set connection_status for agent %d", last_agent_id);
                         snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s %d", "Cannot set connection_status for agent", last_agent_id);
                         status = WDBC_ERROR;
@@ -1222,7 +1227,7 @@ wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **out
     return status;
 }
 
-int wdb_global_reset_agents_connection(wdb_t *wdb) {
+int wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status) {
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
@@ -1236,6 +1241,11 @@ int wdb_global_reset_agents_connection(wdb_t *wdb) {
     }
 
     stmt = wdb->stmt[WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS];
+
+    if (sqlite3_bind_text(stmt, 1, sync_status, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
 
     switch (wdb_step(stmt)) {
     case SQLITE_ROW:

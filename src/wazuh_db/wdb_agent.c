@@ -43,7 +43,7 @@ static const char *global_db_commands[] = {
     [WDB_DELETE_GROUP] = "global delete-group %s",
     [WDB_DELETE_AGENT_BELONG] = "global delete-agent-belong %d",
     [WDB_DELETE_GROUP_BELONG] = "global delete-group-belong %s",
-    [WDB_RESET_AGENTS_CONNECTION] = "global reset-agents-connection",
+    [WDB_RESET_AGENTS_CONNECTION] = "global reset-agents-connection %s",
     [WDB_GET_AGENTS_BY_CONNECTION_STATUS] = "global get-agents-by-connection-status %d %s",
     [WDB_DISCONNECT_AGENTS] = "global disconnect-agents %d %d"
 };
@@ -388,7 +388,7 @@ int wdb_update_agent_keepalive(int id, const char *connection_status, const char
     return result;
 }
 
-int wdb_update_agent_connection_status(int id, const char *connection_status, int *sock) {
+int wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
@@ -406,6 +406,7 @@ int wdb_update_agent_connection_status(int id, const char *connection_status, in
 
     cJSON_AddNumberToObject(data_in, "id", id);
     cJSON_AddStringToObject(data_in, "connection_status", connection_status);
+    cJSON_AddStringToObject(data_in, "sync_status", sync_status);
     data_in_str = cJSON_PrintUnformatted(data_in);
 
     os_malloc(WDBQUERY_SIZE, wdbquery);
@@ -1060,13 +1061,17 @@ int wdb_remove_group_from_belongs_db(const char *name, int *sock) {
     return result;
 }
 
-int wdb_reset_agents_connection(int *sock) {
+int wdb_reset_agents_connection(const char *sync_status, int *sock) {
     int result = OS_SUCCESS;
+    char *wdbquery = NULL;
     char *wdboutput = NULL;
     int aux_sock = -1;
 
+    os_malloc(WDBQUERY_SIZE, wdbquery);
+    snprintf(wdbquery, WDBQUERY_SIZE, global_db_commands[WDB_RESET_AGENTS_CONNECTION], sync_status);
+
     os_malloc(WDBOUTPUT_SIZE, wdboutput);
-    result = wdbc_query_ex(sock?sock:&aux_sock, global_db_commands[WDB_RESET_AGENTS_CONNECTION], wdboutput, WDBOUTPUT_SIZE);
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
 
     if (!sock) {
         wdbc_close(&aux_sock);
@@ -1081,16 +1086,17 @@ int wdb_reset_agents_connection(int *sock) {
             break;
         case OS_INVALID:
             mdebug1("Global DB Error in the response from socket");
-            mdebug2("Global DB SQL query: %s", global_db_commands[WDB_RESET_AGENTS_CONNECTION]);
+            mdebug2("Global DB SQL query: %s", wdbquery);
             result = OS_INVALID;
             break;
         default:
             mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-            mdebug2("Global DB SQL query: %s", global_db_commands[WDB_RESET_AGENTS_CONNECTION]);
+            mdebug2("Global DB SQL query: %s", wdbquery);
             result = OS_INVALID;
             break;
     }
 
+    os_free(wdbquery);
     os_free(wdboutput);
 
     return result;
