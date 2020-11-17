@@ -5,9 +5,9 @@
 import logging
 
 from aiohttp import web
+
 from api.encoder import dumps, prettify
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
-
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.syscheck import run, clear, files, last_scan
 
@@ -15,16 +15,16 @@ logger = logging.getLogger('wazuh')
 
 
 async def put_syscheck(request, agents_list='*', pretty=False, wait_for_complete=False):
-    """Run a syscheck scan over the agent_ids
+    """Run a syscheck scan in the specified agents.
 
     Parameters
     ----------
     list_agents : str
         List of agent ids.
     pretty : bool
-        Show results in human-readable format .
+        Show results in human-readable format.
     wait_for_complete : bool
-        Disable timeout response .
+        Disable timeout response.
 
     Returns
     -------
@@ -55,12 +55,12 @@ async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=
 
     Parameters
     ----------
-    agent_list : str
+    agent_id : str
         Agent ID.
     pretty : bool
-        Show results in human-readable format .
+        Show results in human-readable format.
     wait_for_complete : bool
-        Disable timeout response .
+        Disable timeout response.
     offset : int
         First element to return in the collection.
     limit : int
@@ -83,6 +83,12 @@ async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=
         Look for distinct values.
     q : str
         Query to filter results by.
+    arch : str
+        Specify whether the associated entry is 32 or 64 bits. Allowed values: '[x32]' and '[x64]'.
+    value_name : str
+        Specify the name of the associated value.
+    value_type : str
+        Specify the type of value this entry corresponds to.
 
     Returns
     -------
@@ -119,16 +125,16 @@ async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=
 
 
 async def delete_syscheck_agent(request, agent_id='*', pretty=False, wait_for_complete=False):
-    """Run a syscheck scan over the agent_ids
+    """Clear file integrity monitoring scan results for a specified agent.
 
     Parameters
     ----------
     agent_id : str
         Agent ID.
     pretty : bool
-        Show results in human-readable format .
+        Show results in human-readable format.
     wait_for_complete : bool
-        Disable timeout response .
+        Disable timeout response.
 
     Returns
     -------
@@ -151,16 +157,16 @@ async def delete_syscheck_agent(request, agent_id='*', pretty=False, wait_for_co
 
 
 async def get_last_scan_agent(request, agent_id, pretty=False, wait_for_complete=False):
-    """Run a syscheck scan over the agent_ids
+    """Return when the last syscheck scan of a specified agent started and ended
 
     Parameters
     ----------
     agent_id : str
         Agent ID.
     pretty : bool
-        Show results in human-readable format .
+        Show results in human-readable format.
     wait_for_complete : bool
-        Disable timeout response .
+        Disable timeout response.
 
     Returns
     -------

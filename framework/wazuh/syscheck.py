@@ -17,7 +17,7 @@ from wazuh.rbac.decorators import expose_resources
 
 @expose_resources(actions=["syscheck:run"], resources=["agent:id:{agent_list}"])
 def run(agent_list=None):
-    """Run a syscheck scan for the specified agents.
+    """Run a syscheck scan in the specified agents.
 
     Parameters
     ----------
@@ -54,7 +54,7 @@ def run(agent_list=None):
 
 @expose_resources(actions=["syscheck:clear"], resources=["agent:id:{agent_list}"])
 def clear(agent_list=None):
-    """Clear an agent's syscheck database.
+    """Clear the syscheck database of the specified agents.
 
     Parameters
     ----------
@@ -93,7 +93,7 @@ def clear(agent_list=None):
 
 @expose_resources(actions=["syscheck:read"], resources=["agent:id:{agent_list}"])
 def last_scan(agent_list):
-    """Gets the last scan of an agent.
+    """Get the last scan of an agent.
 
     Parameters
     ----------
@@ -158,7 +158,7 @@ def last_scan(agent_list):
 @expose_resources(actions=["syscheck:read"], resources=["agent:id:{agent_list}"])
 def files(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters=None,
           q='', summary=False, distinct=False):
-    """Return a list of files from the database that match the filters.
+    """Return a list of files from the syscheck database of the specified agents.
 
     Parameters
     ----------
