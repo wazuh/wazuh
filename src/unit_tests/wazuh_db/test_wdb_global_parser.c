@@ -1980,7 +1980,7 @@ void test_wdb_parse_global_disconnect_agents_keepalive_error(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_parse_global_disconnect_agents_success(void **state)
+void test_wdb_parse_global_disconnect_agents_sync_status_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -1988,8 +1988,25 @@ void test_wdb_parse_global_disconnect_agents_success(void **state)
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect-agents 0 100");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments sync_status not found.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid arguments sync_status not found");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_disconnect_agents_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global disconnect-agents 0 100 syncreq";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect-agents 0 100 syncreq");
     expect_value(__wrap_wdb_global_get_agents_to_disconnect, last_agent_id, 0);
     expect_value(__wrap_wdb_global_get_agents_to_disconnect, keep_alive, 100);
+    expect_string(__wrap_wdb_global_get_agents_to_disconnect, sync_status, "syncreq");
     will_return(__wrap_wdb_global_get_agents_to_disconnect, "1,2,3,4,5");
     will_return(__wrap_wdb_global_get_agents_to_disconnect, WDBC_OK);
 
@@ -2153,6 +2170,7 @@ void test_wdb_parse_reset_agents_connection_query_error(void **state)
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: reset-agents-connection syncreq");
+    expect_string(__wrap_wdb_global_reset_agents_connection, sync_status, "syncreq");
     will_return(__wrap_wdb_global_reset_agents_connection, OS_INVALID);
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
@@ -2171,6 +2189,7 @@ void test_wdb_parse_reset_agents_connection_success(void **state)
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: reset-agents-connection syncreq");
+    expect_string(__wrap_wdb_global_reset_agents_connection, sync_status, "syncreq");
     will_return(__wrap_wdb_global_reset_agents_connection, OS_SUCCESS);
 
     ret = wdb_parse(query, data->output);
@@ -2358,6 +2377,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_last_id_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_keepalive_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_sync_status_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_get_all_agents */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_all_agents_syntax_error, test_setup, test_teardown),
