@@ -19,7 +19,6 @@ const char *task_manager_json_keys[] = {
     [WM_TASK_COMMAND] = "command",
     [WM_TASK_PARAMETERS] = "parameters",
     [WM_TASK_AGENTS] = "agents",
-    [WM_TASK_TASKS] = "tasks",
     // Response
     [WM_TASK_ERROR] = "error",
     [WM_TASK_DATA] = "data",
@@ -39,8 +38,7 @@ const char *task_manager_commands_list[] = {
     [WM_TASK_UPGRADE_GET_STATUS] = "upgrade_get_status",
     [WM_TASK_UPGRADE_UPDATE_STATUS] = "upgrade_update_status",
     [WM_TASK_UPGRADE_RESULT] = "upgrade_result",
-    [WM_TASK_UPGRADE_CANCEL_TASKS] = "upgrade_cancel_tasks",
-    [WM_TASK_TASK_RESULT] = "task_result"
+    [WM_TASK_UPGRADE_CANCEL_TASKS] = "upgrade_cancel_tasks"
 };
 
 const char *task_manager_modules_list[] = {

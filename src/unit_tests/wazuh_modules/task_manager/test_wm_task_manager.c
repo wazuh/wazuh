@@ -123,8 +123,6 @@ void test_wm_task_manager_init_ok(void **state)
 
     config->enabled = 1;
 
-    will_return(__wrap_wm_task_manager_check_db, 0);
-
     expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
@@ -141,8 +139,6 @@ void test_wm_task_manager_init_bind_err(void **state)
 
     config->enabled = 1;
 
-    will_return(__wrap_wm_task_manager_check_db, 0);
-
     expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
@@ -158,30 +154,6 @@ void test_wm_task_manager_init_bind_err(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wm_task_manager_init_db_err(void **state)
-{
-    wm_task_manager *config = *state;
-    int sock = 555;
-
-    config->enabled = 1;
-
-    will_return(__wrap_wm_task_manager_check_db, OS_INVALID);
-
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mterror, formatted_msg, "(8250): DB integrity is invalid. Exiting...");
-
-    will_return(__wrap_pthread_exit, OS_INVALID);
-
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
-    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_BindUnixDomain, sock);
-
-    int ret = wm_task_manager_init(config);
-
-    assert_int_equal(ret, sock);
-}
-
 void test_wm_task_manager_init_disabled(void **state)
 {
     wm_task_manager *config = *state;
@@ -193,8 +165,6 @@ void test_wm_task_manager_init_disabled(void **state)
     expect_string(__wrap__mtinfo, formatted_msg, "(8202): Module disabled. Exiting...");
 
     will_return(__wrap_pthread_exit, OS_INVALID);
-
-    will_return(__wrap_wm_task_manager_check_db, 0);
 
     expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
@@ -505,8 +475,6 @@ void test_wm_task_manager_main_ok(void **state)
 
     // wm_task_manager_init
 
-    will_return(__wrap_wm_task_manager_check_db, 0);
-
     expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
@@ -579,8 +547,6 @@ void test_wm_task_manager_main_recv_max_err(void **state)
 
     // wm_task_manager_init
 
-    will_return(__wrap_wm_task_manager_check_db, 0);
-
     expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
@@ -626,8 +592,6 @@ void test_wm_task_manager_main_recv_empty_err(void **state)
     will_return(__wrap_w_is_worker, 0);
 
     // wm_task_manager_init
-
-    will_return(__wrap_wm_task_manager_check_db, 0);
 
     expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
@@ -675,8 +639,6 @@ void test_wm_task_manager_main_recv_err(void **state)
 
     // wm_task_manager_init
 
-    will_return(__wrap_wm_task_manager_check_db, 0);
-
     expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
@@ -723,8 +685,6 @@ void test_wm_task_manager_main_sockterr_err(void **state)
 
     // wm_task_manager_init
 
-    will_return(__wrap_wm_task_manager_check_db, 0);
-
     expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
@@ -770,8 +730,6 @@ void test_wm_task_manager_main_accept_err(void **state)
     will_return(__wrap_w_is_worker, 0);
 
     // wm_task_manager_init
-
-    will_return(__wrap_wm_task_manager_check_db, 0);
 
     expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
@@ -826,8 +784,6 @@ void test_wm_task_manager_main_select_empty_err(void **state)
 
     // wm_task_manager_init
 
-    will_return(__wrap_wm_task_manager_check_db, 0);
-
     expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
@@ -875,8 +831,6 @@ void test_wm_task_manager_main_select_err(void **state)
     will_return(__wrap_w_is_worker, 0);
 
     // wm_task_manager_init
-
-    will_return(__wrap_wm_task_manager_check_db, 0);
 
     expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
@@ -943,7 +897,6 @@ int main(void) {
         // wm_task_manager_init
         cmocka_unit_test(test_wm_task_manager_init_ok),
         cmocka_unit_test(test_wm_task_manager_init_bind_err),
-        cmocka_unit_test(test_wm_task_manager_init_db_err),
         cmocka_unit_test(test_wm_task_manager_init_disabled),
         // wm_task_manager_dispatch
         cmocka_unit_test_teardown(test_wm_task_manager_dispatch_ok, teardown_string),

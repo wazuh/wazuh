@@ -63,14 +63,6 @@ STATIC cJSON* wm_task_manager_command_upgrade_result(wm_task_manager_upgrade_res
  * */
 STATIC cJSON* wm_task_manager_command_upgrade_cancel_tasks(wm_task_manager_upgrade_cancel_tasks *task, int *error_code) __attribute__((nonnull));
 
-/**
- * Analyze a task_result command.
- * @param task Task result task to be processed.
- * @param error_code Variable to store an error code if something is wrong.
- * @return JSON object with the response for this task.
- * */
-STATIC cJSON* wm_task_manager_command_task_result(wm_task_manager_task_result *task, int *error_code) __attribute__((nonnull));
-
 cJSON* wm_task_manager_process_task(const wm_task_manager_task *task, int *error_code) {
     cJSON *response = NULL;
 
@@ -90,9 +82,6 @@ cJSON* wm_task_manager_process_task(const wm_task_manager_task *task, int *error
         break;
     case WM_TASK_UPGRADE_CANCEL_TASKS:
         response = wm_task_manager_command_upgrade_cancel_tasks((wm_task_manager_upgrade_cancel_tasks *)task->parameters, error_code);
-        break;
-    case WM_TASK_TASK_RESULT:
-        response = wm_task_manager_command_task_result((wm_task_manager_task_result *)task->parameters, error_code);
         break;
     default:
         *error_code = WM_TASK_INVALID_COMMAND;
@@ -214,40 +203,41 @@ STATIC cJSON* wm_task_manager_command_upgrade_cancel_tasks(wm_task_manager_upgra
     return response;
 }
 
-STATIC cJSON* wm_task_manager_command_task_result(wm_task_manager_task_result *task, int *error_code) {
-    cJSON *response = cJSON_CreateArray();
-    int task_it = 0;
-    int task_id = 0;
-    int create_time = OS_INVALID;
-    int last_update_time = OS_INVALID;
-    char *node_result = NULL;
-    char *module_result = NULL;
-    char *command_result = NULL;
-    char *status = NULL;
-    char *error = NULL;
-    int agent_id = OS_INVALID;
+void* wm_task_manager_clean_tasks(void *arg) {
+    wm_task_manager *config = (wm_task_manager *)arg;
+    time_t next_clean = time(0);
+    time_t next_timeout = time(0);
 
-    while (task_id = task->task_ids[task_it++], task_id != OS_INVALID) {
-        if (agent_id = wm_task_manager_get_task_by_task_id(task_id, &node_result, &module_result, &command_result, &status, &error, &create_time, &last_update_time), agent_id == OS_INVALID) {
-            *error_code = WM_TASK_DATABASE_ERROR;
-            cJSON_Delete(response);
-            break;
-        } else if (agent_id == OS_NOTFOUND || agent_id == 0) {
-            cJSON_AddItemToArray(response, wm_task_manager_parse_data_response(WM_TASK_DATABASE_NO_TASK, OS_INVALID, task_id, NULL));
-        } else {
-            cJSON *tmp = wm_task_manager_parse_data_response(WM_TASK_SUCCESS, agent_id, task_id, NULL);
-            wm_task_manager_parse_data_result(tmp, node_result, module_result, command_result, status, error, create_time, last_update_time, task_manager_commands_list[WM_TASK_TASK_RESULT]);
-            cJSON_AddItemToArray(response, tmp);
+    while (1) {
+        time_t now = time(0);
+        time_t sleep_time = 0;
+
+        if (now >= next_timeout) {
+            // Set the status of old tasks IN PROGRESS to TIMEOUT
+            next_timeout = now + config->task_timeout;
+            wm_task_manager_set_timeout_status(now, config->task_timeout, &next_timeout);
         }
+
+        if (now >= next_clean) {
+            // Delete entries older than cleanup_time
+            next_clean = now + WM_TASK_CLEANUP_DB_SLEEP_TIME;
+            wm_task_manager_delete_old_entries((now - config->cleanup_time));
+        }
+
+        if (next_timeout < next_clean) {
+            sleep_time = next_timeout;
+        } else {
+            sleep_time = next_clean;
+        }
+
+        w_sleep_until(sleep_time);
+
+    #ifdef WAZUH_UNIT_TESTING
+        break;
+    #endif
     }
 
-    os_free(node_result);
-    os_free(module_result);
-    os_free(command_result);
-    os_free(status);
-    os_free(error);
-
-    return response;
+    return NULL;
 }
 
 #endif

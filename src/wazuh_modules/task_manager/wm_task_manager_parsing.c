@@ -94,17 +94,6 @@ STATIC wm_task_manager_upgrade_result* wm_task_manager_parse_upgrade_result_para
 STATIC wm_task_manager_upgrade_cancel_tasks* wm_task_manager_parse_upgrade_cancel_tasks_parameters(const cJSON* origin);
 
 /**
- * Parses task parameters and returns a task result task from the information
- * Example:
- * {
- *      "tasks"   : [28, 14, 101]
- * }
- * @param parameters JSON with the parameters
- * @return task result task if there is no error, NULL otherwise
- * */
-STATIC wm_task_manager_task_result* wm_task_manager_parse_task_result_parameters(const cJSON* parameters);
-
-/**
  * Decode status to a more understandable string
  * @param status status string
  * @return status conversion
@@ -187,9 +176,6 @@ wm_task_manager_task* wm_task_manager_parse_message(const char *msg) {
     } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_CANCEL_TASKS], command_json->valuestring)) {
         task->command = WM_TASK_UPGRADE_CANCEL_TASKS;
         task->parameters = wm_task_manager_parse_upgrade_cancel_tasks_parameters(origin_json);
-    } else if (!strcmp(task_manager_commands_list[WM_TASK_TASK_RESULT], command_json->valuestring)) {
-        task->command = WM_TASK_TASK_RESULT;
-        task->parameters = wm_task_manager_parse_task_result_parameters(parameters_json);
     } else {
         task->command = WM_TASK_UNKNOWN;
         cJSON_Delete(event_json);
@@ -363,22 +349,6 @@ STATIC wm_task_manager_upgrade_cancel_tasks* wm_task_manager_parse_upgrade_cance
     } else {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_NAME]);
         wm_task_manager_free_upgrade_cancel_tasks_parameters(task_parameters);
-        return NULL;
-    }
-
-    return task_parameters;
-}
-
-STATIC wm_task_manager_task_result* wm_task_manager_parse_task_result_parameters(const cJSON* parameters) {
-
-    wm_task_manager_task_result *task_parameters = wm_task_manager_init_task_result_parameters();
-
-    cJSON *tasks_json = cJSON_GetObjectItem(parameters, task_manager_json_keys[WM_TASK_TASKS]);
-
-    task_parameters->task_ids = wm_task_manager_parse_ids(tasks_json);
-    if (!task_parameters->task_ids) {
-        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_TASKS]);
-        wm_task_manager_free_task_result_parameters(task_parameters);
         return NULL;
     }
 

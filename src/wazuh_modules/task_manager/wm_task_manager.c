@@ -92,14 +92,8 @@ STATIC int wm_task_manager_init(wm_task_manager *task_config) {
         pthread_exit(NULL);
     }
 
-    // Check or create tasks DB
-    if (wm_task_manager_check_db()) {
-        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_CHECK_DB_ERROR);
-        pthread_exit(NULL);
-    }
-
-    // Start clean DB thread
-    w_create_thread(wm_task_manager_clean_db, task_config);
+    // Start clean tasks thread
+    w_create_thread(wm_task_manager_clean_tasks, task_config);
 
     /* Set the queue */
     if (sock = OS_BindUnixDomain(DEFAULTDIR TASK_QUEUE, SOCK_STREAM, OS_MAXSTR), sock < 0) {
