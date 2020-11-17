@@ -430,7 +430,7 @@ cJSON* local_get(const char *id) {
     w_mutex_lock(&mutex_keys);
 
     if (index = OS_IsAllowedID(&keys, id), index < 0) {
-        merror("ERROR %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
+        mdebug1("Error %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
         response = local_create_error_response(ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
     }
     else {
