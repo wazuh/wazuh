@@ -843,24 +843,22 @@ cJSON* wdb_exec_stmt_sized(sqlite3_stmt * stmt, size_t max_size, int* status) {
     cJSON* result = cJSON_CreateArray();
     int result_size = 2; //'[]' json array
     cJSON* row = NULL;
-    do {
-        row = wdb_exec_row_stmt(stmt, status);
-        if (row) {
-            char *row_str = cJSON_PrintUnformatted(row);
-            size_t row_len = strlen(row_str)+1;
-            //JJP: Por performance puedo usar cJSON_PrintBuffered ya que ya se el tamanho del json, o directamente el tamanho del socket
-            //Check if new agent fits in response
-            if (result_size+row_len < max_size) {
-                cJSON_AddItemToArray(result, row);
-                result_size += row_len;
-            }
-            else {
-                cJSON_Delete(row);
-                row = NULL;
-            }
-            os_free(row_str);
+    bool fit = true;
+    while (fit && (row = wdb_exec_row_stmt(stmt, status))) {
+        char *row_str = cJSON_PrintUnformatted(row);
+        size_t row_len = strlen(row_str)+1;
+        //Check if new agent fits in response
+        if (result_size+row_len < max_size) {
+            cJSON_AddItemToArray(result, row);
+            result_size += row_len;
         }
-    }while (row != NULL);
+        else {
+            fit = false;
+            cJSON_Delete(row);
+            row = NULL;
+        }
+        os_free(row_str);
+    }
 
     if (*status != SQLITE_DONE && *status != SQLITE_ROW) {
         cJSON_Delete(result);
@@ -871,9 +869,6 @@ cJSON* wdb_exec_stmt_sized(sqlite3_stmt * stmt, size_t max_size, int* status) {
 }
 
 cJSON * wdb_exec_stmt(sqlite3_stmt * stmt) {
-    int r;
-    int count;
-    int i;
     cJSON * result;
     cJSON * row;
 
@@ -882,37 +877,13 @@ cJSON * wdb_exec_stmt(sqlite3_stmt * stmt) {
         return NULL;
     }
 
+    int status = SQLITE_ERROR;
     result = cJSON_CreateArray();
-    //JJP: Pasar a wdb_exec_row_stmt
-
-    while (r = sqlite3_step(stmt), r == SQLITE_ROW) {
-        if (count = sqlite3_column_count(stmt), count > 0) {
-            row = cJSON_CreateObject();
-
-            for (i = 0; i < count; i++) {
-                switch (sqlite3_column_type(stmt, i)) {
-                case SQLITE_INTEGER:
-                case SQLITE_FLOAT:
-                    cJSON_AddNumberToObject(row, sqlite3_column_name(stmt, i), sqlite3_column_double(stmt, i));
-                    break;
-
-                case SQLITE_TEXT:
-                case SQLITE_BLOB:
-                    cJSON_AddStringToObject(row, sqlite3_column_name(stmt, i), (const char *)sqlite3_column_text(stmt, i));
-                    break;
-
-                case SQLITE_NULL:
-                default:
-                    ;
-                }
-            }
-
-            cJSON_AddItemToArray(result, row);
-        }
+    while ((row = wdb_exec_row_stmt(stmt, &status))) {
+        cJSON_AddItemToArray(result, row);
     }
 
-    if (r != SQLITE_DONE) {
-        mdebug1("SQL statement execution failed");
+    if (status != SQLITE_DONE) {
         cJSON_Delete(result);
         result = NULL;
     }

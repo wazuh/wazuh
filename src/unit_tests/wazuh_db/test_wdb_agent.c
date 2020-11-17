@@ -4639,7 +4639,6 @@ void test_wdb_disconnect_agents_success(void **state) {
     will_return(__wrap_cJSON_GetObjectItem, id1);
     will_return(__wrap_cJSON_GetObjectItem, id2);
     will_return(__wrap_cJSON_GetObjectItem, id3);
-    //JJP: Shouldnt cJSON_Delete wrapper call the __real?
     expect_function_call(__wrap_cJSON_Delete);
 
     int *array = wdb_disconnect_agents(100, "syncreq", NULL);
@@ -4679,7 +4678,6 @@ void test_wdb_parse_chunk_to_int_ok(void **state) {
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
     will_return(__wrap_cJSON_Parse, test_json);
     will_return(__wrap_cJSON_GetObjectItem, id1);
-    //JJP: Shouldnt cJSON_Delete wrapper call the __real?
     expect_function_call(__wrap_cJSON_Delete);
 
     wdbc_result status = wdb_parse_chunk_to_int(test_payload, &array, "id", &last_item, &last_len);

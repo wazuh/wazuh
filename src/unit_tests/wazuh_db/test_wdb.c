@@ -300,7 +300,54 @@ void test_wdb_exec_stmt_sized_error(void **state) {
     cJSON_Delete(result);
 }
 
-//JJP: Hacer UT a wdb_exec_stmt
+/* Tests wdb_exec_stmt */
+
+void test_wdb_exec_stmt_success(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char* json_str = "COLUMN";
+    double json_value = 10;
+
+    //Calling wdb_exec_row_stmt
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return_count(__wrap_sqlite3_column_count, 1, -1);
+    expect_any(__wrap_sqlite3_column_type, i);
+    will_return_count(__wrap_sqlite3_column_type, SQLITE_INTEGER,-1);
+    expect_any(__wrap_sqlite3_column_name, N);
+    will_return_count(__wrap_sqlite3_column_name, json_str, -1);
+    expect_any(__wrap_sqlite3_column_double, iCol);
+    will_return_count(__wrap_sqlite3_column_double, json_value, -1);
+
+    cJSON* result = wdb_exec_stmt(*data->wdb->stmt);
+
+    assert_non_null(result);
+    assert_string_equal(result->child->child->string, json_str);
+    assert_int_equal(result->child->child->valuedouble, json_value);
+
+    cJSON_Delete(result);
+}
+
+void test_wdb_exec_stmt_invalid_statement(void **state) {
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid SQL statement.");
+
+    cJSON* result = wdb_exec_stmt(NULL);
+
+    assert_null(result);
+}
+
+void test_wdb_exec_stmt_error(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    //Calling wdb_exec_row_stmt
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    expect_string(__wrap__mdebug1, formatted_msg, "SQL statement execution failed");
+
+    cJSON* result = wdb_exec_stmt(*data->wdb->stmt);
+    assert_null(result);
+
+    cJSON_Delete(result);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] =
@@ -314,6 +361,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_exec_row_stmt_one_text, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_row_stmt_done, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_row_stmt_error, setup_wdb, teardown_wdb),
+        //wdb_exec_stmt
+        cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_invalid_statement, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_error, setup_wdb, teardown_wdb),
         //wdb_exec_stmt_sized
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_sized_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_sized_success_limited, setup_wdb, teardown_wdb),
