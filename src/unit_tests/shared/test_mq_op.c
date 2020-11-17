@@ -246,8 +246,8 @@ void test_start_mq_write_inf_fail(void ** state){
     /* Breaking the infinite loop */
     will_return(__wrap_OS_ConnectUnixDomain, 0);
     /* Ignoring output */
-    expect_any_always(__wrap__mdebug1, formatted_msg);
-
+    expect_any_count(__wrap__mdebug1, formatted_msg, -1);
+    
     ret = StartMQ(path, type, n_attempts);
 }
 

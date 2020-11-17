@@ -515,9 +515,9 @@ static int wm_initialize_default_modules(wmodule **wmodules) {
             }
         }
         // Point to read function
-        int (*function_ptr)(xml_node **nodes, wmodule *module) = default_modules[i];
-        
-        if(function_ptr(NULL, cur_wmodule) == OS_INVALID) {
+        int (*function_ptr)(const OS_XML *xml, xml_node **nodes, wmodule *module) = default_modules[i];
+
+        if(function_ptr(NULL, NULL, cur_wmodule) == OS_INVALID) {
             return OS_INVALID;
         }
         i++;

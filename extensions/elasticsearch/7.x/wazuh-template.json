@@ -177,6 +177,7 @@
       "data.os.hostname",
       "data.os.major",
       "data.os.minor",
+      "data.os.patch",
       "data.os.name",
       "data.os.platform",
       "data.os.release",
@@ -1194,6 +1195,9 @@
                 "type": "keyword"
               },
               "minor": {
+                "type": "keyword"
+              },
+              "patch": {
                 "type": "keyword"
               },
               "build": {

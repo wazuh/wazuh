@@ -72,7 +72,7 @@ void SecurityConfigurationAssessmentInit()
 {
 
     os_calloc(1, sizeof(OSDecoderInfo), sca_json_dec);
-    sca_json_dec->id = getDecoderfromlist(SCA_MOD);
+    sca_json_dec->id = getDecoderfromlist(SCA_MOD, &os_analysisd_decoder_store);
     sca_json_dec->type = OSSEC_RL;
     sca_json_dec->name = SCA_MOD;
     sca_json_dec->fts = 0;

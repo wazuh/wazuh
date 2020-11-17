@@ -11,32 +11,38 @@
 #include "shared.h"
 #include "rules.h"
 #include "eventinfo.h"
+#include "analysisd.h"
 
-/* Rulenode local  */
-RuleNode *rulenode;
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 
 /* _OS_Addrule: Internal AddRule */
-static RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule);
-static int _AddtoRule(int sid, int level, int none, const char *group,
+STATIC RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule);
+STATIC int _AddtoRule(int sid, int level, int none, const char *group,
                RuleNode *r_node, RuleInfo *read_rule);
 
 
+RuleNode *os_analysisd_rulelist;
+
 /* Create the RuleList */
-void OS_CreateRuleList()
-{
-    rulenode = NULL;
-    return;
+void OS_CreateRuleList() {
+    os_analysisd_rulelist = NULL;
 }
 
 /* Get first node from rule */
 RuleNode *OS_GetFirstRule()
 {
-    RuleNode *rulenode_pt = rulenode;
+    RuleNode *rulenode_pt = os_analysisd_rulelist;
     return (rulenode_pt);
 }
 
 /* Search all rules, including children */
-static int _AddtoRule(int sid, int level, int none, const char *group,
+STATIC int _AddtoRule(int sid, int level, int none, const char *group,
                RuleNode *r_node, RuleInfo *read_rule)
 {
     int r_code = 0;
@@ -45,7 +51,7 @@ static int _AddtoRule(int sid, int level, int none, const char *group,
      * the beginning of the list
      */
     if (!r_node) {
-        r_node = OS_GetFirstRule();
+        return r_code;
     }
 
     while (r_node) {
@@ -115,10 +121,10 @@ static int _AddtoRule(int sid, int level, int none, const char *group,
 }
 
 /* Add a child */
-int OS_AddChild(RuleInfo *read_rule)
+int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg)
 {
     if (!read_rule) {
-        merror("rules_list: Passing a NULL rule. Inconsistent state");
+        smerror(log_msg, "rules_list: Passing a NULL rule. Inconsistent state");
         return (1);
     }
 
@@ -138,50 +144,50 @@ int OS_AddChild(RuleInfo *read_rule)
             } else if ((isdigit((int)*sid)) || (*sid == '\0')) {
                 if (val == 0) {
                     rule_id = atoi(sid);
-                    if (!_AddtoRule(rule_id, 0, 0, NULL, NULL, read_rule)) {
-                        merror_exit("rules_list: Signature ID '%d' not "
-                                  "found. Invalid 'if_sid'.", rule_id);
+                    if (!_AddtoRule(rule_id, 0, 0, NULL, *r_node, read_rule)) {
+                        smerror(log_msg, "rules_list: Signature ID '%d' not found. Invalid 'if_sid'.", rule_id);
+                        return -1;
                     }
                     val = 1;
                 }
             } else {
-                merror_exit("rules_list: Signature ID must be an integer. "
-                          "Exiting...");
+                smerror(log_msg, "rules_list: Signature ID must be an integer. Exiting...");
+                return -1;
             }
         } while (*sid++ != '\0');
     }
 
     /* Adding for if_level */
     else if (read_rule->if_level) {
-        int  ilevel = 0;
+        int ilevel = 0;
 
         ilevel = atoi(read_rule->if_level);
         if (ilevel == 0) {
-            merror("Invalid level (atoi)");
+            smerror(log_msg, "Invalid level (atoi)");
             return (1);
         }
 
         ilevel *= 100;
 
-        if (!_AddtoRule(0, ilevel, 0, NULL, NULL, read_rule)) {
-            merror_exit("rules_list: Level ID '%d' not "
-                      "found. Invalid 'if_level'.", ilevel);
+        if (!_AddtoRule(0, ilevel, 0, NULL, *r_node, read_rule)) {
+            smerror(log_msg, "rules_list: Level ID '%d' not found. Invalid 'if_level'.", ilevel);
+            return -1;
         }
     }
 
     /* Adding for if_group */
     else if (read_rule->if_group) {
-        if (!_AddtoRule(0, 0, 0, read_rule->if_group, NULL, read_rule)) {
-            merror_exit("rules_list: Group '%s' not "
-                      "found. Invalid 'if_group'.", read_rule->if_group);
+        if (!_AddtoRule(0, 0, 0, read_rule->if_group, *r_node, read_rule)) {
+            smerror(log_msg, "rules_list: Group '%s' not found. Invalid 'if_group'.", read_rule->if_group);
+            return -1;
         }
     }
 
     /* Just add based on the category */
     else {
-        if (!_AddtoRule(0, 0, 0, NULL, NULL, read_rule)) {
-            merror_exit("rules_list: Category '%d' not "
-                      "found. Invalid 'category'.", read_rule->category);
+        if (!_AddtoRule(0, 0, 0, NULL, *r_node, read_rule)) {
+            smerror(log_msg, "rules_list: Category '%d' not found. Invalid 'category'.", read_rule->category);
+            return -1;
         }
     }
 
@@ -190,7 +196,7 @@ int OS_AddChild(RuleInfo *read_rule)
 }
 
 /* Add a rule in the chain */
-static RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule)
+STATIC RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule)
 {
     RuleNode *tmp_rulenode = _rulenode;
 
@@ -245,9 +251,9 @@ static RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule)
 }
 
 /* External AddRule */
-int OS_AddRule(RuleInfo *read_rule)
+int OS_AddRule(RuleInfo *read_rule, RuleNode **r_node)
 {
-    rulenode = _OS_AddRule(rulenode, read_rule);
+    *r_node = _OS_AddRule(*r_node, read_rule);
 
     return (0);
 }
@@ -257,7 +263,7 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
 {
     /* If no r_node is given, get first node */
     if (r_node == NULL) {
-        r_node = OS_GetFirstRule();
+        return -1;
     }
 
     if (sid == 0) {
@@ -337,7 +343,7 @@ int OS_MarkID(RuleNode *r_node, RuleInfo *orig_rule)
 {
     /* If no r_node is given, get first node */
     if (r_node == NULL) {
-        r_node = OS_GetFirstRule();
+        return -1;
     }
 
     while (r_node) {
@@ -348,7 +354,6 @@ int OS_MarkID(RuleNode *r_node, RuleInfo *orig_rule)
                 if (!r_node->ruleinfo->sid_prev_matched) {
                     merror_exit(MEM_ERROR, errno, strerror(errno));
                 }
-                //OSList_SetFreeDataPointer(r_node->ruleinfo->sid_prev_matched, (void (*)(void *)) Free_Eventinfo);
             }
 
             /* Assign the parent pointer to it */
@@ -371,7 +376,7 @@ int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule)
 {
     /* If no r_node is given, get first node */
     if (r_node == NULL) {
-        r_node = OS_GetFirstRule();
+        return -1;
     }
 
     while (r_node) {
@@ -408,4 +413,190 @@ int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule)
     }
 
     return (0);
+}
+
+void os_remove_rules_list(RuleNode *node) {
+
+    RuleInfo **rules;
+    int pos = 0;
+    int num_rules = 0;
+
+    os_count_rules(node, &num_rules);
+
+    os_calloc(num_rules + 1, sizeof(RuleInfo *), rules);
+
+    os_remove_rulenode(node, rules, &pos, &num_rules);
+
+    for (int i = 0; i <= pos; i++) {
+        os_remove_ruleinfo(rules[i]);
+    }
+
+    os_free(rules);
+}
+
+
+void os_remove_rulenode(RuleNode *node, RuleInfo **rules, int *pos, int *max_size) {
+
+    RuleNode *tmp;
+
+    while (node) {
+
+        if (node->child) {
+            os_remove_rulenode(node->child, rules, pos, max_size);
+        }
+
+        tmp = node;
+        node = node->next;
+
+        if (tmp->ruleinfo->internal_saving == false && *pos <= *max_size) {
+
+            tmp->ruleinfo->internal_saving = true;
+            rules[*pos] = tmp->ruleinfo;
+            (*pos)++;
+        }
+
+        os_free(tmp);
+    }
+}
+
+void os_remove_ruleinfo(RuleInfo *ruleinfo) {
+
+    if (!ruleinfo) {
+        return;
+    }
+
+    if (ruleinfo->ignore_fields) {
+        for (int i = 0; ruleinfo->ignore_fields[i]; i++) {
+            os_free(ruleinfo->ignore_fields[i]);
+        }
+    }
+
+    if (ruleinfo->ckignore_fields) {
+        for (int i = 0; ruleinfo->ckignore_fields[i]; i++) {
+            os_free(ruleinfo->ckignore_fields[i]);
+        }
+    }
+
+    w_free_expression_t(&ruleinfo->srcip);
+    w_free_expression_t(&ruleinfo->dstip);
+
+    if (ruleinfo->fields) {
+        for (int i = 0; ruleinfo->fields[i]; i++) {
+            os_free(ruleinfo->fields[i]->name);
+            w_free_expression_t(&ruleinfo->fields[i]->regex);
+            os_free(ruleinfo->fields[i]);
+        }
+    }
+
+    if (ruleinfo->info_details) {
+        RuleInfoDetail *tmp;
+        while (ruleinfo->info_details) {
+            tmp = ruleinfo->info_details;
+            ruleinfo->info_details = ruleinfo->info_details->next;
+            os_free(tmp->data);
+            os_free(tmp);
+        }
+    }
+
+    if (ruleinfo->ar) {
+        for (int i = 0; ruleinfo->ar[i]; i++) {
+            os_free(ruleinfo->ar[i]->name);
+            os_free(ruleinfo->ar[i]->command);
+            os_free(ruleinfo->ar[i]->agent_id);
+            os_free(ruleinfo->ar[i]->rules_id);
+            os_free(ruleinfo->ar[i]->rules_group);
+            os_free(ruleinfo->ar[i]->ar_cmd->name);
+            os_free(ruleinfo->ar[i]->ar_cmd->executable);
+            os_free(ruleinfo->ar[i]->ar_cmd->extra_args);
+            os_free(ruleinfo->ar[i]->ar_cmd);
+            os_free(ruleinfo->ar[i]);
+        }
+    }
+
+    if (ruleinfo->lists) {
+        os_remove_cdbrules(&ruleinfo->lists);
+    }
+
+    if (ruleinfo->same_fields) {
+        for (int i = 0; ruleinfo->same_fields[i]; i++) {
+            os_free(ruleinfo->same_fields[i]);
+        }
+    }
+
+    if (ruleinfo->not_same_fields) {
+        for (int i = 0; ruleinfo->not_same_fields[i]; i++) {
+            os_free(ruleinfo->not_same_fields[i]);
+        }
+    }
+
+    if (ruleinfo->mitre_id) {
+        for (int i = 0; ruleinfo->mitre_id[i]; i++) {
+            os_free(ruleinfo->mitre_id[i]);
+        }
+    }
+
+    w_free_expression_t(&ruleinfo->match);
+    w_free_expression_t(&ruleinfo->regex);
+    w_free_expression_t(&ruleinfo->srcgeoip);
+    w_free_expression_t(&ruleinfo->dstgeoip);
+    w_free_expression_t(&ruleinfo->srcport);
+    w_free_expression_t(&ruleinfo->dstport);
+    w_free_expression_t(&ruleinfo->user);
+    w_free_expression_t(&ruleinfo->url);
+    w_free_expression_t(&ruleinfo->id);
+    w_free_expression_t(&ruleinfo->status);
+    w_free_expression_t(&ruleinfo->hostname);
+    w_free_expression_t(&ruleinfo->program_name);
+    w_free_expression_t(&ruleinfo->data);
+    w_free_expression_t(&ruleinfo->extra_data);
+    w_free_expression_t(&ruleinfo->location);
+    w_free_expression_t(&ruleinfo->system_name);
+    w_free_expression_t(&ruleinfo->protocol);
+    w_free_expression_t(&ruleinfo->action);
+
+    if (ruleinfo->if_matched_regex) OSRegex_FreePattern(ruleinfo->if_matched_regex);
+    os_free(ruleinfo->if_matched_regex);
+
+    if (ruleinfo->if_matched_group) OSMatch_FreePattern(ruleinfo->if_matched_group);
+    os_free(ruleinfo->if_matched_group);
+
+    os_free(ruleinfo->sid_prev_matched);
+    os_free(ruleinfo->group_search);
+    os_free(ruleinfo->group_prev_matched);
+
+    os_free(ruleinfo->ignore_fields);
+    os_free(ruleinfo->ckignore_fields);
+    os_free(ruleinfo->srcip);
+    os_free(ruleinfo->dstip);
+    os_free(ruleinfo->fields);
+    os_free(ruleinfo->group);
+    os_free(ruleinfo->day_time);
+    os_free(ruleinfo->week_day);
+    os_free(ruleinfo->comment);
+    os_free(ruleinfo->info);
+    os_free(ruleinfo->cve);
+    os_free(ruleinfo->if_sid);
+    os_free(ruleinfo->if_level);
+    os_free(ruleinfo->if_group);
+    os_free(ruleinfo->ar);
+    os_free(ruleinfo->file);
+    os_free(ruleinfo->same_fields);
+    os_free(ruleinfo->not_same_fields);
+    os_free(ruleinfo->mitre_id);
+
+    os_free(ruleinfo);
+}
+
+void os_count_rules(RuleNode *node, int *num_rules) {
+
+    while (node) {
+
+        if (node->child) {
+            os_count_rules(node->child, num_rules);
+        }
+
+        (*num_rules)++;
+
+        node = node->next;
+    }
 }

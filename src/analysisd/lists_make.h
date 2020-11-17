@@ -11,7 +11,21 @@
 #ifndef LISTSMAKE_H
 #define LISTSMAKE_H
 
+/**
+ * @brief Compile a CDB list
+ * @param txt_filename File which has the CDB list
+ * @param cdb_filename File which saves the CDB list compile
+ * @param force determine if overwrite cdb_filename although txt_filename haven't changed
+ * @show_message determine if print  '* CDB list %s has been updated successfully' message
+ */
 void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, const int force, const int show_message);
-void Lists_OP_MakeAll(int force, int show_message);
+
+/**
+ * @brief Call the Lists_OP_MakeCDB function for each CDB list.
+ * @param force parameter for Lists_OP_MakeCDB
+ * @param show_message parameter for Lists_OP_MakeCDB
+ * @param lnode list of CDB lists
+ */
+void Lists_OP_MakeAll(int force, int show_message, ListNode **lnode);
 
 #endif /* LISTSMAKE_H */

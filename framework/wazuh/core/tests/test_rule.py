@@ -84,6 +84,33 @@ def test_load_rules_from_file(rule_file, rule_path, rule_status, exception):
         assert e.code == exception.code
 
 
+@patch("wazuh.core.common.ossec_path", new=parent_directory)
+@patch("wazuh.core.common.ruleset_rules_path", new=data_path)
+def test_load_rules_from_file_details():
+    """Test set_groups rule core function."""
+    rule_file = '9999-rules_regex_test.xml'
+    rule_path = 'tests/data/rules'
+    details_result = {
+        'id': {
+            'pattern': 'this is a wildcard'
+        },
+        'test_field_name': {
+            'pattern': 'test_field_value',
+            'type': 'osmatch'
+        },
+        'match': {
+            'pattern': 'test_match_1test_match_2test_match_3',
+            'negate': 'yes'
+        },
+        'regex': {
+            'pattern': 'test_regex',
+            'type': 'osregex'
+        }
+    }
+    result = rule.load_rules_from_file(rule_file, rule_path, 'enabled')
+    assert result[0]['details'] == details_result
+
+
 @patch("wazuh.core.rule.load_wazuh_xml", side_effect=OSError(13, 'Error', 'Permissions'))
 def test_load_rules_from_file_permissions(mock_load):
     """Test set_groups rule core function."""

@@ -17,9 +17,8 @@
 
 
 /* Use the osdecoders to decode the received event */
-void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match)
+void DecodeEvent(struct _Eventinfo *lf, OSHash *rules_hash, regex_matching *decoder_match, OSDecoderNode *node)
 {
-    OSDecoderNode *node;
     OSDecoderNode *child_node;
     OSDecoderInfo *nnode;
 
@@ -28,8 +27,6 @@ void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match)
     const char *cmatch = NULL;
     const char *regex_prev = NULL;
     const char *result = NULL;
-
-    node = OS_GetFirstOSDecoder(lf->program_name);
 
     if (!node) {
         return;
@@ -147,7 +144,7 @@ void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match)
         while (child_node) {
             /* If we have an external decoder, execute it */
             if (nnode->plugindecoder) {
-                nnode->plugindecoder(lf, decoder_match);
+                nnode->plugindecoder(lf, rules_hash, decoder_match);
             } else if (nnode->regex) {
                 int i;
 
@@ -181,6 +178,7 @@ void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match)
                         nnode = child_node->osdecoder;
                         continue;
                     }
+
                     return;
                 }
 

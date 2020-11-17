@@ -28,8 +28,8 @@
 /**
  * Module main function. It won't return
  * */
-STATIC void* wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config);    
-STATIC void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config);  
+STATIC void* wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config);
+STATIC void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config);
 STATIC cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config);
 
 /* Context definition */
@@ -42,18 +42,10 @@ const wm_context WM_AGENT_UPGRADE_CONTEXT = {
 
 STATIC void *wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
 
-    // Check if module is enabled
-    if (!upgrade_config->enabled) {
-        mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_DISABLED);
-        pthread_exit(NULL);
-    }
-
-    mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_STARTED);
-
     #ifdef CLIENT
-        wm_agent_upgrade_check_status(&upgrade_config->agent_config);
+        wm_agent_upgrade_start_agent_module(&upgrade_config->agent_config, upgrade_config->enabled);
     #else
-        wm_agent_upgrade_listen_messages(&upgrade_config->manager_config);
+        wm_agent_upgrade_start_manager_module(&upgrade_config->manager_config, upgrade_config->enabled);
     #endif
 
     return NULL;
@@ -72,8 +64,8 @@ STATIC cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config){
     cJSON *wm_info = cJSON_CreateObject();
 
     if (upgrade_config->enabled) {
-        cJSON_AddStringToObject(wm_info,"enabled","yes"); 
-    } else { 
+        cJSON_AddStringToObject(wm_info,"enabled","yes");
+    } else {
         cJSON_AddStringToObject(wm_info,"enabled","no");
     }
     #ifndef CLIENT
@@ -81,6 +73,19 @@ STATIC cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config){
     cJSON_AddNumberToObject(wm_info, "chunk_size", upgrade_config->manager_config.chunk_size);
     if (upgrade_config->manager_config.wpk_repository) {
         cJSON_AddStringToObject(wm_info, "wpk_repository", upgrade_config->manager_config.wpk_repository);
+    }
+    #else
+    if (upgrade_config->agent_config.enable_ca_verification) {
+        cJSON_AddStringToObject(wm_info,"ca_verification","yes");
+    } else {
+        cJSON_AddStringToObject(wm_info,"ca_verification","no");
+    }
+    if (wcom_ca_store) {
+        cJSON *calist = cJSON_CreateArray();
+        for (int i=0; wcom_ca_store[i]; i++) {
+            cJSON_AddItemToArray(calist,cJSON_CreateString(wcom_ca_store[i]));
+        }
+        cJSON_AddItemToObject(wm_info,"ca_store",calist);
     }
     #endif
     cJSON_AddItemToObject(root,"agent-upgrade",wm_info);
