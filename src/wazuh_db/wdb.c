@@ -833,7 +833,6 @@ cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status) {
 }
 
 cJSON* wdb_exec_stmt_sized(sqlite3_stmt * stmt, size_t max_size, int* status) {
-    //JJP: TODO When socket limit is finally eliminated, this logic can add the last item that didnt fetch in response.
     if (!stmt) {
         mdebug1("Invalid SQL statement.");
         *status = SQLITE_ERROR;

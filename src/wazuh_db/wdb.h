@@ -391,6 +391,20 @@ int wdb_sca_policy_sha256(wdb_t * wdb, char *id, char * output);
 void wdb_free_agent_info_data(agent_info_data *agent_data);
 
 /**
+ * @brief Function to parse a chunk response that containing the status of the query and a json array.
+ *        This function will create or realloc an int array to place the values of the chunk.
+ *        This values are obtained based on the provided json item string.
+ *
+ * @param [in] input The chunk obtained from WazuhDB to be parsed.
+ * @param [out] output An int array containing the parsed values. Must be freed by the caller.
+ * @param [in] item Json string to search elements on the chunks.
+ * @param [out] last_item Value of the last parsed item. If NULL no value is written.
+ * @param [out] last_size Size of the returned array. If NULL no value is written.
+ * @return JSON array with the statement execution results. NULL On error.
+ */
+wdbc_result wdb_parse_chunk_to_int(char* input, int** output, const char* item, int* last_item, int* last_size);
+
+/**
  * @brief Insert agent to the global.db.
  *
  * @param[in] id The agent ID.
@@ -655,9 +669,6 @@ int* wdb_get_agents_by_connection_status(const char* connection_status, int *soc
  */
 int* wdb_disconnect_agents(int keepalive, const char *sync_status, int *sock);
 
-//JJP: Doxygen and location
-wdbc_result wdb_parse_chunk_to_int(char* input, int** output, const char* item, int* last_item, int* last_size);
-
 /**
  * @brief Create database for agent from profile.
  *
@@ -891,14 +902,26 @@ void wdb_close_old();
 int wdb_remove_database(const char * agent_id);
 
 /**
- * @brief Function to execute a one row of an SQL statement and save the result in a JSON array.
+ * @brief Function to execute one row of an SQL statement and save the result in a JSON array.
  *
  * @param [in] stmt The SQL statement to be executed.
+ * @param [out] status The status code of the statement execution. If NULL no value is written.
  * @return JSON array with the statement execution results. NULL On error.
  */
 cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status);
 
-//JJP: Doxygen
+/**
+ * @brief Function to execute a SQL statement and save the result in a JSON array limited by size.
+ *        Each step of the statemente will be printed to know the size.
+ *        The result of each step will be placed in returned result while fits.
+ *
+ * @param [in] stmt The SQL statement to be executed.
+ * @param [out] status The status code of the statement execution.
+ *                     SQLITE_DONE means the statement is completed.
+ *                     SQLITE_ROW means the statement has pending elements.
+ *                     SQLITE_ERROR means an error occurred.
+ * @return JSON array with the statement execution results. NULL On error.
+ */
 cJSON * wdb_exec_stmt_sized(sqlite3_stmt * stmt, size_t max_size, int* status);
 
 /**
@@ -1657,7 +1680,7 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
  */
 cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id);
 
-/**JJP: Change Doxygen
+/**
  * @brief Gets every agent ID.
  *        Response is prepared in one chunk,
  *        if the size of the chunk exceeds WDB_MAX_RESPONSE_SIZE parsing stops and reports the amount of agents obtained.
@@ -1665,8 +1688,9 @@ cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id);
  *
  * @param [in] wdb The Global struct database.
  * @param [in] last_agent_id ID where to start querying.
- * @param [out] output A buffer where the response is written. Must be de-allocated by the caller.
- * @return wdbc_result to represent if all agents has being obtained or any error occurred.
+ * @param [out] status wdbc_result to represent if all agents has being obtained or any error occurred.
+ * @retval JSON with agents IDs on success.
+ * @retval NULL on error.
  */
 cJSON* wdb_global_get_all_agents(wdb_t *wdb, int last_agent_id, wdbc_result* status);
 
@@ -1682,7 +1706,7 @@ cJSON* wdb_global_get_all_agents(wdb_t *wdb, int last_agent_id, wdbc_result* sta
  */
 int wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status);
 
-/**JJP: Fix Doxygen
+/**
  * @brief Function to get the id of every agent with a specific connection_status.
  *        Response is prepared in one chunk, if the size of the chunk exceeds WDB_MAX_RESPONSE_SIZE
  *        parsing stops and reports the amount of agents obtained.
@@ -1691,8 +1715,9 @@ int wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status);
  * @param [in] wdb The Global struct database.
  * @param [in] last_agent_id ID where to start querying.
  * @param [in] connection_status Connection status of the agents requested.
- * @param [out] output A buffer where the response is written. Must be de-allocated by the caller.
- * @return wdbc_result to represent if all agents has being obtained or any error occurred.
+ * @param [out] status wdbc_result to represent if all agents has being obtained or any error occurred.
+ * @retval JSON with agents IDs on success.
+ * @retval NULL on error.
  */
 cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, wdbc_result* status);
 
@@ -1705,8 +1730,9 @@ cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id
  * @param [in] wdb The Global struct database.
  * @param [in] last_agent_id ID where to start querying.
  * @param [in] sync_status The value of sync_status.
- * @param [out] output A buffer where the response is written. Must be de-allocated by the caller.
- * @return wdbc_result to represent if all agents has being obtained.
+ * @param [out] status wdbc_result to represent if all agents has being obtained or any error occurred.
+ * @retval JSON with agents IDs on success.
+ * @retval NULL on error.
  */
 cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int keep_alive, const char *sync_status, wdbc_result* status);
 
