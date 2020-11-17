@@ -53,8 +53,6 @@ class LocalServerHandler(server.AbstractServerHandler):
         elif command == b'send_file':
             path, node_name = data.decode().split(' ')
             return self.send_file_request(path, node_name)
-        elif command == b'run_keypoll':
-            return self.run_agent_key_polling(data)
         else:
             return super().process_request(command, data)
 
@@ -106,13 +104,6 @@ class LocalServerHandler(server.AbstractServerHandler):
         result = future.result()
         send_res = asyncio.create_task(self.send_request(command=b'send_f_res', data=result))
         send_res.add_done_callback(self.send_res_callback)
-
-    def run_agent_key_polling(self, message) -> Tuple[bytes, bytes]:
-        """ Handle the request run_agent_key_polling. It is implemented differently for master and workers.
-        Returns
-        -------
-        """
-        raise NotImplementedError
 
     def send_res_callback(self, future):
         if not future.cancelled():
@@ -233,14 +224,6 @@ class LocalServerHandlerMaster(LocalServerHandler):
             req.add_done_callback(self.get_send_file_response)
             return b'ok', b'Forwarding file to master node'
 
-    def run_agent_key_polling(self, message: bytes) -> Tuple[bytes, bytes]:
-        """ Manage the run_agent_key_polling command.
-        Returns
-        -------
-        Dict
-            Encoded response
-        """
-        return b'ok', json.dumps(self.server.node.send_key_polling(**json.loads(message.decode()))).encode()
 
 class LocalServerMaster(LocalServer):
     """
@@ -346,16 +329,6 @@ class LocalServerHandlerWorker(LocalServerHandler):
             req = asyncio.create_task(self.server.node.client.send_file(path))
             req.add_done_callback(self.get_send_file_response)
             return b'ok', b'Forwarding file to master node'
-
-    def run_agent_key_polling(self, message) -> Tuple[bytes, bytes]:
-        """ Manage the run_agent_key_polling command. It forwards the request to the master node.
-        Returns
-        -------
-        Dict
-            Encoded response from master
-        """
-        self.logger.info("Agent key polling request sent to master")
-        return self.send_request_to_master(b'run_keypoll', message)
 
 
 class LocalServerWorker(LocalServer):
