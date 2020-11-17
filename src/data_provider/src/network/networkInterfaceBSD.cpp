@@ -98,6 +98,7 @@ void BSDNetworkImpl<AF_LINK>::buildNetworkData(nlohmann::json& network)
     network["rx_bytes"] = stats.rxBytes;
     network["tx_errors"] = stats.txErrors;
     network["rx_errors"] = stats.rxErrors;
+    network["tx_dropped"] = stats.txDropped;
     network["rx_dropped"] = stats.rxDropped;
 
     network["mtu"] = m_interfaceAddress->mtu();
