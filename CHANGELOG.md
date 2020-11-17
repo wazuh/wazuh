@@ -36,6 +36,7 @@ All notable changes to this project will be documented in this file.
 - **Framework:**
   - Changed access to agent's status ([#6326](https://github.com/wazuh/wazuh/issues/6326))
 
+
 ### Fixed
 
 - **API:**
