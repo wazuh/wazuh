@@ -439,62 +439,67 @@ void Syscollector::scanNetwork()
         constexpr auto netIfaceTable    { "network_iface"    };
         constexpr auto netProtocolTable { "network_protocol" };
         constexpr auto netAddressTable  { "network_address"  };
-        const auto networks { m_spInfo->networks().at("iface") };
-        nlohmann::json ifaceTableData{};
-        nlohmann::json protoTableData{};
-        nlohmann::json addressTableDataList{};
+        const auto& networks { m_spInfo->networks() };
+        nlohmann::json ifaceTableData;
+        nlohmann::json protoTableData;
+        nlohmann::json addressTableDataList;
 
-        for (const auto& item : networks.at(0))
+        const auto& itIface { networks.find("iface") };
+
+        if (networks.end() != itIface)
         {
-            // Split the resulting networks data into the specific DB tables
-
-            // "network_iface" table data to update and notify
-            ifaceTableData["name"]       = item.at("name");
-            ifaceTableData["adapter"]    = item.at("adapter");
-            ifaceTableData["type"]       = item.at("type");
-            ifaceTableData["state"]      = item.at("state");
-            ifaceTableData["mtu"]        = item.at("mtu");
-            ifaceTableData["mac"]        = item.at("mac");
-            ifaceTableData["tx_packets"] = item.at("tx_packets");
-            ifaceTableData["rx_packets"] = item.at("rx_packets");
-            ifaceTableData["tx_errors"]  = item.at("tx_errors");
-            ifaceTableData["rx_errors"]  = item.at("rx_errors");
-            ifaceTableData["tx_dropped"] = item.at("tx_dropped");
-            ifaceTableData["rx_dropped"] = item.at("rx_dropped");
-
-            // "network_protocol" table data to update and notify
-            protoTableData["iface"]   = item.at("name");
-            protoTableData["type"]    = item.at("type");
-            protoTableData["gateway"] = item.at("gateway");
-
-            if (item.find("IPv4") != item.end())
+            for (const auto& item : itIface.value())
             {
-                nlohmann::json addressTableData(item.at("IPv4"));
-                protoTableData["dhcp"]    = addressTableData.at("dhcp");
-                protoTableData["metric"]  = addressTableData.at("metric");
+                // Split the resulting networks data into the specific DB tables
 
-                // "network_address" table data to update and notify
-                addressTableData["iface"]   = item.at("name");
-                addressTableData["proto"]   = "IPv4";
-                addressTableDataList.push_back(addressTableData);
+                // "network_iface" table data to update and notify
+                ifaceTableData["name"]       = item.at("name");
+                ifaceTableData["adapter"]    = item.at("adapter");
+                ifaceTableData["type"]       = item.at("type");
+                ifaceTableData["state"]      = item.at("state");
+                ifaceTableData["mtu"]        = item.at("mtu");
+                ifaceTableData["mac"]        = item.at("mac");
+                ifaceTableData["tx_packets"] = item.at("tx_packets");
+                ifaceTableData["rx_packets"] = item.at("rx_packets");
+                ifaceTableData["tx_errors"]  = item.at("tx_errors");
+                ifaceTableData["rx_errors"]  = item.at("rx_errors");
+                ifaceTableData["tx_dropped"] = item.at("tx_dropped");
+                ifaceTableData["rx_dropped"] = item.at("rx_dropped");
+
+                // "network_protocol" table data to update and notify
+                protoTableData["iface"]   = item.at("name");
+                protoTableData["type"]    = item.at("type");
+                protoTableData["gateway"] = item.at("gateway");
+
+                if (item.find("IPv4") != item.end())
+                {
+                    nlohmann::json addressTableData(item.at("IPv4"));
+                    protoTableData["dhcp"]    = addressTableData.at("dhcp");
+                    protoTableData["metric"]  = addressTableData.at("metric");
+
+                    // "network_address" table data to update and notify
+                    addressTableData["iface"]   = item.at("name");
+                    addressTableData["proto"]   = "IPv4";
+                    addressTableDataList.push_back(addressTableData);
+                }
+
+                if (item.find("IPv6") != item.end())
+                {
+                    nlohmann::json addressTableData(item.at("IPv6"));
+                    protoTableData["dhcp"]    = addressTableData.at("dhcp");
+                    protoTableData["metric"]  = addressTableData.at("metric");
+
+                    // "network_address" table data to update and notify
+                    addressTableData["iface"] = item.at("name");
+                    addressTableData["proto"] = "IPv6";
+                    addressTableDataList.push_back(addressTableData);
+                }
             }
 
-            if (item.find("IPv6") != item.end())
-            {
-                nlohmann::json addressTableData(item.at("IPv6"));
-                protoTableData["dhcp"]    = addressTableData.at("dhcp");
-                protoTableData["metric"]  = addressTableData.at("metric");
-
-                // "network_address" table data to update and notify
-                addressTableData["iface"] = item.at("name");
-                addressTableData["proto"] = "IPv6";
-                addressTableDataList.push_back(addressTableData);
-            }
+            updateAndNotifyChanges(m_dbSync->handle(), netIfaceTable,    nlohmann::json{ifaceTableData}, m_reportFunction);
+            updateAndNotifyChanges(m_dbSync->handle(), netProtocolTable, nlohmann::json{protoTableData}, m_reportFunction);
+            updateAndNotifyChanges(m_dbSync->handle(), netAddressTable,  addressTableDataList, m_reportFunction);
         }
-
-        updateAndNotifyChanges(m_dbSync->handle(), netIfaceTable,    nlohmann::json{ifaceTableData}, m_reportFunction);
-        updateAndNotifyChanges(m_dbSync->handle(), netProtocolTable, nlohmann::json{protoTableData}, m_reportFunction);
-        updateAndNotifyChanges(m_dbSync->handle(), netAddressTable,  addressTableDataList, m_reportFunction);
     }
 }
 
@@ -537,31 +542,37 @@ void Syscollector::scanPorts()
         constexpr auto table{"ports"};
         constexpr auto PORT_LISTENING_STATE { "listening" };
         constexpr auto TCP_PROTOCOL { "tcp" };
-        const auto data { m_spInfo->ports().at("ports") };
+        const auto& data { m_spInfo->ports() };
         nlohmann::json portsList{};
-        for (const auto& item : data.at(0))
+
+        const auto& itPorts { data.find("ports") };
+
+        if (data.end() != itPorts)
         {
-            const auto isListeningState { item.at("state") == PORT_LISTENING_STATE };
-            if(isListeningState)
+            for (const auto& item : itPorts.value())
             {
-                // Only update and notify "Listening" state ports
-                if (m_portsAll)
+                const auto isListeningState { item.at("state") == PORT_LISTENING_STATE };
+                if(isListeningState)
                 {
-                    // TCP and UDP ports
-                    portsList.push_back(item);
-                }
-                else
-                {
-                    // Only TCP ports
-                    const auto isTCPProto { item.at("protocol") == TCP_PROTOCOL };
-                    if (isTCPProto)
+                    // Only update and notify "Listening" state ports
+                    if (m_portsAll)
                     {
+                        // TCP and UDP ports
                         portsList.push_back(item);
+                    }
+                    else
+                    {
+                        // Only TCP ports
+                        const auto isTCPProto { item.at("protocol") == TCP_PROTOCOL };
+                        if (isTCPProto)
+                        {
+                            portsList.push_back(item);
+                        }
                     }
                 }
             }
+            updateAndNotifyChanges(m_dbSync->handle(), table, portsList, m_reportFunction);
         }
-        updateAndNotifyChanges(m_dbSync->handle(), table, portsList, m_reportFunction);
     }
 }
 

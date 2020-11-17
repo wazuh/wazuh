@@ -93,13 +93,13 @@ std::string SysInfo::getSerialNumber() const
 nlohmann::json SysInfo::getProcessesInfo() const
 {
     // Currently not supported for this OS
-    return {};
+    return nlohmann::json {};
 }
 
 nlohmann::json SysInfo::getPackages() const
 {
     // Currently not supported for this OS
-    return {};
+    return nlohmann::json {};
 }
 
 nlohmann::json SysInfo::getOsInfo() const
@@ -127,5 +127,5 @@ nlohmann::json SysInfo::getOsInfo() const
 nlohmann::json SysInfo::getPorts() const
 {
     // Currently not supported for this OS
-    return {};
+    return nlohmann::json {};
 }
