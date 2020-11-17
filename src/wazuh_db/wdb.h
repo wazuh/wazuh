@@ -1682,7 +1682,7 @@ cJSON* wdb_global_get_all_agents(wdb_t *wdb, int last_agent_id, wdbc_result* sta
  */
 int wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status);
 
-/**
+/**JJP: Fix Doxygen
  * @brief Function to get the id of every agent with a specific connection_status.
  *        Response is prepared in one chunk, if the size of the chunk exceeds WDB_MAX_RESPONSE_SIZE
  *        parsing stops and reports the amount of agents obtained.
@@ -1694,7 +1694,7 @@ int wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status);
  * @param [out] output A buffer where the response is written. Must be de-allocated by the caller.
  * @return wdbc_result to represent if all agents has being obtained or any error occurred.
  */
-wdbc_result wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, char **output);
+cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, wdbc_result* status);
 
 /**
  * @brief Gets all the agents' IDs (excluding the manager) that satisfy the keepalive condition to be disconnected.
