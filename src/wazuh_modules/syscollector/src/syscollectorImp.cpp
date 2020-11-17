@@ -440,9 +440,9 @@ void Syscollector::scanNetwork()
         constexpr auto netProtocolTable { "network_protocol" };
         constexpr auto netAddressTable  { "network_address"  };
         const auto& networks { m_spInfo->networks() };
-        nlohmann::json ifaceTableData;
-        nlohmann::json protoTableData;
-        nlohmann::json addressTableDataList;
+        nlohmann::json ifaceTableDataList {};
+        nlohmann::json protoTableDataList {};
+        nlohmann::json addressTableDataList {};
 
         const auto& itIface { networks.find("iface") };
 
@@ -451,8 +451,8 @@ void Syscollector::scanNetwork()
             for (const auto& item : itIface.value())
             {
                 // Split the resulting networks data into the specific DB tables
-
                 // "network_iface" table data to update and notify
+                nlohmann::json ifaceTableData {};
                 ifaceTableData["name"]       = item.at("name");
                 ifaceTableData["adapter"]    = item.at("adapter");
                 ifaceTableData["type"]       = item.at("type");
@@ -465,8 +465,10 @@ void Syscollector::scanNetwork()
                 ifaceTableData["rx_errors"]  = item.at("rx_errors");
                 ifaceTableData["tx_dropped"] = item.at("tx_dropped");
                 ifaceTableData["rx_dropped"] = item.at("rx_dropped");
+                ifaceTableDataList.push_back(ifaceTableData);
 
                 // "network_protocol" table data to update and notify
+                nlohmann::json protoTableData {};
                 protoTableData["iface"]   = item.at("name");
                 protoTableData["type"]    = item.at("type");
                 protoTableData["gateway"] = item.at("gateway");
@@ -494,10 +496,11 @@ void Syscollector::scanNetwork()
                     addressTableData["proto"] = "IPv6";
                     addressTableDataList.push_back(addressTableData);
                 }
+                protoTableDataList.push_back(protoTableData);
             }
 
-            updateAndNotifyChanges(m_dbSync->handle(), netIfaceTable,    nlohmann::json{ifaceTableData}, m_reportFunction);
-            updateAndNotifyChanges(m_dbSync->handle(), netProtocolTable, nlohmann::json{protoTableData}, m_reportFunction);
+            updateAndNotifyChanges(m_dbSync->handle(), netIfaceTable,    ifaceTableDataList, m_reportFunction);
+            updateAndNotifyChanges(m_dbSync->handle(), netProtocolTable, protoTableDataList, m_reportFunction);
             updateAndNotifyChanges(m_dbSync->handle(), netAddressTable,  addressTableDataList, m_reportFunction);
         }
     }
