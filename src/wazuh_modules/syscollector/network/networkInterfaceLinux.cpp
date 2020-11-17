@@ -66,13 +66,8 @@ void LinuxNetworkImpl<AF_INET>::buildNetworkData(nlohmann::json& network)
             network["IPv4"]["broadcast"] = broadcast;
         }
 
-        const auto metrics { m_interfaceAddress->metrics() };
-        if (!metrics.empty())
-        {
-            network["IPv4"]["metric"] = metrics;
-        }
-
-        network["IPv4"]["dhcp"] = m_interfaceAddress->dhcp();
+        network["IPv4"]["metric"] = m_interfaceAddress->metrics();
+        network["IPv4"]["dhcp"]   = m_interfaceAddress->dhcp();
     }
     else
     {
@@ -97,13 +92,9 @@ void LinuxNetworkImpl<AF_INET6>::buildNetworkData(nlohmann::json& network)
         {
             network["IPv6"]["broadcast"] = broadcast;
         }
-        const auto metrics { m_interfaceAddress->metrics() };
-        if (!metrics.empty())
-        {
-            network["IPv6"]["metric"] = metrics;
-        }
 
-        network["IPv6"]["dhcp"] = m_interfaceAddress->dhcp();
+        network["IPv6"]["metric"] = m_interfaceAddress->metricsV6();
+        network["IPv6"]["dhcp"]   = m_interfaceAddress->dhcp();
     }
     else
     {
