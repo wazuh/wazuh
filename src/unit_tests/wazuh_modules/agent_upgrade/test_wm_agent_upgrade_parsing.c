@@ -50,6 +50,12 @@ static int teardown_json(void **state) {
     return 0;
 }
 
+static int teardown_string(void **state) {
+    char *string = *state;
+    os_free(string);
+    return 0;
+}
+
 static int teardown_parse_agents(void **state) {
     if (state[0]) {
         char *error = (char*)state[0];
@@ -284,6 +290,8 @@ void test_wm_agent_upgrade_parse_agent_response_ok_with_data(void **state)
 
     int ret = wm_agent_upgrade_parse_agent_response(response, &data);
 
+    *state = data;
+
     assert_int_equal(ret, 0);
     assert_string_equal(data, "1234567890");
 }
@@ -295,6 +303,8 @@ void test_wm_agent_upgrade_parse_agent_response_ok_without_data(void **state)
     char *data = NULL;
 
     int ret = wm_agent_upgrade_parse_agent_response(response, &data);
+
+    *state = data;
 
     assert_int_equal(ret, 0);
     assert_string_equal(data, "");
@@ -358,6 +368,120 @@ void test_wm_agent_upgrade_parse_agent_response_invalid_response(void **state)
     char *data = NULL;
 
     int ret = wm_agent_upgrade_parse_agent_response(NULL, &data);
+
+    assert_int_equal(ret, -1);
+    assert_null(data);
+}
+
+void test_wm_agent_upgrade_parse_agent_upgrade_command_response_ok_with_data(void **state)
+{
+    (void) state;
+    char *response = "{"
+                     "    \"error\":0,"
+                     "    \"message\":\"1234567890\""
+                     "}";
+    char *data = NULL;
+
+    int ret = wm_agent_upgrade_parse_agent_upgrade_command_response(response, &data);
+
+    *state = data;
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(data, "1234567890");
+}
+
+void test_wm_agent_upgrade_parse_agent_upgrade_command_response_ok_without_data(void **state)
+{
+    (void) state;
+    char *response = "{"
+                     "    \"error\":0,"
+                     "    \"message\":\"\""
+                     "}";
+    char *data = NULL;
+
+    int ret = wm_agent_upgrade_parse_agent_upgrade_command_response(response, &data);
+
+    *state = data;
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(data, "");
+}
+
+void test_wm_agent_upgrade_parse_agent_upgrade_command_response_ok_null_data(void **state)
+{
+    (void) state;
+    char *response = "{"
+                     "    \"error\":0,"
+                     "    \"message\":\"1234567890\""
+                     "}";
+
+    int ret = wm_agent_upgrade_parse_agent_upgrade_command_response(response, NULL);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_wm_agent_upgrade_parse_agent_upgrade_command_response_err_with_data(void **state)
+{
+    (void) state;
+    char *response = "{"
+                     "    \"error\":1,"
+                     "    \"message\":\"invalid request\""
+                     "}";
+    char *data = NULL;
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8116): Error response from agent: 'invalid request'");
+
+    int ret = wm_agent_upgrade_parse_agent_upgrade_command_response(response, &data);
+
+    assert_int_equal(ret, 1);
+    assert_null(data);
+}
+
+void test_wm_agent_upgrade_parse_agent_upgrade_command_response_err_without_data(void **state)
+{
+    (void) state;
+    char *response = "{"
+                     "    \"error\":1,"
+                     "    \"message\":\"\""
+                     "}";
+    char *data = NULL;
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8116): Error response from agent: ''");
+
+    int ret = wm_agent_upgrade_parse_agent_upgrade_command_response(response, &data);
+
+    assert_int_equal(ret, 1);
+    assert_null(data);
+}
+
+void test_wm_agent_upgrade_parse_agent_upgrade_command_response_unknown_response(void **state)
+{
+    (void) state;
+    char *response = "{"
+                     "    \"unknown\":1"
+                     "}";
+    char *data = NULL;
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8117): Unknown error from agent.");
+
+    int ret = wm_agent_upgrade_parse_agent_upgrade_command_response(response, &data);
+
+    assert_int_equal(ret, -1);
+    assert_null(data);
+}
+
+void test_wm_agent_upgrade_parse_agent_upgrade_command_response_invalid_response(void **state)
+{
+    (void) state;
+    char *data = NULL;
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8117): Unknown error from agent.");
+
+    int ret = wm_agent_upgrade_parse_agent_upgrade_command_response(NULL, &data);
 
     assert_int_equal(ret, -1);
     assert_null(data);
@@ -1282,13 +1406,21 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_task_module_request_without_status_and_error, teardown_json),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_task_module_request_xml_error, teardown_json),
         // wm_agent_upgrade_parse_agent_response
-        cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_ok_with_data),
-        cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_ok_without_data),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_agent_response_ok_with_data, teardown_string),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_agent_response_ok_without_data, teardown_string),
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_ok_null_data),
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_err_with_data),
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_err_without_data),
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_unknown_response),
         cmocka_unit_test(test_wm_agent_upgrade_parse_agent_response_invalid_response),
+        // wm_agent_upgrade_parse_agent_upgrade_command_response
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_agent_upgrade_command_response_ok_with_data, teardown_string),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_agent_upgrade_command_response_ok_without_data, teardown_string),
+        cmocka_unit_test(test_wm_agent_upgrade_parse_agent_upgrade_command_response_ok_null_data),
+        cmocka_unit_test(test_wm_agent_upgrade_parse_agent_upgrade_command_response_err_with_data),
+        cmocka_unit_test(test_wm_agent_upgrade_parse_agent_upgrade_command_response_err_without_data),
+        cmocka_unit_test(test_wm_agent_upgrade_parse_agent_upgrade_command_response_unknown_response),
+        cmocka_unit_test(test_wm_agent_upgrade_parse_agent_upgrade_command_response_invalid_response),
         // wm_agent_upgrade_parse_agents
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_agents_success, teardown_parse_agents),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_agents_type_error, teardown_parse_agents),

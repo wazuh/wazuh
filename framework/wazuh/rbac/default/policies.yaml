@@ -104,7 +104,7 @@ default_policies:
         effect: allow
 
   ciscat_read:
-    description: Allow read agent’s ciscat results information.
+    description: Allow read agent's ciscat results information.
     policies:
       ciscat:
         actions:
@@ -143,6 +143,28 @@ default_policies:
           - list:path:*
         effect: allow
 
+  rootcheck_read:
+    description: Allow read rootcheck information.
+    policies:
+      rootcheck:
+        actions:
+          - rootcheck:read
+        resources:
+          - agent:id:*
+        effect: allow
+
+  rootcheck_all:
+    description: Allow read, run and clear rootcheck information.
+    policies:
+      rootcheck:
+        actions:
+          - rootcheck:clear
+          - rootcheck:read
+          - rootcheck:run
+        resources:
+          - agent:id:*
+        effect: allow
+
   rules_read:
     description: Allow read all rule files in the system.
     policies:
@@ -154,7 +176,7 @@ default_policies:
         effect: allow
 
   sca_read:
-    description: Allow read agent’s sca information.
+    description: Allow read agent's sca information.
     policies:
       sca:
         actions:
@@ -268,4 +290,14 @@ default_policies:
           - cluster:read_file
         resources:
           - node:id:*&file:path:*
+        effect: allow
+
+  logtest_all:
+    description: Provide access to all logtest related functionalities.
+    policies:
+      logtest:
+        actions:
+          - logtest:run
+        resources:
+          - '*:*:*'
         effect: allow

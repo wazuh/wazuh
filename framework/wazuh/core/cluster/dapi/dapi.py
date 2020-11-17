@@ -109,9 +109,12 @@ class DistributedAPI:
             Dictionary with API response or WazuhException in case of error.
         """
         try:
-            self.logger.debug("Receiving parameters {}".format(self.f_kwargs))
-            is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
+            if 'password' in self.f_kwargs:
+                self.logger.debug("Receiving parameters {}".format({**self.f_kwargs, 'password': '****'}))
+            else:
+                self.logger.debug("Receiving parameters {}".format(self.f_kwargs))
 
+            is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
             # First case: execute the request locally.
             # If the distributed api is not enabled
             # If the cluster is disabled or the request type is local_any

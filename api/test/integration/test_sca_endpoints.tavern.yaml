@@ -274,7 +274,6 @@ stages:
               rationale: !anystr
               title: !anystr
               policy_id: !anystr
-              file: !anystr
               description: !anystr
               id: !anyint
               result: !anystr
@@ -302,6 +301,8 @@ stages:
           affected_items:
             - <<: *sca_check_result_001
             - <<: *sca_check_result_001
+            - <<: *sca_check_result_001
+            - <<: *sca_check_result_001
           failed_items: []
           total_failed_items: 0
 
@@ -322,6 +323,7 @@ stages:
         data:
           total_affected_items: !anyint
           affected_items:
+            - <<: *sca_check_result_001
             - <<: *sca_check_result_001
           failed_items: []
           total_failed_items: 0
@@ -944,7 +946,6 @@ stages:
               rationale: !anystr
               title: !anystr
               policy_id: !anystr
-              file: !anystr
               description: !anystr
               id: !anyint
               result: !anystr
@@ -972,6 +973,8 @@ stages:
           affected_items:
             - <<: *sca_check_result_002
             - <<: *sca_check_result_002
+            - <<: *sca_check_result_002
+            - <<: *sca_check_result_002
           failed_items: []
           total_failed_items: 0
 
@@ -992,6 +995,7 @@ stages:
         data:
           total_affected_items: !anyint
           affected_items:
+            - <<: *sca_check_result_002
             - <<: *sca_check_result_002
           failed_items: []
           total_failed_items: 0
@@ -1516,7 +1520,6 @@ stages:
               rationale: !anystr
               title: !anystr
               policy_id: !anystr
-              file: !anystr
               description: !anystr
               id: !anyint
               result: !anystr
@@ -1544,6 +1547,8 @@ stages:
           affected_items:
             - <<: *sca_check_result_003
             - <<: *sca_check_result_003
+            - <<: *sca_check_result_003
+            - <<: *sca_check_result_003
           failed_items: []
           total_failed_items: 0
 
@@ -1564,6 +1569,7 @@ stages:
         data:
           total_affected_items: !anyint
           affected_items:
+            - <<: *sca_check_result_003
             - <<: *sca_check_result_003
           failed_items: []
           total_failed_items: 0

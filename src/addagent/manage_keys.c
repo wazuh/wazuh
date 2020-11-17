@@ -16,6 +16,8 @@
   #include <wincrypt.h>
 #endif
 
+#define DEFAULT_ID   132512
+
 /* Prototypes */
 static char *trimwhitespace(char *str);
 
@@ -407,7 +409,7 @@ int k_bulkload(const char *cmdbulk)
 
         if (sock < 0) {
             /* Default ID */
-            i = MAX_AGENTS + 32512;
+            i = DEFAULT_ID;
             snprintf(id, 8, "%03d", i);
             while (sock < 0 && !IDExist(id, 0)) {
                 i--;

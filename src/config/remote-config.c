@@ -23,6 +23,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     unsigned int deny_size = 1;
     remoted *logr;
     int defined_queue_size = 0;
+    const int DEFAULT_RIDS_CLOSING_TIME = 300;
 
     /*** XML Definitions ***/
 
@@ -36,7 +37,8 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_remote_ipv6 = "ipv6";
     const char *xml_remote_connection = "connection";
     const char *xml_remote_lip = "local_ip";
-    const char * xml_queue_size = "queue_size";
+    const char *xml_queue_size = "queue_size";
+    const char *xml_rids_closing_time = "rids_closing_time";
 
     logr = (remoted *)d1;
 
@@ -108,6 +110,8 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logr->proto[pl + 1] = 0;
     logr->ipv6[pl + 1] = 0;
     logr->lip[pl + 1] = NULL;
+
+    logr->rids_closing_time = DEFAULT_RIDS_CLOSING_TIME;
 
     while (node[i]) {
         if (!node[i]->element) {
@@ -209,6 +213,32 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 return OS_INVALID;
             }
             defined_queue_size = 1;
+        } else if (strcmp(node[i]->element, xml_rids_closing_time) == 0) {
+            char *endptr;
+            logr->rids_closing_time = strtol(node[i]->content, &endptr, 0);
+
+            if (logr->rids_closing_time == 0 || logr->rids_closing_time == INT_MAX) {
+                merror("Invalid value for option '<%s>'", xml_rids_closing_time);
+                return OS_INVALID;
+            }
+
+            switch (*endptr) {
+            case 'd':
+                logr->rids_closing_time *= 86400;
+                break;
+            case 'h':
+                logr->rids_closing_time *= 3600;
+                break;
+            case 'm':
+                logr->rids_closing_time *= 60;
+                break;
+            case 's':
+            case '\0':
+                break;
+            default:
+                merror("Invalid value for option '<%s>'", xml_rids_closing_time);
+                return OS_INVALID;
+            }
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

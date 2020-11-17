@@ -42,7 +42,7 @@ static OSDecoderInfo *sysc_decoder = NULL;
 void SyscollectorInit(){
 
     os_calloc(1, sizeof(OSDecoderInfo), sysc_decoder);
-    sysc_decoder->id = getDecoderfromlist(SYSCOLLECTOR_MOD);
+    sysc_decoder->id = getDecoderfromlist(SYSCOLLECTOR_MOD, &os_analysisd_decoder_store);
     sysc_decoder->name = SYSCOLLECTOR_MOD;
     sysc_decoder->type = OSSEC_RL;
     sysc_decoder->fts = 0;

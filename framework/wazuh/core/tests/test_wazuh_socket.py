@@ -7,7 +7,8 @@ from unittest.mock import patch, MagicMock
 import pytest
 
 from wazuh.core.exception import WazuhException
-from wazuh.core.wazuh_socket import OssecSocket, OssecSocketJSON
+from wazuh.core.wazuh_socket import OssecSocket, OssecSocketJSON, SOCKET_COMMUNICATION_PROTOCOL_VERSION, \
+    create_wazuh_socket_message
 
 
 @patch('wazuh.core.wazuh_socket.OssecSocket._connect')
@@ -163,3 +164,19 @@ def test_OssecSocketJSON_receive_ko(mock_loads, mock_receive, mock_conn):
         queue.receive()
 
     mock_conn.assert_called_once_with('test_path')
+
+
+@pytest.mark.parametrize('origin, command, parameters', [
+    ('origin_sample', 'command_sample', {'sample': 'sample'}),
+    (None, 'command_sample', {'sample': 'sample'}),
+    ('origin_sample', None, {'sample': 'sample'}),
+    ('origin_sample', 'command_sample', None),
+    (None, None, None)
+])
+def test_create_wazuh_socket_message(origin, command, parameters):
+    """Test create_wazuh_socket_message function."""
+    response_message = create_wazuh_socket_message(origin, command, parameters)
+    assert response_message['version'] == SOCKET_COMMUNICATION_PROTOCOL_VERSION
+    assert response_message.get('origin') == origin
+    assert response_message.get('command') == command
+    assert response_message.get('parameters') == parameters
