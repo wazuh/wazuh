@@ -199,8 +199,8 @@ STATIC cJSON* wm_task_manager_dump(const wm_task_manager* task_config){
     cJSON *wm_info = cJSON_CreateObject();
 
     if (task_config->enabled) {
-        cJSON_AddStringToObject(wm_info, "enabled", "yes"); 
-    } else { 
+        cJSON_AddStringToObject(wm_info, "enabled", "yes");
+    } else {
         cJSON_AddStringToObject(wm_info, "enabled", "no");
     }
     cJSON_AddItemToObject(root, "task-manager", wm_info);
