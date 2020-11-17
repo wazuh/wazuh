@@ -50,7 +50,8 @@ void monitor_agents_disconnection(){
     int *agents_array;
     char str_agent_id[12];
 
-    agents_array = wdb_disconnect_agents(time(0) - mond.global.agents_disconnection_time, &sock);
+    agents_array = wdb_disconnect_agents(time(0) - mond.global.agents_disconnection_time,
+                                         !mond.monitor_agents?"syncreq":"synced", &sock);
     if (mond.monitor_agents != 0 && agents_array) {
         for (int i = 0; agents_array[i] != -1; i++) {
             snprintf(str_agent_id, 12, "%d", agents_array[i]);
