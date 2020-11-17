@@ -542,7 +542,7 @@ stages:
           affected_items: []
           failed_items:
             - error:
-                code: 5008
+                code: 5004
               id:
                 - 99
           total_affected_items: 0
