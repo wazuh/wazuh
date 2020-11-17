@@ -45,7 +45,7 @@ static const char *global_db_commands[] = {
     [WDB_DELETE_GROUP_BELONG] = "global delete-group-belong %s",
     [WDB_RESET_AGENTS_CONNECTION] = "global reset-agents-connection %s",
     [WDB_GET_AGENTS_BY_CONNECTION_STATUS] = "global get-agents-by-connection-status %d %s",
-    [WDB_DISCONNECT_AGENTS] = "global disconnect-agents %d %d"
+    [WDB_DISCONNECT_AGENTS] = "global disconnect-agents %d %d %s"
 };
 
 int wdb_insert_agent(int id,
@@ -1152,7 +1152,7 @@ int* wdb_get_agents_by_connection_status (const char* connection_status, int *so
     return array;
 }
 
-int* wdb_disconnect_agents(int keepalive, int *sock) {
+int* wdb_disconnect_agents(int keepalive, const char *sync_status, int *sock) {
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
     int last_id = 0;
@@ -1163,7 +1163,7 @@ int* wdb_disconnect_agents(int keepalive, int *sock) {
 
     while (status == WDBC_DUE) {
         // Query WazuhDB
-        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DISCONNECT_AGENTS], last_id, keepalive);
+        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DISCONNECT_AGENTS], last_id, keepalive, sync_status);
         if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
             // Parse result
             char* payload = NULL;
