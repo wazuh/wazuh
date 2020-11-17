@@ -1152,7 +1152,7 @@ int* wdb_get_agents_by_connection_status (const char* connection_status, int *so
     return array;
 }
 
-wdbc_result wdb_parse_chunk_to_int(char* input, int* output, const char* item, int* last_item, int* last_size) {
+wdbc_result wdb_parse_chunk_to_int(char* input, int** output, const char* item, int* last_item, int* last_size) {
     int len = last_size ? *last_size : 0;
     int _last_item = 0;
     char* payload = NULL;
@@ -1162,13 +1162,13 @@ wdbc_result wdb_parse_chunk_to_int(char* input, int* output, const char* item, i
         cJSON* response = cJSON_Parse(payload);
         if (response) {
             //Realloc new size
-            os_realloc(output, sizeof(int)*(len+cJSON_GetArraySize(response)+1), output);
+            os_realloc(*output, sizeof(int)*(len+cJSON_GetArraySize(response)+1), *output);
             //Append items to output array
             cJSON* agent = NULL;
             cJSON_ArrayForEach(agent, response) {
                 cJSON* json_item = cJSON_GetObjectItem(agent, item);
                 if (cJSON_IsNumber(json_item)) {
-                    output[len] = json_item->valueint;
+                    (*output)[len] = json_item->valueint;
                     _last_item = json_item->valueint;
                     len++;
                 }
@@ -1182,11 +1182,11 @@ wdbc_result wdb_parse_chunk_to_int(char* input, int* output, const char* item, i
 
     // If status is WDBC_OK terminate the output array
     if (status == WDBC_OK) {
-        output[len] = -1;
+        (*output)[len] = -1;
     }
     // If status is any error, freed the output array
     else if (status != WDBC_DUE) {
-        os_free(output);
+        os_free(*output);
     }
 
     if (last_size) *last_size = len;
@@ -1208,7 +1208,7 @@ int* wdb_disconnect_agents(int keepalive, const char *sync_status, int *sock) {
         // Query WazuhDB
         snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DISCONNECT_AGENTS], last_id, keepalive, sync_status);
         if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
-            status = wdb_parse_chunk_to_int(wdboutput, array, "id", &last_id, &len);
+            status = wdb_parse_chunk_to_int(wdboutput, &array, "id", &last_id, &len);
         }
         else {
             status = WDBC_ERROR;
