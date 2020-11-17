@@ -54,18 +54,8 @@ void LinuxNetworkImpl<AF_INET>::buildNetworkData(nlohmann::json& network)
     if (!address.empty())
     {
         network["IPv4"]["address"] = address;
-        const auto netmask { m_interfaceAddress->netmask() };
-        if (!netmask.empty())
-        {
-            network["IPv4"]["netmask"] = netmask;
-        }
-
-        const auto broadcast { m_interfaceAddress->broadcast() };
-        if (!broadcast.empty())
-        {
-            network["IPv4"]["broadcast"] = broadcast;
-        }
-
+        network["IPv4"]["netmask"] = m_interfaceAddress->netmask();
+        network["IPv4"]["broadcast"] = m_interfaceAddress->broadcast();
         network["IPv4"]["metric"] = m_interfaceAddress->metrics();
         network["IPv4"]["dhcp"]   = m_interfaceAddress->dhcp();
     }
@@ -81,18 +71,8 @@ void LinuxNetworkImpl<AF_INET6>::buildNetworkData(nlohmann::json& network)
     if (!address.empty())
     {
         network["IPv6"]["address"] = address;
-        const auto netmask { m_interfaceAddress->netmaskV6() };
-        if (!netmask.empty())
-        {
-            network["IPv6"]["netmask"] = netmask;
-        }
-
-        const auto broadcast { m_interfaceAddress->broadcastV6() };
-        if (!broadcast.empty())
-        {
-            network["IPv6"]["broadcast"] = broadcast;
-        }
-
+        network["IPv6"]["netmask"] = m_interfaceAddress->netmaskV6();
+        network["IPv6"]["broadcast"] = m_interfaceAddress->broadcastV6();
         network["IPv6"]["metric"] = m_interfaceAddress->metricsV6();
         network["IPv6"]["dhcp"]   = m_interfaceAddress->dhcp();
     }

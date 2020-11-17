@@ -60,30 +60,10 @@ void WindowsNetworkImpl<Utils::NetworkWindowsHelper::IPV4>::buildNetworkData(nlo
     if (!address.empty())
     {
         networkV4["IPv4"]["address"] = address;
-
-        const auto netmask { m_interfaceAddress->netmask() };
-        if (!netmask.empty())
-        {
-            networkV4["IPv4"]["netmask"] = netmask;
-        }
-
-        const auto broadcast { m_interfaceAddress->broadcast() };
-        if (!broadcast.empty())
-        {
-            networkV4["IPv4"]["broadcast"] = broadcast;
-        }
-
-        const auto metrics { m_interfaceAddress->metrics() };
-        if (!metrics.empty())
-        {
-            networkV4["IPv4"]["metric"] = metrics;
-        }
-
-        const auto dhcp { m_interfaceAddress->dhcp() };
-        if (!dhcp.empty())
-        {
-            networkV4["IPv4"]["dhcp"] = dhcp;
-        }
+        networkV4["IPv4"]["netmask"] =  m_interfaceAddress->netmask();
+        networkV4["IPv4"]["broadcast"] = m_interfaceAddress->broadcast();
+        networkV4["IPv4"]["metric"] = m_interfaceAddress->metrics();
+        networkV4["IPv4"]["dhcp"] = m_interfaceAddress->dhcp();
     }
     else
     {
@@ -98,29 +78,11 @@ void WindowsNetworkImpl<Utils::NetworkWindowsHelper::IPV6>::buildNetworkData(nlo
     if (!address.empty())
     {
         networkV6["IPv6"]["address"] = address;
-        const auto netmask { m_interfaceAddress->netmaskV6() };
-        if (!netmask.empty())
-        {
-            networkV6["IPv6"]["netmask"] = netmask;
-        }
+        networkV6["IPv6"]["netmask"] = m_interfaceAddress->netmaskV6();
+        networkV6["IPv6"]["broadcast"] = m_interfaceAddress->broadcastV6();
+        networkV6["IPv6"]["metric"] = m_interfaceAddress->metricsV6();
+        networkV6["IPv6"]["dhcp"] = m_interfaceAddress->dhcp();
 
-        const auto broadcast { m_interfaceAddress->broadcastV6() };
-        if (!broadcast.empty())
-        {
-            networkV6["IPv6"]["broadcast"] = broadcast;
-        }
-
-        const auto metrics { m_interfaceAddress->metricsV6() };
-        if (!metrics.empty())
-        {
-            networkV6["IPv6"]["metric"] = metrics;
-        }
-
-        const auto dhcp { m_interfaceAddress->dhcp() };
-        if (!dhcp.empty())
-        {
-            networkV6["IPv6"]["dhcp"] = dhcp;
-        }
     }
     else
     {
