@@ -1805,12 +1805,13 @@ void test_wdb_update_agent_connection_status_error_json(void **state)
     int ret = 0;
     int id = 1;
     const char *connection_status = "active";
+    const char *sync_status = "synced";
 
     will_return(__wrap_cJSON_CreateObject, NULL);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Error creating data JSON for Wazuh DB.");
 
-    ret = wdb_update_agent_connection_status(id, connection_status, NULL);
+    ret = wdb_update_agent_connection_status(id, connection_status, sync_status, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -1820,9 +1821,10 @@ void test_wdb_update_agent_connection_status_error_socket(void **state)
     int ret = 0;
     int id = 1;
     const char *connection_status = "active";
+    const char *sync_status = "synced";
 
-    const char *json_str = strdup("{\"id\":1,\"connection_status\":\"active\"}");
-    const char *query_str = "global update-connection-status {\"id\":1,\"connection_status\":\"active\"}";
+    const char *json_str = strdup("{\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"synced\"}");
+    const char *query_str = "global update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"synced\"}";
     const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
@@ -1834,6 +1836,8 @@ void test_wdb_update_agent_connection_status_error_socket(void **state)
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "connection_status");
     expect_string(__wrap_cJSON_AddStringToObject, string, "active");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "synced");
 
     // Printing JSON
     will_return(__wrap_cJSON_PrintUnformatted, json_str);
@@ -1848,9 +1852,9 @@ void test_wdb_update_agent_connection_status_error_socket(void **state)
 
     // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-connection-status {\"id\":1,\"connection_status\":\"active\"}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"synced\"}");
 
-    ret = wdb_update_agent_connection_status(id, connection_status, NULL);
+    ret = wdb_update_agent_connection_status(id, connection_status, sync_status, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -1860,9 +1864,10 @@ void test_wdb_update_agent_connection_status_error_sql_execution(void **state)
     int ret = 0;
     int id = 1;
     const char *connection_status = "active";
+    const char *sync_status = "synced";
 
-    const char *json_str = strdup("{\"id\":1,\"connection_status\":\"active\"}");
-    const char *query_str = "global update-connection-status {\"id\":1,\"connection_status\":\"active\"}";
+    const char *json_str = strdup("{\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"synced\"}");
+    const char *query_str = "global update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"synced\"}";
     const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
@@ -1874,6 +1879,8 @@ void test_wdb_update_agent_connection_status_error_sql_execution(void **state)
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "connection_status");
     expect_string(__wrap_cJSON_AddStringToObject, string, "active");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "synced");
 
     // Printing JSON
     will_return(__wrap_cJSON_PrintUnformatted, json_str);
@@ -1888,9 +1895,9 @@ void test_wdb_update_agent_connection_status_error_sql_execution(void **state)
 
     // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-connection-status {\"id\":1,\"connection_status\":\"active\"}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"synced\"}");
 
-    ret = wdb_update_agent_connection_status(id, connection_status, NULL);
+    ret = wdb_update_agent_connection_status(id, connection_status, sync_status, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -1900,9 +1907,10 @@ void test_wdb_update_agent_connection_status_error_result(void **state)
     int ret = 0;
     int id = 1;
     const char *connection_status = "active";
+    const char *sync_status = "synced";
 
-    const char *json_str = strdup("{\"id\":1,\"connection_status\":\"active\"}");
-    const char *query_str = "global update-connection-status {\"id\":1,\"connection_status\":\"active\"}";
+    const char *json_str = strdup("{\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"synced\"}");
+    const char *query_str = "global update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"synced\"}";
     const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
@@ -1914,6 +1922,8 @@ void test_wdb_update_agent_connection_status_error_result(void **state)
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "connection_status");
     expect_string(__wrap_cJSON_AddStringToObject, string, "active");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "synced");
 
     // Printing JSON
     will_return(__wrap_cJSON_PrintUnformatted, json_str);
@@ -1931,7 +1941,7 @@ void test_wdb_update_agent_connection_status_error_result(void **state)
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
 
-    ret = wdb_update_agent_connection_status(id, connection_status, NULL);
+    ret = wdb_update_agent_connection_status(id, connection_status, sync_status, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -1941,9 +1951,10 @@ void test_wdb_update_agent_connection_status_success(void **state)
     int ret = 0;
     int id = 1;
     const char *connection_status = "active";
+    const char *sync_status = "synced";
 
-    const char *json_str = strdup("{\"id\":1,\"connection_status\":\"active\"}");
-    const char *query_str = "global update-connection-status {\"id\":1,\"connection_status\":\"active\"}";
+    const char *json_str = strdup("{\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"synced\"}");
+    const char *query_str = "global update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"synced\"}";
     const char *response = "ok";
 
     will_return(__wrap_cJSON_CreateObject, 1);
@@ -1955,6 +1966,8 @@ void test_wdb_update_agent_connection_status_success(void **state)
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "connection_status");
     expect_string(__wrap_cJSON_AddStringToObject, string, "active");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "synced");
 
     // Printing JSON
     will_return(__wrap_cJSON_PrintUnformatted, json_str);
@@ -1971,7 +1984,7 @@ void test_wdb_update_agent_connection_status_success(void **state)
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
-    ret = wdb_update_agent_connection_status(id, connection_status, NULL);
+    ret = wdb_update_agent_connection_status(id, connection_status, sync_status, NULL);
 
     assert_int_equal(OS_SUCCESS, ret);
 }
@@ -4364,7 +4377,8 @@ void test_get_agent_date_added_success(void **state) {
 void test_wdb_reset_agents_connection_error_socket(void **state)
 {
     int ret = 0;
-    const char *query_str = "global reset-agents-connection";
+    const char *sync_status = "synced";
+    const char *query_str = "global reset-agents-connection synced";
     const char *response = "err";
 
     // Calling Wazuh DB
@@ -4376,9 +4390,9 @@ void test_wdb_reset_agents_connection_error_socket(void **state)
 
     // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global reset-agents-connection");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global reset-agents-connection synced");
 
-    ret = wdb_reset_agents_connection(NULL);
+    ret = wdb_reset_agents_connection(sync_status, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -4386,7 +4400,8 @@ void test_wdb_reset_agents_connection_error_socket(void **state)
 void test_wdb_reset_agents_connection_error_sql_execution(void **state)
 {
     int ret = 0;
-    const char *query_str = "global reset-agents-connection";
+    const char *sync_status = "synced";
+    const char *query_str = "global reset-agents-connection synced";
     const char *response = "err";
 
     // Calling Wazuh DB
@@ -4398,9 +4413,9 @@ void test_wdb_reset_agents_connection_error_sql_execution(void **state)
 
     // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global reset-agents-connection");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global reset-agents-connection synced");
 
-    ret = wdb_reset_agents_connection(NULL);
+    ret = wdb_reset_agents_connection(sync_status, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -4408,7 +4423,8 @@ void test_wdb_reset_agents_connection_error_sql_execution(void **state)
 void test_wdb_reset_agents_connection_error_result(void **state)
 {
     int ret = 0;
-    const char *query_str = "global reset-agents-connection";
+    const char *sync_status = "synced";
+    const char *query_str = "global reset-agents-connection synced";
     const char *response = "err";
 
     // Calling Wazuh DB
@@ -4423,7 +4439,7 @@ void test_wdb_reset_agents_connection_error_result(void **state)
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
 
-    ret = wdb_reset_agents_connection(NULL);
+    ret = wdb_reset_agents_connection(sync_status, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -4431,7 +4447,8 @@ void test_wdb_reset_agents_connection_error_result(void **state)
 void test_wdb_reset_agents_connection_success(void **state)
 {
     int ret = 0;
-    const char *query_str = "global reset-agents-connection";
+    const char *sync_status = "synced";
+    const char *query_str = "global reset-agents-connection synced";
     const char *response = "ok";
 
     // Calling Wazuh DB
@@ -4445,7 +4462,7 @@ void test_wdb_reset_agents_connection_success(void **state)
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
-    ret = wdb_reset_agents_connection(NULL);
+    ret = wdb_reset_agents_connection(sync_status, NULL);
 
     assert_int_equal(OS_SUCCESS, ret);
 }
@@ -4602,7 +4619,7 @@ void test_wdb_disconnect_agents_success(void **state) {
 
     // Setting the payload
     set_payload = 1;
-    strncpy(test_payload, "ok 1,2,3", 8);
+    strncpy(test_payload, "ok 1,2,3", 9);
 
     // Calling Wazuh DB
     expect_any(__wrap_wdbc_query_ex, *sock);
