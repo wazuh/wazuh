@@ -1657,7 +1657,7 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
  */
 cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id);
 
-/**
+/**JJP: Change Doxygen
  * @brief Gets every agent ID.
  *        Response is prepared in one chunk,
  *        if the size of the chunk exceeds WDB_MAX_RESPONSE_SIZE parsing stops and reports the amount of agents obtained.
@@ -1668,7 +1668,7 @@ cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id);
  * @param [out] output A buffer where the response is written. Must be de-allocated by the caller.
  * @return wdbc_result to represent if all agents has being obtained or any error occurred.
  */
-wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **output);
+cJSON* wdb_global_get_all_agents(wdb_t *wdb, int last_agent_id, wdbc_result* status);
 
 /**
  * @brief Function to reset connection_status column of every agent (excluding the manager).

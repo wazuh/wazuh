@@ -552,34 +552,11 @@ int* wdb_get_all_agents(bool include_manager, int *sock) {
         // Query WazuhDB
         snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_ALL_AGENTS], last_id);
         if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
-            // Parse result
-            char* payload = NULL;
-            status = wdbc_parse_result(wdboutput, &payload);
-            if (status == WDBC_OK || status == WDBC_DUE) {
-                const char delim = ',';
-                const char sdelim[] = { delim, '\0' };
-                //Realloc new size
-                int new_len = os_strcnt(payload, delim)+1;
-                os_realloc(array, sizeof(int)*(len+new_len+1), array);
-                //Append IDs to array
-                char* agent_id = NULL;
-                char *savedptr = NULL;
-                for (agent_id = strtok_r(payload, sdelim, &savedptr); agent_id; agent_id = strtok_r(NULL, sdelim, &savedptr)) {
-                    array[len] = atoi(agent_id);
-                    last_id = array[len];
-                    len++;
-                }
-            }
+            status = wdb_parse_chunk_to_int(wdboutput, &array, "id", &last_id, &len);
         }
         else {
             status = WDBC_ERROR;
         }
-    }
-    if (status == WDBC_OK) {
-        array[len] = -1;
-    }
-    else {
-        os_free(array);
     }
 
     if (!sock) {
