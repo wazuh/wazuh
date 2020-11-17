@@ -59,7 +59,7 @@ OneTimeSync::OneTimeSync(const nlohmann::json& config,
         };
     }
     const auto rsyncRegConfig{ config.at("rsync_register_config") };
-    const std::unique_ptr<cJSON, SmartDeleterJson> jsRsyncRegConfig{ cJSON_Parse(rsyncRegConfig.at(0).dump().c_str()) };
+    const std::unique_ptr<cJSON, SmartDeleterJson> jsRsyncRegConfig{ cJSON_Parse(rsyncRegConfig.dump().c_str()) };
 
     sync_callback_data_t callback{ rsyncCallback, this };
     if (rsync_register_sync_id(m_rsyncHandle, "OneTimeSync", m_dbSyncHandle, jsRsyncRegConfig.get(), callback))
@@ -78,8 +78,8 @@ OneTimeSync::~OneTimeSync()
 
 void OneTimeSync::syncData()
 {
-    const auto it{ m_inputData.at(0).find("dbsync") };
-    if (it != m_inputData.at(0).end())
+    const auto it{ m_inputData.find("dbsync") };
+    if (it != m_inputData.end())
     {
         const std::unique_ptr<cJSON, SmartDeleterJson> jsSync{ cJSON_Parse(it->dump().c_str()) };
         callback_data_t callback { syncCallback, nullptr };
@@ -96,8 +96,8 @@ void OneTimeSync::syncData()
 
 void OneTimeSync::pushData()
 {
-    const auto it{ m_inputData.at(0).find("rsync_push") };
-    if (it != m_inputData.at(0).end())
+    const auto it{ m_inputData.find("rsync_push") };
+    if (it != m_inputData.end())
     {
         for (const auto& push : *it)
         {
@@ -117,8 +117,8 @@ void OneTimeSync::pushData()
 
 void OneTimeSync::startSync()
 {
-    const auto it{ m_inputData.at(0).find("rsync_start_sync") };
-    if (it != m_inputData.at(0).end())
+    const auto it{ m_inputData.find("rsync_start_sync") };
+    if (it != m_inputData.end())
     {
         sync_callback_data_t callback{ rsyncCallback, this };
         const std::unique_ptr<cJSON, SmartDeleterJson> jsSync{ cJSON_Parse(it->dump().c_str()) };

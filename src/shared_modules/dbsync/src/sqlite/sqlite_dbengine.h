@@ -154,8 +154,7 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
                                                 const nlohmann::json& data = {});
 
         std::string buildDeleteBulkDataSqlQuery(const std::string& table, 
-                                                const std::vector<std::string>& primaryKeyList,
-                                                const nlohmann::json& jsData = {});
+                                                const std::vector<std::string>& primaryKeyList);
 
         std::string buildSelectQuery(const std::string& table,
                                      const nlohmann::json& jsQuery);

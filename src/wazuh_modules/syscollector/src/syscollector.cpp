@@ -18,15 +18,15 @@
 extern "C" {
 #endif
 void syscollector_start(const unsigned int inverval,
-                                 const bool scanOnStart,
-                                 const bool hardware,
-                                 const bool os,
-                                 const bool network,
-                                 const bool packages,
-                                 const bool ports,
-                                 const bool portsAll,
-                                 const bool processes,
-                                 const bool hotfixes)
+                        const bool scanOnStart,
+                        const bool hardware,
+                        const bool os,
+                        const bool network,
+                        const bool packages,
+                        const bool ports,
+                        const bool portsAll,
+                        const bool processes,
+                        const bool hotfixes)
 {
     Syscollector::instance().init(std::make_shared<SysInfo>(),
                                   inverval,

@@ -199,10 +199,10 @@ static nlohmann::json getDpkgInfo(const std::string& fileName)
                 }
             }
             while(!line.empty());//end of package item info
-            const auto packageInfo{ parsePackage(data) };
-            if (!packageInfo[0].empty())
+            const auto& packageInfo{ parsePackage(data) };
+            if (!packageInfo.empty())
             {
-                ret.push_back(packageInfo[0]);
+                ret.push_back(packageInfo);
             }
         }
     }
@@ -285,10 +285,10 @@ static nlohmann::json getRpmInfo()
         auto pos{rawData.rfind("Name")};
         while(pos != std::string::npos)
         {
-            const auto package{parseRpm(rawData.substr(pos))};
-            if (!package[0].empty())
+            const auto& package{parseRpm(rawData.substr(pos))};
+            if (!package.empty())
             {
-                ret.push_back(package[0]);
+                ret.push_back(package);
             }
             rawData = rawData.substr(0, pos);
             pos = rawData.rfind("Name");
@@ -349,13 +349,13 @@ nlohmann::json SysInfo::getPackages() const
     nlohmann::json packages;
     if (Utils::existsDir(DPKG_PATH))
     {
-        packages.push_back(getDpkgInfo(DPKG_STATUS_PATH));
+        packages = getDpkgInfo(DPKG_STATUS_PATH);
     }
     else
     {
-        packages.push_back(getRpmInfo());
+        packages = getRpmInfo();
     }
-    return packages[0];
+    return packages;
 }
 
 static bool getOsInfoFromFiles(nlohmann::json& info)

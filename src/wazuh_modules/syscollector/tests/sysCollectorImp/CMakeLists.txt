@@ -12,7 +12,7 @@ file(GLOB SYSCOLLECTOR_IMP_UNIT_TEST_SRC
     "*.cpp")
 
 file(GLOB SYSCOLLECTOR_IMP_SRC
-    "${CMAKE_SOURCE_DIR}/syscollectorImp.cpp")
+    "${CMAKE_SOURCE_DIR}/src/syscollectorImp.cpp")
 
 add_executable(syscollectorimp_unit_test 
     ${SYSCOLLECTOR_IMP_UNIT_TEST_SRC}

@@ -36,11 +36,11 @@ int main(int argc, const char* argv[])
         // dbsync configuration data 
         std::ifstream configFile{ cmdLineArgs.configFile() };
         const nlohmann::json jsonConfigFile { nlohmann::json::parse(configFile) };
-        const std::string dbName{ jsonConfigFile.at(0).at("db_name").get_ref<const std::string&>() };
-        const std::string dbType{ jsonConfigFile.at(0).at("db_type").get_ref<const std::string&>() };
-        const std::string hostType{ jsonConfigFile.at(0).at("host_type").get_ref<const std::string&>() };
-        const std::string persistance{ jsonConfigFile.at(0).at("persistance").get_ref<const std::string&>() };
-        const std::string sqlStmt{ jsonConfigFile.at(0).at("sql_statement").get_ref<const std::string&>() };
+        const std::string dbName{ jsonConfigFile.at("db_name").get_ref<const std::string&>() };
+        const std::string dbType{ jsonConfigFile.at("db_type").get_ref<const std::string&>() };
+        const std::string hostType{ jsonConfigFile.at("host_type").get_ref<const std::string&>() };
+        const std::string persistance{ jsonConfigFile.at("persistance").get_ref<const std::string&>() };
+        const std::string sqlStmt{ jsonConfigFile.at("sql_statement").get_ref<const std::string&>() };
 
         dbsync_initialize(loggerFunction);
 
@@ -66,8 +66,8 @@ int main(int argc, const char* argv[])
                 std::ifstream actionsIdxFile{ inputFile };
                 std::cout << "Processing file: " << inputFile << std::endl;
                 const nlohmann::json jsonAction { nlohmann::json::parse(actionsIdxFile) };
-                auto action { FactoryAction::create(jsonAction[0]["action"].get<std::string>()) };
-                action->execute(testContext, jsonAction[0]);
+                auto action { FactoryAction::create(jsonAction["action"].get<std::string>()) };
+                action->execute(testContext, jsonAction);
             }
             dbsync_teardown();
             std::cout << "Resulting files are located in the " << cmdLineArgs.outputFolder() << " folder" << std::endl;

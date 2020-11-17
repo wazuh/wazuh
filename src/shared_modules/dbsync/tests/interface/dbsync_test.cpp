@@ -1282,7 +1282,7 @@ TEST_F(DBSyncTest, deleteSingleDataByCompoundPK)
 
     EXPECT_EQ(0, dbsync_sync_row(handle, jsInitialData.get(), callbackData));  // Expect an insert event
     EXPECT_EQ(0, dbsync_delete_rows(handle, jsSingleDeletion.get()));
-    EXPECT_EQ(0, dbsync_delete_rows(handle, jsMissingPKPID.get()));
+    EXPECT_NE(0, dbsync_delete_rows(handle, jsMissingPKPID.get()));
 }
 
 TEST_F(DBSyncTest, deleteRowsByFilter)

@@ -62,8 +62,8 @@ int main(int argc, const char* argv[])
             }
             const auto jsonConfigFile { nlohmann::json::parse(configFile) };
             const auto jsonInputFile { nlohmann::json::parse(inputData) };
-            OneTimeSync otSync(jsonConfigFile[0],
-                               jsonInputFile[0],
+            OneTimeSync otSync(jsonConfigFile,
+                               jsonInputFile,
                                args.outputFolder());
             otSync.syncData();
             otSync.pushData();

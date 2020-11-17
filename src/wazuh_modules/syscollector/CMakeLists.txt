@@ -15,7 +15,7 @@ endif(COVERITY)
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14")
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+set(CMAKE_CXX_FLAGS_RELEASE "-g")
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -44,6 +44,7 @@ link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
 link_directories(${SRC_FOLDER}/shared_modules/rsync/build/lib)
 link_directories(${SRC_FOLDER}/data_provider/build/lib)
 
+link_directories(${SRC_FOLDER}/external/openssl/)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DWIN32=1
@@ -72,7 +73,11 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         LINK_FLAGS "-static-libgcc -static-libstdc++")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-target_link_libraries(syscollector dbsync sysinfo cjson)
+target_link_libraries(syscollector crypto dbsync sysinfo cjson)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  target_link_libraries(syscollector crypto ws2_32 ssl crypt32 sqlite3 cjson gcov proc)
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   target_link_libraries(syscollector gcov)
