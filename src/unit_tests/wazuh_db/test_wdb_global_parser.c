@@ -2076,16 +2076,20 @@ void test_wdb_parse_global_get_all_agents_success(void **state)
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     char query[OS_BUFFER_SIZE] = "global get-all-agents last_id 1";
+    cJSON* root = cJSON_CreateArray();
+    cJSON* json_agent = cJSON_CreateObject();
+    cJSON_AddItemToArray(root, json_agent = cJSON_CreateObject());
+    cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(10));
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-all-agents last_id 1");
-    expect_value(__wrap_wdb_global_get_all_agents, *last_agent_id, 1);
-    will_return(__wrap_wdb_global_get_all_agents, "1,2,3,4,5");
+    expect_value(__wrap_wdb_global_get_all_agents, last_agent_id, 1);
     will_return(__wrap_wdb_global_get_all_agents, WDBC_OK);
+    will_return(__wrap_wdb_global_get_all_agents, root);
 
     ret = wdb_parse(query, data->output);
 
-    assert_string_equal(data->output, "ok 1,2,3,4,5");
+    assert_string_equal(data->output, "ok [{\"id\":10}]");
     assert_int_equal(ret, OS_SUCCESS);
 }
 
@@ -2242,17 +2246,21 @@ void test_wdb_parse_global_get_agents_by_connection_status_query_success(void **
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     char query[OS_BUFFER_SIZE] = "global get-agents-by-connection-status 0 active";
+    cJSON* root = cJSON_CreateArray();
+    cJSON* json_agent = cJSON_CreateObject();
+    cJSON_AddItemToArray(root, json_agent = cJSON_CreateObject());
+    cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(10));
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-connection-status 0 active");
     expect_value(__wrap_wdb_global_get_agents_by_connection_status, last_agent_id, 0);
     expect_string(__wrap_wdb_global_get_agents_by_connection_status, connection_status, "active");
-    will_return(__wrap_wdb_global_get_agents_by_connection_status, "MESSAGE");
     will_return(__wrap_wdb_global_get_agents_by_connection_status, WDBC_OK);
+    will_return(__wrap_wdb_global_get_agents_by_connection_status, root);
 
     ret = wdb_parse(query, data->output);
 
-    assert_string_equal(data->output, "ok MESSAGE");
+    assert_string_equal(data->output, "ok [{\"id\":10}]");
     assert_int_equal(ret, OS_SUCCESS);
 }
 
