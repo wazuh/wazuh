@@ -649,10 +649,11 @@ int* wdb_get_agents_by_connection_status(const char* connection_status, int *soc
  * The array is heap-allocated memory that must be freed by the caller.
  *
  * @param [in] keepalive The keepalive threshold before which an agent should be set as disconnected.
+ * @param [in] sync_status String with the cluster synchronization status to be set.
  * @param [in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Pointer to the array, on success. NULL if no agents were set as disconnected or an error ocurred.
  */
-int* wdb_disconnect_agents(int keepalive, int *sock);
+int* wdb_disconnect_agents(int keepalive, const char *sync_status, int *sock);
 
 /**
  * @brief Create database for agent from profile.
@@ -1681,7 +1682,7 @@ int wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status);
  */
 wdbc_result wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, char **output);
 
-/*
+/**
  * @brief Gets all the agents' IDs (excluding the manager) that satisfy the keepalive condition to be disconnected.
  *        Response is prepared in one chunk,
  *        if the size of the chunk exceeds WDB_MAX_RESPONSE_SIZE parsing stops and reports the amount of agents obtained.
@@ -1689,10 +1690,11 @@ wdbc_result wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_age
  *
  * @param [in] wdb The Global struct database.
  * @param [in] last_agent_id ID where to start querying.
+ * @param [in] sync_status The value of sync_status.
  * @param [out] output A buffer where the response is written. Must be de-allocated by the caller.
  * @return wdbc_result to represent if all agents has being obtained.
  */
-wdbc_result wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int keep_alive, char **output);
+wdbc_result wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int keep_alive, const char *sync_status, char **output);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }

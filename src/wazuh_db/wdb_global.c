@@ -1058,7 +1058,7 @@ cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id) {
     return result;
 }
 
-wdbc_result wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int keep_alive, char **output) {
+wdbc_result wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int keep_alive, const char *sync_status, char **output) {
     sqlite3_stmt* agent_stmt = NULL;
     unsigned response_size = 0;
     wdbc_result status = WDBC_UNKNOWN;
@@ -1115,9 +1115,8 @@ wdbc_result wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, i
                     //Save size and last ID
                     response_size += id_len+1;
                     last_agent_id = json_id->valueint;
-                    //Set connection status as disconnected. The disconnections only happen in the master node
-                    //so, is not necessary to set the agent as syncreq
-                    if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb, last_agent_id, "disconnected", "synced")) {
+                    //Set connection status as disconnected.
+                    if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb, last_agent_id, "disconnected", sync_status)) {
                         merror("Cannot set connection_status for agent %d", last_agent_id);
                         snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s %d", "Cannot set connection_status for agent", last_agent_id);
                         status = WDBC_ERROR;
