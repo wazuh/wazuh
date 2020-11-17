@@ -296,6 +296,15 @@ sqlite3* wdb_open_agent(int id_agent, const char *name);
 // Open database for agent and store in DB pool. It returns a locked database or NULL
 wdb_t * wdb_open_agent2(int agent_id);
 
+/**
+ * @brief Open task database and store in DB poll.
+ *
+ * It is opened every time a query to Task database is done.
+ *
+ * @return wdb_t* Database Structure that store task database or NULL on failure.
+ */
+wdb_t * wdb_open_tasks();
+
 /* Get agent name from location string */
 char* wdb_agent_loc2name(const char *location);
 
@@ -1698,20 +1707,108 @@ cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int keep_alive);
 int wdb_global_check_manager_keepalive(wdb_t *wdb);
 
 /**
+ * @brief Function to parse the insert upgrade request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param parameters JSON with the parameters
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_task_upgrade(wdb_t* wdb, const cJSON *parameters, char* output);
+
+/**
+ * @brief Function to parse the insert upgrade_custom request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param parameters JSON with the parameters
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_task_upgrade_custom(wdb_t* wdb, const cJSON *parameters, char* output);
+
+/**
+ * @brief Function to parse the upgrade_get_status request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param parameters JSON with the parameters
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_task_upgrade_get_status(wdb_t* wdb, const cJSON *parameters, char* output);
+
+/**
+ * @brief Function to parse the upgrade_update_status request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param parameters JSON with the parameters
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_task_upgrade_update_status(wdb_t* wdb, const cJSON *parameters, char* output);
+
+/**
+ * @brief Function to parse the upgrade_result request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param parameters JSON with the parameters
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_task_upgrade_result(wdb_t* wdb, const cJSON *parameters, char* output);
+
+/**
+ * @brief Function to parse the upgrade_cancel_tasks request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param parameters JSON with the parameters
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_task_upgrade_cancel_tasks(wdb_t* wdb, const cJSON *parameters, char* output);
+
+/**
+ * @brief Function to parse the set_timeout request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param parameters JSON with the parameters
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_task_set_timeout(wdb_t* wdb, const cJSON *parameters, char* output);
+
+/**
+ * @brief Function to parse the delete_old request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param parameters JSON with the parameters
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output);
+
+/**
  * Update old tasks with status in progress to status timeout
  * @param now Actual time
  * @param timeout Task timeout
  * @param next_timeout Next task in progress timeout
  * @return OS_SUCCESS on success, OS_INVALID on errors
  * */
-int wm_task_set_timeout_status(time_t now, int timeout, time_t *next_timeout) __attribute__((nonnull(3)));
+int wdb_task_set_timeout_status(time_t now, int timeout, time_t *next_timeout) __attribute__((nonnull(3)));
 
 /**
  * Delete old tasks from the tasks DB
  * @param timestamp Deletion limit time
  * @return OS_SUCCESS on success, OS_INVALID on errors
  * */
-int wm_task_delete_old_entries(int timestamp);
+int wdb_task_delete_old_entries(int timestamp);
 
 /**
  * Insert a new task in the tasks DB.
@@ -1721,7 +1818,7 @@ int wm_task_delete_old_entries(int timestamp);
  * @param command Command to be executed in the agent.
  * @return ID of the task recently created when succeed, <=0 otherwise.
  * */
-int wm_task_insert_task(int agent_id, const char *node, const char *module, const char *command);
+int wdb_task_insert_task(int agent_id, const char *node, const char *module, const char *command);
 
 /**
  * Get the status of an upgrade task from the tasks DB.
@@ -1730,7 +1827,7 @@ int wm_task_insert_task(int agent_id, const char *node, const char *module, cons
  * @param status String where the status of the task will be stored.
  * @return 0 when succeed, !=0 otherwise.
  * */
-int wm_task_get_upgrade_task_status(int agent_id, const char *node, char **status) __attribute__((nonnull(3)));
+int wdb_task_get_upgrade_task_status(int agent_id, const char *node, char **status) __attribute__((nonnull(3)));
 
 /**
  * Update the status of a upgrade task in the tasks DB.
@@ -1740,14 +1837,14 @@ int wm_task_get_upgrade_task_status(int agent_id, const char *node, char **statu
  * @param error Error string of the task in case of failure.
  * @return 0 when succeed, !=0 otherwise.
  * */
-int wm_task_update_upgrade_task_status(int agent_id, const char *node, const char *status, const char *error);
+int wdb_task_update_upgrade_task_status(int agent_id, const char *node, const char *status, const char *error);
 
 /**
  * Cancel the upgrade tasks of a given node in the tasks DB.
  * @param node Node that executed the upgrades.
  * @return 0 when succeed, !=0 otherwise.
  * */
-int wm_task_cancel_upgrade_tasks(const char *node);
+int wdb_task_cancel_upgrade_tasks(const char *node);
 
 /**
  * Get task by agent_id and module from the tasks DB.
@@ -1761,7 +1858,7 @@ int wm_task_cancel_upgrade_tasks(const char *node);
  * @param last_update_time Integer where the last_update_time of the task will be stored.
  * @return task_id when succeed, < 0 otherwise.
  * */
-int wm_task_get_upgrade_task_by_agent_id(int agent_id, char **node, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time) __attribute__((nonnull));
+int wdb_task_get_upgrade_task_by_agent_id(int agent_id, char **node, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time) __attribute__((nonnull));
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
