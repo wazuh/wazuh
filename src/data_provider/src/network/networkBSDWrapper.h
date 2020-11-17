@@ -56,7 +56,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
         return m_interfaceAddress->ifa_name ? m_interfaceAddress->ifa_name : "unknown";
     }
 
-    std::string description() const override
+    std::string adapter() const override
     {
         return "unknown";
     }

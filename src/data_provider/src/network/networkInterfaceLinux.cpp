@@ -66,7 +66,8 @@ void LinuxNetworkImpl<AF_INET>::buildNetworkData(nlohmann::json& network)
             network["IPv4"]["broadcast"] = broadcast;
         }
 
-        network["IPv4"]["dhcp"] = m_interfaceAddress->dhcp();
+        network["IPv4"]["metric"] = m_interfaceAddress->metrics();
+        network["IPv4"]["dhcp"]   = m_interfaceAddress->dhcp();
     }
     else
     {
@@ -92,7 +93,8 @@ void LinuxNetworkImpl<AF_INET6>::buildNetworkData(nlohmann::json& network)
             network["IPv6"]["broadcast"] = broadcast;
         }
 
-        network["IPv6"]["dhcp"] = m_interfaceAddress->dhcp();
+        network["IPv6"]["metric"] = m_interfaceAddress->metricsV6();
+        network["IPv6"]["dhcp"]   = m_interfaceAddress->dhcp();
     }
     else
     {
@@ -103,10 +105,11 @@ template <>
 void LinuxNetworkImpl<AF_PACKET>::buildNetworkData(nlohmann::json& network)
 {
     /* Get stats of interface */
-    network["name"] = m_interfaceAddress->name();
-    network["type"] = m_interfaceAddress->type();
-    network["state"] = m_interfaceAddress->state();
-    network["MAC"] = m_interfaceAddress->MAC();
+    network["name"]    = m_interfaceAddress->name();
+    network["adapter"] = m_interfaceAddress->adapter();
+    network["type"]    = m_interfaceAddress->type();
+    network["state"]   = m_interfaceAddress->state();
+    network["mac"]     = m_interfaceAddress->MAC();
 
     const auto stats { m_interfaceAddress->stats() };
 
@@ -119,6 +122,6 @@ void LinuxNetworkImpl<AF_PACKET>::buildNetworkData(nlohmann::json& network)
     network["tx_dropped"] = stats.txDropped;
     network["rx_dropped"] = stats.rxDropped;
 
-    network["MTU"] = m_interfaceAddress->mtu();
+    network["mtu"] = m_interfaceAddress->mtu();
     network["gateway"] = m_interfaceAddress->gateway();
 }

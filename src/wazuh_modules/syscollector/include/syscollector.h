@@ -30,7 +30,11 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef void((*send_data_callback_t)(const void* buffer));
+
 EXPORTED void syscollector_start(const unsigned int inverval,
+                                 send_data_callback_t callback,
                                  const bool scanOnStart,
                                  const bool hardware,
                                  const bool os,

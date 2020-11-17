@@ -18,6 +18,7 @@
 extern "C" {
 #endif
 void syscollector_start(const unsigned int inverval,
+                        send_data_callback_t callback,
                         const bool scanOnStart,
                         const bool hardware,
                         const bool os,
@@ -28,7 +29,16 @@ void syscollector_start(const unsigned int inverval,
                         const bool processes,
                         const bool hotfixes)
 {
+    std::function<void(const std::string&)> callbackWrapper
+    {
+        [callback](const std::string& data)
+        {
+            callback(data.c_str());
+        }
+    };
+
     Syscollector::instance().init(std::make_shared<SysInfo>(),
+                                  callbackWrapper,
                                   inverval,
                                   scanOnStart,
                                   hardware,

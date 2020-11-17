@@ -76,10 +76,22 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
 
             checksumCtx.type           = CHECKSUM_COMPLETE;
             checksumCtx.rightCtx.type  = IntegrityMsgType::INTEGRITY_CHECK_GLOBAL;
-            checksumCtx.rightCtx.begin = begin;
-            checksumCtx.rightCtx.end   = end;
-
-            fillChecksum(spDBSyncWrapper, jsStartParams, begin, end, checksumCtx);
+            if (begin.is_string())
+            {
+                checksumCtx.rightCtx.begin = begin;
+                checksumCtx.rightCtx.end   = end;
+                fillChecksum(spDBSyncWrapper, jsStartParams, begin, end, checksumCtx);
+            }
+            else
+            {
+                const auto beginNumber{begin.get<unsigned long>()};
+                const auto endNumber{end.get<unsigned long>()};
+                const auto beginString{std::to_string(beginNumber)};
+                const auto endString{std::to_string(endNumber)};
+                checksumCtx.rightCtx.begin = beginString;
+                checksumCtx.rightCtx.end   = endString;
+                fillChecksum(spDBSyncWrapper, jsStartParams, beginString, endString, checksumCtx);
+            }
         }
         else
         {

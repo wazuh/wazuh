@@ -64,7 +64,9 @@ void BSDNetworkImpl<AF_INET>::buildNetworkData(nlohmann::json& network)
         {
             network["IPv4"]["broadcast"] = broadcast;
         }
-        network["IPv4"]["dhcp"] = "unknown";
+
+        network["IPv4"]["metric"] = m_interfaceAddress->metrics();
+        network["IPv4"]["dhcp"]   = m_interfaceAddress->dhcp();
     }
     else
     {
@@ -90,7 +92,9 @@ void BSDNetworkImpl<AF_INET6>::buildNetworkData(nlohmann::json& network)
         {
             network["IPv6"]["broadcast"] = broadcast;
         }
-        network["IPv6"]["dhcp"] = "unknown";
+
+        network["IPv6"]["metric"] = m_interfaceAddress->metricsV6();
+        network["IPv6"]["dhcp"]   = m_interfaceAddress->dhcp();
     }
     else
     {
@@ -105,7 +109,7 @@ void BSDNetworkImpl<AF_LINK>::buildNetworkData(nlohmann::json& network)
     network["name"] = m_interfaceAddress->name();
     network["state"] = m_interfaceAddress->state();
     network["type"] = m_interfaceAddress->type();
-    network["MAC"] = m_interfaceAddress->MAC();
+    network["mac"] = m_interfaceAddress->MAC();
 
     const auto stats { m_interfaceAddress->stats() };
 
@@ -117,6 +121,6 @@ void BSDNetworkImpl<AF_LINK>::buildNetworkData(nlohmann::json& network)
     network["rx_errors"] = stats.rxErrors;
     network["rx_dropped"] = stats.rxDropped;
 
-    network["MTU"] = m_interfaceAddress->mtu();
+    network["mtu"] = m_interfaceAddress->mtu();
     network["gateway"] = m_interfaceAddress->gateway();
 }

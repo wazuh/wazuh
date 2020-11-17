@@ -18,6 +18,7 @@
 #include "sysInfoInterface.h"
 #include "commonDefs.h"
 #include "dbsync.hpp"
+#include "rsync.hpp"
 
 // Define EXPORTED for any platform
 #ifdef _WIN32
@@ -42,6 +43,7 @@ public:
     }
 
     void init(const std::shared_ptr<ISysInfo>& spInfo,
+              const std::function<void(const std::string&)> reportFunction,
               const unsigned int inverval = 3600ul,
               const bool scanOnStart = true,
               const bool hardware = true,
@@ -71,6 +73,7 @@ private:
     void scan();
     void syncLoop();
     std::shared_ptr<ISysInfo>                      m_spInfo;
+    std::function<void(const std::string&)>        m_reportFunction;
     unsigned int                                   m_intervalValue;
     bool                                           m_scanOnStart;
     bool                                           m_hardware;
@@ -83,6 +86,7 @@ private:
     bool                                           m_hotfixes;
     bool                                           m_running;
     std::unique_ptr<DBSync>                        m_dbSync;
+    RemoteSync                                     m_rsync;
     std::condition_variable                        m_cv;
     std::mutex                                     m_mutex;
 };

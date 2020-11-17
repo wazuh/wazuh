@@ -780,6 +780,67 @@ TEST_F(RSyncTest, startSyncWithIntegrityClearCPP)
     EXPECT_NO_THROW(remoteSync->startSync(dbSync->handle(), nlohmann::json::parse(startConfigStmt), callbackData));
 }
 
+TEST_F(RSyncTest, startSyncWithIntegrityClearCPPSelectByInode)
+{
+    std::unique_ptr<DBSync> dbSync;
+    EXPECT_NO_THROW(dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, SQL_STMT_INFO));
+
+    std::unique_ptr<RemoteSync> remoteSync;
+    EXPECT_NO_THROW(remoteSync = std::make_unique<RemoteSync>());
+
+    const auto startConfigStmt
+    {
+        R"({"table":"entry_path",
+            "first_query":
+                {
+                    "column_list":["inode_id"],
+                    "row_filter":" ",
+                    "distinct_opt":false,
+                    "order_by_opt":"inode_id ASC",
+                    "count_opt":1
+                },
+            "last_query":
+                {
+                    "column_list":["inode_id"],
+                    "row_filter":" ",
+                    "distinct_opt":false,
+                    "order_by_opt":"inode_id DESC",
+                    "count_opt":1
+                },
+            "component":"test_component",
+            "index":"inode_id",
+            "last_event":"last_event",
+            "checksum_field":"checksum",
+            "range_checksum_query_json":
+                {
+                    "row_filter":"WHERE inode_id BETWEEN '?' and '?' ORDER BY inode_id",
+                    "column_list":["inode_id, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                }
+            })"
+    };
+
+    std::function<void(const std::string&)> callbackWrapper
+    {
+        [&](const std::string& payload)
+        {
+            EXPECT_FALSE(payload.empty());
+        }
+    };
+
+    SyncCallbackData callbackData
+    {
+        [&callbackWrapper](const std::string& payload)
+        {
+            callbackWrapper(payload);
+        }
+    };
+
+    EXPECT_NO_THROW(remoteSync->startSync(dbSync->handle(), nlohmann::json::parse(startConfigStmt), callbackData));
+}
+
 
 TEST_F(RSyncTest, constructorWithHandle)
 {
