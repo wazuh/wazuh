@@ -723,7 +723,7 @@ STATIC void fim_link_reload_broken_link(char *path, int index) {
 
     // Reload broken link
     if (!found) {
-        os_free(syscheck.dir[index]);
+        os_free(syscheck.symbolic_links[index]);
         os_strdup(path, syscheck.symbolic_links[index]);
 
         // Add new entries without alert.
