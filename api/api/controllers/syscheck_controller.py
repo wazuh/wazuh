@@ -49,8 +49,7 @@ async def put_syscheck(request, agents_list='*', pretty=False, wait_for_complete
 
 async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=False, offset=0,
                              limit=None, select=None, sort=None, search=None, distinct=False,
-                             summary=False, md5=None, sha1=None, sha256=None, q=None, arch=None, value_name=None,
-                             value_type=None):
+                             summary=False, md5=None, sha1=None, sha256=None, q=None, arch=None):
     """Get file integrity monitoring scan result from an agent.
 
     Parameters
@@ -85,10 +84,6 @@ async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=
         Query to filter results by.
     arch : str
         Specify whether the associated entry is 32 or 64 bits. Allowed values: '[x32]' and '[x64]'.
-    value_name : str
-        Specify the name of the associated value.
-    value_type : str
-        Specify the type of value this entry corresponds to.
 
     Returns
     -------
@@ -103,9 +98,8 @@ async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=
     # get file parameter from query
     file_ = request.query.get('file', None)
 
-    filters = {'type': type_, 'md5': md5, 'sha1': sha1,
-               'sha256': sha256, 'hash': hash_, 'file': file_, 'arch': arch, 'value_name': value_name,
-               'value_type': value_type}
+    filters = {'type': type_, 'md5': md5, 'sha1': sha1, 'sha256': sha256, 'hash': hash_, 'file': file_, 'arch': arch,
+               'value.name': request.query.get('value.name', None), 'value.type': request.query.get('value.type', None)}
 
     f_kwargs = {'agent_list': [agent_id], 'offset': offset, 'limit': limit,
                 'select': select, 'sort': parse_api_param(sort, 'sort'), 'search': parse_api_param(search, 'search'),

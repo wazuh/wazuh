@@ -4,7 +4,7 @@
 
 from datetime import datetime
 
-from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend
+from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend, get_fields_to_nest, plain_dict_to_nested_dict
 
 
 class WazuhDBQuerySyscheck(WazuhDBQuery):
@@ -34,5 +34,10 @@ class WazuhDBQuerySyscheck(WazuhDBQuery):
 
         self._data = [{key: format_fields(key, value) for key, value in item.items() if key in self.select}
                       for item in self._data]
+
+        if self.nested:
+            fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), self.nested_fields, '.')
+            self._data = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, self.nested_fields, '.') for d in
+                          self._data]
 
         return super()._format_data_into_dictionary()

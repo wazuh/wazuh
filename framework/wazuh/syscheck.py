@@ -157,7 +157,7 @@ def last_scan(agent_list):
 
 @expose_resources(actions=["syscheck:read"], resources=["agent:id:{agent_list}"])
 def files(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters=None,
-          q='', summary=False, distinct=False):
+          q='', nested=True, summary=False, distinct=False):
     """Return a list of files from the syscheck database of the specified agents.
 
     Parameters
@@ -180,6 +180,8 @@ def files(agent_list=None, offset=0, limit=common.database_limit, sort=None, sea
         Select fields to return. Format: ["field1","field2"].
     q : str
         Query to filter by.
+    nested : bool
+        Specify whether there are nested fields or not.
     distinct : bool
         Look for distinct values.
 
@@ -190,7 +192,7 @@ def files(agent_list=None, offset=0, limit=common.database_limit, sort=None, sea
     """
     if filters is None:
         filters = {}
-    parameters = {"date": "date", "arch": "arch", "value_type": "value_type", "value_name": "value_name",
+    parameters = {"date": "date", "arch": "arch", "value.type": "value.type", "value.name": "value.name",
                   "mtime": "mtime", "file": "file", "size": "size", "perm": "perm",
                   "uname": "uname", "gname": "gname", "md5": "md5", "sha1": "sha1", "sha256": "sha256",
                   "inode": "inode", "gid": "gid", "uid": "uid", "type": "type", "changes": "changes",
@@ -204,8 +206,8 @@ def files(agent_list=None, offset=0, limit=common.database_limit, sort=None, sea
         del filters['hash']
 
     db_query = WazuhDBQuerySyscheck(agent_id=agent_list[0], offset=offset, limit=limit, sort=sort, search=search,
-                                    filters=filters, query=q, select=select, table='fim_entry', distinct=distinct,
-                                    fields=summary_parameters if summary else parameters)
+                                    filters=filters, nested=nested, query=q, select=select, table='fim_entry',
+                                    distinct=distinct, fields=summary_parameters if summary else parameters)
 
     db_query = db_query.run()
 

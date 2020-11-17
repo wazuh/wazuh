@@ -5132,16 +5132,16 @@ components:
           - 'policy:id'
           - 'role:id'
           - 'user:id'
-    value_name:
+    value.name:
       in: query
-      name: value_name
+      name: value.name
       description: "Filter by value name"
       schema:
         type: string
         format: alphanumeric
-    value_type:
+    value.type:
       in: query
-      name: value_type
+      name: value.type
       description: "Filter by value type"
       schema:
         type: string
@@ -11376,8 +11376,8 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/full_path_filter'
         - $ref: '#/components/parameters/syscheck_arch'
-        - $ref: '#/components/parameters/value_name'
-        - $ref: '#/components/parameters/value_type'
+        - $ref: '#/components/parameters/value.name'
+        - $ref: '#/components/parameters/value.type'
         - $ref: '#/components/parameters/filetype'
         - $ref: '#/components/parameters/summary'
         - $ref: '#/components/parameters/md5'
