@@ -670,6 +670,186 @@ int wdb_parse(char * input, char * output) {
         }
         wdb_leave(wdb);
         return result;
+    } else if (strcmp(actor, "task") == 0) {
+        cJSON *parameters_json = NULL;
+        const char *json_err;
+        query = next;
+
+        mdebug2("Task query: %s", query);
+
+        if (wdb = wdb_open_tasks(), !wdb) {
+            mdebug2("Couldn't open DB task: %s/%s.db", WDB_TASK_DIR, WDB_TASK_NAME);
+            snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB task");
+            return OS_INVALID;
+        }
+
+        if (next = wstr_chr(query, ' '), !next) {
+            mdebug1("Invalid DB query syntax.");
+            mdebug2("DB query error near: %s", query);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+            wdb_leave(wdb);
+            return OS_INVALID;
+        }
+
+        *next++ = '\0';
+
+        if (!strcmp("upgrade", query)) {
+            if (!next) {
+                mdebug1("Task DB Invalid DB query syntax.");
+                mdebug2("Task DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                wdb_leave(wdb);
+                return OS_INVALID;
+            }
+
+            // Detect parameters
+            if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
+                wdb_leave(wdb);
+                return OS_INVALID;
+            }
+            result = wdb_parse_task_upgrade(wdb, parameters_json, output);
+            cJSON_Delete(parameters_json);
+        } else if (!strcmp("upgrade_custom", query)) {
+            if (!next) {
+                mdebug1("Task DB Invalid DB query syntax.");
+                mdebug2("Task DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                wdb_leave(wdb);
+                return OS_INVALID;
+            }
+
+            // Detect parameters
+            if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
+                wdb_leave(wdb);
+                return OS_INVALID;
+            }
+            result = wdb_parse_task_upgrade_custom(wdb, parameters_json, output);
+            cJSON_Delete(parameters_json);
+        } else if (!strcmp("upgrade_get_status", query)) {
+            if (!next) {
+                mdebug1("Task DB Invalid DB query syntax.");
+                mdebug2("Task DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                wdb_leave(wdb);
+                return OS_INVALID;
+            }
+
+            // Detect parameters
+            if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
+                wdb_leave(wdb);
+                return OS_INVALID;
+            }
+            result = wdb_parse_task_upgrade_get_status(wdb, parameters_json, output);
+            cJSON_Delete(parameters_json);
+        } else if (!strcmp("upgrade_update_status", query)) {
+            if (!next) {
+                mdebug1("Task DB Invalid DB query syntax.");
+                mdebug2("Task DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                wdb_leave(wdb);
+                return OS_INVALID;
+            }
+
+            // Detect parameters
+            if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
+                wdb_leave(wdb);
+                return OS_INVALID;
+            }
+            result = wdb_parse_task_upgrade_update_status(wdb, parameters_json, output);
+            cJSON_Delete(parameters_json);
+        } else if (!strcmp("upgrade_result", query)) {
+            if (!next) {
+                mdebug1("Task DB Invalid DB query syntax.");
+                mdebug2("Task DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                wdb_leave(wdb);
+                return OS_INVALID;
+            }
+
+            // Detect parameters
+            if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
+                wdb_leave(wdb);
+                return OS_INVALID;
+            }
+            result = wdb_parse_task_upgrade_result(wdb, parameters_json, output);
+            cJSON_Delete(parameters_json);
+        } else if (!strcmp("upgrade_cancel_tasks", query)) {
+            if (!next) {
+                mdebug1("Task DB Invalid DB query syntax.");
+                mdebug2("Task DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                wdb_leave(wdb);
+                return OS_INVALID;
+            }
+
+            // Detect parameters
+            if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
+                wdb_leave(wdb);
+                return OS_INVALID;
+            }
+            result = wdb_parse_task_upgrade_cancel_tasks(wdb, parameters_json, output);
+            cJSON_Delete(parameters_json);
+        } else if (!strcmp("set_timeout", query)) {
+            if (!next) {
+                mdebug1("Task DB Invalid DB query syntax.");
+                mdebug2("Task DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                wdb_leave(wdb);
+                return OS_INVALID;
+            }
+
+            // Detect parameters
+            if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
+                wdb_leave(wdb);
+                return OS_INVALID;
+            }
+            result = wdb_parse_task_set_timeout(wdb, parameters_json, output);
+            cJSON_Delete(parameters_json);
+        } else if (!strcmp("delete_old", query)) {
+            if (!next) {
+                mdebug1("Task DB Invalid DB query syntax.");
+                mdebug2("Task DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                wdb_leave(wdb);
+                return OS_INVALID;
+            }
+
+            // Detect parameters
+            if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
+                wdb_leave(wdb);
+                return OS_INVALID;
+            }
+            result = wdb_parse_task_delete_old(wdb, parameters_json, output);
+            cJSON_Delete(parameters_json);
+        } else if (!strcmp("sql", query)) {
+            if (!next) {
+                mdebug1("Task DB Invalid DB query syntax.");
+                mdebug2("Task DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                sql = next;
+
+                if (data = wdb_exec(wdb->db, sql), data) {
+                    out = cJSON_PrintUnformatted(data);
+                    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+                    os_free(out);
+                    cJSON_Delete(data);
+                } else {
+                    mdebug1("Tasks DB Cannot execute SQL query; err database %s/%s.db: %s", WDB_TASK_DIR, WDB_TASK_NAME, sqlite3_errmsg(wdb->db));
+                    mdebug2("Tasks DB SQL query: %s", sql);
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot execute Tasks database query; %s", sqlite3_errmsg(wdb->db));
+                    result = OS_INVALID;
+                }
+            }
+        } else {
+            mdebug1("Invalid DB query syntax.");
+            mdebug2("Task DB query error near: %s", query);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+            result = OS_INVALID;
+        }
+        wdb_leave(wdb);
+        return result;
     } else {
         mdebug1("DB(%s) Invalid DB query actor: %s", sagent_id, actor);
         snprintf(output, OS_MAXSTR + 1, "err Invalid DB query actor: '%.32s'", actor);
@@ -5088,5 +5268,37 @@ int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output) {
     os_free(out);
     cJSON_Delete(agents);
 
+    return OS_SUCCESS;
+}
+
+int wdb_parse_task_upgrade(wdb_t* wdb, const cJSON *parameters, char* output) {
+    return OS_SUCCESS;
+}
+
+int wdb_parse_task_upgrade_custom(wdb_t* wdb, const cJSON *parameters, char* output) {
+    return OS_SUCCESS;
+}
+
+int wdb_parse_task_upgrade_get_status(wdb_t* wdb, const cJSON *parameters, char* output) {
+    return OS_SUCCESS;
+}
+
+int wdb_parse_task_upgrade_update_status(wdb_t* wdb, const cJSON *parameters, char* output) {
+    return OS_SUCCESS;
+}
+
+int wdb_parse_task_upgrade_result(wdb_t* wdb, const cJSON *parameters, char* output) {
+    return OS_SUCCESS;
+}
+
+int wdb_parse_task_upgrade_cancel_tasks(wdb_t* wdb, const cJSON *parameters, char* output) {
+    return OS_SUCCESS;
+}
+
+int wdb_parse_task_set_timeout(wdb_t* wdb, const cJSON *parameters, char* output) {
+    return OS_SUCCESS;
+}
+
+int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output) {
     return OS_SUCCESS;
 }
