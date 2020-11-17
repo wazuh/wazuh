@@ -25,6 +25,14 @@ static void logFunction(const char* msg)
 
 int main(int argc, const char* argv[])
 {
+    const auto reportFunction
+    {
+        [](const std::string& payload)
+        {
+            std::cout << "output payload:" << std::endl;
+            std::cout << payload << std::endl;
+        }
+    };
     const std::chrono::milliseconds timeout{5000};
     const auto spInfo{ std::make_shared<SysInfo>() };
     rsync_initialize(logFunction);
@@ -34,6 +42,7 @@ int main(int argc, const char* argv[])
         Syscollector sysCollector
         {
             spInfo,
+            reportFunction,
             "15s",
             true,
             true,
