@@ -285,6 +285,15 @@ sqlite3* wdb_open_agent(int id_agent, const char *name);
 // Open database for agent and store in DB pool. It returns a locked database or NULL
 wdb_t * wdb_open_agent2(int agent_id);
 
+/**
+ * @brief Open task database and store in DB poll.
+ *
+ * It is opened every time a query to Task database is done.
+ *
+ * @return wdb_t* Database Structure that store task database or NULL on failure.
+ */
+wdb_t * wdb_open_tasks();
+
 /* Get agent name from location string */
 char* wdb_agent_loc2name(const char *location);
 
@@ -1688,5 +1697,93 @@ cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int keep_alive);
  * @retval -1 The table "agent" is missing or an error occurred.
  */
 int wdb_global_check_manager_keepalive(wdb_t *wdb);
+
+/**
+ * @brief Function to parse the insert upgrade request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param parameters JSON with the parameters
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_task_upgrade(wdb_t* wdb, const cJSON *parameters, char* output);
+
+/**
+ * @brief Function to parse the insert upgrade_custom request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param parameters JSON with the parameters
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_task_upgrade_custom(wdb_t* wdb, const cJSON *parameters, char* output);
+
+/**
+ * @brief Function to parse the upgrade_get_status request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param parameters JSON with the parameters
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_task_upgrade_get_status(wdb_t* wdb, const cJSON *parameters, char* output);
+
+/**
+ * @brief Function to parse the upgrade_update_status request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param parameters JSON with the parameters
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_task_upgrade_update_status(wdb_t* wdb, const cJSON *parameters, char* output);
+
+/**
+ * @brief Function to parse the upgrade_result request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param parameters JSON with the parameters
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_task_upgrade_result(wdb_t* wdb, const cJSON *parameters, char* output);
+
+/**
+ * @brief Function to parse the upgrade_cancel_tasks request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param parameters JSON with the parameters
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_task_upgrade_cancel_tasks(wdb_t* wdb, const cJSON *parameters, char* output);
+
+/**
+ * @brief Function to parse the set_timeout request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param parameters JSON with the parameters
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_task_set_timeout(wdb_t* wdb, const cJSON *parameters, char* output);
+
+/**
+ * @brief Function to parse the delete_old request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param parameters JSON with the parameters
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output);
 
 #endif

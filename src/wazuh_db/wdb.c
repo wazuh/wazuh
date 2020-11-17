@@ -342,6 +342,13 @@ end:
     return wdb;
 }
 
+// Opens tasks database and stores it in DB pool. It returns a locked database or NULL
+wdb_t * wdb_open_tasks() {
+    wdb_t * wdb = NULL;
+    /* Add open task db logic */
+    return wdb;
+}
+
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
 int wdb_create_agent_db2(const char * agent_id) {
     char path[OS_FLSIZE + 1];
