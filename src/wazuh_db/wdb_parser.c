@@ -5028,8 +5028,8 @@ int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, ch
     wdbc_result status = WDBC_UNKNOWN;
     cJSON* result = wdb_global_get_agents_by_connection_status(wdb, last_id, connection_status, &status);
     if (!result) {
-        mdebug1("Error getting agents to be disconnected from global.db.");
-        snprintf(output, OS_MAXSTR + 1, "err Error getting agents to be disconnected from global.db.");
+        mdebug1("Error getting agents by connection status from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting agents by connection status from global.db.");
         return OS_INVALID;
     }
 

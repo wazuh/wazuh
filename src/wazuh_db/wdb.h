@@ -391,9 +391,9 @@ int wdb_sca_policy_sha256(wdb_t * wdb, char *id, char * output);
 void wdb_free_agent_info_data(agent_info_data *agent_data);
 
 /**
- * @brief Function to parse a chunk response that containing the status of the query and a json array.
+ * @brief Function to parse a chunk response that contains the status of the query and a json array.
  *        This function will create or realloc an int array to place the values of the chunk.
- *        This values are obtained based on the provided json item string.
+ *        These values are obtained based on the provided json item string.
  *
  * @param [in] input The chunk obtained from WazuhDB to be parsed.
  * @param [out] output An int array containing the parsed values. Must be freed by the caller.
@@ -922,7 +922,7 @@ cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status);
  *                     SQLITE_ERROR means an error occurred.
  * @return JSON array with the statement execution results. NULL On error.
  */
-cJSON * wdb_exec_stmt_sized(sqlite3_stmt * stmt, size_t max_size, int* status);
+cJSON * wdb_exec_stmt_sized(sqlite3_stmt * stmt, const size_t max_size, int* status);
 
 /**
  * @brief Function to execute a SQL statement and save the result in a JSON array.
