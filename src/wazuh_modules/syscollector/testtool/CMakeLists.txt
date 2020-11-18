@@ -57,7 +57,6 @@ else()
         sysinfo
         syscollector
         dl
-        pthread
         proc
     )
 
