@@ -328,11 +328,12 @@ int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top,
  * @param file  Structure of the file which contains all the paths.
  * @param mutex
  * @param storage 1 Store database in memory, disk otherwise.
+ * @param mode FIM mode (scheduled, realtime or whodata)
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file,
-                        pthread_mutex_t *mutex, int storage);
+                        pthread_mutex_t *mutex, int storage, fim_event_mode mode);
 
 /**
  * @brief Remove a range of paths from database if they have a
