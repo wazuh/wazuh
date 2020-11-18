@@ -352,8 +352,55 @@ end:
 
 // Opens tasks database and stores it in DB pool. It returns a locked database or NULL
 wdb_t * wdb_open_tasks() {
+    char path[PATH_MAX + 1] = "";
+    sqlite3 *db = NULL;
     wdb_t * wdb = NULL;
-    /* Add open task db logic */
+
+    w_mutex_lock(&pool_mutex);
+
+    // Finds DB in pool
+    if (wdb = (wdb_t *)OSHash_Get(open_dbs, WDB_TASK_NAME), wdb) {
+        // The corresponding w_mutex_unlock(&wdb->mutex) is called in wdb_leave(wdb_t * wdb)
+        w_mutex_lock(&wdb->mutex);
+        wdb->refcount++;
+        w_mutex_unlock(&pool_mutex);
+        return wdb;
+    } else {
+        // Try to open DB
+        snprintf(path, sizeof(path), "%s/%s.db", WDB_TASK_DIR, WDB_TASK_NAME);
+
+        if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
+            mdebug1("Tasks database not found, creating.");
+            sqlite3_close_v2(db);
+
+            // Creating database
+            if (OS_SUCCESS != wdb_create_file(path, schema_task_manager_sql)) {
+                merror("Couldn't create SQLite database '%s'", path);
+                w_mutex_unlock(&pool_mutex);
+                return wdb;
+            }
+
+            // Retry to open
+            if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
+                merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(db));
+                sqlite3_close_v2(db);
+                w_mutex_unlock(&pool_mutex);
+                return wdb;
+            }
+
+            wdb = wdb_init(db, WDB_TASK_NAME);
+            wdb_pool_append(wdb);
+        }
+        else {
+            wdb = wdb_init(db, WDB_TASK_NAME);
+            wdb_pool_append(wdb);
+        }
+    }
+
+    // The corresponding w_mutex_unlock(&wdb->mutex) is called in wdb_leave(wdb_t * wdb)
+    w_mutex_lock(&wdb->mutex);
+    wdb->refcount++;
+    w_mutex_unlock(&pool_mutex);
     return wdb;
 }
 
