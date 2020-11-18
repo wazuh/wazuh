@@ -273,9 +273,8 @@ def test_syscheck_files(socket_mock, agent_id, select, filters, distinct):
         select = select if select else select_list
         for item in result.affected_items:
             flag = 0
-            for nested_field in nested_fields:
-                if nested_field in item.keys():
-                    flag += sum(1 for i in select if i.startswith(nested_field)) - 1
+            for nested_field in nested_fields and item.keys():
+                flag += sum(1 for i in select if i.startswith(nested_field)) - 1
             assert len(select) == len(item.keys()) + flag
             assert (param in select for param in item.keys())
         assert not any(result.affected_items.count(item) > 1 for item in result.affected_items) if distinct else True
