@@ -48,6 +48,27 @@ typedef struct _logtarget {
 } logtarget;
 
 /* Logreader config */
+typedef enum{
+    ML_REPLACE_ERROR = -1,
+    ML_REPLACE_NONE,
+    ML_REPLACE_WSPACE,
+    ML_REPLACE_TAB
+} w_multiline_replace_type_t;
+
+typedef enum{
+    ML_MATCH_ERROR = -1,
+    ML_MATCH_START,
+    ML_MATCH_ALL,
+    ML_MATCH_END
+} w_multiline_match_type_t;
+
+typedef struct {
+    void * regex;
+    w_multiline_match_type_t match_type;
+    w_multiline_replace_type_t replace_type;
+} w_multiline_config_t;
+
+/* Logreader config */
 typedef struct _logreader {
     off_t size;
     int ign;
@@ -67,6 +88,7 @@ typedef struct _logreader {
     char *ffile;
     char *file;
     char *logformat;
+    w_multiline_config_t * multiline;
     long linecount;
     char *djb_program_name;
     char *command;
