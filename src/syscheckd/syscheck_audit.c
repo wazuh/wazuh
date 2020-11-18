@@ -222,8 +222,8 @@ int add_audit_rules_syscheck(bool first_time) {
     }
 
     while (syscheck.dir[i] != NULL) {
-        // Check if dir[i] is set in whodata mode and isn't a broken link (syscheck.dir[i] = '\0')
-        if (syscheck.opts[i] & WHODATA_ACTIVE && *fim_get_real_path(i)) {
+        // Check if dir[i] is set in whodata mode
+        if (syscheck.opts[i] & WHODATA_ACTIVE) {
             int retval;
             if (W_Vector_length(audit_added_rules) < syscheck.max_audit_entries) {
                 int found = search_audit_rule(fim_get_real_path(i), "wa", AUDIT_KEY);
@@ -266,6 +266,7 @@ int add_audit_rules_syscheck(bool first_time) {
                 reported = true;
             }
         }
+
         i++;
     }
 

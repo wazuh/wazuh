@@ -542,12 +542,10 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
                     if (strcmp(real_path, syscheck.symbolic_links[i])) {
                         minfo(FIM_LINKCHECK_CHANGED, syscheck.dir[i], syscheck.symbolic_links[i], real_path);
                         fim_link_update(i, real_path);
-                    }
-                    else {
+                    } else {
                         mdebug1(FIM_LINKCHECK_NOCHANGE, syscheck.symbolic_links[i]);
                     }
-                }
-                else {
+                } else {
                     // Broken link
                     char path[PATH_MAX];
 
@@ -560,8 +558,7 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
                         fim_link_silent_scan(path, config);
                     }
                 }
-            }
-            else {
+            } else {
                 // Check real_path to reload broken link.
                 if (real_path) {
                     fim_link_reload_broken_link(real_path, i);
@@ -612,8 +609,7 @@ STATIC void fim_link_check_delete(int pos) {
         }
 
         mdebug1(FIM_STAT_FAILED, syscheck.symbolic_links[pos], errno, strerror(errno));
-    }
-    else {
+    } else {
         fim_link_delete_range(pos);
 
         if (syscheck.realtime && syscheck.realtime->dirtb) {
@@ -635,7 +631,7 @@ STATIC void fim_delete_realtime_watches(__attribute__((unused)) int pos) {
     int watch_conf;
 
     assert(watch_to_delete != NULL);
-    dir_conf = fim_configuration_directory(syscheck.dir[pos], "file");
+    dir_conf = fim_configuration_directory(syscheck.symbolic_links[pos], "file");
 
     if (dir_conf > -1) {
         w_mutex_lock(&syscheck.fim_realtime_mutex);

@@ -970,15 +970,13 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     if (strcmp(resolved_path, g.gl_pathv[gindex]) != 0 && (opts & CHECK_FOLLOW)) {
                         dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile, recursion_limit, clean_tag,
                                             g.gl_pathv[gindex], tmp_diff_size);
-                    }
-                    else {
+                    } else {
                         dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0, restrictfile, recursion_limit,
                                             clean_tag, NULL, tmp_diff_size);
                     }
 
                     os_free(resolved_path);
-                }
-                else {
+                } else {
                     mdebug1("Could not check the real path of '%s' due to [(%d)-(%s)].",
                             g.gl_pathv[gindex], errno, strerror(errno));
                 }
@@ -994,8 +992,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             if (resolved_path != NULL && strcmp(resolved_path, real_path) != 0 && (opts & CHECK_FOLLOW)) {
                 dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile, recursion_limit, clean_tag,
                                     real_path, tmp_diff_size);
-            }
-            else {
+            } else {
                 dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL,
                                     tmp_diff_size);
             }
