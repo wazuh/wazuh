@@ -5062,6 +5062,7 @@ int wdb_parse_reset_agents_connection(wdb_t * wdb, char* input, char * output) {
 int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output) {
     int last_id = 0;
     int keep_alive = 0;
+    char *sync_status = NULL;
     char* out = NULL;
     char *next = NULL;
     const char delim[2] = " ";
@@ -5085,10 +5086,19 @@ int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output) {
     }
     keep_alive = atoi(next);
 
-    wdbc_result status = wdb_global_get_agents_to_disconnect(wdb, last_id, keep_alive, &out);
+    /* Get sync_status*/
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments sync_status not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments sync_status not found");
+        return OS_INVALID;
+    }
+    sync_status = next;
+
+    wdbc_result status = wdb_global_get_agents_to_disconnect(wdb, last_id, keep_alive, sync_status, &out);
     snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], out);
 
-    os_free(out)
+    os_free(out);
 
     return OS_SUCCESS;
 }

@@ -4599,11 +4599,12 @@ void test_wdb_global_get_agents_to_disconnect_transaction_fail(void **state)
     char *output = NULL;
     int last_id = 0;
     int keepalive = 100;
+    const char *sync_status = "synced";
 
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    int result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, &output);
+    int result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, sync_status, &output);
 
     assert_string_equal(output, "Cannot begin transaction");
     os_free(output);
@@ -4616,12 +4617,13 @@ void test_wdb_global_get_agents_to_disconnect_cache_fail(void **state)
     char *output = NULL;
     int last_id = 0;
     int keepalive = 100;
+    const char *sync_status = "synced";
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    int result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, &output);
+    int result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, sync_status, &output);
 
     assert_string_equal(output, "Cannot cache statement");
     os_free(output);
@@ -4634,6 +4636,7 @@ void test_wdb_global_get_agents_to_disconnect_bind1_fail(void **state)
     char *output = NULL;
     int last_id = 0;
     int keepalive = 100;
+    const char *sync_status = "synced";
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -4643,7 +4646,7 @@ void test_wdb_global_get_agents_to_disconnect_bind1_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
 
-    int result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, &output);
+    int result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, sync_status, &output);
 
     assert_string_equal(output, "Cannot bind sql statement");
     os_free(output);
@@ -4656,6 +4659,7 @@ void test_wdb_global_get_agents_to_disconnect_bind2_fail(void **state)
     char *output = NULL;
     int last_id = 0;
     int keepalive = 100;
+    const char *sync_status = "synced";
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -4668,7 +4672,7 @@ void test_wdb_global_get_agents_to_disconnect_bind2_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
 
-    int result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, &output);
+    int result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, sync_status, &output);
 
     assert_string_equal(output, "Cannot bind sql statement");
     os_free(output);
@@ -4681,6 +4685,7 @@ void test_wdb_global_get_agents_to_disconnect_no_agents(void **state)
     char *output = NULL;
     int last_id = 0;
     int keepalive = 0;
+    const char *sync_status = "synced";
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -4694,7 +4699,7 @@ void test_wdb_global_get_agents_to_disconnect_no_agents(void **state)
     will_return(__wrap_wdb_exec_stmt, NULL);
     expect_function_call_any(__wrap_cJSON_Delete);
 
-    int result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, &output);
+    int result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, sync_status, &output);
 
     assert_string_equal(output, "");
     os_free(output);
@@ -4711,6 +4716,7 @@ void test_wdb_global_get_agents_to_disconnect_success(void **state)
     char str_agt_id[] = "10";
     int last_id = 0;
     int keepalive = 100;
+    const char *sync_status = "synced";
 
     root = cJSON_CreateArray();
     json_agent = cJSON_CreateObject();
@@ -4753,7 +4759,7 @@ void test_wdb_global_get_agents_to_disconnect_success(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, keepalive);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
-    int result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, &output);
+    int result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, sync_status, &output);
 
     assert_string_equal(output, str_agt_id);
     os_free(output);
@@ -4771,6 +4777,7 @@ void test_wdb_global_get_agents_to_disconnect_update_status_fail(void **state)
     int agent_id = 10;
     int last_id = 0;
     int keepalive = 100;
+    const char *sync_status = "synced";
 
     root = cJSON_CreateArray();
     cJSON_AddItemToArray(root, json_agent = cJSON_CreateObject());
@@ -4807,7 +4814,7 @@ void test_wdb_global_get_agents_to_disconnect_update_status_fail(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "Cannot set connection_status for agent 10");
 
-    int result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, &output);
+    int result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, sync_status, &output);
 
     assert_string_equal(output, "Cannot set connection_status for agent 10");
     os_free(output);
@@ -4825,6 +4832,7 @@ void test_wdb_global_get_agents_to_disconnect_full(void **state)
     int agent_id = 1000;
     int last_id = 0;
     int keepalive = 100;
+    const char *sync_status = "synced";
 
     // Mocking many agents to create an array bigger than WDB_MAX_RESPONSE_SIZE
     root = cJSON_CreateArray();
@@ -4847,7 +4855,7 @@ void test_wdb_global_get_agents_to_disconnect_full(void **state)
     will_return_count(__wrap_sqlite3_bind_text, SQLITE_OK, -1);
     will_return_count(__wrap_wdb_step, SQLITE_DONE, -1);
 
-    int result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, &output);
+    int result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, sync_status, &output);
 
     assert_non_null(output);
     os_free(output);

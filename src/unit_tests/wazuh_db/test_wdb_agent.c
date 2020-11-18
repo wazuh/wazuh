@@ -4579,7 +4579,7 @@ void test_wdb_get_agents_by_connection_status_success(void **state)
 /* Tests wdb_disconnect_agents */
 
 void test_wdb_disconnect_agents_wdbc_query_error(void **state) {
-    const char *query_str = "global disconnect-agents 0 100";
+    const char *query_str = "global disconnect-agents 0 100 syncreq";
     const char *response = "err";
 
     // Calling Wazuh DB
@@ -4589,13 +4589,13 @@ void test_wdb_disconnect_agents_wdbc_query_error(void **state) {
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    int *array = wdb_disconnect_agents(100, NULL);
+    int *array = wdb_disconnect_agents(100, "syncreq", NULL);
 
     assert_null(array);
 }
 
 void test_wdb_disconnect_agents_wdbc_parse_error(void **state) {
-    const char *query_str = "global disconnect-agents 0 100";
+    const char *query_str = "global disconnect-agents 0 100 syncreq";
     const char *response = "err";
 
     // Calling Wazuh DB
@@ -4609,13 +4609,13 @@ void test_wdb_disconnect_agents_wdbc_parse_error(void **state) {
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
 
-    int *array = wdb_disconnect_agents(100, NULL);
+    int *array = wdb_disconnect_agents(100, "syncreq", NULL);
 
     assert_null(array);
 }
 
 void test_wdb_disconnect_agents_success(void **state) {
-    const char *query_str = "global disconnect-agents 0 100";
+    const char *query_str = "global disconnect-agents 0 100 syncreq";
 
     // Setting the payload
     set_payload = 1;
@@ -4632,7 +4632,7 @@ void test_wdb_disconnect_agents_success(void **state) {
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
-    int *array = wdb_disconnect_agents(100, NULL);
+    int *array = wdb_disconnect_agents(100, "syncreq", NULL);
 
     assert_int_equal(1, array[0]);
     assert_int_equal(2, array[1]);

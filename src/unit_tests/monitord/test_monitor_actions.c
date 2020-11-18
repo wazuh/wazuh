@@ -232,6 +232,7 @@ void test_monitor_agents_disconnection(void **state) {
     mond.monitor_agents = 1;
 
     expect_value(__wrap_wdb_disconnect_agents, keepalive, last_keepalive - mond.global.agents_disconnection_time);
+    expect_string(__wrap_wdb_disconnect_agents, sync_status, "synced");
     will_return(__wrap_wdb_disconnect_agents, agents_array_test);
 
     will_return_count(__wrap_time, 1604403550, -1);

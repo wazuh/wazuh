@@ -24,8 +24,9 @@ int __wrap_wdb_find_agent(const char *name, const char *ip, __attribute__((unuse
     return mock();
 }
 
-int* __wrap_wdb_disconnect_agents(int keepalive, __attribute__((unused)) int *sock) {
+int* __wrap_wdb_disconnect_agents(int keepalive, const char *sync_status, __attribute__((unused)) int *sock) {
     check_expected(keepalive);
+    check_expected(sync_status);
     return mock_ptr_type(int*);
 }
 
