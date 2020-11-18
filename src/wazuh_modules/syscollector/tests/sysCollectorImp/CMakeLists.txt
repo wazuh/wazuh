@@ -30,6 +30,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         pthread
         rsync
         dbsync
+        crypto
+        ws2_32
+        ssl
+        crypt32
         -static-libgcc -static-libstdc++
     )
 else()

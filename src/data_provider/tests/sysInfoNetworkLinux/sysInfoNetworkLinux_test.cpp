@@ -29,7 +29,6 @@ public:
     virtual ~SysInfoNetworkLinuxWrapperMock() = default;
     MOCK_METHOD(int, family, (), (const override));
     MOCK_METHOD(std::string, name, (), (const override));
-    MOCK_METHOD(std::string, description, (), (const override));    
     MOCK_METHOD(std::string, address, (), (const override));
     MOCK_METHOD(std::string, netmask, (), (const override));
     MOCK_METHOD(std::string, broadcast, (), (const override));
@@ -38,7 +37,7 @@ public:
     MOCK_METHOD(std::string, broadcastV6, (), (const override));
     MOCK_METHOD(std::string, gateway, (), (const override));
     MOCK_METHOD(std::string, metrics, (), (const override));
-    MOCK_METHOD(std::string, metricsV6, (), (const override));        
+    MOCK_METHOD(std::string, metricsV6, (), (const override));
     MOCK_METHOD(std::string, dhcp, (), (const override));
     MOCK_METHOD(std::string, mtu, (), (const override));
     MOCK_METHOD(LinkStats, stats, (), (const override));

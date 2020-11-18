@@ -79,7 +79,14 @@ add_library(sysinfo SHARED
     ${CMAKE_SOURCE_DIR}/src/sysInfo.cpp )
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  target_link_libraries(sysinfo sqlite3 cjson gcov)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    target_link_libraries(sysinfo -fprofile-arcs)
+    target_link_libraries(sysinfo sqlite3 cjson)
+  else()
+    target_link_libraries(sysinfo sqlite3 cjson gcov)
+  endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  
+  target_link_libraries(sysinfo sqlite3 cjson)
   if(UNIT_TEST)
     include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
     include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)

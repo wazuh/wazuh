@@ -65,7 +65,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(syscollector PROPERTIES
         PREFIX ""
         SUFFIX ".dll"
-        LINK_FLAGS "-Wl,--add-stdcall-alias"
+        LINK_FLAGS "-Wl,--add-stdcall-alias -static-libgcc -static-libstdc++"
         POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
         # MinGW generates position-independent-code for DLL by default
   )
@@ -81,7 +81,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  target_link_libraries(syscollector gcov)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    target_link_libraries(syscollector -fprofile-arcs)
+  else()
+    target_link_libraries(syscollector gcov)
+  endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   if(UNIT_TEST)
     include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
     include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)

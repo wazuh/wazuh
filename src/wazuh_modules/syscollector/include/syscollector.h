@@ -10,8 +10,8 @@
  */
 
 
-#ifndef _SYSCOLLECTOR_INFO_H
-#define _SYSCOLLECTOR_INFO_H
+#ifndef _SYSCOLLECTOR_H
+#define _SYSCOLLECTOR_H
 
 // Define EXPORTED for any platform
 #ifdef _WIN32
@@ -71,4 +71,4 @@ typedef void(*syscollector_stop_func)();
 
 typedef int (*syscollector_sync_message_func)(const char* data);
 
-#endif //_SYSCOLLECTOR_INFO_H
+#endif //_SYSCOLLECTOR_H

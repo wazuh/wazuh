@@ -72,7 +72,7 @@ TEST_F(SysInfoTest, packages)
 TEST_F(SysInfoTest, processes)
 {
     SysInfoWrapper info;
-    EXPECT_CALL(info, getProcessesInfo());
+    EXPECT_CALL(info, getProcessesInfo()).WillOnce(Return("processes"));
     const auto result {info.processes()};
     EXPECT_FALSE(result.empty());    
 }
@@ -80,7 +80,7 @@ TEST_F(SysInfoTest, processes)
 TEST_F(SysInfoTest, network)
 {
     SysInfoWrapper info;
-    EXPECT_CALL(info, getNetworks());
+    EXPECT_CALL(info, getNetworks()).WillOnce(Return("networks"));
     const auto result {info.networks()};
     EXPECT_FALSE(result.empty());    
 }
@@ -88,7 +88,7 @@ TEST_F(SysInfoTest, network)
 TEST_F(SysInfoTest, ports)
 {
     SysInfoWrapper info;
-    EXPECT_CALL(info, getPorts());
+    EXPECT_CALL(info, getPorts()).WillOnce(Return("ports"));
     const auto result {info.ports()};
     EXPECT_FALSE(result.empty());
 }
@@ -96,7 +96,7 @@ TEST_F(SysInfoTest, ports)
 TEST_F(SysInfoTest, os)
 {
     SysInfoWrapper info;
-    EXPECT_CALL(info, getOsInfo());
+    EXPECT_CALL(info, getOsInfo()).WillOnce(Return("osinfo"));
     const auto result {info.os()};
     EXPECT_FALSE(result.empty());
 }

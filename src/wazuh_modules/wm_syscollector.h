@@ -1,7 +1,7 @@
 /*
  * Wazuh Module for System inventory
  * Copyright (C) 2015-2020, Wazuh Inc.
- * March 9, 2017.
+ * November 17, 2020.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

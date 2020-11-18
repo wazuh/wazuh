@@ -447,7 +447,7 @@ static void updateAndNotifyChanges(const DBSYNC_HANDLE handle,
 bool Syscollector::sleepFor()
 {
     std::unique_lock<std::mutex> lock{m_mutex};
-    return !m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&](){return m_running;});;
+    return !m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&](){return m_running;});
 }
 
 std::string Syscollector::getCreateStatement() const

@@ -62,9 +62,13 @@ void* wm_sys_main(wm_sys_t *sys)
         syscollector_start_ptr = so_get_function_sym(syscollector_module, "syscollector_start");
         syscollector_stop_ptr = so_get_function_sym(syscollector_module, "syscollector_stop");
         syscollector_sync_message_ptr = so_get_function_sym(syscollector_module, "syscollector_sync_message");
+    } else {
+        mterror(WM_SYS_LOGTAG, "Can't load syscollector.");
+        pthread_exit(NULL);
     }
 
     if (syscollector_start_ptr) {
+        mtinfo(WM_SYS_LOGTAG, "Starting Syscollector.");
         syscollector_start_ptr(sys->interval,
                                wm_sys_send_message,
                                sys->flags.scan_on_start,
@@ -76,6 +80,8 @@ void* wm_sys_main(wm_sys_t *sys)
                                sys->flags.allports,
                                sys->flags.procinfo,
                                sys->flags.hotfixinfo);
+    } else {
+        mterror(WM_SYS_LOGTAG, "Can't get syscollector_start_ptr.");
     }
     
     return 0;
