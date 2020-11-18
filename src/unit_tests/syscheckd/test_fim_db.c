@@ -2335,7 +2335,8 @@ void test_fim_db_delete_range_path_error(void **state) {
     expect_value(__wrap_fclose, _File, (FILE*)2345);
     will_return(__wrap_fclose, 1);
 
-    ret = fim_db_delete_range(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex, syscheck.database_store);
+    ret = fim_db_delete_range(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex,
+                              syscheck.database_store, FIM_SCHEDULED);
 
     assert_int_equal(ret, FIMDB_ERR);
 }
@@ -2386,7 +2387,8 @@ void test_fim_db_delete_range_fail_to_read_line_length(void **state) {
     expect_value(__wrap_fclose, _File, (FILE*)2345);
     will_return(__wrap_fclose, 1);
 
-    ret = fim_db_delete_range(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex, syscheck.database_store);
+    ret = fim_db_delete_range(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex,
+                              syscheck.database_store, FIM_SCHEDULED);
 
     assert_int_equal(ret, FIMDB_ERR);
 }
@@ -2417,7 +2419,8 @@ void test_fim_db_delete_range_fail_to_read_line(void **state) {
     expect_value(__wrap_fclose, _File, (FILE*)2345);
     will_return(__wrap_fclose, 1);
 
-    ret = fim_db_delete_range(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex, syscheck.database_store);
+    ret = fim_db_delete_range(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex,
+                              syscheck.database_store, FIM_SCHEDULED);
 
     assert_int_equal(ret, FIMDB_ERR);
 }
