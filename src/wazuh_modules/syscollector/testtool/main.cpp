@@ -23,7 +23,7 @@ static void logFunction(const char* msg)
     std::cout << msg << std::endl;
 }
 
-int main(int argc, const char* argv[])
+int main(int /*argc*/, const char** /*argv[]*/)
 {
     const auto reportFunction
     {

@@ -723,7 +723,6 @@ DBSyncTxn::DBSyncTxn(const DBSYNC_HANDLE   handle,
                      const unsigned int    threadNumber,
                      const unsigned int    maxQueueSize,
                      ResultCallbackData    callbackData)
-: m_shouldBeRemoved { true }
 {
     const auto callbackWrapper
     {
@@ -737,7 +736,6 @@ DBSyncTxn::DBSyncTxn(const DBSYNC_HANDLE   handle,
 
 DBSyncTxn::DBSyncTxn(const TXN_HANDLE handle)
 : m_txn { handle }
-, m_shouldBeRemoved { false }
 { }
 
 DBSyncTxn::~DBSyncTxn()

@@ -85,8 +85,8 @@ private:
     bool                                           m_processes;
     bool                                           m_hotfixes;
     bool                                           m_running;
-    std::unique_ptr<DBSync>                        m_dbSync;
-    RemoteSync                                     m_rsync;
+    std::unique_ptr<DBSync>                        m_spDBSync;
+    std::unique_ptr<RemoteSync>                    m_spRsync;
     std::condition_variable                        m_cv;
     std::mutex                                     m_mutex;
 };

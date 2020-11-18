@@ -237,39 +237,6 @@ constexpr auto NETADDR_SQL_STATEMENT
        PRIMARY KEY (iface,proto,address)) WITHOUT ROWID;)"
 };
 
-constexpr auto OS_SQL_STATEMENT
-{
-    R"(CREATE TABLE os (
-        hostname TEXT,
-        architecture TEXT,
-        os_name TEXT,
-        os_version TEXT,
-        os_codename TEXT,
-        os_major TEXT,
-        os_minor TEXT,
-        os_build TEXT,
-        os_platform TEXT,
-        sysname TEXT,
-        release TEXT,
-        version TEXT,
-        os_release TEXT,
-        checksum TEXT,
-        PRIMARY KEY (os_name)) WITHOUT ROWID;)"
-};
-constexpr auto HARDWARE_SQL_STATEMENT
-{
-    R"(CREATE TABLE hardware (
-        board_serial TEXT,
-        cpu_name TEXT,
-        cpu_cores INTEGER CHECK (cpu_cores > 0),
-        cpu_mhz BIGINT CHECK (cpu_mhz > 0),
-        ram_total BIGINT CHECK (ram_total > 0),
-        ram_free BIGINT CHECK (ram_free > 0),
-        ram_usage INTEGER CHECK (ram_usage >= 0 AND ram_usage <= 100),
-        checksum TEXT,
-        PRIMARY KEY (board_serial)) WITHOUT ROWID;)"
-};
-
 static void updateAndNotifyChanges(const DBSYNC_HANDLE handle,
                                    const std::string& table,
                                    const nlohmann::json& values,
@@ -397,8 +364,8 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_processes = processes;
     m_hotfixes = hotfixes;
     m_running = false;
-    m_dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, "syscollector.db", getCreateStatement());
-
+    m_spDBSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, "syscollector.db", getCreateStatement());
+    m_spRsync = std::make_unique<RemoteSync>();
     syncLoop();
 }
 
@@ -499,9 +466,9 @@ void Syscollector::scanNetwork()
                 protoTableDataList.push_back(protoTableData);
             }
 
-            updateAndNotifyChanges(m_dbSync->handle(), netIfaceTable,    ifaceTableDataList, m_reportFunction);
-            updateAndNotifyChanges(m_dbSync->handle(), netProtocolTable, protoTableDataList, m_reportFunction);
-            updateAndNotifyChanges(m_dbSync->handle(), netAddressTable,  addressTableDataList, m_reportFunction);
+            updateAndNotifyChanges(m_spDBSync->handle(), netIfaceTable,    ifaceTableDataList, m_reportFunction);
+            updateAndNotifyChanges(m_spDBSync->handle(), netProtocolTable, protoTableDataList, m_reportFunction);
+            updateAndNotifyChanges(m_spDBSync->handle(), netAddressTable,  addressTableDataList, m_reportFunction);
         }
     }
 }
@@ -528,13 +495,13 @@ void Syscollector::scanPackages()
                 packages.push_back(item);
             }
         }
-        updateAndNotifyChanges(m_dbSync->handle(), tablePackages, packages, m_reportFunction);
-        m_rsync.startSync(m_dbSync->handle(), nlohmann::json::parse(PACKAGES_START_CONFIG_STATEMENT), m_reportFunction);
+        updateAndNotifyChanges(m_spDBSync->handle(), tablePackages, packages, m_reportFunction);
+        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PACKAGES_START_CONFIG_STATEMENT), m_reportFunction);
         if (m_hotfixes)
         {
             constexpr auto tableHotfixes{"hotfixes"};
-            updateAndNotifyChanges(m_dbSync->handle(), tableHotfixes, hotfixes, m_reportFunction);
-            m_rsync.startSync(m_dbSync->handle(), nlohmann::json::parse(HOTFIXES_START_CONFIG_STATEMENT), m_reportFunction);
+            updateAndNotifyChanges(m_spDBSync->handle(), tableHotfixes, hotfixes, m_reportFunction);
+            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HOTFIXES_START_CONFIG_STATEMENT), m_reportFunction);
         }
     }
 }
@@ -575,7 +542,7 @@ void Syscollector::scanPorts()
                     }
                 }
             }
-            updateAndNotifyChanges(m_dbSync->handle(), table, portsList, m_reportFunction);
+            updateAndNotifyChanges(m_spDBSync->handle(), table, portsList, m_reportFunction);
         }
     }
 }
@@ -586,8 +553,8 @@ void Syscollector::scanProcesses()
     {
         constexpr auto table{"processes"};
         const auto& processes{m_spInfo->processes()};
-        updateAndNotifyChanges(m_dbSync->handle(), table, processes, m_reportFunction);
-        m_rsync.startSync(m_dbSync->handle(), nlohmann::json::parse(PROCESSES_START_CONFIG_STATEMENT), m_reportFunction);
+        updateAndNotifyChanges(m_spDBSync->handle(), table, processes, m_reportFunction);
+        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PROCESSES_START_CONFIG_STATEMENT), m_reportFunction);
     }
 }
 
@@ -612,4 +579,6 @@ void Syscollector::syncLoop()
         scan();
         //sync Rsync
     }
+    m_spRsync.reset(nullptr);
+    m_spDBSync.reset(nullptr);
 }

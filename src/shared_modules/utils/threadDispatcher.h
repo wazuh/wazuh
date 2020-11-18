@@ -170,7 +170,7 @@ namespace Utils
     class SyncDispatcher
     {
     public:
-        SyncDispatcher(Functor functor, const unsigned int numberOfThreads = 0)
+        SyncDispatcher(Functor functor, const unsigned int /*numberOfThreads = 0*/)
         : m_functor{functor}
         {
         }

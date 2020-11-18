@@ -47,11 +47,16 @@ EXPORTED void syscollector_start(const unsigned int inverval,
 
 EXPORTED void syscollector_stop();
 
+EXPORTED int syscollector_sync_message(const char* data);
+
+
+
 #ifdef __cplusplus
 }
 #endif
 
 typedef void(*syscollector_start_func)(const unsigned int inverval,
+                                       send_data_callback_t callback,
                                        const bool scanOnStart,
                                        const bool hardware,
                                        const bool os,
@@ -63,5 +68,7 @@ typedef void(*syscollector_start_func)(const unsigned int inverval,
                                        const bool hotfixes);
 
 typedef void(*syscollector_stop_func)();
+
+typedef int (*syscollector_sync_message_func)(const char* data);
 
 #endif //_SYSCOLLECTOR_INFO_H

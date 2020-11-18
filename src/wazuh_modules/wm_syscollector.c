@@ -10,38 +10,63 @@
  */
 #include <stdlib.h>
 #include "../../wmodules_def.h"
+#include "wmodules.h"
 #include "wm_syscollector.h"
 #include "syscollector.h"
 #include "sym_load.h"
+#include "defs.h"
+#include "mq_op.h"
 
 static void* wm_sys_main(wm_sys_t *sys);        // Module main function. It won't return
 static void wm_sys_destroy(wm_sys_t *sys);      // Destroy data
 const char *WM_SYS_LOCATION = "syscollector";   // Location field for event sending
 cJSON *wm_sys_dump(const wm_sys_t *sys);
+int wm_sync_message(const char *data);
 
 const wm_context WM_SYS_CONTEXT = {
     "syscollector",
     (wm_routine)wm_sys_main,
     (wm_routine)(void *)wm_sys_destroy,
     (cJSON * (*)(const void *))wm_sys_dump,
-    NULL,
+    (int(*)(const char*))wm_sync_message,
 };
 
 void *syscollector_module = NULL;
 syscollector_start_func syscollector_start_ptr = NULL;
 syscollector_stop_func syscollector_stop_ptr = NULL;
+syscollector_sync_message_func syscollector_sync_message_ptr = NULL;
+
+
+int queue_fd = 0;                                   // Output queue file descriptor
+
+void wm_sys_send_message(const void* data) {
+    const int eps = 1000000/wm_max_eps;
+    wm_sendmsg(eps,queue_fd, data, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+}
 
 
 void* wm_sys_main(wm_sys_t *sys) 
 {
+    #ifndef WIN32
+    // Connect to socket
+    queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
+
+    if (queue_fd < 0) {
+        mterror(WM_SYS_LOGTAG, "Can't connect to queue.");
+        pthread_exit(NULL);
+    }
+    #endif
+
     if (syscollector_module = so_get_module_handle("syscollector"), syscollector_module)
     {
         syscollector_start_ptr = so_get_function_sym(syscollector_module, "syscollector_start");
         syscollector_stop_ptr = so_get_function_sym(syscollector_module, "syscollector_stop");
+        syscollector_sync_message_ptr = so_get_function_sym(syscollector_module, "syscollector_sync_message");
     }
 
     if (syscollector_start_ptr) {
         syscollector_start_ptr(sys->interval,
+                               wm_sys_send_message,
                                sys->flags.scan_on_start,
                                sys->flags.hwinfo,
                                sys->flags.osinfo,
@@ -58,6 +83,8 @@ void* wm_sys_main(wm_sys_t *sys)
 
 void wm_sys_destroy(wm_sys_t *data) 
 {
+    close(queue_fd);
+
     if (syscollector_stop_ptr){
         syscollector_stop_ptr();
     }
@@ -91,4 +118,15 @@ cJSON *wm_sys_dump(const wm_sys_t *sys)
     cJSON_AddItemToObject(root,"syscollector",wm_sys);
 
     return root;
+}
+
+int wm_sync_message(const char *data)
+{
+    int ret_val = 0;
+
+    if (syscollector_sync_message_ptr) {
+        ret_val = syscollector_sync_message_ptr(data);
+    }
+
+    return ret_val;
 }
