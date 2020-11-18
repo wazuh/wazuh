@@ -4687,7 +4687,6 @@ void test_wdb_global_get_agents_to_disconnect_ok(void **state)
         cJSON* json_agent = cJSON_CreateObject();
         cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(i));
         cJSON_AddItemToArray(root, json_agent);
-
     }
 
     //Preparing statement
@@ -4704,15 +4703,20 @@ void test_wdb_global_get_agents_to_disconnect_ok(void **state)
     will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
     will_return(__wrap_wdb_exec_stmt_sized, root);
     //Setting agents as disconnected
-    will_return_count(__wrap_wdb_begin2, 1, agents_amount);
-    will_return_count(__wrap_wdb_stmt_cache, 1, agents_amount);
-    expect_value_count(__wrap_sqlite3_bind_text, pos, 1, agents_amount);
-    expect_string_count(__wrap_sqlite3_bind_text, buffer, "disconnected", agents_amount);
-    will_return_count(__wrap_sqlite3_bind_text, SQLITE_OK, agents_amount);
-    expect_value_count(__wrap_sqlite3_bind_int, index, 2, agents_amount);
-    expect_in_range_count(__wrap_sqlite3_bind_int, value, 0, agents_amount, agents_amount);
-    will_return_count(__wrap_sqlite3_bind_int, SQLITE_OK, agents_amount);
-    will_return_count(__wrap_wdb_step, SQLITE_DONE, agents_amount);
+    for (int i=0; i<agents_amount; i++){
+        will_return(__wrap_wdb_begin2, 1);
+        will_return(__wrap_wdb_stmt_cache, 1);
+        expect_value(__wrap_sqlite3_bind_text, pos, 1);
+        expect_string(__wrap_sqlite3_bind_text, buffer, "disconnected");
+        will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+        expect_value(__wrap_sqlite3_bind_text, pos, 2);
+        expect_string(__wrap_sqlite3_bind_text, buffer, "synced");
+        will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+        expect_value(__wrap_sqlite3_bind_int, index, 3);
+        expect_in_range(__wrap_sqlite3_bind_int, value, 0, agents_amount);
+        will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+        will_return(__wrap_wdb_step, SQLITE_DONE);
+    }
 
     wdbc_result status = WDBC_UNKNOWN;
     cJSON* result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, sync_status, &status);
@@ -4751,15 +4755,20 @@ void test_wdb_global_get_agents_to_disconnect_due(void **state)
     will_return(__wrap_wdb_exec_stmt_sized, SQLITE_ROW);
     will_return(__wrap_wdb_exec_stmt_sized, root);
     //Setting agents as disconnected
-    will_return_count(__wrap_wdb_begin2, 1, agents_amount);
-    will_return_count(__wrap_wdb_stmt_cache, 1, agents_amount);
-    expect_value_count(__wrap_sqlite3_bind_text, pos, 1, agents_amount);
-    expect_string_count(__wrap_sqlite3_bind_text, buffer, "disconnected", agents_amount);
-    will_return_count(__wrap_sqlite3_bind_text, SQLITE_OK, agents_amount);
-    expect_value_count(__wrap_sqlite3_bind_int, index, 2, agents_amount);
-    expect_in_range_count(__wrap_sqlite3_bind_int, value, 0, agents_amount, agents_amount);
-    will_return_count(__wrap_sqlite3_bind_int, SQLITE_OK, agents_amount);
-    will_return_count(__wrap_wdb_step, SQLITE_DONE, agents_amount);
+    for (int i=0; i<agents_amount; i++){
+        will_return(__wrap_wdb_begin2, 1);
+        will_return(__wrap_wdb_stmt_cache, 1);
+        expect_value(__wrap_sqlite3_bind_text, pos, 1);
+        expect_string(__wrap_sqlite3_bind_text, buffer, "disconnected");
+        will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+        expect_value(__wrap_sqlite3_bind_text, pos, 2);
+        expect_string(__wrap_sqlite3_bind_text, buffer, "synced");
+        will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+        expect_value(__wrap_sqlite3_bind_int, index, 3);
+        expect_in_range(__wrap_sqlite3_bind_int, value, 0, agents_amount);
+        will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+        will_return(__wrap_wdb_step, SQLITE_DONE);
+    }
 
     wdbc_result status = WDBC_UNKNOWN;
     cJSON* result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, sync_status, &status);
@@ -4775,6 +4784,7 @@ void test_wdb_global_get_agents_to_disconnect_err(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
     int last_id = 0;
     int keepalive = 0;
+    const char *sync_status = "synced";
 
     //Preparing statement
     will_return(__wrap_wdb_begin2, 1);
@@ -4852,7 +4862,11 @@ void test_wdb_global_get_agents_to_disconnect_update_status_fail(void **state)
     expect_value(__wrap_sqlite3_bind_int, index, 2);
     expect_value(__wrap_sqlite3_bind_int, value, keepalive);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    //Executing statement
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
     will_return(__wrap_wdb_exec_stmt_sized, root);
+    //Disconnect query error
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_any(__wrap__mdebug1, formatted_msg);
