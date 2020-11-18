@@ -4988,7 +4988,6 @@ int wdb_parse_global_get_agent_info(wdb_t* wdb, char* input, char* output) {
 int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, char* output) {
     int last_id = 0;
     char *connection_status = NULL;
-    char* out = NULL;
     char *next = NULL;
     const char delim[2] = " ";
     char *savedptr = NULL;
@@ -5010,9 +5009,20 @@ int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, ch
     }
     connection_status = next;
 
-    wdbc_result status = wdb_global_get_agents_by_connection_status(wdb, last_id, connection_status, &out);
+    // Execute command
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_agents_by_connection_status(wdb, last_id, connection_status, &status);
+    if (!result) {
+        mdebug1("Error getting agents by connection status from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting agents by connection status from global.db.");
+        return OS_INVALID;
+    }
+
+    //Print response
+    char* out = cJSON_PrintUnformatted(result);
     snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], out);
 
+    cJSON_Delete(result);
     os_free(out)
 
     return OS_SUCCESS;
@@ -5020,7 +5030,6 @@ int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, ch
 
 int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output) {
     int last_id = 0;
-    char* out = NULL;
     char *next = NULL;
     const char delim[2] = " ";
     char *savedptr = NULL;
@@ -5040,9 +5049,20 @@ int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output) {
     }
     last_id = atoi(next);
 
-    wdbc_result status = wdb_global_get_all_agents(wdb, &last_id, &out);
+    // Execute command
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_all_agents(wdb, last_id, &status);
+    if (!result) {
+        mdebug1("Error getting agents from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting agents from global.db.");
+        return OS_INVALID;
+    }
+
+    //Print response
+    char* out = cJSON_PrintUnformatted(result);
     snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], out);
 
+    cJSON_Delete(result);
     os_free(out)
 
     return OS_SUCCESS;
@@ -5063,7 +5083,6 @@ int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output) {
     int last_id = 0;
     int keep_alive = 0;
     char *sync_status = NULL;
-    char* out = NULL;
     char *next = NULL;
     const char delim[2] = " ";
     char *savedptr = NULL;
@@ -5095,10 +5114,21 @@ int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output) {
     }
     sync_status = next;
 
-    wdbc_result status = wdb_global_get_agents_to_disconnect(wdb, last_id, keep_alive, sync_status, &out);
+    // Execute command
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_agents_to_disconnect(wdb, last_id, keep_alive, sync_status, &status);
+    if (!result) {
+        mdebug1("Error getting agents to be disconnected from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting agents to be disconnected from global.db.");
+        return OS_INVALID;
+    }
+
+    //Print response
+    char* out = cJSON_PrintUnformatted(result);
     snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], out);
 
-    os_free(out);
+    cJSON_Delete(result);
+    os_free(out)
 
     return OS_SUCCESS;
 }

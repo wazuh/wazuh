@@ -2712,7 +2712,11 @@ void test_wdb_get_all_agents_success(void **state) {
 
     // Setting the payload
     set_payload = 1;
-    strncpy(test_payload, "ok 1,2,3\0", 9);
+    strcpy(test_payload, "ok [{\"id\":1},{\"id\":2},{\"id\":3}]");
+    cJSON* test_json = __real_cJSON_Parse(test_payload+3);
+    cJSON* id1 = cJSON_CreateNumber(1);
+    cJSON* id2 = cJSON_CreateNumber(2);
+    cJSON* id3 = cJSON_CreateNumber(3);
 
     // Calling Wazuh DB
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -2724,15 +2728,25 @@ void test_wdb_get_all_agents_success(void **state) {
     // Parsing Wazuh DB result
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
+    will_return(__wrap_cJSON_Parse, test_json);
+    will_return(__wrap_cJSON_GetObjectItem, id1);
+    will_return(__wrap_cJSON_GetObjectItem, id2);
+    will_return(__wrap_cJSON_GetObjectItem, id3);
+    expect_function_call(__wrap_cJSON_Delete);
 
     int *array = wdb_get_all_agents(false, NULL);
 
+    assert_non_null(array);
     assert_int_equal(1, array[0]);
     assert_int_equal(2, array[1]);
     assert_int_equal(3, array[2]);
     assert_int_equal(-1, array[3]);
 
     os_free(array);
+    __real_cJSON_Delete(test_json);
+    __real_cJSON_Delete(id1);
+    __real_cJSON_Delete(id2);
+    __real_cJSON_Delete(id3);
 
     // Cleaning payload
     set_payload = 0;
@@ -4147,7 +4161,9 @@ void test_wdb_agent_belongs_first_time_success(void **state) {
 
     // Setting the payload
     set_payload = 1;
-    strncpy(test_payload, "ok 1", 8);
+    strcpy(test_payload, "ok [{\"id\":1}]");
+    cJSON* test_json = __real_cJSON_Parse(test_payload+3);
+    cJSON* id1 = cJSON_CreateNumber(1);
 
     // Calling Wazuh DB
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -4159,6 +4175,9 @@ void test_wdb_agent_belongs_first_time_success(void **state) {
     // Parsing Wazuh DB result
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
+    will_return(__wrap_cJSON_Parse, test_json);
+    will_return(__wrap_cJSON_GetObjectItem, id1);
+    expect_function_call(__wrap_cJSON_Delete);
 
     //// Call to wdb_get_agent_group
     cJSON *root = NULL;
@@ -4245,6 +4264,8 @@ void test_wdb_agent_belongs_first_time_success(void **state) {
 
     __real_cJSON_Delete(root);
     __real_cJSON_Delete(root2);
+    __real_cJSON_Delete(test_json);
+    __real_cJSON_Delete(id1);
 }
 
 /* Tests get_agent_date_added */
@@ -4469,7 +4490,7 @@ void test_wdb_reset_agents_connection_success(void **state)
 
 /* Tests wdb_get_agents_by_connection_status */
 
-void test_wdb_get_agents_by_connection_status_query_response(void **state)
+void test_wdb_get_agents_by_connection_status_query_error(void **state)
 {
     const char *query_str = "global get-agents-by-connection-status 0 active";
     const char *response = "err";
@@ -4507,50 +4528,17 @@ void test_wdb_get_agents_by_connection_status_parse_error(void **state)
     assert_null(array);
 }
 
-void test_wdb_get_agents_by_connection_status_due_query_success(void **state)
-{
-    const char *query_str1 = "global get-agents-by-connection-status 0 active";
-    const char *query_str2 = "global get-agents-by-connection-status 2 active";
-    const char *response1 = "due 1,2";
-    const char *response2 = "ok 3,4";
-
-    // Calling Wazuh DB first time
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, query_str1);
-    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, response1);
-    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
-
-    // Calling Wazuh DB second time
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, query_str2);
-    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, response2);
-    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
-
-    // Parsing Wazuh DB result
-    expect_any_count(__wrap_wdbc_parse_result, result, -1);
-    will_return(__wrap_wdbc_parse_result, WDBC_DUE);
-    will_return(__wrap_wdbc_parse_result, WDBC_OK);
-
-    int *array = wdb_get_agents_by_connection_status("active", NULL);
-
-    assert_non_null(array);
-    assert_int_equal(1, array[0]);
-    assert_int_equal(2, array[1]);
-    assert_int_equal(3, array[2]);
-    assert_int_equal(4, array[3]);
-    assert_int_equal(-1, array[4]);
-    os_free(array);
-}
-
 void test_wdb_get_agents_by_connection_status_success(void **state)
 {
     const char *query_str = "global get-agents-by-connection-status 0 active";
 
     // Setting the payload
     set_payload = 1;
-    strncpy(test_payload, "ok 1,2\0", 9);
+    strcpy(test_payload, "ok [{\"id\":1},{\"id\":2},{\"id\":3}]");
+    cJSON* test_json = __real_cJSON_Parse(test_payload+3);
+    cJSON* id1 = cJSON_CreateNumber(1);
+    cJSON* id2 = cJSON_CreateNumber(2);
+    cJSON* id3 = cJSON_CreateNumber(3);
 
     // Calling Wazuh DB
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -4562,14 +4550,25 @@ void test_wdb_get_agents_by_connection_status_success(void **state)
     // Parsing Wazuh DB result
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
+    will_return(__wrap_cJSON_Parse, test_json);
+    will_return(__wrap_cJSON_GetObjectItem, id1);
+    will_return(__wrap_cJSON_GetObjectItem, id2);
+    will_return(__wrap_cJSON_GetObjectItem, id3);
+    expect_function_call(__wrap_cJSON_Delete);
 
     int *array = wdb_get_agents_by_connection_status("active", NULL);
 
     assert_non_null(array);
     assert_int_equal(1, array[0]);
     assert_int_equal(2, array[1]);
-    assert_int_equal(-1, array[2]);
+    assert_int_equal(3, array[2]);
+    assert_int_equal(-1, array[3]);
+
     os_free(array);
+    __real_cJSON_Delete(test_json);
+    __real_cJSON_Delete(id1);
+    __real_cJSON_Delete(id2);
+    __real_cJSON_Delete(id3);
 
     // Cleaning payload
     set_payload = 0;
@@ -4619,7 +4618,11 @@ void test_wdb_disconnect_agents_success(void **state) {
 
     // Setting the payload
     set_payload = 1;
-    strncpy(test_payload, "ok 1,2,3", 9);
+    strcpy(test_payload, "ok [{\"id\":1},{\"id\":2},{\"id\":3}]");
+    cJSON* test_json = __real_cJSON_Parse(test_payload+3);
+    cJSON* id1 = cJSON_CreateNumber(1);
+    cJSON* id2 = cJSON_CreateNumber(2);
+    cJSON* id3 = cJSON_CreateNumber(3);
 
     // Calling Wazuh DB
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -4631,15 +4634,134 @@ void test_wdb_disconnect_agents_success(void **state) {
     // Parsing Wazuh DB result
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
+    will_return(__wrap_cJSON_Parse, test_json);
+    will_return(__wrap_cJSON_GetObjectItem, id1);
+    will_return(__wrap_cJSON_GetObjectItem, id2);
+    will_return(__wrap_cJSON_GetObjectItem, id3);
+    expect_function_call(__wrap_cJSON_Delete);
 
     int *array = wdb_disconnect_agents(100, "syncreq", NULL);
 
+    assert_non_null(array);
     assert_int_equal(1, array[0]);
     assert_int_equal(2, array[1]);
     assert_int_equal(3, array[2]);
     assert_int_equal(-1, array[3]);
 
     os_free(array);
+    __real_cJSON_Delete(test_json);
+    __real_cJSON_Delete(id1);
+    __real_cJSON_Delete(id2);
+    __real_cJSON_Delete(id3);
+
+    // Cleaning payload
+    set_payload = 0;
+    memset(test_payload, '\0', OS_MAXSTR);
+}
+
+/* Tests wdb_parse_chunk_to_int */
+
+void test_wdb_parse_chunk_to_int_ok(void **state) {
+    int* array = NULL;
+    int last_item = 0;
+    int last_len = 0;
+
+    // Setting the payload
+    set_payload = 1;
+    strcpy(test_payload, "ok [{\"id\":1}]");
+    cJSON* test_json = __real_cJSON_Parse(test_payload+3);
+    cJSON* id1 = cJSON_CreateNumber(1);
+
+    // Parsing result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+    will_return(__wrap_cJSON_Parse, test_json);
+    will_return(__wrap_cJSON_GetObjectItem, id1);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    wdbc_result status = wdb_parse_chunk_to_int(test_payload, &array, "id", &last_item, &last_len);
+
+    assert_int_equal(WDBC_OK, status);
+    assert_non_null(array);
+    assert_int_equal(1, array[0]);
+
+    os_free(array);
+    __real_cJSON_Delete(test_json);
+    __real_cJSON_Delete(id1);
+
+    // Cleaning payload
+    set_payload = 0;
+    memset(test_payload, '\0', OS_MAXSTR);
+}
+
+void test_wdb_parse_chunk_to_int_due(void **state) {
+    int* array = NULL;
+    int last_item = 0;
+    int last_len = 0;
+
+    // Setting the payload
+    set_payload = 1;
+    strcpy(test_payload, "due [{\"id\":1}]");
+    cJSON* test_json1 = __real_cJSON_Parse(test_payload+4);
+    cJSON* id1 = cJSON_CreateNumber(1);
+
+    // Parsing result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_DUE);
+    will_return(__wrap_cJSON_Parse, test_json1);
+    will_return(__wrap_cJSON_GetObjectItem, id1);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    wdbc_result status = wdb_parse_chunk_to_int(test_payload, &array, "id", &last_item, &last_len);
+    assert_int_equal(WDBC_DUE, status);
+
+    // Setting second payload
+    strcpy(test_payload, "ok [{\"id\":2}]");
+    cJSON* test_json2 = __real_cJSON_Parse(test_payload+3);
+    cJSON* id2 = cJSON_CreateNumber(2);
+    // Parsing result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+    will_return(__wrap_cJSON_Parse, test_json2);
+    will_return(__wrap_cJSON_GetObjectItem, id2);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    status = wdb_parse_chunk_to_int(test_payload, &array, "id", &last_item, &last_len);
+    assert_int_equal(WDBC_OK, status);
+    assert_non_null(array);
+    assert_int_equal(1, array[0]);
+    assert_int_equal(2, array[1]);
+    assert_int_equal(-1, array[2]);
+
+    os_free(array);
+    __real_cJSON_Delete(test_json1);
+    __real_cJSON_Delete(id1);
+    __real_cJSON_Delete(test_json2);
+    __real_cJSON_Delete(id2);
+
+    // Cleaning payload
+    set_payload = 0;
+    memset(test_payload, '\0', OS_MAXSTR);
+}
+
+void test_wdb_parse_chunk_to_int_err(void **state) {
+    int* array = NULL;
+    int last_item = 0;
+    int last_len = 0;
+
+    // Setting the payload
+    set_payload = 1;
+    strcpy(test_payload, "ok [{\"id\":1}]");
+
+    // Parsing result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+    will_return(__wrap_cJSON_Parse, NULL);
+
+    wdbc_result status = wdb_parse_chunk_to_int(test_payload, &array, "id", &last_item, &last_len);
+
+    assert_int_equal(WDBC_ERROR, status);
+    assert_null(array);
 
     // Cleaning payload
     set_payload = 0;
@@ -4795,14 +4917,17 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_reset_agents_connection_error_result, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_reset_agents_connection_success, setup_wdb_agent, teardown_wdb_agent),
         /* Tests wdb_get_agents_by_connection_status */
-        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_query_response, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_query_error, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_parse_error, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_success, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_due_query_success, setup_wdb_agent, teardown_wdb_agent),
         /* Tests wdb_disconnect_agents */
         cmocka_unit_test_setup_teardown(test_wdb_disconnect_agents_wdbc_query_error, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_disconnect_agents_wdbc_parse_error, setup_wdb_agent, teardown_wdb_agent),
         cmocka_unit_test_setup_teardown(test_wdb_disconnect_agents_success, setup_wdb_agent, teardown_wdb_agent),
+        /* Tests wdb_parse_chunk_to_int */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_int_ok, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_int_due, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_int_err, setup_wdb_agent, teardown_wdb_agent),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

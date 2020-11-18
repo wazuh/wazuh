@@ -222,12 +222,12 @@ int __wrap_wdb_global_sync_agent_info_set(__attribute__((unused)) wdb_t *wdb,
     return mock();
 }
 
-wdbc_result __wrap_wdb_global_get_all_agents(__attribute__((unused)) wdb_t *wdb,
-                                             int* last_agent_id,
-                                             char **output) {
-    check_expected(*last_agent_id);
-    os_strdup(mock_ptr_type(char*), *output);
-    return mock();
+cJSON* __wrap_wdb_global_get_all_agents(   __attribute__((unused)) wdb_t *wdb,
+                                                int last_agent_id,
+                                                wdbc_result* status) {
+    check_expected(last_agent_id);
+    *status = mock();
+    return mock_ptr_type(cJSON*);
 }
 
 cJSON* __wrap_wdb_global_get_agent_info(__attribute__((unused)) wdb_t *wdb,
@@ -240,26 +240,27 @@ int __wrap_wdb_global_reset_agents_connection(__attribute__((unused)) wdb_t *wdb
     check_expected(sync_status);
     return mock();
 }
-wdbc_result __wrap_wdb_global_get_agents_by_connection_status(__attribute__((unused)) wdb_t *wdb,
-                                                              int last_agent_id,
-                                                              const char* connection_status,
-                                                              char **output) {
+
+cJSON* __wrap_wdb_global_get_agents_by_connection_status (__attribute__((unused)) wdb_t *wdb,
+                                                               int last_agent_id,
+                                                               const char* connection_status,
+                                                               wdbc_result* status) {
     check_expected(last_agent_id);
     check_expected(connection_status);
-    os_strdup(mock_ptr_type(char*), *output);
-    return mock();
+    *status = mock();
+    return mock_ptr_type(cJSON*);
 }
 
-wdbc_result __wrap_wdb_global_get_agents_to_disconnect(__attribute__((unused)) wdb_t *wdb,
+cJSON* __wrap_wdb_global_get_agents_to_disconnect(__attribute__((unused)) wdb_t *wdb,
                                                   int last_agent_id,
                                                   int keep_alive,
                                                   const char *sync_status,
-                                                  char **output) {
+                                                  wdbc_result* status) {
     check_expected(last_agent_id);
     check_expected(keep_alive);
     check_expected(sync_status);
-    os_strdup(mock_ptr_type(char*), *output);
-    return mock();
+    *status = mock();
+    return mock_ptr_type(cJSON*);
 }
 
 int __wrap_wdb_global_check_manager_keepalive(wdb_t *wdb) {

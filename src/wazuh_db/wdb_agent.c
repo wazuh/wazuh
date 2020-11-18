@@ -552,33 +552,14 @@ int* wdb_get_all_agents(bool include_manager, int *sock) {
         // Query WazuhDB
         snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_ALL_AGENTS], last_id);
         if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
-            // Parse result
-            char* payload = NULL;
-            status = wdbc_parse_result(wdboutput, &payload);
-            if (status == WDBC_OK || status == WDBC_DUE) {
-                const char delim = ',';
-                const char sdelim[] = { delim, '\0' };
-                //Realloc new size
-                int new_len = os_strcnt(payload, delim)+1;
-                os_realloc(array, sizeof(int)*(len+new_len+1), array);
-                //Append IDs to array
-                char* agent_id = NULL;
-                char *savedptr = NULL;
-                for (agent_id = strtok_r(payload, sdelim, &savedptr); agent_id; agent_id = strtok_r(NULL, sdelim, &savedptr)) {
-                    array[len] = atoi(agent_id);
-                    last_id = array[len];
-                    len++;
-                }
-            }
+            status = wdb_parse_chunk_to_int(wdboutput, &array, "id", &last_id, &len);
         }
         else {
             status = WDBC_ERROR;
         }
     }
-    if (status == WDBC_OK) {
-        array[len] = -1;
-    }
-    else {
+
+    if (status == WDBC_ERROR) {
         os_free(array);
     }
 
@@ -1115,33 +1096,14 @@ int* wdb_get_agents_by_connection_status (const char* connection_status, int *so
         // Query WazuhDB
         snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_AGENTS_BY_CONNECTION_STATUS], last_id, connection_status);
         if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
-            // Parse result
-            char* payload = NULL;
-            status = wdbc_parse_result(wdboutput, &payload);
-            if (status == WDBC_OK || status == WDBC_DUE) {
-                const char delim = ',';
-                const char sdelim[] = { delim, '\0' };
-                //Realloc new size
-                int new_len = os_strcnt(payload, delim)+1;
-                os_realloc(array, sizeof(int)*(len+new_len+1), array);
-                //Append IDs to array
-                char* agent_id = NULL;
-                char *savedptr = NULL;
-                for (agent_id = strtok_r(payload, sdelim, &savedptr); agent_id; agent_id = strtok_r(NULL, sdelim, &savedptr)) {
-                    array[len] = atoi(agent_id);
-                    last_id = array[len];
-                    len++;
-                }
-            }
+            status = wdb_parse_chunk_to_int(wdboutput, &array, "id", &last_id, &len);
         }
         else {
             status = WDBC_ERROR;
         }
     }
-    if (status == WDBC_OK) {
-        array[len] = -1;
-    }
-    else {
+
+    if (status == WDBC_ERROR) {
         os_free(array);
     }
 
@@ -1150,6 +1112,45 @@ int* wdb_get_agents_by_connection_status (const char* connection_status, int *so
     }
 
     return array;
+}
+
+wdbc_result wdb_parse_chunk_to_int(char* input, int** output, const char* item, int* last_item, int* last_size) {
+    int len = last_size ? *last_size : 0;
+    int _last_item = 0;
+    char* payload = NULL;
+
+    wdbc_result status = wdbc_parse_result(input, &payload);
+    if (status == WDBC_OK || status == WDBC_DUE) {
+        cJSON* response = cJSON_Parse(payload);
+        if (response) {
+            //Realloc new size
+            os_realloc(*output, sizeof(int)*(len+cJSON_GetArraySize(response)+1), *output);
+            //Append items to output array
+            cJSON* agent = NULL;
+            cJSON_ArrayForEach(agent, response) {
+                cJSON* json_item = cJSON_GetObjectItem(agent, item);
+                if (cJSON_IsNumber(json_item)) {
+                    (*output)[len] = json_item->valueint;
+                    _last_item = json_item->valueint;
+                    len++;
+                }
+            }
+            cJSON_Delete(response);
+        }
+        else {
+            status = WDBC_ERROR;
+        }
+    }
+
+    //Always finalize the array
+    if(*output) {
+        (*output)[len] = -1;
+    }
+
+    if (last_size) *last_size = len;
+    if (last_item) *last_item = _last_item;
+
+    return status;
 }
 
 int* wdb_disconnect_agents(int keepalive, const char *sync_status, int *sock) {
@@ -1165,33 +1166,14 @@ int* wdb_disconnect_agents(int keepalive, const char *sync_status, int *sock) {
         // Query WazuhDB
         snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DISCONNECT_AGENTS], last_id, keepalive, sync_status);
         if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
-            // Parse result
-            char* payload = NULL;
-            status = wdbc_parse_result(wdboutput, &payload);
-            if (status == WDBC_OK || status == WDBC_DUE) {
-                const char delim = ',';
-                const char sdelim[] = { delim, '\0' };
-                //Realloc new size
-                int new_len = os_strcnt(payload, delim)+1;
-                os_realloc(array, sizeof(int)*(len+new_len+1), array);
-                //Append IDs to array
-                char* agent_id = NULL;
-                char *savedptr = NULL;
-                for (agent_id = strtok_r(payload, sdelim, &savedptr); agent_id; agent_id = strtok_r(NULL, sdelim, &savedptr)) {
-                    array[len] = atoi(agent_id);
-                    last_id = array[len];
-                    len++;
-                }
-            }
+            status = wdb_parse_chunk_to_int(wdboutput, &array, "id", &last_id, &len);
         }
         else {
             status = WDBC_ERROR;
         }
     }
-    if (status == WDBC_OK) {
-        array[len] = -1;
-    }
-    else {
+
+    if (status == WDBC_ERROR) {
         os_free(array);
     }
 
