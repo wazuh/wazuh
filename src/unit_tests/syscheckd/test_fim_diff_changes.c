@@ -216,6 +216,28 @@ void expect_fim_diff_generate(gen_diff_struct *gen_diff_data_container, int gene
     }
 }
 
+void expect_fim_diff_delete_compress_folder(const char *folder, int isDir_ret, int rmdir_ex_ret, int remove_empty_folder_ret) {
+    syscheck.diff_folder_size = -1;
+
+    expect_string(__wrap_IsDir, file, folder);
+    will_return(__wrap_IsDir, isDir_ret);
+
+    if (isDir_ret != -1) {
+        expect_string(__wrap_DirSize, path, folder);
+        will_return(__wrap_DirSize, 1024 * 1024);
+
+        expect_string(__wrap_rmdir_ex, name, folder);
+        will_return(__wrap_rmdir_ex, rmdir_ex_ret);
+
+        if (rmdir_ex_ret >= 0) {
+            expect_string(__wrap_remove_empty_folders, folder, folder);
+            will_return(__wrap_remove_empty_folders, remove_empty_folder_ret);
+        } else {
+            expect_any(__wrap__mdebug2, formatted_msg);
+        }
+    }
+}
+
 /* Setup/teardown */
 
 static int setup_group(void **state) {
@@ -1868,6 +1890,83 @@ void test_fim_file_diff_generate_diff_str_too_long(void **state) {
     assert_string_equal(diff_str, gen_diff_data_container->strarray[1]);
 }
 
+void test_fim_diff_process_delete_file_ok(void **state) {
+    const char *filename = strdup(GENERIC_PATH);
+
+    expect_fim_diff_delete_compress_folder(COMPRESS_FOLDER, 0, 0, 0);
+
+    int ret = fim_diff_process_delete_file(filename);
+    assert_int_equal(ret, 0);
+}
+
+void test_fim_diff_process_delete_file_delete_error(void **state) {
+    const char *filename = strdup(GENERIC_PATH);
+
+    expect_fim_diff_delete_compress_folder(COMPRESS_FOLDER, 0, -1, 0);
+
+#ifdef TEST_WINAGENT
+    expect_string(__wrap__merror, formatted_msg, "(6713): Cannot remove diff folder for file: 'queue/diff/local/c\\file\\path'");
+#else
+    expect_string(__wrap__merror, formatted_msg, "(6713): Cannot remove diff folder for file: '/var/ossec/queue/diff/local/path/to/file'");
+#endif
+
+    int ret = fim_diff_process_delete_file(filename);
+    assert_int_equal(ret, -1);
+}
+
+void test_fim_diff_process_delete_file_folder_not_exist(void **state) {
+    const char *filename = strdup(GENERIC_PATH);
+
+    expect_fim_diff_delete_compress_folder(COMPRESS_FOLDER, -1, 0, 0);
+
+#ifdef TEST_WINAGENT
+    expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder 'queue/diff/local/c\\file\\path', not exist.");
+#else
+    expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder '/var/ossec/queue/diff/local/path/to/file', not exist.");
+#endif
+
+    int ret = fim_diff_process_delete_file(filename);
+    assert_int_equal(ret, -1);
+}
+
+#ifdef TEST_WINAGENT
+void test_fim_diff_process_delete_registry_ok(void **state) {
+    const char *key_name = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile");
+
+    expect_fim_diff_delete_compress_folder("queue/diff/registry/[x32] " KEY_NAME_HASHED, 0, 0, 0);
+
+    int ret = fim_diff_process_delete_registry(key_name, 0);
+    assert_int_equal(ret, 0);
+}
+
+void test_fim_diff_process_delete_registry_delete_error(void **state) {
+    const char *key_name = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile");
+
+    expect_fim_diff_delete_compress_folder("queue/diff/registry/[x64] " KEY_NAME_HASHED, 0, -1, 0);
+
+    int ret = fim_diff_process_delete_registry(key_name, 1);
+    assert_int_equal(ret, -1);
+}
+
+void test_fim_diff_process_delete_value_ok(void **state) {
+    const char *key_name = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile");
+
+    expect_fim_diff_delete_compress_folder("queue/diff/registry/[x32] " KEY_NAME_HASHED "/" VALUE_NAME_HASHED, 0, 0, 0);
+
+    int ret = fim_diff_process_delete_value(key_name, "valuename", 0);
+    assert_int_equal(ret, 0);
+}
+
+void test_fim_diff_process_delete_value_delete_error(void **state) {
+    const char *key_name = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile");
+
+    expect_fim_diff_delete_compress_folder("queue/diff/registry/[x64] " KEY_NAME_HASHED "/" VALUE_NAME_HASHED, 0, -1, 0);
+
+    int ret = fim_diff_process_delete_value(key_name, "valuename", 1);
+    assert_int_equal(ret, -1);
+}
+#endif
+
 int main(void) {
     const struct CMUnitTest tests[] = {
 
@@ -1990,6 +2089,20 @@ int main(void) {
 #endif
         cmocka_unit_test_setup_teardown(test_fim_file_diff_generate_diff_str_too_long, setup_gen_diff_str, teardown_free_gen_diff_str),
 
+        // fim_diff_process_delete_file
+        cmocka_unit_test(test_fim_diff_process_delete_file_ok),
+        cmocka_unit_test(test_fim_diff_process_delete_file_delete_error),
+        cmocka_unit_test(test_fim_diff_process_delete_file_folder_not_exist),
+
+#ifdef TEST_WINAGENT
+        // fim_diff_process_delete_registry
+        cmocka_unit_test(test_fim_diff_process_delete_registry_ok),
+        cmocka_unit_test(test_fim_diff_process_delete_registry_delete_error),
+
+        // fim_diff_process_delete_value
+        cmocka_unit_test(test_fim_diff_process_delete_value_ok),
+        cmocka_unit_test(test_fim_diff_process_delete_value_delete_error),
+#endif
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
