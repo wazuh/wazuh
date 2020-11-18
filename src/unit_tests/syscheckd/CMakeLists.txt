@@ -100,7 +100,7 @@ add_subdirectory(db)
 list(APPEND syscheckd_tests_names "test_syscom")
 list(APPEND syscheckd_tests_flags "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
                                    -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap,fim_sync_push_msg \
-                                   -Wl,--wrap,_mdebug1")
+                                   -Wl,--wrap,_mdebug1 -Wl,--wrap,getpid")
 
 set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 \
                           -Wl,--wrap,_mdebug2 -Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg \
@@ -119,7 +119,7 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn
 
 list(APPEND syscheckd_tests_names "test_create_db")
 if(${TARGET} STREQUAL "winagent")
-  list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=w_get_file_permissions \
+  list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=w_get_file_permissions -Wl,--wrap,getpid \
                                      -Wl,--wrap=decode_win_permissions,--wrap=pthread_mutex_lock \
                                      -Wl,--wrap=pthread_mutex_unlock,--wrap=w_get_file_attrs,--wrap=os_winreg_check \
                                      -Wl,--wrap,get_file_user -Wl,--wrap,fim_registry_scan")
@@ -145,6 +145,23 @@ if(NOT ${TARGET} STREQUAL "winagent")
                                      -Wl,--wrap,closeproc -Wl,--wrap,_mdebug2 -Wl,--wrap,get_user \
                                      -Wl,--wrap,get_group -Wl,--wrap,realpath -Wl,--wrap,readlink -Wl,--wrap,fread \
                                      -Wl,--wrap,fseek -Wl,--wrap,remove -Wl,--wrap,atexit -Wl,--wrap,getpid -Wl,--wrap,FOREVER")
+endif()
+
+set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,lstat -Wl,--wrap,stat,--wrap=_mdebug1 \
+                           -Wl,--wrap,wfopen -Wl,--wrap,fread -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fwrite \
+                           -Wl,--wrap,w_compress_gzfile -Wl,--wrap,IsDir -Wl,--wrap,mkdir_ex -Wl,--wrap,fflush \
+                           -Wl,--wrap,w_uncompress_gzfile -Wl,--wrap,OS_MD5_File -Wl,--wrap,File_DateofChange \
+                           -Wl,--wrap,rename -Wl,--wrap,system -Wl,--wrap,fseek -Wl,--wrap,remove,--wrap=fprintf \
+                           -Wl,--wrap=fgets -Wl,--wrap,atexit -Wl,--wrap,getpid,--wrap=_mdebug2,--wrap=rmdir_ex,--wrap=rename_ex \
+                           -Wl,--wrap,_minfo,--wrap=DirSize,--wrap=remove_empty_folders,--wrap=abspath,--wrap=getpid")
+
+list(APPEND syscheckd_tests_names "test_fim_diff_changes")
+if(${TARGET} STREQUAL "agent")
+  list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=isChroot,--wrap=unlink -Wl,--wrap=FileSize")
+elseif(${TARGET} STREQUAL "winagent")
+  list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=FileSizeWin")
+else()
+  list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=unlink,--wrap=FileSize")
 endif()
 
 set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watch -Wl,--wrap,OSHash_Get_ex \
@@ -176,7 +193,7 @@ list(APPEND syscheckd_tests_names "test_syscheck_config")
 if(${TARGET} STREQUAL "agent")
   list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS} -Wl,--wrap=isChroot")
 else()
-  list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS}")
+  list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS} -Wl,--wrap,getpid")
 endif()
 
 set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_merror_exit \
@@ -188,7 +205,8 @@ if(${TARGET} STREQUAL "winagent")
                                     -Wl,--wrap=os_wait \
                                     -Wl,--wrap=rootcheck_init \
                                     -Wl,--wrap=start_daemon \
-                                    -Wl,--wrap=File_DateofChange")
+                                    -Wl,--wrap=File_DateofChange \
+                                    -Wl,--wrap,getpid")
 
 else()
   list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS}")
@@ -207,7 +225,7 @@ set(FIM_SYNC_BASE_FLAGS "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,_mwarn -Wl,--wr
 
 list(APPEND syscheckd_tests_names "test_fim_sync")
 if(${TARGET} STREQUAL "winagent")
-  list(APPEND syscheckd_tests_flags "${FIM_SYNC_BASE_FLAGS} -Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock")
+  list(APPEND syscheckd_tests_flags "${FIM_SYNC_BASE_FLAGS} -Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock -Wl,--wrap,getpid")
 else()
   list(APPEND syscheckd_tests_flags "${FIM_SYNC_BASE_FLAGS} -Wl,--wrap,time -Wl,--wrap=pthread_mutex_lock \
                                      -Wl,--wrap=pthread_mutex_unlock")

@@ -33,7 +33,10 @@ char *__wrap_realpath(const char *path, char *resolved_path) {
     return mock_type(char*);
 }
 
-int __wrap_system(const char *__command) {
-    check_expected(__command);
+int __wrap_system(__attribute__((unused))const char *__command) {
     return mock();
+}
+
+void expect_system(int ret) {
+    will_return(__wrap_system, ret);
 }

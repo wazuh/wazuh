@@ -14,10 +14,13 @@
 #include <unistd.h>
 #include <errno.h>
 
+#undef _unlink
+#define _unlink wrap__unlink
+
 #ifndef WIN32
 int __wrap_unlink(const char *file);
 #else
-int __wrap__unlink(const char *file);
+int wrap__unlink(const char *file);
 #endif
 
 int __wrap_close(int fd);

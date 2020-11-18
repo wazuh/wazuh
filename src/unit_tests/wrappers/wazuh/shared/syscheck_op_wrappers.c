@@ -68,6 +68,11 @@ int __wrap_w_get_file_permissions(const char *file_path, char *permissions, int 
     return mock();
 }
 
+int __wrap_remove_empty_folders(const char *folder) {
+    check_expected(folder);
+    return mock();
+}
+
 void expect_get_group(int gid, char *ret) {
     expect_value(__wrap_get_group, gid, gid);
     will_return(__wrap_get_group, ret);
