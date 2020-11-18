@@ -119,6 +119,11 @@ static int setup_group(void ** state) {
 #ifndef TEST_WINAGENT
 
 static int setup_symbolic_links(void **state) {
+    if (syscheck.dir[1] != NULL) {
+        free(syscheck.dir[1]);
+        syscheck.dir[1] = NULL;
+    }
+
     syscheck.dir[1] = strdup("/link");
     syscheck.symbolic_links[1] = strdup("/folder");
     syscheck.opts[1] |= REALTIME_ACTIVE;
@@ -131,13 +136,18 @@ static int setup_symbolic_links(void **state) {
 }
 
 static int teardown_symbolic_links(void **state) {
-    syscheck.dir[1] = strdup("/etc");
-    syscheck.opts[1] &= ~REALTIME_ACTIVE;
+    if (syscheck.dir[1] != NULL) {
+        free(syscheck.dir[1]);
+        syscheck.dir[1] = NULL;
+    }
 
     if (syscheck.symbolic_links[1] != NULL) {
         free(syscheck.symbolic_links[1]);
         syscheck.symbolic_links[1] = NULL;
     }
+
+    syscheck.dir[1] = strdup("/etc");
+    syscheck.opts[1] &= ~REALTIME_ACTIVE;
 
     if (syscheck.dir[1] == NULL) {
         return -1;
