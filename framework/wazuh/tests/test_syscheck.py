@@ -242,7 +242,8 @@ def test_syscheck_last_scan_internal_error(glob_mock, version):
     (['001'], ['file', 'size'], {'hash': '15470536'}, False),
     (['001'], None, {'date': '2019-05-21 12:10:20'}, True),
     (['001'], None, {'type': 'registry_key'}, True),
-    (['001'], ['file', 'arch', 'value_type', 'value_name'], None, True)
+    (['001'], ['file', 'arch', 'value.name', 'value.type'], None, True),
+    (['001'], ['file', 'value.name'], None, True)
 ])
 @patch('socket.socket.connect')
 @patch('wazuh.core.common.wdb_path', new=test_data_path)
@@ -261,7 +262,9 @@ def test_syscheck_files(socket_mock, agent_id, select, filters, distinct):
         True if all response items must be unique
     """
     select_list = ['date', 'mtime', 'file', 'size', 'perm', 'uname', 'gname', 'md5', 'sha1', 'sha256', 'inode', 'gid',
-                   'uid', 'type', 'changes', 'attributes', 'arch', 'value_type', 'value_name']
+                   'uid', 'type', 'changes', 'attributes', 'arch', 'value.name', 'value.type']
+    nested_fields = ['value']
+
     with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_syscheck_test.sql')
         result = files(agent_id, select=select, filters=filters)
@@ -269,7 +272,11 @@ def test_syscheck_files(socket_mock, agent_id, select, filters, distinct):
         assert isinstance(result.affected_items, list)
         select = select if select else select_list
         for item in result.affected_items:
-            assert len(select) == len(item.keys())
+            flag = 0
+            for nested_field in nested_fields:
+                if nested_field in item.keys():
+                    flag += sum(1 for i in select if i.startswith(nested_field)) - 1
+            assert len(select) == len(item.keys()) + flag
             assert (param in select for param in item.keys())
         assert not any(result.affected_items.count(item) > 1 for item in result.affected_items) if distinct else True
         if filters:

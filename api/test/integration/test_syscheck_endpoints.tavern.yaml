@@ -240,8 +240,9 @@ stages:
           affected_items:
             - file: "registry_value_1"
               arch: "[x32]"
-              value_name: "value_name"
-              value_type: "value_type"
+              value:
+                name: "value_name"
+                type: "value_type"
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
