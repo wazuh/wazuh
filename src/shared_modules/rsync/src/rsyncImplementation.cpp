@@ -56,7 +56,7 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
     const auto& jsStartParamsTable  { jsStartParams.at("table")              };
     const auto& firstQuery          { jsStartParams.find("first_query")      };
     const auto& lastQuery           { jsStartParams.find("last_query")       };
-    
+
     if (!jsStartParamsTable.empty() && firstQuery != jsStartParams.end() && lastQuery != jsStartParams.end())
     {
         const auto& jsFirstLastOutput { executeSelectQuery(spDBSyncWrapper, jsStartParamsTable, firstQuery.value(), lastQuery.value()) };
