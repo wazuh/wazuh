@@ -2612,16 +2612,16 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output) {
             return -1;
         }
 
-        os_patch = curr;
+        os_release = curr;
         *next++ = '\0';
 
-        if (!strcmp(os_patch, "NULL"))
-            os_patch = NULL;
+        if (!strcmp(os_release, "NULL"))
+            os_release = NULL;
 
         if (!strcmp(next, "NULL"))
-            os_release = NULL;
+            os_patch = NULL;
         else
-            os_release = next;
+            os_patch = next;
 
         if (result = wdb_osinfo_save(wdb, scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_patch, os_build, os_platform, sysname, release, version, os_release), result < 0) {
             mdebug1("Cannot save OS information.");
