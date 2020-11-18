@@ -8,8 +8,8 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#ifndef _SYSCOLLECTOR_IMP_H
-#define _SYSCOLLECTOR_IMP_H
+#ifndef _SYSCOLLECTOR_HPP
+#define _SYSCOLLECTOR_HPP
 #include <chrono>
 #include <thread>
 #include <condition_variable>
@@ -92,4 +92,4 @@ private:
 };
 
 
-#endif //_SYSCOLLECTOR_IMP_H
+#endif //_SYSCOLLECTOR_HPP

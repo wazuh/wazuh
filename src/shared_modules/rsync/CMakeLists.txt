@@ -59,7 +59,13 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  target_link_libraries(rsync cjson dbsync crypto gcov pthread)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    target_link_libraries(rsync -fprofile-arcs)
+  else()
+    target_link_libraries(rsync gcov)
+  endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+
+  target_link_libraries(rsync cjson dbsync crypto pthread)
   if(UNIT_TEST)
     include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
     include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
