@@ -177,6 +177,41 @@ constexpr auto PROCESSES_SQL_STATEMENT
     checksum TEXT,
     PRIMARY KEY (pid)) WITHOUT ROWID;)"
 };
+
+constexpr auto PORTS_START_CONFIG_STATEMENT
+{
+    R"({"table":"ports",
+        "first_query":
+            {
+                "column_list":["inode"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"inode DESC",
+                "count_opt":1
+            },
+        "last_query":
+            {
+                "column_list":["inode"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"inode ASC",
+                "count_opt":1
+            },
+        "component":"ports",
+        "index":"inode",
+        "last_event":"last_event",
+        "checksum_field":"checksum",
+        "range_checksum_query_json":
+            {
+                "row_filter":"WHERE inode BETWEEN '?' and '?' ORDER BY inode",
+                "column_list":["inode, checksum"],
+                "distinct_opt":false,
+                "order_by_opt":"",
+                "count_opt":1000
+            }
+        })"
+};
+
 constexpr auto PORTS_SQL_STATEMENT
 {
     R"(CREATE TABLE ports (
@@ -194,6 +229,41 @@ constexpr auto PORTS_SQL_STATEMENT
        checksum TEXT,
        PRIMARY KEY (inode, protocol, local_port)) WITHOUT ROWID;)"
 };
+
+constexpr auto NETIFACE_START_CONFIG_STATEMENT
+{
+    R"({"table":"network_iface",
+        "first_query":
+            {
+                "column_list":["name"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"name DESC",
+                "count_opt":1
+            },
+        "last_query":
+            {
+                "column_list":["name"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"name ASC",
+                "count_opt":1
+            },
+        "component":"network_iface",
+        "index":"name",
+        "last_event":"last_event",
+        "checksum_field":"checksum",
+        "range_checksum_query_json":
+            {
+                "row_filter":"WHERE name BETWEEN '?' and '?' ORDER BY name",
+                "column_list":["name, checksum"],
+                "distinct_opt":false,
+                "order_by_opt":"",
+                "count_opt":1000
+            }
+        })"
+};
+
 constexpr auto NETIFACE_SQL_STATEMENT
 {
     R"(CREATE TABLE network_iface (
@@ -214,6 +284,41 @@ constexpr auto NETIFACE_SQL_STATEMENT
        checksum TEXT,
        PRIMARY KEY (name)) WITHOUT ROWID;)"
 };
+
+constexpr auto NETPROTO_START_CONFIG_STATEMENT
+{
+    R"({"table":"network_protocol",
+        "first_query":
+            {
+                "column_list":["iface"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"iface DESC",
+                "count_opt":1
+            },
+        "last_query":
+            {
+                "column_list":["iface"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"iface ASC",
+                "count_opt":1
+            },
+        "component":"network_protocol",
+        "index":"iface",
+        "last_event":"last_event",
+        "checksum_field":"checksum",
+        "range_checksum_query_json":
+            {
+                "row_filter":"WHERE iface BETWEEN '?' and '?' ORDER BY iface",
+                "column_list":["iface, checksum"],
+                "distinct_opt":false,
+                "order_by_opt":"",
+                "count_opt":1000
+            }
+        })"
+};
+
 constexpr auto NETPROTO_SQL_STATEMENT
 {
     R"(CREATE TABLE network_protocol (
@@ -225,6 +330,41 @@ constexpr auto NETPROTO_SQL_STATEMENT
        checksum TEXT,
        PRIMARY KEY (iface,type)) WITHOUT ROWID;)"
 };
+
+constexpr auto NETADDRESS_START_CONFIG_STATEMENT
+{
+    R"({"table":"network_address",
+        "first_query":
+            {
+                "column_list":["iface"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"iface DESC",
+                "count_opt":1
+            },
+        "last_query":
+            {
+                "column_list":["iface"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"iface ASC",
+                "count_opt":1
+            },
+        "component":"network_address",
+        "index":"iface",
+        "last_event":"last_event",
+        "checksum_field":"checksum",
+        "range_checksum_query_json":
+            {
+                "row_filter":"WHERE iface BETWEEN '?' and '?' ORDER BY iface",
+                "column_list":["iface, checksum"],
+                "distinct_opt":false,
+                "order_by_opt":"",
+                "count_opt":1000
+            }
+        })"
+};
+
 constexpr auto NETADDR_SQL_STATEMENT
 {
     R"(CREATE TABLE network_address (
@@ -469,6 +609,9 @@ void Syscollector::scanNetwork()
             updateAndNotifyChanges(m_spDBSync->handle(), netIfaceTable,    ifaceTableDataList, m_reportFunction);
             updateAndNotifyChanges(m_spDBSync->handle(), netProtocolTable, protoTableDataList, m_reportFunction);
             updateAndNotifyChanges(m_spDBSync->handle(), netAddressTable,  addressTableDataList, m_reportFunction);
+            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETIFACE_START_CONFIG_STATEMENT), m_reportFunction);
+            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETPROTO_START_CONFIG_STATEMENT), m_reportFunction);
+            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETADDRESS_START_CONFIG_STATEMENT), m_reportFunction);
         }
     }
 }
@@ -543,6 +686,7 @@ void Syscollector::scanPorts()
                 }
             }
             updateAndNotifyChanges(m_spDBSync->handle(), table, portsList, m_reportFunction);
+            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PORTS_START_CONFIG_STATEMENT), m_reportFunction);
         }
     }
 }
