@@ -28,9 +28,6 @@
     CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_MD5SUM | CHECK_SHA1SUM | \
     CHECK_SHA256SUM | CHECK_SEECHANGES | CHECK_TYPE
 
-#define KEY_NAME_HASHED "b9b175e8810d3475f15976dd3b5f9210f3af6604"
-#define VALUE_NAME_HASHED "3f17670fd80d6563a3d4283adfe14140907b75b0"
-
 static registry default_reg_config[] = {
     { "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL, NULL },
     { "HKEY_LOCAL_MACHINE\\Software\\RecursionLevel0", ARCH_64BIT, CHECK_REGISTRY_ALL, 0, 0, NULL, NULL, NULL },
@@ -48,9 +45,11 @@ static registry default_reg_nodiff[] = { { "HKEY_LOCAL_MACHINE\\Software\\Ignore
                                             { NULL, 0} };
 
 static char *default_reg_ignore_regex_patterns[] = { "IgnoreRegex", "batfile", NULL };
+
 static registry_ignore_regex default_reg_ignore_regex[] = { { NULL, ARCH_32BIT }, { NULL, ARCH_64BIT }, { NULL, 0 } };
 
-
+#define KEY_NAME_HASHED "b9b175e8810d3475f15976dd3b5f9210f3af6604"
+#define VALUE_NAME_HASHED "3f17670fd80d6563a3d4283adfe14140907b75b0"
 
 static const char GENERIC_PATH [OS_SIZE_256] =        "c:\\file\\path";
 static const char COMPRESS_FOLDER_REG [OS_SIZE_256] = "queue/diff/registry/[x64] " KEY_NAME_HASHED "/" VALUE_NAME_HASHED;
@@ -75,6 +74,8 @@ static char *syscheck_nodiff[] = {"c:\\file\\nodiff", "/path/to/ignore", NULL};
 
 static char *syscheck_nodiff_regex_patterns[] = {"regex", NULL};
 static OSMatch *syscheck_nodiff_regex[] = { NULL, NULL };
+
+static const char *STR_MORE_CHANGES = "More changes...";
 
 static char *dir_config[] = {
     "c:\\file\\path",
@@ -122,7 +123,7 @@ char *fim_diff_generate(const diff_data *diff);
 
 void expect_gen_diff_generate(gen_diff_struct *gen_diff_data_container) {
     FILE *fp = (FILE*)2345;
-    size_t n = 145;
+    size_t n = strlen(gen_diff_data_container->strarray[0]);
 
     expect_wfopen(gen_diff_data_container->diff->diff_file, "rb", fp);
 
@@ -332,6 +333,7 @@ static int setup_gen_diff_str(void **state) {
     setup_array_strings((void **)&gen_diff_data_container->strarray);
     setup_diff_data((void **)&gen_diff_data_container->diff);
 
+#ifdef TEST_WINAGENT
     gen_diff_data_container->strarray[0] = strdup(
         "Comparing files start.txt and end.txt\r\n"
         "***** start.txt\r\n"
@@ -340,24 +342,20 @@ static int setup_gen_diff_str(void **state) {
         "    1:  First Line 123\r\n"
         "    2:  Last line\r\n"
         "*****\r\n\r\n\r\n");
-    if(gen_diff_data_container->strarray[0] == NULL) fail();
-
-#ifndef TEST_WINAGENT
-    char *output = strdup(
-        "Comparing files start.txt and end.txt\r\n"
-        "***** start.txt\r\n"
-        "    1:  First line\r\n"
-        "***** END.TXT\r\n"
-        "    1:  First Line 123\r\n"
-        "    2:  Last line\r\n"
-        "*****\r\n\r\n\r\n");
 #else
-    char *output = strdup(
+    gen_diff_data_container->strarray[0] = strdup(
         "< First line\n"
         "---\n"
         "> First Line 123\n"
         "> Last line\n");
 #endif
+    if(gen_diff_data_container->strarray[0] == NULL) fail();
+
+    char *output = strdup(
+        "< First line\n"
+        "---\n"
+        "> First Line 123\n"
+        "> Last line\n");
 
     if(output == NULL) fail();
     gen_diff_data_container->strarray[1] = output;
@@ -1167,14 +1165,14 @@ void test_fim_diff_registry_tmp_REG_DWORD(void **state) {
     diff->file_origin = "/path/to/file/origin";
     diff->tmp_folder = "/path/to/tmp/folder";
     FILE *fp = (FILE*)2345;
-    unsigned int value_data = 12345L;
+    unsigned long value_data = 0x12345;
     DWORD data_type = REG_DWORD;
 
     expect_mkdir_ex(diff->tmp_folder, 0);
 
     expect_fopen(diff->file_origin, "w", fp);
 
-    expect_fprintf(fp, "2311f400003039", 0);
+    expect_fprintf(fp, "12345", 0);
 
     expect_fclose(fp, 0);
 
@@ -1187,14 +1185,14 @@ void test_fim_diff_registry_tmp_REG_DWORD_BIG_ENDIAN(void **state) {
     diff->file_origin = "/path/to/file/origin";
     diff->tmp_folder = "/path/to/tmp/folder";
     FILE *fp = (FILE*)2345;
-    unsigned int value_data = 12345L;
+    unsigned int value_data = 0x12345;
     DWORD data_type = REG_DWORD_BIG_ENDIAN;
 
     expect_mkdir_ex(diff->tmp_folder, 0);
 
     expect_fopen(diff->file_origin, "w", fp);
 
-    expect_fprintf(fp, "39300000", 0);
+    expect_fprintf(fp, "45230100", 0);
 
     expect_fclose(fp, 0);
 
@@ -1207,14 +1205,14 @@ void test_fim_diff_registry_tmp_REG_QWORD(void **state) {
     diff->file_origin = "/path/to/file/origin";
     diff->tmp_folder = "/path/to/tmp/folder";
     FILE *fp = (FILE*)2345;
-    unsigned long long value_data = 12345LL;
+    unsigned long long value_data = 0x12345;
     DWORD data_type = REG_QWORD;
 
     expect_mkdir_ex(diff->tmp_folder, 0);
 
     expect_fopen(diff->file_origin, "w", fp);
 
-    expect_fprintf(fp, "2311f400003039", 0);
+    expect_fprintf(fp, "12345", 0);
 
     expect_fclose(fp, 0);
 
@@ -1803,6 +1801,73 @@ void test_fim_file_diff_generate_diff_str(void **state) {
     assert_string_equal(diff_str, gen_diff_data_container->strarray[1]);
 }
 
+void test_fim_file_diff_generate_diff_str_too_long(void **state) {
+    gen_diff_struct *gen_diff_data_container = *state;
+    os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
+    os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
+    syscheck.comp_estimation_perc = 0.4;
+    syscheck.diff_folder_size = 512;
+
+#ifndef TEST_WINAGENT
+    int input_size = strlen(gen_diff_data_container->strarray[0]);
+    os_realloc(gen_diff_data_container->strarray[0], OS_MAXSTR, gen_diff_data_container->strarray[0]);
+    memset(gen_diff_data_container->strarray[0] + input_size - 1, 'a', OS_MAXSTR - input_size);
+    gen_diff_data_container->strarray[0][OS_MAXSTR - 1] = '\0';
+
+    os_realloc(gen_diff_data_container->strarray[1], strlen(gen_diff_data_container->strarray[1]) - 12 + strlen(STR_MORE_CHANGES), gen_diff_data_container->strarray[1]);
+    strcpy(gen_diff_data_container->strarray[1] + strlen(gen_diff_data_container->strarray[1]) - 12, STR_MORE_CHANGES);
+
+    gen_diff_data_container->diff->uncompress_file = strdup(UNCOMPRESS_FILE);
+    gen_diff_data_container->diff->file_origin = strdup("/path/to/file/origin");
+    gen_diff_data_container->diff->diff_file = strdup("/var/ossec/queue/diff/tmp/diff-file");
+#else
+    strcpy(gen_diff_data_container->strarray[0], "Comparing files start.txt and end.txt\r\n"
+                                                 "Error diffs\r\n"
+                                                 "***** start.txt\r\n"
+                                                 "    1:  First line\r\n"
+                                                 "***** END.TXT\r\n"
+                                                 "    1:  First Line 123\r\n"
+                                                 "    2:  Last line");
+    int input_size = strlen(gen_diff_data_container->strarray[0]);
+    os_realloc(gen_diff_data_container->strarray[0], OS_MAXSTR, gen_diff_data_container->strarray[0]);
+    memset(gen_diff_data_container->strarray[0] + input_size, 'a', OS_MAXSTR - input_size);
+    gen_diff_data_container->strarray[0][OS_MAXSTR - 1] = '\0';
+
+    int output_size = strlen(gen_diff_data_container->strarray[1]);
+    os_realloc(gen_diff_data_container->strarray[1], OS_MAXSTR, gen_diff_data_container->strarray[1]);
+    memset(gen_diff_data_container->strarray[1] + output_size - 1, 'a', OS_MAXSTR - output_size - OS_SK_HEADER - 85 - strlen(STR_MORE_CHANGES));
+    strcat(gen_diff_data_container->strarray[1], STR_MORE_CHANGES);
+
+    gen_diff_data_container->diff->uncompress_file = strdup("queue/diff/tmp/tmp-entry");
+    gen_diff_data_container->diff->file_origin = strdup("queue/diff/tmp/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED);
+    gen_diff_data_container->diff->diff_file = strdup("queue/diff/tmp/diff-file");
+#endif
+
+    expect_initialize_file_diff_data(GENERIC_PATH, 1);
+
+    expect_mkdir_ex(TMP_FOLDER, 0);
+
+    expect_fim_diff_check_limits(GENERIC_PATH, COMPRESS_FOLDER, 0);
+
+    expect_w_uncompress_gzfile(COMPRESS_FILE, UNCOMPRESS_FILE, NULL);
+
+    expect_FileSize(COMPRESS_FILE, 1024 * 1024);
+
+    expect_fim_diff_create_compress_file(GENERIC_PATH, COMPRESS_TMP_FILE, 0);
+
+    expect_fim_diff_compare(UNCOMPRESS_FILE, GENERIC_PATH, md5sum_old, md5sum_new, 0);
+
+    expect_fim_diff_generate(gen_diff_data_container, 0);
+
+    expect_save_compress_file(COMPRESS_TMP_FILE, COMPRESS_FILE, 0);
+
+    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
+    will_return(__wrap_rmdir_ex, 0);
+    char *diff_str = fim_file_diff(GENERIC_PATH);
+
+    assert_string_equal(diff_str, gen_diff_data_container->strarray[1]);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
 
@@ -1923,6 +1988,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_file_diff_generate_fail, setup_gen_diff_str, teardown_free_gen_diff_str),
         cmocka_unit_test_setup_teardown(test_fim_file_diff_generate_diff_str, setup_gen_diff_str, teardown_free_gen_diff_str),
 #endif
+        cmocka_unit_test_setup_teardown(test_fim_file_diff_generate_diff_str_too_long, setup_gen_diff_str, teardown_free_gen_diff_str),
 
     };
 

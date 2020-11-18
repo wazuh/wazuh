@@ -17,7 +17,7 @@ list(APPEND shared_tests_names "test_integrity_op")
 list(APPEND shared_tests_flags " ")
 
 list(APPEND shared_tests_names "test_rbtree_op")
-list(APPEND shared_tests_flags "-Wl,--wrap,getpid ")
+list(APPEND shared_tests_flags "-Wl,--wrap,getpid")
 
 list(APPEND shared_tests_names "test_string_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,_mwarn -Wl,--wrap,getpid")
@@ -49,7 +49,7 @@ else()
 endif()
 
 list(APPEND shared_tests_names "test_time_op")
-list(APPEND shared_tests_flags "-Wl,--wrap,getpid ")
+list(APPEND shared_tests_flags "-Wl,--wrap,getpid")
 
 if(${TARGET} STREQUAL "server")
 list(APPEND shared_tests_names "test_bzip2_op")

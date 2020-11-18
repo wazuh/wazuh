@@ -107,7 +107,12 @@ extern size_t __real_fread(void *ptr, size_t size, size_t n, FILE *stream);
 size_t __wrap_fread(void *ptr, size_t size, size_t n, FILE *stream) {
     if (test_mode) {
         strncpy((char *) ptr, mock_type(char *), n);
-        return mock();
+        int ret = mock();
+        if (ret > n){
+            return n;
+        } else {
+            return ret;
+        }
     }
     return __real_fread(ptr, size, n, stream);
 }
