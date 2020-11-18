@@ -5105,6 +5105,15 @@ int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output) {
     }
     keep_alive = atoi(next);
 
+    /* Get sync_status*/
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments sync_status not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments sync_status not found");
+        return OS_INVALID;
+    }
+    sync_status = next;
+
     // Execute command
     wdbc_result status = WDBC_UNKNOWN;
     cJSON* result = wdb_global_get_agents_to_disconnect(wdb, last_id, keep_alive, sync_status, &status);
