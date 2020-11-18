@@ -59,10 +59,7 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
 
     if (!jsStartParamsTable.empty() && firstQuery != jsStartParams.end() && lastQuery != jsStartParams.end())
     {
-        nlohmann::json jsFirstLastOutput;
-        jsFirstLastOutput["table"] = jsStartParamsTable;
-        jsFirstLastOutput = executeSelectQuery(spDBSyncWrapper, jsStartParamsTable, firstQuery.value(), lastQuery.value());
-
+        const auto& jsFirstLastOutput { executeSelectQuery(spDBSyncWrapper, jsStartParamsTable, firstQuery.value(), lastQuery.value()) };
         const auto& jsonFirstQueryResult { jsFirstLastOutput.at("first_result") };
         const auto& jsonLastQueryResult  { jsFirstLastOutput.at("last_result") };
 
@@ -74,8 +71,8 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
         if(!jsonFirstQueryResult.empty() && !jsonLastQueryResult.empty())
         {
             const auto& indexField { jsStartParams.at("index").get_ref<const std::string&>() };
-            const auto& begin      { jsonFirstQueryResult.at(0).at(indexField) };
-            const auto& end        { jsonLastQueryResult.at(0).at(indexField)  };
+            const auto& begin      { jsonFirstQueryResult.at(indexField) };
+            const auto& end        { jsonLastQueryResult.at(indexField)  };
 
             checksumCtx.type           = CHECKSUM_COMPLETE;
             checksumCtx.rightCtx.type  = IntegrityMsgType::INTEGRITY_CHECK_GLOBAL;
@@ -127,7 +124,7 @@ void callbackDBSync(ReturnTypeCallback /*resultType*/, const cJSON* resultJson, 
     {
         std::function<void(const nlohmann::json&)>* callback { static_cast<std::function<void(const nlohmann::json&)>*>(userData) };
         const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(resultJson) };
-        const auto json { nlohmann::json::parse(spJsonBytes.get()) };
+        const auto& json { nlohmann::json::parse(spJsonBytes.get()) };
         (*callback)(json);
     }
 }
@@ -194,7 +191,7 @@ void RSyncImplementation::sendChecksumFail(const std::shared_ptr<DBSyncWrapper>&
     {
         const auto& rowData{ getRowData(spDBSyncWrapper, jsonSyncConfiguration, syncData.begin) };
 
-        FactoryMessageCreator<nlohmann::json, MessageType::ROW_DATA>::create()->send(callbackWrapper, jsonSyncConfiguration, rowData.at(0));
+        FactoryMessageCreator<nlohmann::json, MessageType::ROW_DATA>::create()->send(callbackWrapper, jsonSyncConfiguration, rowData);
     }
     else if (1 < size)
     {
@@ -237,7 +234,7 @@ size_t RSyncImplementation::getRangeCount(const std::shared_ptr<DBSyncWrapper>& 
     {
         [&size, &countFieldName] (const nlohmann::json& resultJSON)
         {
-            size = resultJSON.at(0).at(countFieldName);
+            size = resultJSON.at(countFieldName);
         }
     };
 
@@ -276,7 +273,7 @@ void RSyncImplementation::fillChecksum(const std::shared_ptr<DBSyncWrapper>& spD
     {
         [&] (const nlohmann::json& resultJSON)
         {
-            const auto checksumValue { resultJSON.at(0).at(checksumFieldName).get_ref<const std::string&>() };
+            const auto checksumValue { resultJSON.at(checksumFieldName).get_ref<const std::string&>() };
             hash->update(checksumValue.data(), checksumValue.size());
 
             if (CHECKSUM_SPLIT == ctx.type)
@@ -284,12 +281,12 @@ void RSyncImplementation::fillChecksum(const std::shared_ptr<DBSyncWrapper>& spD
                 const auto& indexFieldName { jsonSyncConfiguration.at("index").get_ref<const std::string&>() };
                 if (middle+1 == index)
                 {
-                    ctx.rightCtx.begin = resultJSON.at(0).at(indexFieldName);
+                    ctx.rightCtx.begin = resultJSON.at(indexFieldName);
                     ctx.leftCtx.tail = ctx.rightCtx.begin;
                 } 
                 else if(middle == index)
                 {
-                    ctx.leftCtx.end = resultJSON.at(0).at(indexFieldName);
+                    ctx.leftCtx.end = resultJSON.at(indexFieldName);
                     ctx.leftCtx.checksum = Utils::asciiToHex(hash->hash());
                     hash = std::make_unique<Utils::HashData>(Utils::HashType::Sha256);
                 }
@@ -387,7 +384,7 @@ void RSyncImplementation::sendAllData(const std::shared_ptr<DBSyncWrapper>& spDB
     {
         [&callbackWrapper, &messageCreator, &jsonSyncConfiguration] (const nlohmann::json& resultJSON)
         {
-            messageCreator->send(callbackWrapper, jsonSyncConfiguration, resultJSON.at(0));  
+            messageCreator->send(callbackWrapper, jsonSyncConfiguration, resultJSON);  
         }
     };
     nlohmann::json selectData;

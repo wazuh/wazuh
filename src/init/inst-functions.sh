@@ -735,6 +735,66 @@ InstallCommon()
         fi
     fi
 
+    if [ ${NUNAME} = 'Darwin' ]
+    then
+        if [ -f shared_modules/dbsync/build/lib/libdbsync.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 shared_modules/dbsync/build/lib/libdbsync.dylib ${PREFIX}/lib
+        fi
+    elif [ -f shared_modules/dbsync/build/lib/libdbsync.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} shared_modules/dbsync/build/lib/libdbsync.so ${PREFIX}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${PREFIX}/lib/libdbsync.so
+        fi
+    fi
+
+    if [ ${NUNAME} = 'Darwin' ]
+    then
+        if [ -f shared_modules/rsync/build/lib/librsync.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 shared_modules/rsync/build/lib/librsync.dylib ${PREFIX}/lib
+        fi
+    elif [ -f shared_modules/rsync/build/lib/librsync.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} shared_modules/rsync/build/lib/librsync.so ${PREFIX}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${PREFIX}/lib/librsync.so
+        fi
+    fi
+
+    if [ ${NUNAME} = 'Darwin' ]
+    then
+        if [ -f data_provider/build/lib/libsysinfo.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 data_provider/build/lib/libsysinfo.dylib ${PREFIX}/lib
+        fi
+    elif [ -f data_provider/build/lib/libsysinfo.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} data_provider/build/lib/libsysinfo.so ${PREFIX}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${PREFIX}/lib/libsysinfo.so
+        fi
+    fi
+
+    if [ ${NUNAME} = 'Darwin' ]
+    then
+        if [ -f wazuh_modules/syscollector/build/lib/libsyscollector.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 wazuh_modules/syscollector/build/lib/libsyscollector.dylib ${PREFIX}/lib
+        fi
+    elif [ -f wazuh_modules/syscollector/build/lib/libsyscollector.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} wazuh_modules/syscollector/build/lib/libsyscollector.so ${PREFIX}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${PREFIX}/lib/libsyscollector.so
+        fi
+    fi
+
   ${INSTALL} -m 0750 -o root -g 0 ossec-logcollector ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 ossec-syscheckd ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 ossec-execd ${PREFIX}/bin

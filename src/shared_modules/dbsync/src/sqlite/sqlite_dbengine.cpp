@@ -176,11 +176,11 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
                 const bool diffExist { getRowDiff(primaryKeyList, table, entry, jsResult) };
                 if (diffExist)
                 {
-                    const nlohmann::json jsDataToUpdate{getDataToUpdate(primaryKeyList, jsResult, entry, inTransaction)};
-                    if (!jsDataToUpdate[0].empty())
+                    const auto& jsDataToUpdate{getDataToUpdate(primaryKeyList, jsResult, entry, inTransaction)};
+                    if (!jsDataToUpdate.empty())
                     {
                         const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection)};
-                        updateSingleRow(table, jsDataToUpdate[0]);
+                        updateSingleRow(table, jsDataToUpdate);
                         transaction->commit();
                         if (callback && !jsResult.empty())
                         {
@@ -378,7 +378,7 @@ void SQLiteDBEngine::deleteTableRowsData(const std::string&    table,
         {
             // Deletion via primary keys on "data" json field.
             const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection) };
-            deleteRowsbyPK(table, *itData);
+            deleteRowsbyPK(table, itData.value());
             transaction->commit();
         }
         else if(itFilter != jsDeletionData.end() && !itFilter->get<std::string>().empty())
@@ -833,8 +833,7 @@ bool SQLiteDBEngine::getPKListLeftOnly(const std::string& t1,
 }
 
 std::string SQLiteDBEngine::buildDeleteBulkDataSqlQuery(const std::string& table,
-                                                        const std::vector<std::string>& primaryKeyList,
-                                                        const nlohmann::json& jsData)
+                                                        const std::vector<std::string>& primaryKeyList)
 {
     std::string sql{ "DELETE FROM " };
     sql.append(table);
@@ -843,11 +842,8 @@ std::string SQLiteDBEngine::buildDeleteBulkDataSqlQuery(const std::string& table
     {
         for (const auto& value : primaryKeyList)
         {
-            if(jsData.empty() || jsData.find(value) != jsData.end())
-            {
-                sql.append(value);
-                sql.append("=? AND ");
-            }
+            sql.append(value);
+            sql.append("=? AND ");
         }
         sql = sql.substr(0, sql.size()-5);
         sql.append(";");
@@ -910,7 +906,7 @@ void SQLiteDBEngine::deleteRowsbyPK(const std::string& table,
         const auto& tableFields { m_tableFields[table] };
         const auto& stmt
         {
-            getStatement(buildDeleteBulkDataSqlQuery(table, primaryKeyList, data.at(0)))
+            getStatement(buildDeleteBulkDataSqlQuery(table, primaryKeyList))
         };
 
         for (const auto& jsRow : data)

@@ -28,7 +28,8 @@ const wm_context WM_DOCKER_CONTEXT = {
     "docker-listener",
     (wm_routine)wm_docker_main,
     (wm_routine)(void *)wm_docker_destroy,
-    (cJSON * (*)(const void *))wm_docker_dump
+    (cJSON * (*)(const void *))wm_docker_dump,
+    0
 };
 
 // Module module main function. It won't return.

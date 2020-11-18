@@ -109,7 +109,8 @@ const wm_context WM_SCA_CONTEXT = {
     SCA_WM_NAME,
     (wm_routine)wm_sca_main,
     (wm_routine)(void *)wm_sca_destroy,
-    (cJSON * (*)(const void *))wm_sca_dump
+    (cJSON * (*)(const void *))wm_sca_dump,
+    0
 };
 
 static unsigned int summary_passed = 0;
@@ -406,7 +407,13 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 id = -id;
             }
 #else
-            int id = wm_sys_get_random_id();
+            char random_id[RANDOM_LENGTH];
+            snprintf(random_id, RANDOM_LENGTH - 1, "%u%u", os_random(), os_random());
+            int id = atoi(random_id);
+
+            if (id < 0) {
+                id = -id;
+            }
 #endif
             int requirements_satisfied = 0;
 

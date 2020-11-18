@@ -12,7 +12,7 @@ file(GLOB SYSCOLLECTOR_IMP_UNIT_TEST_SRC
     "*.cpp")
 
 file(GLOB SYSCOLLECTOR_IMP_SRC
-    "${CMAKE_SOURCE_DIR}/syscollectorImp.cpp")
+    "${CMAKE_SOURCE_DIR}/src/syscollectorImp.cpp")
 
 add_executable(syscollectorimp_unit_test 
     ${SYSCOLLECTOR_IMP_UNIT_TEST_SRC}
@@ -28,10 +28,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         optimized gtest_main
         optimized gmock_main
         pthread
-        sqlite3
-        cjson
         rsync
         dbsync
+        crypto
+        ws2_32
+        ssl
+        crypt32
         -static-libgcc -static-libstdc++
     )
 else()
@@ -45,8 +47,6 @@ else()
         optimized gtest_main
         optimized gmock_main
         pthread
-        sqlite3
-        cjson
         rsync
         dbsync
         dl

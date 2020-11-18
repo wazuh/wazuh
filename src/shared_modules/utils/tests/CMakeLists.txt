@@ -40,7 +40,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         optimized gtest_maind
         optimized gmock_maind
         pthread
-        gcov
         crypto
         ssl
         -static-libgcc -static-libstdc++
@@ -57,12 +56,17 @@ else()
         optimized gmockd
         optimized gtest_maind
         optimized gmock_maind
-        gcov
         pthread
         crypto
         dl
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    target_link_libraries(utils_unit_test -fprofile-arcs)
+else()
+    target_link_libraries(utils_unit_test gcov)
+endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 
 add_test(NAME utils_unit_test
          COMMAND utils_unit_test)

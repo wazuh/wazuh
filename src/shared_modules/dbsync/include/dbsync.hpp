@@ -213,7 +213,6 @@ public:
 
 private:
     TXN_HANDLE m_txn;
-    bool m_shouldBeRemoved;
 };
 
 

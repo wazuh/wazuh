@@ -16,14 +16,14 @@
 #include "dbsync.h"
 #include "rsync.h"
 #include "sysInfo.hpp"
-#include "syscollectorImp.h"
+#include "syscollector.hpp"
 
 static void logFunction(const char* msg)
 {
     std::cout << msg << std::endl;
 }
 
-int main(int argc, const char* argv[])
+int main(int /*argc*/, const char** /*argv[]*/)
 {
     const auto reportFunction
     {
@@ -39,22 +39,32 @@ int main(int argc, const char* argv[])
     dbsync_initialize(logFunction);
     try
     {
-        Syscollector sysCollector
+        std::thread thread
         {
-            spInfo,
-            reportFunction,
-            "15s",
-            true,
-            true,
-            true,
-            true,
-            true,
-            true,
-            true,
-            true,
-            true
+            []
+            {
+                while(std::cin.get() != 'q');
+                Syscollector::instance().destroy();
+            }
         };
-        while(std::cin.get() != 'q' );
+
+        Syscollector::instance().init(spInfo,
+                                      reportFunction,
+                                      15ul,
+                                      true,
+                                      true,
+                                      true,
+                                      true,
+                                      true,
+                                      true,
+                                      true,
+                                      true,
+                                      true);
+
+        if (thread.joinable())
+        {
+            thread.join();
+        }
     }
     catch(const std::exception& ex)
     {

@@ -11,7 +11,7 @@ class CommandLineParser:
         :return True is 'arg' is a correct one, False otherwise.
         """
         ret = False
-        if arg == 'wazuh_modules/syscollector' or arg == 'shared_modules/dbsync' or arg == 'shared_modules/rsync' or arg == 'shared_modules/utils':
+        if arg == 'wazuh_modules/syscollector' or arg == 'shared_modules/dbsync' or arg == 'shared_modules/rsync' or arg == 'shared_modules/utils' or arg == 'data_provider':
             # Available modules so far
             ret = True
         return ret
