@@ -81,8 +81,9 @@ add_library(sysinfo SHARED
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     target_link_libraries(sysinfo -fprofile-arcs)
+    target_link_libraries(sysinfo sqlite3 cjson)
   else()
-    target_link_libraries(sysinfo gcov)
+    target_link_libraries(sysinfo sqlite3 cjson gcov)
   endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   
   target_link_libraries(sysinfo sqlite3 cjson)
