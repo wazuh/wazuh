@@ -11,8 +11,18 @@
 #ifndef DIFF_CHANGES_WRAPPERS_H
 #define DIFF_CHANGES_WRAPPERS_H
 
-char *__wrap_seechanges_addfile(const char *filename);
+char *__wrap_fim_file_diff(const char *filename);
 
-char *__wrap_seechanges_get_diff_path(char *path);
+char *__wrap_fim_diff_process_delete_file(const char *file_name);
+
+/**
+ * @brief This function loads the expect and will return of the function fim_file_diff
+ */
+void expect_fim_file_diff(const char *filename, char *ret);
+
+/**
+ * @brief This function loads the expect and will return of the function fim_file_diff
+ */
+void expect_fim_diff_process_delete_file(const char *filename, char *ret);
 
 #endif /* DIFF_CHANGES_WRAPPERS_H */

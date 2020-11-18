@@ -21,6 +21,8 @@ const char *__wrap_get_group(int gid);
 char *__wrap_get_user(int uid);
 #else
 char *__wrap_get_user(const char *path, char **sid);
+
+char *__wrap_get_file_user(const char *path, char **sid);
 #endif
 
 unsigned int __wrap_w_directory_exists(const char *path);
@@ -31,4 +33,32 @@ int __wrap_w_get_file_permissions(const char *file_path, char *permissions, int 
 
 int __wrap_remove_empty_folders(const char *folder);
 
-#endif
+#ifdef WIN32
+/**
+ * @brief This function loads the expect and will return of the function get_user
+ */
+void expect_get_user(const char *path, char **sid, char *user);
+
+/**
+ * @brief This function loads the expect and will return of the function get_user
+ */
+void expect_get_file_user(const char *path, char *sid, char *user);
+
+/**
+ * @brief This function loads the expect and will return of the function w_get_file_permissions
+ */
+void expect_w_get_file_permissions(const char *file_path, char *perms, int ret);
+
+#else
+/**
+ * @brief This function loads the expect and will return of the function get_user
+ */
+void expect_get_user(int uid, char *ret);
+#endif /*WIN32*/
+
+/**
+ * @brief This function loads the expect and will return of the function get_group
+ */
+void expect_get_group(int gid, char *ret);
+
+#endif /*SYSCHECK_OP_WRAPPERS_H*/
