@@ -114,7 +114,6 @@ static const char *error_codes[] = {
     [WM_TASK_SUCCESS] = "Success",
     [WM_TASK_INVALID_MESSAGE] = "Invalid message",
     [WM_TASK_INVALID_COMMAND] = "Invalid command",
-    [WM_TASK_INVALID_STATUS] = "Invalid status",
     [WM_TASK_DATABASE_NO_TASK] = "No task in DB",
     [WM_TASK_DATABASE_ERROR] = "Database error",
     [WM_TASK_UNKNOWN_ERROR] = "Unknown error"
@@ -452,7 +451,7 @@ STATIC const char* wm_task_manager_decode_status(char *status) {
     } else if (!strcmp(task_statuses[WM_TASK_LEGACY], status)){
         return upgrade_statuses[WM_TASK_UPGRADE_LEGACY];
     }
-    return error_codes[WM_TASK_INVALID_STATUS];
+    return NULL;
 }
 
 #endif

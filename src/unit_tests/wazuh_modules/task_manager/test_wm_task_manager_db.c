@@ -1221,17 +1221,6 @@ void test_wm_task_manager_update_upgrade_task_status_task_id_err(void **state)
     assert_int_equal(ret, WM_TASK_DATABASE_NO_TASK);
 }
 
-void test_wm_task_manager_update_upgrade_task_status_status_err(void **state)
-{
-    int agent_id = 115;
-    char *node = "node03";
-    char *status = "Timeout";
-
-    int ret = wm_task_manager_update_upgrade_task_status(agent_id, node, status, NULL);
-
-    assert_int_equal(ret, WM_TASK_INVALID_STATUS);
-}
-
 void test_wm_task_manager_update_upgrade_task_status_step2_err(void **state)
 {
     int agent_id = 115;
@@ -1824,7 +1813,6 @@ int main(void) {
         cmocka_unit_test(test_wm_task_manager_update_upgrade_task_status_ok),
         cmocka_unit_test(test_wm_task_manager_update_upgrade_task_status_old_status_err),
         cmocka_unit_test(test_wm_task_manager_update_upgrade_task_status_task_id_err),
-        cmocka_unit_test(test_wm_task_manager_update_upgrade_task_status_status_err),
         cmocka_unit_test(test_wm_task_manager_update_upgrade_task_status_step2_err),
         cmocka_unit_test(test_wm_task_manager_update_upgrade_task_status_prepare2_err),
         cmocka_unit_test(test_wm_task_manager_update_upgrade_task_status_step_err),

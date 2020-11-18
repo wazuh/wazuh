@@ -190,7 +190,7 @@ void test_wm_task_manager_decode_status_unknown(void **state)
 
     const char *ret = wm_task_manager_decode_status(status);
 
-    assert_string_equal(ret, "Invalid status");
+    assert_null(ret);
 }
 
 void test_wm_task_manager_parse_data_response(void **state)

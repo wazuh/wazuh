@@ -296,8 +296,8 @@
 #define DB_CLOSING            "(5209): Closing connection to database."
 #define DB_ATTEMPT            "(5210): Attempting to reconnect to database."
 #define DB_SQL_ERROR          "(5211): SQL error: '%s'"
-#define DB_SQL_PREPARE_ERROR  "(5212): Couldn't prepare SQL statement."
-#define DB_SQL_STEP_ERROR     "(5213): Couldn't execute SQL statement."
+#define DB_TRANSACTION_ERROR  "(5212): Cannot begin transaction."
+#define DB_CACHE_ERROR        "(5213): Cannot cache statement."
 
 /* vulnerability-detector messages*/
 #define VU_FETCH_ERROR              "(5500): The '%s' database could not be fetched."

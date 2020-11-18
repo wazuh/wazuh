@@ -9,55 +9,25 @@
  * Foundation.
  */
 
-#ifdef WAZUH_UNIT_TESTING
-// Remove static qualifier when unit testing
-#define STATIC
-#else
-#define STATIC static
-#endif
-
-#ifndef WIN32
-
 #include "wdb.h"
 #include "wazuh_modules/wm_task_general.h"
 
-#define TASKS_TABLE             "TASKS"
-
-// Mutex needed to access tasks DB
-pthread_mutex_t db_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-STATIC int wdb_task_sql_error(sqlite3 *db, sqlite3_stmt *stmt);
-
-static const char *task_queries[] = {
-    [WM_TASK_INSERT_TASK] = "INSERT INTO " TASKS_TABLE " VALUES(NULL,?,?,?,?,?,?,?,?);",
-    [WM_TASK_GET_LAST_AGENT_TASK] = "SELECT *, MAX(CREATE_TIME) FROM " TASKS_TABLE " WHERE AGENT_ID = ?;",
-    [WM_TASK_GET_LAST_AGENT_UPGRADE_TASK] = "SELECT *, MAX(CREATE_TIME) FROM " TASKS_TABLE " WHERE AGENT_ID = ? AND (COMMAND = 'upgrade' OR COMMAND = 'upgrade_custom');",
-    [WM_TASK_UPDATE_TASK_STATUS] = "UPDATE " TASKS_TABLE " SET STATUS = ?, LAST_UPDATE_TIME = ?, ERROR_MESSAGE = ? WHERE TASK_ID = ?;",
-    [WM_TASK_GET_TASK_BY_STATUS] = "SELECT * FROM " TASKS_TABLE " WHERE STATUS = ?;",
-    [WM_TASK_DELETE_OLD_TASKS] = "DELETE FROM " TASKS_TABLE " WHERE CREATE_TIME <= ?;",
-    [WM_TASK_DELETE_TASK] = "DELETE FROM " TASKS_TABLE " WHERE TASK_ID = ?;",
-    [WM_TASK_CANCEL_PENDING_UPGRADE_TASKS] = "UPDATE " TASKS_TABLE " SET STATUS = '" WM_TASK_STATUS_CANCELLED "', LAST_UPDATE_TIME = ? WHERE NODE = ? AND STATUS = '" WM_TASK_STATUS_PENDING "' AND (COMMAND = 'upgrade' OR COMMAND = 'upgrade_custom');"
-};
-
-STATIC int wdb_task_sql_error(sqlite3 *db, sqlite3_stmt *stmt) {
-    merror(DB_SQL_ERROR, sqlite3_errmsg(db));
-    wdb_finalize(stmt);
-    return OS_INVALID;
-}
-
-int wdb_task_set_timeout_status(time_t now, int timeout, time_t *next_timeout) {
-    sqlite3 *db = NULL;
+int wdb_task_set_timeout_status(wdb_t* wdb, time_t now, int timeout, time_t *next_timeout) {
     sqlite3_stmt *stmt = NULL;
     sqlite3_stmt *stmt2 = NULL;
     int result = OS_INVALID;
 
-    w_mutex_lock(&db_mutex);
-
-    if (wdb_prepare(db, task_queries[WM_TASK_GET_TASK_BY_STATUS], -1, &stmt, NULL) != SQLITE_OK) {
-        merror(DB_SQL_PREPARE_ERROR);
-        w_mutex_unlock(&db_mutex);
-        return wdb_task_sql_error(db, stmt);
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1(DB_TRANSACTION_ERROR);
+        return OS_INVALID;
     }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_TASK_GET_TASK_BY_STATUS) < 0) {
+        mdebug1(DB_CACHE_ERROR);
+        return OS_INVALID;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_TASK_GET_TASK_BY_STATUS];
 
     sqlite3_bind_text(stmt, 1, task_statuses[WM_TASK_IN_PROGRESS], -1, NULL);
 
@@ -68,79 +38,72 @@ int wdb_task_set_timeout_status(time_t now, int timeout, time_t *next_timeout) {
         // Check if the last update time is longer than the timeout
         if (now >= (last_update_time + timeout)) {
 
-            if (wdb_prepare(db, task_queries[WM_TASK_UPDATE_TASK_STATUS], -1, &stmt2, NULL) != SQLITE_OK) {
-                merror(DB_SQL_PREPARE_ERROR);
-                w_mutex_unlock(&db_mutex);
-                wdb_finalize(stmt);
-                return wdb_task_sql_error(db, stmt2);
+            if (wdb_stmt_cache(wdb, WDB_STMT_TASK_UPDATE_TASK_STATUS) < 0) {
+                mdebug1(DB_CACHE_ERROR);
+                return OS_INVALID;
             }
+
+            stmt2 = wdb->stmt[WDB_STMT_TASK_UPDATE_TASK_STATUS];
 
             sqlite3_bind_text(stmt2, 1, task_statuses[WM_TASK_TIMEOUT], -1, NULL);
             sqlite3_bind_int(stmt2, 2, time(0));
             sqlite3_bind_int(stmt2, 4, task_id);
 
             if (result = wdb_step(stmt2), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
-                merror(DB_SQL_STEP_ERROR);
-                w_mutex_unlock(&db_mutex);
-                wdb_finalize(stmt);
-                return wdb_task_sql_error(db, stmt2);
+                merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+                return OS_INVALID;
             }
-
-            wdb_finalize(stmt2);
 
         } else if (*next_timeout > (last_update_time + timeout)) {
             *next_timeout = last_update_time + timeout;
         }
     }
 
-    wdb_finalize(stmt);
-
-    w_mutex_unlock(&db_mutex);
-
     return OS_SUCCESS;
 }
 
-int wdb_task_delete_old_entries(int timestamp) {
-    sqlite3 *db = NULL;
+int wdb_task_delete_old_entries(wdb_t* wdb, int timestamp) {
     sqlite3_stmt *stmt = NULL;
     int result = OS_INVALID;
 
-    w_mutex_lock(&db_mutex);
-
-    if (wdb_prepare(db, task_queries[WM_TASK_DELETE_OLD_TASKS], -1, &stmt, NULL) != SQLITE_OK) {
-        merror(DB_SQL_PREPARE_ERROR);
-        w_mutex_unlock(&db_mutex);
-        return wdb_task_sql_error(db, stmt);
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1(DB_TRANSACTION_ERROR);
+        return OS_INVALID;
     }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_TASK_DELETE_OLD_TASKS) < 0) {
+        mdebug1(DB_CACHE_ERROR);
+        return OS_INVALID;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_TASK_DELETE_OLD_TASKS];
 
     sqlite3_bind_int(stmt, 1, timestamp);
 
     if (result = wdb_step(stmt), result != SQLITE_DONE) {
-        merror(DB_SQL_STEP_ERROR);
-        w_mutex_unlock(&db_mutex);
-        return wdb_task_sql_error(db, stmt);
+        merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
     }
-
-    wdb_finalize(stmt);
-
-    w_mutex_unlock(&db_mutex);
 
     return OS_SUCCESS;
 }
 
-int wdb_task_insert_task(int agent_id, const char *node, const char *module, const char *command) {
-    sqlite3 *db = NULL;
+int wdb_task_insert_task(wdb_t* wdb, int agent_id, const char *node, const char *module, const char *command) {
     sqlite3_stmt *stmt = NULL;
     int result = 0;
     int task_id = OS_INVALID;
 
-    w_mutex_lock(&db_mutex);
-
-    if (wdb_prepare(db, task_queries[WM_TASK_INSERT_TASK], -1, &stmt, NULL) != SQLITE_OK) {
-        merror(DB_SQL_PREPARE_ERROR);
-        w_mutex_unlock(&db_mutex);
-        return wdb_task_sql_error(db, stmt);
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1(DB_TRANSACTION_ERROR);
+        return OS_INVALID;
     }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_TASK_INSERT_TASK) < 0) {
+        mdebug1(DB_CACHE_ERROR);
+        return OS_INVALID;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_TASK_INSERT_TASK];
 
     sqlite3_bind_int(stmt, 1, agent_id);
     sqlite3_bind_text(stmt, 2, node, -1, NULL);
@@ -150,72 +113,62 @@ int wdb_task_insert_task(int agent_id, const char *node, const char *module, con
     sqlite3_bind_text(stmt, 7, task_statuses[WM_TASK_PENDING], -1, NULL);
 
     if (result = wdb_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
-        merror(DB_SQL_STEP_ERROR);
-        w_mutex_unlock(&db_mutex);
-        return wdb_task_sql_error(db, stmt);
+        merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
     }
 
-    wdb_finalize(stmt);
-
-    if (wdb_prepare(db, task_queries[WM_TASK_GET_LAST_AGENT_TASK], -1, &stmt, NULL) != SQLITE_OK) {
-        merror(DB_SQL_PREPARE_ERROR);
-        w_mutex_unlock(&db_mutex);
-        return wdb_task_sql_error(db, stmt);
+    if (wdb_stmt_cache(wdb, WDB_STMT_TASK_GET_LAST_AGENT_TASK) < 0) {
+        mdebug1(DB_CACHE_ERROR);
+        return OS_INVALID;
     }
+
+    stmt = wdb->stmt[WDB_STMT_TASK_GET_LAST_AGENT_TASK];
 
     sqlite3_bind_int(stmt, 1, agent_id);
 
     if (result = wdb_step(stmt), result != SQLITE_ROW) {
-        merror(DB_SQL_STEP_ERROR);
-        w_mutex_unlock(&db_mutex);
-        return wdb_task_sql_error(db, stmt);
+        merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
     }
 
     // Check task id
     task_id = sqlite3_column_int(stmt, 0);
     if (!task_id) {
-        wdb_finalize(stmt);
-        w_mutex_unlock(&db_mutex);
         return OS_INVALID;
     }
-
-    wdb_finalize(stmt);
-
-    w_mutex_unlock(&db_mutex);
 
     return task_id;
 }
 
-int wdb_task_get_upgrade_task_status(int agent_id, const char *node, char **status) {
-    sqlite3 *db = NULL;
+int wdb_task_get_upgrade_task_status(wdb_t* wdb, int agent_id, const char *node, char **status) {
     sqlite3_stmt *stmt = NULL;
-    sqlite3_stmt *stmt2 = NULL;
     int result = 0;
     int task_id = OS_INVALID;
     char *task_status = NULL;
     char *task_node = NULL;
 
-    w_mutex_lock(&db_mutex);
-
-    if (wdb_prepare(db, task_queries[WM_TASK_GET_LAST_AGENT_UPGRADE_TASK], -1, &stmt, NULL) != SQLITE_OK) {
-        merror(DB_SQL_PREPARE_ERROR);
-        w_mutex_unlock(&db_mutex);
-        return wdb_task_sql_error(db, stmt);
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1(DB_TRANSACTION_ERROR);
+        return OS_INVALID;
     }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_TASK_GET_LAST_AGENT_UPGRADE_TASK) < 0) {
+        mdebug1(DB_CACHE_ERROR);
+        return OS_INVALID;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_TASK_GET_LAST_AGENT_UPGRADE_TASK];
 
     sqlite3_bind_int(stmt, 1, agent_id);
 
     if (result = wdb_step(stmt), result != SQLITE_ROW) {
-        merror(DB_SQL_STEP_ERROR);
-        w_mutex_unlock(&db_mutex);
-        return wdb_task_sql_error(db, stmt);
+        merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
     }
 
     // Check task id
     task_id = sqlite3_column_int(stmt, 0);
     if (!task_id) {
-        wdb_finalize(stmt);
-        w_mutex_unlock(&db_mutex);
         return OS_SUCCESS;
     }
 
@@ -226,68 +179,63 @@ int wdb_task_get_upgrade_task_status(int agent_id, const char *node, char **stat
     if (!strcmp(task_status, task_statuses[WM_TASK_PENDING]) && strcmp(task_node, node)) {
 
         // Delete old pending task
-        if (wdb_prepare(db, task_queries[WM_TASK_DELETE_TASK], -1, &stmt2, NULL) != SQLITE_OK) {
-            merror(DB_SQL_PREPARE_ERROR);
-            w_mutex_unlock(&db_mutex);
-            wdb_finalize(stmt);
-            return wdb_task_sql_error(db, stmt2);
+        if (wdb_stmt_cache(wdb, WDB_STMT_TASK_DELETE_TASK) < 0) {
+            mdebug1(DB_CACHE_ERROR);
+            return OS_INVALID;
         }
 
-        sqlite3_bind_int(stmt2, 1, task_id);
+        stmt = wdb->stmt[WDB_STMT_TASK_DELETE_TASK];
 
-        if (result = wdb_step(stmt2), result != SQLITE_DONE) {
-            merror(DB_SQL_STEP_ERROR);
-            w_mutex_unlock(&db_mutex);
-            wdb_finalize(stmt);
-            return wdb_task_sql_error(db, stmt2);
+        sqlite3_bind_int(stmt, 1, task_id);
+
+        if (result = wdb_step(stmt), result != SQLITE_DONE) {
+            merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+            return OS_INVALID;
         }
-
-        wdb_finalize(stmt2);
 
     } else {
         sqlite_strdup(task_status, *status);
     }
 
-    wdb_finalize(stmt);
-
-    w_mutex_unlock(&db_mutex);
-
     return OS_SUCCESS;
 }
 
-int wdb_task_update_upgrade_task_status(int agent_id, const char *node, const char *status, const char *error) {
-    sqlite3 *db = NULL;
+int wdb_task_update_upgrade_task_status(wdb_t* wdb, int agent_id, const char *node, const char *status, const char *error) {
     sqlite3_stmt *stmt = NULL;
     int result = 0;
     int task_id = OS_INVALID;
     char *old_status = NULL;
     char *old_node = NULL;
 
-    if (!status || (strcmp(status, task_statuses[WM_TASK_IN_PROGRESS]) && strcmp(status, task_statuses[WM_TASK_DONE]) && strcmp(status, task_statuses[WM_TASK_FAILED]) && strcmp(status, task_statuses[WM_TASK_LEGACY]))) {
-        return OS_MISVALUE;
+    if (strcmp(status, task_statuses[WM_TASK_IN_PROGRESS]) &&
+        strcmp(status, task_statuses[WM_TASK_DONE]) &&
+        strcmp(status, task_statuses[WM_TASK_FAILED]) &&
+        strcmp(status, task_statuses[WM_TASK_LEGACY])) {
+        return OS_INVALID;
     }
 
-    w_mutex_lock(&db_mutex);
-
-    if (wdb_prepare(db, task_queries[WM_TASK_GET_LAST_AGENT_UPGRADE_TASK], -1, &stmt, NULL) != SQLITE_OK) {
-        merror(DB_SQL_PREPARE_ERROR);
-        w_mutex_unlock(&db_mutex);
-        return wdb_task_sql_error(db, stmt);
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1(DB_TRANSACTION_ERROR);
+        return OS_INVALID;
     }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_TASK_GET_LAST_AGENT_UPGRADE_TASK) < 0) {
+        mdebug1(DB_CACHE_ERROR);
+        return OS_INVALID;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_TASK_GET_LAST_AGENT_UPGRADE_TASK];
 
     sqlite3_bind_int(stmt, 1, agent_id);
 
     if (result = wdb_step(stmt), result != SQLITE_ROW) {
-        merror(DB_SQL_STEP_ERROR);
-        w_mutex_unlock(&db_mutex);
-        return wdb_task_sql_error(db, stmt);
+        merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
     }
 
     // Check task id
     task_id = sqlite3_column_int(stmt, 0);
     if (!task_id) {
-        wdb_finalize(stmt);
-        w_mutex_unlock(&db_mutex);
         return OS_NOTFOUND;
     }
 
@@ -299,18 +247,15 @@ int wdb_task_update_upgrade_task_status(int agent_id, const char *node, const ch
        (!strcmp(status, task_statuses[WM_TASK_LEGACY]) && (strcmp(old_status, task_statuses[WM_TASK_IN_PROGRESS]) || strcmp(old_node, node))) ||
        (!strcmp(status, task_statuses[WM_TASK_DONE]) && strcmp(old_status, task_statuses[WM_TASK_IN_PROGRESS])) ||
        (!strcmp(status, task_statuses[WM_TASK_FAILED]) && strcmp(old_status, task_statuses[WM_TASK_IN_PROGRESS]))) {
-        wdb_finalize(stmt);
-        w_mutex_unlock(&db_mutex);
         return OS_NOTFOUND;
     }
 
-    wdb_finalize(stmt);
-
-    if (wdb_prepare(db, task_queries[WM_TASK_UPDATE_TASK_STATUS], -1, &stmt, NULL) != SQLITE_OK) {
-        merror(DB_SQL_PREPARE_ERROR);
-        w_mutex_unlock(&db_mutex);
-        return wdb_task_sql_error(db, stmt);
+    if (wdb_stmt_cache(wdb, WDB_STMT_TASK_UPDATE_TASK_STATUS) < 0) {
+        mdebug1(DB_CACHE_ERROR);
+        return OS_INVALID;
     }
+
+    stmt = wdb->stmt[WDB_STMT_TASK_UPDATE_TASK_STATUS];
 
     sqlite3_bind_text(stmt, 1, status, -1, NULL);
     sqlite3_bind_int(stmt, 2, time(0));
@@ -320,67 +265,62 @@ int wdb_task_update_upgrade_task_status(int agent_id, const char *node, const ch
     sqlite3_bind_int(stmt, 4, task_id);
 
     if (result = wdb_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
-        merror(DB_SQL_STEP_ERROR);
-        w_mutex_unlock(&db_mutex);
-        return wdb_task_sql_error(db, stmt);
+        merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
     }
-
-    wdb_finalize(stmt);
-
-    w_mutex_unlock(&db_mutex);
 
     return OS_SUCCESS;
 }
 
-int wdb_task_cancel_upgrade_tasks(const char *node) {
-    sqlite3 *db = NULL;
+int wdb_task_cancel_upgrade_tasks(wdb_t* wdb, const char *node) {
     sqlite3_stmt *stmt = NULL;
     int result = 0;
 
-    w_mutex_lock(&db_mutex);
-
-    if (wdb_prepare(db, task_queries[WM_TASK_CANCEL_PENDING_UPGRADE_TASKS], -1, &stmt, NULL) != SQLITE_OK) {
-        merror(DB_SQL_PREPARE_ERROR);
-        w_mutex_unlock(&db_mutex);
-        return wdb_task_sql_error(db, stmt);
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1(DB_TRANSACTION_ERROR);
+        return OS_INVALID;
     }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_TASK_CANCEL_PENDING_UPGRADE_TASKS) < 0) {
+        mdebug1(DB_CACHE_ERROR);
+        return OS_INVALID;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_TASK_CANCEL_PENDING_UPGRADE_TASKS];
 
     sqlite3_bind_int(stmt, 1, time(0));
     sqlite3_bind_text(stmt, 2, node, -1, NULL);
 
     if (result = wdb_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
-        merror(DB_SQL_STEP_ERROR);
-        w_mutex_unlock(&db_mutex);
-        return wdb_task_sql_error(db, stmt);
+        merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
     }
-
-    wdb_finalize(stmt);
-
-    w_mutex_unlock(&db_mutex);
 
     return OS_SUCCESS;
 }
 
-int wdb_task_get_upgrade_task_by_agent_id(int agent_id, char **node, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time) {
-    sqlite3 *db = NULL;
+int wdb_task_get_upgrade_task_by_agent_id(wdb_t* wdb, int agent_id, char **node, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time) {
     sqlite3_stmt *stmt = NULL;
     int result = OS_INVALID;
     int task_id;
 
-    w_mutex_lock(&db_mutex);
-
-    if (wdb_prepare(db, task_queries[WM_TASK_GET_LAST_AGENT_UPGRADE_TASK], -1, &stmt, NULL) != SQLITE_OK) {
-        merror(DB_SQL_PREPARE_ERROR);
-        w_mutex_unlock(&db_mutex);
-        return wdb_task_sql_error(db, stmt);
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1(DB_TRANSACTION_ERROR);
+        return OS_INVALID;
     }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_TASK_GET_LAST_AGENT_UPGRADE_TASK) < 0) {
+        mdebug1(DB_CACHE_ERROR);
+        return OS_INVALID;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_TASK_GET_LAST_AGENT_UPGRADE_TASK];
 
     sqlite3_bind_int(stmt, 1, agent_id);
 
     if (result = wdb_step(stmt), result != SQLITE_ROW) {
-        merror(DB_SQL_STEP_ERROR);
-        w_mutex_unlock(&db_mutex);
-        return wdb_task_sql_error(db, stmt);
+        merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
     }
 
     task_id = sqlite3_column_int(stmt, 0);
@@ -398,11 +338,5 @@ int wdb_task_get_upgrade_task_by_agent_id(int agent_id, char **node, char **modu
         result = task_id;
     }
 
-    wdb_finalize(stmt);
-
-    w_mutex_unlock(&db_mutex);
-
     return result;
 }
-
-#endif

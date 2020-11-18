@@ -349,7 +349,7 @@ void test_wm_task_manager_dispatch_db_err(void **state)
     cJSON_AddNumberToObject(response_error, "error", WM_TASK_DATABASE_ERROR);
     cJSON_AddStringToObject(response_error, "message", "Database error");
 
-    char *result = "{\"error\":5,\"data\":[{\"error\":5,\"message\":\"Database error\"}],\"message\":\"Database error\"}";
+    char *result = "{\"error\":4,\"data\":[{\"error\":4,\"message\":\"Database error\"}],\"message\":\"Database error\"}";
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
@@ -379,7 +379,7 @@ void test_wm_task_manager_dispatch_db_err(void **state)
     will_return(__wrap_wm_task_manager_parse_data_response, response_error);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":5,\"data\":[{\"error\":5,\"message\":\"Database error\"}],\"message\":\"Database error\"}'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":4,\"data\":[{\"error\":4,\"message\":\"Database error\"}],\"message\":\"Database error\"}'");
 
     int ret = wm_task_manager_dispatch(message, &response);
 
