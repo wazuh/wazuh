@@ -20,6 +20,11 @@
 
 #include "../wmodules.h"
 #include "wm_task_manager_parsing.h"
+#include "defs.h"
+#include "wazuhdb_op.h"
+
+#define WDBQUERY_SIZE OS_BUFFER_SIZE
+#define WDBOUTPUT_SIZE OS_MAXSTR
 
 /**
  * Analyze an upgrade or upgrade_custom command. Update the tasks DB when necessary.
@@ -61,6 +66,15 @@ STATIC cJSON* wm_task_manager_command_upgrade_result(wm_task_manager_upgrade_res
  * @return JSON object with the response for this task.
  * */
 STATIC cJSON* wm_task_manager_command_upgrade_cancel_tasks(wm_task_manager_upgrade_cancel_tasks *task, int *error_code) __attribute__((nonnull));
+
+/**
+ * Send messages to Wazuh DB.
+ * @param command Command to be send.
+ * @param parameters cJSON with the parameters
+ * @param error_code Variable to store an error code if something is wrong.
+ * @return JSON object with the response for this task.
+ * */
+STATIC cJSON* wm_task_manager_send_message_to_wdb(const char *command, cJSON *parameters, int *error_code) __attribute__((nonnull));
 
 cJSON* wm_task_manager_process_task(const wm_task_manager_task *task, int *error_code) {
     cJSON *response = NULL;
@@ -237,6 +251,64 @@ void* wm_task_manager_clean_tasks(void *arg) {
     }
 
     return NULL;
+}
+
+STATIC cJSON* wm_task_manager_send_message_to_wdb(const char *command, cJSON *parameters, int *error_code) {
+    cJSON *root = cJSON_CreateObject();
+    cJSON *response = cJSON_CreateObject();
+
+    const char *json_err;
+    int result = 0;
+    char *parameters_in_str = NULL;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
+    int socket = -1;
+
+
+    parameters_in_str = cJSON_PrintUnformatted(parameters);
+    snprintf(wdbquery, sizeof(wdbquery), "task %s %s", command, parameters_in_str);
+    os_free(parameters_in_str);
+
+    result = wdbc_query_ex(&socket, wdbquery, wdboutput, sizeof(wdboutput));
+    wdbc_close(&socket);
+
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK == wdbc_parse_result(wdboutput, &payload)) {
+                // Parsing payload
+                if (response = cJSON_ParseWithOpts(payload, &json_err, 0), !response) {
+                    mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_JSON_ERROR, payload);
+                    *error_code = WM_TASK_PARSE_ERROR;
+                    cJSON_Delete(response);
+                    cJSON_Delete(root);
+                }
+
+                cJSON_AddStringToObject(root,"output",wdboutput);
+                cJSON_AddItemToObject(root,"payload",response);
+            }
+            else {
+                mdebug1("Tasks DB Error reported in the result of the query");
+                cJSON_AddStringToObject(root,"output",wdboutput);
+                cJSON_AddItemToObject(root,"payload",payload);
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Tasks DB Error in the response from socket");
+            mdebug2("Tasks DB SQL query: %s", wdbquery);
+            *error_code = WM_TASK_DATABASE_ERROR;
+            cJSON_Delete(response);
+            cJSON_Delete(root);
+            break;
+        default:
+            mdebug1("Tasks DB Cannot execute SQL query; err database %s/%s.db", WDB_TASK_DIR, WDB_TASK_NAME);
+            mdebug2("Tasks DB SQL query: %s", wdbquery);
+            *error_code = WM_TASK_DATABASE_ERROR;
+            cJSON_Delete(response);
+            cJSON_Delete(root);
+    }
+
+    return root;
 }
 
 #endif
