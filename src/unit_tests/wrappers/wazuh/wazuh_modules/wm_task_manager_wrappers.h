@@ -16,8 +16,6 @@
 
 #ifndef CLIENT
 
-int __wrap_wm_task_manager_check_db();
-
 cJSON* __wrap_wm_task_manager_parse_message(const char *msg);
 
 cJSON* __wrap_wm_task_manager_process_task(const wm_task_manager_task *task, int *error_code);
@@ -25,8 +23,6 @@ cJSON* __wrap_wm_task_manager_process_task(const wm_task_manager_task *task, int
 cJSON* __wrap_wm_task_manager_parse_data_response(int error_code, int agent_id, int task_id, char *status);
 
 int __wrap_wm_task_manager_get_upgrade_task_by_agent_id(int agent_id, char **node, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time);
-
-int __wrap_wm_task_manager_get_task_by_task_id(int task_id, char **node, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time);
 
 void __wrap_wm_task_manager_parse_data_result(cJSON *response, const char *node, const char *module, const char *command, char *status, char *error, int create_time, int last_update_time, char *request_command);
 
@@ -37,6 +33,10 @@ int __wrap_wm_task_manager_get_upgrade_task_status(int agent_id, const char *nod
 int __wrap_wm_task_manager_update_upgrade_task_status(int agent_id, const char *node, const char *status, const char *error);
 
 int __wrap_wm_task_manager_cancel_upgrade_tasks(const char *node);
+
+void __wrap_wm_task_manager_set_timeout_status(time_t now, int timeout, time_t *next_timeout);
+
+void __wrap_wm_task_manager_delete_old_entries(int timestamp);
 
 #endif
 

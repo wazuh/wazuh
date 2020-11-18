@@ -16,10 +16,6 @@
 
 #ifndef CLIENT
 
-int __wrap_wm_task_manager_check_db() {
-    return mock();
-}
-
 cJSON* __wrap_wm_task_manager_parse_message(const char *msg) {
     check_expected(msg);
 
@@ -45,20 +41,6 @@ cJSON* __wrap_wm_task_manager_parse_data_response(int error_code, int agent_id, 
 
 int __wrap_wm_task_manager_get_upgrade_task_by_agent_id(int agent_id, char **node, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time) {
     check_expected(agent_id);
-
-    os_strdup(mock_type(char*), *node);
-    os_strdup(mock_type(char*), *module);
-    os_strdup(mock_type(char*), *command);
-    os_strdup(mock_type(char*), *status);
-    os_strdup(mock_type(char*), *error);
-    *create_time = mock();
-    *last_update_time = mock();
-
-    return mock();
-}
-
-int __wrap_wm_task_manager_get_task_by_task_id(int task_id, char **node, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time) {
-    check_expected(task_id);
 
     os_strdup(mock_type(char*), *node);
     os_strdup(mock_type(char*), *module);
@@ -113,6 +95,18 @@ int __wrap_wm_task_manager_cancel_upgrade_tasks(const char *node) {
     check_expected(node);
 
     return mock();
+}
+
+void __wrap_wm_task_manager_set_timeout_status(time_t now, int timeout, time_t *next_timeout) {
+    check_expected(now);
+    check_expected(timeout);
+
+    time_t next = *next_timeout;
+    check_expected(next);
+}
+
+void __wrap_wm_task_manager_delete_old_entries(int timestamp) {
+    check_expected(timestamp);
 }
 
 #endif

@@ -13,6 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 
+#include "../../wrappers/wazuh/shared/time_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_task_manager_wrappers.h"
 
 #include "../../wazuh_modules/wmodules.h"
@@ -25,9 +26,21 @@ cJSON* wm_task_manager_command_upgrade_get_status(wm_task_manager_upgrade_get_st
 cJSON* wm_task_manager_command_upgrade_update_status(wm_task_manager_upgrade_update_status *task, int *error_code);
 cJSON* wm_task_manager_command_upgrade_result(wm_task_manager_upgrade_result *task, int *error_code);
 cJSON* wm_task_manager_command_upgrade_cancel_tasks(wm_task_manager_upgrade_cancel_tasks *task, int *error_code);
-cJSON* wm_task_manager_command_task_result(wm_task_manager_task_result *task, int *error_code);
 
 // Setup / teardown
+
+static int setup_config(void **state) {
+    wm_task_manager *config = NULL;
+    os_calloc(1, sizeof(wm_task_manager), config);
+    *state = config;
+    return 0;
+}
+
+static int teardown_config(void **state) {
+    wm_task_manager *config = *state;
+    os_free(config);
+    return 0;
+}
 
 static int teardown_json_task(void **state) {
     if (state[0]) {
@@ -101,16 +114,10 @@ static int teardown_json_upgrade_cancel_tasks_task(void **state) {
     return 0;
 }
 
-static int teardown_json_task_result_task(void **state) {
-    if (state[0]) {
-        cJSON *json = state[0];
-        cJSON_Delete(json);
-    }
-    if (state[1]) {
-        wm_task_manager_task_result *task = (wm_task_manager_task_result*)state[1];
-        wm_task_manager_free_task_result_parameters(task);
-    }
-    return 0;
+// Wrappers
+
+time_t __wrap_time(time_t *__timer) {
+    return mock();
 }
 
 // Tests
@@ -669,159 +676,6 @@ void test_wm_task_manager_command_upgrade_cancel_tasks_db_err(void **state)
     assert_int_equal(error_code, WM_TASK_DATABASE_ERROR);
 }
 
-void test_wm_task_manager_command_task_result_ok(void **state)
-{
-    int error_code = 0;
-    int agent_id = 35;
-    int task_id = 24;
-    char *command = "task_result";
-
-    char *node_result = "node01";
-    char *module_result = "api_module";
-    char *command_result = "upgrade";
-    char *status_result = "In progress";
-    char *error_result = "Error string";
-    int create_time = 789456123;
-    int last_update = 987654321;
-
-    wm_task_manager_task_result *task_parameters = wm_task_manager_init_task_result_parameters();
-    int *tasks = NULL;
-
-    os_calloc(2, sizeof(int), tasks);
-    tasks[0] = task_id;
-    tasks[1] = OS_INVALID;
-
-    task_parameters->task_ids = tasks;
-
-    cJSON* res = cJSON_CreateObject();
-
-    expect_value(__wrap_wm_task_manager_get_task_by_task_id, task_id, task_id);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, node_result);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, module_result);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, command_result);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, status_result);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, error_result);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, create_time);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, last_update);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, agent_id);
-
-    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_SUCCESS);
-    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, agent_id);
-    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, task_id);
-    will_return(__wrap_wm_task_manager_parse_data_response, res);
-
-    expect_string(__wrap_wm_task_manager_parse_data_result, node, node_result);
-    expect_string(__wrap_wm_task_manager_parse_data_result, module, module_result);
-    expect_string(__wrap_wm_task_manager_parse_data_result, command, command_result);
-    expect_string(__wrap_wm_task_manager_parse_data_result, status, status_result);
-    expect_string(__wrap_wm_task_manager_parse_data_result, error, error_result);
-    expect_value(__wrap_wm_task_manager_parse_data_result, create_time, create_time);
-    expect_value(__wrap_wm_task_manager_parse_data_result, last_update_time, last_update);
-    expect_string(__wrap_wm_task_manager_parse_data_result, request_command, command);
-
-    cJSON *response = wm_task_manager_command_task_result(task_parameters, &error_code);
-
-    state[0] = response;
-    state[1] = task_parameters;
-
-    assert_non_null(response);
-    assert_int_equal(cJSON_GetArraySize(response), 1);
-    assert_memory_equal(cJSON_GetArrayItem(response, 0), res, sizeof(res));
-    assert_int_equal(error_code, 0);
-}
-
-void test_wm_task_manager_command_task_result_not_found_err(void **state)
-{
-    int error_code = 0;
-    int agent_id = OS_NOTFOUND;
-    int task_id = 24;
-
-    char *node_result = "node01";
-    char *module_result = "api_module";
-    char *command_result = "upgrade";
-    char *status_result = "In progress";
-    char *error_result = "Error string";
-    int create_time = 789456123;
-    int last_update = 987654321;
-
-    wm_task_manager_task_result *task_parameters = wm_task_manager_init_task_result_parameters();
-    int *tasks = NULL;
-
-    os_calloc(2, sizeof(int), tasks);
-    tasks[0] = task_id;
-    tasks[1] = OS_INVALID;
-
-    task_parameters->task_ids = tasks;
-
-    cJSON* res = cJSON_CreateObject();
-
-    expect_value(__wrap_wm_task_manager_get_task_by_task_id, task_id, task_id);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, node_result);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, module_result);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, command_result);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, status_result);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, error_result);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, create_time);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, last_update);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, agent_id);
-
-    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_DATABASE_NO_TASK);
-    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, OS_INVALID);
-    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, task_id);
-    will_return(__wrap_wm_task_manager_parse_data_response, res);
-
-    cJSON *response = wm_task_manager_command_task_result(task_parameters, &error_code);
-
-    state[0] = response;
-    state[1] = task_parameters;
-
-    assert_non_null(response);
-    assert_int_equal(cJSON_GetArraySize(response), 1);
-    assert_memory_equal(cJSON_GetArrayItem(response, 0), res, sizeof(res));
-    assert_int_equal(error_code, 0);
-}
-
-void test_wm_task_manager_command_task_result_db_err(void **state)
-{
-    int error_code = 0;
-    int agent_id = OS_INVALID;
-    int task_id = 24;
-
-    char *node_result = "node01";
-    char *module_result = "api_module";
-    char *command_result = "upgrade";
-    char *status_result = "In progress";
-    char *error_result = "Error string";
-    int create_time = 789456123;
-    int last_update = 987654321;
-
-    wm_task_manager_task_result *task_parameters = wm_task_manager_init_task_result_parameters();
-    int *tasks = NULL;
-
-    os_calloc(2, sizeof(int), tasks);
-    tasks[0] = task_id;
-    tasks[1] = OS_INVALID;
-
-    task_parameters->task_ids = tasks;
-
-    expect_value(__wrap_wm_task_manager_get_task_by_task_id, task_id, task_id);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, node_result);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, module_result);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, command_result);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, status_result);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, error_result);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, create_time);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, last_update);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, agent_id);
-
-    cJSON *response = wm_task_manager_command_task_result(task_parameters, &error_code);
-
-    state[0] = NULL;
-    state[1] = task_parameters;
-
-    assert_int_equal(error_code, WM_TASK_DATABASE_ERROR);
-}
-
 void test_wm_task_manager_process_task_upgrade_ok(void **state)
 {
     int error_code = 0;
@@ -1142,71 +996,6 @@ void test_wm_task_manager_process_task_upgrade_cancel_tasks_ok(void **state)
     assert_int_equal(error_code, 0);
 }
 
-void test_wm_task_manager_process_task_task_result_ok(void **state)
-{
-    int error_code = 0;
-    char *command = "task_result";
-    int task_id = 38;
-    int *tasks = NULL;
-    int agent_id = 45;
-
-    char *node_result = "node01";
-    char *module_result = "api";
-    char *command_result = "upgrade";
-    char *status_result = "In progress";
-    char *error_result = "Error string";
-    int create_time = 789456123;
-    int last_update = 987654321;
-
-    wm_task_manager_task *task = wm_task_manager_init_task();
-    wm_task_manager_task_result *task_parameters = wm_task_manager_init_task_result_parameters();
-
-    os_calloc(2, sizeof(int), tasks);
-    tasks[0] = task_id;
-    tasks[1] = OS_INVALID;
-
-    task_parameters->task_ids = tasks;
-
-    task->command = WM_TASK_TASK_RESULT;
-    task->parameters = task_parameters;
-
-    cJSON* res = cJSON_CreateObject();
-
-    expect_value(__wrap_wm_task_manager_get_task_by_task_id, task_id, task_id);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, node_result);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, module_result);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, command_result);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, status_result);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, error_result);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, create_time);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, last_update);
-    will_return(__wrap_wm_task_manager_get_task_by_task_id, agent_id);
-
-    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_SUCCESS);
-    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, agent_id);
-    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, task_id);
-    will_return(__wrap_wm_task_manager_parse_data_response, res);
-
-    expect_string(__wrap_wm_task_manager_parse_data_result, node, node_result);
-    expect_string(__wrap_wm_task_manager_parse_data_result, module, module_result);
-    expect_string(__wrap_wm_task_manager_parse_data_result, command, command_result);
-    expect_string(__wrap_wm_task_manager_parse_data_result, status, status_result);
-    expect_string(__wrap_wm_task_manager_parse_data_result, error, error_result);
-    expect_value(__wrap_wm_task_manager_parse_data_result, create_time, create_time);
-    expect_value(__wrap_wm_task_manager_parse_data_result, last_update_time, last_update);
-    expect_string(__wrap_wm_task_manager_parse_data_result, request_command, command);
-
-    cJSON *response = wm_task_manager_process_task(task, &error_code);
-
-    state[0] = response;
-    state[1] = task;
-
-    assert_non_null(response);
-    assert_int_equal(cJSON_GetArraySize(response), 1);
-    assert_memory_equal(cJSON_GetArrayItem(response, 0), res, sizeof(res));
-    assert_int_equal(error_code, 0);
-}
-
 void test_wm_task_manager_process_task_command_err(void **state)
 {
     int error_code = 0;
@@ -1223,6 +1012,89 @@ void test_wm_task_manager_process_task_command_err(void **state)
 
     assert_null(response);
     assert_int_equal(error_code, WM_TASK_INVALID_COMMAND);
+}
+
+void test_wm_task_manager_clean_tasks(void **state)
+{
+    wm_task_manager *config = *state;
+
+    config->cleanup_time = 1000;
+    config->task_timeout = 850;
+
+    int now = 123456789;
+    int timestamp = now - config->cleanup_time;
+
+    int task_id = 10;
+    int update_time = now - config->task_timeout;
+
+    will_return(__wrap_time, now);
+
+    will_return(__wrap_time, now);
+
+    will_return(__wrap_time, now);
+
+    expect_value(__wrap_wm_task_manager_set_timeout_status, now, now);
+    expect_value(__wrap_wm_task_manager_set_timeout_status, timeout, 850);
+    expect_value(__wrap_wm_task_manager_set_timeout_status, next, now + 850);
+
+    expect_value(__wrap_wm_task_manager_delete_old_entries, timestamp, now - 1000);
+
+    wm_task_manager_clean_tasks(config);
+
+    assert_int_equal(current_time, now + config->task_timeout);
+}
+
+void test_wm_task_manager_clean_tasks_timeout(void **state)
+{
+    wm_task_manager *config = *state;
+
+    config->cleanup_time = 1000;
+    config->task_timeout = 850;
+
+    int now = 123456789;
+    int timestamp = now - config->cleanup_time;
+
+    int task_id = 10;
+    int update_time = now - config->task_timeout;
+
+    will_return(__wrap_time, now + 100);
+
+    will_return(__wrap_time, now);
+
+    will_return(__wrap_time, now);
+
+    expect_value(__wrap_wm_task_manager_set_timeout_status, now, now);
+    expect_value(__wrap_wm_task_manager_set_timeout_status, timeout, 850);
+    expect_value(__wrap_wm_task_manager_set_timeout_status, next, now + 850);
+
+    wm_task_manager_clean_tasks(config);
+
+    assert_int_equal(current_time, now + 100);
+}
+
+void test_wm_task_manager_clean_tasks_clean(void **state)
+{
+    wm_task_manager *config = *state;
+
+    config->cleanup_time = 1000;
+    config->task_timeout = 850;
+
+    int now = 123456789;
+    int timestamp = now - config->cleanup_time;
+
+    int task_id = 10;
+
+    will_return(__wrap_time, now);
+
+    will_return(__wrap_time, now + 200);
+
+    will_return(__wrap_time, now);
+
+    expect_value(__wrap_wm_task_manager_delete_old_entries, timestamp, now - 1000);
+
+    wm_task_manager_clean_tasks(config);
+
+    assert_int_equal(current_time, now + 200);
 }
 
 int main(void) {
@@ -1246,10 +1118,6 @@ int main(void) {
         // wm_task_manager_command_upgrade_cancel_tasks
         cmocka_unit_test_teardown(test_wm_task_manager_command_upgrade_cancel_tasks_ok, teardown_json_upgrade_cancel_tasks_task),
         cmocka_unit_test_teardown(test_wm_task_manager_command_upgrade_cancel_tasks_db_err, teardown_json_upgrade_cancel_tasks_task),
-        // wm_task_manager_command_task_result
-        cmocka_unit_test_teardown(test_wm_task_manager_command_task_result_ok, teardown_json_task_result_task),
-        cmocka_unit_test_teardown(test_wm_task_manager_command_task_result_not_found_err, teardown_json_task_result_task),
-        cmocka_unit_test_teardown(test_wm_task_manager_command_task_result_db_err, teardown_json_task_result_task),
         // wm_task_manager_process_task
         cmocka_unit_test_teardown(test_wm_task_manager_process_task_upgrade_ok, teardown_json_task),
         cmocka_unit_test_teardown(test_wm_task_manager_process_task_upgrade_custom_ok, teardown_json_task),
@@ -1257,8 +1125,11 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_task_manager_process_task_upgrade_update_status_ok, teardown_json_task),
         cmocka_unit_test_teardown(test_wm_task_manager_process_task_upgrade_result_ok, teardown_json_task),
         cmocka_unit_test_teardown(test_wm_task_manager_process_task_upgrade_cancel_tasks_ok, teardown_json_task),
-        cmocka_unit_test_teardown(test_wm_task_manager_process_task_task_result_ok, teardown_json_task),
-        cmocka_unit_test_teardown(test_wm_task_manager_process_task_command_err, teardown_json_task)
+        cmocka_unit_test_teardown(test_wm_task_manager_process_task_command_err, teardown_json_task),
+        // wm_task_manager_clean_tasks
+        cmocka_unit_test_setup_teardown(test_wm_task_manager_clean_tasks, setup_config, teardown_config),
+        cmocka_unit_test_setup_teardown(test_wm_task_manager_clean_tasks_timeout, setup_config, teardown_config),
+        cmocka_unit_test_setup_teardown(test_wm_task_manager_clean_tasks_clean, setup_config, teardown_config)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

@@ -31,7 +31,6 @@ typedef enum _task_manager_json_key {
     WM_TASK_COMMAND,
     WM_TASK_PARAMETERS,
     WM_TASK_AGENTS,
-    WM_TASK_TASKS,
     // Response
     WM_TASK_ERROR,
     WM_TASK_DATA,
@@ -55,7 +54,6 @@ typedef enum _command_list {
     WM_TASK_UPGRADE_UPDATE_STATUS,
     WM_TASK_UPGRADE_RESULT,
     WM_TASK_UPGRADE_CANCEL_TASKS,
-    WM_TASK_TASK_RESULT,
     WM_TASK_UNKNOWN
 } command_list;
 
