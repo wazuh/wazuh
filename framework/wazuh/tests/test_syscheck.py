@@ -274,9 +274,7 @@ def test_syscheck_files(socket_mock, agent_id, select, filters, distinct):
         assert isinstance(result, AffectedItemsWazuhResult)
         assert isinstance(result.affected_items, list)
         # Use flag for min_select_field, if file not in select, len(item.keys()) = len(select) + 1
-        flag_select_min = 0
-        if 'file' not in select:
-            flag_select_min = 1
+        flag_select_min = 1 if 'file' not in select else 0
         for item in result.affected_items:
             # Use flag for nested_fields in order to compare select and item.keys() lengths
             flag_nested = 0
