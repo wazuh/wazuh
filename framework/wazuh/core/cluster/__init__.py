@@ -5,7 +5,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 __version__ = '4.0.2'
-__revision__ = '40007'
+__revision__ = '40008'
 __author__ = "Wazuh Inc"
 __ossec_name__ = "Wazuh"
 __licence__ = "\
