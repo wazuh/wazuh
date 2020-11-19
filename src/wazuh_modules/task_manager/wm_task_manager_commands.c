@@ -255,8 +255,6 @@ void* wm_task_manager_clean_tasks(void *arg) {
 
 STATIC cJSON* wm_task_manager_send_message_to_wdb(const char *command, cJSON *parameters, int *error_code) {
     cJSON *root = cJSON_CreateObject();
-    cJSON *response = cJSON_CreateObject();
-
     const char *json_err;
     int result = 0;
     char *parameters_in_str = NULL;
@@ -276,36 +274,31 @@ STATIC cJSON* wm_task_manager_send_message_to_wdb(const char *command, cJSON *pa
     switch (result) {
         case OS_SUCCESS:
             if (WDBC_OK == wdbc_parse_result(wdboutput, &payload)) {
+                cJSON *response = cJSON_CreateObject();
                 // Parsing payload
                 if (response = cJSON_ParseWithOpts(payload, &json_err, 0), !response) {
                     mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_JSON_ERROR, payload);
                     *error_code = WM_TASK_PARSE_ERROR;
                     cJSON_Delete(response);
                     cJSON_Delete(root);
+                    return NULL;
                 }
 
                 cJSON_AddStringToObject(root,"output",wdboutput);
                 cJSON_AddItemToObject(root,"payload",response);
             }
             else {
-                mdebug1("Tasks DB Error reported in the result of the query");
+                mtdebug1(WM_TASK_MANAGER_LOGTAG, MOD_TASK_TASKS_DB_ERROR_IN_QUERY, payload);
                 cJSON_AddStringToObject(root,"output",wdboutput);
-                cJSON_AddItemToObject(root,"payload",payload);
+                cJSON_AddStringToObject(root,"payload",payload);
             }
             break;
-        case OS_INVALID:
-            mdebug1("Tasks DB Error in the response from socket");
-            mdebug2("Tasks DB SQL query: %s", wdbquery);
+        default:
+            mtdebug1(WM_TASK_MANAGER_LOGTAG, MOD_TASK_TASKS_DB_ERROR_EXECUTE, WDB_TASK_DIR, WDB_TASK_NAME);
+            mtdebug2(WM_TASK_MANAGER_LOGTAG, MOD_TASK_TASKS_DB_SQL_QUERY, wdbquery);
             *error_code = WM_TASK_DATABASE_ERROR;
-            cJSON_Delete(response);
             cJSON_Delete(root);
             break;
-        default:
-            mdebug1("Tasks DB Cannot execute SQL query; err database %s/%s.db", WDB_TASK_DIR, WDB_TASK_NAME);
-            mdebug2("Tasks DB SQL query: %s", wdbquery);
-            *error_code = WM_TASK_DATABASE_ERROR;
-            cJSON_Delete(response);
-            cJSON_Delete(root);
     }
 
     return root;
