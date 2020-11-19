@@ -11,7 +11,7 @@
 
 # Static active response parameters
 FILENAME=$8
-LOCAL=`dirname $0`
+LOCAL="$(dirname "$0")"
 
 # Extra arguments
 YARA_PATH=
@@ -38,18 +38,18 @@ esac
 done
 
 # Move to the active response directory
-cd $LOCAL
+cd "$LOCAL" || exit 1
 cd ../
 
 # Set LOG_FILE path
-PWD=`pwd`
+PWD="$(pwd)"
 LOG_FILE="${PWD}/../logs/active-responses.log"
 
 #----------------------- Analyze parameters -----------------------#
 
 if [[ ! $YARA_PATH ]] || [[ ! $YARA_RULES ]]
 then
-    echo "wazuh-yara: ERROR - Yara active response error. Yara path and rules parameters are mandatory." >> ${LOG_FILE}
+    echo "wazuh-yara: ERROR - Yara active response error. Yara path and rules parameters are mandatory." >> "${LOG_FILE}"
     exit
 fi
 
@@ -62,7 +62,7 @@ if [[ $yara_output != "" ]]
 then
     # Iterate every detected rule and append it to the LOG_FILE
     while read -r line; do
-        echo "wazuh-yara: INFO - Scan result: $line" >> ${LOG_FILE}
+        echo "wazuh-yara: INFO - Scan result: $line" >> "${LOG_FILE}"
     done <<< "$yara_output"
 fi
 
