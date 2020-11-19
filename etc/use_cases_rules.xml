@@ -11,7 +11,7 @@
         <group>process_monitor,</group>
     </rule>
 
-    <rule id="100051" level="7" ignore="10">
+    <rule id="100051" level="7" ignore="900">
         <if_sid>100050</if_sid>
         <group>process_monitor,</group>
         <field name="command">^\.*/nc \.*-l|^nc \.*-l</field>
