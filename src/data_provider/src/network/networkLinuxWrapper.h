@@ -21,6 +21,85 @@
 #include "stringHelper.h"
 #include "sharedDefs.h"
 
+#ifndef ARPHRD_TUNNEL
+#define ARPHRD_TUNNEL	768		/* IPIP tunnel.  */
+#endif
+#ifndef ARPHRD_TUNNEL6
+#define ARPHRD_TUNNEL6	769		/* IPIP6 tunnel.  */
+#endif
+#ifndef ARPHRD_FRAD
+#define ARPHRD_FRAD	770             /* Frame Relay Access Device.  */
+#endif
+#ifndef ARPHRD_SKIP
+#define ARPHRD_SKIP	771		/* SKIP vif.  */
+#endif
+#ifndef ARPHRD_LOOPBACK
+#define ARPHRD_LOOPBACK	772		/* Loopback device.  */
+#endif
+#ifndef ARPHRD_LOCALTLK
+#define ARPHRD_LOCALTLK 773		/* Localtalk device.  */
+#endif
+#ifndef ARPHRD_FDDI
+#define ARPHRD_FDDI	774		/* Fiber Distributed Data Interface. */
+#endif
+#ifndef ARPHRD_BIF
+#define ARPHRD_BIF	775             /* AP1000 BIF.  */
+#endif
+#ifndef ARPHRD_SIT
+#define ARPHRD_SIT	776		/* sit0 device - IPv6-in-IPv4.  */
+#endif
+#ifndef ARPHRD_IPDDP
+#define ARPHRD_IPDDP	777		/* IP-in-DDP tunnel.  */
+#endif
+#ifndef ARPHRD_IPGRE
+#define ARPHRD_IPGRE	778		/* GRE over IP.  */
+#endif
+#ifndef ARPHRD_PIMREG
+#define ARPHRD_PIMREG	779		/* PIMSM register interface.  */
+#endif
+#ifndef ARPHRD_HIPPI
+#define ARPHRD_HIPPI	780		/* High Performance Parallel I'face. */
+#endif
+#ifndef ARPHRD_ASH
+#define ARPHRD_ASH	781		/* (Nexus Electronics) Ash.  */
+#endif
+#ifndef ARPHRD_ECONET
+#define ARPHRD_ECONET	782		/* Acorn Econet.  */
+#endif
+#ifndef ARPHRD_IRDA
+#define ARPHRD_IRDA	783		/* Linux-IrDA.  */
+#endif
+#ifndef ARPHRD_FCPP
+#define ARPHRD_FCPP	784		/* Point to point fibrechanel.  */
+#endif
+#ifndef ARPHRD_FCAL
+#define ARPHRD_FCAL	785		/* Fibrechanel arbitrated loop.  */
+#endif
+#ifndef ARPHRD_FCPL
+#define ARPHRD_FCPL	786		/* Fibrechanel public loop.  */
+#endif
+#ifndef ARPHRD_FCFABRIC
+#define ARPHRD_FCFABRIC 787		/* Fibrechanel fabric.  */
+#endif
+#ifndef ARPHRD_IEEE802_TR
+#define ARPHRD_IEEE802_TR 800		/* Magic type ident for TR.  */
+#endif
+#ifndef ARPHRD_IEEE80211
+#define ARPHRD_IEEE80211 801		/* IEEE 802.11.  */
+#endif
+#ifndef ARPHRD_IEEE80211_PRISM
+#define ARPHRD_IEEE80211_PRISM 802	/* IEEE 802.11 + Prism2 header.  */
+#endif
+#ifndef ARPHRD_IEEE80211_RADIOTAP
+#define ARPHRD_IEEE80211_RADIOTAP 803	/* IEEE 802.11 + radiotap header.  */
+#endif
+#ifndef ARPHRD_IEEE802154
+#define ARPHRD_IEEE802154 804		/* IEEE 802.15.4 header.  */
+#endif
+#ifndef ARPHRD_IEEE802154_PHY
+#define ARPHRD_IEEE802154_PHY 805 /* IEEE 802.15.4 PHY header.  */
+#endif
+
 static const std::map<std::pair<int, int>, std::string> NETWORK_INTERFACE_TYPE =
 {
     { std::make_pair(ARPHRD_ETHER, ARPHRD_ETHER),               "ethernet"          },
