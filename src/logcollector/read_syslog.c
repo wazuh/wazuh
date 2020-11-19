@@ -14,6 +14,7 @@
 #include "logcollector.h"
 #include "os_crypto/sha1/sha1_op.h"
 
+#include "getlog.h"
 
 /* Read syslog files */
 void *read_syslog(logreader *lf, int *rc, int drop_it) {
@@ -21,6 +22,8 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
     int __ms_reported = 0;
     char str[OS_MAXSTR + 1];
     fpos_t fp_pos;
+    getlog_t getlog = NULL;
+    getlog_params_t getlog_params = {0};
     int lines = 0;
     w_offset_t offset = 0;
     w_offset_t rbytes = 0;
@@ -30,6 +33,18 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
 
     /* Get initial file location */
     fgetpos(lf->fp, &fp_pos);
+    getlog_params.stream = lf->fp;
+    getlog_params.length = OS_MAXSTR - OS_LOG_HEADER;
+    getlog_params.buffer = str;
+
+    if (lf->multiline){
+        getlog = getlog_multiline;
+        getlog_ctxt = lf->multiline;
+    }
+    else{
+        getlog = getlog_singleline;
+        getlog_ctxt = NULL;
+    }
 
     SHA_CTX context;
 #if defined(__linux__)
