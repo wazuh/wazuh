@@ -562,9 +562,9 @@ int fim_db_delete_not_scanned(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex
                                     (void *) true, (void *) FIM_SCHEDULED, NULL);
 }
 
-int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
+int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage, fim_event_mode mode) {
     return fim_db_process_read_file(fim_sql, file, mutex, fim_db_remove_path, storage,
-                                    (void *) false, (void *) FIM_SCHEDULED, NULL);
+                                    (void *) false, (void *) mode, NULL);
 }
 
 int fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage, fim_event_mode mode, whodata_evt * w_evt) {
