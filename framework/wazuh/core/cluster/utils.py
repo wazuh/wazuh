@@ -115,10 +115,15 @@ def get_manager_status() -> typing.Dict:
         elif exists(join(run_dir, f'{process}.start')):
             data[process] = 'starting'
         elif pidfile:
-            process_pid = pidfile_regex.match(pidfile[0]).group(1)
-            # if a pidfile exists but the process is not running, it means the process crashed and
-            # wasn't able to remove its own pidfile.
-            data[process] = 'running' if exists(join('/proc', process_pid)) else 'failed'
+            # Iterate on pidfiles looking for the pidfile which has his pid in /proc,
+            # if the loop finishes, all pidfiles exist but their processes are not running,
+            # it means each process crashed and was not able to remove its own pidfile.
+            data[process] = 'failed'
+            for pid in pidfile:
+                if exists(join('/proc', pidfile_regex.match(pid).group(1))):
+                    data[process] = 'running'
+                    break
+
         else:
             data[process] = 'stopped'
 
