@@ -18,7 +18,7 @@ stages:
       status_code: 200
       json:
         # We get totalItems number of arrays in items, using !anything to check items key is in the response
-        error: !anyint
+        error: 0
         data:
           affected_items: !anything
           failed_items: []
@@ -36,7 +36,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           # We define this items answer as a common one array full answer
           affected_items: &full_items_array
@@ -77,7 +77,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - file: "{returned_file}"
@@ -99,7 +99,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - date: !anystr
@@ -121,7 +121,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *full_items_array
@@ -145,7 +145,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
               # Save second item to check offset in next stage
@@ -179,7 +179,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint 
+        error: 0 
         data:
           affected_items: *full_items_array
           failed_items: []
@@ -197,7 +197,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: !anything
           failed_items: []
@@ -215,7 +215,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - file: "registry_key_1"
@@ -235,7 +235,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - file: "registry_value_1"
@@ -258,7 +258,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - md5: "{tavern.request_vars.params.md5}"
@@ -277,7 +277,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - sha1: "{tavern.request_vars.params.sha1}"
@@ -296,7 +296,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - sha256: "{tavern.request_vars.params.sha256}"
@@ -315,7 +315,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - md5: "{tavern.request_vars.params.hash}"
@@ -334,7 +334,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - sha1: "{tavern.request_vars.params.hash}"
@@ -353,7 +353,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - sha256: "{tavern.request_vars.params.hash}"
@@ -372,7 +372,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - file: "{tavern.request_vars.params.file}"
@@ -391,7 +391,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *full_items_array
@@ -485,7 +485,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: *full_items_array
           failed_items: []
@@ -508,7 +508,7 @@ stages:
           extra_kwargs:
             select_key: "{field:s}"
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: !anyint
 
@@ -528,7 +528,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - end: !anything
@@ -554,7 +554,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - '000'
@@ -574,7 +574,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 2
         data:
           affected_items:
             - '000'
@@ -609,7 +609,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: !anything
           failed_items: []
@@ -626,7 +626,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           # We define this items answer as a common one array full answer
           affected_items: &full_items_array_002
@@ -668,7 +668,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - date: !anystr
@@ -690,7 +690,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *full_items_array_002
@@ -714,7 +714,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
               # Save second item to check offset in next stage
@@ -748,7 +748,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: *full_items_array_002
           failed_items: []
@@ -766,7 +766,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: !anything
           failed_items: []
@@ -784,7 +784,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - md5: "{tavern.request_vars.params.md5}"
@@ -803,7 +803,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - sha1: "{tavern.request_vars.params.sha1}"
@@ -822,7 +822,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - sha256: "{tavern.request_vars.params.sha256}"
@@ -841,7 +841,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - md5: "{tavern.request_vars.params.hash}"
@@ -860,7 +860,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - sha1: "{tavern.request_vars.params.hash}"
@@ -879,7 +879,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - sha256: "{tavern.request_vars.params.hash}"
@@ -898,7 +898,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - file: "{tavern.request_vars.params.file}"
@@ -918,7 +918,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *full_items_array_002
@@ -989,7 +989,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: *full_items_array_002
           failed_items: []
@@ -1012,7 +1012,7 @@ stages:
         extra_kwargs:
           select_key: "{field:s}"
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: !anyint
 
@@ -1032,7 +1032,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - end: !anything
@@ -1056,7 +1056,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: !anything
           failed_items: []
@@ -1079,7 +1079,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint 
+        error: 2
         data:
           affected_items: !anything
           failed_items:
