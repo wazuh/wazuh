@@ -1661,6 +1661,8 @@ components:
         name:
           description: "Policy name"
           type: string
+          maxLength: 64
+          format: names
         policy:
           description: "New policy definition"
           type: object
@@ -1688,6 +1690,8 @@ components:
         name:
           description: "Policy name"
           type: string
+          maxLength: 64
+          format: names
         policy:
           description: "New policy definition"
           type: object
@@ -1755,12 +1759,16 @@ components:
         name:
           type: string
           description: "Role name"
+          maxLength: 64
+          format: names
     RolesRequest_no_required:
       type: object
       properties:
         name:
           type: string
           description: "Role name"
+          maxLength: 64
+          format: names
     SecurityRulesRequest:
       type: object
       required:
@@ -1770,6 +1778,8 @@ components:
         name:
           type: string
           description: "Rule name"
+          maxLength: 64
+          format: names
         rule:
           type: object
           description: "Rule body"
@@ -1779,6 +1789,8 @@ components:
         name:
           type: string
           description: "Rule name"
+          maxLength: 64
+          format: names
         rule:
           type: object
           description: "Rule body"
@@ -13513,7 +13525,7 @@ paths:
                 username:
                   type: string
                   minLength: 4
-                  maxLength: 20
+                  maxLength: 64
                   format: names
                 password:
                   type: string

@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 
 - **API:**
   - `GET /agents/summary/os`, `GET /agents/summary/status` and `GET /overview/agents` will no longer consider `000` as an agent. ([#6574](https://github.com/wazuh/wazuh/pull/6574))
+  - Increased to 64 the maximum number of characters that can be used in security users, roles, rules, and policies names. ([#6657](https://github.com/wazuh/wazuh/issues/6657))
 
 ### Fixed
 
