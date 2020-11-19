@@ -23,6 +23,7 @@
 /* For ino_t */
 #include <sys/types.h>
 #include "labels_op.h"
+#include "expression.h"
 
 extern int maximum_files;
 extern int total_files;
@@ -63,7 +64,7 @@ typedef enum{
 } w_multiline_match_type_t;
 
 typedef struct {
-    void * regex;
+    w_expression_t * regex;
     w_multiline_match_type_t match_type;
     w_multiline_replace_type_t replace_type;
 } w_multiline_config_t;
