@@ -115,8 +115,8 @@ namespace Utils
         }
         void cancel()
         {
-            joinThreads();
             m_queue.cancel();
+            joinThreads();
         }
 
         bool cancelled() const
@@ -138,11 +138,10 @@ namespace Utils
             while(m_running)
             {
                 std::function<void()> fnc;
-                if(m_queue.pop(fnc, false))
+                if(m_queue.pop(fnc))
                 {
                     fnc();
                 }
-                std::this_thread::yield();
             }
         }
         void joinThreads()
