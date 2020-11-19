@@ -1,0 +1,17 @@
+<!--
+- JSON Decoders
+- Copyright (C) 2015-2019, Wazuh Inc.
+- April 21, 2017.
+-
+- This program is a free software; you can redistribute it
+- and/or modify it under the terms of the GNU General Public
+- License (version 2) as published by the FSF - Free Software
+- Foundation.
+-->
+
+<decoder name="test">
+  <program_name type="osregex">test_program_name</program_name>
+  <prematch>test_prematch</prematch>
+  <regex type="pcre2">test_regex</regex>
+  <order>test_order</order>
+</decoder>

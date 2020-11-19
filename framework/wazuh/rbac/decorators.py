@@ -19,6 +19,9 @@ from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager,
 from wazuh.core.results import AffectedItemsWazuhResult
 
 
+integer_resources = ['user:id', 'role:id', 'rule:id', 'policy:id']
+
+
 def _expand_resource(resource):
     """This function expand a specified resource depending of it type.
 
@@ -51,7 +54,7 @@ def _expand_resource(resource):
             with AuthenticationManager() as auth:
                 users = auth.get_users()
             for user in users:
-                users_system.add(user['user_id'])
+                users_system.add(str(user['user_id']))
             return users_system
         elif resource_type == 'rule:id':
             with RulesManager() as rum:
@@ -342,10 +345,12 @@ def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowe
     if add_denied:
         for res_id, target_param in target.items():
             denied = _get_denied(original, allowed, target_param, res_id)
+            if res_id in integer_resources:
+                denied = {int(i) if i.isdigit() else i for i in denied}
             for denied_item in denied:
-                result.add_failed_item(id_=denied_item, error=WazuhPermissionError(4000,
-                                                                         extra_message=f'Resource type: {res_id}',
-                                                                         ids=denied))
+                result.add_failed_item(id_=denied_item,
+                                       error=WazuhPermissionError(4000, extra_message=f'Resource type: {res_id}',
+                                                                  ids=denied))
     else:
         if 'default_result_kwargs' in post_proc_kwargs and result is None:
             return AffectedItemsWazuhResult(**post_proc_kwargs['default_result_kwargs'])
@@ -399,8 +404,11 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
                 except Exception:
                     if add_denied:
                         denied = _get_denied(original_kwargs, allow, target_param, res_id, resources=resources)
-                        raise WazuhPermissionError(4000, extra_message=f'Resource type: {res_id}', ids=denied,
-                                                   title="Permission Denied")
+                        if res_id in integer_resources:
+                            denied = {int(i) if i.isdigit() else i for i in denied}
+                        raise WazuhPermissionError(4000,
+                                                   extra_message=f'Resource type: {res_id}',
+                                                   ids=denied, title="Permission Denied")
                     else:
                         if target_param != '*':
                             kwargs[target_param] = list()

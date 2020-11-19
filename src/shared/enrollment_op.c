@@ -288,7 +288,7 @@ static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
     int ret = SSL_write(cfg->ssl, buf, strlen(buf));
     if (ret < 0) {
         merror("SSL write error (unable to send message.)");
-        merror("If Agent verification is enabled, agent key and certifiates are required!");
+        merror("If Agent verification is enabled, agent key and certificates are required!");
         ERR_print_errors_fp(stderr);
         os_free(buf);
         if(lhostname != cfg->target_cfg->agent_name)
@@ -351,7 +351,7 @@ static int w_enrollment_process_response(SSL *ssl) {
     default:
         if(!manager_error) {
             merror("SSL read (unable to receive message)");
-            merror("If Agent verification is enabled, agent key and certifiates may be incorrect!");
+            merror("If Agent verification is enabled, agent key and certificates may be incorrect!");
         }
         break;
     }
@@ -389,6 +389,14 @@ static int w_enrollment_store_key_entry(const char* keys) {
         merror(FOPEN_ERROR, isChroot() ? AUTH_FILE : KEYSFILE_PATH, errno, strerror(errno));
         return -1;
     }
+
+    if (chmod(file.name, 0640) == -1) {
+        merror(CHMOD_ERROR, file.name, errno, strerror(errno));
+        fclose(file.fp);
+        unlink(file.name);
+        return -1;
+    }
+
     fprintf(file.fp, "%s\n", keys);
     fclose(file.fp);
 

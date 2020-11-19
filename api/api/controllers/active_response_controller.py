@@ -16,17 +16,17 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 logger = logging.getLogger('wazuh')
 
 
-async def run_command(request, list_agents='*', pretty=False, wait_for_complete=False):
+async def run_command(request, agents_list='*', pretty=False, wait_for_complete=False):
     """Runs an Active Response command on a specified agent
 
-    :param list_agents: List of Agents IDs. All possible values since 000 onwards
+    :param agents_list: List of Agents IDs. All possible values from 000 onwards
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :return: message
     """
     # Get body parameters
     Body.validate_content_type(request, expected_content_type='application/json')
-    f_kwargs = await ActiveResponseModel.get_kwargs(request, additional_kwargs={'agent_list': list_agents})
+    f_kwargs = await ActiveResponseModel.get_kwargs(request, additional_kwargs={'agent_list': agents_list})
 
     dapi = DistributedAPI(f=active_response.run_command,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -34,7 +34,7 @@ async def run_command(request, list_agents='*', pretty=False, wait_for_complete=
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          broadcasting=list_agents == '*',
+                          broadcasting=agents_list == '*',
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())

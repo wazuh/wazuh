@@ -257,7 +257,6 @@ void fim_rt_delay();
 
 /**
  * @brief Checks for deleted files, deletes them from the agent's database and sends a deletion event on scheduled scans
- *
  */
 void check_deleted_files();
 
@@ -360,11 +359,9 @@ void free_syscheck_dirtb_data(char *data);
 void delete_subdirectories_watches(char *dir);
 
 /**
- * @brief Count inotify watches
- *
- * @return Number of inotify watches
+ * @brief Remove stale watches from the realtime hashmap
  */
-unsigned int count_watches();
+void realtime_sanitize_watch_map();
 
 /**
  * @brief Check if a file has changed
@@ -391,7 +388,7 @@ char *seechanges_get_diff_path(char *path);
 
 /**
  * @brief Estimate whether the compressed file will fit in the disk_quota limit
- * 
+ *
  * @param file_size Uncompressed file size
  * @return true for files which compressed version could fit, false otherwise
  */
@@ -399,7 +396,7 @@ int seechanges_estimate_compression(const float file_size);
 
 /**
  * @brief Changed the value of syscheck.comp_estimation_perc based on the actual compression rate
- * 
+ *
  * @param compressed_size Size of the compressed file
  * @param uncompressed_size Size of the file before the compression
  */

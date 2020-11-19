@@ -95,6 +95,28 @@ void test_os_snprintf_more_parameters(void **state)
     assert_int_equal(ret, 21);
 }
 
+void test_w_remove_substr(void **state)
+{
+    int i;
+    char * ret;
+    char * strings[] = {
+        "remove thisThis is the principal string.",
+        "This is the principal string.remove this",
+        "This isremove this the principal string."
+    };
+    int size_array = sizeof(strings) / sizeof(strings[0]);
+    char * substr = "remove this";
+    char * string;
+    char * str_cpy;
+
+    for (i = 0; i < size_array; i++) {
+        w_strdup(strings[i], string);
+        str_cpy = string;
+        ret = w_remove_substr(str_cpy, substr);
+        assert_string_equal(ret, "This is the principal string.");
+        os_free(str_cpy);
+    }
+}
 
 /* Tests */
 
@@ -104,9 +126,12 @@ int main(void) {
         cmocka_unit_test(test_w_tolower_str_NULL),
         cmocka_unit_test(test_w_tolower_str_empty),
         cmocka_unit_test(test_w_tolower_str_caps),
+        // Tests os_snprintf
         cmocka_unit_test(test_os_snprintf_short),
         cmocka_unit_test(test_os_snprintf_long),
-        cmocka_unit_test(test_os_snprintf_more_parameters)
+        cmocka_unit_test(test_os_snprintf_more_parameters),
+        // Tests w_remove_substr
+        cmocka_unit_test(test_w_remove_substr),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

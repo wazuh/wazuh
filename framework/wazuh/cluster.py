@@ -7,7 +7,7 @@ from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.control import get_health, get_nodes
 from wazuh.core.cluster.utils import get_cluster_status, read_cluster_config, read_config
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
-from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.rbac.decorators import expose_resources, async_list_handler
 
 cluster_enabled = not read_cluster_config()['disabled']
@@ -57,7 +57,7 @@ def get_status_json():
 
     :return: Dictionary with the cluster status.
     """
-    return get_cluster_status()
+    return WazuhResult({'data': get_cluster_status()})
 
 
 @expose_resources(actions=['cluster:read'], resources=['node:id:{filter_node}'], post_proc_func=async_list_handler)

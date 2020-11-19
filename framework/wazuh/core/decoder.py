@@ -7,10 +7,11 @@ from enum import Enum
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhError, WazuhInternalError
-from wazuh.core.utils import load_wazuh_xml
+from wazuh.core.utils import load_wazuh_xml, add_dynamic_detail
 
 REQUIRED_FIELDS = ['filename', 'position']
 SORT_FIELDS = ['filename', 'relative_dirname', 'name', 'position', 'status']
+DYNAMIC_OPTIONS = {'program_name', 'prematch', 'regex'}
 
 
 class Status(Enum):
@@ -64,7 +65,13 @@ def load_decoders_from_file(decoder_file, decoder_path, decoder_status):
                         decoder['details'][k] = xml_decoder.attrib[k]
 
                 for xml_decoder_tags in list(xml_decoder):
-                    add_detail(xml_decoder_tags.tag.lower(), xml_decoder_tags.text, decoder['details'])
+                    tag = xml_decoder_tags.tag.lower()
+                    value = xml_decoder_tags.text
+                    attribs = xml_decoder_tags.attrib
+                    if tag in DYNAMIC_OPTIONS:
+                        add_dynamic_detail(tag, value, attribs, decoder['details'])
+                    else:
+                        decoder['details'][tag] = value
                 decoders.append(decoder)
     except OSError:
         raise WazuhError(1502, extra_message=os.path.join('WAZUH_HOME', decoder_path, decoder_file))

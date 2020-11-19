@@ -1128,7 +1128,7 @@ const char *getuname()
                      uts_buf.machine,
                      __ossec_name, __ossec_version);
         } else {
-            snprintf(muname, 512, "No system info available -  %s %s",
+            snprintf(muname, 512, "No system info available - %s %s",
                      __ossec_name, __ossec_version);
         }
     }
@@ -2413,6 +2413,9 @@ cJSON* getunameJSON()
         }
         if (read_info->os_minor){
             cJSON_AddStringToObject(root, "os_minor", read_info->os_minor);
+        }
+        if (read_info->os_patch){
+            cJSON_AddStringToObject(root, "os_patch", read_info->os_patch);
         }
         if (read_info->os_build){
             cJSON_AddStringToObject(root, "os_build", read_info->os_build);

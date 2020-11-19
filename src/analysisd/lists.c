@@ -19,7 +19,7 @@ void Lists_OP_CreateLists()
     return;
 }
 
-int Lists_OP_LoadList(char *listfile)
+int Lists_OP_LoadList(char *listfile, ListNode **cdblists, OSList* log_msg)
 {
     char *holder;
     char a_filename[OS_MAXSTR];
@@ -51,9 +51,9 @@ int Lists_OP_LoadList(char *listfile)
     FILE *txt_fd = fopen(a_filename, "r");
     if (!txt_fd)
     {
-        merror(FOPEN_ERROR, a_filename, errno, strerror(errno));
-        free(tmp_listnode_pt);
-        return -1;
+        smwarn(log_msg, FOPEN_ERROR, a_filename, errno, strerror(errno));
+        os_free(tmp_listnode_pt);
+        return 0;
     }
 
     fclose(txt_fd);
@@ -64,7 +64,7 @@ int Lists_OP_LoadList(char *listfile)
     tmp_listnode_pt->loaded = 0;
     tmp_listnode_pt->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
 
-    OS_AddList(tmp_listnode_pt);
+    OS_AddList(tmp_listnode_pt, cdblists);
 
     return 0;
 }

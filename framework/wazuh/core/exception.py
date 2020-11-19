@@ -4,7 +4,8 @@
 
 
 from copy import deepcopy
-from wazuh.core.common import wazuh_version as wazuh_full_version
+from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE, wazuh_version as wazuh_full_version
+
 
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
 WAZUH_VERSION = 'current' if wazuh_full_version == '' else '.'.join(wazuh_full_version.split('.')[:2]).lstrip('v')
@@ -91,6 +92,7 @@ class WazuhException(Exception):
                'remediation': 'Experimental features can be enabled in WAZUH_PATH/configuration/api.yaml or '
                               'using API endpoint https://documentation.wazuh.com/current/user-manual/api/reference.html#operation/api.controllers.manager_controller.put_api_config or '
                               'https://documentation.wazuh.com/current/user-manual/api/reference.html#operation/api.controllers.cluster_controller.put_api_config'},
+        1123: {'message': f"Error communicating with socket. Query too long, maximum allowed size for queries is {MAX_SOCKET_BUFFER_SIZE // 1024} KB"},
 
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
@@ -251,28 +253,6 @@ class WazuhException(Exception):
         1714: {'message': 'Error downloading WPK file',
                'remediation': 'Please check your internet connection and try again'
                },
-        1715: {'message': 'Error sending WPK file',
-               'remediation': 'Please check your internet connection, ensure the agent is active and try again'
-               },
-        1716: {'message': 'Error upgrading agent',
-               'remediation': 'Please check that it is a new version and try again'
-               },
-        1717: {'message': 'Upgrading an agent to a version higher than the manager requires the force flag.',
-               'remediation': 'The agent cannot have a more recent version than the manager, please update the manager '
-                              'first or use force=1 to force the upgrade'
-               },
-        1718: {'message': 'Version not available',
-               'remediation': 'Please check the version again or check our repository at [official repository](https://github.com/wazuh/wazuh)'
-               },
-        1719: {'message': 'Remote upgrade is not available for this agent version',
-               'remediation': f'Please, follow this for agent upgrading: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/agents/remote-upgrading/upgrading-agent.html'
-               },
-        1720: {'message': 'Agent disconnected',
-               'remediation': 'Please make sure the agent is active'
-               },
-        1721: {'message': 'Remote upgrade is not available for this agent OS version',
-               'remediation': 'Sorry, the remote update is not available for this OS'
-               },
         1722: {'message': 'Incorrect format for group_id',
                'remediation': 'Characters supported  a-z, A-Z, 0-9, ., _ and -. Max length is 255'
                },
@@ -349,6 +329,9 @@ class WazuhException(Exception):
                'remediation': 'Try listing all agents with GET /agents endpoint'},
         1755: {'message': 'The group does not have any agent assigned',
                'remediation': 'Please select another group or assign any agent to it'},
+        1756: {'message': 'Upgrade procedure could not start. Agent already upgrading',
+               'remediation': 'You can check the status of this task with the /agents/:agent_id/upgrade_result endpoint'
+               },
 
         # CDB List: 1800 - 1899
         1800: {'message': 'Bad format in CDB list {path}'},
@@ -362,6 +345,9 @@ class WazuhException(Exception):
         1804: {'message': 'Error reading lists file',
                'remediation': 'Please, make sure you provide a correct filepath'
                },
+
+        1810: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
+                          'The error message will be the output of upgrade module'},
 
         # Manager:
         1900: 'Error restarting manager',
@@ -477,7 +463,7 @@ class WazuhException(Exception):
         4004: {'message': 'The specified name is invalid'},
         4005: {'message': 'The specified name or rule already exists'},
         4006: {'message': 'The specified policy is invalid',
-               'remediation': 'The policy must be in JSON format and its keys must be "access", "resources" and'
+               'remediation': 'The policy must be in JSON format and its keys must be "actions", "resources" and'
                               ' "effect". The actions and resources must be split by ":". Example: agent:id:001'},
         4007: {'message': 'The specified policy does not exist',
                'remediation': 'Please, create the specified policy with the endpoint POST /security/policies'},
@@ -511,6 +497,7 @@ class WazuhException(Exception):
         4024: {'message': 'The specified role-rule relation does not exist',
                'remediation': 'Please, create the specified role-rules relation with the endpoint '
                               'POST /security/roles/{role_id}/rules'},
+        4025: {'message': 'The specify relationship could not be removed'},
         4500: {'message': 'The specified resources are invalid',
                'remediation': 'Please, make sure permissions are properly defined, '
                               f'for more information on setting up permissions please visit https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/rbac/configuration.html'},
@@ -528,12 +515,13 @@ class WazuhException(Exception):
                'remediation': 'Administrator users cannot be removed or updated'},
         5006: {'message': 'Operation not allowed, the user does not have permissions to perform this action',
                'remediation': 'No user, except administrator users, can change the data of a different user'},
-        5007: {'message': 'Insecure password provided',
-               'remediation': 'The password for users must be at least 8 characters long and must have at least '
-                              'one upper and lower case letter, a number and a symbol'},
+        5007: {'message': 'Insecure user password provided',
+               'remediation': 'The password must contain at least one upper and lower case letter, a number and a symbol.'},
         5008: {'message': 'The current user cannot be deleted',
                'remediation': 'You can delete this user with the administrator user (wazuh) or '
                               'any other user with the necessary permissions'},
+        5009: {'message': 'Insecure user password provided',
+               'remediation': 'The password must contain a length between 8 and 64 characters.'},
 
         # Security issues
         6000: {'message': 'Limit of login attempts reached. '
@@ -544,7 +532,13 @@ class WazuhException(Exception):
         6003: {'message': 'Error trying to load the JWT secret',
                'remediation': 'Make sure you have the right permissions: WAZUH_PATH/api/configuration/security/jwt_secret'},
         6004: {'message': 'The current user does not have authentication enabled through authorization context',
-               'remediation': f'You can enable it using the following endpoint: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#configuration-file'}
+               'remediation': f'You can enable it using the following endpoint: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#configuration-file'},
+
+        # Logtest
+        7000: {'message': 'Error trying to get logtest response'},
+        7001: {'message': 'Error trying to read logtest session token',
+               'remediation': 'Make sure you introduce the token within the field "token"'}
+
         # > 9000: Authd
     }
 

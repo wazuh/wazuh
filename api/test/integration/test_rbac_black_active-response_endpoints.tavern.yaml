@@ -18,11 +18,11 @@ stages:
         command: "restart-ossec0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
-        list_agents: '001'
+        agents_list: '001'
     response: &permission_denied
       status_code: 403
       json:
-        code: 4000
+        error: 4000
 
   - name: Send a message to an agent (Status=Active) (Allow)
     request:
@@ -36,10 +36,11 @@ stages:
         command: "restart-ossec0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
-        list_agents: '002'
+        agents_list: '002'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '002'
@@ -60,10 +61,11 @@ stages:
         command: "restart-ossec0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
-        list_agents: 002,004,005,007,010,011
+        agents_list: 002,004,005,007,010,011
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '002'
@@ -95,7 +97,7 @@ stages:
         command: "restart-ossec0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
-        list_agents: '009'
+        agents_list: '009'
     response:
       <<: *permission_denied
 
@@ -111,10 +113,11 @@ stages:
         command: "restart-ossec0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
-        list_agents: 251,252
+        agents_list: 251,252
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items:
@@ -146,6 +149,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items:

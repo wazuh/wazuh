@@ -22,7 +22,7 @@ const wm_context WM_COMMAND_CONTEXT = {
     (wm_routine)wm_command_main,
     (wm_routine)(void *)wm_command_destroy,
     (cJSON * (*)(const void *))wm_command_dump,
-    0
+    NULL
 };
 
 // Module module main function. It won't return.

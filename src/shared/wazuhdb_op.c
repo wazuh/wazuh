@@ -22,10 +22,10 @@ int wdbc_connect() {
     char sockname[PATH_MAX + 1];
 
     if (isChroot()) {
-		strcpy(sockname, WDB_LOCAL_SOCK);
-	} else {
-		strcpy(sockname, DEFAULTDIR WDB_LOCAL_SOCK);
-	}
+        strcpy(sockname, WDB_LOCAL_SOCK);
+    } else {
+        strcpy(sockname, DEFAULTDIR WDB_LOCAL_SOCK);
+    }
 
     for (attempts = 1; attempts <= 3 && (wdb_socket = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_SIZE_6144)) < 0; attempts++) {
         switch (errno) {
@@ -179,21 +179,22 @@ int wdbc_parse_result(char *result, char **payload) {
         *payload = ptr;
     }
 
-    if (!strcmp(result, "ok")) {
+    if (!strcmp(result, WDBC_RESULT[WDBC_OK])) {
         retval = WDBC_OK;
-    } else if (!strcmp(result, "err")) {
+    } else if (!strcmp(result, WDBC_RESULT[WDBC_ERROR])) {
         retval = WDBC_ERROR;
-    } else if (!strcmp(result, "ign")) {
+    } else if (!strcmp(result, WDBC_RESULT[WDBC_IGNORE])) {
         retval = WDBC_IGNORE;
+    } else if (!strcmp(result, WDBC_RESULT[WDBC_DUE])) {
+        retval = WDBC_DUE;
     }
 
     return retval;
 }
 
-
 /**
  * @brief Combine wdbc_query_ex and wdbc_parse_result functions and return a JSON item.
- * 
+ *
  * @param[in] sock Pointer to the client socket descriptor.
  * @param[in] query Query to be sent to Wazuh-DB.
  * @param[out] response Char pointer where the response from Wazuh-DB will be stored.
@@ -227,4 +228,49 @@ cJSON * wdbc_query_parse_json(int *sock, const char *query, char *response, cons
 
     root = cJSON_Parse(arg);
     return root;
+}
+
+/**
+ * @brief Combine wdbc_query_ex and wdbc_parse_result functions.
+ *
+ * @param[in] sock Pointer to the client socket descriptor.
+ * @param[in] query Query to be sent to Wazuh-DB.
+ * @param[out] response Char pointer where the response from Wazuh-DB will be stored.
+ * @param[in] len Lenght of the response param.
+ * @param[out] payload Char pointer where the payload from Wazuh-DB will be stored.
+ * @return Enum wdbc_result.
+ */
+
+wdbc_result wdbc_query_parse(int *sock, const char *query, char *response, const int len, char** payload) {
+    wdbc_result status = WDBC_ERROR;
+    char* _payload = NULL;
+
+    int result = wdbc_query_ex(sock, query, response, len);
+    if (OS_SUCCESS == result) {
+        status = wdbc_parse_result(response, &_payload);
+        if (status == WDBC_ERROR){
+            merror("Bad response from wazuh-db: %s", _payload);
+        }
+    }
+    else if (-2 == result) {
+        merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
+    }
+    else if (-1 == result) {
+        merror("No response from wazuh-db.");
+    }
+
+    if (payload) {
+        *payload = _payload;
+    }
+
+    return status;
+}
+
+int wdbc_close(int* sock) {
+    int ret = 0;
+    if (*sock >= 0) {
+        ret = close(*sock);
+        *sock = -1;
+    }
+    return ret;
 }

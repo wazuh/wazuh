@@ -336,7 +336,14 @@ static int _base_line = 0;
 
         if (_base_line == 0) {
             _base_line = 1;
-            mdebug2(FIM_NUM_WATCHES, count_watches());
+
+            if (syscheck.realtime != NULL) {
+                if (syscheck.realtime->queue_overflow) {
+                    realtime_sanitize_watch_map();
+                    syscheck.realtime->queue_overflow = false;
+                }
+                mdebug2(FIM_NUM_WATCHES, syscheck.realtime->dirtb->elements);
+            }
         }
 
 #ifdef WIN_WHODATA
@@ -383,7 +390,13 @@ static int _base_line = 0;
     }
 
 #else
-    mwarn(FIM_WARN_REALTIME_UNSUPPORTED);
+    for (int i = 0; syscheck.dir[i]; i++) {
+        if (syscheck.opts[i] & REALTIME_ACTIVE) {
+            mwarn(FIM_WARN_REALTIME_UNSUPPORTED);
+            break;
+        }
+    }
+
     pthread_exit(NULL);
 #endif
 
@@ -471,7 +484,9 @@ int fim_whodata_initialize() {
 #endif
 
 #else
-    mwarn(FIM_WARN_WHODATA_UNSUPPORTED);
+    if (syscheck.enable_whodata) {
+        mwarn(FIM_WARN_WHODATA_UNSUPPORTED);
+    }
 #endif
 
     return retval;
@@ -523,24 +538,17 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
 
         w_mutex_lock(&syscheck.fim_scan_mutex);
         for (i = 0; syscheck.dir[i]; i++) {
-            if (!syscheck.symbolic_links[i]) {
+            if (!syscheck.symbolic_links[i] || !(CHECK_FOLLOW & syscheck.opts[i])) {
                 continue;
             }
 
-            if (CHECK_FOLLOW & syscheck.opts[i]) {
-                real_path = realpath(syscheck.symbolic_links[i], NULL);
-            }
-            else {
-                // Taking the link itself if follow_symbolic_link is not enabled
-                os_calloc(strlen(syscheck.symbolic_links[i]) + 1, sizeof(char), real_path);
-                snprintf(real_path, strlen(syscheck.symbolic_links[i]) + 1, "%s", syscheck.symbolic_links[i]);
-            }
+            real_path = realpath(syscheck.symbolic_links[i], NULL);
 
             if (*syscheck.dir[i]) {
                 if (real_path) {
                     // Check if link has changed
                     if (strcmp(real_path, syscheck.dir[i])) {
-                        minfo(FIM_LINKCHECK_CHANGED, syscheck.dir[i], syscheck.symbolic_links[i], real_path);
+                        minfo(FIM_LINKCHECK_CHANGED, syscheck.symbolic_links[i], syscheck.dir[i], real_path);
                         fim_link_update(i, real_path);
                     } else {
                         mdebug1(FIM_LINKCHECK_NOCHANGE, syscheck.dir[i]);

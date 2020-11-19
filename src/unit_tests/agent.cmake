@@ -1,14 +1,27 @@
 # Find the wazuh shared library
+find_library(WAZUHEXT NAMES libwazuhext.dylib HINTS "${SRC_FOLDER}")
+if(WAZUHEXT)
+  set(uname "Darwin")
+else()
+  set(uname "Linux")
+endif()
 find_library(WAZUHEXT NAMES libwazuhext.so HINTS "${SRC_FOLDER}")
 
 if(NOT WAZUHEXT)
     message(FATAL_ERROR "libwazuhext not found! Aborting...")
 endif()
 
-# Add compiling flags
-add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT -DENABLE_AUDIT -DINOTIFY_ENABLED)
+# # Add compiling flags and set tests dependencies
+if(${uname} STREQUAL "Darwin")
+    set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -fprofile-arcs -ftest-coverage)
+    add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT -I/usr/local/include -DENABLE_SYSC -DWAZUH_UNIT_TESTING)
+else()
+    add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT -DENABLE_AUDIT -DINOTIFY_ENABLED)
+    set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -lcmocka -fprofile-arcs -ftest-coverage)
+endif()
 
-# Set tests dependencies
-set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -lcmocka -fprofile-arcs -ftest-coverage)
+if(NOT ${uname} STREQUAL "Darwin")
+  add_subdirectory(client-agent)
+endif()
 
-add_subdirectory(client-agent)
+add_subdirectory(wazuh_modules)

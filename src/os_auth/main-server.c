@@ -29,6 +29,7 @@
 #include <sys/wait.h>
 #include "check_cert.h"
 #include "os_crypto/md5/md5_op.h"
+#include "wazuh_db/wdb.h"
 #include "wazuhdb_op.h"
 #include "os_err.h"
 
@@ -177,7 +178,6 @@ int main(int argc, char **argv)
         int use_pass = 0;
         int auto_method = 0;
         int validate_host = 0;
-        int no_limit = 0;
         const char *ciphers = NULL;
         const char *ca_cert = NULL;
         const char *server_cert = NULL;
@@ -284,7 +284,7 @@ int main(int argc, char **argv)
                     break;
 
                 case 'L':
-                    no_limit = 1;
+                    mwarn("This option no longer applies. The agent limit has been removed.");
                     break;
 
                 default:
@@ -339,10 +339,6 @@ int main(int argc, char **argv)
         if (port) {
             config.port = port;
         }
-
-        if (no_limit) {
-            config.flags.register_limit = 0;
-        }
     }
 
     /* Exit here if test config is set */
@@ -369,12 +365,12 @@ int main(int argc, char **argv)
     case -1:
         merror("Invalid option at cluster configuration");
         exit(0);
-    case 1:	
-        config.worker_node = TRUE;        	
-        break;	
-    case 0:	
-        config.worker_node = FALSE;	
-        break;	
+    case 1:
+        config.worker_node = TRUE;
+        break;
+    case 0:
+        config.worker_node = FALSE;
+        break;
     }
 
     /* Start daemon -- NB: need to double fork and setsid */
@@ -608,7 +604,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
     if (!config.worker_node) {
         OS_PassEmptyKeyfile();
-        OS_ReadKeys(&keys, 0, !config.flags.clear_removed, 1);
+        OS_ReadKeys(&keys, 0, !config.flags.clear_removed);
     }
     mdebug1("Dispatch thread ready");
 
@@ -726,7 +722,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         else {
             SSL_write(ssl, response, strlen(response));
             snprintf(response, 2048, "ERROR: Unable to add agent");
-            SSL_write(ssl, response, strlen(response));  
+            SSL_write(ssl, response, strlen(response));
         }
 
         SSL_free(ssl);
@@ -809,6 +805,10 @@ void* run_writer(__attribute__((unused)) void *arg) {
             OS_RemoveCounter(cur->id);
             OS_RemoveAgentTimestamp(cur->id);
             OS_RemoveAgentGroup(cur->id);
+
+            if (wdb_remove_agent(atoi(cur->id), &wdb_sock) != OS_SUCCESS) {
+                mdebug1("Could not remove the information stored in Wazuh DB of the agent %s.", cur->id);
+            }
 
             snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
             wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));

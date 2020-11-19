@@ -16,6 +16,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - architecture: !anystr
@@ -47,7 +48,7 @@ stages:
     response: &permission_denied
       status_code: 403
       json:
-        code: 4000
+        error: 4000
 
 ---
 test_name: GET HARDWARE SYSCOLLECTOR RBAC
@@ -64,6 +65,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - board_serial: !anything
@@ -107,6 +109,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - address: !anystr
@@ -143,6 +146,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - mac: !anystr
@@ -190,6 +194,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - dhcp: !anystr
@@ -227,6 +232,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - architecture: !anystr
@@ -270,6 +276,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - inode: !anyint
@@ -317,6 +324,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - cmd: !anystr

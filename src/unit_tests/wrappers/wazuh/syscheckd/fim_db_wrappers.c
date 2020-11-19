@@ -138,6 +138,10 @@ int __wrap_fim_db_insert(fdb_t *fim_sql,
     check_expected_ptr(fim_sql);
     check_expected(file_path);
 
+    if (activate_full_db) {
+        syscheck.database->full = true;
+    }
+
     return mock();
 }
 

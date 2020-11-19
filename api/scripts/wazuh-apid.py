@@ -62,16 +62,17 @@ def start(foreground, root, config_file):
     # Configure https
     ssl_context = None
     if api_conf['https']['enabled']:
-        # Generate SSL if it does not exist and HTTPS is enabled
-        if not os.path.exists(api_conf['https']['key']) or not os.path.exists(api_conf['https']['cert']):
-            logger.info('HTTPS is enabled but cannot find the private key and/or certificate. '
-                        'Attempting to generate them')
-            private_key = configuration.generate_private_key(api_conf['https']['key'])
-            logger.info(f"Generated private key file in WAZUH_PATH/{to_relative_path(api_conf['https']['key'])}")
-            configuration.generate_self_signed_certificate(private_key, api_conf['https']['cert'])
-            logger.info(f"Generated certificate file in WAZUH_PATH/{to_relative_path(api_conf['https']['cert'])}")
-        # Load SSL context
         try:
+            # Generate SSL if it does not exist and HTTPS is enabled
+            if not os.path.exists(api_conf['https']['key']) or not os.path.exists(api_conf['https']['cert']):
+                logger.info('HTTPS is enabled but cannot find the private key and/or certificate. '
+                            'Attempting to generate them')
+                private_key = configuration.generate_private_key(api_conf['https']['key'])
+                logger.info(f"Generated private key file in WAZUH_PATH/{to_relative_path(api_conf['https']['key'])}")
+                configuration.generate_self_signed_certificate(private_key, api_conf['https']['cert'])
+                logger.info(f"Generated certificate file in WAZUH_PATH/{to_relative_path(api_conf['https']['cert'])}")
+
+            # Load SSL context
             ssl_context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
             if api_conf['https']['use_ca']:
                 ssl_context.verify_mode = ssl.CERT_REQUIRED
@@ -124,7 +125,7 @@ def start(foreground, root, config_file):
                            'port': api_conf['port']
                            },
                 strict_validation=True,
-                validate_responses=True,
+                validate_responses=False,
                 pass_context_arg_name='request',
                 options={"middlewares": [response_postprocessing, set_user_name, security_middleware]})
 

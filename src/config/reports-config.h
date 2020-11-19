@@ -12,6 +12,7 @@
 #define REPORTSCONFIG_H
 
 #include "report_op.h"
+#include "global-config.h"
 
 /* Structure for the report */
 typedef struct _report_config {
@@ -29,7 +30,7 @@ typedef struct _monitor_config {
     unsigned int sign:1;
     unsigned int monitor_agents:1;
     unsigned int rotate_log:1;
-    unsigned int delete_old_agents:1;
+    unsigned int delete_old_agents;
     int a_queue;
     int keep_log_days;
     unsigned long size_rotate;
@@ -41,6 +42,8 @@ typedef struct _monitor_config {
 
     char **agents;
     report_config **reports;
+
+    _Config global;
 } monitor_config;
 
 #endif /* REPORTSCONFIG_H */

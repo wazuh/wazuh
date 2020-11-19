@@ -7,6 +7,7 @@ from unittest import TestCase
 from wazuh.core.InputValidator import InputValidator
 import operator
 
+
 class TestInputValidator(TestCase):
 
     def test_check_name(self):

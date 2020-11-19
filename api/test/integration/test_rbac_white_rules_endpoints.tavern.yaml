@@ -18,6 +18,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - &full_item_rules
@@ -56,6 +57,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items: []
@@ -74,6 +76,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *full_item_rules
@@ -110,6 +113,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - &full_item_rules_files
@@ -134,6 +138,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *full_item_rules_files
@@ -156,7 +161,7 @@ stages:
     response: &permission_denied
       status_code: 403
       json:
-        code: 4000
+        error: 4000
         dapi_errors:
           unknown-node: # No permission to see node
             error: !anystr
@@ -203,6 +208,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -224,6 +230,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -245,6 +252,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []

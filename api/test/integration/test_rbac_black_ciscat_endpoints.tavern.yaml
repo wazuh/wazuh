@@ -16,6 +16,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: !anything
@@ -32,7 +33,7 @@ stages:
     response:
       status_code: 403
       json:
-        code: 4000
+        error: 4000
 
   - name: Get ciscat result for agent 003 (allowed)
     request:
@@ -44,6 +45,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: !anything

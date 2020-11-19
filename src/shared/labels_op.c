@@ -93,86 +93,89 @@ int labels_format(const wlabel_t *labels, char *str, size_t size) {
     return 0;
 }
 
-/*
- * Parse labels from agent-info file.
- * Returns pointer to new null-key terminated array.
- * If no such file, returns NULL.
- * Free resources with labels_free().
- */
-wlabel_t* labels_parse(const char *path) {
-    char buffer[OS_MAXSTR];
-    char *key;
-    char *value;
-    char *end;
+wlabel_t* labels_parse(cJSON *json_labels) {
+    cJSON *json_row_it = NULL;
+    cJSON *json_key = NULL;
+    cJSON *json_value = NULL;
+    wlabel_t *labels = NULL;
+    label_flags_t flags = {0};
     size_t size = 0;
-    wlabel_t *labels;
-    label_flags_t flags;
-    FILE *fp;
 
-    if (!(fp = fopen(path, "r"))) {
-        if (errno == ENOENT) {
-            mdebug1(FOPEN_ERROR, path, errno, strerror(errno));
-        } else {
-            merror(FOPEN_ERROR, path, errno, strerror(errno));
+    if (json_labels && json_labels->child) {
+        os_calloc(1, sizeof(wlabel_t), labels);
+
+        /*
+        "key1":value1\n
+        !"key2":value2\n
+        #"key3":_value3\n
+        */
+
+        cJSON_ArrayForEach (json_row_it, json_labels) {
+            json_key = cJSON_GetObjectItemCaseSensitive(json_row_it, "key");
+            json_value = cJSON_GetObjectItemCaseSensitive(json_row_it, "value");
+
+            if (cJSON_IsString(json_key) && json_key->valuestring != NULL &&
+                cJSON_IsString(json_value) && json_value->valuestring != NULL) {
+
+                char *key_start = NULL;
+                char *key_end = NULL;
+                char *str_key = NULL;
+                char *str_value = NULL;
+
+                os_strdup(json_key->valuestring, str_key);
+                os_strdup(json_value->valuestring, str_value);
+
+                switch (*str_key) {
+                case '!': // Hidden labels
+                    if (str_key[1] == '\"') {
+                        flags.hidden = 1;
+                        flags.system = 0;
+                        key_start = str_key + 2;
+                    } else {
+                        os_free(str_key);
+                        os_free(str_value);
+                        continue;
+                    }
+
+                    break;
+                case '#': // Internal labels
+                    if (str_key[1] == '\"') {
+                        flags.system = 1;
+                        flags.hidden = 0;
+                        key_start = str_key + 2;
+                    } else {
+                        os_free(str_key);
+                        os_free(str_value);
+                        continue;
+                    }
+
+                    break;
+                case '\"':
+                    flags.hidden = flags.system = 0;
+                    key_start = str_key + 1;
+                    break;
+                default:
+                    os_free(str_key);
+                    os_free(str_value);
+                    continue;
+                }
+
+                if (!(key_end = strstr(key_start, "\""))) {
+                    os_free(str_key);
+                    os_free(str_value);
+                    continue;
+                }
+
+                *key_end = '\0';
+
+                labels = labels_add(labels, &size, key_start, str_value, flags, 0);
+
+                os_free(str_key);
+                os_free(str_value);
+            }
         }
-
-        return NULL;
     }
 
-    os_calloc(1, sizeof(wlabel_t), labels);
-
-    /*
-    "key1":value1\n
-    !"key2":value2\n
-    #"key3":_value3\n
-    */
-
-    while (fgets(buffer, OS_MAXSTR, fp)) {
-        switch (*buffer) {
-        case '!':
-            if (buffer[1] == '\"') {
-                flags.hidden = 1;
-                flags.system = 0;
-                key = buffer + 2;
-            } else {
-                continue;
-            }
-
-            break;
-        case '#':   // Internal labels
-            if (buffer[1] == '\"') {
-                flags.system = 1;
-                flags.hidden = 0;
-                key = buffer + 2;
-            } else {
-                continue;
-            }
-
-            break;
-        case '\"':
-            flags.hidden = flags.system = 0;
-            key = buffer + 1;
-            break;
-        default:
-            continue;
-        }
-
-        if (!(value = strstr(key, "\":"))) {
-            continue;
-        }
-
-        *value = '\0';
-        value += 2;
-
-        if (!(end = strchr(value, '\n'))) {
-            continue;
-        }
-
-        *end = '\0';
-        labels = labels_add(labels, &size, key, value, flags, 0);
-    }
-
-    fclose(fp);
     return labels;
 }
 

@@ -23,6 +23,12 @@ extern cJSON_bool __real_cJSON_AddItemToObject(cJSON *object, const char *string
 
 cJSON * __wrap_cJSON_AddStringToObject(cJSON * const object, const char * const name, const char * const string);
 
+extern cJSON * __real_cJSON_AddStringToObject(cJSON * const object, const char * const name, const char * const string);
+
+cJSON * __wrap_cJSON_AddNumberToObject(cJSON * const object, const char * const name, const double number);
+
+extern cJSON * __real_cJSON_AddNumberToObject(cJSON * const object, const char * const name, const double number);
+
 #ifdef WIN32
 extern cJSON * __stdcall __real_cJSON_CreateArray(void);
 
@@ -53,6 +59,8 @@ extern void __real_cJSON_Delete(cJSON *item);
 
 cJSON * __wrap_cJSON_GetObjectItem(const cJSON * const object, const char * const string);
 
+extern cJSON * __real_cJSON_GetObjectItem(const cJSON * const object, const char * const string);
+
 char* __wrap_cJSON_GetStringValue(cJSON * item);
 
 cJSON_bool __wrap_cJSON_IsNumber(cJSON * item);
@@ -64,5 +72,7 @@ cJSON * __wrap_cJSON_Parse(const char *value);
 extern cJSON * __real_cJSON_Parse(const char *value);
 
 char * __wrap_cJSON_PrintUnformatted(const cJSON *item);
+
+cJSON* __wrap_cJSON_Duplicate(const cJSON *item, int recurse);
 
 #endif

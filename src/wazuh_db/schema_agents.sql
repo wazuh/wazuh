@@ -98,6 +98,7 @@ CREATE TABLE IF NOT EXISTS sys_osinfo (
     os_codename TEXT,
     os_major TEXT,
     os_minor TEXT,
+    os_patch TEXT,
     os_build TEXT,
     os_platform TEXT,
     sysname TEXT,
@@ -321,7 +322,7 @@ CREATE TABLE IF NOT EXISTS sync_info (
 
 BEGIN;
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '5');
+INSERT INTO metadata (key, value) VALUES ('db_version', '6');
 INSERT INTO scan_info (module) VALUES ('fim');
 INSERT INTO scan_info (module) VALUES ('syscollector');
 INSERT INTO sync_info (component) VALUES ('fim');

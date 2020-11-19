@@ -554,6 +554,8 @@ void seechanges_delete_compressed_file(const char *path){
                 syscheck.diff_folder_size = 0;
             }
         }
+
+        mdebug2(FIM_DIFF_FOLDER_DELETED, containing_folder);
     }
 }
 
@@ -569,7 +571,12 @@ int seechanges_estimate_compression(const float file_size) {
 }
 
 void seechanges_modify_estimation_percentage(const float compressed_size, const float uncompressed_size) {
-    float compression_rate = 1 - (compressed_size / uncompressed_size);
+    float compression_rate;
+
+    if (uncompressed_size <= 0 || compressed_size <= 0) {
+        return;
+    }
+    compression_rate = 1 - (compressed_size / uncompressed_size);
 
     if (compression_rate < 0.1) {
         return;     // Small compression rates won't update the estimation value
@@ -757,7 +764,7 @@ char *seechanges_addfile(const char *filename) {
                 if (rename_ex(compressed_tmp, compressed_file) != 0) {
                     mdebug2(RENAME_ERROR, compressed_tmp, compressed_file, errno, strerror(errno));
                 }
-                
+
                 return NULL;
             }
             else {
@@ -782,7 +789,7 @@ char *seechanges_addfile(const char *filename) {
             if (rename_ex(compressed_tmp, compressed_file) != 0) {
                 mdebug2(RENAME_ERROR, compressed_tmp, compressed_file, errno, strerror(errno));
             }
-            
+
             return NULL;
         }
 

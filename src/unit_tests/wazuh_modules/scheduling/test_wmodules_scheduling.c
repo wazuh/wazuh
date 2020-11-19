@@ -80,7 +80,7 @@ static void test_day_of_the_month_mode(void **state){
     // Set day of the month
     test->scan_config.month_interval = true;
     test->scan_config.interval = 1;
-    test->scan_config.scan_time = strdup("00:00");
+    test->scan_config.scan_time = strdup("01:00");
 
     for(int i = 0; i < (sizeof(TEST_DAY_MONTHS)/ sizeof(int)); i++){
         test->scan_config.scan_day = TEST_DAY_MONTHS[i];
@@ -101,7 +101,7 @@ static void test_day_of_the_month_consecutive(void **state){
     state_structure *test = *state;
     const char *string =
         "<day>20</day>\n"
-        "<time>0:00</time>"
+        "<time>1:00</time>"
     ;
 
     expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one month. New interval value: 1M");
@@ -137,7 +137,7 @@ static void test_day_of_the_week(void **state){
     state_structure *test = *state;
     const char *string =
         "<wday>tuesday</wday>\n"
-        "<time>0:00</time>\n"
+        "<time>1:00</time>\n"
         "<interval>3w</interval>\n"
     ;
     test->nodes = string_to_xml_node(string, &test->lxml);

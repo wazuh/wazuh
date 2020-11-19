@@ -12,12 +12,16 @@
 #define DECODER_H
 
 #include "shared.h"
+#include "../logmsg.h"
 #include "os_regex/os_regex.h"
+#include "../expression.h"
 
 #define AFTER_PARENT    0x001   /* 1   */
 #define AFTER_PREMATCH  0x002   /* 2   */
 #define AFTER_PREVREGEX 0x004   /* 4   */
 #define AFTER_ERROR     0x010
+#define AFTER_ERR_VAL   (AFTER_ERROR << 1)
+#define AFTER_ERR_NAME  (AFTER_ERROR << 2)
 
 // JSON decoder flags
 // null treatment
@@ -30,7 +34,11 @@
 
 struct _Eventinfo;
 
-/* Decoder structure */
+/**
+ * @brief Decoder structure
+ *
+ * Allow saving the decoders information
+ */
 typedef struct {
     u_int8_t  get_next;
     u_int8_t  type;
@@ -50,12 +58,14 @@ typedef struct {
     char **fields;
     char *fts_fields;
 
-    OSRegex *regex;
-    OSRegex *prematch;
-    OSMatch *program_name;
+    w_expression_t * regex;
+    w_expression_t * prematch;
+    w_expression_t * program_name;
 
-    void (*plugindecoder)(void *lf, void *decoder_match);
+    void (*plugindecoder)(void *lf, void *rule_hash, void *decoder_match);
     void* (**order)(struct _Eventinfo *, char *, const char *);
+
+    bool internal_saving;      ///< Used to free decoderinfo structure in wazuh-logtest
 } OSDecoderInfo;
 
 /* List structure */
@@ -75,15 +85,77 @@ typedef struct dbsync_context_t {
     cJSON * data;
 } dbsync_context_t;
 
-/* Functions to Create the list, add a osdecoder to the
- * list and to get the first osdecoder
+/**
+ * @brief Structure to save decoders which have program_name or parent with program_name
+ */
+extern OSDecoderNode *os_analysisd_decoderlist_pn;
+
+/**
+ * @brief Structure to save decoders which haven't program_name or parent without program_name
+ */
+extern OSDecoderNode *os_analysisd_decoderlist_nopn;
+
+/**
+ * @brief Hash to save data which have the same id
+ *
+ * Only for Analysisd use
+ */
+extern OSHash *os_analysisd_acm_store;
+
+/**
+ * @brief Decoder list to save internals decoders
+ */
+extern OSStore *os_analysisd_decoder_store;
+
+/**
+ * @brief Decoding a event
+ * @param lf struct to save the event decoded
+ * @param rules_hash hash of rules
+ * @param decoder_match struct to save the regex which match
+ * @param node first node of decoders list
+ */
+void DecodeEvent(struct _Eventinfo *lf, OSHash *rules_hash, regex_matching *decoder_match, OSDecoderNode *node);
+
+/**
+ * @brief Initialize decoder lists to NULL
+ *
+ * Only used for analysisd decoder lists (os_analysisd_decoderlist_pn and os_analysisd_decoderlist_nopn)
  */
 void OS_CreateOSDecoderList(void);
-int OS_AddOSDecoder(OSDecoderInfo *pi);
+
+/**
+ * @brief Add decoders to decoder lists
+ * @param pi decoder to add in decoder list
+ * @param pn_osdecodernode decoder list for events with program name
+ * @param npn_osdecodernode decoder list for events without program name
+ * @return 1 on success, otherwise 0
+ */
+int OS_AddOSDecoder(OSDecoderInfo *pi, OSDecoderNode **pn_osdecodernode, 
+                    OSDecoderNode **npn_osdecodernode, OSList* log_msg);
+
 OSDecoderNode *OS_GetFirstOSDecoder(const char *pname);
-int getDecoderfromlist(const char *name);
+
+/**
+ * @brief Get decoder from list
+ * @param name decoder name
+ * @param decoder_store decoder list
+ * @return decoder position on success, otherwise 0
+ */
+int getDecoderfromlist(const char *name, OSStore **decoder_store);
+
 char *GetGeoInfobyIP(char *ip_addr);
-int SetDecodeXML(void);
+
+/**
+ * @brief Add internal decoders to decoder_list and set ids to xml decoders
+ * @param log_msg list to save log messages.
+ * @param decoder_list list to save all decoders (internals and xml decoders)
+ * @param decoderlist_npn list of decoders which haven't program_name
+ * @param decoderlist_pn list of decoders which have program_name
+ * @retval 0 in case of error.
+ * @retval 1 successful.
+ */
+int SetDecodeXML(OSList* log_msg, OSStore **decoder_list, OSDecoderNode **decoderlist_npn, OSDecoderNode **decoderlist_pn);
+
 void HostinfoInit(void);
 int fim_init(void);
 void RootcheckInit(void);
@@ -91,6 +163,46 @@ void SyscollectorInit(void);
 void CiscatInit(void);
 void WinevtInit(void);
 void SecurityConfigurationAssessmentInit(void);
-int ReadDecodeXML(const char *file);
+
+/**
+ * @brief Read decoder files and save them in the decoder list
+ * @param file name of file which read
+ * @param decoderlist_pn list of decoders which have program_name
+ * @param decoderlist_nopn list of decoders which haven't program_name
+ * @param decoder_store list to save all decoders (internals and xml decoders)
+ * @param log_msg list to save log messages
+ * @return
+ */
+int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
+                  OSDecoderNode **decoderlist_nopn, OSStore **decoder_list,
+                  OSList* log_msg);
+
+/**
+ * @brief Remove decoder information
+ * @param pi OSDecoderInfo struct to remove
+ */
+void FreeDecoderInfo(OSDecoderInfo *pi);
+
+/**
+ * @brief Remove decoder list
+ * @param decoderlist_pn list of decoders which have program_name
+ * @param decoderlist_npn ist of decoders which haven't program_name
+ * @param num_decoders number of decoder nodes on memory
+ */
+void os_remove_decoders_list(OSDecoderNode *decoderlist_pn, OSDecoderNode *decoderlist_npn);
+
+/**
+ * @brief Remove a decoder node
+ * @param node OSDecoderNode node to remove
+ * @param decoders hash to save the reference to decoder information
+ */
+void os_remove_decodernode(OSDecoderNode *node, OSDecoderInfo **decoders, int *pos, int *max_size);
+
+/**
+ * @brief Count the number of decoders in a list
+ * @param node the first node of the list
+ * @param num_decoders the number of decoders
+ */
+void os_count_decoders(OSDecoderNode *node, int *num_decoders);
 
 #endif /* DECODER_H */

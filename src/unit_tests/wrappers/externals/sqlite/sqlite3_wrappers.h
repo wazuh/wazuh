@@ -27,6 +27,9 @@ int __wrap_sqlite3_bind_text(sqlite3_stmt* pStmt,
                              int length,
                              void *mem_callback);
 
+int __wrap_sqlite3_bind_parameter_index(__attribute__((unused)) sqlite3_stmt * stmt,
+                                        const char *zName);
+
 int __wrap_sqlite3_clear_bindings(sqlite3_stmt* pStmt);
 
 int __wrap_sqlite3_close_v2();

@@ -180,8 +180,8 @@ int Start_win32_Syscheck()
             }
 
             // Print diff file size limit
-            if (syscheck.file_size_enabled) {
-                minfo(FIM_DIFF_FILE_SIZE_LIMIT, syscheck.diff_size_limit[r], syscheck.dir[r]);
+            if ((syscheck.opts[r] & CHECK_SEECHANGES) && syscheck.file_size_enabled) {
+                mdebug2(FIM_DIFF_FILE_SIZE_LIMIT, syscheck.diff_size_limit[r], syscheck.dir[r]);
             }
 
             r++;
@@ -193,7 +193,7 @@ int Start_win32_Syscheck()
 
         // Print maximum disk quota to be used by the queue\diff\local folder
         if (syscheck.disk_quota_enabled) {
-            minfo(FIM_DISK_QUOTA_LIMIT, syscheck.disk_quota_limit);
+            mdebug2(FIM_DISK_QUOTA_LIMIT, syscheck.disk_quota_limit);
         }
         else {
             minfo(FIM_DISK_QUOTA_LIMIT_DISABLED);

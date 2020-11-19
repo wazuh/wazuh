@@ -465,7 +465,7 @@
     <parent>cisco-asa</parent>
     <prematch offset="after_parent">4-313004</prematch>
     <regex offset="after_parent">(\w+): (\.+) type=(\S+), from laddr (\S+) on interface (\S+) to (\S+): (\.+)</regex>
-    <order>id, description, src_ip, interface, dst_ip, reason</order>
+    <order>id, description, type, src_ip, interface, dst_ip, reason</order>
 </decoder>
 
 <!--

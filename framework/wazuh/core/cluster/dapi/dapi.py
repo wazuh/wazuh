@@ -10,6 +10,7 @@ import operator
 import os
 import random
 import time
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy, deepcopy
 from functools import reduce
@@ -108,9 +109,12 @@ class DistributedAPI:
             Dictionary with API response or WazuhException in case of error.
         """
         try:
-            self.logger.debug("Receiving parameters {}".format(self.f_kwargs))
-            is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
+            if 'password' in self.f_kwargs:
+                self.logger.debug("Receiving parameters {}".format({**self.f_kwargs, 'password': '****'}))
+            else:
+                self.logger.debug("Receiving parameters {}".format(self.f_kwargs))
 
+            is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
             # First case: execute the request locally.
             # If the distributed api is not enabled
             # If the cluster is disabled or the request type is local_any
@@ -490,10 +494,10 @@ class DistributedAPI:
 
             system_agents = agent.Agent.get_agents_overview(select=select_node,
                                                             limit=None,
-                                                            filters=filters,
-                                                            sort={'fields': ['node_name'], 'order': 'desc'})['items']
-            node_name = {k: list(map(operator.itemgetter('id'), g)) for k, g in
-                         itertools.groupby(system_agents, key=operator.itemgetter('node_name'))}
+                                                            filters=filters)['items']
+            node_name = defaultdict(list)
+            for element in system_agents:
+                node_name[element['node_name']].append(element['id'])
 
             # Update node_name in case it is empty or a node has no agents
             if 'node_id' in self.f_kwargs:
@@ -627,10 +631,10 @@ class SendSyncRequestQueue(WazuhRequestQueue):
             node = self.server.clients[names[0]]
             try:
                 request = json.loads(request, object_hook=c_common.as_wazuh_object)
-                self.logger.info("Receiving SendSync request ({}) from {} ({})".format(
+                self.logger.debug("Receiving SendSync request ({}) from {} ({})".format(
                     request['daemon_name'], names[0], names[1]))
                 result = await wazuh_sendsync(**request)
-                task_id = await node.send_string(json.dumps(result, cls=c_common.WazuhJSONEncoder).encode())
+                task_id = await node.send_string(result.encode())
             except Exception as e:
                 self.logger.error("Error in SendSync: {}".format(e), exc_info=True)
                 task_id = b'Error in SendSync: ' + str(e).encode()

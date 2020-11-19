@@ -36,7 +36,7 @@ const wm_context WM_DOWNLOAD_CONTEXT = {
     (wm_routine)wm_download_main,
     (wm_routine)(void *)wm_download_destroy,
     (cJSON * (*)(const void *))wm_download_dump,
-    0
+    NULL
 };
 
 // Module main function. It won't return

@@ -78,7 +78,7 @@ def get_valid_fields(element_type, agent_id=None):
         valid_select_fields[Type.OS] = list(valid_select_fields[Type.OS])
 
         # The osinfo fields in database are different in Windows and Linux
-        os_name = agent_obj.get_agent_attr('os_name')
+        os_name = agent_obj.get_agent_os_name()
         valid_select_fields[Type.OS][1] = valid_select_fields[Type.OS][1]['Windows'] if 'Windows' in os_name else \
             valid_select_fields[Type.OS][1]['Linux']
         valid_select_fields[Type.OS] = tuple(valid_select_fields[Type.OS])

@@ -29,6 +29,7 @@
 
 extern void send_msg_on_startup(void);
 extern bool agent_handshake_to_server(int server_id, bool is_startup);
+extern bool agent_ping_to_server(int server_id);
 extern int _s_verify_counter;
 
 #ifndef TEST_WINAGENT
@@ -87,7 +88,7 @@ char SERVER_WRONG_ACK[] = {0x01,0x02,0x03,0x00};
 void add_server_config(char* address, int protocol) {
     os_realloc(agt->server, sizeof(agent_server) * (agt->rip_id + 2), agt->server);
     os_strdup(address, agt->server[agt->rip_id].rip);
-    agt->server[agt->rip_id].port = 0;
+    agt->server[agt->rip_id].port = 1514;
     agt->server[agt->rip_id].protocol = 0;
     memset(agt->server + agt->rip_id + 1, 0, sizeof(agent_server));
     agt->server[agt->rip_id].protocol = protocol;
@@ -174,7 +175,7 @@ static void test_connect_server(void **state) {
 
     expect_any_count(__wrap__minfo, formatted_msg, 2);
 
-    connected = connect_server(0);
+    connected = connect_server(0, true);
     assert_int_equal(agt->rip_id, 0);
     assert_int_equal(agt->sock, 11);
     assert_true(connected);
@@ -194,7 +195,7 @@ static void test_connect_server(void **state) {
 
     expect_any_count(__wrap__minfo, formatted_msg, 2);
 
-    connected = connect_server(1);
+    connected = connect_server(1, true);
     assert_int_equal(agt->rip_id, 1);
     assert_int_equal(agt->sock, 12);
     assert_true(connected);
@@ -210,7 +211,7 @@ static void test_connect_server(void **state) {
 
     expect_any_count(__wrap__minfo, formatted_msg, 2);
 
-    connected = connect_server(2);
+    connected = connect_server(2, true);
     assert_int_equal(agt->rip_id, 2);
     assert_int_equal(agt->sock, 13);
     assert_true(connected);
@@ -226,13 +227,13 @@ static void test_connect_server(void **state) {
     expect_any(__wrap__minfo, formatted_msg);
     expect_any(__wrap__merror, formatted_msg);
 
-    connected = connect_server(3);
+    connected = connect_server(3, true);
     assert_false(connected);
 
     /* Connect to first server (UDP), simulate connection error*/
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OS_ConnectUDP, -1);
-    connected = connect_server(0);
+    connected = connect_server(0, true);
     assert_false(connected);
 
     return;
@@ -371,11 +372,147 @@ static void test_send_msg_on_startup(void **state) {
     return;
 }
 
+// Agent ping: cannot connect
+static void test_agent_ping_to_server_no_connect(void **state) {
+    will_return(__wrap_getDefine_Int, 5);
+    will_return(__wrap_OS_ConnectUDP, -1);
+
+    assert_false(agent_ping_to_server(0));
+}
+
+// Agent ping: TCP send failure
+static void test_agent_ping_to_server_tcp_send_fail(void **state) {
+    will_return(__wrap_getDefine_Int, 5);
+
+    expect_value(__wrap_OS_ConnectTCP, _port, 1514);
+    expect_string(__wrap_OS_ConnectTCP, _ip, "127.0.0.2");
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, 22);
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, 22);
+    expect_value(__wrap_OS_SendSecureTCP, size, 5);
+    expect_string(__wrap_OS_SendSecureTCP, msg, "#ping");
+    will_return(__wrap_OS_SendSecureTCP, -1);
+
+    assert_false(agent_ping_to_server(1));
+}
+
+// Agent ping: UDP send failure
+static void test_agent_ping_to_server_udp_send_fail(void **state) {
+    will_return(__wrap_getDefine_Int, 5);
+    will_return(__wrap_OS_ConnectUDP, 24);
+
+    expect_value(__wrap_OS_SendUDPbySize, sock, 24);
+    expect_value(__wrap_OS_SendUDPbySize, size, 5);
+    expect_string(__wrap_OS_SendUDPbySize, msg, "#ping");
+    will_return(__wrap_OS_SendUDPbySize, -1);
+
+    assert_false(agent_ping_to_server(0));
+}
+
+// Agent ping: TCP receive failure
+static void test_agent_ping_to_server_tcp_receive_fail(void **state) {
+    will_return(__wrap_getDefine_Int, 5);
+
+    expect_value(__wrap_OS_ConnectTCP, _port, 1514);
+    expect_string(__wrap_OS_ConnectTCP, _ip, "127.0.0.2");
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, 22);
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, 22);
+    expect_value(__wrap_OS_SendSecureTCP, size, 5);
+    expect_string(__wrap_OS_SendSecureTCP, msg, "#ping");
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    will_return(__wrap_wnet_select, 1);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, 22);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, "");
+    will_return(__wrap_OS_RecvSecureTCP, -1);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    assert_false(agent_ping_to_server(1));
+}
+
+// Agent ping: UDP receive invalid string
+static void test_agent_ping_to_server_udp_receive_invalid(void **state) {
+    will_return(__wrap_getDefine_Int, 5);
+    will_return(__wrap_OS_ConnectUDP, 24);
+
+    expect_value(__wrap_OS_SendUDPbySize, sock, 24);
+    expect_value(__wrap_OS_SendUDPbySize, size, 5);
+    expect_string(__wrap_OS_SendUDPbySize, msg, "#ping");
+    will_return(__wrap_OS_SendUDPbySize, 0);
+
+    will_return(__wrap_wnet_select, 1);
+#ifndef TEST_WINAGENT
+    will_return(__wrap_recv, "#fail");
+#else
+    will_return(wrap_recv, "#fail");
+#endif
+
+    assert_false(agent_ping_to_server(0));
+}
+
+// Agent ping: valid ping-pong on TCP
+static void test_agent_ping_to_server_tcp_ok(void **state) {
+    will_return(__wrap_getDefine_Int, 5);
+
+    expect_value(__wrap_OS_ConnectTCP, _port, 1514);
+    expect_string(__wrap_OS_ConnectTCP, _ip, "127.0.0.2");
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, 22);
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, 22);
+    expect_value(__wrap_OS_SendSecureTCP, size, 5);
+    expect_string(__wrap_OS_SendSecureTCP, msg, "#ping");
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    will_return(__wrap_wnet_select, 1);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, 22);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, "#pong");
+    will_return(__wrap_OS_RecvSecureTCP, 5);
+
+    assert_true(agent_ping_to_server(1));
+}
+
+// Agent ping: valid ping-pong on UDP
+static void test_agent_ping_to_server_udp_ok(void **state) {
+    will_return(__wrap_getDefine_Int, 5);
+    will_return(__wrap_OS_ConnectUDP, 24);
+
+    expect_value(__wrap_OS_SendUDPbySize, sock, 24);
+    expect_value(__wrap_OS_SendUDPbySize, size, 5);
+    expect_string(__wrap_OS_SendUDPbySize, msg, "#ping");
+    will_return(__wrap_OS_SendUDPbySize, 0);
+
+    will_return(__wrap_wnet_select, 1);
+#ifndef TEST_WINAGENT
+    will_return(__wrap_recv, "#pong");
+#else
+    will_return(wrap_recv, "#pong");
+#endif
+
+    assert_true(agent_ping_to_server(0));
+}
+
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_connect_server, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_agent_handshake_to_server, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_send_msg_on_startup, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_agent_ping_to_server_no_connect, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_agent_ping_to_server_tcp_send_fail, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_agent_ping_to_server_udp_send_fail, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_agent_ping_to_server_tcp_receive_fail, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_agent_ping_to_server_udp_receive_invalid, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_agent_ping_to_server_tcp_ok, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_agent_ping_to_server_udp_ok, setup_test, teardown_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

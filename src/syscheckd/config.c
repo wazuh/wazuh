@@ -240,7 +240,7 @@ cJSON *getSyscheckConfig(void) {
                 cJSON_AddStringToObject(pair,"tags",syscheck.tag[i]);
             }
 
-            if (syscheck.file_limit_enabled && syscheck.diff_size_limit[i]) {
+            if (syscheck.file_size_enabled && syscheck.diff_size_limit[i]) {
                 cJSON_AddNumberToObject(pair, "diff_size_limit", syscheck.diff_size_limit[i]);
             }
 

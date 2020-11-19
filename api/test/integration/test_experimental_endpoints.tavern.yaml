@@ -14,10 +14,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: all
+        agents_list: all
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '000'
@@ -45,10 +46,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - '001'
@@ -74,6 +76,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - &ciscat_response
@@ -108,10 +111,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003'
+        agents_list: '001,003'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *ciscat_response
@@ -137,6 +141,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - &hardware_response
@@ -173,10 +178,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *hardware_response
@@ -206,6 +212,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - &netaddr_response
@@ -236,10 +243,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netaddr_response
@@ -269,6 +277,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - &netiface_response
@@ -310,10 +319,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netiface_response
@@ -343,6 +353,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - &netproto_response
@@ -372,10 +383,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *netproto_response
@@ -405,6 +417,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - &os_response
@@ -443,10 +456,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *os_response
@@ -476,6 +490,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -490,10 +505,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -515,6 +531,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - &ports_response
@@ -564,10 +581,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *ports_response
@@ -597,6 +615,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -611,10 +630,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        agents_list: '001,003,005,007'
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -638,6 +658,7 @@ stages:
       verify_response_with:
         function: tavern_utils:test_validate_syscollector_hotfix
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -652,7 +673,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '000,003,005,007' # Only the agent 000 will have results
+        agents_list: '000,003,005,007' # Only the agent 000 will have results
     response:
       status_code: 200
       verify_response_with:
@@ -660,6 +681,7 @@ stages:
         extra_kwargs:
           experimental: true
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []

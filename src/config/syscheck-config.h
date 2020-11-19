@@ -117,6 +117,7 @@ typedef struct whodata_dir_status whodata_dir_status;
 
 typedef struct _rtfim {
     int fd;
+    unsigned int queue_overflow:1;
     OSHash *dirtb;
 #ifdef WIN32
     HANDLE evt;
@@ -235,6 +236,7 @@ typedef struct fdb_t
     sqlite3 *db;
     sqlite3_stmt *stmt[FIMDB_STMT_SIZE];
     fdb_transaction_t transaction;
+    volatile bool full;
 } fdb_t;
 
 typedef struct _config {

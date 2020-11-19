@@ -225,14 +225,6 @@ w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentn
         }
     }
 
-    /* Check for agents limit */
-
-    if (config.flags.register_limit && keys.keysize >= (MAX_AGENTS - 2) ) {
-        merror(AG_MAX_ERROR, MAX_AGENTS - 2);
-        snprintf(response, 2048, "ERROR: The maximum number of agents has been reached");
-        return OS_INVALID;
-    }
-
     return OS_SUCCESS;
 }
 

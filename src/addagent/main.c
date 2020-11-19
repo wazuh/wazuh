@@ -81,9 +81,6 @@ int main(int argc, char **argv)
 {
     char *user_msg;
     int c = 0, cmdlist = 0, json_output = 0;
-#ifndef CLIENT
-    int no_limit = 0;
-#endif
     int force_antiquity;
     char *end;
     const char *cmdexport = NULL;
@@ -184,7 +181,7 @@ int main(int argc, char **argv)
                 break;
             case 'L':
 #ifndef CLIENT
-                no_limit = 1;
+                mwarn("This option no longer applies. The agent limit has been removed.");
 #endif
                 break;
             default:
@@ -293,7 +290,7 @@ int main(int argc, char **argv)
 #ifdef CLIENT
                 printf("\n ** Agent adding only available on a master ** \n\n");
 #else
-                add_agent(json_output, no_limit);
+                add_agent(json_output);
 #endif
                 break;
             case 'e':

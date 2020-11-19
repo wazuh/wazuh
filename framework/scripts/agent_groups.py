@@ -11,6 +11,7 @@ from signal import signal, SIGINT
 from sys import exit, argv
 
 from wazuh import agent
+from wazuh.agent import remove_agent_from_groups
 from wazuh.core import agent as core_agent
 from wazuh.core.cluster.utils import read_config
 from wazuh.core.exception import WazuhError
@@ -98,7 +99,14 @@ def unset_group(agent_id, group_id=None, quiet=False):
         ans = 'y'
 
     if ans.lower() == 'y':
-        msg = core_agent.Agent.unset_single_group_agent(agent_id, group_id)
+        if group_id:
+            msg = core_agent.Agent.unset_single_group_agent(agent_id, group_id)
+        else:
+            groups_agent_removed = remove_agent_from_groups(agent_list=[agent_id])._affected_items
+            if len(groups_agent_removed) == 0:
+                msg = f"Agent '{agent_id}' is only assigned to group default."
+            else:
+                msg = f"Agent '{agent_id}' removed from '{', '.join(groups_agent_removed)}'. Agent reassigned to group default."
     else:
         msg = "Cancelled."
 
@@ -162,7 +170,7 @@ def create_group(group_id, quiet=False):
 
 def usage():
     msg = """
-    {0} [ -l [ -g group_id ] | -c -g group_id | -a (-i agent_id -g groupd_id | -g group_id) [-q] [-f] | -s -i agent_id | -S -i agent_id | -r (-g group_id | -i agent_id) [-q] | -ap -i agent_id -g group_id [-q] ]
+    {0} [ -l [ -g group_id ] | -c -g group_id | -a (-i agent_id -g groupd_id | -g group_id) [-q] [-f] | -s -i agent_id | -S -i agent_id | -r (-g group_id | -i agent_id) [-q] ]
 
     Usage:
     \t-l                                    # List all groups

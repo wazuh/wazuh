@@ -2340,7 +2340,7 @@ static void test_decode_win_permissions_fail_wrong_format(void **state) {
     free(raw_perm);
     *state = output;
 
-    assert_null(output);
+    assert_string_equal("", output);
 }
 
 /* attrs_to_json tests */
@@ -3243,7 +3243,7 @@ void test_w_get_file_permissions_GetAce_error(void **state) {
     char permissions[OS_SIZE_1024];
     int ret;
     SECURITY_DESCRIPTOR sec_desc;
-    ACL_SIZE_INFORMATION acl_size;
+    ACL_SIZE_INFORMATION acl_size = { .AceCount = 1 };
 
     expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
     will_return(wrap_GetFileSecurity, OS_SIZE_1024);

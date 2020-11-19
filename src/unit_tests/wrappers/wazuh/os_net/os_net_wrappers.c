@@ -13,10 +13,26 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
+int __wrap_OS_BindUnixDomain(const char *path, int type, int max_msg_size) {
+    check_expected(path);
+    check_expected(type);
+    check_expected(max_msg_size);
+
+    return mock();
+}
+
 int __wrap_OS_ConnectUnixDomain(const char *path, int type, int max_msg_size) {
     check_expected(path);
     check_expected(type);
     check_expected(max_msg_size);
+
+    return mock();
+}
+
+int __wrap_OS_SendUDPbySize(int sock, int size, const char *msg) {
+    check_expected(sock);
+    check_expected(size);
+    check_expected(msg);
 
     return mock();
 }

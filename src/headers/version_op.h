@@ -10,6 +10,10 @@
 #ifndef VERSION_H
 #define VERSION_H
 
+
+#define MAC_SYSVERSION "/System/Library/CoreServices/SystemVersion.plist"
+#define MAC_SERVERVERSION "/System/Library/CoreServices/ServerVersion.plist"
+
 /**
  * @struct os_info
  * @brief Stores information about the operating system version.
@@ -18,6 +22,7 @@ typedef struct os_info {
     char *os_name;      ///< Operating system name.
     char *os_major;     ///< OS version number (major).
     char *os_minor;     ///< OS version number (minor).
+    char *os_patch;     ///< OS version number (patch).
     char *os_build;     ///< OS version number (build).
     char *os_version;   ///< OS version (major.minor[.build])
     char *os_codename;  ///< OS version codename.

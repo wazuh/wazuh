@@ -1,6 +1,0 @@
-Linux |wazuh-agent9 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb 12 13:35:51 UTC 2019 |x86_64 [Ubuntu|ubuntu: 18.04.2 LTS (Bionic Beaver)] - Wazuh v3.9.2 / 29e0926e5a77442212e824868a2a61df
-c5c0409668664e790a295bce215b4fa2 merged.mg
-#"_agent_ip":172.28.0.14
-
-#"_manager_hostname":wazuh-master
-#"_node_name":master-node

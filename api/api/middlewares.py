@@ -3,11 +3,13 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import concurrent.futures
+
 from logging import getLogger
 from time import time
 
 from aiohttp import web
-from connexion.exceptions import ProblemException, OAuthProblem
+from aiohttp.web_exceptions import HTTPException
+from connexion.exceptions import ProblemException, OAuthProblem, Unauthorized
 from connexion.problem import problem as connexion_problem
 
 from api.configuration import api_conf
@@ -22,8 +24,7 @@ pool = concurrent.futures.ThreadPoolExecutor()
 async def set_user_name(request, handler):
     if 'token_info' in request:
         request['user'] = request['token_info']['sub']
-    response = await handler(request)
-    return response
+    return await handler(request)
 
 
 ip_stats = dict()
@@ -86,9 +87,7 @@ async def security_middleware(request, handler):
     await prevent_denial_of_service(request, max_requests=access_conf['max_request_per_minute'])
     await unlock_ip(request=request, block_time=access_conf['block_time'])
 
-    response = await handler(request)
-
-    return response
+    return await handler(request)
 
 
 @web.middleware
@@ -107,18 +106,26 @@ async def response_postprocessing(request, handler):
                 del problem.body[field]
         if 'detail' in problem.body and problem.body['detail'] == '':
             del problem.body['detail']
+        if 'code' in problem.body:
+            problem.body['error'] = problem.body.pop('code')
 
     problem = None
 
     try:
         return await handler(request)
+
     except ProblemException as ex:
         problem = connexion_problem(ex.__dict__['status'],
                                     ex.__dict__['title'] if 'title' in ex.__dict__ and ex.__dict__['title'] else 'Bad Request',
                                     type=ex.__dict__['type'] if 'type' in ex.__dict__ else 'about:blank',
                                     detail=cleanup_detail_field(ex.__dict__['detail']) if 'detail' in ex.__dict__ else '',
                                     ext=ex.__dict__['ext'] if 'ext' in ex.__dict__ else None)
-    except OAuthProblem:
+    except HTTPException as ex:
+        problem = connexion_problem(ex.status,
+                                    ex.reason if ex.reason else '',
+                                    type=ex.reason if ex.reason else '',
+                                    detail=ex.text if ex.text else '')
+    except (OAuthProblem, Unauthorized):
         if request.path == '/security/user/authenticate' and request.method in ['GET', 'POST']:
             await prevent_bruteforce_attack(request=request, attempts=api_conf['access']['max_login_attempts'])
             problem = connexion_problem(401, "Unauthorized", type="about:blank", detail="Invalid credentials")

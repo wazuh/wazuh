@@ -17,6 +17,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []
@@ -43,6 +44,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - items: !anything
@@ -69,6 +71,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - items: !anything
@@ -97,6 +100,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - items: !anything
@@ -121,6 +125,7 @@ stages:
           select_key: 'filename,relative_dirname' # required_fields={'filename', 'relative_dirname'}
       status_code: 200
       json:
+        error: !anyint
         data:
           total_affected_items: !anyint
           failed_items: []
@@ -135,7 +140,7 @@ stages:
     response:
       status_code: 400
       json: &invalid_select
-        code: 1724
+        error: 1724
 
   - name: Show lists using select (one select is invalid)
     request:
@@ -158,6 +163,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items: []
@@ -175,6 +181,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - items: !anything
@@ -193,6 +200,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - items: !anything
@@ -211,6 +219,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items: []
@@ -228,6 +237,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - items: !anything
@@ -273,6 +283,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items: []
@@ -295,6 +306,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
            # We get totalItems number of arrays in items, using !anything to check items key is in the response
           affected_items: !anything
@@ -322,6 +334,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: &full_items_array_files
             - relative_dirname: !anystr
@@ -347,6 +360,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *full_items_array_files
@@ -371,6 +385,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
               # Check offset matches with previous request
@@ -391,6 +406,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items:
             - <<: *full_items_array_files
@@ -409,6 +425,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: []
           failed_items: []
@@ -426,6 +443,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data:
           affected_items: !anything
           failed_items: []

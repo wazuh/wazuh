@@ -16,6 +16,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data: !anything
 
   - name: Request sca for agent 001 (Denied)
@@ -28,7 +29,7 @@ stages:
     response: &permission_denied
       status_code: 403
       json:
-        code: 4000
+        error: 4000
 
   - name: Request sca for agent 002 (Allowed)
     request:
@@ -40,6 +41,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data: !anything
 
   - name: Request sca for agent 003 (Denied)
@@ -62,6 +64,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data: !anything
 
   - name: Request sca for agent 005 (Denied)
@@ -89,6 +92,7 @@ stages:
     response:
       status_code: 200
       json:
+        error: !anyint
         data: !anything
 
   - name: Request policy checks for 001 (Denied)

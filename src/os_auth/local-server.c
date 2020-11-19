@@ -219,7 +219,7 @@ char* local_dispatch(const char *input) {
             }
 
             ip = item->valuestring;
-            
+
             if(item = cJSON_GetObjectItem(arguments, "groups"), item) {
                 groups = wstr_delete_repeated_groups(item->valuestring);
                 if (!groups){
@@ -302,13 +302,13 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
 
     mdebug2("add(%s)", name);
     w_mutex_lock(&mutex_keys);
-        
-    /* Check if groups are valid to be aggregated */ 
-    if (groups){ 
+
+    /* Check if groups are valid to be aggregated */
+    if (groups){
         if (OS_SUCCESS != w_auth_validate_groups(groups, NULL)){
             ierror = EINVGROUP;
             goto fail;
-        }        
+        }
     }
 
     // Check for duplicated ID
@@ -362,12 +362,6 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
         }
     }
 
-    /* Check for agents limit */
-
-    if (config.flags.register_limit && keys.keysize >= (MAX_AGENTS - 2) ) {
-        ierror = EAGLIM;
-        goto fail;
-    }
 
     if (index = OS_AddNewAgent(&keys, id, name, ip, key), index < 0) {
         ierror = EKEY;
@@ -438,7 +432,7 @@ cJSON* local_get(const char *id) {
     if (index = OS_IsAllowedID(&keys, id), index < 0) {
         merror("ERROR %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
         response = local_create_error_response(ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
-    } 
+    }
     else {
         response = local_create_agent_response(id, keys.keyentries[index]->name, keys.keyentries[index]->ip->ip, keys.keyentries[index]->key);
     }
@@ -447,11 +441,11 @@ cJSON* local_get(const char *id) {
     return response;
 }
 
-// Generates an agent info json response 
+// Generates an agent info json response
 cJSON* local_create_agent_response(const char *id, const char *name, const char *ip, const char *key) {
-    cJSON *response = NULL; 
+    cJSON *response = NULL;
     cJSON *data = NULL;
-    
+
     response = cJSON_CreateObject();
     cJSON_AddNumberToObject(response, "error", 0);
     cJSON_AddItemToObject(response, "data", data = cJSON_CreateObject());
@@ -465,7 +459,7 @@ cJSON* local_create_agent_response(const char *id, const char *name, const char 
 
 // Generates an agent deleted response
 static cJSON* local_create_agent_delete_response(void) {
-    cJSON *response = NULL; 
+    cJSON *response = NULL;
 
     response = cJSON_CreateObject();
     cJSON_AddNumberToObject(response, "error", 0);
@@ -476,7 +470,7 @@ static cJSON* local_create_agent_delete_response(void) {
 
 // Generates an error json response
 static cJSON* local_create_error_response(int code, const char *message) {
-    cJSON *response = NULL; 
+    cJSON *response = NULL;
 
     response = cJSON_CreateObject();
     cJSON_AddNumberToObject(response, "error", code);

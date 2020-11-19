@@ -13,6 +13,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
+void (*pthread_callback_ptr)(void) = NULL;
 
 int __wrap_pthread_mutex_lock(__attribute__((unused)) pthread_mutex_t *x) {
     function_called();
@@ -21,5 +22,23 @@ int __wrap_pthread_mutex_lock(__attribute__((unused)) pthread_mutex_t *x) {
 
 int __wrap_pthread_mutex_unlock(__attribute__((unused)) pthread_mutex_t *x) {
     function_called();
+    return 0;
+}
+
+int __wrap_pthread_exit() {
+    return mock();
+}
+
+int __wrap_pthread_cond_wait(pthread_cond_t *cond,pthread_mutex_t *mutex) {
+    check_expected_ptr(cond);
+    check_expected_ptr(mutex);
+    // callback function to avoid infinite loops when testing 
+    if (pthread_callback_ptr)
+        pthread_callback_ptr();
+    return 0;
+}
+
+int __wrap_pthread_cond_signal(pthread_cond_t *cond) {
+    check_expected_ptr(cond);
     return 0;
 }

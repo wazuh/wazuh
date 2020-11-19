@@ -4,18 +4,17 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
+import stat
 import sys
 from unittest.mock import patch, MagicMock
 
 import pytest
 
-with patch('wazuh.common.getgrnam'):
-    with patch('wazuh.common.getpwnam'):
+with patch('wazuh.core.common.getgrnam'):
+    with patch('wazuh.core.common.getpwnam'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
-        sys.modules['api'] = MagicMock()
         import wazuh.rbac.decorators
         del sys.modules['wazuh.rbac.orm']
-        del sys.modules['api']
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
@@ -29,14 +28,14 @@ with patch('wazuh.common.getgrnam'):
 test_data_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 decoder_ossec_conf = {
     'ruleset': {
-        'decoder_dir': ['core/tests/data/decoders'],
+        'decoder_dir': ['tests/data/decoders'],
         'decoder_exclude': 'test2_decoders.xml'
     }
 }
 
 decoder_ossec_conf_2 = {
     'ruleset': {
-        'decoder_dir': ['core/tests/data/decoders'],
+        'decoder_dir': ['tests/data/decoders'],
         'decoder_exclude': 'wrong_decoders.xml'
     }
 }
@@ -46,7 +45,7 @@ decoder_ossec_conf_2 = {
 
 @pytest.fixture(scope='module', autouse=True)
 def mock_ossec_path():
-    with patch('wazuh.common.ossec_path', new=test_data_path):
+    with patch('wazuh.core.common.ossec_path', new=test_data_path):
         with patch('wazuh.core.configuration.get_ossec_conf', return_value=decoder_ossec_conf):
             yield
 
@@ -61,13 +60,13 @@ def mock_ossec_path():
     (None, 'disabled', None, None, False, {'json'}, 0),
     (['agent-upgrade', 'non_existing', 'json'], 'enabled', None, None, False, {'agent-upgrade'}, 1),
     (None, None, 'test1_decoders.xml', None, False, {'agent-buffer', 'agent-upgrade', 'wazuh', 'agent-restart'}, 0),
-    (None, None, 'test2_decoders.xml', 'core/tests/data/decoders', False, {'json'}, 0),
-    (None, 'all', None, 'core/tests/data/decoders', True, {'wazuh', 'json'}, 0),
+    (None, None, 'test2_decoders.xml', 'tests/data/decoders', False, {'json'}, 0),
+    (None, 'all', None, 'tests/data/decoders', True, {'wazuh', 'json'}, 0),
     (None, 'all', None, 'nothing_here', False, set(), 0)
 ])
 def test_get_decoders(names, status, filename, relative_dirname, parents, expected_names, expected_total_failed):
-    wrong_decoder_original_path = os.path.join(test_data_path, 'core/tests/data/decoders', 'wrong_decoders.xml')
-    wrong_decoder_tmp_path = os.path.join(test_data_path, 'core/tests/data', 'wrong_decoders.xml')
+    wrong_decoder_original_path = os.path.join(test_data_path, 'tests/data/decoders', 'wrong_decoders.xml')
+    wrong_decoder_tmp_path = os.path.join(test_data_path, 'tests/data', 'wrong_decoders.xml')
     try:
         os.rename(wrong_decoder_original_path, wrong_decoder_tmp_path)
         # UUT call
@@ -109,12 +108,12 @@ def test_get_decoders_files(conf, exception):
     ('all', None, None, {'test1_decoders.xml', 'test2_decoders.xml', 'wrong_decoders.xml'}),
     ('enabled', None, None, {'test1_decoders.xml', 'wrong_decoders.xml'}),
     ('disabled', None, None, {'test2_decoders.xml'}),
-    ('all', 'core/tests/data/decoders', None, {'test1_decoders.xml', 'test2_decoders.xml', 'wrong_decoders.xml'}),
+    ('all', 'tests/data/decoders', None, {'test1_decoders.xml', 'test2_decoders.xml', 'wrong_decoders.xml'}),
     ('all', 'wrong_path', None, set()),
-    ('disabled', 'core/tests/data/decoders', None, {'test2_decoders.xml'}),
-    (None, 'core/tests/data/decoders', 'test2_decoders.xml', {'test2_decoders.xml'}),
-    ('disabled', 'core/tests/data/decoders', 'test2_decoders.xml', {'test2_decoders.xml'}),
-    ('enabled', 'core/tests/data/decoders', 'test2_decoders.xml', set()),
+    ('disabled', 'tests/data/decoders', None, {'test2_decoders.xml'}),
+    (None, 'tests/data/decoders', 'test2_decoders.xml', {'test2_decoders.xml'}),
+    ('disabled', 'tests/data/decoders', 'test2_decoders.xml', {'test2_decoders.xml'}),
+    ('enabled', 'tests/data/decoders', 'test2_decoders.xml', set()),
     ('enabled', None, 'test1_decoders.xml', {'test1_decoders.xml'}),
     (None, None, ['test1_decoders.xml', 'test2_decoders.xml'], {'test1_decoders.xml', 'test2_decoders.xml'}),
     ('enabled', None, ['test1_decoders.xml', 'test2_decoders.xml'], {'test1_decoders.xml'}),
@@ -151,10 +150,12 @@ def test_get_file_exceptions():
             # UUT 2nd call forcing en error opening decoder file
             decoder.get_file(filename='test1_decoders.xml')
     with pytest.raises(WazuhError, match=r'.* 1502 .*'):
+        filename = 'test2_decoders.xml'
+        old_permissions = stat.S_IMODE(os.lstat(os.path.join(
+            test_data_path, 'tests/data/decoders', filename)).st_mode)
         try:
-            filename = 'test2_decoders.xml'
-            os.chmod(os.path.join(test_data_path, 'core/tests/data/decoders', filename), 000)
+            os.chmod(os.path.join(test_data_path, 'tests/data/decoders', filename), 000)
             # UUT 3rd call forcing a permissions error opening decoder file
             decoder.get_file(filename=filename)
         finally:
-            os.chmod(os.path.join(test_data_path, 'core/tests/data/decoders', filename), 777)
+            os.chmod(os.path.join(test_data_path, 'tests/data/decoders', filename), old_permissions)

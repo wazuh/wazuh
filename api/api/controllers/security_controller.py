@@ -20,7 +20,7 @@ from wazuh import security
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.exception import WazuhPermissionError, WazuhException
-from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.security import revoke_tokens
 from wazuh.rbac import preprocessor
 
@@ -61,14 +61,14 @@ async def login_user(request, user: str, raw=False):
 
     token = None
     try:
-        token = generate_token(user_id=user, rbac_policies=data.dikt)
+        token = generate_token(user_id=user, data=data.dikt, run_as='auth_context' in f_kwargs.keys())
     except WazuhException as e:
         raise_if_exc(e)
 
     if raw:
         return web.Response(text=token, content_type='text/plain', status=200)
     else:
-        return web.json_response(data=TokenResponseModel(token=token), status=200, dumps=dumps)
+        return web.json_response(data=WazuhResult({'data': TokenResponseModel(token=token)}), status=200, dumps=dumps)
 
 
 async def get_user_me(request, pretty=False, wait_for_complete=False):
@@ -86,7 +86,9 @@ async def get_user_me(request, pretty=False, wait_for_complete=False):
     -------
     Users information
     """
+    f_kwargs = {'token': request['token_info']}
     dapi = DistributedAPI(f=security.get_user_me,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
                           logger=logger,
@@ -95,6 +97,27 @@ async def get_user_me(request, pretty=False, wait_for_complete=False):
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def get_user_me_policies(request, pretty=False, wait_for_complete=False):
+    """Return processed RBAC policies and rbac_mode for the current user.
+
+    Parameters
+    ----------
+    request : connexion.request
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+
+    Returns
+    -------
+    Users information
+    """
+    data = WazuhResult({'data': request['token_info']['rbac_policies'],
+                       'message': "Current user processed policies information was returned"})
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
@@ -877,7 +900,8 @@ async def set_role_rule(request, role_id, rule_ids, pretty=False, wait_for_compl
     dict
         Role information
     """
-    f_kwargs = {'role_id': role_id, 'rule_ids': rule_ids}
+    f_kwargs = {'role_id': role_id, 'rule_ids': rule_ids,
+                'run_as': {'user': request['token_info']['sub'], 'run_as': request['token_info']['run_as']}}
 
     dapi = DistributedAPI(f=security.set_role_rule,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

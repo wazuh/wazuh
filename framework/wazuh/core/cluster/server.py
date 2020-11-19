@@ -126,7 +126,7 @@ class AbstractServerHandler(c_common.Handler):
         """
         if self.name:
             if exc is None:
-                self.logger.info("Disconnected.".format(self.name))
+                self.logger.debug("Disconnected.".format(self.name))
             else:
                 self.logger.error(f"Error during connection with '{self.name}': {exc}.\n"
                                   f"{''.join(traceback.format_tb(exc.__traceback__))}")

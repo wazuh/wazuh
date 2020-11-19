@@ -10,6 +10,8 @@ endif()
 # Setup the compiling toolchain
 # Find the wazuh shared library
 find_library(WAZUHEXT NAMES wazuhext HINTS "${SRC_FOLDER}")
+set(uname "Win32")
+
 if(NOT WAZUHEXT)
   message(FATAL_ERROR "WAZUHEXT is set to '${WAZUHEXT}', but did not find any file matching ${SRC_FOLDER}/${CMAKE_FIND_LIBRARY_PREFIXES}wazuhext${CMAKE_FIND_LIBRARY_SUFFIXES}")
   message(FATAL_ERROR "libwazuhext not found in ${SRC_FOLDER} Aborting...")
@@ -75,3 +77,4 @@ set(TEST_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} DEPENDENCIES_O -Wl,--end
 set(TEST_EVENT_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} DEPENDENCIES_O -Wl,--end-group ${PTHREAD} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)
 
 add_subdirectory(client-agent)
+add_subdirectory(wazuh_modules)

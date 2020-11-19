@@ -16,4 +16,4 @@ stages:
     response:
       status_code: 403
       json:
-        code: 4000
+        error: 4000
