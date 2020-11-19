@@ -13,11 +13,10 @@ class WazuhDBQuerySyscheck(WazuhDBQuery):
     def __init__(self, agent_id, nested=False, default_sort_field='mtime', min_select_fields=None, *args,
                  **kwargs):
         if min_select_fields is None:
-            min_select_fields = {'file'}
+            min_select_fields = set()
         super().__init__(backend=WazuhDBBackend(agent_id), default_sort_field=default_sort_field,
-                         min_select_fields=min_select_fields, count=True,
-                         get_data=True, date_fields={'mtime', 'date'}, *args,
-                         **kwargs)
+                         min_select_fields=min_select_fields, count=True, get_data=True, date_fields={'mtime', 'date'},
+                         *args, **kwargs)
         self.nested = nested
 
     def _filter_date(self, date_filter, filter_db_name):
