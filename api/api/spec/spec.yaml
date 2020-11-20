@@ -5258,7 +5258,7 @@ paths:
       summary: "Delete agents"
       description: "Delete agents with optional criteria based on the status or time of the last
       connection"
-      operationId: api.controllers.agents_controller.delete_agents
+      operationId: api.controllers.agent_controller.delete_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:delete'
       parameters:
@@ -5313,7 +5313,7 @@ paths:
       - Agents
       summary: "List agents"
       description: "Return information about all available agents or a list of them"
-      operationId: api.controllers.agents_controller.get_agents
+      operationId: api.controllers.agent_controller.get_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
       parameters:
@@ -5446,7 +5446,7 @@ paths:
       - Agents
       summary: "Add agent"
       description: "Add a new agent"
-      operationId: api.controllers.agents_controller.add_agent
+      operationId: api.controllers.agent_controller.add_agent
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:create'
       parameters:
@@ -5516,7 +5516,7 @@ paths:
       summary: "Get active configuration"
       description: "Return the active configuration the agent is currently using. This can be different from the
       configuration present in the configuration file, if it has been modified and the agent has not been restarted yet"
-      operationId: api.controllers.agents_controller.get_agent_config
+      operationId: api.controllers.agent_controller.get_agent_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
       parameters:
@@ -5568,7 +5568,7 @@ paths:
       summary: "Remove agent from groups"
       description: 'Remove the agent from all groups or a list of them. The agent will automatically revert to the
       default group if it is removed from all its assigned groups'
-      operationId: api.controllers.agents_controller.delete_single_agent_multiple_groups
+      operationId: api.controllers.agent_controller.delete_single_agent_multiple_groups
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:modify_group'
         - $ref: '#/x-rbac-catalog/actions/group:modify_assignments'
@@ -5617,7 +5617,7 @@ paths:
       summary: "Get configuration sync status"
       description: "Return whether the agent configuration has been synchronized with the agent or not. This can be
       useful to check after updating a group configuration"
-      operationId: api.controllers.agents_controller.get_sync_agent
+      operationId: api.controllers.agent_controller.get_sync_agent
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
       parameters:
@@ -5664,7 +5664,7 @@ paths:
       summary: "Remove agent from group"
       description: "Remove an agent from an specified group. If the agent has multigroups, it will preserve all
       previous groups except the last one"
-      operationId: api.controllers.agents_controller.delete_single_agent_single_group
+      operationId: api.controllers.agent_controller.delete_single_agent_single_group
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:modify_group'
         - $ref: '#/x-rbac-catalog/actions/group:modify_assignments'
@@ -5701,7 +5701,7 @@ paths:
         - Agents
       summary: "Assign agent to group"
       description: "Assign an agent to a specified group"
-      operationId: api.controllers.agents_controller.put_agent_single_group
+      operationId: api.controllers.agent_controller.put_agent_single_group
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:modify_group'
         - $ref: '#/x-rbac-catalog/actions/group:modify_assignments'
@@ -5746,7 +5746,7 @@ paths:
         - Agents
       summary: "Get key"
       description: "Return the key of an agent"
-      operationId: api.controllers.agents_controller.get_agent_key
+      operationId: api.controllers.agent_controller.get_agent_key
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
       parameters:
@@ -5793,7 +5793,7 @@ paths:
         - Agents
       summary: "Restart agent"
       description: "Restart the specified agent"
-      operationId: api.controllers.agents_controller.restart_agent
+      operationId: api.controllers.agent_controller.restart_agent
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:restart'
       parameters:
@@ -5838,7 +5838,7 @@ paths:
         - Agents
       summary: "Upgrade agents"
       description: "Upgrade agents using a WPK file from online repository"
-      operationId: api.controllers.agents_controller.put_upgrade_agents
+      operationId: api.controllers.agent_controller.put_upgrade_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
       parameters:
@@ -5885,7 +5885,7 @@ paths:
         - Agents
       summary: "Upgrade agents custom"
       description: "Upgrade the agents using a local WPK file"
-      operationId: api.controllers.agents_controller.put_upgrade_custom_agents
+      operationId: api.controllers.agent_controller.put_upgrade_custom_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
       parameters:
@@ -5930,7 +5930,7 @@ paths:
         - Agents
       summary: "Get upgrade results"
       description: "Return the agents upgrade results"
-      operationId: api.controllers.agents_controller.get_agent_upgrade
+      operationId: api.controllers.agent_controller.get_agent_upgrade
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
       parameters:
@@ -5978,7 +5978,7 @@ paths:
         - Agents
       summary: "Remove agents from group"
       description: "Remove all agents assignment or a list of them from the specified group"
-      operationId: api.controllers.agents_controller.delete_multiple_agent_single_group
+      operationId: api.controllers.agent_controller.delete_multiple_agent_single_group
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:modify_group'
         - $ref: '#/x-rbac-catalog/actions/group:modify_assignments'
@@ -6030,7 +6030,7 @@ paths:
         - Agents
       summary: "Assign agents to group"
       description: "Assign all agents or a list of them to the specified group"
-      operationId: api.controllers.agents_controller.put_multiple_agent_single_group
+      operationId: api.controllers.agent_controller.put_multiple_agent_single_group
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:modify_group'
         - $ref: '#/x-rbac-catalog/actions/group:modify_assignments'
@@ -6094,7 +6094,7 @@ paths:
         - Agents
       summary: 'Restart agents in group'
       description: 'Restart all agents which belong to a given group'
-      operationId: api.controllers.agents_controller.restart_agents_by_group
+      operationId: api.controllers.agent_controller.restart_agents_by_group
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:restart'
       parameters:
@@ -6135,7 +6135,7 @@ paths:
         - Groups
       summary: "Delete groups"
       description: "Delete all groups or a list of them"
-      operationId: api.controllers.agents_controller.delete_groups
+      operationId: api.controllers.agent_controller.delete_groups
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:modify_group'
         - $ref: '#/x-rbac-catalog/actions/group:delete'
@@ -6189,7 +6189,7 @@ paths:
       description: "Get information about all groups or a list of them. Returns a list containing basic information
       about each group such as number of agents belonging to the group and the checksums of the configuration and
       shared files"
-      operationId: api.controllers.agents_controller.get_list_group
+      operationId: api.controllers.agent_controller.get_list_group
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/group:read'
       parameters:
@@ -6249,7 +6249,7 @@ paths:
         - Groups
       summary: "Create a group"
       description: "Create a new group"
-      operationId: api.controllers.agents_controller.post_group
+      operationId: api.controllers.agent_controller.post_group
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/group:create'
       parameters:
@@ -6283,7 +6283,7 @@ paths:
         - Groups
       summary: "Get agents in a group"
       description: "Return the list of agents that belong to the specified group"
-      operationId: api.controllers.agents_controller.get_agents_in_group
+      operationId: api.controllers.agent_controller.get_agents_in_group
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
         - $ref: '#/x-rbac-catalog/actions/group:read'
@@ -6412,7 +6412,7 @@ paths:
         - Groups
       summary: "Get group configuration"
       description: "Return the group configuration defined in the `agent.conf` file"
-      operationId: api.controllers.agents_controller.get_group_config
+      operationId: api.controllers.agent_controller.get_group_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/group:read'
       parameters:
@@ -6481,7 +6481,7 @@ paths:
       summary: "Update group configuration"
       description: "Update an specified group's configuration. This API call expects a full valid XML file with the
       shared configuration tags/syntax"
-      operationId: api.controllers.agents_controller.put_group_config
+      operationId: api.controllers.agent_controller.put_group_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/group:update_config'
       parameters:
@@ -6530,7 +6530,7 @@ paths:
         - Groups
       summary: "Get group files"
       description: "Return the files placed under the group directory"
-      operationId: api.controllers.agents_controller.get_group_files
+      operationId: api.controllers.agent_controller.get_group_files
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/group:read'
       parameters:
@@ -6601,7 +6601,7 @@ paths:
         - Groups
       summary: "Get a file in group"
       description: "Return the contents of the specified group file parsed to JSON"
-      operationId: api.controllers.agents_controller.get_group_file_json
+      operationId: api.controllers.agent_controller.get_group_file_json
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/group:read'
       parameters:
@@ -6656,7 +6656,7 @@ paths:
         - Groups
       summary: "Get a file in group"
       description: "Return the contents of the specified group file parsed to XML"
-      operationId: api.controllers.agents_controller.get_group_file_xml
+      operationId: api.controllers.agent_controller.get_group_file_xml
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/group:read'
       parameters:
@@ -6702,7 +6702,7 @@ paths:
       summary: "Add agent full"
       description: "Add an agent specifying its name, ID and IP. If an agent with the same ID already exists, replace
       it using `force` parameter"
-      operationId: api.controllers.agents_controller.insert_agent
+      operationId: api.controllers.agent_controller.insert_agent
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:create'
       parameters:
@@ -6782,7 +6782,7 @@ paths:
         - Agents
       summary: "Add agent quick"
       description: "Add a new agent with name `agent_name`. This agent will use `any` as IP"
-      operationId: api.controllers.agents_controller.post_new_agent
+      operationId: api.controllers.agent_controller.post_new_agent
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:create'
       parameters:
@@ -6823,7 +6823,7 @@ paths:
         - Agents
       summary: "List agents without group"
       description: "Return a list with all the available agents without an assigned group"
-      operationId: api.controllers.agents_controller.get_agent_no_group
+      operationId: api.controllers.agent_controller.get_agent_no_group
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
       parameters:
@@ -6947,7 +6947,7 @@ paths:
           - Agents
         summary: "Restart agents in node"
         description: "Restart all agents which belong to a specific given node"
-        operationId: api.controllers.agents_controller.restart_agents_by_node
+        operationId: api.controllers.agent_controller.restart_agents_by_node
         x-rbac-actions:
           - $ref: '#/x-rbac-catalog/actions/cluster:read'
           - $ref: '#/x-rbac-catalog/actions/agent:restart'
@@ -6995,7 +6995,7 @@ paths:
         - Agents
       summary: "List outdated agents"
       description: "Return the list of outdated agents"
-      operationId: api.controllers.agents_controller.get_agent_outdated
+      operationId: api.controllers.agent_controller.get_agent_outdated
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
       parameters:
@@ -7049,7 +7049,7 @@ paths:
       - Agents
       summary: "Restart agents"
       description: "Restart all agents or a list of them"
-      operationId: api.controllers.agents_controller.restart_agents
+      operationId: api.controllers.agent_controller.restart_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:restart'
       parameters:
@@ -7096,7 +7096,7 @@ paths:
       summary: "List agents distinct"
       description: "Return all the different combinations that agents have for the selected fields. It also indicates
       the total number of agents that have each combination"
-      operationId: api.controllers.agents_controller.get_agent_fields
+      operationId: api.controllers.agent_controller.get_agent_fields
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
       parameters:
@@ -7194,7 +7194,7 @@ paths:
         - Agents
       summary: "Summarize agents OS"
       description: "Return a summary of the OS of available agents"
-      operationId: api.controllers.agents_controller.get_agent_summary_os
+      operationId: api.controllers.agent_controller.get_agent_summary_os
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
       parameters:
@@ -7235,7 +7235,7 @@ paths:
         - Agents
       summary: "Summarize agents status"
       description: "Return a summary of the status of available agents"
-      operationId: api.controllers.agents_controller.get_agent_summary_status
+      operationId: api.controllers.agent_controller.get_agent_summary_status
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
       parameters:
@@ -8984,7 +8984,7 @@ paths:
       summary: "Get CDB lists"
       description: "Return the contents of all CDB lists. Optionally, the result can be filtered by several criteria.
       See available parameters for more details"
-      operationId: api.controllers.lists_controller.get_lists
+      operationId: api.controllers.list_controller.get_lists
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/lists:read'
       parameters:
@@ -9073,7 +9073,7 @@ paths:
       summary: "Get CDB lists files"
       description: "Return the path from all CDB lists. Use this method to know all the CDB lists and their location in
       the filesystem relative to Wazuh installation folder"
-      operationId: api.controllers.lists_controller.get_lists_files
+      operationId: api.controllers.list_controller.get_lists_files
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/lists:read'
       parameters:
@@ -10769,7 +10769,7 @@ paths:
       summary: "List rules"
       description: "Return a list containing information about each rule such as file where it's defined, description,
       rule group, status, etc"
-      operationId: api.controllers.rules_controller.get_rules
+      operationId: api.controllers.rule_controller.get_rules
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/rules:read'
       parameters:
@@ -10865,7 +10865,7 @@ paths:
       - Rules
       summary: "Get groups"
       description: "Return a list containing all rule groups names"
-      operationId: api.controllers.rules_controller.get_rules_groups
+      operationId: api.controllers.rule_controller.get_rules_groups
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/rules:read'
       parameters:
@@ -10918,7 +10918,7 @@ paths:
       - Rules
       summary: "Get requirements"
       description: "Return all specified requirement names defined in the Wazuh ruleset"
-      operationId: api.controllers.rules_controller.get_rules_requirement
+      operationId: api.controllers.rule_controller.get_rules_requirement
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/rules:read'
       parameters:
@@ -10973,7 +10973,7 @@ paths:
       - Rules
       summary: "Get files"
       description: "Return a list containing all files used to define rules and their status"
-      operationId: api.controllers.rules_controller.get_rules_files
+      operationId: api.controllers.rule_controller.get_rules_files
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/rules:read'
       parameters:
@@ -11035,7 +11035,7 @@ paths:
         - Rules
       summary: "Download rule"
       description: "Download an specified rule file"
-      operationId: api.controllers.rules_controller.get_download_file
+      operationId: api.controllers.rule_controller.get_download_file
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/rules:read'
       parameters:
@@ -11524,7 +11524,7 @@ paths:
       summary: "List decoders"
       description: "Return information about all decoders included in ossec.conf. This information include decoder's
       route, decoder's name, decoder's file among others"
-      operationId: api.controllers.decoders_controller.get_decoders
+      operationId: api.controllers.decoder_controller.get_decoders
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/decoders:read'
       parameters:
@@ -11598,7 +11598,7 @@ paths:
       summary: "Get files"
       description: "Return information about all decoders files used in Wazuh. This information include decoder's file,
       decoder's route and decoder's status among others"
-      operationId: api.controllers.decoders_controller.get_decoders_files
+      operationId: api.controllers.decoder_controller.get_decoders_files
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/decoders:read'
       parameters:
@@ -11657,7 +11657,7 @@ paths:
       - Decoders
       summary: "Download decoder"
       description: "Download an specified decoder file"
-      operationId: api.controllers.decoders_controller.get_download_file
+      operationId: api.controllers.decoder_controller.get_download_file
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/decoders:read'
       parameters:
@@ -11704,7 +11704,7 @@ paths:
       summary: "Get parent decoders"
       description: "Return information about all parent decoders. A parent decoder is a decoder used as base of other
       decoders"
-      operationId: api.controllers.decoders_controller.get_decoders_parents
+      operationId: api.controllers.decoder_controller.get_decoders_parents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/decoders:read'
       parameters:
@@ -15370,3 +15370,4 @@ paths:
 externalDocs:
   description: "Find more about Wazuh API usage"
   url: 'https://documentation.wazuh.com/4.1/user-manual/api/index.html'
+
