@@ -29,7 +29,12 @@ const char *task_manager_json_keys[] = {
     [WM_TASK_STATUS] = "status",
     [WM_TASK_ERROR_MSG] = "error_msg",
     [WM_TASK_CREATE_TIME] = "create_time",
-    [WM_TASK_LAST_UPDATE_TIME] = "update_time"
+    [WM_TASK_LAST_UPDATE_TIME] = "update_time",
+    // Task WDB response
+    [WM_TASK_WDB_OK] = "ok",
+    [WM_TASK_WDB_ERROR] = "err",
+    [WM_TASK_WDB_PAYLOAD] = "payload",
+    [WM_TASK_WDB_OUTPUT] = "output"
 };
 
 const char *task_manager_commands_list[] = {

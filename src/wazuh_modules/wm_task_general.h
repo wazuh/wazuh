@@ -41,7 +41,12 @@ typedef enum _task_manager_json_key {
     WM_TASK_STATUS,
     WM_TASK_ERROR_MSG,
     WM_TASK_CREATE_TIME,
-    WM_TASK_LAST_UPDATE_TIME
+    WM_TASK_LAST_UPDATE_TIME,
+    // Wdb task response
+    WM_TASK_WDB_OK,
+    WM_TASK_WDB_ERROR,
+    WM_TASK_WDB_PAYLOAD,
+    WM_TASK_WDB_OUTPUT
 } task_manager_json_key;
 
 /**

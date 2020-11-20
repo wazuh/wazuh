@@ -707,6 +707,8 @@ int wdb_parse(char * input, char * output) {
                 wdb_leave(wdb);
                 return OS_INVALID;
             }
+            cJSON_AddStringToObject(parameters_json, "command", "upgrade");
+
             result = wdb_parse_task_upgrade(wdb, parameters_json, output);
             cJSON_Delete(parameters_json);
         } else if (!strcmp("upgrade_custom", query)) {
@@ -723,7 +725,9 @@ int wdb_parse(char * input, char * output) {
                 wdb_leave(wdb);
                 return OS_INVALID;
             }
-            result = wdb_parse_task_upgrade_custom(wdb, parameters_json, output);
+            cJSON_AddStringToObject(parameters_json, "command", "upgrade_custom");
+
+            result = wdb_parse_task_upgrade(wdb, parameters_json, output);
             cJSON_Delete(parameters_json);
         } else if (!strcmp("upgrade_get_status", query)) {
             if (!next) {
@@ -5272,6 +5276,56 @@ int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output) {
 }
 
 int wdb_parse_task_upgrade(wdb_t* wdb, const cJSON *parameters, char* output) {
+    int agent_id = OS_INVALID;
+    int task_id = OS_INVALID;
+    char *node;
+    char *module;
+    char *upgrade_command;
+
+    cJSON *agent_id_json = cJSON_GetObjectItem(parameters, "agent");
+    if (!agent_id_json || (agent_id_json->type != cJSON_Number)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error insert task: 'parsing agent_id error'");
+        return OS_INVALID;
+    }
+    agent_id = agent_id_json->valueint;
+
+    cJSON *node_json = cJSON_GetObjectItem(parameters, "node");
+    if (!node_json || (node_json->type != cJSON_String)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error insert task: 'parsing node error'");
+        return OS_INVALID;
+    }
+    node = node_json->valuestring;
+
+    cJSON *module_json = cJSON_GetObjectItem(parameters, "module");
+    if (!module_json || (module_json->type != cJSON_String)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error insert task: 'parsing module error'");
+        return OS_INVALID;
+    }
+    module = module_json->valuestring;
+
+    cJSON *upgrade_command_json = cJSON_GetObjectItem(parameters, "command");
+    if (!upgrade_command_json || (upgrade_command_json->type != cJSON_String)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error insert task: 'parsing command error'");
+        return OS_INVALID;
+    }
+    upgrade_command = upgrade_command_json->valuestring;
+
+    // Insert upgrade task into DB
+    if (task_id = wdb_task_insert_task(wdb, agent_id, node, module, upgrade_command), task_id == OS_INVALID) {
+        snprintf(output, OS_MAXSTR + 1, "err Error insert task: %s", sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    } else {
+        cJSON *response = cJSON_CreateObject();
+        char *out = NULL;
+
+        cJSON_AddNumberToObject(response, "task_id", task_id);
+
+        out = cJSON_PrintUnformatted(response);
+        snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+        os_free(out);
+        cJSON_Delete(response);
+    }
+
     return OS_SUCCESS;
 }
 
