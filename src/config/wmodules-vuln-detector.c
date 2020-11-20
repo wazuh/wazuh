@@ -266,8 +266,8 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
 
     if (upd_list[os_index]) {
         mwarn("Duplicate OVAL configuration for '%s%s%s'", upd->dist, upd->version ? " " : "", upd->version ? upd->version : "");
-        retval = OS_SUPP_SIZE;
-        goto end;
+        wm_vuldet_free_update_node(upd_list[os_index]);
+        free(upd_list[os_index]);
     }
 
     upd_list[os_index] = upd;
