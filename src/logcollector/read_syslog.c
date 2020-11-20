@@ -37,13 +37,12 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
     getlog_params.length = OS_MAXSTR - OS_LOG_HEADER;
     getlog_params.buffer = str;
 
-    if (lf->multiline){
+    if (lf->multiline) {
         getlog = getlog_multiline;
-        getlog_ctxt = lf->multiline;
-    }
-    else{
+        getlog_params.ctxt = lf->multiline;
+    } else {
         getlog = getlog_singleline;
-        getlog_ctxt = NULL;
+        getlog_params.ctxt = NULL;
     }
 
     SHA_CTX context;

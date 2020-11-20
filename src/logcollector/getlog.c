@@ -10,12 +10,12 @@
 
 #include "getlog.h"
 
-char *getlog_singleline(getlog_params_t * params){
-    return fgets(params->buffer,params->length,params->stream);
+char * getlog_singleline(getlog_params_t * params) { 
+    return fgets(params->buffer, params->length, params->stream);
 }
 
-char *getlog_multiline(getlog_params_t * params){
-    // Handle multiline 
+char * getlog_multiline(getlog_params_t * params) {
+    // Handle multiline
     w_multiline_config_t * ml_cfg = (w_multiline_config_t *) params->ctxt;
     return NULL;
 }

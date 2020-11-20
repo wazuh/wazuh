@@ -24,6 +24,7 @@
 #include <sys/types.h>
 #include "labels_op.h"
 #include "expression.h"
+#include "os_xml/os_xml.h"
 
 extern int maximum_files;
 extern int total_files;
@@ -50,14 +51,13 @@ typedef struct _logtarget {
 
 /* Logreader config */
 typedef enum{
-    ML_REPLACE_ERROR = -1,
+    ML_REPLACE_NO_REPLACE,
     ML_REPLACE_NONE,
     ML_REPLACE_WSPACE,
     ML_REPLACE_TAB
 } w_multiline_replace_type_t;
 
 typedef enum{
-    ML_MATCH_ERROR = -1,
     ML_MATCH_START,
     ML_MATCH_ALL,
     ML_MATCH_END
@@ -90,6 +90,7 @@ typedef struct _logreader {
     char *file;
     char *logformat;
     w_multiline_config_t * multiline;
+    long timeout; // internal
     long linecount;
     char *djb_program_name;
     char *command;
@@ -140,5 +141,24 @@ void Free_Logreader(logreader * config);
 
 /* Removes a specific localfile of an array */
 int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *globf);
+
+/**
+ * @brief Get match attribute for multiline regex 
+ * @param node node to find match value
+ * @retval ML_MATCH_START if match is "start" or if the attribute is not present
+ * @retval ML_MATCH_ALL if match is "all"
+ * @retval ML_MATCH_END if match is "end"
+ */
+w_multiline_match_type_t w_get_attr_match(xml_node * node);
+
+/**
+ * @brief Get replace attribute for multiline regex 
+ * @param node node to find match value
+ * @retval ML_REPLACE_NO_REPLACE if replace is "no-replace" or if the attribute is not present
+ * @retval ML_REPLACE_WSPACE if replace is "wspace"
+ * @retval ML_REPLACE_TAB if replace is "tab"
+ * @retval ML_REPLACE_NONE if replace is "none"
+ */
+w_multiline_replace_type_t w_get_attr_replace(xml_node * node);
 
 #endif /* CLOGREADER_H */
