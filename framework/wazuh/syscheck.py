@@ -17,9 +17,17 @@ from wazuh.rbac.decorators import expose_resources
 
 @expose_resources(actions=["syscheck:run"], resources=["agent:id:{agent_list}"])
 def run(agent_list=None):
-    """Run syscheck scan.
-    :param agent_list: Run syscheck in the agent.
-    :return: AffectedItemsWazuhResult.
+    """Run a syscheck scan in the specified agents.
+
+    Parameters
+    ----------
+    agent_list : str
+        List of the agents IDs to run the scan for.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Confirmation/Error message.
     """
     result = AffectedItemsWazuhResult(all_msg='Syscheck scan was restarted on returned agents',
                                       some_msg='Syscheck scan was not restarted on some agents',
@@ -46,10 +54,17 @@ def run(agent_list=None):
 
 @expose_resources(actions=["syscheck:clear"], resources=["agent:id:{agent_list}"])
 def clear(agent_list=None):
-    """Clear the syscheck database for a list of agents.
+    """Clear the syscheck database of the specified agents.
 
-    :param agent_list: List of agent ids
-    :return: AffectedItemsWazuhResult.
+    Parameters
+    ----------
+    agent_list : str
+        Agent ID.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Confirmation/Error message.
     """
     result = AffectedItemsWazuhResult(all_msg='Syscheck database was cleared on returned agents',
                                       some_msg='Syscheck database was not cleared on some agents',
@@ -78,10 +93,17 @@ def clear(agent_list=None):
 
 @expose_resources(actions=["syscheck:read"], resources=["agent:id:{agent_list}"])
 def last_scan(agent_list):
-    """Gets the last scan of the agent.
+    """Get the last scan of an agent.
 
-    :param agent_list: Agent ID.
-    :return: AffectedItemsWazuhResult.
+    Parameters
+    ----------
+    agent_list : str
+        Agent ID.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Confirmation/Error message.
     """
     my_agent = Agent(agent_list[0])
     result = AffectedItemsWazuhResult(all_msg='Last syscheck scan of the agent was returned',
@@ -135,26 +157,46 @@ def last_scan(agent_list):
 
 @expose_resources(actions=["syscheck:read"], resources=["agent:id:{agent_list}"])
 def files(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters=None,
-          q='', summary=False, distinct=False):
-    """Return a list of files from the database that match the filters
+          q='', nested=True, summary=False, distinct=False):
+    """Return a list of files from the syscheck database of the specified agents.
 
-    :param agent_list: Agent ID.
-    :param filters: Fields to filter by
-    :param summary: Returns a summary grouping by filename.
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    :param search: Looks for items with the specified string.
-    :param select: Select fields to return. Format: ["field1","field2"].
-    :param q: Query to filter by
-    :param distinct: Look for distinct values
-    :return: AffectedItemsWazuhResult.
+    Parameters
+    ----------
+    agent_list : str
+        Agent ID.
+    filters : dict
+        Fields to filter by.
+    summary : bool
+        Returns a summary grouping by filename.
+    offset : int
+        First item to return.
+    limit : int
+        Maximum number of items to return.
+    sort : str
+        Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    search : str
+        Looks for items with the specified string.
+    select : list[str]
+        Select fields to return. Format: ["field1","field2"].
+    q : str
+        Query to filter by.
+    nested : bool
+        Specify whether there are nested fields or not.
+    distinct : bool
+        Look for distinct values.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Confirmation/Error message.
     """
     if filters is None:
         filters = {}
-    parameters = {"date": "date", "mtime": "mtime", "file": "file", "size": "size", "perm": "perm", "uname": "uname",
-                  "gname": "gname", "md5": "md5", "sha1": "sha1", "sha256": "sha256", "inode": "inode", "gid": "gid",
-                  "uid": "uid", "type": "type", "changes": "changes", "attributes": "attributes"}
+    parameters = {"date": "date", "arch": "arch", "value.type": "value_type", "value.name": "value_name",
+                  "mtime": "mtime", "file": "file", "size": "size", "perm": "perm",
+                  "uname": "uname", "gname": "gname", "md5": "md5", "sha1": "sha1", "sha256": "sha256",
+                  "inode": "inode", "gid": "gid", "uid": "uid", "type": "type", "changes": "changes",
+                  "attributes": "attributes"}
     summary_parameters = {"date": "date", "mtime": "mtime", "file": "file"}
     result = AffectedItemsWazuhResult(all_msg='FIM findings of the agent were returned',
                                       none_msg='No FIM information was returned')
@@ -164,8 +206,9 @@ def files(agent_list=None, offset=0, limit=common.database_limit, sort=None, sea
         del filters['hash']
 
     db_query = WazuhDBQuerySyscheck(agent_id=agent_list[0], offset=offset, limit=limit, sort=sort, search=search,
-                                    filters=filters, query=q, select=select, table='fim_entry', distinct=distinct,
-                                    fields=summary_parameters if summary else parameters)
+                                    filters=filters, nested=nested, query=q, select=select, table='fim_entry',
+                                    distinct=distinct, fields=summary_parameters if summary else parameters,
+                                    min_select_fields={'file'})
 
     db_query = db_query.run()
 
