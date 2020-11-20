@@ -45,6 +45,8 @@ All notable changes to this project will be documented in this file.
 
 - **API:**
   - Fixed an error with `/groups/{group_id}/config` endpoints (GET and PUT) when using complex `localfile` configurations. ([#6276](https://github.com/wazuh/wazuh/pull/6383))
+- **Core:**
+  - Fix error in Analysisd when getting the ossec group ID ([#6688](https://github.com/wazuh/wazuh/pull/6688))
 
 ### Removed
 
@@ -75,7 +77,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Wazuh API:
-    - Added new endpoints to run the logtest tool and delete a logtest session ([#5984](https://github.com/wazuh/wazuh/pull/5984))  
+    - Added new endpoints to run the logtest tool and delete a logtest session ([#5984](https://github.com/wazuh/wazuh/pull/5984))
 - Added new framework modules to use the logtest tool ([#5870](https://github.com/wazuh/wazuh/pull/5870))
 
 ## [v4.0.0] -
