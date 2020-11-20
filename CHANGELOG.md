@@ -15,7 +15,10 @@ All notable changes to this project will be documented in this file.
 - Added support to macOS in Vulnerability Detector. ([#6532](https://github.com/wazuh/wazuh/pull/6532))
 
 - **API:**
-  - Added endpoints to query and manage Rootcheck data.  ([#6496](https://github.com/wazuh/wazuh/pull/6496))
+  - Added endpoints to query and manage Rootcheck data. ([#6496](https://github.com/wazuh/wazuh/pull/6496))
+
+- **AWS Module:**
+  - Add support for AWS's Elastic Load Balancing. ([#6034](https://github.com/wazuh/wazuh/issues/6034))
 
 - **Framework:**
   - Improved `q` parameter on rules, decoders and cdb-lists modules to allow multiple nested fields. ([#6560](https://github.com/wazuh/wazuh/pull/6560))

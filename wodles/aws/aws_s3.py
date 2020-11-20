@@ -2050,7 +2050,7 @@ class AWSALBBucket(AWSCustomBucket):
                 "received_bytes", "sent_bytes", "request", "user_agent", "ssl_cipher", "ssl_protocol",
                 "target_group_arn", "trace_id", "domain_name", "chosen_cert_arn", "matched_rule_priority",
                 "request_creation_time", "action_executed", "redirect_url", "error_reason", "target_port_list",
-                "target_status_code_list")
+                "target_status_code_list", "classification", "classification_reason")
             tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
 
             return [dict(x, source='alb') for x in tsv_file]
