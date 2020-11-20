@@ -45,6 +45,7 @@ void wm_sys_send_message(const void* data) {
 }
 
 void vm_sys_shutdown() {
+    mtinfo(WM_SYS_LOGTAG, "Shutdown received for Syscollector.");
     if (queue_fd) {
         close(queue_fd);
     }
