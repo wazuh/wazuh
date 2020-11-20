@@ -40,6 +40,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_age = "age";
     const char *xml_localfile_exclude = "exclude";
     const char *xml_localfile_binaries = "ignore_binaries";
+    const char *xml_localfile_multiline_regex =  "multiline_regex";
 
     logreader *logf;
     logreader_config *log_config;
@@ -323,6 +324,26 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
+        } else if (strcasecmp(node[i]->element, xml_localfile_multiline_regex) == 0) {
+
+            if (!logf[pl].multiline) {
+                os_calloc(1, sizeof(w_multiline_config_t), logf[pl].multiline);
+                w_calloc_expression_t(&logf[pl].multiline->regex, EXP_TYPE_PCRE2);
+
+                if (!w_expression_compile(logf[pl].multiline->regex, node[i]->content, 0)) {
+                    merror(LOCALFILE_REGEX, node[i]->content);
+                    w_free_expression_t(&logf[pl].multiline->regex);
+                    os_free(logf[pl].multiline);
+                    return (OS_INVALID);
+                }
+
+                logf[pl].multiline->match_type = w_get_attr_match(node[i]);
+                logf[pl].multiline->replace_type = w_get_attr_replace(node[i]);
+
+            } else {
+                mwarn("duplicate tag '%s' is ignored", xml_localfile_multiline_regex);
+            }
+
         } else if (strcasecmp(node[i]->element, xml_localfile_exclude) == 0) {
             if (logf[pl].exclude) {
                 os_free(logf[pl].exclude);
@@ -402,6 +423,13 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     if (!logf[pl].logformat) {
         merror(MISS_LOG_FORMAT);
         return (OS_INVALID);
+    }
+
+    /* Only syslog support multiline_regex */
+    if (logf[pl].multiline && (strcmp(logf[pl].logformat, "syslog") != 0)) {
+        mwarn(LOGCOLLECTOR_MULTILINE_SUPPORT, logf[pl].logformat);
+        w_free_expression_t(&logf[pl].multiline->regex);
+        os_free(logf[pl].multiline);
     }
 
         /* Verify a valid event log config */
@@ -678,4 +706,65 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *gl
         }
     }
     return (OS_INVALID);
+}
+
+// @TODO @TO-DO fixme
+w_multiline_match_type_t w_get_attr_match(xml_node * node) {
+
+    const char * xml_attr_name = "match";
+    const char * xml_start = "start";
+    const char * xml_all = "all";
+    const char * xml_end = "end";
+
+    /* default value */
+    w_multiline_match_type_t retval = ML_MATCH_START;
+    const char * str_match = w_get_attr_val_by_name(node, xml_attr_name);
+
+    if (!str_match) {
+        return retval;
+    }
+
+    if (strcasecmp(str_match, xml_start) == 0) {
+        retval = ML_MATCH_START;
+    } else if (strcasecmp(str_match, xml_all) == 0) {
+        retval = ML_MATCH_ALL;
+    } else if (strcasecmp(str_match, xml_end) == 0) {
+        retval = ML_MATCH_END;
+    } else {
+        mwarn(LOGCOLLECTOR_INV_VALUE_DEFAULT, str_match, xml_attr_name, "multiline_regex");
+    }
+
+    return retval;
+}
+
+// @TODO @TO-DO fixme
+w_multiline_replace_type_t w_get_attr_replace(xml_node * node) {
+
+    const char * xml_attr_name = "replace";
+    const char * xml_no_replace = "no-replace";
+    const char * xml_wspace = "wspace";
+    const char * xml_tab = "tab";
+    const char * xml_none = "none";
+
+    /* default value */
+    w_multiline_replace_type_t retval = ML_REPLACE_NO_REPLACE;
+    const char * str_replace = w_get_attr_val_by_name(node, xml_attr_name);
+
+    if (!str_replace) {
+        return retval;
+    }
+
+    if (strcasecmp(str_replace, xml_no_replace) == 0) {
+        retval = ML_REPLACE_NO_REPLACE;
+    } else if (strcasecmp(str_replace, xml_wspace) == 0) {
+        retval = ML_REPLACE_WSPACE;
+    } else if (strcasecmp(str_replace, xml_tab) == 0) {
+        retval = ML_REPLACE_TAB;
+    } else if (strcasecmp(str_replace, xml_none) == 0) {
+        retval = ML_REPLACE_NONE;
+    } else {
+        mwarn(LOGCOLLECTOR_INV_VALUE_DEFAULT, str_replace, xml_attr_name, "multiline_regex");
+    }
+
+    return retval;
 }

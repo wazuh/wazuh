@@ -67,4 +67,8 @@
 #define ANALYSISD_INV_VALUE_DEFAULT             "(7601): Invalid value for attribute '%s' in '%s' option " \
                                                 "(decoder `%s`). Default value will be taken"
 
+/* Logcollector */
+#define LOGCOLLECTOR_INV_VALUE_DEFAULT          "(8000): Invalid value '%s' for attribute '%s' in '%s' option. " \
+                                                "Default value will be taken"
+#define LOGCOLLECTOR_MULTILINE_SUPPORT          "(8001): log_format '%s' does not support multiline_regex option. Will be ignored"
 #endif /* WARN_MESSAGES_H */
