@@ -44,6 +44,24 @@ void wm_sys_send_message(const void* data) {
     wm_sendmsg(eps,queue_fd, data, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
 }
 
+void vm_sys_shutdown() {
+    if (queue_fd) {
+        close(queue_fd);
+    }
+
+    if (syscollector_stop_ptr){
+        syscollector_stop_ptr();
+    }
+
+    if (syscollector_module){
+        so_free_library(syscollector_module);
+    }
+    queue_fd = 0;
+    syscollector_module = NULL;
+    syscollector_start_ptr = NULL;
+    syscollector_stop_ptr = NULL;
+    syscollector_sync_message_ptr = NULL;
+}
 
 void* wm_sys_main(wm_sys_t *sys) 
 {
@@ -67,6 +85,10 @@ void* wm_sys_main(wm_sys_t *sys)
         pthread_exit(NULL);
     }
 
+    #ifdef WIN32
+    atexit(vm_sys_shutdown);
+    #endif // WIN32
+
     if (syscollector_start_ptr) {
         mtinfo(WM_SYS_LOGTAG, "Starting Syscollector.");
         syscollector_start_ptr(sys->interval,
@@ -89,16 +111,7 @@ void* wm_sys_main(wm_sys_t *sys)
 
 void wm_sys_destroy(wm_sys_t *data) 
 {
-    close(queue_fd);
-
-    if (syscollector_stop_ptr){
-        syscollector_stop_ptr();
-    }
-
-    if (syscollector_module){
-        so_free_library(syscollector_module);
-    }
-
+    vm_sys_shutdown();
     free(data);
 }
 
