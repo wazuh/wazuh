@@ -709,7 +709,7 @@ int wdb_parse(char * input, char * output) {
                 return OS_INVALID;
             }
 
-            result = wdb_parse_task_upgrade(wdb, parameters_json, output);
+            result = wdb_parse_task_upgrade(wdb, parameters_json, "upgrade", output);
             cJSON_Delete(parameters_json);
         } else if (!strcmp("upgrade_custom", query)) {
             if (!next) {
@@ -727,7 +727,7 @@ int wdb_parse(char * input, char * output) {
                 return OS_INVALID;
             }
 
-            result = wdb_parse_task_upgrade_custom(wdb, parameters_json, output);
+            result = wdb_parse_task_upgrade(wdb, parameters_json, "upgrade_custom", output);
             cJSON_Delete(parameters_json);
         } else if (!strcmp("upgrade_get_status", query)) {
             if (!next) {
@@ -5287,7 +5287,7 @@ int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output) {
     return OS_SUCCESS;
 }
 
-int wdb_parse_task_upgrade(wdb_t* wdb, const cJSON *parameters, char* output) {
+int wdb_parse_task_upgrade(wdb_t* wdb, const cJSON *parameters, const char *command, char* output) {
     int agent_id = OS_INVALID;
     int task_id = OS_INVALID;
     char *node;
@@ -5315,15 +5315,8 @@ int wdb_parse_task_upgrade(wdb_t* wdb, const cJSON *parameters, char* output) {
     }
     module = module_json->valuestring;
 
-    cJSON *upgrade_command_json = cJSON_GetObjectItem(parameters, "command");
-    if (!upgrade_command_json || (upgrade_command_json->type != cJSON_String)) {
-        snprintf(output, OS_MAXSTR + 1, "err Error insert task: 'parsing command error'");
-        return OS_INVALID;
-    }
-    upgrade_command = upgrade_command_json->valuestring;
-
     // Insert upgrade task into DB
-    if (task_id = wdb_task_insert_task(wdb, agent_id, node, module, upgrade_command), task_id == OS_INVALID) {
+    if (task_id = wdb_task_insert_task(wdb, agent_id, node, module, command), task_id == OS_INVALID) {
         snprintf(output, OS_MAXSTR + 1, "err Error insert task: %s", sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     } else {
@@ -5338,10 +5331,6 @@ int wdb_parse_task_upgrade(wdb_t* wdb, const cJSON *parameters, char* output) {
         cJSON_Delete(response);
     }
 
-    return OS_SUCCESS;
-}
-
-int wdb_parse_task_upgrade_custom(wdb_t* wdb, const cJSON *parameters, char* output) {
     return OS_SUCCESS;
 }
 
