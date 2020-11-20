@@ -19,6 +19,15 @@ static int wdb_adjust_upgrade(wdb_t *wdb, int upgrade_step);
 // - The attributes field of the fim_entry table is decoded
 static int wdb_adjust_v4(wdb_t *wdb);
 
+/* SQL statements used for the global.db upgrade */
+typedef enum wdb_stmt_global {
+    WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE,
+} wdb_stmt_metadata;
+
+static const char *SQL_GLOBAL_STMT[] = {
+    "SELECT COUNT(*) FROM agent WHERE id=0 AND last_keepalive=253402300799;",
+};
+
 // Upgrade agent database to last version
 wdb_t * wdb_upgrade(wdb_t *wdb) {
     const char * UPDATES[] = {
@@ -337,4 +346,33 @@ int wdb_adjust_v4(wdb_t *wdb) {
     }
 
     return 0;
+}
+
+// Check the presence of manager's keepalive in the global database
+int wdb_global_check_manager_keepalive(wdb_t *wdb) {
+    sqlite3_stmt *stmt = NULL;
+    int result = -1;
+
+    if (sqlite3_prepare_v2(wdb->db,
+                           SQL_GLOBAL_STMT[WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE],
+                           -1,
+                           &stmt,
+                           NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_prepare_v2(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    switch (sqlite3_step(stmt)) {
+    case SQLITE_ROW:
+        result = sqlite3_column_int(stmt, 0);
+        break;
+    case SQLITE_DONE:
+        result = OS_SUCCESS;
+        break;
+    default:
+        result = OS_INVALID;
+    }
+
+    sqlite3_finalize(stmt);
+    return result;
 }
