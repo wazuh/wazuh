@@ -160,7 +160,6 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GET_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT,
     WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS,
-    WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
     WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
@@ -1742,7 +1741,7 @@ cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int ke
 /**
  * @brief Check the agent 0 status in the global database
  *
- * The table "agent" must have a tuple with id=0 and last_keepalive=1999/12/31 23:59:59 UTC.
+ * The table "agent" must have a tuple with id=0 and last_keepalive=9999/12/31 23:59:59 UTC.
  * Otherwise, the database is either corrupt or old.
  *
  * @return Number of tuples matching that condition.

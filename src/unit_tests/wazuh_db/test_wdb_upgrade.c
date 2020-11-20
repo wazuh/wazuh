@@ -117,7 +117,14 @@ void test_wdb_upgrade_global_update_success(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 2");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v2_sql);
     will_return(__wrap_wdb_sql_exec, 0);
-    will_return(__wrap_wdb_global_check_manager_keepalive, 1);
+
+    // wdb_global_check_manager_keepalive
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 1);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
     ret = wdb_upgrade_global(data->wdb);
 
     assert_int_equal(ret, data->wdb);
@@ -130,7 +137,11 @@ void test_wdb_upgrade_global_update_delete_old_version(void **state)
 
     expect_string(__wrap_wdb_metadata_table_check, key, "metadata");
     will_return(__wrap_wdb_metadata_table_check, 0);
-    will_return(__wrap_wdb_global_check_manager_keepalive, 0);
+
+    // wdb_global_check_manager_keepalive
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     //Global backup success
     will_return(__wrap_wdb_close, 0);
@@ -158,7 +169,6 @@ void test_wdb_upgrade_global_update_delete_old_version(void **state)
     will_return(__wrap_wdb_init, (wdb_t*)1);
     expect_value(__wrap_wdb_pool_append, wdb, (wdb_t*)1);
 
-
     ret = wdb_upgrade_global(data->wdb);
 
     assert_int_equal(ret, 1);
@@ -175,7 +185,13 @@ void test_wdb_upgrade_global_update_fail(void **state)
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v1_sql);
     will_return(__wrap_wdb_sql_exec, -1);
     expect_string(__wrap__mwarn, formatted_msg, "Failed to update global.db to version 1");
-    will_return(__wrap_wdb_global_check_manager_keepalive, 1);
+
+    // wdb_global_check_manager_keepalive
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 1);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     //Global backup success
     will_return(__wrap_wdb_close, 0);
@@ -246,7 +262,6 @@ void test_wdb_upgrade_global_get_version_fail(void **state)
     expect_string(__wrap_wdb_init, id, "global");
     will_return(__wrap_wdb_init, (wdb_t*)1);
     expect_value(__wrap_wdb_pool_append, wdb, (wdb_t*)1);
-
 
     ret = wdb_upgrade_global(data->wdb);
 
@@ -584,6 +599,51 @@ void test_wdb_backup_global_qlite3_open_v2_fail(void **state)
     assert_int_equal(ret, NULL);
 }
 
+/* Tests wdb_global_check_manager_keepalive */
+
+void test_wdb_global_check_manager_keepalive_prepare_error(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    will_return(__wrap_sqlite3_prepare_v2, -1);
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_prepare_v2(): ERROR MESSAGE");
+
+    assert_int_equal(wdb_global_check_manager_keepalive(data->wdb), OS_INVALID);
+}
+
+void test_wdb_global_check_manager_keepalive_step_error(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    assert_int_equal(wdb_global_check_manager_keepalive(data->wdb), OS_INVALID);
+}
+
+void test_wdb_global_check_manager_keepalive_step_nodata(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    assert_int_equal(wdb_global_check_manager_keepalive(data->wdb), OS_SUCCESS);
+}
+
+void test_wdb_global_check_manager_keepalive_step_ok(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 1);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    assert_int_equal(wdb_global_check_manager_keepalive(data->wdb), 1);
+}
+
+
 int main()
 {
 
@@ -608,6 +668,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_backup_global_close_fail, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_backup_global_create_fail, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_backup_global_qlite3_open_v2_fail, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_global_check_manager_keepalive_prepare_error, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_global_check_manager_keepalive_step_error, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_global_check_manager_keepalive_step_nodata, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_global_check_manager_keepalive_step_ok, setup_wdb, teardown_wdb),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
