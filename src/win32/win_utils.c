@@ -31,6 +31,14 @@ void *skthread()
     return (NULL);
 }
 
+static void stop_wmodules()
+{
+    wmodule * cur_module;
+    for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
+        cur_module->context->destroy(cur_module->data);
+    }
+}
+
 /* Locally start (after service/win init) */
 int local_start()
 {
@@ -250,6 +258,8 @@ int local_start()
                             (LPDWORD)&threadID2);
         }
     }
+
+    atexit(stop_wmodules);
 
     /* Start logcollector -- main process here */
     LogCollectorStart();
