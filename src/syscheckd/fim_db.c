@@ -1145,7 +1145,9 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
             goto end;
         }
 
+        w_mutex_lock(mutex);
         json_event = fim_json_event(entry->path, NULL, entry->data, pos, FIM_DELETE, mode, whodata_event, NULL);
+        w_mutex_unlock(mutex);
 
         if (!strcmp(FIM_ENTRY_TYPE[entry->data->entry_type], "file") && syscheck.opts[pos] & CHECK_SEECHANGES) {
             if (syscheck.disk_quota_enabled) {
