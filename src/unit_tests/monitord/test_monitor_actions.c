@@ -232,6 +232,7 @@ void test_monitor_agents_disconnection(void **state) {
     mond.monitor_agents = 1;
 
     expect_value(__wrap_wdb_disconnect_agents, keepalive, last_keepalive - mond.global.agents_disconnection_time);
+    expect_string(__wrap_wdb_disconnect_agents, sync_status, "synced");
     will_return(__wrap_wdb_disconnect_agents, agents_array_test);
 
     will_return_count(__wrap_time, 1604403550, -1);
@@ -348,7 +349,7 @@ void test_monitor_agents_alert_message_sent() {
     will_return(__wrap_wdb_get_agent_info, j_agent_info);
 
     mond.global.agents_disconnection_time = 20;
-    mond.global.agents_disconnection_alert_time = 200;
+    mond.global.agents_disconnection_alert_time = 100;
     will_return(__wrap_time, 1000);
 
     // monitor_send_disconnection_msg
