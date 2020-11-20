@@ -204,49 +204,6 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-    # GET /syscheck/000?limit=1&type=registry_key
-  - name: Try to get limited syscheck scan results for agent 000 using type filtering (registry_key)
-    request:
-      verify: False
-      <<: *get_syscheck_agent
-      params:
-        limit: 1
-        type: registry_key
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - file: "registry_key_1"
-              arch: "[x64]"
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-    # GET /syscheck/000?limit=1&type=registry_value
-  - name: Try to get limited syscheck scan results for agent 000 using type filtering (registry_value)
-    request:
-      verify: False
-      <<: *get_syscheck_agent
-      params:
-        limit: 1
-        type: registry_value
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - file: "registry_value_1"
-              arch: "[x32]"
-              value:
-                name: "value_name"
-                type: "value_type"
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
     # GET /syscheck/000?limit=1&md5={returned_md5}
   - name: Try to get limited syscheck scan results for agent 000 using md5 filtering
     request:
