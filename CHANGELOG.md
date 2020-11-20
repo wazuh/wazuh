@@ -47,6 +47,7 @@ All notable changes to this project will be documented in this file.
   - Fixed an error with `/groups/{group_id}/config` endpoints (GET and PUT) when using complex `localfile` configurations. ([#6276](https://github.com/wazuh/wazuh/pull/6383))
 - **Core:**
   - Fix error in Analysisd when getting the ossec group ID ([#6688](https://github.com/wazuh/wazuh/pull/6688))
+  - Prevent FIM from reporting configuration error when setting patterns that match no files. ([#6187](https://github.com/wazuh/wazuh/pull/6187))
 
 ### Removed
 
