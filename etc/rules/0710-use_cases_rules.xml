@@ -19,3 +19,17 @@
         <description>Netcat listening for incoming connections.</description>
     </rule>
 </group>
+
+<!-- Yara -->
+<group name="yara,">
+    <rule id="108000" level="0">
+        <decoded_as>yara-decoder</decoded_as>
+        <description>Yara grouping rule</description>
+    </rule>
+
+    <rule id="108001" level="12">
+        <if_sid>108000</if_sid>
+        <match>wazuh-yara: INFO - Scan result: </match>
+        <description>File "$(yara_scanned_file)" is a positive match. Yara rule: $(yara_rule)</description>
+    </rule>
+</group>

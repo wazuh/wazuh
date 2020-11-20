@@ -10,4 +10,14 @@
   <use_own_name>true</use_own_name>
   <regex offset="after_parent">'process list':\s+(\d+)\s+(\w+)\s+(\S+\.*)$</regex>
   <order>pid, user, command</order>
+
+<!-- Yara Decoders -->
+<decoder name="yara-decoder">
+    <prematch>wazuh-yara:</prematch>
+</decoder>
+
+<decoder name="yara-decoder1">
+    <parent>yara_decoder</parent>
+    <regex>wazuh-yara: (\S+) - Scan result: (\S+) (\S+)</regex>
+    <order>log_type, yara_rule, yara_scanned_file</order>
 </decoder>
