@@ -11,6 +11,7 @@
 #define GETLOG_H
 
 #include "shared.h"
+#include "expression.h"
 
 typedef struct{
     char * buffer;

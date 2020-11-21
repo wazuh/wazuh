@@ -85,6 +85,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logf[pl].exists = 1;
     logf[pl].future = 1;
     logf[pl].reconnect_time = DEFAULT_EVENTCHANNEL_REC_TIME;
+    logf[pl].multiline = NULL;
 
     /* Search for entries related to files */
     i = 0;
@@ -712,9 +713,6 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *gl
 w_multiline_match_type_t w_get_attr_match(xml_node * node) {
 
     const char * xml_attr_name = "match";
-    const char * xml_start = "start";
-    const char * xml_all = "all";
-    const char * xml_end = "end";
 
     /* default value */
     w_multiline_match_type_t retval = ML_MATCH_START;
@@ -723,12 +721,12 @@ w_multiline_match_type_t w_get_attr_match(xml_node * node) {
     if (!str_match) {
         return retval;
     }
-
-    if (strcasecmp(str_match, xml_start) == 0) {
+    
+    if (strcasecmp(str_match, multiline_attr_match_str(ML_MATCH_START)) == 0) {
         retval = ML_MATCH_START;
-    } else if (strcasecmp(str_match, xml_all) == 0) {
+    } else if (strcasecmp(str_match, multiline_attr_match_str(ML_MATCH_ALL)) == 0) {
         retval = ML_MATCH_ALL;
-    } else if (strcasecmp(str_match, xml_end) == 0) {
+    } else if (strcasecmp(str_match, multiline_attr_match_str(ML_MATCH_END)) == 0) {
         retval = ML_MATCH_END;
     } else {
         mwarn(LOGCOLLECTOR_INV_VALUE_DEFAULT, str_match, xml_attr_name, "multiline_regex");
@@ -741,10 +739,6 @@ w_multiline_match_type_t w_get_attr_match(xml_node * node) {
 w_multiline_replace_type_t w_get_attr_replace(xml_node * node) {
 
     const char * xml_attr_name = "replace";
-    const char * xml_no_replace = "no-replace";
-    const char * xml_wspace = "wspace";
-    const char * xml_tab = "tab";
-    const char * xml_none = "none";
 
     /* default value */
     w_multiline_replace_type_t retval = ML_REPLACE_NO_REPLACE;
@@ -754,17 +748,27 @@ w_multiline_replace_type_t w_get_attr_replace(xml_node * node) {
         return retval;
     }
 
-    if (strcasecmp(str_replace, xml_no_replace) == 0) {
+    if (strcasecmp(str_replace, multiline_attr_replace_str(ML_REPLACE_NO_REPLACE)) == 0) {
         retval = ML_REPLACE_NO_REPLACE;
-    } else if (strcasecmp(str_replace, xml_wspace) == 0) {
+    } else if (strcasecmp(str_replace, multiline_attr_replace_str(ML_REPLACE_WSPACE)) == 0) {
         retval = ML_REPLACE_WSPACE;
-    } else if (strcasecmp(str_replace, xml_tab) == 0) {
+    } else if (strcasecmp(str_replace, multiline_attr_replace_str(ML_REPLACE_TAB)) == 0) {
         retval = ML_REPLACE_TAB;
-    } else if (strcasecmp(str_replace, xml_none) == 0) {
+    } else if (strcasecmp(str_replace, multiline_attr_replace_str(ML_REPLACE_NONE)) == 0) {
         retval = ML_REPLACE_NONE;
     } else {
         mwarn(LOGCOLLECTOR_INV_VALUE_DEFAULT, str_replace, xml_attr_name, "multiline_regex");
     }
 
     return retval;
+}
+
+const char * multiline_attr_replace_str(w_multiline_replace_type_t replace_type){
+    const char * const replace_str[ML_REPLACE_MAX] = { "no-replace", "none", "wspace", "tab" };
+    return replace_str[replace_type];
+}
+
+const char *  multiline_attr_match_str(w_multiline_match_type_t match_type){
+    const char * const match_str[ML_MATCH_MAX] = { "start", "all", "end" };
+    return match_str[match_type];
 }
