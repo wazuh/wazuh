@@ -51,16 +51,18 @@ typedef struct _logtarget {
 
 /* Logreader config */
 typedef enum{
-    ML_REPLACE_NO_REPLACE,
+    ML_REPLACE_NO_REPLACE = 0,
     ML_REPLACE_NONE,
     ML_REPLACE_WSPACE,
-    ML_REPLACE_TAB
+    ML_REPLACE_TAB,
+    ML_REPLACE_MAX
 } w_multiline_replace_type_t;
 
 typedef enum{
-    ML_MATCH_START,
+    ML_MATCH_START = 0,
     ML_MATCH_ALL,
-    ML_MATCH_END
+    ML_MATCH_END,
+    ML_MATCH_MAX,
 } w_multiline_match_type_t;
 
 typedef struct {
@@ -160,5 +162,9 @@ w_multiline_match_type_t w_get_attr_match(xml_node * node);
  * @retval ML_REPLACE_NONE if replace is "none"
  */
 w_multiline_replace_type_t w_get_attr_replace(xml_node * node);
+
+const char * multiline_attr_replace_str(w_multiline_replace_type_t replace_type);
+const char * multiline_attr_match_str(w_multiline_match_type_t match_type);
+
 
 #endif /* CLOGREADER_H */
