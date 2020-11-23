@@ -44,7 +44,6 @@ void wm_sys_send_message(const void* data) {
     wm_sendmsg(eps,queue_fd, data, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
 }
 
-
 void* wm_sys_main(wm_sys_t *sys) 
 {
     #ifndef WIN32
@@ -89,7 +88,10 @@ void* wm_sys_main(wm_sys_t *sys)
 
 void wm_sys_destroy(wm_sys_t *data) 
 {
-    close(queue_fd);
+    mtinfo(WM_SYS_LOGTAG, "Destroy received for Syscollector.");
+    if (queue_fd) {
+        close(queue_fd);
+    }
 
     if (syscollector_stop_ptr){
         syscollector_stop_ptr();
@@ -98,7 +100,11 @@ void wm_sys_destroy(wm_sys_t *data)
     if (syscollector_module){
         so_free_library(syscollector_module);
     }
-
+    queue_fd = 0;
+    syscollector_module = NULL;
+    syscollector_start_ptr = NULL;
+    syscollector_stop_ptr = NULL;
+    syscollector_sync_message_ptr = NULL;
     free(data);
 }
 
