@@ -33,8 +33,8 @@ static void getOsInfoFromUname(nlohmann::json& info)
     }
     if(!result)
     {
-        info["os_name"] = "Linux";
-        info["os_platform"] = "linux";
+        info["os_name"] = "Unix";
+        info["os_platform"] = "Unix";
         info["os_version"] = "unknown";
     }
 }
