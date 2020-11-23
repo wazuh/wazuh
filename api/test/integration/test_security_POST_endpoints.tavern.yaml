@@ -951,3 +951,69 @@ stages:
                 - 3
           total_affected_items: 2
           total_failed_items: 3
+
+---
+test_name: POST /security/user/authenticate/run_as
+
+stages:
+  - name: Log in with wazuh-wui and default rules and expect admin permissions (1/2)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/authenticate/run_as"
+      headers:
+        Authorization: "Basic {basic_auth_context:s}"
+      method: POST
+      json:
+        username: "elastic" # ELK users
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_validate_auth_context
+        extra_kwargs:
+          expected_roles: [1]
+
+  - name: Log in with wazuh-wui and default rules and expect admin permissions (2/2)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/authenticate/run_as"
+      headers:
+        Authorization: "Basic {basic_auth_context:s}"
+      method: POST
+      json:
+        user_name: "admin" # Opendistro users
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_validate_auth_context
+        extra_kwargs:
+          expected_roles: [1]
+
+  - name: Log in with wazuh-wui and no matching rule
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/authenticate/run_as"
+      headers:
+        Authorization: "Basic {basic_auth_context:s}"
+      method: POST
+      json:
+        username: "no_matching_rule"
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_validate_auth_context
+        extra_kwargs:
+          expected_roles: []
+
+  - name: Try to user auth context with a user without run_as (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/authenticate/run_as"
+      headers:
+        Authorization: "Basic {basic_auth:s}"
+      method: POST
+      json:
+        user_name: "admin"
+    response:
+      status_code: 403
+      json:
+        error: 6004
