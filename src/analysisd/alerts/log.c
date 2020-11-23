@@ -106,7 +106,7 @@ void OS_LogOutput(Eventinfo *lf)
 {
     int i;
     char labels[OS_MAXSTR] = {0};
-    char * saveptr;
+    char * saveptr = NULL;
     char buf_ptr[26];
 
 #ifdef LIBGEOIP_ENABLED

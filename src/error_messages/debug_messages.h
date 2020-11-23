@@ -90,6 +90,8 @@
 #define VU_VULN_SEND_AG_FEED  "(5482): A total of '%d' vulnerabilities have been reported for agent '%.3d' thanks to the '%s' feed."
 #define VU_NO_HOTFIX_DISABLED "(5483): No MSU data found, so the Windows hotfixes scan will be disabled for agent '%.3d'"
 #define VU_METADATA_CLEAN     "(5484): Cleaning metadata for target '%s'"
+#define VU_UNS_OS             "(5485): Agent '%.3d' has an unsupported OS: '%s'"
+#define VU_PACKAGE_TP_SOURCE  "(5486): Discarded package '%s' from a third-party source ('%s') for agent '%.3d'"
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
@@ -279,5 +281,6 @@
 #define MOD_TASK_RESPONSE_MESSAGE           "(8205): Response to message: '%s'"
 #define MOD_TASK_RUNNING_CLEAN              "(8206): Running daily clean DB thread."
 #define MOD_TASK_DISABLED_WORKER            "(8207): Module Task Manager only runs on Master nodes in cluster configuration."
+#define GLOB_NO_MATCH                       "(6351): No matches found for the glob pattern: '%s'"
 
 #endif /* DEBUG_MESSAGES_H */

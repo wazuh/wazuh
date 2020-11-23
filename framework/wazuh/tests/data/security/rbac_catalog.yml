@@ -395,7 +395,7 @@ get_rbac_actions:
           - GET /lists
           - GET /lists/files
       logtest:run:
-        description: Use logtest tool
+        description: Run logtest tool or end a logtest session
         resources:
           - "*:*"
         example:
