@@ -5,17 +5,19 @@
 
 <!-- netcat -->
 <group name="ossec,">
-    <rule id="100050" level="0">
-        <if_sid>530</if_sid>
-        <match>^ossec: output: 'process list'</match>
-        <description>List of running processes.</description>
-        <group>process_monitor,</group>
+
+    <rule id="100050" level="7" ignore="10">
+        <if_sid>221</if_sid>
+        <decoded_as>syscollector</decoded_as>
+        <field name="process.name">^nc$</field>
+        <description>Netcat is running!</description>
     </rule>
 
-    <rule id="100051" level="7" ignore="900">
+    <rule id="100051" level="7" ignore="10">
         <if_sid>100050</if_sid>
-        <group>process_monitor,</group>
-        <field name="command">^\.*/nc \.*-l|^nc \.*-l</field>
-        <description>Netcat listening for incoming connections.</description>
+        <decoded_as>syscollector</decoded_as>
+        <field name="process.args">-l</field>
+        <description>Netcat is running and listening for incoming connections!</description>
     </rule>
+
 </group>

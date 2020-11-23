@@ -5,9 +5,3 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-<decoder name="process_list">
-  <parent>ossec</parent>
-  <use_own_name>true</use_own_name>
-  <regex offset="after_parent">'process list':\s+(\d+)\s+(\w+)\s+(\S+\.*)$</regex>
-  <order>pid, user, command</order>
-</decoder>
