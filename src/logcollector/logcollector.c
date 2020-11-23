@@ -13,6 +13,13 @@
 #include <math.h>
 #include <pthread.h>
 
+// Remove STATIC qualifier from tests
+#ifdef WAZUH_UNIT_TESTING
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #define MAX_ASCII_LINES 10
 #define MAX_UTF8_CHARS 1400
 
@@ -29,6 +36,33 @@ static int check_pattern_expand(int do_seek);
 static void check_pattern_expand_excluded();
 static void set_can_read(int value);
 
+/**
+ * @brief Create files_status hash and load the previous estatus from JSON file
+ */
+STATIC void w_initialize_file_status();
+
+/**
+ * @brief Before stop logcollector save the files_status hash on JSON file
+ */
+STATIC void w_save_file_status();
+
+/**
+ * @brief Load files_status data to hash
+ * @param global_json json wich contains the previous files_status hash
+ */
+STATIC void w_load_files_status(cJSON *global_json);
+
+/**
+ * @brief Parse the hash files_status to JSON
+ */
+STATIC char * w_save_files_status_to_cJSON();
+
+///> Struct to save the position of last line read and the SHA1 hash content
+typedef struct file_status {
+    long offset;    ///> Position to read
+    char * hash;    ///> Content file SHA1 hash
+} os_file_status_t;
+
 /* Global variables */
 int loop_timeout;
 int logr_queue;
@@ -44,6 +78,11 @@ int reload_interval;
 int reload_delay;
 int free_excluded_files_interval;
 OSHash * msg_queues_table;
+
+///> To asociate the path, the position to read, and the hash key of lines read.
+OSHash * files_status;
+///> Use for log messages
+char *files_status_name = "files_status";
 
 static int _cday = 0;
 int N_INPUT_THREADS = N_MIN_INPUT_THREADS;
@@ -89,6 +128,13 @@ void LogCollectorStart()
     excluded_binaries = OSHash_Create();
     if (!excluded_binaries) {
         merror_exit(LIST_ERROR);
+    }
+
+    /* Initialize status file struct (files_status) and set w_save_file_status at the process exit */
+    w_initialize_file_status();
+
+    if (atexit(w_save_file_status)) {
+        merror(ATEXIT_ERROR);
     }
 
     set_sockets();
@@ -257,8 +303,10 @@ void LogCollectorStart()
              * always returns 0 (even after clearerr).
              */
 #ifdef WIN32
-            if (current->fp) {
+            if (current->fp && current->future) {
+                set_can_read(1);
                 current->read(current, &r, 1);
+                set_can_read(0);
             }
 
             /* Mutexes are not previously initialized under Windows*/
@@ -271,8 +319,10 @@ void LogCollectorStart()
                 minfo(READING_FILE, current->file);
             }
 
-            if (current->fp) {
+            if (current->fp && current->future) {
+                set_can_read(1);
                 current->read(current, &r, 1);
+                set_can_read(0);
             }
 #endif
         }
@@ -448,7 +498,7 @@ void LogCollectorStart()
 
                     /* Variable file name */
                     else if (!current->fp && open_file_attempts - current->ign > 0) {
-                        handle_file(i, j, 1, 1);
+                        handle_file(i, j, current->future, 1);
                         continue;
                     }
                 }
@@ -694,7 +744,7 @@ void LogCollectorStart()
                         continue;
                     } else {
                         /* Try for a few times to open the file */
-                        handle_file(i, j, 1, 1);
+                        handle_file(i, j, current->future, 1);
                         continue;
                     }
                 }
@@ -844,7 +894,9 @@ int handle_file(int i, int j, int do_fseek, int do_log)
         }
         goto error;
     }
+
     fd = _open_osfhandle((intptr_t)lf->h, 0);
+
     if (fd == -1) {
         merror(FOPEN_ERROR, lf->file, errno, strerror(errno));
         CloseHandle(lf->h);
@@ -1049,13 +1101,13 @@ void set_read(logreader *current, int i, int j) {
         /* Day must be zero for all files to be initialized */
         _cday = 0;
         if (update_fname(i, j)) {
-            handle_file(i, j, 1, 1);
+            handle_file(i, j, current->future, 1);
         } else {
             merror_exit(PARSE_ERROR, current->ffile);
         }
 
     } else {
-        handle_file(i, j, 1, 1);
+        handle_file(i, j, current->future, 1);
     }
 
     tg = 0;
@@ -2141,7 +2193,9 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                             continue;
                         }
     #ifdef WIN32
+                        set_can_read(1);
                         current->read(current, &r, 1);
+                        set_can_read(0);
     #endif
                     }
                     /* Increase the error count  */
@@ -2417,4 +2471,161 @@ int can_read() {
     ret = _can_read;
     w_rwlock_unlock(&can_read_rwlock);
     return ret;
+}
+
+int w_update_file_status(const char * path, long pos) {
+
+    os_file_status_t *data;
+    os_malloc(sizeof(os_file_status_t), data);
+    data->hash = "skdajfleignjs";
+    data->offset = pos;
+
+    if (OSHash_Update_ex(files_status, path, data) != 1) {
+        if (OSHash_Add_ex(files_status, path, data) != 2) {
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+STATIC void w_initialize_file_status() {
+
+    /* Initialize hash table to associate paths and read position */
+    if (files_status = OSHash_Create(), !files_status) {
+        merror_exit(HCREATE_ERROR, files_status_name);
+    }
+
+    if (!OSHash_setSize(files_status, 256)) {
+        merror_exit(HSETSIZE_ERROR, files_status_name);
+    }
+
+    FILE * fd = NULL;
+
+    if (fd = fopen(LOCALFILE_STATUS_PATH, "r"), fd != NULL) {
+        char str[OS_MAXSTR];
+
+        if(fread(str, 1, OS_MAXSTR, fd) == 0) {
+            merror(FREAD_ERROR, LOCALFILE_STATUS_PATH, errno, strerror(errno));
+            clearerr(fd);
+        } else {
+            cJSON *global_json = cJSON_Parse(str);
+            w_load_files_status(global_json);
+            cJSON_Delete(global_json);
+        }
+
+        fclose(fd);
+    }
+    else if (errno != ENOENT) {
+        merror_exit(FOPEN_ERROR, LOCALFILE_STATUS_PATH, errno, strerror(errno));
+    }
+}
+
+STATIC void w_save_file_status() {
+    char * str = w_save_files_status_to_cJSON();
+
+    if (!str) {
+        merror("Failure to convert the status files information to JSON");
+        return;
+    }
+
+    FILE * fd = NULL;
+    size_t size_str = strlen(str);
+
+    if (fd = wfopen(LOCALFILE_STATUS_PATH, "w"), fd != NULL) {
+        if(fwrite(str, 1, size_str, fd) == 0) {
+            merror(FWRITE_ERROR, LOCALFILE_STATUS_PATH, errno, strerror(errno));
+            clearerr(fd);
+        }
+        fclose(fd);
+    }
+    else {
+        merror_exit(FOPEN_ERROR, LOCALFILE_STATUS_PATH, errno, strerror(errno));
+    }
+}
+
+STATIC void w_load_files_status(cJSON *global_json) {
+
+    cJSON *localfiles_array = cJSON_GetObjectItem(global_json, OS_LOGCOLLECTOR_JSON_FILES);
+    int array_size = cJSON_GetArraySize(localfiles_array);
+
+    for (int i = 0; i < array_size; i++) {
+        cJSON *localfile_item = cJSON_GetArrayItem(localfiles_array, i);
+
+        cJSON *path = cJSON_GetObjectItem(localfile_item, OS_LOGCOLLECTOR_JSON_PATH);
+        if (!path) {
+            continue;
+        }
+
+        char *path_str = cJSON_GetStringValue(path);
+        if (!path_str) {
+            continue;
+        }
+
+        cJSON *hash = cJSON_GetObjectItem(localfile_item, OS_LOGCOLLECTOR_JSON_HASH);
+        if (!hash) {
+            continue;
+        }
+
+        char *hash_str = cJSON_GetStringValue(hash);
+        if (!hash_str) {
+            continue;
+        }
+
+        cJSON *offset = cJSON_GetObjectItem(localfile_item, OS_LOGCOLLECTOR_JSON_OFFSET);
+        if (!offset) {
+            continue;
+        }
+
+        char *offset_str = cJSON_GetStringValue(offset);
+        if (!offset_str) {
+            continue;
+        }
+
+        char *end;
+        long value = strtol(offset_str, &end, 10);
+        if (value < 0 || value > 65534 || *end != '\0') {
+            continue;
+        }
+
+        os_file_status_t * data;
+        os_malloc(sizeof(os_file_status_t), data);
+        os_strdup(hash_str, data->hash);
+        data->offset = value;
+
+        if (OSHash_Update_ex(files_status, path_str, data) != 1){
+            if (OSHash_Add_ex(files_status, path_str, data) != 2) {
+                merror(HADD_ERROR, path_str, files_status_name);
+            }
+        }
+    }
+}
+
+STATIC char * w_save_files_status_to_cJSON() {
+    OSHashNode * hash_node;
+    unsigned int index = 0;
+
+    if(hash_node = OSHash_Begin(files_status, &index), !hash_node) {
+        return NULL;
+    }
+
+    cJSON * global_json = cJSON_CreateObject();
+    cJSON * array = cJSON_AddArrayToObject(global_json, OS_LOGCOLLECTOR_JSON_FILES);
+
+    while (hash_node) {
+        os_file_status_t *data = hash_node->data;
+        char * path = hash_node->key;
+        char offset[11] = {0};
+        sprintf(offset, "%ld", data->offset);
+        cJSON *item = cJSON_CreateObject();
+
+        cJSON_AddStringToObject(item, OS_LOGCOLLECTOR_JSON_PATH, path);
+        cJSON_AddStringToObject(item, OS_LOGCOLLECTOR_JSON_HASH, data->hash);
+        cJSON_AddStringToObject(item, OS_LOGCOLLECTOR_JSON_OFFSET, offset);
+        cJSON_AddItemToArray(array, item);
+
+        hash_node = OSHash_Next(files_status, &index, hash_node);
+    }
+
+    return cJSON_Print(global_json);
 }
