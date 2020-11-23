@@ -20,6 +20,21 @@
 #define OUTPUT_MIN_QUEUE_SIZE 128
 #define WIN32_MAX_FILES 200
 
+///> JSON path wich contains the files position of last read
+#ifdef WIN32
+#define LOCALFILE_STATUS_PATH   "queue\\logcollector\\file_status.json"
+#else
+#define LOCALFILE_STATUS        "/queue/logcollector/file_status.json"
+#define LOCALFILE_STATUS_PATH   DEFAULTDIR LOCALFILE_STATUS
+#endif
+
+///> JSON fields for file_status
+#define OS_LOGCOLLECTOR_JSON_FILES      "files"
+#define OS_LOGCOLLECTOR_JSON_PATH       "path"
+#define OS_LOGCOLLECTOR_JSON_HASH       "hash"
+#define OS_LOGCOLLECTOR_JSON_OFFSET     "offset"
+
+
 #include "shared.h"
 #include "config/localfile-config.h"
 #include "config/config.h"
@@ -203,6 +218,14 @@ void w_set_file_mutexes();
 
 /* Read stop signal from reader threads */
 int can_read();
+
+/**
+ * @brief Update the read position in file status hash table
+ * @param path the path is the hash key
+ * @param pos new read position
+ * @return 0 on succes, otherwise -1
+ */
+int w_update_file_status(const char * path, long pos);
 
 extern int sample_log_length;
 extern int lc_debug_level;

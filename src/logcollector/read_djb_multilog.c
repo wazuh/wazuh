@@ -168,9 +168,17 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
         if (drop_it == 0) {
             w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, MYSQL_MQ);
         }
-
-        continue;
     }
+
+    fpos_t pos;
+    fgetpos(lf->fp, &pos);
+
+    /* For Windows fpos_t is a __int64 type. In contrast, for Linux is a __fpos_t type */
+#ifdef WIN32
+    w_update_file_status(lf->file, pos);
+#else
+    w_update_file_status(lf->file, pos.__pos);
+#endif
 
     mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);

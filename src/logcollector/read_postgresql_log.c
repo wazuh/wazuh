@@ -132,13 +132,22 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it) {
             }
         }
 
-        continue;
     }
 
     /* Send whatever is stored */
     if (buffer[0] != '\0') {
         __send_pgsql_msg(lf, drop_it, buffer);
     }
+
+    fpos_t pos;
+    fgetpos(lf->fp, &pos);
+
+    /* For Windows fpos_t is a __int64 type. In contrast, for Linux is a __fpos_t type */
+#ifdef WIN32
+    w_update_file_status(lf->file, pos);
+#else
+    w_update_file_status(lf->file, pos.__pos);
+#endif
 
     mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);

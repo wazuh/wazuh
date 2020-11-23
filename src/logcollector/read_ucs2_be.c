@@ -142,8 +142,9 @@ void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
             __ms = 0;
         }
         fgetpos(lf->fp, &fp_pos);
-        continue;
     }
+
+    w_update_file_status(lf->file, fp_pos);
 
     mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);

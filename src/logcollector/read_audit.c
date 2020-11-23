@@ -130,6 +130,8 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
     if (icache > 0)
         audit_send_msg(cache, icache, lf->file, drop_it, lf->log_target);
 
+    w_update_file_status(lf->file, offset);
+
     mdebug2("Read %d lines from %s", lines, lf->file);
     return NULL;
 }

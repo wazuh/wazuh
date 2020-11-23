@@ -26,6 +26,16 @@ void *read_ossecalert(logreader *lf, __attribute__((unused)) int *rc, int drop_i
         return (NULL);
     }
 
+    fpos_t pos;
+    fgetpos(lf->fp, &pos);
+
+    /* For Windows fpos_t is a __int64 type. In contrast, for Linux is a __fpos_t type */
+#ifdef WIN32
+    w_update_file_status(lf->file, pos);
+#else
+    w_update_file_status(lf->file, pos.__pos);
+#endif
+
     memset(syslog_msg, '\0', OS_SIZE_2048 + 1);
 
     /* Add source ip */
