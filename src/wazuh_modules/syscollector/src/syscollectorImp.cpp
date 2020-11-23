@@ -648,7 +648,7 @@ void Syscollector::scanPackages()
             m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PACKAGES_START_CONFIG_STATEMENT), m_reportFunction);
             if (m_hotfixes)
             {
-                constexpr auto tableHotfixes{"hotfixes"};
+                constexpr auto tableHotfixes{"dbsync_hotfixes"};
                 updateAndNotifyChanges(m_spDBSync->handle(), tableHotfixes, hotfixes, m_reportFunction);
                 m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HOTFIXES_START_CONFIG_STATEMENT), m_reportFunction);
             }
