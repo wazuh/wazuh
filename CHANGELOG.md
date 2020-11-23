@@ -26,7 +26,8 @@ All notable changes to this project will be documented in this file.
   - Fixed a bug in Remoted that limited the maximum agent number to `MAX_AGENTS-3` instead of `MAX_AGENTS-2`. ([#4560](https://github.com/wazuh/wazuh/pull/4560))
   - Fixed an error in the network library when handling disconnected sockets. ([#6444](https://github.com/wazuh/wazuh/pull/6444))
   - Fixed an error in FIM when handling temporary files and registry keys exceeding the path size limit. ([#6538](https://github.com/wazuh/wazuh/pull/6538))
-  - - Fixed a bug in FIM that stopped monitoring folders pointed by a symbolic link. ([#6613](https://github.com/wazuh/wazuh/pull/6613))
+  - Fixed a bug in FIM that stopped monitoring folders pointed by a symbolic link. ([#6613](https://github.com/wazuh/wazuh/pull/6613))
+  - Fixed a race condition in FIM that could cause Syscheckd to stop unexpectedly. ([#6696](https://github.com/wazuh/wazuh/pull/6696))
 
 
 ## [v4.0.1] - 2020-11-11
