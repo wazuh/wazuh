@@ -66,3 +66,9 @@ int __wrap_mkdir_ex(const char *path);
 void expect_mkdir_ex(const char *path, int ret);
 
 #endif
+
+int __wrap_w_ref_parent_folder(const char * path);
+
+int __wrap_cldir_ex(const char *name);
+
+int __wrap_UnmergeFiles(const char *finalpath, const char *optdir, int mode);

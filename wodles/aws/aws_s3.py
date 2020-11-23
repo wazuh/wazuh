@@ -1159,6 +1159,12 @@ class AWSConfigBucket(AWSLogsBucket):
         if 'configuration' in event['aws']:
             configuration = event['aws']['configuration']
 
+            # Remove unnecessary fields to avoid performance issues
+            for key in configuration:
+                if type(configuration[key]) is dict and "Content" in configuration[key]:
+                    content_list = list(configuration[key]["Content"].keys())
+                    configuration[key]["Content"] = content_list
+
             if 'securityGroups' in configuration:
                 security_groups = configuration['securityGroups']
                 if isinstance(security_groups, unicode):

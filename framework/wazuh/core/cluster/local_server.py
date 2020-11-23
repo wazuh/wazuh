@@ -1,15 +1,18 @@
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import asyncio
 import functools
 import json
+import os
 import random
 from typing import Tuple, Union
 
 import uvloop
 
 from wazuh.core import common
-from wazuh.core.cluster import common as c_common, server, client, local_client
+from wazuh.core.cluster import common as c_common, server, client
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
 from wazuh.core.exception import WazuhClusterError
@@ -113,6 +116,7 @@ class LocalServer(server.AbstractServer):
     """
     Creates the server, manages multiple client connections and it's connected to the cluster TCP transports.
     """
+
     def __init__(self, node: Union[server.AbstractServer, client.AbstractClientManager], **kwargs):
         """
         Class constructor
@@ -133,22 +137,26 @@ class LocalServer(server.AbstractServer):
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         loop = asyncio.get_running_loop()
         loop.set_exception_handler(c_common.asyncio_exception_handler)
+        socket_path = '{}/queue/cluster/c-internal.sock'.format(common.ossec_path)
 
         try:
-            server = await loop.create_unix_server(protocol_factory=lambda: self.handler_class(server=self, loop=loop,
-                                                                                               fernet_key='',
-                                                                                               logger=self.logger,
-                                                                                               cluster_items=self.cluster_items),
-                                                   path='{}/queue/cluster/c-internal.sock'.format(common.ossec_path))
+            local_server = await loop.create_unix_server(
+                protocol_factory=lambda: self.handler_class(server=self,
+                                                            loop=loop,
+                                                            fernet_key='',
+                                                            logger=self.logger,
+                                                            cluster_items=self.cluster_items),
+                path=socket_path)
+            os.chmod(socket_path, 0o660)
         except OSError as e:
             self.logger.error("Could not create server: {}".format(e))
             raise KeyboardInterrupt
 
-        self.logger.info('Serving on {}'.format(server.sockets[0].getsockname()))
+        self.logger.info('Serving on {}'.format(local_server.sockets[0].getsockname()))
 
-        self.tasks.append(server.serve_forever)
+        self.tasks.append(local_server.serve_forever)
 
-        async with server:
+        async with local_server:
             # use asyncio.gather to run both tasks in parallel
             await asyncio.gather(*map(lambda x: x(), self.tasks))
 
@@ -157,6 +165,7 @@ class LocalServerHandlerMaster(LocalServerHandler):
     """
     The local server handler instance that runs in the Master node.
     """
+
     def process_request(self, command: bytes, data: bytes):
         """
         Defines requests available in the local server
@@ -220,6 +229,7 @@ class LocalServerMaster(LocalServer):
     """
     The LocalServer object running in the master node
     """
+
     def __init__(self, node: server.AbstractServer, **kwargs):
         super().__init__(node=node, **kwargs)
         self.handler_class = LocalServerHandlerMaster
@@ -232,6 +242,7 @@ class LocalServerHandlerWorker(LocalServerHandler):
     """
     The local server handler instance that runs in worker nodes.
     """
+
     def process_request(self, command: bytes, data: bytes):
         """
         Defines requests available in the local server
@@ -324,6 +335,7 @@ class LocalServerWorker(LocalServer):
     """
     The LocalServer object running in worker nodes.
     """
+
     def __init__(self, node: client.AbstractClientManager, **kwargs):
         super().__init__(node=node, **kwargs)
         self.handler_class = LocalServerHandlerWorker

@@ -1226,7 +1226,6 @@ stages:
             disabled: !anystr
             force_insert: !anystr
             force_time: !anystr
-            limit_maxagents: !anystr
             port: !anyint
             purge: !anystr
             ssl_auto_negotiate: !anystr

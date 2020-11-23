@@ -385,6 +385,8 @@ static int teardown_fim_scan_realtime(void **state) {
     free(dir_opts);
     os_free(syscheck.database);
 
+    syscheck.realtime = NULL; // Used with local variables in some tests
+
     return 0;
 }
 
@@ -2115,11 +2117,6 @@ static void test_fim_scan_no_realtime(void **state) {
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
     will_return(__wrap_send_log_msg, 1);
 
-    expect_function_call(__wrap_count_watches);
-    will_return(__wrap_count_watches, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 0");
-
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
     fim_scan();
@@ -2171,23 +2168,23 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
 
-    expect_function_call(__wrap_count_watches);
-    will_return(__wrap_count_watches, 6);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 6");
-
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
     fim_scan();
 }
 
 static void test_fim_scan_realtime_enabled(void **state) {
+    OSHashNode empty_table = { .key = NULL }, *table = &empty_table;
+    OSHash dirtb = { .elements = 10, .table = &table, .rows = 0 }; // this hash is not reallistic but works for testing
+    rtfim realtime = { .queue_overflow = true, .dirtb = &dirtb };
     int *dir_opts = calloc(6, sizeof(int));
     int it = 0;
 
     if (!dir_opts) {
         fail();
     }
+
+    syscheck.realtime = &realtime;
 
     while (syscheck.dir[it] != NULL) {
         dir_opts[it] = syscheck.opts[it];
@@ -2243,15 +2240,17 @@ static void test_fim_scan_realtime_enabled(void **state) {
     // fim_check_db_state
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
 
-    // fim_scan
-    expect_function_call(__wrap_count_watches);
-    will_return(__wrap_count_watches, 6);
+    // realtime_sanitize_watch_map
+    expect_any(__wrap__mdebug2, formatted_msg);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 6");
+    // fim_scan
+    expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 10");
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
     fim_scan();
+
+    assert_int_equal(syscheck.realtime->queue_overflow, false);
 }
 
 static void test_fim_scan_db_free(void **state) {
@@ -2302,11 +2301,6 @@ static void test_fim_scan_db_free(void **state) {
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":1000,\"alert_type\":\"normal\"}");
     will_return(__wrap_send_log_msg, 1);
 
-    expect_function_call(__wrap_count_watches);
-    will_return(__wrap_count_watches, 6);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 6");
-
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
     fim_scan();
@@ -2353,11 +2347,6 @@ static void test_fim_scan_no_limit(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6343): No limit set to maximum number of files to be monitored");
 
     // In fim_scan
-    expect_function_call(__wrap_count_watches);
-    will_return(__wrap_count_watches, 6);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 6");
-
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
     fim_scan();
@@ -2891,8 +2880,6 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
     expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 0");
-
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
     fim_scan();
@@ -2959,8 +2946,6 @@ static void test_fim_scan_db_free(void **state) {
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":1000,\"alert_type\":\"normal\"}");
     will_return(__wrap_send_log_msg, 1);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 0");
-
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
     fim_scan();
@@ -3019,8 +3004,6 @@ static void test_fim_scan_no_limit(void **state) {
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6343): No limit set to maximum number of files to be monitored");
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 0");
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 

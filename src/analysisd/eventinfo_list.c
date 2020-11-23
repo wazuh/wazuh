@@ -109,3 +109,21 @@ void OS_AddEvent(Eventinfo *lf, EventList *list)
 
     return;
 }
+
+void os_remove_eventlist(EventList *list) {
+
+    EventNode *tmp = NULL;
+
+    while (list->first_node) {
+        tmp = list->first_node;
+        if (tmp->event) {
+            tmp->event->node = NULL;
+            Free_Eventinfo(tmp->event);
+            w_mutex_destroy(&tmp->mutex);
+        }
+        list->first_node = list->first_node->next;
+        os_free(tmp);
+    }
+
+    os_free(list);
+}

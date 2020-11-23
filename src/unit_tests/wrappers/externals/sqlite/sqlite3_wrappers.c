@@ -174,3 +174,19 @@ void expect_sqlite3_step_call(int ret) {
 int __wrap_sqlite3_column_count(__attribute__((unused)) sqlite3_stmt *stmt) {
     return mock();
 }
+
+int __wrap_sqlite3_column_type(__attribute__((unused)) sqlite3_stmt *pStmt,
+                               int i){
+    check_expected(i);
+    return mock();
+}
+
+const char* __wrap_sqlite3_column_name(__attribute__((unused)) sqlite3_stmt *pStmt,
+                                       int N){
+    check_expected(N);
+    return mock_ptr_type(char *);
+}
+
+int __wrap_sqlite3_changes(__attribute__((unused)) sqlite3 * db){
+    return mock();
+}

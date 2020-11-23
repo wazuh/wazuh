@@ -16,14 +16,17 @@
 #include <stdio.h>
 #include "../common.h"
 
-#ifndef WIN32
 int __wrap_unlink(const char *file) {
-#else
-int wrap__unlink(const char *file) {
-#endif
     check_expected_ptr(file);
     return mock();
 }
+
+#ifdef WIN32
+int wrap__unlink(const char *file) {
+    check_expected_ptr(file);
+    return mock();
+}
+#endif
 
 int __wrap_close(__attribute__ ((__unused__)) int fd) {
     return 1;

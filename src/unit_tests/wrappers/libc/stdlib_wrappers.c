@@ -40,3 +40,7 @@ int __wrap_system(__attribute__((unused))const char *__command) {
 void expect_system(int ret) {
     will_return(__wrap_system, ret);
 }
+
+int __wrap_mkstemp(__attribute__((unused)) char *template) {
+    return mock();
+}

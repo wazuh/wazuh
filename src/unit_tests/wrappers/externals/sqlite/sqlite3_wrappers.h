@@ -83,6 +83,10 @@ int __wrap_sqlite3_step(sqlite3_stmt * stmt);
 
 void expect_sqlite3_step_call(int ret);
 
-int __wrap_sqlite3_column_count(sqlite3_stmt *stmt);
+int __wrap_sqlite3_column_count(sqlite3_stmt *pStmt);
+
+int __wrap_sqlite3_column_type(sqlite3_stmt *pStmt, int i);
+
+const char* __wrap_sqlite3_column_name(sqlite3_stmt *pStmt, int N);
 
 #endif

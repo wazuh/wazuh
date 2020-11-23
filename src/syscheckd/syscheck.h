@@ -356,11 +356,9 @@ void free_syscheck_dirtb_data(char *data);
 void delete_subdirectories_watches(char *dir);
 
 /**
- * @brief Count inotify watches
- *
- * @return Number of inotify watches
+ * @brief Remove stale watches from the realtime hashmap
  */
-unsigned int count_watches();
+void realtime_sanitize_watch_map();
 
 /**
  * @brief Frees the memory of a Whodata event structure

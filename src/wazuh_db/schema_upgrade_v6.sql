@@ -2,7 +2,7 @@
  * SQL Schema for upgrading databases
  * Copyright (C) 2015-2020, Wazuh Inc.
  *
- * April 23, 2020.
+ * October 5, 2020.
  *
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
@@ -41,5 +41,7 @@ ALTER TABLE _fim_entry RENAME TO fim_entry;
 CREATE INDEX IF NOT EXISTS fim_full_path_index ON fim_entry (full_path);
 CREATE INDEX IF NOT EXISTS fim_file_index ON fim_entry (file);
 CREATE INDEX IF NOT EXISTS fim_date_index ON fim_entry (date);
+
+ALTER TABLE sys_osinfo ADD COLUMN os_patch TEXT DEFAULT NULL;
 
 INSERT OR REPLACE INTO metadata (key, value) VALUES ('db_version', 6);

@@ -17,3 +17,8 @@
 char *__wrap_strerror (__attribute__((unused)) int __errnum) {
     return mock_type(char*);
 }
+
+size_t __wrap_strlen(const char *s) {
+    check_expected(s);
+    return mock();
+}

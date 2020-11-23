@@ -5,6 +5,7 @@ import itertools
 import json
 import logging
 import os
+import shutil
 import zipfile
 from datetime import datetime, timedelta
 from functools import reduce
@@ -121,7 +122,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
                     entry_metadata = {"mod_time": str(file_mod_time), 'cluster_item_key': get_cluster_item_key}
                     if '.merged' in entry:
                         entry_metadata['merged'] = True
-                        entry_metadata['merge_type'] = 'agent-info' if 'agent-info' in entry else 'agent-groups'
+                        entry_metadata['merge_type'] = 'agent-groups'
                         entry_metadata['merge_name'] = dirname + '/' + entry
                     else:
                         entry_metadata['merged'] = False
@@ -141,7 +142,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
     return walk_files
 
 
-def get_files_status(node_type, node_name, get_md5=True):
+def get_files_status(node_type, get_md5=True):
     cluster_items = get_cluster_items()
 
     final_items = {}
@@ -150,21 +151,9 @@ def get_files_status(node_type, node_name, get_md5=True):
             continue
 
         if item['source'] == node_type or item['source'] == 'all':
-            if item.get("files") and "agent-info.merged" in item["files"]:
-                agents_to_send, merged_path = \
-                    merge_agent_info(merge_type="agent-info",
-                                     node_name=node_name,
-                                     time_limit_seconds=cluster_items['sync_options']['get_agentinfo_newer_than']
-                                     )
-                if agents_to_send == 0:
-                    return {}
-
-                fullpath = path.dirname(merged_path)
-            else:
-                fullpath = file_path
             try:
                 final_items.update(
-                    walk_dir(fullpath, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
+                    walk_dir(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
                              cluster_items['files']['excluded_extensions'], file_path, get_md5, node_type))
             except Exception as e:
                 logger.warning("Error getting file status: {}.".format(e))
@@ -172,7 +161,49 @@ def get_files_status(node_type, node_name, get_md5=True):
     return final_items
 
 
+def update_cluster_control_with_failed(failed_files, ko_files):
+    """Check if file paths inside 'shared' and 'missing' do really exist.
+
+    Sometimes, files that no longer exist are still listed in cluster_control.json. Two situations can occur:
+        - A missing file on a worker no longer exists on the master. It is removed from the list of missing files.
+        - A shared file no longer exists on the master. It is deleted from 'shared' and added to 'extra'.
+
+    Parameters
+    ----------
+    failed_files : list
+        List of files to update
+    ko_files : dict
+        KO files dict with 'missing', 'shared' and 'extra' keys.
+    """
+    for f in failed_files:
+        if 'missing' in ko_files.keys() and f in ko_files['missing'].keys():
+            ko_files['missing'].pop(f, None)
+        elif 'shared' in ko_files.keys() and 'extra' in ko_files.keys() and f in ko_files['shared'].keys():
+            ko_files['extra'][f] = ko_files['shared'][f]
+            ko_files['shared'].pop(f, None)
+
+
 def compress_files(name, list_path, cluster_control_json=None):
+    """Create a zip with cluster_control.json and the files listed in list_path.
+
+    Iterate the list of files and groups them in the zip. If a file does not
+    exist, the cluster_control_json dictionary is updated.
+
+    Parameters
+    ----------
+    name : str
+        Name of the node to which the zip will be sent.
+    list_path : list
+        List of file paths to be zipped
+    cluster_control_json : dict
+        KO files (path-metadata) to be zipped as a json.
+
+    Returns
+    -------
+    zip_file_path : str
+        Path where the zip file has been saved.
+    """
+    failed_files = list()
     zip_file_path = "{0}/queue/cluster/{1}/{1}-{2}-{3}.zip".format(common.ossec_path, name, time(), str(random())[2:])
     if not os.path.exists(os.path.dirname(zip_file_path)):
         mkdir_with_mode(os.path.dirname(zip_file_path))
@@ -185,9 +216,11 @@ def compress_files(name, list_path, cluster_control_json=None):
                 except zipfile.LargeZipFile as e:
                     raise WazuhError(3001, str(e))
                 except Exception as e:
-                    logger.error("[Cluster] {}".format(str(WazuhException(3001, str(e)))))
-
+                    logger.debug("[Cluster] {}".format(str(WazuhException(3001, str(e)))))
+                    failed_files.append(f)
         try:
+            if cluster_control_json and failed_files:
+                update_cluster_control_with_failed(failed_files, cluster_control_json)
             zf.writestr("cluster_control.json", json.dumps(cluster_control_json))
         except Exception as e:
             raise WazuhError(3001, str(e))
@@ -196,18 +229,23 @@ def compress_files(name, list_path, cluster_control_json=None):
 
 
 async def decompress_files(zip_path, ko_files_name="cluster_control.json"):
-    ko_files = ""
-    zip_dir = zip_path + 'dir'
-    mkdir_with_mode(zip_dir)
-    with zipfile.ZipFile(zip_path) as zipf:
-        zipf.extractall(path=zip_dir)
+    try:
+        ko_files = ""
+        zip_dir = zip_path + 'dir'
+        mkdir_with_mode(zip_dir)
+        with zipfile.ZipFile(zip_path) as zipf:
+            zipf.extractall(path=zip_dir)
 
-    if os.path.exists("{}/{}".format(zip_dir, ko_files_name)):
-        with open("{}/{}".format(zip_dir, ko_files_name)) as ko:
-            ko_files = json.loads(ko.read())
-
-    # once read all files, remove the zipfile
-    remove(zip_path)
+        if os.path.exists("{}/{}".format(zip_dir, ko_files_name)):
+            with open("{}/{}".format(zip_dir, ko_files_name)) as ko:
+                ko_files = json.loads(ko.read())
+    except Exception as e:
+        if os.path.exists(zip_dir):
+            shutil.rmtree(zip_dir)
+        raise e
+    finally:
+        # once read all files, remove the zipfile
+        remove(zip_path)
     return ko_files, zip_dir
 
 
@@ -241,8 +279,8 @@ def compare_files(good_files, check_files, node_name):
         # merge all shared extra valid files into a single one.
         # To Do: if more extra valid files types are included, compute their merge type and remove hardcoded
         # agent-groups
-        shared_merged = [(merge_agent_info(merge_type='agent-groups', files=shared_e_v, file_type='-shared',
-                                           node_name=node_name, time_limit_seconds=0)[1],
+        shared_merged = [(merge_info(merge_type='agent-groups', files=shared_e_v, file_type='-shared',
+                                     node_name=node_name, time_limit_seconds=0)[1],
                           {'cluster_item_key': '/queue/agent-groups/', 'merged': True, 'merge-type': 'agent-groups'})]
 
         shared_files = dict(itertools.chain(shared_merged, ((key, good_files[key]) for key in shared)))
@@ -291,11 +329,7 @@ def clean_up(node_name=""):
         logger.error("[Cluster] Error cleaning up: {0}.".format(str(e)))
 
 
-#
-# Agents
-#
-
-def merge_agent_info(merge_type, node_name, files=None, file_type="", time_limit_seconds=1800):
+def merge_info(merge_type, node_name, files=None, file_type="", time_limit_seconds=common.limit_seconds):
     min_mtime = 0
     if time_limit_seconds:
         min_mtime = time() - time_limit_seconds
@@ -330,13 +364,13 @@ def merge_agent_info(merge_type, node_name, files=None, file_type="", time_limit
     return files_to_send, output_file
 
 
-def unmerge_agent_info(merge_type, path_file, filename):
-    src_agent_info_path = path.abspath("{}/{}".format(path_file, filename))
-    dst_agent_info_path = os.path.join("queue", merge_type)
+def unmerge_info(merge_type, path_file, filename):
+    src_path = path.abspath("{}/{}".format(path_file, filename))
+    dst_path = os.path.join("queue", merge_type)
 
     bytes_read = 0
-    total_bytes = stat(src_agent_info_path).st_size
-    with open(src_agent_info_path, 'rb') as src_f:
+    total_bytes = stat(src_path).st_size
+    with open(src_path, 'rb') as src_f:
         while bytes_read < total_bytes:
             # read header
             header = src_f.readline().decode()
@@ -345,12 +379,11 @@ def unmerge_agent_info(merge_type, path_file, filename):
                 st_size, name, st_mtime = header[:-1].split(' ', 2)
                 st_size = int(st_size)
             except ValueError as e:
-                logger.warning(f"Malformed agent-info.merged file ({e}). Parsed line: {header}. "
-                               f"Some agent statuses won't be synced")
+                logger.warning(f"Malformed file ({e}). Parsed line: {header}. Some files won't be synced")
                 break
 
             # read data
             data = src_f.read(st_size)
             bytes_read += st_size
 
-            yield dst_agent_info_path + '/' + name, data, st_mtime
+            yield dst_path + '/' + name, data, st_mtime

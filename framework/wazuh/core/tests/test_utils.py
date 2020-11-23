@@ -25,26 +25,60 @@ with patch('wazuh.core.common.ossec_uid'):
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
 # input data for testing q filter
-input_array = [{"count": 3,
-                "name": "default",
-                "mergedSum": "a7d19a28cd5591eade763e852248197b",
-                "configSum": "ab73af41699f13fdd81903b5f23d8d00"
+input_array = [
+    {
+        "count": 3,
+        "name": "default",
+        "mergedSum": "a7d19a28cd5591eade763e852248197b",
+        "configSum": "ab73af41699f13fdd81903b5f23d8d00"
+    },
+    {
+        "count": 0,
+        "name": "dmz",
+        "mergedSum": "dd77862c4a41ae1b3854d67143f3d3e4",
+        "configSum": "ab73af41699f13fdd81903b5f23d8d00"
+    },
+    {
+        "count": 0,
+        "name": "testsagentconf",
+        "mergedSum": "2acdb385658097abb9528aa5ec18c490",
+        "configSum": "297b4cea942e0b7d2d9c59f9433e3e97"
+    },
+    {
+        "count": 0,
+        "name": "testsagentconf2",
+        "mergedSum": "391ae29c1b0355c610f45bf133d5ea55",
+        "configSum": "297b4cea942e0b7d2d9c59f9433e3e97"
+    },
+    {
+        "count": 0,
+        "name": "test_nested1",
+        "mergedSum": {
+            "nestedSum1": "value"
+        },
+        "configSum": "0000000000000000000000000000000"
+    },
+    {
+        "count": 0,
+        "name": "test_nested2",
+        "mergedSum": {
+            "nestedSum1": "value"
+        },
+        "configSum": {
+            "nestedSum1": {
+                "nestedSum11": "value"
+            },
+            "nestedSum2": [
+                {
+                    "nestedSum21": "value1"
                 },
-               {"count": 0,
-                "name": "dmz",
-                "mergedSum": "dd77862c4a41ae1b3854d67143f3d3e4",
-                "configSum": "ab73af41699f13fdd81903b5f23d8d00"
-                },
-               {"count": 0,
-                "name": "testsagentconf",
-                "mergedSum": "2acdb385658097abb9528aa5ec18c490",
-                "configSum": "297b4cea942e0b7d2d9c59f9433e3e97"
-                },
-               {"count": 0,
-                "name": "testsagentconf2",
-                "mergedSum": "391ae29c1b0355c610f45bf133d5ea55",
-                "configSum": "297b4cea942e0b7d2d9c59f9433e3e97"
-                }]
+                {
+                    "nestedSum21": "value2"
+                }
+
+            ]
+        }
+    }]
 
 
 # MOCK DATA
@@ -879,12 +913,11 @@ def test_WazuhDBQuery_parse_filters(mock_query, mock_filter, mock_socket_conn, m
 
 
 @pytest.mark.parametrize('field_name, field_filter, q_filter', [
-    ('status', None, None),
+    ('status', 'field', {'value': 'active', 'operator': 'LIKE', 'field': 'status$0'}),
     ('date1', None, {'value': '1', 'operator': None}),
     ('os.name', 'field', {'value': '2019-07-16 09:21:56', 'operator': 'LIKE', 'field': 'status$0'}),
     ('os.name', None, {'value': None, 'operator': 'LIKE', 'field': 'status$0'}),
-    ('os.name', 'field', {'value': '2019-07-16 09:21:56', 'operator': 'LIKE', 'field': 'status$0'}),
-
+    ('os.name', 'field', {'value': '2019-07-16 09:21:56', 'operator': 'LIKE', 'field': 'status$0'})
 ])
 @patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
@@ -897,7 +930,7 @@ def test_WazuhDBQuery_protected_process_filter(mock_date, mock_status, mock_sock
     """Tests WazuhDBQuery._process_filter."""
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                          search=None, select=None,
-                         fields={'os.name': 'ubuntu', 'os.version': '18.04'},
+                         fields={'os.name': 'ubuntu', 'os.version': '18.04', 'status': 'active'},
                          default_sort_field=None, query=None,
                          backend=WazuhDBBackend(agent_id=0), count=5,
                          get_data=None, date_fields=['date1', 'date2'])
@@ -905,9 +938,7 @@ def test_WazuhDBQuery_protected_process_filter(mock_date, mock_status, mock_sock
     query._process_filter(field_name, field_filter, q_filter)
 
     mock_conn_db.assert_called_once_with()
-    if field_name == 'status':
-        mock_status.assert_any_call(q_filter)
-    elif field_name in ['date1', 'date2']:
+    if field_name in ['date1', 'date2']:
         mock_date.assert_any_call(q_filter, field_name)
 
 
@@ -1394,23 +1425,27 @@ def test_WazuhDBQueryGroupBy_protected_add_select_to_query(mock_parse, mock_add,
     ('count!=0', 1),
     ('name~test;mergedSum~2acdb,name=dmz', 2),
     ('name=dmz,name=default', 2),
-    ('name~test', 2),
-    ('count<3;name~test', 2),
-    ('name~d', 2),
-    ('name!=dmz;name!=default', 2),
-    ('count=0;name!=dmz', 2),
-    ('count=0', 3),
-    ('count<3', 3),
-    ('count<1', 3),
-    ('count!=3', 3),
-    ('count>10,count<3', 3),
+    ('name~test', 4),
+    ('count<3;name~test', 4),
+    ('name~d', 4),
+    ('name!=dmz;name!=default', 4),
+    ('count=0;name!=dmz', 4),
+    ('count=0', 5),
+    ('count<3', 5),
+    ('count<1', 5),
+    ('count!=3', 5),
+    ('count>10,count<3', 5),
     ('configSum~29,count=3', 3),
-    ('name~test,count>0', 3),
-    ('count<4', 4),
-    ('count>0,count<4', 4),
-    ('name~def,count=0', 4),
+    ('name~test,count>0', 5),
+    ('count<4', 6),
+    ('count>0,count<4', 6),
+    ('name~def,count=0', 6),
     ('configSum~29,configSum~ab', 4),
-    ('nameGfirewall', -1)
+    ('nameGfirewall', -1),
+    ('mergedSum.nestedSum1=value', 2),
+    ('configSum.nestedSum1.nestedSum11=value', 1),
+    ('configSum.nestedSum2.nestedSum21=value1', 1),
+    ('configSum.nestedSum2.nestedSum21=value2', 1)
 ])
 def test_filter_array_by_query(q, return_length):
     """Test filter by query in an array."""

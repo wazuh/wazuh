@@ -147,7 +147,7 @@ def test_execute(send_mock, socket_send_mock, connect_mock):
     mywdb = WazuhDBConnection()
     mywdb.execute('agent 000 sql delete from test', delete=True)
     mywdb.execute("agent 000 sql update test set value = 'test' where key = 'test'", update=True)
-    with patch("wazuh.core.wdb.WazuhDBConnection._send", return_value=[{'total':5}]):
+    with patch("wazuh.core.wdb.WazuhDBConnection._send", return_value=[{'total': 5}]):
         mywdb.execute("agent 000 sql select test from test offset 1 limit 1")
         mywdb.execute("agent 000 sql select test from test offset 1 limit 1", count=True)
         mywdb.execute("agent 000 sql select test from test offset 1 count")
