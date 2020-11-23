@@ -114,7 +114,8 @@ void HandleSecure()
     }
 
     // Reset all the agents' connection status in Wazuh DB
-    if (OS_SUCCESS != wdb_reset_agents_connection(NULL))
+    // The master will disconnect and alert the agents on its own DB. Thus, synchronization is not required.
+    if (OS_SUCCESS != wdb_reset_agents_connection("synced", NULL))
         mwarn("Unable to reset the agents' connection status. Possible incorrect statuses until the agents get connected to the manager.");
 
     // Create message handler thread pool

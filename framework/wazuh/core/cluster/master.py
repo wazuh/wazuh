@@ -429,21 +429,33 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             logger.info("Analyzing worker integrity: Files checked. KO files compressed.")
             try:
                 task_name = await self.send_request(command=b'sync_m_c', data=b'')
+                if isinstance(task_name, Exception) or task_name.startswith(b'Error'):
+                    exc_info = task_name if isinstance(task_name, Exception) else \
+                        exception.WazuhClusterError(code=3016, extra_message=str(task_name))
+                    task_name = b'None'
+                    raise exc_info
 
-                result = await self.send_file(compressed_data)
+                await self.send_file(compressed_data)
                 result = await self.send_request(command=b'sync_m_c_e',
                                                  data=task_name + b' ' + os.path.relpath(
                                                      compressed_data, common.ossec_path).encode())
+                if isinstance(result, Exception):
+                    raise result
+                elif result.startswith(b'Error'):
+                    raise exception.WazuhClusterError(3016, extra_message=result.decode())
             except exception.WazuhException as e:
+                # Notify error to worker and delete its received file.
                 self.logger.error(f"Error sending files information: {e}")
                 result = await self.send_request(command=b'sync_m_c_r', data=task_name + b' ' +
                                                  json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
             except Exception as e:
+                # Notify error to worker and delete its received file.
                 self.logger.error(f"Error sending files information: {e}")
                 exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
                                       cls=c_common.WazuhJSONEncoder).encode()
                 result = await self.send_request(command=b'sync_m_c_r', data=task_name + b' ' + exc_info)
             finally:
+                # Remove local file
                 os.unlink(compressed_data)
 
         self.sync_integrity_status['date_end_master'] = str(datetime.now())
@@ -480,9 +492,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     raise exception.WazuhClusterError(3007)
                 if data['merged']:
                     self.sync_extra_valid_status['total_extra_valid'] = len(agent_ids)
-                    for file_path, file_data, file_time in wazuh.core.cluster.cluster.unmerge_agent_info(data['merge_type'],
-                                                                                                         decompressed_files_path,
-                                                                                                         data['merge_name']):
+                    for file_path, file_data, file_time in wazuh.core.cluster.cluster.unmerge_info(data['merge_type'],
+                                                                                                   decompressed_files_path,
+                                                                                                   data['merge_name']):
                         full_unmerged_name = os.path.join(common.ossec_path, file_path)
                         tmp_unmerged_path = os.path.join(common.ossec_path, 'queue/cluster', self.name, os.path.basename(file_path))
                         try:
@@ -581,9 +593,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             ))
         if sum(n_errors['warnings'].values()) > 0:
             for key, value in n_errors['warnings'].items():
-                if key == '/queue/agent-info/':
-                    logger.debug2("Received {} agent statuses for non-existent agents. Skipping.".format(value))
-                elif key == '/queue/agent-groups/':
+                if key == '/queue/agent-groups/':
                     logger.debug2("Received {} group assignments for non-existent agents. Skipping.".format(value))
 
     def get_logger(self, logger_tag: str = ''):
@@ -643,7 +653,7 @@ class Master(server.AbstractServer):
         while True:
             file_integrity_logger.debug("Calculating")
             try:
-                self.integrity_control = wazuh.core.cluster.cluster.get_files_status('master', self.configuration['node_name'])
+                self.integrity_control = wazuh.core.cluster.cluster.get_files_status('master')
             except Exception as e:
                 file_integrity_logger.error("Error calculating file integrity: {}".format(e))
             file_integrity_logger.debug("Calculated.")

@@ -103,6 +103,7 @@ CREATE TABLE IF NOT EXISTS sys_osinfo (
     os_codename TEXT,
     os_major TEXT,
     os_minor TEXT,
+    os_patch TEXT,
     os_build TEXT,
     os_platform TEXT,
     sysname TEXT,
