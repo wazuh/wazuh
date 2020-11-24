@@ -10,6 +10,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
+#include "wazuhdb_op.h"
 
 extern void __real_cJSON_Delete(cJSON *item);
 
@@ -3011,11 +3012,12 @@ void test_wdb_global_update_agent_connection_status_transaction_fail(void **stat
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     const char *connection_status = "active";
+    const char *sync_status = "synced";
 
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_update_agent_connection_status(data->wdb, 1, connection_status);
+    result = wdb_global_update_agent_connection_status(data->wdb, 1, connection_status, sync_status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -3025,12 +3027,13 @@ void test_wdb_global_update_agent_connection_status_cache_fail(void **state)
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     const char *connection_status = "active";
+    const char *sync_status = "synced";
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_update_agent_connection_status(data->wdb, 1, connection_status);
+    result = wdb_global_update_agent_connection_status(data->wdb, 1, connection_status, sync_status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -3040,6 +3043,7 @@ void test_wdb_global_update_agent_connection_status_bind1_fail(void **state)
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     const char *connection_status = "active";
+    const char *sync_status = "synced";
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -3050,7 +3054,7 @@ void test_wdb_global_update_agent_connection_status_bind1_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_update_agent_connection_status(data->wdb, 1, connection_status);
+    result = wdb_global_update_agent_connection_status(data->wdb, 1, connection_status, sync_status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -3060,6 +3064,7 @@ void test_wdb_global_update_agent_connection_status_bind2_fail(void **state)
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     const char *connection_status = "active";
+    const char *sync_status = "synced";
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -3067,13 +3072,40 @@ void test_wdb_global_update_agent_connection_status_bind2_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_value(__wrap_sqlite3_bind_text, buffer, connection_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_value(__wrap_sqlite3_bind_text, buffer, sync_status);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
+    result = wdb_global_update_agent_connection_status(data->wdb, 1, connection_status, sync_status);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_update_agent_connection_status_bind3_fail(void **state)
+{
+    int result = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char *connection_status = "active";
+    const char *sync_status = "synced";
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_value(__wrap_sqlite3_bind_text, buffer, connection_status);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_value(__wrap_sqlite3_bind_text, buffer, sync_status);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
 
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
-    result = wdb_global_update_agent_connection_status(data->wdb, 1, connection_status);
+    result = wdb_global_update_agent_connection_status(data->wdb, 1, connection_status, sync_status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -3083,6 +3115,7 @@ void test_wdb_global_update_agent_connection_status_step_fail(void **state)
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     const char *connection_status = "active";
+    const char *sync_status = "synced";
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -3090,7 +3123,10 @@ void test_wdb_global_update_agent_connection_status_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_value(__wrap_sqlite3_bind_text, buffer, connection_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_value(__wrap_sqlite3_bind_text, buffer, sync_status);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
@@ -3098,7 +3134,7 @@ void test_wdb_global_update_agent_connection_status_step_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
-    result = wdb_global_update_agent_connection_status(data->wdb, 1, connection_status);
+    result = wdb_global_update_agent_connection_status(data->wdb, 1, connection_status, sync_status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -3108,6 +3144,7 @@ void test_wdb_global_update_agent_connection_status_success(void **state)
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     const char *connection_status = "active";
+    const char *sync_status = "synced";
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -3115,12 +3152,15 @@ void test_wdb_global_update_agent_connection_status_success(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_value(__wrap_sqlite3_bind_text, buffer, connection_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_value(__wrap_sqlite3_bind_text, buffer, sync_status);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
-    result = wdb_global_update_agent_connection_status(data->wdb, 1, connection_status);
+    result = wdb_global_update_agent_connection_status(data->wdb, 1, connection_status, sync_status);
 
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -4555,242 +4595,430 @@ void test_wdb_global_get_agent_info_success(void **state)
 
 void test_wdb_global_get_agents_to_disconnect_transaction_fail(void **state)
 {
-    cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
-    int keep_alive = 100;
+    int last_id = 0;
+    int keepalive = 100;
+    const char *sync_status = "synced";
 
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_get_agents_to_disconnect(data->wdb, keep_alive);
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, sync_status, &status);
+
+    assert_int_equal(status, WDBC_ERROR);
     assert_null(result);
 }
 
 void test_wdb_global_get_agents_to_disconnect_cache_fail(void **state)
 {
-    cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
-    int keep_alive = 100;
+    int last_id = 0;
+    int keepalive = 100;
+    const char *sync_status = "synced";
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_get_agents_to_disconnect(data->wdb, keep_alive);
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, sync_status, &status);
+
+    assert_int_equal(status, WDBC_ERROR);
     assert_null(result);
 }
 
-void test_wdb_global_get_agents_to_disconnect_bind_fail(void **state)
+void test_wdb_global_get_agents_to_disconnect_bind1_fail(void **state)
 {
-    cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
-    int keep_alive = 100;
+    int last_id = 0;
+    int keepalive = 100;
+    const char *sync_status = "synced";
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, keep_alive);
+    expect_value(__wrap_sqlite3_bind_int, value, last_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_get_agents_to_disconnect(data->wdb, keep_alive);
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, sync_status, &status);
+
+    assert_int_equal(status, WDBC_ERROR);
     assert_null(result);
 }
 
-void test_wdb_global_get_agents_to_disconnect_exec_fail(void **state)
+void test_wdb_global_get_agents_to_disconnect_bind2_fail(void **state)
 {
-    cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
-    int keep_alive = 100;
+    int last_id = 0;
+    int keepalive = 100;
+    const char *sync_status = "synced";
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
-    expect_any_always(__wrap_sqlite3_bind_int, index);
-    expect_any_always(__wrap_sqlite3_bind_int, value);
-    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, keepalive);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    will_return(__wrap_wdb_exec_stmt, NULL);
-    expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_get_agents_to_disconnect(data->wdb, keep_alive);
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, sync_status, &status);
+
+    assert_int_equal(status, WDBC_ERROR);
     assert_null(result);
 }
 
-void test_wdb_global_get_agents_to_disconnect_success(void **state)
+void test_wdb_global_get_agents_to_disconnect_ok(void **state)
 {
-    cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
-    int keep_alive = 100;
+    const int agents_amount = 10;
+    int last_id = 0;
+    int keepalive = 0;
+    const char *sync_status = "synced";
+    cJSON* root = cJSON_CreateArray();
+    for (int i=0; i<agents_amount; i++){
+        cJSON* json_agent = cJSON_CreateObject();
+        cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(i));
+        cJSON_AddItemToArray(root, json_agent);
+    }
 
+    //Preparing statement
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
-    expect_any_always(__wrap_sqlite3_bind_int, index);
-    expect_any_always(__wrap_sqlite3_bind_int, value);
-    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt, (cJSON*)1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, keepalive);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    //Executing statement
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
+    will_return(__wrap_wdb_exec_stmt_sized, root);
+    //Setting agents as disconnected
+    for (int i=0; i<agents_amount; i++){
+        will_return(__wrap_wdb_begin2, 1);
+        will_return(__wrap_wdb_stmt_cache, 1);
+        expect_value(__wrap_sqlite3_bind_text, pos, 1);
+        expect_string(__wrap_sqlite3_bind_text, buffer, "disconnected");
+        will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+        expect_value(__wrap_sqlite3_bind_text, pos, 2);
+        expect_string(__wrap_sqlite3_bind_text, buffer, "synced");
+        will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+        expect_value(__wrap_sqlite3_bind_int, index, 3);
+        expect_in_range(__wrap_sqlite3_bind_int, value, 0, agents_amount);
+        will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+        will_return(__wrap_wdb_step, SQLITE_DONE);
+    }
 
-    result = wdb_global_get_agents_to_disconnect(data->wdb, keep_alive);
-    assert_ptr_equal(result, (cJSON*)1);
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, sync_status, &status);
+
+    assert_int_equal(status, WDBC_OK);
+    assert_non_null(result);
+
+    __real_cJSON_Delete(root);
+}
+
+void test_wdb_global_get_agents_to_disconnect_due(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    const int agents_amount = 10;
+    int last_id = 0;
+    int keepalive = 100;
+    const char *sync_status = "synced";
+    cJSON* root = cJSON_CreateArray();
+    for (int i=0; i<agents_amount; i++){
+        cJSON* json_agent = cJSON_CreateObject();
+        cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(i));
+        cJSON_AddItemToArray(root, json_agent);
+    }
+
+    //Preparing statement
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, keepalive);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    //Executing statement
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_ROW);
+    will_return(__wrap_wdb_exec_stmt_sized, root);
+    //Setting agents as disconnected
+    for (int i=0; i<agents_amount; i++){
+        will_return(__wrap_wdb_begin2, 1);
+        will_return(__wrap_wdb_stmt_cache, 1);
+        expect_value(__wrap_sqlite3_bind_text, pos, 1);
+        expect_string(__wrap_sqlite3_bind_text, buffer, "disconnected");
+        will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+        expect_value(__wrap_sqlite3_bind_text, pos, 2);
+        expect_string(__wrap_sqlite3_bind_text, buffer, "synced");
+        will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+        expect_value(__wrap_sqlite3_bind_int, index, 3);
+        expect_in_range(__wrap_sqlite3_bind_int, value, 0, agents_amount);
+        will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+        will_return(__wrap_wdb_step, SQLITE_DONE);
+    }
+
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, sync_status, &status);
+
+    assert_int_equal(status, WDBC_DUE);
+    assert_non_null(result);
+
+    __real_cJSON_Delete(root);
+}
+
+void test_wdb_global_get_agents_to_disconnect_err(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int last_id = 0;
+    int keepalive = 0;
+    const char *sync_status = "synced";
+
+    //Preparing statement
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, keepalive);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    //Executing statement
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_ERROR);
+    will_return(__wrap_wdb_exec_stmt_sized, NULL);
+
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, sync_status, &status);
+
+    assert_int_equal(status, WDBC_ERROR);
+    assert_null(result);
+}
+
+void test_wdb_global_get_agents_to_disconnect_invalid_elements(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int last_id = 0;
+    int keepalive = 100;
+    const char *sync_status = "synced";
+    cJSON* root = cJSON_CreateArray();
+    cJSON* json_agent = cJSON_CreateObject();
+    cJSON_AddItemToArray(root, json_agent);
+
+    //Preparing statement
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, keepalive);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    //Executing statement
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
+    will_return(__wrap_wdb_exec_stmt_sized, root);
+    //Element error
+    expect_string(__wrap__merror, formatted_msg, "Invalid element returned by disconnect query");
+
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, sync_status, &status);
+
+    assert_int_equal(status, WDBC_ERROR);
+    assert_non_null(result);
+
+    __real_cJSON_Delete(root);
+}
+
+void test_wdb_global_get_agents_to_disconnect_update_status_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int last_id = 0;
+    int keepalive = 100;
+    const char *sync_status = "synced";
+    cJSON* root = cJSON_CreateArray();
+    cJSON* json_agent = cJSON_CreateObject();
+    cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(10));
+    cJSON_AddItemToArray(root, json_agent);
+
+    //Preparing statement
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, keepalive);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    //Executing statement
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
+    will_return(__wrap_wdb_exec_stmt_sized, root);
+    //Disconnect query error
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_string(__wrap__merror, formatted_msg, "Cannot set connection_status for agent 10");
+
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_agents_to_disconnect(data->wdb, last_id, keepalive, sync_status, &status);
+
+    assert_int_equal(status, WDBC_ERROR);
+    assert_non_null(result);
+
+    __real_cJSON_Delete(root);
 }
 
 /* Tests wdb_global_get_all_agents */
 
 void test_wdb_global_get_all_agents_transaction_fail(void **state)
 {
-    int result = 0;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char *output = NULL;
+    int last_id = 0;
 
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_get_all_agents(data->wdb, &last_agent_id, &output);
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_all_agents(data->wdb, last_id, &status);
 
-    assert_string_equal(output, "Cannot begin transaction");
-    os_free(output);
-    assert_int_equal(result, WDBC_ERROR);
+    assert_int_equal(status, WDBC_ERROR);
+    assert_null(result);
 }
 
 void test_wdb_global_get_all_agents_cache_fail(void **state)
 {
-    int result = 0;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char *output = NULL;
+    int last_id = 0;
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_get_all_agents(data->wdb, &last_agent_id, &output);
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_all_agents(data->wdb, last_id, &status);
 
-    assert_string_equal(output, "Cannot cache statement");
-    os_free(output);
-    assert_int_equal(result, WDBC_ERROR);
+    assert_int_equal(status, WDBC_ERROR);
+    assert_null(result);
 }
 
 void test_wdb_global_get_all_agents_bind_fail(void **state)
 {
-    int result = 0;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char *output = NULL;
-
+    int last_id = 0;
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
+    expect_value(__wrap_sqlite3_bind_int, value, last_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_get_all_agents(data->wdb, &last_agent_id, &output);
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_all_agents(data->wdb, last_id, &status);
 
-    assert_string_equal(output, "Cannot bind sql statement");
-    os_free(output);
-    assert_int_equal(result, WDBC_ERROR);
+    assert_int_equal(status, WDBC_ERROR);
+    assert_null(result);
 }
 
-void test_wdb_global_get_all_agents_no_agents(void **state)
+void test_wdb_global_get_all_agents_ok(void **state)
 {
-    int result = 0;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char *output = NULL;
+    const int agents_amount = 10;
+    int last_id = 0;
+    cJSON* root = cJSON_CreateArray();
+    for (int i=0; i<agents_amount; i++){
+        cJSON* json_agent = cJSON_CreateObject();
+        cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(i));
+        cJSON_AddItemToArray(root, json_agent);
+    }
 
+    //Preparing statement
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
-
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
+    expect_value(__wrap_sqlite3_bind_int, value, last_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt, NULL);
-    expect_function_call_any(__wrap_cJSON_Delete);
+    //Executing statement
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
+    will_return(__wrap_wdb_exec_stmt_sized, root);
 
-    result = wdb_global_get_all_agents(data->wdb, &last_agent_id, &output);
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_all_agents(data->wdb, last_id, &status);
 
-    assert_string_equal(output, "");
-    os_free(output);
-    assert_int_equal(result, WDBC_OK);
+    assert_int_equal(status, WDBC_OK);
+    assert_non_null(result);
+
+    __real_cJSON_Delete(root);
 }
 
-void test_wdb_global_get_all_agents_success(void **state)
+void test_wdb_global_get_all_agents_due(void **state)
 {
-    int result = 0;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char *output = NULL;
-    cJSON *root = NULL;
-    cJSON *json_agent = NULL;
-    int agent_id = 10;
-    char str_agt_id[] = "10";
+    const int agents_amount = 10;
+    int last_id = 0;
+    cJSON* root = cJSON_CreateArray();
+    for (int i=0; i<agents_amount; i++){
+        cJSON* json_agent = cJSON_CreateObject();
+        cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(i));
+        cJSON_AddItemToArray(root, json_agent);
 
-    root = cJSON_CreateArray();
-    json_agent = cJSON_CreateObject();
-    cJSON_AddNumberToObject(json_agent, "id", agent_id);
-    cJSON_AddItemToArray(root, json_agent);
+    }
 
-    will_return_count(__wrap_wdb_begin2, 1, -1);
-    will_return_count(__wrap_wdb_stmt_cache, 1, -1);
-
+    //Preparing statement
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
+    expect_value(__wrap_sqlite3_bind_int, value, last_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    //Executing statement
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_ROW);
+    will_return(__wrap_wdb_exec_stmt_sized, root);
 
-    // Mocking one valid agent
-    will_return(__wrap_wdb_exec_stmt, root);
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_all_agents(data->wdb, last_id, &status);
 
-    // No more agents
-    will_return(__wrap_wdb_exec_stmt, NULL);
-    expect_function_call_any(__wrap_cJSON_Delete);
+    assert_int_equal(status, WDBC_DUE);
+    assert_non_null(result);
 
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-
-    result = wdb_global_get_all_agents(data->wdb, &last_agent_id, &output);
-
-    assert_string_equal(output, str_agt_id);
-
-    assert_string_equal(output, "10");
-    os_free(output);
     __real_cJSON_Delete(root);
-    assert_int_equal(result, WDBC_OK);
 }
 
-void test_wdb_global_get_all_agents_full(void **state)
+void test_wdb_global_get_all_agents_err(void **state)
 {
-    int result = 0;
-    int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char *output = NULL;
-    cJSON *root = NULL;
-    cJSON *json_agent = NULL;
-    int agent_id = 1000;
+    int last_id = 0;
 
-    // Mocking many agents to create an array bigger than WDB_MAX_RESPONSE_SIZE
-    root = cJSON_CreateArray();
-    json_agent = cJSON_CreateObject();
-    cJSON_AddNumberToObject(json_agent, "id", agent_id);
-    cJSON_AddItemToArray(root, json_agent);
-    will_return_count(__wrap_wdb_exec_stmt, root, -1);
+    //Preparing statement
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    //Executing statement
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_ERROR);
+    will_return(__wrap_wdb_exec_stmt_sized, NULL);
 
-    expect_function_call_any(__wrap_cJSON_Delete);
-    will_return_count(__wrap_wdb_begin2, 1, -1);
-    will_return_count(__wrap_wdb_stmt_cache, 1, -1);
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_all_agents(data->wdb, last_id, &status);
 
-    expect_any_count(__wrap_sqlite3_bind_int, index, -1);
-    expect_any_count(__wrap_sqlite3_bind_int, value, -1);
-    will_return_count(__wrap_sqlite3_bind_int, SQLITE_OK, -1);
-
-    result = wdb_global_get_all_agents(data->wdb, &last_agent_id, &output);
-
-    assert_non_null(output);
-    os_free(output);
-    __real_cJSON_Delete(root);
-    assert_int_equal(result, WDBC_DUE);
+    assert_int_equal(status, WDBC_ERROR);
+    assert_null(result);
 }
 
 /* Tests wdb_global_check_manager_keepalive */
@@ -4838,11 +5066,12 @@ void test_wdb_global_check_manager_keepalive_step_ok(void **state) {
 void test_wdb_global_reset_agents_connection_transaction_fail(void **state)
 {
     test_struct_t *data  = (test_struct_t *)*state;
+    const char *sync_status = "synced";
 
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    int result = wdb_global_reset_agents_connection(data->wdb);
+    int result = wdb_global_reset_agents_connection(data->wdb, sync_status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -4850,12 +5079,32 @@ void test_wdb_global_reset_agents_connection_transaction_fail(void **state)
 void test_wdb_global_reset_agents_connection_cache_fail(void **state)
 {
     test_struct_t *data  = (test_struct_t *)*state;
+    const char *sync_status = "synced";
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    int result = wdb_global_reset_agents_connection(data->wdb);
+    int result = wdb_global_reset_agents_connection(data->wdb, sync_status);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_reset_agents_connection_bind_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char *sync_status = "synced";
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_value(__wrap_sqlite3_bind_text, buffer, sync_status);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
+
+    int result = wdb_global_reset_agents_connection(data->wdb, sync_status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -4863,15 +5112,20 @@ void test_wdb_global_reset_agents_connection_cache_fail(void **state)
 void test_wdb_global_reset_agents_step_fail(void **state)
 {
     test_struct_t *data  = (test_struct_t *)*state;
+    const char *sync_status = "synced";
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_value(__wrap_sqlite3_bind_text, buffer, sync_status);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
-    int result = wdb_global_reset_agents_connection(data->wdb);
+    int result = wdb_global_reset_agents_connection(data->wdb, sync_status);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -4879,12 +5133,16 @@ void test_wdb_global_reset_agents_step_fail(void **state)
 void test_wdb_global_reset_agents_connection_success(void **state)
 {
     test_struct_t *data  = (test_struct_t *)*state;
+    const char *sync_status = "synced";
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_value(__wrap_sqlite3_bind_text, buffer, sync_status);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
-    int result = wdb_global_reset_agents_connection(data->wdb);
+    int result = wdb_global_reset_agents_connection(data->wdb, sync_status);
 
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -4893,79 +5151,179 @@ void test_wdb_global_reset_agents_connection_success(void **state)
 
 void test_wdb_global_get_agents_by_connection_status_transaction_fail(void **state)
 {
-    cJSON *output = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
+    int last_id = 0;
+    const char connection_status[] = "active";
 
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    output = wdb_global_get_agents_by_connection_status(data->wdb, "active");
-    assert_null(output);
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_agents_by_connection_status(data->wdb, last_id, connection_status, &status);
+
+    assert_int_equal(status, WDBC_ERROR);
+    assert_null(result);
 }
 
 void test_wdb_global_get_agents_by_connection_status_cache_fail(void **state)
 {
-    cJSON *output = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
+    int last_id = 0;
+    const char connection_status[] = "active";
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    output = wdb_global_get_agents_by_connection_status(data->wdb, "active");
-    assert_null(output);
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_agents_by_connection_status(data->wdb, last_id, connection_status, &status);
+
+    assert_int_equal(status, WDBC_ERROR);
+    assert_null(result);
 }
 
-void test_wdb_global_get_agents_by_connection_status_bind_fail(void **state)
+void test_wdb_global_get_agents_by_connection_status_bind1_fail(void **state)
 {
-    cJSON *output = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
+    int last_id = 0;
+    const char connection_status[] = "active";
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_text, pos, 1);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "active");
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
+
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_agents_by_connection_status(data->wdb, last_id, connection_status, &status);
+
+    assert_int_equal(status, WDBC_ERROR);
+    assert_null(result);
+}
+
+void test_wdb_global_get_agents_by_connection_status_bind2_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int last_id = 0;
+    const char connection_status[] = "active";
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, connection_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
 
-    output = wdb_global_get_agents_by_connection_status(data->wdb, "active");
-    assert_null(output);
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_agents_by_connection_status(data->wdb, last_id, connection_status, &status);
+
+    assert_int_equal(status, WDBC_ERROR);
+    assert_null(result);
 }
 
-void test_wdb_global_get_agents_by_connection_status_exec_fail(void **state)
+void test_wdb_global_get_agents_by_connection_status_ok(void **state)
 {
-    cJSON *output = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
+    const int agents_amount = 10;
+    int last_id = 0;
+    const char connection_status[] = "active";
+    cJSON* root = cJSON_CreateArray();
+    for (int i=0; i<agents_amount; i++){
+        cJSON* json_agent = cJSON_CreateObject();
+        cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(i));
+        cJSON_AddItemToArray(root, json_agent);
+    }
 
+    //Preparing statement
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_text, pos, 1);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "active");
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, connection_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    will_return(__wrap_wdb_exec_stmt, NULL);
-    expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
+    //Executing statement
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
+    will_return(__wrap_wdb_exec_stmt_sized, root);
 
-    output = wdb_global_get_agents_by_connection_status(data->wdb, "active");
-    assert_null(output);
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_agents_by_connection_status(data->wdb, last_id, connection_status, &status);
+
+    assert_int_equal(status, WDBC_OK);
+    assert_non_null(result);
+
+    __real_cJSON_Delete(root);
 }
 
-void test_wdb_global_get_agents_by_connection_status_success(void **state)
+void test_wdb_global_get_agents_by_connection_status_due(void **state)
 {
-    cJSON *output = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
+    const int agents_amount = 10;
+    int last_id = 0;
+    const char connection_status[] = "active";
+    cJSON* root = cJSON_CreateArray();
+    for (int i=0; i<agents_amount; i++){
+        cJSON* json_agent = cJSON_CreateObject();
+        cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(i));
+        cJSON_AddItemToArray(root, json_agent);
+    }
 
+    //Preparing statement
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
-    expect_any_always(__wrap_sqlite3_bind_text, pos);
-    expect_any_always(__wrap_sqlite3_bind_text, buffer);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, connection_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    //Executing statement
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_ROW);
+    will_return(__wrap_wdb_exec_stmt_sized, root);
 
-    will_return(__wrap_wdb_exec_stmt, (cJSON*)1);
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_agents_by_connection_status(data->wdb, last_id, connection_status, &status);
 
-    output = wdb_global_get_agents_by_connection_status(data->wdb, "active");
-    assert_ptr_equal(output, (cJSON*)1);
+    assert_int_equal(status, WDBC_DUE);
+    assert_non_null(result);
+
+    __real_cJSON_Delete(root);
+}
+
+void test_wdb_global_get_agents_by_connection_status_err(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int last_id = 0;
+    const char connection_status[] = "active";
+
+    //Preparing statement
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, connection_status);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    //Executing statement
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_ERROR);
+    will_return(__wrap_wdb_exec_stmt_sized, NULL);
+
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_agents_by_connection_status(data->wdb, last_id, connection_status, &status);
+
+    assert_int_equal(status, WDBC_ERROR);
+    assert_null(result);
 }
 
 int main()
@@ -5069,6 +5427,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_connection_status_cache_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_connection_status_bind1_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_connection_status_bind2_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_connection_status_bind3_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_connection_status_step_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_connection_status_success, test_setup, test_teardown),
         /* Tests wdb_global_delete_agent */
@@ -5163,16 +5522,20 @@ int main()
         /* Tests wdb_global_get_agents_to_disconnect */
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_to_disconnect_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_to_disconnect_cache_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_to_disconnect_bind_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_to_disconnect_exec_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_to_disconnect_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_to_disconnect_bind1_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_to_disconnect_bind2_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_to_disconnect_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_to_disconnect_due, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_to_disconnect_err, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_to_disconnect_update_status_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_to_disconnect_invalid_elements, test_setup, test_teardown),
         /* Tests wdb_global_get_all_agents */
         cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_cache_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_bind_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_no_agents, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_success, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_full, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_due, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_err, test_setup, test_teardown),
         /* Tests wdb_global_check_manager_keepalive */
         cmocka_unit_test_setup_teardown(test_wdb_global_check_manager_keepalive_stmt_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_check_manager_keepalive_step_error, test_setup, test_teardown),
@@ -5181,14 +5544,17 @@ int main()
         /* Tests wdb_global_reset_agents_connection */
         cmocka_unit_test_setup_teardown(test_wdb_global_reset_agents_connection_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_reset_agents_connection_cache_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_reset_agents_connection_bind_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_reset_agents_step_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_reset_agents_connection_success, test_setup, test_teardown),
         /* Tests wdb_global_get_agents_by_connection_status */
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_cache_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_bind_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_exec_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_success, test_setup, test_teardown)
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_bind1_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_bind2_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_due, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_err, test_setup, test_teardown),
         };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

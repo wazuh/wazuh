@@ -72,29 +72,40 @@ class SyncWorker:
             self.logger.info('Master didnt grant permission to synchronize')
             return
 
+        task_id = await self.worker.send_request(command=self.cmd, data=b'')
+        if isinstance(task_id, Exception):
+            raise task_id
+        elif task_id.startswith(b'Error'):
+            self.logger.error(task_id.decode())
+            exc_info = json.dumps(exception.WazuhClusterError(code=3016, extra_message=str(task_id)),
+                                  cls=c_common.WazuhJSONEncoder).encode()
+            await self.worker.send_request(command=self.cmd + b'_r', data=b'None ' + exc_info)
+            return
+
         self.logger.info("Compressing files")
         compressed_data_path = wazuh.core.cluster.cluster.compress_files(name=self.worker.name,
                                                                          list_path=self.files_to_sync,
                                                                          cluster_control_json=self.checksums)
 
-        task_id = await self.worker.send_request(command=self.cmd, data=b'')
         try:
-
             self.logger.info("Sending compressed file to master")
-            result = await self.worker.send_file(filename=compressed_data_path)
+            await self.worker.send_file(filename=compressed_data_path)
             self.logger.info("Worker files sent to master")
-            result = await self.worker.send_request(command=self.cmd + b'_e',
-                                                    data=task_id + b' ' + os.path.relpath(
-                                                        compressed_data_path, common.ossec_path).encode())
+            result = await self.worker.send_request(command=self.cmd + b'_e', data=task_id + b' ' +
+                                                    os.path.relpath(compressed_data_path, common.ossec_path).encode())
+            if isinstance(result, Exception):
+                raise result
+            elif result.startswith(b'Error'):
+                raise WazuhClusterError(3016, extra_message=result.decode())
         except exception.WazuhException as e:
             self.logger.error(f"Error sending files information: {e}")
-            result = await self.worker.send_request(command=self.cmd+b'_r',
-                                                    data=task_id + b' ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
+            await self.worker.send_request(command=self.cmd+b'_r', data=task_id + b' ' +
+                                           json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
         except Exception as e:
             self.logger.error(f"Error sending files information: {e}")
             exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
                                   cls=c_common.WazuhJSONEncoder).encode()
-            result = await self.worker.send_request(command=self.cmd+b'_r', data=task_id + b' ' + exc_info)
+            await self.worker.send_request(command=self.cmd+b'_r', data=task_id + b' ' + exc_info)
         finally:
             os.unlink(compressed_data_path)
 
@@ -353,13 +364,13 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     integrity_logger.debug("Time synchronizing integrity: {} s".format(after - before))
             except exception.WazuhException as e:
                 integrity_logger.error("Error synchronizing integrity: {}".format(e))
-                res = await self.send_request(command=b'sync_i_w_m_r',
-                                              data=json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
+                await self.send_request(command=b'sync_i_w_m_r', data=b'None ' +
+                                        json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
             except Exception as e:
                 integrity_logger.error("Error synchronizing integrity: {}".format(e))
                 exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
                                       cls=c_common.WazuhJSONEncoder)
-                res = await self.send_request(command=b'sync_i_w_m_r', data=exc_info.encode())
+                await self.send_request(command=b'sync_i_w_m_r', data=b'None ' + exc_info.encode())
 
             await asyncio.sleep(self.cluster_items['intervals']['worker']['sync_integrity'])
 
@@ -414,13 +425,13 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             self.logger.debug2("Time synchronizing extra valid files: {} s".format(after - before))
         except exception.WazuhException as e:
             extra_valid_logger.error("Error synchronizing extra valid files: {}".format(e))
-            res = await self.send_request(command=b'sync_e_w_m_r',
-                                          data=b'None ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
+            await self.send_request(command=b'sync_e_w_m_r',
+                                    data=b'None ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
         except Exception as e:
             extra_valid_logger.error("Error synchronizing extra valid files: {}".format(e))
             exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
                                   cls=c_common.WazuhJSONEncoder)
-            res = await self.send_request(command=b'sync_e_w_m_r', data=b'None ' + exc_info.encode())
+            await self.send_request(command=b'sync_e_w_m_r', data=b'None ' + exc_info.encode())
 
     async def process_files_from_master(self, name: str, file_received: asyncio.Event):
         """

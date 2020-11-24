@@ -650,7 +650,14 @@ int wdb_parse(char * input, char * output) {
             }
         }
         else if (strcmp(query, "reset-agents-connection") == 0) {
-            result = wdb_parse_reset_agents_connection(wdb, output);
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax for reset-agents-connection.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_reset_agents_connection(wdb, next, output);
+            }
         }
         else if (strcmp(query, "get-agents-by-connection-status") == 0) {
             if (!next) {
@@ -711,6 +718,7 @@ int wdb_parse(char * input, char * output) {
 
             result = wdb_parse_task_upgrade(wdb, parameters_json, "upgrade", output);
             cJSON_Delete(parameters_json);
+
         } else if (!strcmp("upgrade_custom", query)) {
             if (!next) {
                 mdebug1("Task DB Invalid DB query syntax.");
@@ -729,6 +737,7 @@ int wdb_parse(char * input, char * output) {
 
             result = wdb_parse_task_upgrade(wdb, parameters_json, "upgrade_custom", output);
             cJSON_Delete(parameters_json);
+
         } else if (!strcmp("upgrade_get_status", query)) {
             if (!next) {
                 mdebug1("Task DB Invalid DB query syntax.");
@@ -747,6 +756,7 @@ int wdb_parse(char * input, char * output) {
 
             result = wdb_parse_task_upgrade_get_status(wdb, parameters_json, output);
             cJSON_Delete(parameters_json);
+
         } else if (!strcmp("upgrade_update_status", query)) {
             if (!next) {
                 mdebug1("Task DB Invalid DB query syntax.");
@@ -765,6 +775,7 @@ int wdb_parse(char * input, char * output) {
 
             result = wdb_parse_task_upgrade_update_status(wdb, parameters_json, output);
             cJSON_Delete(parameters_json);
+
         } else if (!strcmp("upgrade_result", query)) {
             if (!next) {
                 mdebug1("Task DB Invalid DB query syntax.");
@@ -783,6 +794,7 @@ int wdb_parse(char * input, char * output) {
 
             result = wdb_parse_task_upgrade_result(wdb, parameters_json, output);
             cJSON_Delete(parameters_json);
+
         } else if (!strcmp("upgrade_cancel_tasks", query)) {
             if (!next) {
                 mdebug1("Task DB Invalid DB query syntax.");
@@ -801,6 +813,7 @@ int wdb_parse(char * input, char * output) {
 
             result = wdb_parse_task_upgrade_cancel_tasks(wdb, parameters_json, output);
             cJSON_Delete(parameters_json);
+
         } else if (!strcmp("set_timeout", query)) {
             if (!next) {
                 mdebug1("Task DB Invalid DB query syntax.");
@@ -819,6 +832,7 @@ int wdb_parse(char * input, char * output) {
 
             result = wdb_parse_task_set_timeout(wdb, parameters_json, output);
             cJSON_Delete(parameters_json);
+
         } else if (!strcmp("delete_old", query)) {
             if (!next) {
                 mdebug1("Task DB Invalid DB query syntax.");
@@ -837,6 +851,7 @@ int wdb_parse(char * input, char * output) {
 
             result = wdb_parse_task_delete_old(wdb, parameters_json, output);
             cJSON_Delete(parameters_json);
+
         } else if (!strcmp("sql", query)) {
             if (!next) {
                 mdebug1("Task DB Invalid DB query syntax.");
@@ -2808,16 +2823,16 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output) {
             return -1;
         }
 
-        os_patch = curr;
+        os_release = curr;
         *next++ = '\0';
 
-        if (!strcmp(os_patch, "NULL"))
-            os_patch = NULL;
+        if (!strcmp(os_release, "NULL"))
+            os_release = NULL;
 
         if (!strcmp(next, "NULL"))
-            os_release = NULL;
+            os_patch = NULL;
         else
-            os_release = next;
+            os_patch = next;
 
         if (result = wdb_osinfo_save(wdb, scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_patch, os_build, os_platform, sysname, release, version, os_release), result < 0) {
             mdebug1("Cannot save OS information.");
@@ -4703,6 +4718,7 @@ int wdb_parse_global_update_connection_status(wdb_t * wdb, char * input, char * 
     const char *error = NULL;
     cJSON *j_id = NULL;
     cJSON *j_connection_status = NULL;
+    cJSON *j_sync_status = NULL;
 
     agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
     if (!agent_data) {
@@ -4713,13 +4729,15 @@ int wdb_parse_global_update_connection_status(wdb_t * wdb, char * input, char * 
     } else {
         j_id = cJSON_GetObjectItem(agent_data, "id");
         j_connection_status = cJSON_GetObjectItem(agent_data, "connection_status");
+        j_sync_status = cJSON_GetObjectItem(agent_data, "sync_status");
 
-        if (cJSON_IsNumber(j_id) && cJSON_IsString(j_connection_status)) {
+        if (cJSON_IsNumber(j_id) && cJSON_IsString(j_connection_status) && cJSON_IsString(j_sync_status)) {
             // Getting each field
             int id = j_id->valueint;
             char *connection_status = j_connection_status->valuestring;
+            char *sync_status = j_sync_status->valuestring;
 
-            if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb, id, connection_status)) {
+            if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb, id, connection_status, sync_status)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
@@ -5187,32 +5205,50 @@ int wdb_parse_global_get_agent_info(wdb_t* wdb, char* input, char* output) {
 }
 
 int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, char* output) {
-    cJSON *agents = NULL;
-    char *out = NULL;
+    int last_id = 0;
+    char *connection_status = NULL;
+    char *next = NULL;
+    const char delim[2] = " ";
+    char *savedptr = NULL;
 
-    if (agents = wdb_global_get_agents_by_connection_status(wdb, input), !agents) {
-        mdebug1("Error getting agent information from global.db.");
-        snprintf(output, OS_MAXSTR + 1, "err Error getting agent information from global.db.");
+    /* Get last_id*/
+    next = strtok_r(input, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments 'last_id' not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'last_id' not found");
         return OS_INVALID;
     }
-    #if 0
-    *output = cJSON_PrintUnformatted(agents);
-    cJSON_Delete(agents);
+    last_id = atoi(next);
+    /* Get connection status */
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments 'connection_status' not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'connection_status' not found");
+        return OS_INVALID;
+    }
+    connection_status = next;
 
-    return WDBC_OK;
-    #else
-    out = cJSON_PrintUnformatted(agents);
-    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-    os_free(out);
-    cJSON_Delete(agents);
+    // Execute command
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_agents_by_connection_status(wdb, last_id, connection_status, &status);
+    if (!result) {
+        mdebug1("Error getting agents by connection status from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting agents by connection status from global.db.");
+        return OS_INVALID;
+    }
+
+    //Print response
+    char* out = cJSON_PrintUnformatted(result);
+    snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], out);
+
+    cJSON_Delete(result);
+    os_free(out)
 
     return OS_SUCCESS;
-    #endif
 }
 
 int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output) {
     int last_id = 0;
-    char* out = NULL;
     char *next = NULL;
     const char delim[2] = " ";
     char *savedptr = NULL;
@@ -5232,16 +5268,27 @@ int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output) {
     }
     last_id = atoi(next);
 
-    wdbc_result status = wdb_global_get_all_agents(wdb, &last_id, &out);
+    // Execute command
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_all_agents(wdb, last_id, &status);
+    if (!result) {
+        mdebug1("Error getting agents from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting agents from global.db.");
+        return OS_INVALID;
+    }
+
+    //Print response
+    char* out = cJSON_PrintUnformatted(result);
     snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], out);
 
+    cJSON_Delete(result);
     os_free(out)
 
     return OS_SUCCESS;
 }
 
-int wdb_parse_reset_agents_connection(wdb_t * wdb, char * output) {
-    if (OS_SUCCESS != wdb_global_reset_agents_connection(wdb)) {
+int wdb_parse_reset_agents_connection(wdb_t * wdb, char* input, char * output) {
+    if (OS_SUCCESS != wdb_global_reset_agents_connection(wdb, input)) {
         mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
         snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
         return OS_INVALID;
@@ -5252,51 +5299,68 @@ int wdb_parse_reset_agents_connection(wdb_t * wdb, char * output) {
 }
 
 int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output) {
+    int last_id = 0;
     int keep_alive = 0;
-    cJSON *agents = NULL;
-    cJSON *agent = NULL;
-    cJSON *id = NULL;
-    char* out = NULL;
+    char *sync_status = NULL;
+    char *next = NULL;
+    const char delim[2] = " ";
+    char *savedptr = NULL;
 
-    keep_alive = atoi(input);
+    /* Get last id*/
+    next = strtok_r(input, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments last id not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments last id not found");
+        return OS_INVALID;
+    }
+    last_id = atoi(next);
 
-    if (agents = wdb_global_get_agents_to_disconnect(wdb, keep_alive), !agents) {
-        mdebug1("Error getting agents to disconnect; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
-        snprintf(output, OS_MAXSTR + 1, "err Error getting agents to disconnect; %s", sqlite3_errmsg(wdb->db));
+    /* Get keepalive*/
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments keepalive not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments keepalive not found");
+        return OS_INVALID;
+    }
+    keep_alive = atoi(next);
+
+    /* Get sync_status*/
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments sync_status not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments sync_status not found");
+        return OS_INVALID;
+    }
+    sync_status = next;
+
+    // Execute command
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_agents_to_disconnect(wdb, last_id, keep_alive, sync_status, &status);
+    if (!result) {
+        mdebug1("Error getting agents to be disconnected from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting agents to be disconnected from global.db.");
         return OS_INVALID;
     }
 
-    cJSON_ArrayForEach(agent, agents) {
-        id = cJSON_GetObjectItem(agent, "id");
-        if (cJSON_IsNumber(id)) {
-            if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb, id->valueint, AGENT_CS_DISCONNECTED)) {
-                mdebug1("Error setting agent %d as disconnected; err database %s/%s.db: %s",
-                         id->valueint, WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
-                snprintf(output, OS_MAXSTR + 1, "err Cannot set agent %d as disconnected; %s", id->valueint, sqlite3_errmsg(wdb->db));
-                cJSON_Delete(agents);
-                return OS_INVALID;
-            }
-        }
-    }
+    //Print response
+    char* out = cJSON_PrintUnformatted(result);
+    snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], out);
 
-    out = cJSON_PrintUnformatted(agents);
-    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-    os_free(out);
-    cJSON_Delete(agents);
+    cJSON_Delete(result);
+    os_free(out)
 
     return OS_SUCCESS;
 }
 
 int wdb_parse_task_upgrade(wdb_t* wdb, const cJSON *parameters, const char *command, char* output) {
+    int result = OS_INVALID;
     int agent_id = OS_INVALID;
-    int task_id = OS_INVALID;
-    char *node;
-    char *module;
-    char *upgrade_command;
+    char *node = NULL;
+    char *module = NULL;
 
     cJSON *agent_id_json = cJSON_GetObjectItem(parameters, "agent");
     if (!agent_id_json || (agent_id_json->type != cJSON_Number)) {
-        snprintf(output, OS_MAXSTR + 1, "err Error insert task: 'parsing agent_id error'");
+        snprintf(output, OS_MAXSTR + 1, "err Error insert task: 'parsing agent error'");
         return OS_INVALID;
     }
     agent_id = agent_id_json->valueint;
@@ -5315,34 +5379,36 @@ int wdb_parse_task_upgrade(wdb_t* wdb, const cJSON *parameters, const char *comm
     }
     module = module_json->valuestring;
 
-    // Insert upgrade task into DB
-    if (task_id = wdb_task_insert_task(wdb, agent_id, node, module, command), task_id == OS_INVALID) {
-        snprintf(output, OS_MAXSTR + 1, "err Error insert task: %s", sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
+    result = wdb_task_insert_task(wdb, agent_id, node, module, command);
+
+    cJSON *response = cJSON_CreateObject();
+    char *out = NULL;
+
+    if (result >= 0) {
+        cJSON_AddNumberToObject(response, "error", OS_SUCCESS);
+        cJSON_AddNumberToObject(response, "task_id", result);
     } else {
-        cJSON *response = cJSON_CreateObject();
-        char *out = NULL;
-
-        cJSON_AddNumberToObject(response, "task_id", task_id);
-
-        out = cJSON_PrintUnformatted(response);
-        snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-        os_free(out);
-        cJSON_Delete(response);
+        cJSON_AddNumberToObject(response, "error", result);
     }
+    out = cJSON_PrintUnformatted(response);
+
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+
+    os_free(out);
+    cJSON_Delete(response);
 
     return OS_SUCCESS;
 }
 
 int wdb_parse_task_upgrade_get_status(wdb_t* wdb, const cJSON *parameters, char* output) {
-    int agent_id = OS_INVALID;
     int result = OS_INVALID;
-    char *node;
+    int agent_id = OS_INVALID;
+    char *node = NULL;
     char *task_status = NULL;
 
     cJSON *agent_id_json = cJSON_GetObjectItem(parameters, "agent");
     if (!agent_id_json || (agent_id_json->type != cJSON_Number)) {
-        snprintf(output, OS_MAXSTR + 1, "err Error get upgrade task status: 'parsing agent_id error'");
+        snprintf(output, OS_MAXSTR + 1, "err Error get upgrade task status: 'parsing agent error'");
         return OS_INVALID;
     }
     agent_id = agent_id_json->valueint;
@@ -5353,34 +5419,148 @@ int wdb_parse_task_upgrade_get_status(wdb_t* wdb, const cJSON *parameters, char*
         return OS_INVALID;
     }
     node = node_json->valuestring;
-    if (result = wdb_task_get_upgrade_task_status(wdb, agent_id, node, &task_status), result == OS_INVALID) {
-        snprintf(output, OS_MAXSTR + 1, "err Error get upgrade task status: %s", sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    } else {
-        cJSON *response = cJSON_CreateObject();
-        char *out = NULL;
 
+    result = wdb_task_get_upgrade_task_status(wdb, agent_id, node, &task_status);
+
+    cJSON *response = cJSON_CreateObject();
+    char *out = NULL;
+
+    cJSON_AddNumberToObject(response, "error", result);
+    if (result == OS_SUCCESS) {
         cJSON_AddStringToObject(response, "status", task_status);
-
-        out = cJSON_PrintUnformatted(response);
-        snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-        os_free(out);
-        cJSON_Delete(response);
     }
+    out = cJSON_PrintUnformatted(response);
 
-    return OS_SUCCESS;
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+
+    os_free(out);
+    cJSON_Delete(response);
+
+    return result;
 }
 
 int wdb_parse_task_upgrade_update_status(wdb_t* wdb, const cJSON *parameters, char* output) {
-    return OS_SUCCESS;
+    int result = OS_INVALID;
+    int agent_id = OS_INVALID;
+    char *node = NULL;
+    char *status = NULL;
+    char *error = NULL;
+
+    cJSON *agent_id_json = cJSON_GetObjectItem(parameters, "agent");
+    if (!agent_id_json || (agent_id_json->type != cJSON_Number)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error upgrade update status task: 'parsing agent error'");
+        return OS_INVALID;
+    }
+    agent_id = agent_id_json->valueint;
+
+    cJSON *node_json = cJSON_GetObjectItem(parameters, "node");
+    if (!node_json || (node_json->type != cJSON_String)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error upgrade update status task: 'parsing node error'");
+        return OS_INVALID;
+    }
+    node = node_json->valuestring;
+
+    cJSON *status_json = cJSON_GetObjectItem(parameters, "status");
+    if (!status_json || (status_json->type != cJSON_String)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error upgrade update status task: 'parsing status error'");
+        return OS_INVALID;
+    }
+    status = status_json->valuestring;
+
+    cJSON *error_json = cJSON_GetObjectItem(parameters, "error_msg");
+    if (!error_json || (error_json->type != cJSON_String)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error upgrade update status task: 'parsing error message error'");
+        return OS_INVALID;
+    }
+    error = error_json->valuestring;
+
+    result = wdb_task_update_upgrade_task_status(wdb, agent_id, node, status, error);
+
+    cJSON *response = cJSON_CreateObject();
+    char *out = NULL;
+
+    cJSON_AddNumberToObject(response, "error", result);
+    out = cJSON_PrintUnformatted(response);
+
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+
+    os_free(out);
+    cJSON_Delete(response);
+
+    return result;
 }
 
 int wdb_parse_task_upgrade_result(wdb_t* wdb, const cJSON *parameters, char* output) {
-    return OS_SUCCESS;
+    int result = OS_INVALID;
+    int agent_id = OS_INVALID;
+    char *node_result = NULL;
+    char *module_result = NULL;
+    char *command_result = NULL;
+    char *status = NULL;
+    char *error = NULL;
+    int create_time = OS_INVALID;
+    int last_update_time = OS_INVALID;
+
+    cJSON *agent_id_json = cJSON_GetObjectItem(parameters, "agent");
+    if (!agent_id_json || (agent_id_json->type != cJSON_Number)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error upgrade result task: 'parsing agent error'");
+        return OS_INVALID;
+    }
+    agent_id = agent_id_json->valueint;
+
+    result = wdb_task_get_upgrade_task_by_agent_id(wdb, agent_id, &node_result, &module_result, &command_result, &status, &error, &create_time, &last_update_time);
+
+    cJSON *response = cJSON_CreateObject();
+    char *out = NULL;
+
+    if (result >= 0) {
+        cJSON_AddNumberToObject(response, "error", OS_SUCCESS);
+        cJSON_AddNumberToObject(response, "task_id", result);
+        cJSON_AddStringToObject(response, "node", node_result);
+        cJSON_AddStringToObject(response, "module", module_result);
+        cJSON_AddStringToObject(response, "command", command_result);
+        cJSON_AddStringToObject(response, "status", status);
+        cJSON_AddStringToObject(response, "error_msg", error);
+        cJSON_AddNumberToObject(response, "create_time", create_time);
+        cJSON_AddNumberToObject(response, "update_time", last_update_time);
+    } else {
+        cJSON_AddNumberToObject(response, "error", result);
+    }
+    out = cJSON_PrintUnformatted(response);
+
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+
+    os_free(out);
+    cJSON_Delete(response);
+
+    return result;
 }
 
 int wdb_parse_task_upgrade_cancel_tasks(wdb_t* wdb, const cJSON *parameters, char* output) {
-    return OS_SUCCESS;
+    int result = OS_INVALID;
+    char *node = NULL;
+
+    cJSON *node_json = cJSON_GetObjectItem(parameters, "node");
+    if (!node_json || (node_json->type != cJSON_String)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error upgrade cancel task: 'parsing node error'");
+        return OS_INVALID;
+    }
+    node = node_json->valuestring;
+
+    result = wdb_task_cancel_upgrade_tasks(wdb, node);
+
+    cJSON *response = cJSON_CreateObject();
+    char *out = NULL;
+
+    cJSON_AddNumberToObject(response, "error", result);
+    out = cJSON_PrintUnformatted(response);
+
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+
+    os_free(out);
+    cJSON_Delete(response);
+
+    return result;
 }
 
 int wdb_parse_task_set_timeout(wdb_t* wdb, const cJSON *parameters, char* output) {
@@ -5405,14 +5585,15 @@ int wdb_parse_task_set_timeout(wdb_t* wdb, const cJSON *parameters, char* output
 
     next_timeout = now + timestamp;
 
-    // Set the status of old tasks IN PROGRESS to TIMEOUT
     result = wdb_task_set_timeout_status(wdb, now, timestamp, &next_timeout);
 
     cJSON *response = cJSON_CreateObject();
     char *out = NULL;
 
     cJSON_AddNumberToObject(response, "error", result);
-    cJSON_AddNumberToObject(response, "timestamp", next_timeout);
+    if (result == OS_SUCCESS) {
+        cJSON_AddNumberToObject(response, "timestamp", next_timeout);
+    }
     out = cJSON_PrintUnformatted(response);
 
     snprintf(output, OS_MAXSTR + 1, "ok %s", out);
@@ -5429,12 +5610,11 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
 
     cJSON *timestamp_json = cJSON_GetObjectItem(parameters, "timestamp");
     if (!timestamp_json || (timestamp_json->type != cJSON_Number)) {
-        snprintf(output, OS_MAXSTR + 1, "err Error set timeout task: 'parsing timestamp error'");
+        snprintf(output, OS_MAXSTR + 1, "err Error delete old task: 'parsing timestamp error'");
         return OS_INVALID;
     }
     timestamp = timestamp_json->valueint;
 
-    // Delete entries older than cleanup_time
     result = wdb_task_delete_old_entries(wdb, timestamp);
 
     cJSON *response = cJSON_CreateObject();

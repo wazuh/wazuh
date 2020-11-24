@@ -107,28 +107,47 @@ STATIC cJSON* wm_task_manager_command_upgrade(wm_task_manager_upgrade *task, int
     cJSON *response = cJSON_CreateArray();
     int agent_it = 0;
     int agent_id = 0;
-    int task_id = OS_INVALID;
 
     while (agent_id = task->agent_ids[agent_it++], agent_id != OS_INVALID) {
         cJSON *parameters = cJSON_CreateObject();
-        cJSON *wdb_response = cJSON_CreateObject();
+        cJSON *wdb_response = NULL;
 
         cJSON_AddNumberToObject(parameters, task_manager_json_keys[WM_TASK_AGENT_ID], agent_id);
         cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_NODE], task->node);
         cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_MODULE], task->module);
 
-        if (wdb_response = wm_task_manager_send_message_to_wdb(task_manager_commands_list[command], parameters, error_code), !wdb_response) {
+        if (wdb_response = wm_task_manager_send_message_to_wdb(task_manager_commands_list[command], parameters, error_code), wdb_response) {
+
+            cJSON *wdb_error = cJSON_GetObjectItem(wdb_response, task_manager_json_keys[WM_TASK_ERROR]);
+
+            if (wdb_error && (wdb_error->type == cJSON_Number) && (wdb_error->valueint == OS_SUCCESS)) {
+                int task_id = OS_INVALID;
+
+                cJSON *task_id_json = cJSON_GetObjectItem(wdb_response, task_manager_json_keys[WM_TASK_TASK_ID]);
+
+                if (task_id_json && (task_id_json->type == cJSON_Number)) {
+                    task_id = task_id_json->valueint;
+                }
+
+                cJSON_AddItemToArray(response, wm_task_manager_parse_data_response(WM_TASK_SUCCESS, agent_id, task_id, NULL));
+
+            } else {
+                *error_code = WM_TASK_DATABASE_ERROR;
+                cJSON_Delete(wdb_response);
+                cJSON_Delete(parameters);
+                cJSON_Delete(response);
+                return NULL;
+            }
+
+            cJSON_Delete(wdb_response);
+
+        } else {
             cJSON_Delete(parameters);
             cJSON_Delete(response);
-        } else {
-            cJSON *task_id_json = cJSON_GetObjectItem(wdb_response, task_manager_json_keys[WM_TASK_TASK_ID]);
-            if (task_id_json && (task_id_json->type == cJSON_Number)) {
-                task_id = task_id_json->valueint;
-            }
-            cJSON_AddItemToArray(response, wm_task_manager_parse_data_response(WM_TASK_SUCCESS, agent_id, task_id, NULL));
-            cJSON_Delete(parameters);
-            cJSON_Delete(wdb_response);
+            return NULL;
         }
+
+        cJSON_Delete(parameters);
     }
 
     return response;
@@ -141,24 +160,43 @@ STATIC cJSON* wm_task_manager_command_upgrade_get_status(wm_task_manager_upgrade
 
     while (agent_id = task->agent_ids[agent_it++], agent_id != OS_INVALID) {
         cJSON *parameters = cJSON_CreateObject();
-        cJSON *wdb_response = cJSON_CreateObject();
+        cJSON *wdb_response = NULL;
 
         cJSON_AddNumberToObject(parameters, task_manager_json_keys[WM_TASK_AGENT_ID], agent_id);
         cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_NODE], task->node);
 
-        if (wdb_response = wm_task_manager_send_message_to_wdb(task_manager_commands_list[WM_TASK_UPGRADE_GET_STATUS], parameters, error_code), !wdb_response) {
+        if (wdb_response = wm_task_manager_send_message_to_wdb(task_manager_commands_list[WM_TASK_UPGRADE_GET_STATUS], parameters, error_code), wdb_response) {
+
+            cJSON *wdb_error = cJSON_GetObjectItem(wdb_response, task_manager_json_keys[WM_TASK_ERROR]);
+
+            if (wdb_error && (wdb_error->type == cJSON_Number) && (wdb_error->valueint == OS_SUCCESS)) {
+                char *status_result = NULL;
+
+                cJSON *status_result_json = cJSON_GetObjectItem(wdb_response, task_manager_json_keys[WM_TASK_STATUS]);
+
+                if (status_result_json && (status_result_json->type == cJSON_String)) {
+                    status_result = status_result_json->valuestring;
+                }
+
+                cJSON_AddItemToArray(response, wm_task_manager_parse_data_response(WM_TASK_SUCCESS, agent_id, OS_INVALID, status_result));
+
+            } else {
+                *error_code = WM_TASK_DATABASE_ERROR;
+                cJSON_Delete(wdb_response);
+                cJSON_Delete(parameters);
+                cJSON_Delete(response);
+                return NULL;
+            }
+
+            cJSON_Delete(wdb_response);
+
+        } else {
             cJSON_Delete(parameters);
             cJSON_Delete(response);
-        } else {
-            char *status_result = NULL;
-            cJSON *status_result_json = cJSON_GetObjectItem(wdb_response, task_manager_json_keys[WM_TASK_STATUS]);
-            if (status_result_json && (status_result_json->type == cJSON_String)) {
-                status_result = status_result_json->valuestring;
-            }
-            cJSON_AddItemToArray(response, wm_task_manager_parse_data_response(WM_TASK_SUCCESS, agent_id, OS_INVALID, status_result));
-            cJSON_Delete(parameters);
-            cJSON_Delete(wdb_response);
+            return NULL;
         }
+
+        cJSON_Delete(parameters);
     }
 
     return response;
@@ -168,17 +206,42 @@ STATIC cJSON* wm_task_manager_command_upgrade_update_status(wm_task_manager_upgr
     cJSON *response = cJSON_CreateArray();
     int agent_it = 0;
     int agent_id = 0;
-    int result = 0;
 
     while (agent_id = task->agent_ids[agent_it++], agent_id != OS_INVALID) {
+        cJSON *parameters = cJSON_CreateObject();
+        cJSON *wdb_response = NULL;
+
+        cJSON_AddNumberToObject(parameters, task_manager_json_keys[WM_TASK_AGENT_ID], agent_id);
+        cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_NODE], task->node);
+        cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_STATUS], task->status);
+        cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_ERROR_MESSAGE], task->error_msg);
+
         // Update upgrade task status
-        if (result = /*wm_task_manager_update_upgrade_task_status(agent_id, task->node, task->status, task->error_msg)*/0, result == OS_INVALID) {
-            *error_code = WM_TASK_DATABASE_ERROR;
-            cJSON_Delete(response);
-            break;
+        if (wdb_response = wm_task_manager_send_message_to_wdb(task_manager_commands_list[WM_TASK_UPGRADE_UPDATE_STATUS], parameters, error_code), wdb_response) {
+
+            cJSON *wdb_error = cJSON_GetObjectItem(wdb_response, task_manager_json_keys[WM_TASK_ERROR]);
+
+            if (wdb_error && (wdb_error->type == cJSON_Number) && (wdb_error->valueint == OS_SUCCESS)) {
+                cJSON_AddItemToArray(response, wm_task_manager_parse_data_response(WM_TASK_SUCCESS, agent_id, OS_INVALID, NULL));
+            } else if (wdb_error && (wdb_error->type == cJSON_Number) && (wdb_error->valueint == OS_NOTFOUND)) {
+                cJSON_AddItemToArray(response, wm_task_manager_parse_data_response(WM_TASK_DATABASE_NO_TASK, agent_id, OS_INVALID, NULL));
+            } else {
+                *error_code = WM_TASK_DATABASE_ERROR;
+                cJSON_Delete(wdb_response);
+                cJSON_Delete(parameters);
+                cJSON_Delete(response);
+                return NULL;
+            }
+
+            cJSON_Delete(wdb_response);
+
         } else {
-            cJSON_AddItemToArray(response, wm_task_manager_parse_data_response(result, agent_id, OS_INVALID, task->status));
+            cJSON_Delete(parameters);
+            cJSON_Delete(response);
+            return NULL;
         }
+
+        cJSON_Delete(parameters);
     }
 
     return response;
@@ -188,48 +251,112 @@ STATIC cJSON* wm_task_manager_command_upgrade_result(wm_task_manager_upgrade_res
     cJSON *response = cJSON_CreateArray();
     int agent_it = 0;
     int agent_id = 0;
-    int create_time = OS_INVALID;
-    int last_update_time = OS_INVALID;
-    char *node_result = NULL;
-    char *module_result = NULL;
-    char *command_result = NULL;
-    char *status = NULL;
-    char *error = NULL;
-    int task_id = OS_INVALID;
 
     while (agent_id = task->agent_ids[agent_it++], agent_id != OS_INVALID) {
-        if (task_id = /*wm_task_manager_get_upgrade_task_by_agent_id(agent_id, &node_result, &module_result, &command_result, &status, &error, &create_time, &last_update_time)*/0, task_id == OS_INVALID) {
-            *error_code = WM_TASK_DATABASE_ERROR;
-            cJSON_Delete(response);
-            break;
-        } else if (task_id == OS_NOTFOUND || task_id == 0) {
-            cJSON_AddItemToArray(response, wm_task_manager_parse_data_response(WM_TASK_DATABASE_NO_TASK, agent_id, OS_INVALID, NULL));
-        } else {
-            cJSON *tmp = wm_task_manager_parse_data_response(WM_TASK_SUCCESS, agent_id, task_id, NULL);
-            wm_task_manager_parse_data_result(tmp, node_result, module_result, command_result, status, error, create_time, last_update_time, task_manager_commands_list[WM_TASK_UPGRADE_RESULT]);
-            cJSON_AddItemToArray(response, tmp);
-        }
-    }
+        cJSON *parameters = cJSON_CreateObject();
+        cJSON *wdb_response = NULL;
 
-    os_free(node_result);
-    os_free(module_result);
-    os_free(command_result);
-    os_free(status);
-    os_free(error);
+        cJSON_AddNumberToObject(parameters, task_manager_json_keys[WM_TASK_AGENT_ID], agent_id);
+
+        // Upgrade result task
+        if (wdb_response = wm_task_manager_send_message_to_wdb(task_manager_commands_list[WM_TASK_UPGRADE_RESULT], parameters, error_code), wdb_response) {
+
+            cJSON *wdb_error = cJSON_GetObjectItem(wdb_response, task_manager_json_keys[WM_TASK_ERROR]);
+
+            if (wdb_error && (wdb_error->type == cJSON_Number) && (wdb_error->valueint == OS_SUCCESS)) {
+                int task_id = OS_INVALID;
+                char *node_result = NULL;
+                char *module_result = NULL;
+                char *command_result = NULL;
+                char *status = NULL;
+                char *error = NULL;
+                int create_time = OS_INVALID;
+                int last_update_time = OS_INVALID;
+
+                cJSON *task_id_json = cJSON_GetObjectItem(wdb_response, task_manager_json_keys[WM_TASK_TASK_ID]);
+                cJSON *node_json = cJSON_GetObjectItem(wdb_response, task_manager_json_keys[WM_TASK_NODE]);
+                cJSON *module_json = cJSON_GetObjectItem(wdb_response, task_manager_json_keys[WM_TASK_MODULE]);
+                cJSON *command_json = cJSON_GetObjectItem(wdb_response, task_manager_json_keys[WM_TASK_COMMAND]);
+                cJSON *status_json = cJSON_GetObjectItem(wdb_response, task_manager_json_keys[WM_TASK_STATUS]);
+                cJSON *error_json = cJSON_GetObjectItem(wdb_response, task_manager_json_keys[WM_TASK_ERROR_MSG]);
+                cJSON *create_json = cJSON_GetObjectItem(wdb_response, task_manager_json_keys[WM_TASK_CREATE_TIME]);
+                cJSON *update_json = cJSON_GetObjectItem(wdb_response, task_manager_json_keys[WM_TASK_LAST_UPDATE_TIME]);
+
+                if (task_id_json && (task_id_json->type == cJSON_Number)) {
+                    task_id = task_id_json->valueint;
+                }
+                if (node_json && (node_json->type == cJSON_String)) {
+                    node_result = node_json->valuestring;
+                }
+                if (module_json && (module_json->type == cJSON_String)) {
+                    module_result = module_json->valuestring;
+                }
+                if (command_json && (command_json->type == cJSON_String)) {
+                    command_result = command_json->valuestring;
+                }
+                if (status_json && (status_json->type == cJSON_String)) {
+                    status = status_json->valuestring;
+                }
+                if (error_json && (error_json->type == cJSON_String)) {
+                    error = error_json->valuestring;
+                }
+                if (create_json && (create_json->type == cJSON_Number)) {
+                    create_time = create_json->valueint;
+                }
+                if (update_json && (update_json->type == cJSON_Number)) {
+                    last_update_time = update_json->valueint;
+                }
+
+                cJSON *tmp = wm_task_manager_parse_data_response(WM_TASK_SUCCESS, agent_id, task_id, NULL);
+                wm_task_manager_parse_data_result(tmp, node_result, module_result, command_result, status, error, create_time, last_update_time, task_manager_commands_list[WM_TASK_UPGRADE_RESULT]);
+                cJSON_AddItemToArray(response, tmp);
+
+            } else if (wdb_error && (wdb_error->type == cJSON_Number) && (wdb_error->valueint == OS_NOTFOUND)) {
+                cJSON_AddItemToArray(response, wm_task_manager_parse_data_response(WM_TASK_DATABASE_NO_TASK, agent_id, OS_INVALID, NULL));
+            } else {
+                *error_code = WM_TASK_DATABASE_ERROR;
+                cJSON_Delete(wdb_response);
+                cJSON_Delete(parameters);
+                cJSON_Delete(response);
+                return NULL;
+            }
+
+            cJSON_Delete(wdb_response);
+
+        } else {
+            cJSON_Delete(parameters);
+            cJSON_Delete(response);
+            return NULL;
+        }
+
+        cJSON_Delete(parameters);
+    }
 
     return response;
 }
 
 STATIC cJSON* wm_task_manager_command_upgrade_cancel_tasks(wm_task_manager_upgrade_cancel_tasks *task, int *error_code) {
     cJSON *response = NULL;
-    int result = 0;
+    cJSON *parameters = cJSON_CreateObject();
+    cJSON *wdb_response = NULL;
+
+    cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_NODE], task->node);
 
     // Cancel pending tasks for this node
-    if (result = /*wm_task_manager_cancel_upgrade_tasks(task->node)*/0, result == OS_INVALID) {
-        *error_code = WM_TASK_DATABASE_ERROR;
-    } else {
-        response = wm_task_manager_parse_data_response(WM_TASK_SUCCESS, OS_INVALID, OS_INVALID, NULL);
+    if (wdb_response = wm_task_manager_send_message_to_wdb(task_manager_commands_list[WM_TASK_UPGRADE_CANCEL_TASKS], parameters, error_code), wdb_response) {
+
+        cJSON *wdb_error = cJSON_GetObjectItem(wdb_response, task_manager_json_keys[WM_TASK_ERROR]);
+
+        if (wdb_error && (wdb_error->type == cJSON_Number) && (wdb_error->valueint == OS_SUCCESS)) {
+            response = wm_task_manager_parse_data_response(WM_TASK_SUCCESS, OS_INVALID, OS_INVALID, NULL);
+        } else {
+            *error_code = WM_TASK_DATABASE_ERROR;
+        }
+
+        cJSON_Delete(wdb_response);
     }
+
+    cJSON_Delete(parameters);
 
     return response;
 }
@@ -267,8 +394,10 @@ void* wm_task_manager_clean_tasks(void *arg) {
                         next_timeout = timeout_json->valueint;
                     }
                 }
+
                 cJSON_Delete(wdb_response);
             }
+
             cJSON_Delete(parameters);
         }
 
@@ -286,6 +415,7 @@ void* wm_task_manager_clean_tasks(void *arg) {
             if (wdb_response = wm_task_manager_send_message_to_wdb(task_manager_commands_list[WM_TASK_DELETE_OLD], parameters, &error_code), wdb_response) {
                 cJSON_Delete(wdb_response);
             }
+
             cJSON_Delete(parameters);
         }
 

@@ -956,9 +956,15 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 strchr(tmp_dir, '?') ||
                 strchr(tmp_dir, '[')) {
             int gindex = 0;
+            int gstatus;
             glob_t g;
 
-            if (glob(tmp_dir, 0, NULL, &g) != 0) {
+            gstatus = glob(tmp_dir, 0, NULL, &g);
+            if (gstatus == GLOB_NOMATCH) {
+                mdebug2(GLOB_NO_MATCH, tmp_dir);
+                dir++;
+                continue;
+            } else if (gstatus != 0) {
                 merror(GLOB_ERROR, tmp_dir);
                 dir++;
                 continue;

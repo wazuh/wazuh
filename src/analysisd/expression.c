@@ -155,9 +155,9 @@ bool w_expression_match(w_expression_t * expression, const char * str_test, cons
     bool retval = false;
     const char * ret_match = NULL;
 
-    regex_matching status_match = {0};
-    pcre2_match_data * match_data;
-    PCRE2_SIZE * ovector;
+    regex_matching status_match = { .sub_strings = NULL };
+    pcre2_match_data * match_data = NULL;
+    PCRE2_SIZE * ovector = NULL;
     int captured_groups = 0;
 
     if (expression == NULL || str_test == NULL) {
