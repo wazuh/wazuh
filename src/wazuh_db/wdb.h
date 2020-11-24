@@ -1772,22 +1772,12 @@ int wdb_global_check_manager_keepalive(wdb_t *wdb);
  *
  * @param [in] wdb The global struct database.
  * @param parameters JSON with the parameters
+ * @param command Command to be insert in task
  * @param [out] output Response of the query.
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
-int wdb_parse_task_upgrade(wdb_t* wdb, const cJSON *parameters, char* output);
-
-/**
- * @brief Function to parse the insert upgrade_custom request.
- *
- * @param [in] wdb The global struct database.
- * @param parameters JSON with the parameters
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_task_upgrade_custom(wdb_t* wdb, const cJSON *parameters, char* output);
+int wdb_parse_task_upgrade(wdb_t* wdb, const cJSON *parameters, const char *command, char* output);
 
 /**
  * @brief Function to parse the upgrade_get_status request.
