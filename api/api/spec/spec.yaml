@@ -8984,7 +8984,7 @@ paths:
       summary: "Get CDB lists"
       description: "Return the contents of all CDB lists. Optionally, the result can be filtered by several criteria.
       See available parameters for more details"
-      operationId: api.controllers.list_controller.get_lists
+      operationId: api.controllers.cdb_list_controller.get_lists
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/lists:read'
       parameters:
@@ -9073,7 +9073,7 @@ paths:
       summary: "Get CDB lists files"
       description: "Return the path from all CDB lists. Use this method to know all the CDB lists and their location in
       the filesystem relative to Wazuh installation folder"
-      operationId: api.controllers.list_controller.get_lists_files
+      operationId: api.controllers.cdb_list_controller.get_lists_files
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/lists:read'
       parameters:
