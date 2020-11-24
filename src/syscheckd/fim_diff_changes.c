@@ -894,6 +894,7 @@ char* filter(const char *string) {
 #endif
 }
 
+#ifdef WIN32
 char *adapt_win_fc_output(char *command_output) {
     char *adapted_output;
     char *line;
@@ -952,6 +953,7 @@ next_it:
 
     return adapted_output;
 }
+#endif
 
 int fim_diff_process_delete_file(const char *filename){
     char *full_path;
