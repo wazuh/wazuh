@@ -406,39 +406,15 @@ static bool getOsInfoFromFiles(nlohmann::json& info)
     return ret;
 }
 
-static void getOsInfoFromUname(nlohmann::json& info)
-{
-    bool result{false};
-    std::string platform;
-    const auto osPlatform{Utils::exec("uname")};
-    if (osPlatform.find("SunOS") != std::string::npos)
-    {
-        constexpr auto SOLARIS_RELEASE_FILE{"/etc/release"};
-        const auto spParser{FactorySysOsParser::create("solaris")};
-        std::fstream file{SOLARIS_RELEASE_FILE, std::ios_base::in};
-        result = spParser && file.is_open() && spParser->parseFile(file, info);
-    }
-    else if(osPlatform.find("HP-UX") != std::string::npos)
-    {
-        const auto spParser{FactorySysOsParser::create("hp-ux")};
-        result = spParser && spParser->parseUname(Utils::exec("uname -r"), info);
-    }
-    if(!result)
-    {
-        info["os_name"] = "Linux";
-        info["os_platform"] = "linux";
-        info["os_version"] = "unknown";
-    }
-}
-
-
 nlohmann::json SysInfo::getOsInfo() const
 {
     nlohmann::json ret;
     struct utsname uts{};
     if (!getOsInfoFromFiles(ret))
     {
-        getOsInfoFromUname(ret);
+        ret["os_name"] = "Linux";
+        ret["os_platform"] = "linux";
+        ret["os_version"] = "unknown";
     }
     if (uname(&uts) >= 0)
     {
