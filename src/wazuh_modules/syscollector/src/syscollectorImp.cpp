@@ -34,7 +34,7 @@ do                                                                      \
 
 constexpr auto HOTFIXES_SQL_STATEMENT
 {
-    R"(CREATE TABLE hotfixes(
+    R"(CREATE TABLE dbsync_hotfixes(
     hotfix TEXT,
     checksum TEXT,
     PRIMARY KEY (hotfix)) WITHOUT ROWID;)"
@@ -42,7 +42,7 @@ constexpr auto HOTFIXES_SQL_STATEMENT
 
 constexpr auto HOTFIXES_START_CONFIG_STATEMENT
 {
-    R"({"table":"hotfixes",
+    R"({"table":"dbsync_hotfixes",
         "first_query":
             {
                 "column_list":["hotfix"],
@@ -59,7 +59,7 @@ constexpr auto HOTFIXES_START_CONFIG_STATEMENT
                 "order_by_opt":"hotfix DESC",
                 "count_opt":1
             },
-        "component":"hotfixes",
+        "component":"dbsync_hotfixes",
         "index":"hotfix",
         "last_event":"last_event",
         "checksum_field":"checksum",
@@ -76,7 +76,7 @@ constexpr auto HOTFIXES_START_CONFIG_STATEMENT
 
 constexpr auto PACKAGES_SQL_STATEMENT
 {
-    R"(CREATE TABLE packages(
+    R"(CREATE TABLE dbsync_packages(
     name TEXT,
     version TEXT,
     vendor TEXT,
@@ -95,7 +95,7 @@ constexpr auto PACKAGES_SQL_STATEMENT
 
 constexpr auto PACKAGES_START_CONFIG_STATEMENT
 {
-    R"({"table":"packages",
+    R"({"table":"dbsync_packages",
         "first_query":
             {
                 "column_list":["name"],
@@ -112,7 +112,7 @@ constexpr auto PACKAGES_START_CONFIG_STATEMENT
                 "order_by_opt":"name DESC",
                 "count_opt":1
             },
-        "component":"packages",
+        "component":"dbsync_packages",
         "index":"name",
         "last_event":"last_event",
         "checksum_field":"checksum",
@@ -129,7 +129,7 @@ constexpr auto PACKAGES_START_CONFIG_STATEMENT
 
 constexpr auto PROCESSES_START_CONFIG_STATEMENT
 {
-    R"({"table":"processes",
+    R"({"table":"dbsync_processes",
         "first_query":
             {
                 "column_list":["pid"],
@@ -146,7 +146,7 @@ constexpr auto PROCESSES_START_CONFIG_STATEMENT
                 "order_by_opt":"pid ASC",
                 "count_opt":1
             },
-        "component":"processes",
+        "component":"dbsync_processes",
         "index":"pid",
         "last_event":"last_event",
         "checksum_field":"checksum",
@@ -163,7 +163,7 @@ constexpr auto PROCESSES_START_CONFIG_STATEMENT
 
 constexpr auto PROCESSES_SQL_STATEMENT
 {
-    R"(CREATE TABLE processes (
+    R"(CREATE TABLE dbsync_processes (
     pid BIGINT,
     name TEXT,
     state TEXT,
@@ -198,7 +198,7 @@ constexpr auto PROCESSES_SQL_STATEMENT
 
 constexpr auto PORTS_START_CONFIG_STATEMENT
 {
-    R"({"table":"ports",
+    R"({"table":"dbsync_ports",
         "first_query":
             {
                 "column_list":["inode"],
@@ -215,7 +215,7 @@ constexpr auto PORTS_START_CONFIG_STATEMENT
                 "order_by_opt":"inode ASC",
                 "count_opt":1
             },
-        "component":"ports",
+        "component":"dbsync_ports",
         "index":"inode",
         "last_event":"last_event",
         "checksum_field":"checksum",
@@ -232,7 +232,7 @@ constexpr auto PORTS_START_CONFIG_STATEMENT
 
 constexpr auto PORTS_SQL_STATEMENT
 {
-    R"(CREATE TABLE ports (
+    R"(CREATE TABLE dbsync_ports (
        protocol TEXT,
        local_ip TEXT,
        local_port BIGINT,
@@ -250,7 +250,7 @@ constexpr auto PORTS_SQL_STATEMENT
 
 constexpr auto NETIFACE_START_CONFIG_STATEMENT
 {
-    R"({"table":"network_iface",
+    R"({"table":"dbsync_network_iface",
         "first_query":
             {
                 "column_list":["name"],
@@ -267,7 +267,7 @@ constexpr auto NETIFACE_START_CONFIG_STATEMENT
                 "order_by_opt":"name ASC",
                 "count_opt":1
             },
-        "component":"network_iface",
+        "component":"dbsync_network_iface",
         "index":"name",
         "last_event":"last_event",
         "checksum_field":"checksum",
@@ -284,7 +284,7 @@ constexpr auto NETIFACE_START_CONFIG_STATEMENT
 
 constexpr auto NETIFACE_SQL_STATEMENT
 {
-    R"(CREATE TABLE network_iface (
+    R"(CREATE TABLE dbsync_network_iface (
        name TEXT,
        adapter TEXT,
        type TEXT,
@@ -305,7 +305,7 @@ constexpr auto NETIFACE_SQL_STATEMENT
 
 constexpr auto NETPROTO_START_CONFIG_STATEMENT
 {
-    R"({"table":"network_protocol",
+    R"({"table":"dbsync_network_protocol",
         "first_query":
             {
                 "column_list":["iface"],
@@ -322,7 +322,7 @@ constexpr auto NETPROTO_START_CONFIG_STATEMENT
                 "order_by_opt":"iface ASC",
                 "count_opt":1
             },
-        "component":"network_protocol",
+        "component":"dbsync_network_protocol",
         "index":"iface",
         "last_event":"last_event",
         "checksum_field":"checksum",
@@ -339,7 +339,7 @@ constexpr auto NETPROTO_START_CONFIG_STATEMENT
 
 constexpr auto NETPROTO_SQL_STATEMENT
 {
-    R"(CREATE TABLE network_protocol (
+    R"(CREATE TABLE dbsync_network_protocol (
        iface TEXT,
        type TEXT,
        gateway TEXT,
@@ -351,7 +351,7 @@ constexpr auto NETPROTO_SQL_STATEMENT
 
 constexpr auto NETADDRESS_START_CONFIG_STATEMENT
 {
-    R"({"table":"network_address",
+    R"({"table":"dbsync_network_address",
         "first_query":
             {
                 "column_list":["iface"],
@@ -368,7 +368,7 @@ constexpr auto NETADDRESS_START_CONFIG_STATEMENT
                 "order_by_opt":"iface ASC",
                 "count_opt":1
             },
-        "component":"network_address",
+        "component":"dbsync_network_address",
         "index":"iface",
         "last_event":"last_event",
         "checksum_field":"checksum",
@@ -385,7 +385,7 @@ constexpr auto NETADDRESS_START_CONFIG_STATEMENT
 
 constexpr auto NETADDR_SQL_STATEMENT
 {
-    R"(CREATE TABLE network_address (
+    R"(CREATE TABLE dbsync_network_address (
        iface TEXT,
        proto TEXT,
        address TEXT,
@@ -545,7 +545,7 @@ void Syscollector::scanHardware()
     if (m_hardware)
     {
         nlohmann::json msg;
-        msg["type"] = "hardware";
+        msg["type"] = "dbsync_hardware";
         msg["operation"] = "MODIFIED";
         msg["data"] = m_spInfo->hardware();
         m_reportDiffFunction(msg.dump());
@@ -556,7 +556,7 @@ void Syscollector::scanOs()
     if(m_os)
     {
         nlohmann::json msg;
-        msg["type"] = "os";
+        msg["type"] = "dbsync_os";
         msg["operation"] = "MODIFIED";
         msg["data"] = m_spInfo->os();
         m_reportDiffFunction(msg.dump());
@@ -567,75 +567,78 @@ void Syscollector::scanNetwork()
 {
     if (m_network)
     {
-        constexpr auto netIfaceTable    { "network_iface"    };
-        constexpr auto netProtocolTable { "network_protocol" };
-        constexpr auto netAddressTable  { "network_address"  };
+        constexpr auto netIfaceTable    { "dbsync_network_iface"    };
+        constexpr auto netProtocolTable { "dbsync_network_protocol" };
+        constexpr auto netAddressTable  { "dbsync_network_address"  };
         const auto& networks { m_spInfo->networks() };
         nlohmann::json ifaceTableDataList {};
         nlohmann::json protoTableDataList {};
         nlohmann::json addressTableDataList {};
 
-        const auto& itIface { networks.find("iface") };
-
-        if (networks.end() != itIface)
+        if (!networks.is_null())
         {
-            for (const auto& item : itIface.value())
+            const auto& itIface { networks.find("iface") };
+
+            if (networks.end() != itIface)
             {
-                // Split the resulting networks data into the specific DB tables
-                // "network_iface" table data to update and notify
-                nlohmann::json ifaceTableData {};
-                ifaceTableData["name"]       = item.at("name");
-                ifaceTableData["adapter"]    = item.at("adapter");
-                ifaceTableData["type"]       = item.at("type");
-                ifaceTableData["state"]      = item.at("state");
-                ifaceTableData["mtu"]        = item.at("mtu");
-                ifaceTableData["mac"]        = item.at("mac");
-                ifaceTableData["tx_packets"] = item.at("tx_packets");
-                ifaceTableData["rx_packets"] = item.at("rx_packets");
-                ifaceTableData["tx_errors"]  = item.at("tx_errors");
-                ifaceTableData["rx_errors"]  = item.at("rx_errors");
-                ifaceTableData["tx_dropped"] = item.at("tx_dropped");
-                ifaceTableData["rx_dropped"] = item.at("rx_dropped");
-                ifaceTableDataList.push_back(ifaceTableData);
-
-                // "network_protocol" table data to update and notify
-                nlohmann::json protoTableData {};
-                protoTableData["iface"]   = item.at("name");
-                protoTableData["type"]    = item.at("type");
-                protoTableData["gateway"] = item.at("gateway");
-
-                if (item.find("IPv4") != item.end())
+                for (const auto& item : itIface.value())
                 {
-                    nlohmann::json addressTableData(item.at("IPv4"));
-                    protoTableData["dhcp"]    = addressTableData.at("dhcp");
-                    protoTableData["metric"]  = addressTableData.at("metric");
+                    // Split the resulting networks data into the specific DB tables
+                    // "dbsync_network_iface" table data to update and notify
+                    nlohmann::json ifaceTableData {};
+                    ifaceTableData["name"]       = item.at("name");
+                    ifaceTableData["adapter"]    = item.at("adapter");
+                    ifaceTableData["type"]       = item.at("type");
+                    ifaceTableData["state"]      = item.at("state");
+                    ifaceTableData["mtu"]        = item.at("mtu");
+                    ifaceTableData["mac"]        = item.at("mac");
+                    ifaceTableData["tx_packets"] = item.at("tx_packets");
+                    ifaceTableData["rx_packets"] = item.at("rx_packets");
+                    ifaceTableData["tx_errors"]  = item.at("tx_errors");
+                    ifaceTableData["rx_errors"]  = item.at("rx_errors");
+                    ifaceTableData["tx_dropped"] = item.at("tx_dropped");
+                    ifaceTableData["rx_dropped"] = item.at("rx_dropped");
+                    ifaceTableDataList.push_back(ifaceTableData);
 
-                    // "network_address" table data to update and notify
-                    addressTableData["iface"]   = item.at("name");
-                    addressTableData["proto"]   = "IPv4";
-                    addressTableDataList.push_back(addressTableData);
+                    // "dbsync_network_protocol" table data to update and notify
+                    nlohmann::json protoTableData {};
+                    protoTableData["iface"]   = item.at("name");
+                    protoTableData["type"]    = item.at("type");
+                    protoTableData["gateway"] = item.at("gateway");
+
+                    if (item.find("IPv4") != item.end())
+                    {
+                        nlohmann::json addressTableData(item.at("IPv4"));
+                        protoTableData["dhcp"]    = addressTableData.at("dhcp");
+                        protoTableData["metric"]  = addressTableData.at("metric");
+
+                        // "dbsync_network_address" table data to update and notify
+                        addressTableData["iface"]   = item.at("name");
+                        addressTableData["proto"]   = "IPv4";
+                        addressTableDataList.push_back(addressTableData);
+                    }
+
+                    if (item.find("IPv6") != item.end())
+                    {
+                        nlohmann::json addressTableData(item.at("IPv6"));
+                        protoTableData["dhcp"]    = addressTableData.at("dhcp");
+                        protoTableData["metric"]  = addressTableData.at("metric");
+
+                        // "dbsync_network_address" table data to update and notify
+                        addressTableData["iface"] = item.at("name");
+                        addressTableData["proto"] = "IPv6";
+                        addressTableDataList.push_back(addressTableData);
+                    }
+                    protoTableDataList.push_back(protoTableData);
                 }
 
-                if (item.find("IPv6") != item.end())
-                {
-                    nlohmann::json addressTableData(item.at("IPv6"));
-                    protoTableData["dhcp"]    = addressTableData.at("dhcp");
-                    protoTableData["metric"]  = addressTableData.at("metric");
-
-                    // "network_address" table data to update and notify
-                    addressTableData["iface"] = item.at("name");
-                    addressTableData["proto"] = "IPv6";
-                    addressTableDataList.push_back(addressTableData);
-                }
-                protoTableDataList.push_back(protoTableData);
+                updateAndNotifyChanges(m_spDBSync->handle(), netIfaceTable,    ifaceTableDataList, m_reportDiffFunction);
+                updateAndNotifyChanges(m_spDBSync->handle(), netProtocolTable, protoTableDataList, m_reportDiffFunction);
+                updateAndNotifyChanges(m_spDBSync->handle(), netAddressTable,  addressTableDataList, m_reportDiffFunction);
+                m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETIFACE_START_CONFIG_STATEMENT), m_reportSyncFunction);
+                m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETPROTO_START_CONFIG_STATEMENT), m_reportSyncFunction);
+                m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETADDRESS_START_CONFIG_STATEMENT), m_reportSyncFunction);
             }
-
-            updateAndNotifyChanges(m_spDBSync->handle(), netIfaceTable,    ifaceTableDataList, m_reportDiffFunction);
-            updateAndNotifyChanges(m_spDBSync->handle(), netProtocolTable, protoTableDataList, m_reportDiffFunction);
-            updateAndNotifyChanges(m_spDBSync->handle(), netAddressTable,  addressTableDataList, m_reportDiffFunction);
-            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETIFACE_START_CONFIG_STATEMENT), m_reportSyncFunction);
-            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETPROTO_START_CONFIG_STATEMENT), m_reportSyncFunction);
-            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETADDRESS_START_CONFIG_STATEMENT), m_reportSyncFunction);
         }
     }
 }
@@ -644,31 +647,35 @@ void Syscollector::scanPackages()
 {
     if (m_packages)
     {
-        constexpr auto tablePackages{"packages"};
+        constexpr auto tablePackages{"dbsync_packages"};
         nlohmann::json packages;
         nlohmann::json hotfixes;
         const auto& packagesData { m_spInfo->packages() };
-        for (const auto& item : packagesData)
+
+        if (!packagesData.is_null())
         {
-            if(item.find("hotfix") != item.end())
+            for (const auto& item : packagesData)
             {
-                if (m_hotfixes)
+                if(item.find("hotfix") != item.end())
                 {
-                    hotfixes.push_back(item);
+                    if (m_hotfixes)
+                    {
+                        hotfixes.push_back(item);
+                    }
+                }
+                else
+                {
+                    packages.push_back(item);
                 }
             }
-            else
+            updateAndNotifyChanges(m_spDBSync->handle(), tablePackages, packages, m_reportDiffFunction);
+            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PACKAGES_START_CONFIG_STATEMENT), m_reportSyncFunction);
+            if (m_hotfixes)
             {
-                packages.push_back(item);
+                constexpr auto tableHotfixes{"dbsync_hotfixes"};
+                updateAndNotifyChanges(m_spDBSync->handle(), tableHotfixes, hotfixes, m_reportDiffFunction);
+                m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HOTFIXES_START_CONFIG_STATEMENT), m_reportSyncFunction);
             }
-        }
-        updateAndNotifyChanges(m_spDBSync->handle(), tablePackages, packages, m_reportDiffFunction);
-        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PACKAGES_START_CONFIG_STATEMENT), m_reportSyncFunction);
-        if (m_hotfixes)
-        {
-            constexpr auto tableHotfixes{"hotfixes"};
-            updateAndNotifyChanges(m_spDBSync->handle(), tableHotfixes, hotfixes, m_reportDiffFunction);
-            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HOTFIXES_START_CONFIG_STATEMENT), m_reportSyncFunction);
         }
     }
 }
@@ -677,40 +684,43 @@ void Syscollector::scanPorts()
 {
     if (m_ports)
     {
-        constexpr auto table{"ports"};
+        constexpr auto table{"dbsync_ports"};
         constexpr auto PORT_LISTENING_STATE { "listening" };
         constexpr auto TCP_PROTOCOL { "tcp" };
         const auto& data { m_spInfo->ports() };
         nlohmann::json portsList{};
 
-        const auto& itPorts { data.find("ports") };
-
-        if (data.end() != itPorts)
+        if (!data.is_null())
         {
-            for (const auto& item : itPorts.value())
+            const auto& itPorts { data.find("ports") };
+
+            if (data.end() != itPorts)
             {
-                const auto isListeningState { item.at("state") == PORT_LISTENING_STATE };
-                if(isListeningState)
+                for (const auto& item : itPorts.value())
                 {
-                    // Only update and notify "Listening" state ports
-                    if (m_portsAll)
+                    const auto isListeningState { item.at("state") == PORT_LISTENING_STATE };
+                    if(isListeningState)
                     {
-                        // TCP and UDP ports
-                        portsList.push_back(item);
-                    }
-                    else
-                    {
-                        // Only TCP ports
-                        const auto isTCPProto { item.at("protocol") == TCP_PROTOCOL };
-                        if (isTCPProto)
+                        // Only update and notify "Listening" state ports
+                        if (m_portsAll)
                         {
+                            // TCP and UDP ports
                             portsList.push_back(item);
+                        }
+                        else
+                        {
+                            // Only TCP ports
+                            const auto isTCPProto { item.at("protocol") == TCP_PROTOCOL };
+                            if (isTCPProto)
+                            {
+                                portsList.push_back(item);
+                            }
                         }
                     }
                 }
+                updateAndNotifyChanges(m_spDBSync->handle(), table, portsList, m_reportDiffFunction);
+                m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PORTS_START_CONFIG_STATEMENT), m_reportSyncFunction);
             }
-            updateAndNotifyChanges(m_spDBSync->handle(), table, portsList, m_reportDiffFunction);
-            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PORTS_START_CONFIG_STATEMENT), m_reportSyncFunction);
         }
     }
 }
@@ -719,10 +729,13 @@ void Syscollector::scanProcesses()
 {
     if (m_processes)
     {
-        constexpr auto table{"processes"};
+        constexpr auto table{"dbsync_processes"};
         const auto& processes{m_spInfo->processes()};
-        updateAndNotifyChanges(m_spDBSync->handle(), table, processes, m_reportDiffFunction);
-        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PROCESSES_START_CONFIG_STATEMENT), m_reportSyncFunction);
+        if (!processes.is_null())
+        {
+            updateAndNotifyChanges(m_spDBSync->handle(), table, processes, m_reportDiffFunction);
+            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PROCESSES_START_CONFIG_STATEMENT), m_reportSyncFunction);
+        }
     }
 }
 
