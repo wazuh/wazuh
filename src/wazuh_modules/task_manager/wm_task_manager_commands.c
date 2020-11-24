@@ -204,14 +204,22 @@ STATIC cJSON* wm_task_manager_command_upgrade_result(wm_task_manager_upgrade_res
 
 STATIC cJSON* wm_task_manager_command_upgrade_cancel_tasks(wm_task_manager_upgrade_cancel_tasks *task, int *error_code) {
     cJSON *response = NULL;
-    int result = 0;
+    cJSON *parameters = cJSON_CreateObject();
+    cJSON *wdb_response = NULL;
+
+    cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_NODE], task->node);
 
     // Cancel pending tasks for this node
-    if (result = /*wm_task_manager_cancel_upgrade_tasks(task->node)*/0, result == OS_INVALID) {
-        *error_code = WM_TASK_DATABASE_ERROR;
-    } else {
-        response = wm_task_manager_parse_data_response(WM_TASK_SUCCESS, OS_INVALID, OS_INVALID, NULL);
+    if (wdb_response = wm_task_manager_send_message_to_wdb(task_manager_commands_list[WM_TASK_UPGRADE_CANCEL_TASKS], parameters, error_code), wdb_response) {
+
+        cJSON *wdb_error = cJSON_GetObjectItem(wdb_response, task_manager_json_keys[WM_TASK_ERROR]);
+
+        if (wdb_error && (wdb_error->type == cJSON_Number) && (wdb_error->valueint == OS_SUCCESS)) {
+            response = wm_task_manager_parse_data_response(WM_TASK_SUCCESS, OS_INVALID, OS_INVALID, NULL);
+        }
+        cJSON_Delete(wdb_response);
     }
+    cJSON_Delete(parameters);
 
     return response;
 }

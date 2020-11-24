@@ -5308,7 +5308,31 @@ int wdb_parse_task_upgrade_result(wdb_t* wdb, const cJSON *parameters, char* out
 }
 
 int wdb_parse_task_upgrade_cancel_tasks(wdb_t* wdb, const cJSON *parameters, char* output) {
-    return OS_SUCCESS;
+    int result = OS_INVALID;
+    char *node = NULL;
+
+    cJSON *node_json = cJSON_GetObjectItem(parameters, "node");
+    if (!node_json || (node_json->type != cJSON_String)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error upgrade cancel task: 'parsing node error'");
+        return OS_INVALID;
+    }
+    node = node_json->valuestring;
+
+    // Cancel pending tasks for this node
+    result = wdb_task_cancel_upgrade_tasks(wdb, node);
+
+    cJSON *response = cJSON_CreateObject();
+    char *out = NULL;
+
+    cJSON_AddNumberToObject(response, "error", result);
+    out = cJSON_PrintUnformatted(response);
+
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+
+    os_free(out);
+    cJSON_Delete(response);
+
+    return result;
 }
 
 int wdb_parse_task_set_timeout(wdb_t* wdb, const cJSON *parameters, char* output) {
@@ -5357,7 +5381,7 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
 
     cJSON *timestamp_json = cJSON_GetObjectItem(parameters, "timestamp");
     if (!timestamp_json || (timestamp_json->type != cJSON_Number)) {
-        snprintf(output, OS_MAXSTR + 1, "err Error set timeout task: 'parsing timestamp error'");
+        snprintf(output, OS_MAXSTR + 1, "err Error delete old task: 'parsing timestamp error'");
         return OS_INVALID;
     }
     timestamp = timestamp_json->valueint;
