@@ -254,7 +254,7 @@ void* wm_task_manager_clean_tasks(void *arg) {
 }
 
 STATIC cJSON* wm_task_manager_send_message_to_wdb(const char *command, cJSON *parameters, int *error_code) {
-    cJSON *root = cJSON_CreateObject();
+    cJSON *root = NULL;
     const char *json_err;
     int result = 0;
     char *parameters_in_str = NULL;
@@ -262,7 +262,6 @@ STATIC cJSON* wm_task_manager_send_message_to_wdb(const char *command, cJSON *pa
     char wdboutput[WDBOUTPUT_SIZE] = "";
     char *payload = NULL;
     int socket = -1;
-
 
     parameters_in_str = cJSON_PrintUnformatted(parameters);
     snprintf(wdbquery, sizeof(wdbquery), "task %s %s", command, parameters_in_str);
@@ -275,29 +274,30 @@ STATIC cJSON* wm_task_manager_send_message_to_wdb(const char *command, cJSON *pa
         case OS_SUCCESS:
             if (WDBC_OK == wdbc_parse_result(wdboutput, &payload)) {
                 cJSON *response = cJSON_CreateObject();
+
                 // Parsing payload
                 if (response = cJSON_ParseWithOpts(payload, &json_err, 0), !response) {
                     mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_JSON_ERROR, payload);
                     *error_code = WM_TASK_PARSE_ERROR;
-                    cJSON_Delete(response);
-                    cJSON_Delete(root);
                     return NULL;
                 }
 
-                cJSON_AddStringToObject(root,"output",wdboutput);
-                cJSON_AddItemToObject(root,"payload",response);
+                root = cJSON_CreateObject();
+                cJSON_AddStringToObject(root, "output", wdboutput);
+                cJSON_AddItemToObject(root, "payload", response);
             }
             else {
                 mtdebug1(WM_TASK_MANAGER_LOGTAG, MOD_TASK_TASKS_DB_ERROR_IN_QUERY, payload);
-                cJSON_AddStringToObject(root,"output",wdboutput);
-                cJSON_AddStringToObject(root,"payload",payload);
+
+                root = cJSON_CreateObject();
+                cJSON_AddStringToObject(root, "output", wdboutput);
+                cJSON_AddStringToObject(root, "payload", payload);
             }
             break;
         default:
             mtdebug1(WM_TASK_MANAGER_LOGTAG, MOD_TASK_TASKS_DB_ERROR_EXECUTE, WDB_TASK_DIR, WDB_TASK_NAME);
             mtdebug2(WM_TASK_MANAGER_LOGTAG, MOD_TASK_TASKS_DB_SQL_QUERY, wdbquery);
             *error_code = WM_TASK_DATABASE_ERROR;
-            cJSON_Delete(root);
             break;
     }
 
