@@ -5300,7 +5300,54 @@ int wdb_parse_task_upgrade_get_status(wdb_t* wdb, const cJSON *parameters, char*
 }
 
 int wdb_parse_task_upgrade_update_status(wdb_t* wdb, const cJSON *parameters, char* output) {
-    return OS_SUCCESS;
+    int result = OS_INVALID;
+    int agent_id = OS_INVALID;
+    char *node = NULL;
+    char *status = NULL;
+    char *error = NULL;
+
+    cJSON *agent_json = cJSON_GetObjectItem(parameters, "agent");
+    if (!agent_json || (agent_json->type != cJSON_Number)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error upgrade update status task: 'parsing agent error'");
+        return OS_INVALID;
+    }
+    agent_id = agent_json->valueint;
+
+    cJSON *node_json = cJSON_GetObjectItem(parameters, "node");
+    if (!node_json || (node_json->type != cJSON_String)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error upgrade update status task: 'parsing node error'");
+        return OS_INVALID;
+    }
+    node = node_json->valuestring;
+
+    cJSON *status_json = cJSON_GetObjectItem(parameters, "status");
+    if (!status_json || (status_json->type != cJSON_String)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error upgrade update status task: 'parsing status error'");
+        return OS_INVALID;
+    }
+    status = status_json->valuestring;
+
+    cJSON *error_json = cJSON_GetObjectItem(parameters, "error_msg");
+    if (!error_json || (error_json->type != cJSON_String)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error upgrade update status task: 'parsing error message error'");
+        return OS_INVALID;
+    }
+    error = error_json->valuestring;
+
+    result = wdb_task_update_upgrade_task_status(wdb, agent_id, node, status, error);
+
+    cJSON *response = cJSON_CreateObject();
+    char *out = NULL;
+
+    cJSON_AddNumberToObject(response, "error", result);
+    out = cJSON_PrintUnformatted(response);
+
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+
+    os_free(out);
+    cJSON_Delete(response);
+
+    return result;
 }
 
 int wdb_parse_task_upgrade_result(wdb_t* wdb, const cJSON *parameters, char* output) {
@@ -5328,17 +5375,17 @@ int wdb_parse_task_upgrade_result(wdb_t* wdb, const cJSON *parameters, char* out
 
     if (result >= 0) {
         cJSON_AddNumberToObject(response, "error", OS_SUCCESS);
+        cJSON_AddNumberToObject(response, "task_id", result);
+        cJSON_AddStringToObject(response, "node", node_result);
+        cJSON_AddStringToObject(response, "module", module_result);
+        cJSON_AddStringToObject(response, "command", command_result);
+        cJSON_AddStringToObject(response, "status", status);
+        cJSON_AddStringToObject(response, "error_msg", error);
+        cJSON_AddNumberToObject(response, "create_time", create_time);
+        cJSON_AddNumberToObject(response, "update_time", last_update_time);
     } else {
         cJSON_AddNumberToObject(response, "error", result);
     }
-    cJSON_AddNumberToObject(response, "task_id", result);
-    cJSON_AddStringToObject(response, "node", node_result);
-    cJSON_AddStringToObject(response, "module", module_result);
-    cJSON_AddStringToObject(response, "command", command_result);
-    cJSON_AddStringToObject(response, "status", status);
-    cJSON_AddStringToObject(response, "error_msg", error);
-    cJSON_AddNumberToObject(response, "create_time", create_time);
-    cJSON_AddNumberToObject(response, "update_time", last_update_time);
     out = cJSON_PrintUnformatted(response);
 
     snprintf(output, OS_MAXSTR + 1, "ok %s", out);
@@ -5404,7 +5451,9 @@ int wdb_parse_task_set_timeout(wdb_t* wdb, const cJSON *parameters, char* output
     char *out = NULL;
 
     cJSON_AddNumberToObject(response, "error", result);
-    cJSON_AddNumberToObject(response, "timestamp", next_timeout);
+    if (result == OS_SUCCESS) {
+        cJSON_AddNumberToObject(response, "timestamp", next_timeout);
+    }
     out = cJSON_PrintUnformatted(response);
 
     snprintf(output, OS_MAXSTR + 1, "ok %s", out);
