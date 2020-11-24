@@ -271,7 +271,7 @@ class User(_Base):
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
     __table_args__ = (UniqueConstraint('username', name='username_restriction'),
                       CheckConstraint('length(username) <= 64'),
-                      CheckConstraint('length(password) <= 256'))
+                      CheckConstraint('length(password) <= 64'))
 
     # Relations
     roles = relationship("Roles", secondary='user_roles', passive_deletes=True, cascade="all,delete", lazy="dynamic")
