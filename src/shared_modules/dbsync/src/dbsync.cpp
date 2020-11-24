@@ -35,6 +35,7 @@ struct CJsonDeleter
 };
 
 static log_fnc_t gs_logFunction{ nullptr };
+static LogFunction gs_logFunctionCpp;
 
 static void log_message(const std::string& msg)
 {
@@ -715,6 +716,14 @@ void DBSync::updateWithSnapshot(const nlohmann::json&     jsInput,
         }
     };
     DBSyncImplementation::instance().updateSnapshotData(m_dbsyncHandle, jsInput, callbackWrapper);
+}
+
+void DBSync::init(LogFunction logFunction)
+{
+    if (!gs_logFunctionCpp)
+    {
+        gs_logFunctionCpp = logFunction;
+    }
 }
 
 

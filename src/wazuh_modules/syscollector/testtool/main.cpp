@@ -25,12 +25,29 @@ static void logFunction(const char* msg)
 
 int main(int /*argc*/, const char** /*argv[]*/)
 {
-    const auto reportFunction
+    const auto reportDiffFunction
     {
         [](const std::string& payload)
         {
-            std::cout << "output payload:" << std::endl;
+            std::cout << "diff output payload:" << std::endl;
             std::cout << payload << std::endl;
+        }
+    };
+    const auto reportSyncFunction
+    {
+        [](const std::string& payload)
+        {
+            std::cout << "sync output payload:" << std::endl;
+            std::cout << payload << std::endl;
+        }
+    };
+
+    const auto errorLogFunction
+    {
+        [](const std::string& log)
+        {
+            std::cout << "Error Log:" << std::endl;
+            std::cout << log << std::endl;
         }
     };
     const std::chrono::milliseconds timeout{5000};
@@ -49,7 +66,9 @@ int main(int /*argc*/, const char** /*argv[]*/)
         };
 
         Syscollector::instance().init(spInfo,
-                                      reportFunction,
+                                      reportDiffFunction,
+                                      reportSyncFunction,
+                                      errorLogFunction,
                                       15ul,
                                       true,
                                       true,

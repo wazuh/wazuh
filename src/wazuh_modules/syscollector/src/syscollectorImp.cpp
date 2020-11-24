@@ -14,6 +14,24 @@
 #include "stringHelper.h"
 #include "hashHelper.h"
 
+
+#define TRY_CATCH_SCAN(scan)                                            \
+do                                                                      \
+{                                                                       \
+    try                                                                 \
+    {                                                                   \
+        scan();                                                         \
+    }                                                                   \
+    catch(const std::exception& ex)                                     \
+    {                                                                   \
+        if(m_logErrorFunction)                                          \
+        {                                                               \
+            const std::string error{"scan: " + std::string{ex.what()}}; \
+            m_logErrorFunction(error);                                  \
+        }                                                               \
+    }                                                                   \
+}while(0)
+
 constexpr auto HOTFIXES_SQL_STATEMENT
 {
     R"(CREATE TABLE hotfixes(
@@ -479,7 +497,9 @@ std::string Syscollector::getCreateStatement() const
 }
 
 void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
-                        const std::function<void(const std::string&)> reportFunction,
+                        const std::function<void(const std::string&)> reportDiffFunction,
+                        const std::function<void(const std::string&)> reportSyncFunction,
+                        const std::function<void(const std::string&)> logErrorFunction,
                         const unsigned int interval,
                         const bool scanOnStart,
                         const bool hardware,
@@ -492,7 +512,9 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const bool hotfixes)
 {
     m_spInfo = spInfo;
-    m_reportFunction = reportFunction;
+    m_reportDiffFunction = reportDiffFunction;
+    m_reportSyncFunction = reportSyncFunction;
+    m_logErrorFunction = logErrorFunction;
     m_intervalValue = interval;
     m_scanOnStart = scanOnStart;
     m_hardware = hardware;
@@ -506,6 +528,8 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_running = false;
     m_spDBSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, "syscollector.db", getCreateStatement());
     m_spRsync = std::make_unique<RemoteSync>();
+    RemoteSync::init(logErrorFunction);
+    DBSync::init(logErrorFunction);
     syncLoop();
 }
 
@@ -524,7 +548,7 @@ void Syscollector::scanHardware()
         msg["type"] = "hardware";
         msg["operation"] = "MODIFIED";
         msg["data"] = m_spInfo->hardware();
-        m_reportFunction(msg.dump());
+        m_reportDiffFunction(msg.dump());
     }
 }
 void Syscollector::scanOs()
@@ -535,7 +559,7 @@ void Syscollector::scanOs()
         msg["type"] = "os";
         msg["operation"] = "MODIFIED";
         msg["data"] = m_spInfo->os();
-        m_reportFunction(msg.dump());
+        m_reportDiffFunction(msg.dump());
     }
 }
 
@@ -606,12 +630,12 @@ void Syscollector::scanNetwork()
                 protoTableDataList.push_back(protoTableData);
             }
 
-            updateAndNotifyChanges(m_spDBSync->handle(), netIfaceTable,    ifaceTableDataList, m_reportFunction);
-            updateAndNotifyChanges(m_spDBSync->handle(), netProtocolTable, protoTableDataList, m_reportFunction);
-            updateAndNotifyChanges(m_spDBSync->handle(), netAddressTable,  addressTableDataList, m_reportFunction);
-            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETIFACE_START_CONFIG_STATEMENT), m_reportFunction);
-            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETPROTO_START_CONFIG_STATEMENT), m_reportFunction);
-            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETADDRESS_START_CONFIG_STATEMENT), m_reportFunction);
+            updateAndNotifyChanges(m_spDBSync->handle(), netIfaceTable,    ifaceTableDataList, m_reportDiffFunction);
+            updateAndNotifyChanges(m_spDBSync->handle(), netProtocolTable, protoTableDataList, m_reportDiffFunction);
+            updateAndNotifyChanges(m_spDBSync->handle(), netAddressTable,  addressTableDataList, m_reportDiffFunction);
+            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETIFACE_START_CONFIG_STATEMENT), m_reportSyncFunction);
+            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETPROTO_START_CONFIG_STATEMENT), m_reportSyncFunction);
+            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETADDRESS_START_CONFIG_STATEMENT), m_reportSyncFunction);
         }
     }
 }
@@ -638,13 +662,13 @@ void Syscollector::scanPackages()
                 packages.push_back(item);
             }
         }
-        updateAndNotifyChanges(m_spDBSync->handle(), tablePackages, packages, m_reportFunction);
-        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PACKAGES_START_CONFIG_STATEMENT), m_reportFunction);
+        updateAndNotifyChanges(m_spDBSync->handle(), tablePackages, packages, m_reportDiffFunction);
+        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PACKAGES_START_CONFIG_STATEMENT), m_reportSyncFunction);
         if (m_hotfixes)
         {
             constexpr auto tableHotfixes{"hotfixes"};
-            updateAndNotifyChanges(m_spDBSync->handle(), tableHotfixes, hotfixes, m_reportFunction);
-            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HOTFIXES_START_CONFIG_STATEMENT), m_reportFunction);
+            updateAndNotifyChanges(m_spDBSync->handle(), tableHotfixes, hotfixes, m_reportDiffFunction);
+            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HOTFIXES_START_CONFIG_STATEMENT), m_reportSyncFunction);
         }
     }
 }
@@ -685,8 +709,8 @@ void Syscollector::scanPorts()
                     }
                 }
             }
-            updateAndNotifyChanges(m_spDBSync->handle(), table, portsList, m_reportFunction);
-            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PORTS_START_CONFIG_STATEMENT), m_reportFunction);
+            updateAndNotifyChanges(m_spDBSync->handle(), table, portsList, m_reportDiffFunction);
+            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PORTS_START_CONFIG_STATEMENT), m_reportSyncFunction);
         }
     }
 }
@@ -697,19 +721,19 @@ void Syscollector::scanProcesses()
     {
         constexpr auto table{"processes"};
         const auto& processes{m_spInfo->processes()};
-        updateAndNotifyChanges(m_spDBSync->handle(), table, processes, m_reportFunction);
-        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PROCESSES_START_CONFIG_STATEMENT), m_reportFunction);
+        updateAndNotifyChanges(m_spDBSync->handle(), table, processes, m_reportDiffFunction);
+        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PROCESSES_START_CONFIG_STATEMENT), m_reportSyncFunction);
     }
 }
 
 void Syscollector::scan()
 {
-    scanHardware();
-    scanOs();
-    scanNetwork();
-    scanPackages();
-    scanPorts();
-    scanProcesses();
+    TRY_CATCH_SCAN(scanHardware);
+    TRY_CATCH_SCAN(scanOs);
+    TRY_CATCH_SCAN(scanNetwork);
+    TRY_CATCH_SCAN(scanPackages);
+    TRY_CATCH_SCAN(scanPorts);
+    TRY_CATCH_SCAN(scanProcesses);
 }
 
 void Syscollector::syncLoop()
@@ -723,6 +747,9 @@ void Syscollector::syncLoop()
         scan();
         //sync Rsync
     }
+    m_logErrorFunction("about to destroy rsync");
     m_spRsync.reset(nullptr);
+    m_logErrorFunction("about to destroy dbsyc");
     m_spDBSync.reset(nullptr);
+    m_logErrorFunction("exiting syncLoop");
 }

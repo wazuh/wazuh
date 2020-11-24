@@ -18,7 +18,9 @@
 extern "C" {
 #endif
 void syscollector_start(const unsigned int inverval,
-                        send_data_callback_t callback,
+                        send_data_callback_t callbackDiff,
+                        send_data_callback_t callbackSync,
+                        log_error_callback_t callbackLogError,
                         const bool scanOnStart,
                         const bool hardware,
                         const bool os,
@@ -29,16 +31,34 @@ void syscollector_start(const unsigned int inverval,
                         const bool processes,
                         const bool hotfixes)
 {
-    std::function<void(const std::string&)> callbackWrapper
+    std::function<void(const std::string&)> callbackDiffWrapper
     {
-        [callback](const std::string& data)
+        [callbackDiff](const std::string& data)
         {
-            callback(data.c_str());
+            callbackDiff(data.c_str());
+        }
+    };
+
+    std::function<void(const std::string&)> callbackSyncWrapper
+    {
+        [callbackSync](const std::string& data)
+        {
+            callbackSync(data.c_str());
+        }
+    };
+
+    std::function<void(const std::string&)> callbackLogErrorWrapper
+    {
+        [callbackLogError](const std::string& data)
+        {
+            callbackLogError(data.c_str());
         }
     };
 
     Syscollector::instance().init(std::make_shared<SysInfo>(),
-                                  callbackWrapper,
+                                  callbackDiffWrapper,
+                                  callbackSyncWrapper,
+                                  callbackLogErrorWrapper,
                                   inverval,
                                   scanOnStart,
                                   hardware,
