@@ -28,12 +28,6 @@ static const char* VALID_ENTRY = "{"
     "\"attributes\": {}\n"
     "}";
 
-static const char *VALID_REGISTRY = "{"
-    "\"path\": \"HKEY_LOCAL_MACHINE\\System\\TEST\\clave\",\n"
-    "\"timestamp\": 10,\n"
-    "\"attributes\": {}\n"
-    "}";
-
 static cJSON *prepare_valid_entry(sqlite3_int64 inode) {
     cJSON* data = cJSON_Parse(VALID_ENTRY);
     cJSON *object = cJSON_CreateObject();

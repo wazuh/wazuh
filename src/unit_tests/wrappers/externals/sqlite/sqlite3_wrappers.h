@@ -82,6 +82,7 @@ int __wrap_sqlite3_reset(sqlite3_stmt *pStmt);
 int __wrap_sqlite3_step(sqlite3_stmt * stmt);
 
 void expect_sqlite3_step_call(int ret);
+void expect_sqlite3_step_count(int ret, int count);
 
 int __wrap_sqlite3_column_count(sqlite3_stmt *pStmt);
 

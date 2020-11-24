@@ -171,6 +171,12 @@ void expect_sqlite3_step_call(int ret) {
     will_return(__wrap_sqlite3_step, ret);
 }
 
+void expect_sqlite3_step_count(int ret, int count) {
+    for (int i = count; i; i--) {
+        expect_sqlite3_step_call(ret);
+    }
+}
+
 int __wrap_sqlite3_column_count(__attribute__((unused)) sqlite3_stmt *stmt) {
     return mock();
 }
