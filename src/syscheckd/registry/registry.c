@@ -173,7 +173,9 @@ int fim_registry_validate_ignore(const char *entry, const registry *configuratio
                 continue;
             }
             if (strncasecmp((*ignore_list)[ign_it].entry, entry, strlen((*ignore_list)[ign_it].entry)) == 0) {
-                mdebug2(FIM_IGNORE_ENTRY, key ? "registry" : "value", entry, (*ignore_list)[ign_it].entry);
+                mdebug2(FIM_REG_IGNORE_ENTRY, key ? "registry" : "value",
+                        (*ignore_list)[ign_it].arch == ARCH_32BIT ? "[x32]" : "[x64]", entry,
+                        (*ignore_list)[ign_it].entry);
                 return -1;
             }
         }
@@ -185,7 +187,9 @@ int fim_registry_validate_ignore(const char *entry, const registry *configuratio
 
             }
             if (OSMatch_Execute(entry, strlen(entry), (*ignore_list_regex)[ign_it].regex)) {
-                mdebug2(FIM_IGNORE_SREGEX, key ? "registry" : "value", entry, (*ignore_list_regex)[ign_it].regex->raw);
+                mdebug2(FIM_REG_IGNORE_SREGEX, key ? "registry" : "value",
+                        (*ignore_list_regex)[ign_it].arch == ARCH_32BIT ? "[x32]" : "[x64]", entry,
+                        (*ignore_list_regex)[ign_it].regex->raw);
                 return -1;
             }
         }
