@@ -34,14 +34,12 @@ All notable changes to this project will be documented in this file.
   - Refactored framework to work with new upgrade module. ([#5537](https://github.com/wazuh/wazuh/issues/5537))
   - Refactored agent upgrade CLI to work with new ugprade module. It distributes petitions in a clustered environment. ([#5675](https://github.com/wazuh/wazuh/issues/5675))
   - Changed rule and decoder details structure to support PCRE2. ([#6318](https://github.com/wazuh/wazuh/issues/6318))
+  - Changed access to agent's status ([#6326](https://github.com/wazuh/wazuh/issues/6326))
   - Improved AWS Config integration to avoid performance issues by removing alert fields with variables such as Instance ID in its name. ([#6537](https://github.com/wazuh/wazuh/issues/6537))
 
-### Changed
-
-- **Framework:**
-  - Changed access to agent's status ([#6326](https://github.com/wazuh/wazuh/issues/6326))
-
 ### Fixed
+
+- Fixed a `cluster_control` CLI bug that caused an error message when running `wazuh-clusterd` in foreground. ([#6724](https://github.com/wazuh/wazuh/pull/6724))
 
 - **API:**
   - Fixed an error with `/groups/{group_id}/config` endpoints (GET and PUT) when using complex `localfile` configurations. ([#6276](https://github.com/wazuh/wazuh/pull/6383))
