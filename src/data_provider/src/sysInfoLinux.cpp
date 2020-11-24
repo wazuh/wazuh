@@ -327,7 +327,7 @@ std::string SysInfo::getCpuName() const
 
 int SysInfo::getCpuCores() const
 {
-    int retVal = 0;
+    int retVal { 0 };
     std::map<std::string, std::string> systemInfo;
     getSystemInfo(WM_SYS_CPU_DIR, ":", systemInfo);
     const auto& it { systemInfo.find("processor") };
@@ -341,7 +341,7 @@ int SysInfo::getCpuCores() const
 
 int SysInfo::getCpuMHz() const
 {
-    int retVal = 0;
+    int retVal { 0 };
     std::map<std::string, std::string> systemInfo;
     getSystemInfo(WM_SYS_CPU_DIR, ":", systemInfo);
 
