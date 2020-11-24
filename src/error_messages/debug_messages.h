@@ -276,6 +276,5 @@
 #define MOD_TASK_DISABLED_WORKER            "(8207): Module Task Manager only runs on Master nodes in cluster configuration."
 #define MOD_TASK_TASKS_DB_ERROR_IN_QUERY    "(8208): Tasks DB Error reported in the result of the query, message: '%s'"
 #define MOD_TASK_TASKS_DB_ERROR_EXECUTE     "(8209): Tasks DB Cannot execute SQL query: err database '%s/%s.db'"
-#define MOD_TASK_TASKS_DB_SQL_QUERY         "(8210): Tasks DB SQL query: '%s'"
 
 #endif /* DEBUG_MESSAGES_H */

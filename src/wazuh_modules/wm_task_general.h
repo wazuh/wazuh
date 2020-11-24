@@ -41,7 +41,10 @@ typedef enum _task_manager_json_key {
     WM_TASK_STATUS,
     WM_TASK_ERROR_MSG,
     WM_TASK_CREATE_TIME,
-    WM_TASK_LAST_UPDATE_TIME
+    WM_TASK_LAST_UPDATE_TIME,
+    // Clean tasks request
+    WM_TASK_NOW,
+    WM_TASK_TIMESTAMP
 } task_manager_json_key;
 
 /**
@@ -54,6 +57,8 @@ typedef enum _command_list {
     WM_TASK_UPGRADE_UPDATE_STATUS,
     WM_TASK_UPGRADE_RESULT,
     WM_TASK_UPGRADE_CANCEL_TASKS,
+    WM_TASK_SET_TIMEOUT,
+    WM_TASK_DELETE_OLD,
     WM_TASK_UNKNOWN
 } command_list;
 

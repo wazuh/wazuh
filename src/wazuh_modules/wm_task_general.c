@@ -29,7 +29,10 @@ const char *task_manager_json_keys[] = {
     [WM_TASK_STATUS] = "status",
     [WM_TASK_ERROR_MSG] = "error_msg",
     [WM_TASK_CREATE_TIME] = "create_time",
-    [WM_TASK_LAST_UPDATE_TIME] = "update_time"
+    [WM_TASK_LAST_UPDATE_TIME] = "update_time",
+    // Clean tasks request
+    [WM_TASK_NOW] = "now",
+    [WM_TASK_TIMESTAMP] = "timestamp"
 };
 
 const char *task_manager_commands_list[] = {
@@ -38,7 +41,9 @@ const char *task_manager_commands_list[] = {
     [WM_TASK_UPGRADE_GET_STATUS] = "upgrade_get_status",
     [WM_TASK_UPGRADE_UPDATE_STATUS] = "upgrade_update_status",
     [WM_TASK_UPGRADE_RESULT] = "upgrade_result",
-    [WM_TASK_UPGRADE_CANCEL_TASKS] = "upgrade_cancel_tasks"
+    [WM_TASK_UPGRADE_CANCEL_TASKS] = "upgrade_cancel_tasks",
+    [WM_TASK_SET_TIMEOUT] = "set_timeout",
+    [WM_TASK_DELETE_OLD] = "delete_old"
 };
 
 const char *task_manager_modules_list[] = {

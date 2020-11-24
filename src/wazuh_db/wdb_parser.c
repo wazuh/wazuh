@@ -704,9 +704,11 @@ int wdb_parse(char * input, char * output) {
 
             // Detect parameters
             if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
+                snprintf(output, OS_MAXSTR + 1, "err Invalid command parameters, near '%.32s'", next);
                 wdb_leave(wdb);
                 return OS_INVALID;
             }
+
             result = wdb_parse_task_upgrade(wdb, parameters_json, output);
             cJSON_Delete(parameters_json);
         } else if (!strcmp("upgrade_custom", query)) {
@@ -720,9 +722,11 @@ int wdb_parse(char * input, char * output) {
 
             // Detect parameters
             if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
+                snprintf(output, OS_MAXSTR + 1, "err Invalid command parameters, near '%.32s'", next);
                 wdb_leave(wdb);
                 return OS_INVALID;
             }
+
             result = wdb_parse_task_upgrade_custom(wdb, parameters_json, output);
             cJSON_Delete(parameters_json);
         } else if (!strcmp("upgrade_get_status", query)) {
@@ -736,9 +740,11 @@ int wdb_parse(char * input, char * output) {
 
             // Detect parameters
             if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
+                snprintf(output, OS_MAXSTR + 1, "err Invalid command parameters, near '%.32s'", next);
                 wdb_leave(wdb);
                 return OS_INVALID;
             }
+
             result = wdb_parse_task_upgrade_get_status(wdb, parameters_json, output);
             cJSON_Delete(parameters_json);
         } else if (!strcmp("upgrade_update_status", query)) {
@@ -752,9 +758,11 @@ int wdb_parse(char * input, char * output) {
 
             // Detect parameters
             if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
+                snprintf(output, OS_MAXSTR + 1, "err Invalid command parameters, near '%.32s'", next);
                 wdb_leave(wdb);
                 return OS_INVALID;
             }
+
             result = wdb_parse_task_upgrade_update_status(wdb, parameters_json, output);
             cJSON_Delete(parameters_json);
         } else if (!strcmp("upgrade_result", query)) {
@@ -768,9 +776,11 @@ int wdb_parse(char * input, char * output) {
 
             // Detect parameters
             if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
+                snprintf(output, OS_MAXSTR + 1, "err Invalid command parameters, near '%.32s'", next);
                 wdb_leave(wdb);
                 return OS_INVALID;
             }
+
             result = wdb_parse_task_upgrade_result(wdb, parameters_json, output);
             cJSON_Delete(parameters_json);
         } else if (!strcmp("upgrade_cancel_tasks", query)) {
@@ -784,9 +794,11 @@ int wdb_parse(char * input, char * output) {
 
             // Detect parameters
             if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
+                snprintf(output, OS_MAXSTR + 1, "err Invalid command parameters, near '%.32s'", next);
                 wdb_leave(wdb);
                 return OS_INVALID;
             }
+
             result = wdb_parse_task_upgrade_cancel_tasks(wdb, parameters_json, output);
             cJSON_Delete(parameters_json);
         } else if (!strcmp("set_timeout", query)) {
@@ -800,9 +812,11 @@ int wdb_parse(char * input, char * output) {
 
             // Detect parameters
             if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
+                snprintf(output, OS_MAXSTR + 1, "err Invalid command parameters, near '%.32s'", next);
                 wdb_leave(wdb);
                 return OS_INVALID;
             }
+
             result = wdb_parse_task_set_timeout(wdb, parameters_json, output);
             cJSON_Delete(parameters_json);
         } else if (!strcmp("delete_old", query)) {
@@ -816,9 +830,11 @@ int wdb_parse(char * input, char * output) {
 
             // Detect parameters
             if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
+                snprintf(output, OS_MAXSTR + 1, "err Invalid command parameters, near '%.32s'", next);
                 wdb_leave(wdb);
                 return OS_INVALID;
             }
+
             result = wdb_parse_task_delete_old(wdb, parameters_json, output);
             cJSON_Delete(parameters_json);
         } else if (!strcmp("sql", query)) {
@@ -5296,9 +5312,69 @@ int wdb_parse_task_upgrade_cancel_tasks(wdb_t* wdb, const cJSON *parameters, cha
 }
 
 int wdb_parse_task_set_timeout(wdb_t* wdb, const cJSON *parameters, char* output) {
-    return OS_SUCCESS;
+    int result = OS_INVALID;
+    int now = OS_INVALID;
+    int timestamp = OS_INVALID;
+    time_t next_timeout = OS_INVALID;
+
+    cJSON *now_json = cJSON_GetObjectItem(parameters, "now");
+    if (!now_json || (now_json->type != cJSON_Number)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error set timeout task: 'parsing now error'");
+        return OS_INVALID;
+    }
+    now = now_json->valueint;
+
+    cJSON *timestamp_json = cJSON_GetObjectItem(parameters, "timestamp");
+    if (!timestamp_json || (timestamp_json->type != cJSON_Number)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error set timeout task: 'parsing timestamp error'");
+        return OS_INVALID;
+    }
+    timestamp = timestamp_json->valueint;
+
+    next_timeout = now + timestamp;
+
+    // Set the status of old tasks IN PROGRESS to TIMEOUT
+    result = wdb_task_set_timeout_status(wdb, now, timestamp, &next_timeout);
+
+    cJSON *response = cJSON_CreateObject();
+    char *out = NULL;
+
+    cJSON_AddNumberToObject(response, "error", result);
+    cJSON_AddNumberToObject(response, "timestamp", next_timeout);
+    out = cJSON_PrintUnformatted(response);
+
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+
+    os_free(out);
+    cJSON_Delete(response);
+
+    return result;
 }
 
 int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output) {
-    return OS_SUCCESS;
+    int result = OS_INVALID;
+    int timestamp = OS_INVALID;
+
+    cJSON *timestamp_json = cJSON_GetObjectItem(parameters, "timestamp");
+    if (!timestamp_json || (timestamp_json->type != cJSON_Number)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error set timeout task: 'parsing timestamp error'");
+        return OS_INVALID;
+    }
+    timestamp = timestamp_json->valueint;
+
+    // Delete entries older than cleanup_time
+    result = wdb_task_delete_old_entries(wdb, timestamp);
+
+    cJSON *response = cJSON_CreateObject();
+    char *out = NULL;
+
+    cJSON_AddNumberToObject(response, "error", result);
+    out = cJSON_PrintUnformatted(response);
+
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+
+    os_free(out);
+    cJSON_Delete(response);
+
+    return result;
 }
