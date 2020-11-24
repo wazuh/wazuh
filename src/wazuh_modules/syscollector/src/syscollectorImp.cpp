@@ -560,7 +560,7 @@ void Syscollector::scanNetwork()
                 for (const auto& item : itIface.value())
                 {
                     // Split the resulting networks data into the specific DB tables
-                    // "network_iface" table data to update and notify
+                    // "dbsync_network_iface" table data to update and notify
                     nlohmann::json ifaceTableData {};
                     ifaceTableData["name"]       = item.at("name");
                     ifaceTableData["adapter"]    = item.at("adapter");
@@ -576,7 +576,7 @@ void Syscollector::scanNetwork()
                     ifaceTableData["rx_dropped"] = item.at("rx_dropped");
                     ifaceTableDataList.push_back(ifaceTableData);
 
-                    // "network_protocol" table data to update and notify
+                    // "dbsync_network_protocol" table data to update and notify
                     nlohmann::json protoTableData {};
                     protoTableData["iface"]   = item.at("name");
                     protoTableData["type"]    = item.at("type");
@@ -588,7 +588,7 @@ void Syscollector::scanNetwork()
                         protoTableData["dhcp"]    = addressTableData.at("dhcp");
                         protoTableData["metric"]  = addressTableData.at("metric");
 
-                        // "network_address" table data to update and notify
+                        // "dbsync_network_address" table data to update and notify
                         addressTableData["iface"]   = item.at("name");
                         addressTableData["proto"]   = "IPv4";
                         addressTableDataList.push_back(addressTableData);
@@ -600,7 +600,7 @@ void Syscollector::scanNetwork()
                         protoTableData["dhcp"]    = addressTableData.at("dhcp");
                         protoTableData["metric"]  = addressTableData.at("metric");
 
-                        // "network_address" table data to update and notify
+                        // "dbsync_network_address" table data to update and notify
                         addressTableData["iface"] = item.at("name");
                         addressTableData["proto"] = "IPv6";
                         addressTableDataList.push_back(addressTableData);
