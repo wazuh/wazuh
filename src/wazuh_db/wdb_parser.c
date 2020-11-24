@@ -5468,11 +5468,9 @@ int wdb_parse_task_upgrade_update_status(wdb_t* wdb, const cJSON *parameters, ch
     status = status_json->valuestring;
 
     cJSON *error_json = cJSON_GetObjectItem(parameters, "error_msg");
-    if (!error_json || (error_json->type != cJSON_String)) {
-        snprintf(output, OS_MAXSTR + 1, "err Error upgrade update status task: 'parsing error message error'");
-        return OS_INVALID;
+    if (error_json && (error_json->type == cJSON_String)) {
+        error = error_json->valuestring;
     }
-    error = error_json->valuestring;
 
     result = wdb_task_update_upgrade_task_status(wdb, agent_id, node, status, error);
 

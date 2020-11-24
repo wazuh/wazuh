@@ -214,7 +214,9 @@ STATIC cJSON* wm_task_manager_command_upgrade_update_status(wm_task_manager_upgr
         cJSON_AddNumberToObject(parameters, task_manager_json_keys[WM_TASK_AGENT_ID], agent_id);
         cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_NODE], task->node);
         cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_STATUS], task->status);
-        cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_ERROR_MESSAGE], task->error_msg);
+        if (task->error_msg) {
+            cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_ERROR_MSG], task->error_msg);
+        }
 
         // Update upgrade task status
         if (wdb_response = wm_task_manager_send_message_to_wdb(task_manager_commands_list[WM_TASK_UPGRADE_UPDATE_STATUS], parameters, error_code), wdb_response) {
