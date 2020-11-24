@@ -18,7 +18,7 @@ All notable changes to this project will be documented in this file.
   - Added endpoints to query and manage Rootcheck data. ([#6496](https://github.com/wazuh/wazuh/pull/6496))
 
 - **AWS Module:**
-  - Add support for AWS's Elastic Load Balancing. ([#6034](https://github.com/wazuh/wazuh/issues/6034))
+  - Added support for AWS load balancers (Application Load Balancer, Classic Load Balancer and Network Load Balancer). ([#6034](https://github.com/wazuh/wazuh/issues/6034))
 
 - **Framework:**
   - Improved `q` parameter on rules, decoders and cdb-lists modules to allow multiple nested fields. ([#6560](https://github.com/wazuh/wazuh/pull/6560))
