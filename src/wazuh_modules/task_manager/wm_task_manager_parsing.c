@@ -116,7 +116,8 @@ static const char *error_codes[] = {
     [WM_TASK_INVALID_COMMAND] = "Invalid command",
     [WM_TASK_DATABASE_NO_TASK] = "No task in DB",
     [WM_TASK_DATABASE_ERROR] = "Database error",
-    [WM_TASK_PARSE_ERROR] = "Parse DB response error",
+    [WM_TASK_DATABASE_PARSE_ERROR] = "Parse DB response error",
+    [WM_TASK_DATABASE_REQUEST_ERROR] = "Error in DB request",
     [WM_TASK_UNKNOWN_ERROR] = "Unknown error"
 };
 
