@@ -26,6 +26,7 @@ static const char *XML_MAX_THREADS = "max_threads";
 
 #ifdef CLIENT
 static int wm_agent_upgrade_read_ca_verification(xml_node **nodes, unsigned int *verification_flag);
+static int wm_agent_upgrade_read_ca_verification_old(unsigned int *verification_flag);
 #endif
 
 #ifdef CLIENT
@@ -55,6 +56,15 @@ int wm_agent_upgrade_read(__attribute__((unused)) const OS_XML *xml, xml_node **
     }
 
     data = module->data;
+
+    #ifdef CLIENT
+    // Read deprecated CA configuration
+    if (!wcom_ca_store) {
+        if (wm_agent_upgrade_read_ca_verification_old(&data->agent_config.enable_ca_verification)) {
+            return OS_INVALID;
+        }
+    }
+    #endif
 
     if (!nodes) {
         return 0;
@@ -181,7 +191,7 @@ int wm_agent_upgrade_read(__attribute__((unused)) const OS_XML *xml, xml_node **
     #ifdef CLIENT
     if (data->agent_config.enable_ca_verification) {
         if (!wcom_ca_store || !wcom_ca_store[0]) {
-            os_realloc(wcom_ca_store, 2, wcom_ca_store);
+            os_realloc(wcom_ca_store, 2 * sizeof(char *), wcom_ca_store);
             os_strdup(DEF_CA_STORE, wcom_ca_store[0]);
             wcom_ca_store[1] = NULL;
         }
@@ -196,8 +206,12 @@ int wm_agent_upgrade_read(__attribute__((unused)) const OS_XML *xml, xml_node **
 #ifdef CLIENT
 static int wm_agent_upgrade_read_ca_verification(xml_node **nodes, unsigned int *verification_flag) {
     int ca_store_count = 0;
+
     if (wcom_ca_store) {
-        os_realloc(wcom_ca_store, ca_store_count + 1, wcom_ca_store);
+        for (int i = 0; wcom_ca_store[i]; ++i) {
+            os_free(wcom_ca_store[i]);
+        }
+        os_realloc(wcom_ca_store, sizeof(char *), wcom_ca_store);
         wcom_ca_store[0] = NULL;
     }
 
@@ -212,12 +226,52 @@ static int wm_agent_upgrade_read_ca_verification(xml_node **nodes, unsigned int 
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_CA_STORE)) {
-            os_realloc(wcom_ca_store, ca_store_count + 2, wcom_ca_store);
+            os_realloc(wcom_ca_store, (ca_store_count + 2) * sizeof(char *), wcom_ca_store);
             os_strdup(nodes[i]->content, wcom_ca_store[ca_store_count]);
             ca_store_count++;
             wcom_ca_store[ca_store_count] = NULL;
         }
     }
+
+    return 0;
+}
+
+static int wm_agent_upgrade_read_ca_verification_old(unsigned int *verification_flag) {
+    // Read CA deprecated configuration
+    const char *(caverify[]) = {"ossec_config", "active-response", "ca_verification", NULL};
+    const char *(castore[]) = {"ossec_config", "active-response", "ca_store", NULL};
+
+    char **ca_verification = NULL;
+
+    OS_XML xml2;
+
+    /* Read XML file */
+    if (OS_ReadXML(DEFAULTCPATH, &xml2) < 0) {
+        merror_exit(XML_ERROR, DEFAULTCPATH, xml2.err, xml2.err_line);
+    }
+
+    if (ca_verification = OS_GetContents(&xml2, caverify), ca_verification) {
+
+        for (int i = 0; ca_verification[i]; ++i) {
+            if (strcasecmp(ca_verification[i], "yes") == 0) {
+                *verification_flag = 1;
+            }
+            else if (strcasecmp(ca_verification[i], "no") == 0) {
+                *verification_flag = 0;
+            }
+            else {
+                mwarn("Invalid content for tag <%s>: '%s'", caverify[2], ca_verification[i]);
+                return OS_INVALID;
+            }
+        }
+
+        free_strarray(ca_verification);
+    }
+
+    wcom_ca_store = OS_GetContents(&xml2, castore);
+
+    OS_ClearXML(&xml2);
+
     return 0;
 }
 #endif

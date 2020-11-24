@@ -91,6 +91,7 @@
 #define VU_NO_HOTFIX_DISABLED "(5483): No MSU data found, so the Windows hotfixes scan will be disabled for agent '%.3d'"
 #define VU_METADATA_CLEAN     "(5484): Cleaning metadata for target '%s'"
 #define VU_UNS_OS             "(5485): Agent '%.3d' has an unsupported OS: '%s'"
+#define VU_PACKAGE_TP_SOURCE  "(5486): Discarded package '%s' from a third-party source ('%s') for agent '%.3d'"
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
@@ -245,7 +246,8 @@
 #define FIM_DISK_QUOTA_LIMIT_REACHED        "(6350): The maximum configured size for the '%s' folder has been reached, the diff operation cannot be performed."
 #define FIM_DIFF_FILE_SIZE_LIMIT            "(6351): Maximum file size limit to generate diff information configured to '%d KB' for '%s'."
 #define FIM_DISK_QUOTA_LIMIT                "(6352): Maximum disk quota size limit configured to '%d KB'."
-#define FIM_DIFF_FOLDER_DELETED             "(6351): Folder '%s' has been deleted."
+#define FIM_DIFF_FOLDER_DELETED             "(6353): Folder '%s' has been deleted."
+#define GLOB_NO_MATCH                       "(6354): No matches found for the glob pattern: '%s'"
 
 /* Modules messages */
 #define WM_UPGRADE_RESULT_AGENT_INFO         "(8151): Agent Information obtained: '%s'"
