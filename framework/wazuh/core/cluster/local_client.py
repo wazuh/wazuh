@@ -13,23 +13,31 @@ from wazuh.core.cluster import client
 
 class LocalClientHandler(client.AbstractClient):
     """
-    Handles connection with the cluster's local server.
+    Handle connection with the cluster's local server.
     """
+
     def __init__(self, **kwargs):
-        """
-        Class constructor
-        :param kwargs: Arguments for parent constructor class
+        """Class constructor.
+
+        Parameters
+        ----------
+        kwargs
+            Arguments for the parent class constructor.
         """
         super().__init__(**kwargs)
         self.response_available = asyncio.Event()
         self.response = b''
 
     def connection_made(self, transport):
-        """
-        Defines process of connecting to the server. A hello is not necessary because the local server generates a
+        """Define process of connecting to the server.
+
+        A 'hello' command is not necessary because the local server generates a
         random name for the local client.
 
-        :param transport: socket to write data on
+        Parameters
+        ----------
+        transport : asyncio.Transport
+            Socket to write data on.
         """
         self.transport = transport
 
@@ -37,11 +45,21 @@ class LocalClientHandler(client.AbstractClient):
         pass
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
-        """
-        Defines commands available in a local client
-        :param command: Received command
-        :param data: Received payload
-        :return: A response
+        """Define commands available in a local client.
+
+        Parameters
+        ----------
+        command : bytes
+            Received command from client.
+        data : bytes
+            Received command from client.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
         """
         self.logger.debug("Command received: {}".format(command))
         if command == b'dapi_res' or command == b'send_f_res':
@@ -76,44 +94,46 @@ class LocalClientHandler(client.AbstractClient):
             return super().process_request(command, data)
 
     def process_error_from_peer(self, data: bytes):
-        """
-        Handles "err" response.
-        Errors from the cluster come already formatted into JSON format. Therefore they must be returned the same
-        :param data: Error message
-        :return: data
+        """Handle "err" response.
+
+        Errors from the cluster come already formatted into JSON format, so they can be returned the same way.
+
+        Parameters
+        ----------
+        data : bytes
+            Error message.
+
+        Returns
+        -------
+        data : bytes
+            Error message in JSON format.
         """
         self.response = data
         self.response_available.set()
         return data
 
     def connection_lost(self, exc):
-        self.on_con_lost.set_result(True)
-
-    def connection_lost(self, exc):
+        """Mark the Future as done."""
         self.on_con_lost.set_result(True)
 
 
 class LocalClient(client.AbstractClientManager):
     """
-    Initializes variables, connects to the server, sends a request, waits for a response and disconnects.
+    Initialize variables, connect to the server, send a request, wait for a response and disconnect.
     """
+
     def __init__(self):
-        """
-        Class constructor
-        """
-        super().__init__(configuration=wazuh.core.cluster.utils.read_config(), enable_ssl=False, performance_test=0, concurrency_test=0,
-                         file='', string=0, logger=logging.getLogger(), tag="Local Client",
+        """Class constructor"""
+        super().__init__(configuration=wazuh.core.cluster.utils.read_config(), enable_ssl=False, performance_test=0,
+                         concurrency_test=0, file='', string=0, logger=logging.getLogger(), tag="Local Client",
                          cluster_items=wazuh.core.cluster.utils.get_cluster_items())
         self.request_result = None
         self.protocol = None
         self.transport = None
 
     async def start(self):
-        """
-        Connects to the server
-        """
-        # Get a reference to the event loop as we plan to use
-        # low-level APIs.
+        """Connects to the server and the necessary asynchronous tasks."""
+        # Get a reference to the event loop as we plan to use low-level APIs.
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         loop = asyncio.get_running_loop()
         on_con_lost = loop.create_future()
@@ -132,18 +152,28 @@ class LocalClient(client.AbstractClientManager):
             raise exception.WazuhInternalError(3009, str(e))
 
     async def send_api_request(self, command: bytes, data: bytes, wait_for_complete: bool) -> str:
-        """
-        Sends a command to the server and waits for the response
+        """Send DAPI request to the server and wait for response.
 
-        :param command: Command to execute
-        :param data: Payload
-        :param wait_for_complete: Whether to enable timeout waiting for the response or not
-        :return: Response from the server
+        Parameters
+        ----------
+        command : bytes
+            Command to execute.
+        data : bytes
+            Data to send.
+        wait_for_complete : bool
+            Whether to raise a timeout exception or not.
+
+        Returns
+        -------
+        request_result : dict
+            API response.
         """
         result = (await self.protocol.send_request(command, data)).decode()
         if result == 'There are no connected worker nodes':
             request_result = {}
         else:
+            # Wait for expected data if it is not returned by send_request(),
+            # which occurs when the following commands are used.
             if command == b'dapi' or command == b'dapi_forward' or command == b'send_file' or command == b'sendasync' \
                     or result == 'Sent request to master node':
                 try:
@@ -153,17 +183,30 @@ class LocalClient(client.AbstractClientManager):
                     request_result = self.protocol.response.decode()
                 except asyncio.TimeoutError:
                     raise exception.WazuhInternalError(3020)
+            # If no data is expected (only the send_request() result), immediately return the output of send_request.
             else:
                 request_result = result
         return request_result
 
     async def execute(self, command: bytes, data: bytes, wait_for_complete: bool) -> str:
-        """
-        Executes a command in the local client.
-        :param command: Command to execute
-        :param data: Payload
-        :param wait_for_complete: Whether to enable timeout waiting for the response or not
-        :return: The response decoded as a dict
+        """Execute a command in the local client.
+
+        This method manages the connection with the local_server by creating such connection and
+        then closing it after sending a request and receiving the response.
+
+        Parameters
+        ----------
+        command : bytes
+            Command to execute.
+        data : bytes
+            Data to send.
+        wait_for_complete : bool
+            Whether to raise a timeout exception or not.
+
+        Returns
+        -------
+        result : str
+            Request response.
         """
         await self.start()
         result = await self.send_api_request(command, data, wait_for_complete)
@@ -172,11 +215,19 @@ class LocalClient(client.AbstractClientManager):
         return result
 
     async def send_file(self, path: str, node_name: str = None) -> str:
-        """
-        Sends a file to the local server
-        :param path: Pathname
-        :param node_name: Node to send the file to
-        :return: The response decoded as dict
+        """Send a file to the local server.
+
+        Parameters
+        ----------
+        path : str
+            Full path to file.
+        node_name : str
+            Name of the destination node.
+
+        Returns
+        -------
+        str
+            Request response.
         """
         await self.start()
         return await self.send_api_request(b'send_file', "{} {}".format(path, node_name).encode(), False)

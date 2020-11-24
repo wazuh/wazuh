@@ -20,14 +20,16 @@ from wazuh.core.exception import WazuhClusterError
 
 class LocalServerHandler(server.AbstractServerHandler):
     """
-    Handles requests from a local client
+    Handle requests from a local client.
     """
 
     def connection_made(self, transport):
-        """
-        Defines the process of accepting a connection
+        """Define the process of accepting a connection.
 
-        :param transport: socket to write data on
+        Parameters
+        ----------
+        transport : asyncio.Transport
+            Socket to write data on.
         """
         self.name = str(random.SystemRandom().randint(0, 2 ** 20 - 1))
         self.transport = transport
@@ -38,11 +40,21 @@ class LocalServerHandler(server.AbstractServerHandler):
         self.logger.debug('Connection received in local server.')
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
-        """
-        Defines all available commands in a local server for both worker and master nodes
-        :param command: Received command
-        :param data: Received payload
-        :return: A response
+        """Define commands for local servers for both worker and master nodes.
+
+        Parameters
+        ----------
+        command : bytes
+            Received command from client.
+        data : bytes
+            Received command from client.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
         """
         if command == b'get_config':
             return self.get_config()
@@ -57,55 +69,97 @@ class LocalServerHandler(server.AbstractServerHandler):
             return super().process_request(command, data)
 
     def get_config(self) -> Tuple[bytes, bytes]:
-        """
-        Handles the get_config request
-        :return: The active cluster configuration
+        """Get active cluster configuration.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            JSON-like configuration.
         """
         return b'ok', json.dumps(self.server.configuration).encode()
 
     def get_node(self):
-        """
-        Handles the request get_node
+        """Get basic information about the node.
+
+        Returns
+        -------
+        dict
+            Basic node information.
         """
         return self.server.node.get_node()
 
     def get_nodes(self, filter_nodes) -> Tuple[bytes, bytes]:
-        """
-        Handles the request get_nodes. It is implemented differently for master and workers.
-        :param filter_nodes: Filters
-        :return: A response
+        """Handles the 'get_nodes' request. It is implemented differently for master and workers.
+
+        Parameters
+        ----------
+        filter_nodes : bytes
+            Filters to use in the implemented method.
+
+        Raises
+        -------
+        NotImplementedError
+            If the method is not implemented.
         """
         raise NotImplementedError
 
     def get_health(self, filter_nodes) -> Tuple[bytes, bytes]:
-        """
-        Handles the request get_health. It is implemented differently for masters and workers.
-        :param filter_nodes: Filters
-        :return: A response
+        """Handles the 'get_health' request. It is implemented differently for masters and workers.
+
+        Parameters
+        ----------
+        filter_nodes : bytes
+            Filters to use in the implemented method.
+
+        Raises
+        -------
+        NotImplementedError
+            If the method is not implemented.
         """
         raise NotImplementedError
 
     def send_file_request(self, path, node_name):
-        """
-        Sends a file from the API to the cluster. Used in API calls to update configuration or manager files.
-        It is implemented differently for masters and workers
-        :param path: File to send
-        :param node_name: node name to send the file
-        :return: A response
+        """Send a file from the API to the cluster.
+
+        Used in API calls to update configuration or manager files. It is implemented
+        differently for masters and workers.
+
+        Parameters
+        ----------
+        path : str
+            Path of the file to send.
+        node_name : str
+            Node name to send the file.
+
+        Raises
+        -------
+        NotImplementedError
+            If the method is not implemented.
         """
         raise NotImplementedError
 
     def get_send_file_response(self, future):
-        """
-        Forwards the send file response to the API
-        :param future: Request result
-        :return: None
+        """Forward the 'send_file' response to the API.
+
+        Parameters
+        ----------
+        future : asyncio.Future object
+            Request result.
         """
         result = future.result()
         send_res = asyncio.create_task(self.send_request(command=b'send_f_res', data=result))
         send_res.add_done_callback(self.send_res_callback)
 
     def send_res_callback(self, future):
+        """Log result as exception if any.
+
+        Parameters
+        ----------
+        future : asyncio.Future object
+            Request result.
+        """
         if not future.cancelled():
             exc = future.exception()
             if exc:
@@ -114,14 +168,18 @@ class LocalServerHandler(server.AbstractServerHandler):
 
 class LocalServer(server.AbstractServer):
     """
-    Creates the server, manages multiple client connections and it's connected to the cluster TCP transports.
+    Create the server, manage multiple client connections. It's connected to the cluster TCP transports.
     """
 
     def __init__(self, node: Union[server.AbstractServer, client.AbstractClientManager], **kwargs):
-        """
-        Class constructor
-        :param node: The server/worker object running in the cluster.
-        :param kwargs: Arguments for the parent class constructor.
+        """Class constructor.
+
+        Parameters
+        ----------
+        node : AbstractServer, AbstractClientManager object
+            The server/worker object running in the cluster.
+        kwargs
+            Arguments for the parent class constructor.
         """
         super().__init__(**kwargs, tag="Local Server")
         self.node = node
@@ -129,11 +187,8 @@ class LocalServer(server.AbstractServer):
         self.handler_class = LocalServerHandler
 
     async def start(self):
-        """
-        Starts the server and the necessary asynchronous tasks
-        """
-        # Get a reference to the event loop as we plan to use
-        # low-level APIs.
+        """Start the server and the necessary asynchronous tasks."""
+        # Get a reference to the event loop as we plan to use low-level APIs.
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         loop = asyncio.get_running_loop()
         loop.set_exception_handler(c_common.asyncio_exception_handler)
@@ -167,14 +222,22 @@ class LocalServerHandlerMaster(LocalServerHandler):
     """
 
     def process_request(self, command: bytes, data: bytes):
-        """
-        Defines requests available in the local server
+        """Define requests available in the local server.
 
-        :param command: Received command
-        :param data: Received payload
-        :return: A response
+        Parameters
+        ----------
+        command : bytes
+            Received command from client.
+        data : bytes
+            Received command from client.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
         """
-        #modify logger filter tag in LocalServerHandlerMaster entry point
         context_tag.set("Local " + self.name)
 
         if command == b'dapi':
@@ -193,29 +256,58 @@ class LocalServerHandlerMaster(LocalServerHandler):
             return super().process_request(command, data)
 
     def get_nodes(self, arguments: bytes) -> Tuple[bytes, bytes]:
-        """
-        Manages the get_nodes command
-        :param arguments: Filter arguments from the API
-        :return: A encoded dictionary with the response
+        """Implement and handles the 'get_nodes' request.
+
+        Parameters
+        ----------
+        arguments : bytes
+            Filter arguments from the API.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            JSON-like string containing nodes information.
         """
         return b'ok', json.dumps(self.server.node.get_connected_nodes(**json.loads(arguments.decode()))).encode()
 
     def get_health(self, filter_nodes: bytes) -> Tuple[bytes, bytes]:
-        """
-        Manages the get_health command
-        :param filter_nodes: Arguments for the get health function
-        :return: An encoded dictionary with the response
+        """Process 'get_health' request.
+
+        Parameters
+        ----------
+        filter_nodes : bytes
+            Whether to filter by a node or return all health information.
+
+        Returns
+        -------
+        bytes
+            Result.
+        dict
+            Dict object containing nodes information.
+
         """
         return b'ok', json.dumps(self.server.node.get_health(json.loads(filter_nodes))).encode()
 
     def send_file_request(self, path, node_name):
-        """
-        Sends a file from the API to the specified cluster node. Used in API calls to update configuration or manager
-        files.
+        """Send a file from the API to the cluster.
 
-        :param path: File to send
-        :param node_name: node name to send the file
-        :return: A response
+        Used in API calls to update configuration or manager files.
+
+        Parameters
+        ----------
+        path : str
+            Path of the file to send.
+        node_name : str
+            Node name to send the file.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
         """
         if node_name not in self.server.node.clients:
             raise WazuhClusterError(3022)
@@ -227,10 +319,19 @@ class LocalServerHandlerMaster(LocalServerHandler):
 
 class LocalServerMaster(LocalServer):
     """
-    The LocalServer object running in the master node
+    The LocalServer object running in the master node.
     """
 
     def __init__(self, node: server.AbstractServer, **kwargs):
+        """Class constructor.
+
+        Parameters
+        ----------
+        node : AbstractServer, AbstractClientManager object
+            The server/worker object running in the cluster.
+        kwargs
+            Arguments for the parent class constructor.
+        """
         super().__init__(node=node, **kwargs)
         self.handler_class = LocalServerHandlerMaster
         self.dapi = dapi.APIRequestQueue(server=self)
@@ -244,12 +345,21 @@ class LocalServerHandlerWorker(LocalServerHandler):
     """
 
     def process_request(self, command: bytes, data: bytes):
-        """
-        Defines requests available in the local server
+        """Define available requests in the local server.
 
-        :param command: Received command
-        :param data: Received payload
-        :return: A response
+        Parameters
+        ----------
+        command : bytes
+            Received command from client.
+        data : bytes
+            Received command from client.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
         """
         # modify logger filter tag in LocalServerHandlerWorker entry point
         context_tag.set("Local " + self.name)
@@ -274,27 +384,55 @@ class LocalServerHandlerWorker(LocalServerHandler):
             return super().process_request(command, data)
 
     def get_nodes(self, arguments) -> Tuple[bytes, bytes]:
-        """
-        Manages the get_nodes command. It forwards the request to the master node.
-        :param arguments: Filter arguments from the API
-        :return: A encoded dictionary with the response
+        """Forward 'get_nodes' request to the master node.
+
+        Parameters
+        ----------
+        arguments : bytes
+            Filter arguments from the API.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
         """
         return self.send_request_to_master(b'get_nodes', arguments)
 
     def get_health(self, filter_nodes) -> Tuple[bytes, bytes]:
-        """
-        Manages the get_health command. It forwards the request to the master node.
-        :param filter_nodes: Arguments for the get health function
-        :return: An encoded dictionary with the response
+        """Forward 'get_health' request to the master node.
+
+        Parameters
+        ----------
+        filter_nodes : bytes
+             Arguments for the get health function.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
         """
         return self.send_request_to_master(b'get_health', filter_nodes)
 
     def send_request_to_master(self, command: bytes, arguments: bytes):
-        """
-        Forwards a request to the master node.
-        :param command: Command to forward
-        :param arguments: Payload to forward
-        :return: Confirmation message
+        """Forward a request to the master node.
+
+        Parameters
+        ----------
+        command : bytes
+            Command to forward.
+        arguments : bytes
+            Payload to forward.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
         """
         if self.server.node.client is None:
             raise WazuhClusterError(3023)
@@ -304,24 +442,37 @@ class LocalServerHandlerWorker(LocalServerHandler):
             return b'ok', b'Sent request to master node'
 
     def get_api_response(self, in_command, future):
-        """
-        Forwards response sent by the master to the local client. Callback of the send_request_to_master method.
-        :param in_command: command originally sent to the master
-        :param future: Request response
-        :return: Nothing
+        """Forward response sent by the master to the local client.
+
+        Callback of the send_request_to_master method.
+
+        Parameters
+        ----------
+        in_command : bytes
+            Command originally sent to the master.
+        future : asyncio.Future object
+            Request result.
         """
         send_res = asyncio.create_task(self.send_request(command=b'dapi_res' if in_command == b'dapi' else b'control_res',
                                                          data=future.result()))
         send_res.add_done_callback(self.send_res_callback)
 
     def send_file_request(self, path, node_name):
-        """
-        Sends a file from the API to the master who will send it to the specified cluster node.
-        Used in API calls to update configuration or manager files.
+        """Send a file from the API to the master, who will forward it to the specified cluster node.
 
-        :param path: File to send
-        :param node_name: node name to send the file
-        :return: A response
+        Parameters
+        ----------
+        path : str
+            Path of the file to send.
+        node_name : str
+            Node name to send the file.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
         """
         if self.server.node.client is None:
             raise WazuhClusterError(3023)
@@ -337,5 +488,14 @@ class LocalServerWorker(LocalServer):
     """
 
     def __init__(self, node: client.AbstractClientManager, **kwargs):
+        """Class constructor.
+
+        Parameters
+        ----------
+        node : AbstractClientManager object
+            The worker object running in the cluster.
+        kwargs
+            Arguments for the parent class constructor.
+        """
         super().__init__(node=node, **kwargs)
         self.handler_class = LocalServerHandlerWorker

@@ -16,20 +16,34 @@ from wazuh.core.cluster.utils import context_tag, context_subtag
 
 class AbstractClientManager:
     """
-    Defines an abstract client. Manages connection with server.
+    Define an abstract client. Manage connection with server.
     """
+
     def __init__(self, configuration: Dict, cluster_items: Dict, enable_ssl: bool, performance_test: int,
                  concurrency_test: int, file: str, string: int, logger: logging.Logger = None,
                  tag: str = "Client Manager"):
-        """
-        Class constructor
+        """Class constructor.
 
-        :param configuration: client configuration
-        :param enable_ssl: Whether to use SSL encryption or not
-        :param performance_test: Value for the performance test function
-        :param concurrency_test: Value for the concurrency test function
-        :param file: File path for the send file test function
-        :param string: String size for the send string test function
+        Parameters
+        ----------
+        configuration : dict
+            Client configuration.
+        cluster_items : dict
+            Cluster.json object containing cluster internal variables.
+        enable_ssl : bool
+            Whether to use SSL encryption or not.
+        performance_test : int
+            Value for the performance test function.
+        concurrency_test : int
+            Value for the concurrency test function.
+        file : str
+            File path for the send_file test function.
+        string : int
+            String size for the send_string test function.
+        logger : Logger object
+            Logger to use.
+        tag : str
+            Log tag.
         """
         self.name = configuration['node_name']
         self.configuration = configuration
@@ -52,10 +66,14 @@ class AbstractClientManager:
         self.loop = asyncio.get_running_loop()
 
     def add_tasks(self) -> List[Tuple[asyncio.coroutine, Tuple]]:
-        """
-        Adds client tasks to the task list. The client tasks are just test function that were made to test
-        the protocol.
-        :return: The task list
+        """Add client tasks to the task list.
+
+        The client tasks are just test function made to test the protocol.
+
+        Returns
+        -------
+        List of tuples
+            The first item is the coroutine to run and the second is the arguments it needs.
         """
         if self.performance_test:
             task = self.client.performance_test_client, (self.performance_test,)
@@ -71,10 +89,7 @@ class AbstractClientManager:
         return [task]
 
     async def start(self):
-        """
-        Starts the client: connect to the server and wait until the connection is closed.
-        :return: None
-        """
+        """Connects to the server and wait until the connection is closed."""
         # Get a reference to the event loop as we plan to use low-level APIs.
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         self.loop.set_exception_handler(common.asyncio_exception_handler)
@@ -115,16 +130,31 @@ class AbstractClientManager:
 
 class AbstractClient(common.Handler):
     """
-    Defines a client protocol. Handles connection with server.
+    Define a client protocol. Handle connection with server.
     """
 
     def __init__(self, loop: uvloop.EventLoopPolicy, on_con_lost: asyncio.Future, name: str, fernet_key: str,
                  logger: logging.Logger, manager: AbstractClientManager, cluster_items: Dict, tag: str = "Client"):
-        """
-        Class constructor
+        """Class constructor.
 
-        :param name: client's name
-        :param loop: asyncio loop
+        Parameters
+        ----------
+        loop : uvloop.EventLoopPolicy
+            Asyncio loop.
+        on_con_lost : asyncio.Future object
+            Low-level callback to notify when the connection has ended.
+        name : str
+            Client's name.
+        fernet_key : str
+            32 length string used as key to initialize cryptography's Fernet.
+        logger : Logger object
+            Logger to use.
+        manager : AbstractClientManager
+            The Client manager that created this object.
+        cluster_items : dict
+            Cluster.json object containing cluster internal variables.
+        tag : str
+            Log tag.
         """
         super().__init__(fernet_key=fernet_key, logger=logger, tag="{} {}".format(tag, name), cluster_items=cluster_items)
         self.loop = loop
@@ -135,9 +165,12 @@ class AbstractClient(common.Handler):
         self.manager = manager
 
     def connection_result(self, future_result):
-        """
-        Callback function called when the master sends a response to the hello command sent by the worker.
-        :param future_result: Result of the hello request
+        """Callback function called when the master sends a response to the hello command sent by the worker.
+
+        Parameters
+        ----------
+        future_result : asyncio.Future object
+            Result of the hello request.
         """
         response_msg = future_result.result()[0]
         if isinstance(response_msg, Exception):
@@ -148,21 +181,27 @@ class AbstractClient(common.Handler):
             self.connected = True
 
     def connection_made(self, transport):
-        """
-        Defines process of connecting to the server
+        """Define process of connecting to the server.
 
-        :param transport: socket to write data on
+        Parameters
+        ----------
+        transport : asyncio.Transport
+            Socket to write data on.
         """
         self.transport = transport
         future_response = asyncio.gather(self.send_request(command=b'hello', data=self.client_data))
         future_response.add_done_callback(self.connection_result)
 
     def connection_lost(self, exc):
-        """
-        Defines process of closing connection with the server
+        """Define process of closing connection with the server.
 
-        :param exc: either an exception object or None. The latter means a regular EOF is received, or the connection
-                    was aborted or closed by this side of the connection.
+        Cancel all tasks and set 'on_con_lost' as True if not already.
+
+        Parameters
+        ----------
+        exc : Exception, None
+            'None' means a regular EOF is received, or the connection was aborted or closed
+            by this side of the connection.
         """
         if exc is None:
             self.logger.info('The master closed the connection')
@@ -175,16 +214,24 @@ class AbstractClient(common.Handler):
         self._cancel_all_tasks()
 
     def _cancel_all_tasks(self):
+        """Iterate asyncio tasks and cancel each of them."""
         for task in asyncio.Task.all_tasks():
             task.cancel()
 
     def process_response(self, command: bytes, payload: bytes) -> bytes:
-        """
-        Defines response commands for clients
+        """Define response commands for clients.
 
-        :param command: response command received
-        :param payload: data received
-        :return:
+        Parameters
+        ----------
+        command : bytes
+            Response command received
+        payload : bytes
+            Data received.
+
+        Returns
+        -------
+        bytes
+            Result message.
         """
         if command == b'ok-m':
             return b"Sucessful response from master: " + payload
@@ -192,12 +239,21 @@ class AbstractClient(common.Handler):
             return super().process_response(command, payload)
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
-        """
-        Defines commands for clients
+        """Define commands available in clients.
 
-        :param command: Received command from client.
-        :param data: Received data from client.
-        :return: message to send
+        Parameters
+        ----------
+        command : bytes
+            Received command from client.
+        data : bytes
+            Received command from client.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
         """
         if command == b"echo-m":
             return self.echo_client(data)
@@ -205,18 +261,26 @@ class AbstractClient(common.Handler):
             return super().process_request(command, data)
 
     def echo_client(self, data: bytes) -> Tuple[bytes, bytes]:
-        """
-        Handles "echo-m" request
-        :param data: echo message to repeat
-        :return: the same message
+        """Handle "echo-m" request.
+
+        Parameters
+        ----------
+        data : bytes
+            Echo message to repeat.
+
+        Returns
+        -------
+        bytes
+            Result.
+        data : bytes
+            The same message.
         """
         return b'ok-c', data
 
     async def client_echo(self):
-        """
-        Sends a Keep alive to the server every self.cluster_items['intervals']['worker']['keep_alive'] seconds.
+        """Send a 'keepalive' to the server every self.cluster_items['intervals']['worker']['keep_alive'] seconds.
 
-        The client will disconnect from the server tf more than
+        The client will disconnect from the server if more than
         self.cluster_items['intervals']['worker']['max_failed_keepalive_attempts'] attempts in a row are failed
 
         This asyncio task will be started as soon as the client connects to the server and will be always running.
@@ -240,11 +304,14 @@ class AbstractClient(common.Handler):
             await asyncio.sleep(self.cluster_items['intervals']['worker']['keep_alive'])
 
     async def performance_test_client(self, test_size: int):
-        """
-        Sends a request to the server with a big payload. Checks the master replies with a payload of the same length.
-        Only for development and testing purposes.
-        :param test_size: Payload length
-        :return: None
+        """Send a request to the server with a big payload.
+
+        Check the master replies with a payload of the same length. Only for development and testing purposes.
+
+        Parameters
+        ----------
+        test_size : int
+            Payload length.
         """
         while not self.on_con_lost.done():
             before = time.time()
@@ -257,12 +324,14 @@ class AbstractClient(common.Handler):
             await asyncio.sleep(3)
 
     async def concurrency_test_client(self, n_msgs: int):
-        """
-        Sends lots of requests to the server at the same time. Measures the time the server needed to reply all
-        requests.
-        Only for development and testing purposes.
-        :param n_msgs: Number of requests to send
-        :return:
+        """Send lots of requests to the server at the same time.
+
+        Measures the time the server needed to reply all requests. Only for development and testing purposes.
+
+        Parameters
+        ----------
+        n_msgs : int
+            Number of requests to send.
         """
         while not self.on_con_lost.done():
             before = time.time()
@@ -273,11 +342,14 @@ class AbstractClient(common.Handler):
             await asyncio.sleep(10)
 
     async def send_file_task(self, filename: str):
-        """
-        Tests the send file protocol
+        """Test the send_file protocol.
+
         Only for development and testing purposes.
-        :param filename: Filename to send
-        :return: None
+
+        Parameters
+        ----------
+        filename : str
+            Filename to send.
         """
         before = time.time()
         response = await self.send_file(filename)
@@ -286,11 +358,14 @@ class AbstractClient(common.Handler):
         self.logger.debug("Time: {}".format(after - before))
 
     async def send_string_task(self, string_size: int):
-        """
-        Tests the send big string protocol
+        """Test the send big string protocol.
+
         Only for development and testing purposes.
-        :param string_size: String length
-        :return: None
+
+        Parameters
+        ----------
+        string_size : int
+            String length.
         """
         before = time.time()
         response = await self.send_string(my_str=b'a' * string_size)

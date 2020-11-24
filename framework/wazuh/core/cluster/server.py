@@ -18,19 +18,27 @@ from wazuh.core.cluster.utils import ClusterFilter, context_tag, context_subtag
 
 class AbstractServerHandler(c_common.Handler):
     """
-    Defines abstract server protocol. Handles communication with a single client.
+    Define abstract server protocol. Handle communication with a single client.
     """
 
     def __init__(self, server, loop: asyncio.AbstractEventLoop, fernet_key: str,
                  cluster_items: Dict, logger: logging.Logger = None, tag: str = "Client"):
-        """
-        Class constructor
-        :param server: Abstract server object that created this handler
-        :param loop: Asyncio loop
-        :param fernet_key: Key used to encrypt and decrypt messages
-        :param logger: Logger object to use
-        :param cluster_items: Cluster.json object containing cluster internal variables
-        :param tag: Log tag
+        """Class constructor.
+
+        Parameters
+        ----------
+        server : AbstractServer object
+            Abstract server object that created this handler.
+        loop : asyncio.AbstractEventLoop
+            Asyncio loop.
+        fernet_key : str
+            Key used to encrypt and decrypt messages.
+        cluster_items : dict
+            Cluster.json object containing cluster internal variables.
+        logger : Logger object
+            Logger object to use.
+        tag : str
+            Log tag.
         """
         super().__init__(fernet_key=fernet_key, logger=logger, tag="{} {}".format(tag, random.randint(0, 1000)),
                          cluster_items=cluster_items)
@@ -44,16 +52,22 @@ class AbstractServerHandler(c_common.Handler):
         self.transport = None
 
     def to_dict(self) -> Dict:
-        """
-        Returns basic information
+        """Get basic info from AbstractServerHandler instance.
+
+        Returns
+        -------
+        dict
+            Basic information (ip, name).
         """
         return {'info': {'ip': self.ip, 'name': self.name}}
 
     def connection_made(self, transport):
-        """
-        Defines the process of accepting a connection
+        """Define the process of accepting a connection.
 
-        :param transport: socket to write data on
+        Parameters
+        ----------
+        transport : asyncio.Transport
+            Socket to write data on.
         """
         peername = transport.get_extra_info('peername')
         self.logger.info('Connection from {}'.format(peername))
@@ -61,12 +75,21 @@ class AbstractServerHandler(c_common.Handler):
         self.transport = transport
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
-        """
-        Defines commands for servers
+        """Define commands for servers.
 
-        :param command: Received command from client.
-        :param data: Received data from client.
-        :return: message to send
+        Parameters
+        ----------
+        command : bytes
+            Received command from client.
+        data : bytes
+            Received command from client.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
         """
         if command == b"echo-c":
             return self.echo_master(data)
@@ -76,22 +99,38 @@ class AbstractServerHandler(c_common.Handler):
             return super().process_request(command, data)
 
     def echo_master(self, data: bytes) -> Tuple[bytes, bytes]:
-        """
-        Handles echo-c command
-        :param data: data to echo
-        :return: the same data
+        """Update last_keepalive.
+
+        Parameters
+        ----------
+        data : bytes
+            Data to echo.
+
+        Returns
+        -------
+        bytes
+            Result.
+        data : bytes
+            Response message.
         """
         self.last_keepalive = time.time()
         return b'ok-m ', data
 
     def hello(self, data: bytes) -> Tuple[bytes, bytes]:
-        """
-        Adds a client's data to global clients dictionary
+        """Add a client's data to global clients dictionary.
 
-        :param data: client's data -> name
-        :return: successful result
-        """
+        Parameters
+        ----------
+        data : bytes
+            Client's name.
 
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
         self.name = data.decode()
         if self.name in self.server.clients:
             self.name = ''
@@ -105,12 +144,19 @@ class AbstractServerHandler(c_common.Handler):
             return b'ok', 'Client {} added'.format(self.name).encode()
 
     def process_response(self, command: bytes, payload: bytes) -> bytes:
-        """
-        Defines response commands for servers
+        """Define response commands for servers.
 
-        :param command: response command received
-        :param payload: data received
-        :return:
+        Parameters
+        ----------
+        command : bytes
+            Response command received
+        payload : bytes
+            Data received.
+
+        Returns
+        -------
+        bytes
+            Result message.
         """
         if command == b'ok-c':
             return b"Sucessful response from client: " + payload
@@ -118,11 +164,14 @@ class AbstractServerHandler(c_common.Handler):
             return super().process_response(command, payload)
 
     def connection_lost(self, exc):
-        """
-        Defines process of closing connection with the server
+        """Define process of closing connection with the server.
 
-        :param exc: In case the connection was lost due to an exception, it will be contained in this variable
-        :return: None
+        Remove client from global clients dictionary and log the exception if any.
+
+        Parameters
+        ----------
+        exc : Exception
+            In case the connection was lost due to an exception, it will be contained in this variable
         """
         if self.name:
             if exc is None:
@@ -142,20 +191,29 @@ class AbstractServerHandler(c_common.Handler):
 
 class AbstractServer:
     """
-    Defines an asynchronous server. Handles connections from all clients.
+    Define an asynchronous server. Handle connections from all clients.
     """
 
     def __init__(self, performance_test: int, concurrency_test: int, configuration: Dict, cluster_items: Dict,
                  enable_ssl: bool, logger: logging.Logger = None, tag: str = "Abstract Server"):
-        """
-        Class constructor
-        :param performance_test: Message length to use in the performance test
-        :param concurrency_test: Number of requests to do in the concurrency test
-        :param configuration: ossec.conf cluster configuration
-        :param cluster_items: cluster.json cluster internal configuration
-        :param enable_ssl: Whether to enable asyncio's SSL support
-        :param logger: Logger to use
-        :param tag: Log tag
+        """Class constructor.
+
+        Parameters
+        ----------
+        performance_test : int
+            Message length to use in the performance test.
+        concurrency_test : int
+            Number of requests to do in the concurrency test.
+        configuration : dict
+            ossec.conf cluster configuration.
+        cluster_items : dict
+            cluster.json cluster internal configuration.
+        enable_ssl : bool
+            Whether to enable asyncio's SSL support.
+        logger : Logger object
+            Logger to use.
+        tag : str
+            Log tag.
         """
         self.clients = {}
         self.performance = performance_test
@@ -173,12 +231,28 @@ class AbstractServer:
         self.loop = asyncio.get_running_loop()
 
     def to_dict(self) -> Dict:
-        """
-        Returns basic information about the server
+        """Get basic info from AbstractServer instance.
+
+        Returns
+        -------
+        dict
+            Basic information (ip, name).
         """
         return {'info': {'ip': self.configuration['nodes'][0], 'name': self.configuration['node_name']}}
 
     def setup_task_logger(self, task_tag: str) -> logging.Logger:
+        """Create logger with a task_tag.
+
+        Parameters
+        ----------
+        task_tag : str
+            Tag describing the synchronization process.
+
+        Returns
+        -------
+        task_logger : logging.Logger
+            Logger created.
+        """
         task_logger = self.logger.getChild(task_tag)
         task_logger.addFilter(ClusterFilter(tag=self.tag, subtag=task_tag))
         return task_logger
@@ -186,16 +260,43 @@ class AbstractServer:
     def get_connected_nodes(self, filter_node: str = None, offset: int = 0, limit: int = common.database_limit,
                             sort: Dict = None, search: Dict = None, select: Dict = None,
                             filter_type: str = 'all') -> Dict:
-        """
-        Return all connected nodes, including the master node
-        :return: A dictionary containing data from each node
+        """Get all connected nodes, including the master node.
+
+        Parameters
+        ----------
+        filter_node : str, list
+            Node to return.
+        offset : int
+            First element to return.
+        limit : int
+            Maximum number of elements to return.
+        sort : dict
+            Sorts the collection by a field or fields.
+        search : dict
+            Looks for elements with the specified string.
+        select : dict
+            Select which fields to return (separated by comma).
+        filter_type : str
+            Type of node (worker/master).
+
+        Returns
+        -------
+        dict
+            Data from each node.
         """
 
         def return_node(node_info: Dict) -> bool:
-            """
-            Returns whether the node must be added to the result or not
-            :param node_info: Node information
-            :return: A boolean
+            """Return whether the node must be added to the result or not.
+
+            Parameters
+            ----------
+            node_info : dict
+                Node information
+
+            Returns
+            -------
+            bool
+                Whether the node must be added to the result or not.
             """
             return (filter_node is None or node_info['name'] in filter_node) and (
                         filter_type == 'all' or node_info['type'] == filter_type)
@@ -229,14 +330,17 @@ class AbstractServer:
                                    limit=limit)
 
     async def check_clients_keepalive(self):
-        """
-        Task to check the date of the last received keep alives from clients. It is started when the server starts and
-        it runs every self.cluster_items['intervals']['master']['check_worker_lastkeepalive'] seconds.
+        """Check date of the last received keep alive.
+
+        Task to check the date of the last received keep alive from clients. It is started when
+        the server starts and it runs every self.cluster_items['intervals']['master']['check_worker_lastkeepalive']
+        seconds.
         """
         keep_alive_logger = self.setup_task_logger("Keep alive")
         while True:
             keep_alive_logger.debug("Calculating.")
             curr_timestamp = time.time()
+            # Iterate all clients and close the connection when their last keepalive is older than allowed.
             for client_name, client in self.clients.copy().items():
                 if curr_timestamp - client.last_keepalive > self.cluster_items['intervals']['master']['max_allowed_time_without_keepalive']:
                     keep_alive_logger.error("No keep alives have been received from {} in the last minute. "
@@ -246,9 +350,7 @@ class AbstractServer:
             await asyncio.sleep(self.cluster_items['intervals']['master']['check_worker_lastkeepalive'])
 
     async def echo(self):
-        """
-        Sends an echo message to all clients every 3 seconds
-        """
+        """Send an echo message to all clients every 3 seconds"""
         while True:
             for client_name, client in self.clients.items():
                 self.logger.debug("Sending echo to worker {}".format(client_name))
@@ -256,9 +358,7 @@ class AbstractServer:
             await asyncio.sleep(3)
 
     async def performance_test(self):
-        """
-        Sends a big message to all clients every 3 seconds.
-        """
+        """Send a big message to all clients every 3 seconds."""
         while True:
             for client_name, client in self.clients.items():
                 before = time.time()
@@ -268,25 +368,19 @@ class AbstractServer:
             await asyncio.sleep(3)
 
     async def concurrency_test(self):
-        """
-        Sends lots of messages in a row to all clients. Then rests for 10 seconds.
-        """
+        """Send lots of messages in a row to all clients. Then rests for 10 seconds."""
         while True:
             before = time.time()
             for i in range(self.concurrency):
                 for client_name, client in self.clients.items():
-                    response = await client.send_request(b'echo',
-                                                         'concurrency {} client {}'.format(i, client_name).encode())
+                    await client.send_request(b'echo', 'concurrency {} client {}'.format(i, client_name).encode())
             after = time.time()
             self.logger.info("Time sending {} messages: {}".format(self.concurrency, after - before))
             await asyncio.sleep(10)
 
     async def start(self):
-        """
-        Starts the server and the infinite asynchronous tasks
-        """
-        # Get a reference to the event loop as we plan to use
-        # low-level APIs.
+        """Start the server and the infinite asynchronous tasks"""
+        # Get a reference to the event loop as we plan to use low-level APIs.
         context_tag.set(self.tag)
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         self.loop.set_exception_handler(c_common.asyncio_exception_handler)

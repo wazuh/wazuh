@@ -24,30 +24,46 @@ from wazuh.core import common, exception
 
 class Response:
     """
-    Defines and stores a response from a request
+    Define and store a response from a request.
     """
 
     def __init__(self):
+        """Class constructor."""
         # Event object which will be set when the response is received
         self.received_response = asyncio.Event()
         # Response content
         self.content = None
 
     async def read(self) -> bytes:
+        """Wait until a response is received."""
         await self.received_response.wait()
         return self.content
 
     def write(self, content):
+        """Set the content of a response and notify its availability.
+
+        Parameters
+        ----------
+        content : bytes
+            Content to store in the response.
+        """
         self.content = content
         self.received_response.set()
 
 
 class InBuffer:
     """
-    Defines a buffer to receive incoming requests
+    Define a buffer to receive incoming requests.
     """
 
     def __init__(self, total=0):
+        """Class constructor.
+
+        Parameters
+        ----------
+        total : int
+            Size of the payload buffer in bytes.
+        """
         self.payload = bytearray(total)  # array to store the message's data
         self.total = total  # total of bytes to receive
         self.received = 0  # number of received bytes
@@ -55,13 +71,21 @@ class InBuffer:
         self.counter = 0  # request's counter in the box
 
     def get_info_from_header(self, header: bytes, header_format: str, header_size: int) -> bytes:
-        """
-        Gets information contained in the request's header
+        """Get information contained in the request's header.
 
-        :param header: raw header to process
-        :param header_format: struct format of the header
-        :param header_size: Size in bytes of the header
-        :return: updated buffer
+        Parameters
+        ----------
+        header : bytes
+            Raw header to process.
+        header_format : str
+            Struct format of the header.
+        header_size : int
+            Size in bytes of the header.
+
+        Returns
+        -------
+        header : bytes
+            Buffer without the content of the header.
         """
         self.counter, self.total, cmd = struct.unpack(header_format, header[:header_size])
         self.cmd = cmd.split(b' ')[0]
@@ -69,11 +93,16 @@ class InBuffer:
         return header[header_size:]
 
     def receive_data(self, data: bytes) -> bytes:
-        """
-        Adds received data to payload bytearray
+        """Add received data to payload bytearray.
 
-        :param data: Received data
-        :return: updated data buffer
+        Parameters
+        ----------
+        data : bytes
+            Received data.
+
+        Returns
+        -------
+            Extended data buffer.
         """
         len_data = len(data[:self.total - self.received])
         self.payload[self.received:len_data + self.received] = data[:self.total - self.received]
@@ -83,14 +112,18 @@ class InBuffer:
 
 class ReceiveFileTask:
     """
-    Implements an asyncio task but including a name or ID for it.
+    Implement an asyncio task but including a name or ID for it.
     """
 
     def __init__(self, wazuh_common, logger):
-        """
-        Class constructor
+        """Class constructor.
 
-        :param coro: asyncio coroutine to run in the task
+        Parameters
+        ----------
+        wazuh_common : WazuhCommon object
+            The WazuhCommon object that creates this one.
+        logger : Logger object
+            Logger to use during the receiving process.
         """
         self.wazuh_common = wazuh_common
         self.coro = self.set_up_coro()
@@ -102,19 +135,28 @@ class ReceiveFileTask:
         self.logger = logger
 
     def __str__(self) -> str:
-        """
-        Magic method str.
-        :return: task name
+        """Magic method str.
+
+        Returns
+        -------
+            Return task name (random numeric string)
         """
         return self.name
 
     def set_up_coro(self) -> Callable:
+        """Define set_up_coro method. It is implemented differently for master, workers and synchronization types.
+
+        Raises
+        -------
+        NotImplementedError
+            If the method is not implemented.
+        """
         raise NotImplementedError
 
     def done_callback(self, future=None):
-        """
-        Function to call when the task is finished
-        :return:
+        """Function to call when the task is finished.
+
+        Remove task_name (if exists) from sync_tasks dict. If task was not cancelled, raise stored exception.
         """
         if self.name in self.wazuh_common.sync_tasks:
             del self.wazuh_common.sync_tasks[self.name]
@@ -126,15 +168,22 @@ class ReceiveFileTask:
 
 class Handler(asyncio.Protocol):
     """
-    Defines common methods for echo clients and servers
+    Define common methods for echo clients and servers.
     """
 
     def __init__(self, fernet_key: str, cluster_items: Dict, logger: logging.Logger = None, tag: str = "Handler"):
-        """
-        Class constructor
+        """Class constructor.
 
-        :param fernet_key: 32 length string used as key to initialize cryptography's Fernet.
-        :param tag: logging tag to use
+        Parameters
+        ----------
+        fernet_key : str
+            32 length string used as key to initialize cryptography's Fernet.
+        cluster_items : dict
+            Cluster.json object containing cluster internal variables.
+        logger : Logger object
+            Logger object to use.
+        tag : str
+            Log tag.
         """
         super().__init__()
         # The counter is used to identify each message. If an incoming request has a known ID,
@@ -174,30 +223,45 @@ class Handler(asyncio.Protocol):
         self.transport = None
 
     def push(self, message: bytes):
-        """
-        Sends a message to peer
+        """Send a message to peer.
 
-        :param message: message to send
+        Parameters
+        ----------
+        message : bytes
+            Message to send.
         """
         self.transport.write(message)
 
     def next_counter(self) -> int:
-        """
-        Increases the message ID counter
+        """Increase the message ID counter.
 
-        :return: new counter
+        Returns
+        -------
+        self.counter : int
+            New counter.
         """
         self.counter = (self.counter + 1) % (2 ** 32)
         return self.counter
 
     def msg_build(self, command: bytes, counter: int, data: bytes) -> bytes:
-        """
-        Builds a message with header + payload
+        """Build a message with header + payload.
 
-        :param command: command to send
-        :param counter: message id
-        :param data: data to send
-        :return: built message
+        It contains a header in self.header_format format that includes self.counter, the data size and the command.
+        The data is also encrypted and added to the bytearray starting from the position self.header_len.
+
+        Parameters
+        ----------
+        command : bytes
+            Command to send to peer.
+        counter : int
+            Message ID.
+        data : bytes
+            Data to send to peer.
+
+        Returns
+        -------
+        bytes
+            Built message.
         """
         cmd_len = len(command)
         if cmd_len > self.cmd_len:
@@ -212,10 +276,12 @@ class Handler(asyncio.Protocol):
         return self.out_msg[:self.header_len + len(encrypted_data)]
 
     def msg_parse(self) -> bool:
-        """
-        Parses an incoming message
+        """Parse an incoming message.
 
-        :return: whether a message was parsed or not.
+        Returns
+        -------
+        bool
+            Whether a message was parsed or not.
         """
         if self.in_buffer:
             if self.in_msg.received == 0:
@@ -232,12 +298,16 @@ class Handler(asyncio.Protocol):
             return False
 
     def get_messages(self) -> Tuple[bytes, int, bytes]:
-        """
+        """Get received command, counter and payload.
+
         Called when data is received in the transport. It decrypts the received data and returns it using generators.
         If the data received in the transport contains multiple separated messages, it will return all of them in
         separate yields.
 
-        :return: Last received message command, counter and payload
+        Yields
+        -------
+        bytes, int, bytes
+            Last received message command, counter and payload.
         """
         parsed = self.msg_parse()
 
@@ -258,12 +328,19 @@ class Handler(asyncio.Protocol):
             parsed = self.msg_parse()
 
     async def send_request(self, command: bytes, data: bytes) -> bytes:
-        """
-        Sends a request to peer
+        """Send a request to peer and wait for the response to be received and processed.
 
-        :param command: command to send
-        :param data: data to send
-        :return: response from peer.
+        Parameters
+        ----------
+        command : bytes
+            Command to send.
+        data : bytes
+            Data to send.
+
+        Returns
+        -------
+        response_data : bytes
+            Response from peer.
         """
         if len(data) > self.request_chunk:
             raise exception.WazuhClusterError(3033)
@@ -279,6 +356,7 @@ class Handler(asyncio.Protocol):
         except Exception as e:
             raise exception.WazuhClusterError(3018, extra_message=str(e))
         try:
+            # A lock is hold until response.write() is called inside data_received() method.
             response_data = await asyncio.wait_for(response.read(),
                                                    timeout=self.cluster_items['intervals']['communication'][
                                                        'timeout_cluster_request'])
@@ -289,40 +367,56 @@ class Handler(asyncio.Protocol):
         return response_data
 
     async def send_file(self, filename: str) -> bytes:
-        """
-        Sends a file to peer.
+        """Send a file to peer, slicing it into chunks.
 
-        :param filename: File path to send
-        :return: response message.
+        Parameters
+        ----------
+        filename : str
+            Full path of the file to send.
+
+        Returns
+        -------
+        bytes
+            Response message.
         """
         if not os.path.exists(filename):
             raise exception.WazuhClusterError(3034, extra_message=filename)
 
         filename = filename.encode()
         relative_path = filename.replace(common.ossec_path.encode(), b'')
+        # Tell to the destination node where (inside ossec_path) the file has to be written.
         await self.send_request(command=b'new_file', data=relative_path)
 
+        # Send each chunk so it is updated in the destination.
         file_hash = hashlib.sha256()
         with open(filename, 'rb') as f:
             for chunk in iter(lambda: f.read(self.request_chunk - len(relative_path) - 1), b''):
                 await self.send_request(command=b'file_upd', data=relative_path + b' ' + chunk)
                 file_hash.update(chunk)
 
+        # Close the destination file descriptor so the file in memory is dumped to disk.
         await self.send_request(command=b'file_end', data=relative_path + b' ' + file_hash.digest())
 
         return b'File sent'
 
     async def send_string(self, my_str: bytes) -> bytes:
-        """
-        Sends a large string to peer.
+        """Send a large string to peer, slicing it into chunks.
 
-        :param my_str: String to send.
-        :param chunk: number of elements each slide will have
-        :return: whether sending was successful or not.
+        Parameters
+        ----------
+        my_str : bytes
+            String to send.
+
+        Returns
+        -------
+        task_id : bytes
+             Whether sending was successful or not.
         """
+        # Reserve space in destination node and obtain ID to send this string to.
         total = len(my_str)
         task_id = await self.send_request(command=b'new_str', data=str(total).encode())
 
+        # Send chunks of the string to the destination node, indicating the ID of the string.
         local_req_chunk = self.request_chunk - len(task_id) - 1
         for c in range(0, total, local_req_chunk):
             await self.send_request(command=b'str_upd', data=task_id + b' ' + my_str[c:c + local_req_chunk])
@@ -330,18 +424,22 @@ class Handler(asyncio.Protocol):
         return task_id
 
     def get_manager(self):
-        """
-        Returns the manager object
-        :return: a manager object
+        """Get the manager object that created this Handler.
+
+        Raises
+        -------
+        NotImplementedError
+            If the method is not implemented.
         """
         raise NotImplementedError
 
     async def forward_dapi_response(self, data: bytes):
-        """
-        Forwards a distributed API response from master node.
+        """Forward a distributed API response from master node.
 
-        :param data: Bytes containing local client name and string id separated by ' '
-        :return: success/error message
+        Parameters
+        ----------
+        data : bytes
+            Bytes containing local client name and string id separated by ' '.
         """
         client, string_id = data.split(b' ', 1)
         client = client.decode()
@@ -358,11 +456,12 @@ class Handler(asyncio.Protocol):
             res = await self.send_request(b'dapi_err', exc_info)
 
     async def forward_sendsync_response(self, data: bytes):
-        """
-        Forwards a sendsync response from master node.
+        """Forward a sendsync response from master node.
 
-        :param data: Bytes containing local client name and string id separated by ' '
-        :return: success/error message
+        Parameters
+        ----------
+        data : bytes
+            Bytes containing local client name and string id separated by ' '.
         """
         client, string_id = data.split(b' ', 1)
         client = client.decode()
@@ -378,29 +477,40 @@ class Handler(asyncio.Protocol):
             await self.send_request(b'sendsync_err', exc_info)
 
     def data_received(self, message: bytes) -> None:
-        """
-        Handles received data from other peer.
+        """Handle received data from other peer.
 
-        :param message: data received
+        This method overrides asyncio.protocols.Protocol.data_received. It parses the message received, process
+        the response and notify that the corresponding Response object (inside self.box[counter]) is available .
+
+        Parameters
+        ----------
+        message : bytes
+            Received data.
         """
         self.in_buffer = message
         for command, counter, payload in self.get_messages():
+            # If the message is the response of a previously sent request.
             if counter in self.box:
                 if self.box[counter] is None:
-                    # Delete entry for previously expired request, just in case is received too late
+                    # Delete entry for previously expired request, just in case is received too late.
                     del self.box[counter]
                 else:
                     self.box[counter].write(self.process_response(command, payload))
+            # If the message is not related to any previously sent request.
             else:
                 self.dispatch(command, counter, payload)
 
     def dispatch(self, command: bytes, counter: int, payload: bytes) -> None:
-        """
-        Processes a received message and sends a response
+        """Process a received message and send a response.
 
-        :param command: command received
-        :param counter: message id
-        :param payload: data received
+        Parameters
+        ----------
+        command : bytes
+            Command received.
+        counter : int
+            Message ID.
+        payload : bytes
+            Data received.
         """
         try:
             command, payload = self.process_request(command, payload)
@@ -415,18 +525,25 @@ class Handler(asyncio.Protocol):
             self.push(self.msg_build(command, counter, payload))
 
     def close(self):
-        """
-        Closes connection
-        """
+        """Close the connection."""
         self.transport.close()
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
-        """
-        Defines commands for both master and clients.
+        """Define available commands for both master and clients.
 
-        :param command: Received command from other peer.
-        :param data: Received data from other peer.
-        :return: message to send.
+        Parameters
+        ----------
+        command : bytes
+            Received command from other peer.
+        data : bytes
+            Received data from other peer.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
         """
         if command == b'echo':
             return self.echo(data)
@@ -444,12 +561,19 @@ class Handler(asyncio.Protocol):
             return self.process_unknown_cmd(command)
 
     def process_response(self, command: bytes, payload: bytes) -> bytes:
-        """
-        Defines response commands for both master and client
+        """Define response commands for both master and client.
 
-        :param command: response command received
-        :param payload: data received
-        :return:
+        Parameters
+        ----------
+        command : bytes
+            Received response command from other peer.
+        payload : bytes
+            Received data from other peer.
+
+        Returns
+        -------
+        bytes
+            Result message.
         """
         if command == b'ok':
             return payload
@@ -459,31 +583,54 @@ class Handler(asyncio.Protocol):
             return b"Unkown response command received: " + command
 
     def echo(self, data: bytes) -> Tuple[bytes, bytes]:
-        """
-        Defines command "echo"
+        """Define response to 'echo' command.
 
-        :param data: message to echo
-        :return: message to send
+        Parameters
+        ----------
+        data : bytes
+            Message to send.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
         """
         return b'ok', data
 
     def receive_file(self, data: bytes) -> Tuple[bytes, bytes]:
-        """
-        Defines behaviour of command "new_file". This behaviour is to create a file descriptor to store the incoming
-        file.
+        """Create a file descriptor to store the incoming file.
 
-        :param data: File name
-        :return: Message
+        Parameters
+        ----------
+        data : bytes
+            Relative path to the file.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
         """
         self.in_file[data] = {'fd': open(common.ossec_path + data.decode(), 'wb'), 'checksum': hashlib.sha256()}
         return b"ok ", b"Ready to receive new file"
 
     def update_file(self, data: bytes) -> Tuple[bytes, bytes]:
-        """
-        Defines behaviour of command "file_upd" which consists in updating file contents.
+        """Extend file content.
 
-        :param data: file content
-        :return: Message
+        Parameters
+        ----------
+        data : bytes
+            Bytes containing filepath and chunk of data separated by ' '.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
         """
         name, chunk = data.split(b' ', 1)
         self.in_file[name]['fd'].write(chunk)
@@ -491,11 +638,19 @@ class Handler(asyncio.Protocol):
         return b"ok", b"File updated"
 
     def end_file(self, data: bytes) -> Tuple[bytes, bytes]:
-        """
-        Defines behaviour of command "end_file" which consists in closing file descriptor and check its md5.
+        """Close file descriptor (write file in disk) and check MD5.
 
-        :param data: file sha256
-        :return: Message
+        Parameters
+        ----------
+        data : bytes
+            File SHA256.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
         """
         name, checksum = data.split(b' ', 1)
         self.in_file[name]['fd'].close()
@@ -507,43 +662,72 @@ class Handler(asyncio.Protocol):
             return b"err", b"File wasn't correctly received. Checksums aren't equal."
 
     def receive_str(self, data: bytes) -> Tuple[bytes, bytes]:
-        """
-        Defines behaviour of command "recv_str". This behaviour is to append to resize a bytearray with the string size.
+        """Create a bytearray with the string size.
 
-        :param data: Request data: string size
-        :return: Message
+        Parameters
+        ----------
+        data : bytes
+            String size.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            String ID.
         """
         name = str(random.SystemRandom().randint(0, 2 ** 32 - 1)).encode()
         self.in_str[name] = InBuffer(total=int(data))
         return b"ok", name
 
     def str_upd(self, data: bytes) -> Tuple[bytes, bytes]:
-        """
-        Defines behaviour of command "str_upd". This behaviour is to update string contents.
+        """Update string contents.
 
-        :param data: String contents
-        :return: Message
+        Parameters
+        ----------
+        data : bytes
+            Bytes containing string ID and chunk of data separated by ' '.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            String ID.
         """
         name, str_data = data.split(b' ', 1)
         self.in_str[name].receive_data(str_data)
-        # self.logger.debug("Length: {}/{}".format(self.in_str[name].received, self.in_str[name].total))
         return b"ok", b"Chunk received"
 
     def process_unknown_cmd(self, command: bytes) -> Tuple[bytes, bytes]:
-        """
-        Defines message when an unknown command is received
+        """Define message when an unknown command is received.
 
-        :param command: command received from peer
-        :return: message to send
+        Parameters
+        ----------
+        command : bytes
+            Command received from peer.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
         """
         return b'err', "unknown command '{}'".format(command).encode()
 
     def process_error_from_peer(self, data: bytes) -> bytes:
-        """
-        Handles errors in requests
+        """Handle errors in requests.
 
-        :param data: error message from peer
-        :return: Nothing
+        Parameters
+        ----------
+        data : bytes
+            Error message from peer.
+
+        Returns
+        -------
+        exc : dict, Exception
+            Received error.
         """
         try:
             exc = json.loads(data.decode(), object_hook=as_wazuh_object)
@@ -553,6 +737,18 @@ class Handler(asyncio.Protocol):
         return exc
 
     def setup_task_logger(self, task_tag: str):
+        """Create logger with a task_tag.
+
+        Parameters
+        ----------
+        task_tag : str
+            Tag describing the synchronization process.
+
+        Returns
+        -------
+        task_logger : logging.Logger
+            Logger created.
+        """
         task_logger = self.logger.getChild(task_tag)
         task_logger.addFilter(wazuh.core.cluster.utils.ClusterFilter(tag=self.tag, subtag=task_tag))
         return task_logger
@@ -564,18 +760,54 @@ class WazuhCommon:
     """
 
     def __init__(self):
+        """Class constructor."""
         self.sync_tasks = {}
         self.logger_tag = ''
 
     def get_logger(self, logger_tag: str = '') -> logging.Logger:
+        """Get a logger object
+
+        Parameters
+        ----------
+        logger_tag : str
+            Logger task to return. If empty, it will return main class logger.
+
+        Raises
+        -------
+        NotImplementedError
+            If the method is not implemented.
+        """
         raise NotImplementedError
 
     def setup_receive_file(self, ReceiveTaskClass: Callable):
+        """Create ReceiveTaskClass object and add it to sync_tasks dict.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Task ID.
+        """
         my_task = ReceiveTaskClass(self, self.get_logger(self.logger_tag))
         self.sync_tasks[my_task.name] = my_task
         return b'ok', str(my_task).encode()
 
     def end_receiving_file(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
+        """Store full path to the received file in task_name and notify its availability.
+
+        Parameters
+        ----------
+        task_and_file_names : str
+            String containing task ID and relative filepath separated by ' '.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
         task_name, filename = task_and_file_names.split(' ', 1)
         if task_name not in self.sync_tasks:
             # Remove filename if task_name does not exists, before raising exception
@@ -587,15 +819,28 @@ class WazuhCommon:
                         f"Attempt to delete file {os.path.join(common.ossec_path, filename)} failed: {e}")
             raise exception.WazuhClusterError(3027, extra_message=task_name)
 
+        # Set full path to file for task 'task_name' and notify it is ready to be read, so the lock is released.
         self.sync_tasks[task_name].filename = os.path.join(common.ossec_path, filename)
         self.sync_tasks[task_name].received_information.set()
         return b'ok', b'File correctly received'
 
     def error_receiving_file(self, taskname_and_error_details: str) -> Tuple[bytes, bytes]:
-        """
-        Peer reported an error in the send file process
-        :param taskname_and_error_details: WazuhJSONEncoded object with the exception details
-        :return: confirmation response
+        """Handle reported error by peer in the send file process.
+
+        Remove received file if taskname was specified. Replace filepath with the received error details and notify
+        its availability.
+
+        Parameters
+        ----------
+        taskname_and_error_details : str
+             WazuhJSONEncoded object with the exception details.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
         """
         taskname, error_details = taskname_and_error_details.split(' ', 1)
         error_details_json = json.loads(error_details, object_hook=as_wazuh_object)
@@ -614,23 +859,39 @@ class WazuhCommon:
         return b'ok', b'Error received'
 
     def get_node(self):
+        """Get basic information about the node.
+
+        Returns
+        -------
+        dict
+            Basic node information.
+        """
         return self.get_manager().get_node()
 
 
 def asyncio_exception_handler(loop, context: Dict):
-    """
-    Exception handler used in the protocol. Asyncio's default raises an exception and closes the transport.
-    The desired behaviour in this case is just to show the error in the logs.
+    """Exception handler used in the protocol.
 
-    :param loop: Event loop
-    :param context: A dictionary containing fields explained in
-                    https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.call_exception_handler
+    Asyncio's default raises an exception and closes the transport. The desired behaviour in
+    this case is just to show the error in the logs.
+
+    Parameters
+    ----------
+    loop : Asyncio event loop object
+        Event loop
+    context : dict
+        Dictionary containing fields explained in
+        https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.call_exception_handler.
     """
     logging.error(f"Unhandled exception: {context['exception']} {context['message']}\n"
                   ''.join(traceback.format_tb(context['exception'].__traceback__)))
 
 
 class WazuhJSONEncoder(json.JSONEncoder):
+    """
+    Define special JSON encoder for Wazuh.
+    """
+
     def default(self, obj):
         if callable(obj):
             result = {'__callable__': {}}
