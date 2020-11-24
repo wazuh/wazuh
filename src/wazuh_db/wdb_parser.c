@@ -5304,7 +5304,49 @@ int wdb_parse_task_upgrade_update_status(wdb_t* wdb, const cJSON *parameters, ch
 }
 
 int wdb_parse_task_upgrade_result(wdb_t* wdb, const cJSON *parameters, char* output) {
-    return OS_SUCCESS;
+    int result = OS_INVALID;
+    int agent_id = OS_INVALID;
+    char *node_result = NULL;
+    char *module_result = NULL;
+    char *command_result = NULL;
+    char *status = NULL;
+    char *error = NULL;
+    int create_time = OS_INVALID;
+    int last_update_time = OS_INVALID;
+
+    cJSON *agent_json = cJSON_GetObjectItem(parameters, "agent");
+    if (!agent_json || (agent_json->type != cJSON_Number)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error upgrade result task: 'parsing agent error'");
+        return OS_INVALID;
+    }
+    agent_id = agent_json->valueint;
+
+    result = wdb_task_get_upgrade_task_by_agent_id(wdb, agent_id, &node_result, &module_result, &command_result, &status, &error, &create_time, &last_update_time);
+
+    cJSON *response = cJSON_CreateObject();
+    char *out = NULL;
+
+    if (result >= 0) {
+        cJSON_AddNumberToObject(response, "error", OS_SUCCESS);
+    } else {
+        cJSON_AddNumberToObject(response, "error", result);
+    }
+    cJSON_AddNumberToObject(response, "task_id", result);
+    cJSON_AddStringToObject(response, "node", node_result);
+    cJSON_AddStringToObject(response, "module", module_result);
+    cJSON_AddStringToObject(response, "command", command_result);
+    cJSON_AddStringToObject(response, "status", status);
+    cJSON_AddStringToObject(response, "error_msg", error);
+    cJSON_AddNumberToObject(response, "create_time", create_time);
+    cJSON_AddNumberToObject(response, "update_time", last_update_time);
+    out = cJSON_PrintUnformatted(response);
+
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+
+    os_free(out);
+    cJSON_Delete(response);
+
+    return result;
 }
 
 int wdb_parse_task_upgrade_cancel_tasks(wdb_t* wdb, const cJSON *parameters, char* output) {
@@ -5318,7 +5360,6 @@ int wdb_parse_task_upgrade_cancel_tasks(wdb_t* wdb, const cJSON *parameters, cha
     }
     node = node_json->valuestring;
 
-    // Cancel pending tasks for this node
     result = wdb_task_cancel_upgrade_tasks(wdb, node);
 
     cJSON *response = cJSON_CreateObject();
@@ -5357,7 +5398,6 @@ int wdb_parse_task_set_timeout(wdb_t* wdb, const cJSON *parameters, char* output
 
     next_timeout = now + timestamp;
 
-    // Set the status of old tasks IN PROGRESS to TIMEOUT
     result = wdb_task_set_timeout_status(wdb, now, timestamp, &next_timeout);
 
     cJSON *response = cJSON_CreateObject();
@@ -5386,7 +5426,6 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
     }
     timestamp = timestamp_json->valueint;
 
-    // Delete entries older than cleanup_time
     result = wdb_task_delete_old_entries(wdb, timestamp);
 
     cJSON *response = cJSON_CreateObject();
