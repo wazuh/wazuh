@@ -480,7 +480,17 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
                     }
 
                 } else { // Command finished
-                    retval = 0;
+                    if (WEXITSTATUS(status) == EXECVE_ERROR) {
+                        mdebug1("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
+                        retval = -1;
+                    } else {
+                        retval = 0;
+                    }
+
+                    if (exitcode) {
+                        *exitcode = WEXITSTATUS(status);
+                    }
+
                     break;
                 }
             } while(secs >= 0);
