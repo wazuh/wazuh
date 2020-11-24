@@ -518,7 +518,24 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
                 }
             }
         } else {
-            retval = 0;
+            switch (waitpid(pid, &status, 0)) {
+            case -1:
+                merror("waitpid()");
+                retval = -1;
+                break;
+
+            default:
+                if (WEXITSTATUS(status) == EXECVE_ERROR) {
+                    mdebug1("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
+                    retval = -1;
+                } else {
+                    retval = 0;
+                }
+
+                if (exitcode) {
+                    *exitcode = WEXITSTATUS(status);
+                }
+            }
         }
 
         wm_remove_sid(pid);
