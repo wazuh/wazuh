@@ -5334,6 +5334,39 @@ int wdb_parse_task_upgrade_custom(wdb_t* wdb, const cJSON *parameters, char* out
 }
 
 int wdb_parse_task_upgrade_get_status(wdb_t* wdb, const cJSON *parameters, char* output) {
+    int agent_id = OS_INVALID;
+    int result = OS_INVALID;
+    char *node;
+    char *task_status = NULL;
+
+    cJSON *agent_id_json = cJSON_GetObjectItem(parameters, "agent");
+    if (!agent_id_json || (agent_id_json->type != cJSON_Number)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error get upgrade task status: 'parsing agent_id error'");
+        return OS_INVALID;
+    }
+    agent_id = agent_id_json->valueint;
+
+    cJSON *node_json = cJSON_GetObjectItem(parameters, "node");
+    if (!node_json || (node_json->type != cJSON_String)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error get upgrade task status: 'parsing node error'");
+        return OS_INVALID;
+    }
+    node = node_json->valuestring;
+    if (result = wdb_task_get_upgrade_task_status(wdb, agent_id, node, &task_status), result == OS_INVALID) {
+        snprintf(output, OS_MAXSTR + 1, "err Error get upgrade task status: %s", sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    } else {
+        cJSON *response = cJSON_CreateObject();
+        char *out = NULL;
+
+        cJSON_AddStringToObject(response, "status", task_status);
+
+        out = cJSON_PrintUnformatted(response);
+        snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+        os_free(out);
+        cJSON_Delete(response);
+    }
+
     return OS_SUCCESS;
 }
 
