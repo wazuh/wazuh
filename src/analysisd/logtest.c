@@ -301,7 +301,7 @@ int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
 
     do {
 
-        if (lf->decoder_info->type == OSSEC_ALERT && !lf->generated_rule) {
+        if (lf->decoder_info->type == WAZUH_ALERT && !lf->generated_rule) {
             break;
         }
 

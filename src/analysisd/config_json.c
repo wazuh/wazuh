@@ -163,8 +163,8 @@ void _getDecodersListJSON(OSDecoderNode *list, cJSON *array) {
                 cJSON_AddStringToObject(decoder,"type","windows");
             } else if (node->osdecoder->type == HOST_INFO) {
                 cJSON_AddStringToObject(decoder,"type","host-information");
-            } else if (node->osdecoder->type == OSSEC_RL) {
-                cJSON_AddStringToObject(decoder,"type","ossec");
+            } else if (node->osdecoder->type == WAZUH_RL) {
+                cJSON_AddStringToObject(decoder,"type","wazuh");
             }
         }
 
@@ -175,8 +175,8 @@ void _getDecodersListJSON(OSDecoderNode *list, cJSON *array) {
                 cJSON_AddStringToObject(decoder,"plugin_decoder","SymantecWS_Decoder");
             } else if ((void *)node->osdecoder->plugindecoder == SonicWall_Decoder_Exec) {
                 cJSON_AddStringToObject(decoder,"plugin_decoder","SonicWall_Decoder");
-            } else if ((void *)node->osdecoder->plugindecoder == OSSECAlert_Decoder_Exec) {
-                cJSON_AddStringToObject(decoder,"plugin_decoder","OSSECAlert_Decoder");
+            } else if ((void *)node->osdecoder->plugindecoder == WazuhAlert_Decoder_Exec) {
+                cJSON_AddStringToObject(decoder,"plugin_decoder","WazuhAlert_Decoder");
             } else if ((void *)node->osdecoder->plugindecoder == JSON_Decoder_Exec) {
                 cJSON_AddStringToObject(decoder,"plugin_decoder","JSON_Decoder");
             }
@@ -418,8 +418,8 @@ void _getRulesListJSON(RuleNode *list, cJSON *array) {
             cJSON_AddStringToObject(rule,"category","squid");
         } else if (node->ruleinfo->category == DECODER_WINDOWS) {
             cJSON_AddStringToObject(rule,"category","windows");
-        } else if (node->ruleinfo->category == OSSEC_RL) {
-            cJSON_AddStringToObject(rule,"category","ossec");
+        } else if (node->ruleinfo->category == WAZUH_RL) {
+            cJSON_AddStringToObject(rule,"category","wazuh");
         }
 
         if (node->ruleinfo->fields && node->ruleinfo->fields[0]) {
