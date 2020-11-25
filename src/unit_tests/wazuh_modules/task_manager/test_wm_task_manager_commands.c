@@ -45,6 +45,18 @@ static int teardown_config(void **state) {
     return 0;
 }
 
+static int teardown_jsons(void **state) {
+    if (state[0]) {
+        cJSON *json = state[0];
+        cJSON_Delete(json);
+    }
+    if (state[1]) {
+        cJSON *json = state[1];
+        cJSON_Delete(json);
+    }
+    return 0;
+}
+
 static int teardown_json_task(void **state) {
     if (state[0]) {
         cJSON *json = state[0];
@@ -124,6 +136,138 @@ time_t __wrap_time(time_t *__timer) {
 }
 
 // Tests
+
+void test_wm_task_manager_send_message_to_wdb_ok(void **state)
+{
+    char *command = "upgrade";
+    int error_code = 0;
+
+    char *wdb_response = "ok {\"error\":0,\"task_id\":24}";
+
+    cJSON* parameters = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(parameters, "agent", 35);
+    cJSON_AddStringToObject(parameters, "node", "node02");
+    cJSON_AddStringToObject(parameters, "module", "upgrade_module");
+
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, "task upgrade {\"agent\":35,\"node\":\"node02\",\"module\":\"upgrade_module\"}");
+    expect_value(__wrap_wdbc_query_ex, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_ex, wdb_response);
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    expect_string(__wrap_wdbc_parse_result, result, wdb_response);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    cJSON *response = wm_task_manager_send_message_to_wdb(command, parameters, &error_code);
+
+    state[0] = parameters;
+    state[1] = response;
+
+    assert_non_null(response);
+    assert_non_null(cJSON_GetObjectItem(response, "error"));
+    assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, 0);
+    assert_non_null(cJSON_GetObjectItem(response, "task_id"));
+    assert_int_equal(cJSON_GetObjectItem(response, "task_id")->valueint, 24);
+    assert_int_equal(error_code, 0);
+}
+
+void test_wm_task_manager_send_message_to_wdb_parse_err(void **state)
+{
+    char *command = "upgrade";
+    int error_code = 0;
+
+    char *wdb_response = "ok {\"error\":0,\"task_id\":24";
+
+    cJSON* parameters = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(parameters, "agent", 35);
+    cJSON_AddStringToObject(parameters, "node", "node02");
+    cJSON_AddStringToObject(parameters, "module", "upgrade_module");
+
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, "task upgrade {\"agent\":35,\"node\":\"node02\",\"module\":\"upgrade_module\"}");
+    expect_value(__wrap_wdbc_query_ex, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_ex, wdb_response);
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    expect_string(__wrap_wdbc_parse_result, result, wdb_response);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8257): Error parsing JSON event: '{\"error\":0,\"task_id\":24'");
+
+    cJSON *response = wm_task_manager_send_message_to_wdb(command, parameters, &error_code);
+
+    state[0] = parameters;
+    state[1] = NULL;
+
+    assert_null(response);
+    assert_int_equal(error_code, WM_TASK_DATABASE_PARSE_ERROR);
+}
+
+void test_wm_task_manager_send_message_to_wdb_request_err(void **state)
+{
+    char *command = "upgrade";
+    int error_code = 0;
+
+    char *wdb_response = "err Invalid message";
+
+    cJSON* parameters = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(parameters, "agent", 35);
+    cJSON_AddStringToObject(parameters, "node", "node02");
+    cJSON_AddStringToObject(parameters, "module", "upgrade_module");
+
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, "task upgrade {\"agent\":35,\"node\":\"node02\",\"module\":\"upgrade_module\"}");
+    expect_value(__wrap_wdbc_query_ex, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_ex, wdb_response);
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    expect_string(__wrap_wdbc_parse_result, result, wdb_response);
+    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8208): Tasks DB Error reported in the result of the query, message: 'Invalid message'");
+
+    cJSON *response = wm_task_manager_send_message_to_wdb(command, parameters, &error_code);
+
+    state[0] = parameters;
+    state[1] = NULL;
+
+    assert_null(response);
+    assert_int_equal(error_code, WM_TASK_DATABASE_REQUEST_ERROR);
+}
+
+void test_wm_task_manager_send_message_to_wdb_response_err(void **state)
+{
+    char *command = "upgrade";
+    int error_code = 0;
+
+    cJSON* parameters = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(parameters, "agent", 35);
+    cJSON_AddStringToObject(parameters, "node", "node02");
+    cJSON_AddStringToObject(parameters, "module", "upgrade_module");
+
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, "task upgrade {\"agent\":35,\"node\":\"node02\",\"module\":\"upgrade_module\"}");
+    expect_value(__wrap_wdbc_query_ex, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_ex, NULL);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8209): Tasks DB Cannot execute SQL query: err database 'queue/tasks/tasks.db'");
+
+    cJSON *response = wm_task_manager_send_message_to_wdb(command, parameters, &error_code);
+
+    state[0] = parameters;
+    state[1] = NULL;
+
+    assert_null(response);
+    assert_int_equal(error_code, WM_TASK_DATABASE_ERROR);
+}
 
 void test_wm_task_manager_command_upgrade_ok(void **state)
 {
@@ -230,7 +374,6 @@ void test_wm_task_manager_command_upgrade_db_err(void **state)
     char *command = "upgrade";
     int error_code = 0;
     int agent_id = 35;
-    int task_id = OS_INVALID;
 
     char *wdb_response = "ok {\"error\":-1}";
 
@@ -253,6 +396,42 @@ void test_wm_task_manager_command_upgrade_db_err(void **state)
 
     expect_string(__wrap_wdbc_parse_result, result, wdb_response);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    state[0] = NULL;
+    state[1] = task_parameters;
+
+    cJSON *response = wm_task_manager_command_upgrade(task_parameters, WM_TASK_UPGRADE, &error_code);
+
+    assert_int_equal(error_code, WM_TASK_DATABASE_ERROR);
+}
+
+void test_wm_task_manager_command_upgrade_db_response_null(void **state)
+{
+    char *node = "node02";
+    char *module = "upgrade_module";
+    char *command = "upgrade";
+    int error_code = 0;
+    int agent_id = 35;
+
+    wm_task_manager_upgrade *task_parameters = wm_task_manager_init_upgrade_parameters();
+    int *agents = NULL;
+
+    os_calloc(2, sizeof(int), agents);
+    agents[0] = agent_id;
+    agents[1] = OS_INVALID;
+
+    os_strdup(node, task_parameters->node);
+    os_strdup(module, task_parameters->module);
+    task_parameters->agent_ids = agents;
+
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, "task upgrade {\"agent\":35,\"node\":\"node02\",\"module\":\"upgrade_module\"}");
+    expect_value(__wrap_wdbc_query_ex, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_ex, NULL);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8209): Tasks DB Cannot execute SQL query: err database 'queue/tasks/tasks.db'");
 
     state[0] = NULL;
     state[1] = task_parameters;
@@ -316,8 +495,6 @@ void test_wm_task_manager_command_upgrade_get_status_db_err(void **state)
     int error_code = 0;
     int agent_id = 35;
 
-    char *status_result = "In progress";
-
     char *wdb_response = "ok {\"error\":-1}";
 
     wm_task_manager_upgrade_get_status *task_parameters = wm_task_manager_init_upgrade_get_status_parameters();
@@ -338,6 +515,39 @@ void test_wm_task_manager_command_upgrade_get_status_db_err(void **state)
 
     expect_string(__wrap_wdbc_parse_result, result, wdb_response);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    state[0] = NULL;
+    state[1] = task_parameters;
+
+    cJSON *response = wm_task_manager_command_upgrade_get_status(task_parameters, &error_code);
+
+    assert_int_equal(error_code, WM_TASK_DATABASE_ERROR);
+}
+
+void test_wm_task_manager_command_upgrade_get_status_db_response_null(void **state)
+{
+    char *node = "node02";
+    int error_code = 0;
+    int agent_id = 35;
+
+    wm_task_manager_upgrade_get_status *task_parameters = wm_task_manager_init_upgrade_get_status_parameters();
+    int *agents = NULL;
+
+    os_calloc(2, sizeof(int), agents);
+    agents[0] = agent_id;
+    agents[1] = OS_INVALID;
+
+    os_strdup(node, task_parameters->node);
+    task_parameters->agent_ids = agents;
+
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, "task upgrade_get_status {\"agent\":35,\"node\":\"node02\"}");
+    expect_value(__wrap_wdbc_query_ex, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_ex, NULL);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8209): Tasks DB Cannot execute SQL query: err database 'queue/tasks/tasks.db'");
 
     state[0] = NULL;
     state[1] = task_parameters;
@@ -478,6 +688,41 @@ void test_wm_task_manager_command_upgrade_update_status_db_err(void **state)
     assert_int_equal(error_code, WM_TASK_DATABASE_ERROR);
 }
 
+void test_wm_task_manager_command_upgrade_update_status_db_response_null(void **state)
+{
+    char *node = "node02";
+    int error_code = 0;
+    int agent_id = 35;
+    char *status = "Done";
+
+    wm_task_manager_upgrade_update_status *task_parameters = wm_task_manager_init_upgrade_update_status_parameters();
+    int *agents = NULL;
+
+    os_calloc(2, sizeof(int), agents);
+    agents[0] = agent_id;
+    agents[1] = OS_INVALID;
+
+    os_strdup(node, task_parameters->node);
+    task_parameters->agent_ids = agents;
+    os_strdup(status, task_parameters->status);
+
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, "task upgrade_update_status {\"agent\":35,\"node\":\"node02\",\"status\":\"Done\"}");
+    expect_value(__wrap_wdbc_query_ex, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_ex, NULL);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8209): Tasks DB Cannot execute SQL query: err database 'queue/tasks/tasks.db'");
+
+    cJSON *response = wm_task_manager_command_upgrade_update_status(task_parameters, &error_code);
+
+    state[0] = NULL;
+    state[1] = task_parameters;
+
+    assert_int_equal(error_code, WM_TASK_DATABASE_ERROR);
+}
+
 void test_wm_task_manager_command_upgrade_result_ok(void **state)
 {
     int error_code = 0;
@@ -598,14 +843,6 @@ void test_wm_task_manager_command_upgrade_result_db_err(void **state)
     int agent_id = 35;
     int task_id = OS_INVALID;
 
-    char *node_result = "node01";
-    char *module_result = "upgrade_module";
-    char *command_result = "upgrade";
-    char *status_result = "In progress";
-    char *error_result = "Error string";
-    int create_time = 789456123;
-    int last_update = 987654321;
-
     char *wdb_response = "ok {\"error\":-1}";
 
     wm_task_manager_upgrade_result *task_parameters = wm_task_manager_init_upgrade_result_parameters();
@@ -625,6 +862,38 @@ void test_wm_task_manager_command_upgrade_result_db_err(void **state)
 
     expect_string(__wrap_wdbc_parse_result, result, wdb_response);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    cJSON *response = wm_task_manager_command_upgrade_result(task_parameters, &error_code);
+
+    state[0] = NULL;
+    state[1] = task_parameters;
+
+    assert_int_equal(error_code, WM_TASK_DATABASE_ERROR);
+}
+
+void test_wm_task_manager_command_upgrade_result_db_response_null(void **state)
+{
+    int error_code = 0;
+    int agent_id = 35;
+    int task_id = OS_INVALID;
+
+    wm_task_manager_upgrade_result *task_parameters = wm_task_manager_init_upgrade_result_parameters();
+    int *agents = NULL;
+
+    os_calloc(2, sizeof(int), agents);
+    agents[0] = agent_id;
+    agents[1] = OS_INVALID;
+
+    task_parameters->agent_ids = agents;
+
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, "task upgrade_result {\"agent\":35}");
+    expect_value(__wrap_wdbc_query_ex, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_ex, NULL);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8209): Tasks DB Cannot execute SQL query: err database 'queue/tasks/tasks.db'");
 
     cJSON *response = wm_task_manager_command_upgrade_result(task_parameters, &error_code);
 
@@ -1179,21 +1448,30 @@ void test_wm_task_manager_clean_tasks_clean(void **state)
 
 int main(void) {
     const struct CMUnitTest tests[] = {
+        // wm_task_manager_send_message_to_wdb
+        cmocka_unit_test_teardown(test_wm_task_manager_send_message_to_wdb_ok, teardown_jsons),
+        cmocka_unit_test_teardown(test_wm_task_manager_send_message_to_wdb_parse_err, teardown_jsons),
+        cmocka_unit_test_teardown(test_wm_task_manager_send_message_to_wdb_request_err, teardown_jsons),
+        cmocka_unit_test_teardown(test_wm_task_manager_send_message_to_wdb_response_err, teardown_jsons),
         // wm_task_manager_command_upgrade
         cmocka_unit_test_teardown(test_wm_task_manager_command_upgrade_ok, teardown_json_upgrade_task),
         cmocka_unit_test_teardown(test_wm_task_manager_command_upgrade_custom_ok, teardown_json_upgrade_task),
         cmocka_unit_test_teardown(test_wm_task_manager_command_upgrade_db_err, teardown_json_upgrade_task),
+        cmocka_unit_test_teardown(test_wm_task_manager_command_upgrade_db_response_null, teardown_json_upgrade_task),
         // wm_task_manager_command_upgrade_get_status
         cmocka_unit_test_teardown(test_wm_task_manager_command_upgrade_get_status_ok, teardown_json_upgrade_get_status_task),
         cmocka_unit_test_teardown(test_wm_task_manager_command_upgrade_get_status_db_err, teardown_json_upgrade_get_status_task),
+        cmocka_unit_test_teardown(test_wm_task_manager_command_upgrade_get_status_db_response_null, teardown_json_upgrade_get_status_task),
         // wm_task_manager_command_upgrade_update_status
         cmocka_unit_test_teardown(test_wm_task_manager_command_upgrade_update_status_ok, teardown_json_upgrade_update_status_task),
         cmocka_unit_test_teardown(test_wm_task_manager_command_upgrade_update_status_task_err, teardown_json_upgrade_update_status_task),
         cmocka_unit_test_teardown(test_wm_task_manager_command_upgrade_update_status_db_err, teardown_json_upgrade_update_status_task),
+        cmocka_unit_test_teardown(test_wm_task_manager_command_upgrade_update_status_db_response_null, teardown_json_upgrade_update_status_task),
         // wm_task_manager_command_upgrade_result
         cmocka_unit_test_teardown(test_wm_task_manager_command_upgrade_result_ok, teardown_json_upgrade_result_task),
         cmocka_unit_test_teardown(test_wm_task_manager_command_upgrade_result_not_found_err, teardown_json_upgrade_result_task),
         cmocka_unit_test_teardown(test_wm_task_manager_command_upgrade_result_db_err, teardown_json_upgrade_result_task),
+        cmocka_unit_test_teardown(test_wm_task_manager_command_upgrade_result_db_response_null, teardown_json_upgrade_result_task),
         // wm_task_manager_command_upgrade_cancel_tasks
         cmocka_unit_test_teardown(test_wm_task_manager_command_upgrade_cancel_tasks_ok, teardown_json_upgrade_cancel_tasks_task),
         cmocka_unit_test_teardown(test_wm_task_manager_command_upgrade_cancel_tasks_db_err, teardown_json_upgrade_cancel_tasks_task),
