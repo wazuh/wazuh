@@ -103,6 +103,9 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it);
 /* read multi line logs */
 void *read_multiline(logreader *lf, int *rc, int drop_it);
 
+/* read multi line logs with variable lenght */
+void *read_multiline_regex(logreader *lf, int *rc, int drop_it);
+
 /* Read DJB multilog format */
 /* Initializes multilog */
 int init_djbmultilog(logreader *lf);

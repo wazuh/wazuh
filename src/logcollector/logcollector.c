@@ -1177,7 +1177,7 @@ void set_read(logreader *current, int i, int j) {
     } else if (strcmp("audit", current->logformat) == 0) {
         current->read = read_audit;
     } else if (strcmp(MULTI_LINE_REGEX, current->logformat) == 0) {
-        current->read = read_syslog; // Change it to read_multiline_regex
+        current->read = read_multiline_regex;
     } else {
 #ifdef WIN32
         if (current->filter_binary) {
@@ -2168,7 +2168,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         } else if (!strcmp("multi-line", current->logformat)) {
                             current->read = read_multiline;
                         } else if (!strcmp(MULTI_LINE_REGEX, current->logformat)) {
-                            current->read = read_syslog; // Change it to read_multiline_regex
+                            current->read = read_multiline_regex;
                         }
                     }
                 }
