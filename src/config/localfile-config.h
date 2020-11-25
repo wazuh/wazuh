@@ -13,6 +13,7 @@
 
 #define EVENTLOG     "eventlog"
 #define EVENTCHANNEL "eventchannel"
+#define MULTI_LINE_REGEX "multi-line-regex"
 #define DATE_MODIFIED   1
 #define DEFAULT_EVENTCHANNEL_REC_TIME 5
 #define DIFF_DEFAULT_SIZE 10240

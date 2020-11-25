@@ -297,6 +297,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             } else if (strcmp(logf[pl].logformat, "command") == 0) {
             } else if (strcmp(logf[pl].logformat, "full_command") == 0) {
             } else if (strcmp(logf[pl].logformat, "audit") == 0) {
+            } else if (strcmp(logf[pl].logformat, MULTI_LINE_REGEX) == 0) {
             } else if (strncmp(logf[pl].logformat, "multi-line", 10) == 0) {
 
                 char *p_lf = logf[pl].logformat;
@@ -426,11 +427,17 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         return (OS_INVALID);
     }
 
-    /* Only syslog support multiline_regex */
-    if (logf[pl].multiline && (strcmp(logf[pl].logformat, "syslog") != 0)) {
+    /* Only log format multi-line-regex support multiline_regex */
+    if (logf[pl].multiline && (strcmp(logf[pl].logformat, MULTI_LINE_REGEX) != 0)) {
         mwarn(LOGCOLLECTOR_MULTILINE_SUPPORT, logf[pl].logformat);
         w_free_expression_t(&logf[pl].multiline->regex);
         os_free(logf[pl].multiline);
+    }
+
+    /* If the log format is MULTI_LINE_REGEX, then multiline_regex must be configured */
+    if ((strcmp(logf[pl].logformat, MULTI_LINE_REGEX) == 0) && !logf[pl].multiline) {
+        merror(MISS_MULT_REGEX);
+        return (OS_INVALID);
     }
 
         /* Verify a valid event log config */
