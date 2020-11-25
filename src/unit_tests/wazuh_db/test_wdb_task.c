@@ -969,6 +969,40 @@ void test_wdb_task_update_upgrade_task_status_old_status_err(void **state)
     assert_int_equal(ret, OS_NOTFOUND);
 }
 
+void test_wdb_task_update_upgrade_task_status_old_status2_err(void **state)
+{
+    int agent_id = 115;
+    char *node = "node03";
+    char *status = "Failed";
+    char *node_old = "node03";
+    char *status_old = "Done";
+    int task_id = 36;
+
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, task_id);
+
+    expect_value(__wrap_sqlite3_column_text, iCol, 2);
+    will_return(__wrap_sqlite3_column_text, node_old);
+
+    expect_value(__wrap_sqlite3_column_text, iCol, 7);
+    will_return(__wrap_sqlite3_column_text, status_old);
+
+    int ret = wdb_task_update_upgrade_task_status(data->wdb, agent_id, node, status, NULL);
+
+    assert_int_equal(ret, OS_NOTFOUND);
+}
+
 void test_wdb_task_update_upgrade_task_status_task_id_err(void **state)
 {
     int agent_id = 115;
@@ -1446,6 +1480,7 @@ int main(void) {
         // wdb_task_update_upgrade_task_status
         cmocka_unit_test_setup_teardown(test_wdb_task_update_upgrade_task_status_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_task_update_upgrade_task_status_old_status_err, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_task_update_upgrade_task_status_old_status2_err, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_task_update_upgrade_task_status_task_id_err, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_task_update_upgrade_task_status_status_err, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_task_update_upgrade_task_status_begin2_err, test_setup, test_teardown),
