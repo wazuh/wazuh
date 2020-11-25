@@ -5387,6 +5387,7 @@ int wdb_parse_task_upgrade(wdb_t* wdb, const cJSON *parameters, const char *comm
     if (result >= 0) {
         cJSON_AddNumberToObject(response, "error", OS_SUCCESS);
         cJSON_AddNumberToObject(response, "task_id", result);
+        result = OS_SUCCESS;
     } else {
         cJSON_AddNumberToObject(response, "error", result);
     }
@@ -5397,7 +5398,7 @@ int wdb_parse_task_upgrade(wdb_t* wdb, const cJSON *parameters, const char *comm
     os_free(out);
     cJSON_Delete(response);
 
-    return OS_SUCCESS;
+    return result;
 }
 
 int wdb_parse_task_upgrade_get_status(wdb_t* wdb, const cJSON *parameters, char* output) {
@@ -5435,6 +5436,8 @@ int wdb_parse_task_upgrade_get_status(wdb_t* wdb, const cJSON *parameters, char*
 
     os_free(out);
     cJSON_Delete(response);
+
+    os_free(task_status);
 
     return result;
 }
@@ -5521,6 +5524,7 @@ int wdb_parse_task_upgrade_result(wdb_t* wdb, const cJSON *parameters, char* out
         cJSON_AddStringToObject(response, "error_msg", error);
         cJSON_AddNumberToObject(response, "create_time", create_time);
         cJSON_AddNumberToObject(response, "update_time", last_update_time);
+        result = OS_SUCCESS;
     } else {
         cJSON_AddNumberToObject(response, "error", result);
     }
@@ -5530,6 +5534,12 @@ int wdb_parse_task_upgrade_result(wdb_t* wdb, const cJSON *parameters, char* out
 
     os_free(out);
     cJSON_Delete(response);
+
+    os_free(node_result);
+    os_free(module_result);
+    os_free(command_result);
+    os_free(status);
+    os_free(error);
 
     return result;
 }
