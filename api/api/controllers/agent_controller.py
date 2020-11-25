@@ -10,8 +10,8 @@ from connexion.lifecycle import ConnexionResponse
 import wazuh.agent as agent
 from api import configuration
 from api.encoder import dumps, prettify
-from api.models.agent_added import AgentAddedModel
-from api.models.agent_inserted import AgentInsertedModel
+from api.models.agent_added_model import AgentAddedModel
+from api.models.agent_inserted_model import AgentInsertedModel
 from api.models.base_model_ import Body
 from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc
 from wazuh.core.cluster.control import get_system_nodes
