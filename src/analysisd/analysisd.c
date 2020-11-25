@@ -513,7 +513,7 @@ int main(int argc, char **argv)
             OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
             OSListNode * node_log_msg;
             int error_exit = 0;
-            
+
 
             /* Initialize the decoders list */
             OS_CreateOSDecoderList();
@@ -533,9 +533,9 @@ int main(int argc, char **argv)
                     if (!test_config) {
                         mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
-                    if (!ReadDecodeXML(*decodersfiles, &os_analysisd_decoderlist_pn, 
+                    if (!ReadDecodeXML(*decodersfiles, &os_analysisd_decoderlist_pn,
                                         &os_analysisd_decoderlist_nopn, &os_analysisd_decoder_store, list_msg)) {
-                        error_exit = 1; 
+                        error_exit = 1;
                     }
                     node_log_msg = OSList_GetFirstNode(list_msg);
 
@@ -1361,7 +1361,7 @@ void * ad_input_main(void * args) {
                         reported_dbsync = TRUE;
                     }
                 }
-            } else if (msg[0] == UPGRADE_MQ) { 
+            } else if (msg[0] == UPGRADE_MQ) {
                 result = -1;
 
                 if (!queue_full(upgrade_module_input)) {
@@ -1382,7 +1382,7 @@ void * ad_input_main(void * args) {
                         reported_upgrade_module = TRUE;
                     }
                 }
-                
+
             } else {
 
                 os_strdup(buffer, copy);
@@ -2007,7 +2007,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             merror_exit("Rules in an inconsistent state. Exiting.");
         }
         do {
-            if (lf->decoder_info->type == OSSEC_ALERT) {
+            if (lf->decoder_info->type == WAZUH_ALERT) {
                 if (!lf->generated_rule) {
                     goto next_it;
                 }

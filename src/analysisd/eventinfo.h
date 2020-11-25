@@ -163,8 +163,8 @@ struct EventList {
 #define SQUID           8   /* Squid logs */
 #define DECODER_WINDOWS 9   /* Windows logs */
 #define HOST_INFO       10  /* Host information logs (from nmap or similar) */
-#define OSSEC_RL        11  /* OSSEC rules */
-#define OSSEC_ALERT     12  /* OSSEC alerts */
+#define WAZUH_RL        11  /* Wazuh rules */
+#define WAZUH_ALERT     12  /* Wazuh alerts */
 
 /* FTS allowed values */
 #define FTS_NAME        001000
@@ -197,7 +197,7 @@ void Free_Eventinfo(Eventinfo *lf);
 
 /**
  * @brief Clear the memory if the eventinfo was not added to the stateful memory
- * 
+ *
  * @param lf Eventinfo to free
  */
 void w_free_event_info(Eventinfo *lf);

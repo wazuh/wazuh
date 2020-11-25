@@ -63,7 +63,7 @@
 #define SQUID               8   /* Squid log */
 #define DECODER_WINDOWS     9   /* Windows log */
 #define HOST_INFO           10  /* Host information log (from nmap or similar) */
-#define OSSEC_RL            11  /* OSSEC rule */
+#define WAZUH_RL            11  /* Wazuh rule */
 
 /* FTS allowed values */
 #define FTS_NAME        001000
