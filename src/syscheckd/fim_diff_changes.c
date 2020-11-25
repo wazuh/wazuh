@@ -515,7 +515,7 @@ diff_data *initialize_file_diff_data(const char *filename){
     strcpy(abs_diff_dir_path, DIFF_DIR_PATH);
 
     // This snprintf is duplicated to avoid a double slash ('/') in UNIX systems
-    snprintf(buffer, PATH_MAX, "%s/local%s", abs_diff_dir_path, diff->file_origin);
+    snprintf(buffer, PATH_MAX, "%s/local%s", DIFF_DIR_PATH, diff->file_origin);
 #endif
 
     // Check if the full_diff_path for filename, is too long
@@ -529,7 +529,7 @@ diff_data *initialize_file_diff_data(const char *filename){
     snprintf(buffer, PATH_MAX, "%s/last-entry.gz", diff->compress_folder);
     os_strdup(buffer, diff->compress_file);
 
-    snprintf(buffer, PATH_MAX, "%s/tmp", abs_diff_dir_path);
+    snprintf(buffer, PATH_MAX, "%.4091s/tmp", abs_diff_dir_path);
     os_strdup(buffer, diff->tmp_folder);
 
     snprintf(buffer, PATH_MAX, "%s/tmp-entry", diff->tmp_folder);

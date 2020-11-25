@@ -57,7 +57,7 @@ void fim_scan() {
     struct timespec start;
     struct timespec end;
     clock_t cputime_start;
-    unsigned int nodes_count;
+    unsigned int nodes_count = 0;
 
     cputime_start = clock();
     gettime(&start);

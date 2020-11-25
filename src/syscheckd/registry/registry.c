@@ -873,6 +873,8 @@ void fim_open_key(HKEY root_key_handle,
 
         /* Open sub_key */
         fim_open_key(root_key_handle, new_full_key, new_sub_key, arch, mode, configuration);
+
+        os_free(new_full_key);
     }
     // Done scanning sub_keys, trigger an alert on the current key if required.
     new.type = FIM_TYPE_REGISTRY;
