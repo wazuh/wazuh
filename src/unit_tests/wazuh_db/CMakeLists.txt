@@ -71,6 +71,10 @@ list(APPEND wdb_tests_names "test_wdb_metadata")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,sqlite3_prepare_v2 -Wl,--wrap,sqlite3_errmsg \
                              -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_finalize -Wl,--wrap,sqlite3_column_int")
 
+list(APPEND wdb_tests_names "test_wdb_task_parser")
+list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_task_insert_task -Wl,--wrap,wdb_task_get_upgrade_task_status -Wl,--wrap,wdb_task_update_upgrade_task_status -Wl,--wrap,wdb_task_get_upgrade_task_by_agent_id \
+                             -Wl,--wrap,wdb_task_cancel_upgrade_tasks -Wl,--wrap,wdb_task_set_timeout_status -Wl,--wrap,wdb_task_delete_old_entries")
+
 # Add extra compiling flags
 add_compile_options(-Wall)
 
