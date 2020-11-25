@@ -294,7 +294,6 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql,
 fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const char *path) {
     char *full_path, *key_path, *value_name;
     int arch;
-    unsigned int key_id;
     fim_entry *entry;
 
     if (type == FIM_TYPE_FILE) {
@@ -328,18 +327,12 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
         return entry;
     }
 
-    if (fim_db_get_registry_key_rowid(fim_sql, key_path, arch, &key_id) != FIMDB_OK) {
-        fim_registry_free_entry(entry);
-        free(full_path);
-        free(key_path);
-        return NULL;
-    }
     free(key_path);
 
     value_name = wstr_replace(value_name, "::", ":");
     free(full_path);
 
-    entry->registry_entry.value = fim_db_get_registry_data(fim_sql, key_id, value_name);
+    entry->registry_entry.value = fim_db_get_registry_data(fim_sql, entry->registry_entry.key->id, value_name);
 
     free(value_name);
 
@@ -640,9 +633,10 @@ void fim_db_bind_range(fdb_t *fim_sql, int index, const char *start, const char 
 }
 
 char *fim_db_decode_string(sqlite3_stmt *stmt) {
-    char *retval;
+    char *retval = NULL;
+    char *text = (char *)sqlite3_column_text(stmt, 0);
 
-    os_strdup((char *)sqlite3_column_text(stmt, 0), retval);
+    sqlite_strdup(text, retval);
 
     return retval;
 }
@@ -659,7 +653,8 @@ char **fim_db_decode_string_array(sqlite3_stmt *stmt) {
     os_calloc(column_count + 1, sizeof(char *), retval);
 
     for (i = 0; i < column_count; i++) {
-        os_strdup((char *)sqlite3_column_text(stmt, i), retval[i]);
+        char *text = (char *)sqlite3_column_text(stmt, i);
+        sqlite_strdup(text, retval[i]);
     }
     retval[column_count] = NULL;
 
@@ -672,12 +667,13 @@ int fim_db_get_string(fdb_t *fim_sql, int index, char **str) {
     fim_db_clean_stmt(fim_sql, index);
 
     if (result = sqlite3_step(fim_sql->stmt[index]), result != SQLITE_ROW && result != SQLITE_DONE) {
-        merror("Step error getting row string '%s': %s", *str, sqlite3_errmsg(fim_sql->db));
+        merror("Step error getting row string: %s", sqlite3_errmsg(fim_sql->db));
         return FIMDB_ERR;
     }
 
     if (result == SQLITE_ROW) {
-        os_strdup((char *)sqlite3_column_text(fim_sql->stmt[index], 0), *str);
+        char *text = (char *)sqlite3_column_text(fim_sql->stmt[index], 0);
+        sqlite_strdup(text, *str);
     }
 
     return FIMDB_OK;
@@ -792,13 +788,15 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
         if (sqlite3_step(fim_sql->stmt[RANGE_QUERY[type]]) != SQLITE_ROW) {
             merror("Step error getting path range, second half 'start %s' 'top %s' (i:%d): %s", start, top, i,
                    sqlite3_errmsg(fim_sql->db));
-            os_free(str_pathlh);
-            os_free(str_pathuh);
+            os_free(*str_pathlh);
+            os_free(*str_pathuh);
             return FIMDB_ERR;
         }
         decoded_row = fim_db_decode_string_array(fim_sql->stmt[RANGE_QUERY[type]]);
         if (decoded_row == NULL || decoded_row[0] == NULL || decoded_row[1] == NULL) {
             free_strarray(decoded_row);
+            os_free(*str_pathlh);
+            os_free(*str_pathuh);
             merror("Failed to decode checksum range query");
             return FIMDB_ERR;
         }
@@ -817,8 +815,8 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
 
     if (*str_pathlh == NULL || *str_pathuh == NULL) {
         merror("Failed to obtain required paths in order to form message");
-        os_free(str_pathlh);
-        os_free(str_pathuh);
+        os_free(*str_pathlh);
+        os_free(*str_pathuh);
         return FIMDB_ERR;
     }
 
@@ -862,7 +860,7 @@ int fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **b
     }
 
     if (storage == FIM_DB_DISK) {
-        if (it == 0 && fseek(file->fd, SEEK_SET, 0) != 0) {
+        if (it == 0 && fseek(file->fd, 0, SEEK_SET) != 0) {
             merror("Failed fseek in %s", file->path);
             return -1;
         }

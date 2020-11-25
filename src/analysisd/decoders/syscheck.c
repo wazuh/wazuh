@@ -1307,6 +1307,11 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
         return -1;
     }
 
+    if (lf->fields[FIM_FILE].value == NULL) {
+        mdebug1("No member 'path' in Syscheck JSON payload");
+        return -1;
+    }
+
     entry_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type"));
     if (entry_type == NULL) {
         mdebug1("No member 'type' in Syscheck attributes JSON payload");
