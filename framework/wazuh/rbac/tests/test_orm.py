@@ -109,6 +109,9 @@ def test_add_user(db_setup):
         am.add_user(username='newUser1', password='testingA2!')
         assert am.get_user(username='newUser1')
 
+        # Too long name
+        assert not am.add_user('a'*65, 'Password1!')
+
         assert not am.add_user(username='newUser1', password='testingA2!')
 
         # Obtain not existent user
@@ -124,6 +127,9 @@ def test_add_role(db_setup):
         # New role
         rm.add_role('newRole1')
         assert rm.get_role('newRole1')
+
+        # Too long name
+        assert not rm.add_role('a'*65)
 
         # Obtain not existent role
         assert rm.get_role('noexist') == db_setup.SecurityError.ROLE_NOT_EXIST
@@ -147,6 +153,9 @@ def test_add_policy(db_setup):
         pm.add_policy(name='newPolicy1', policy=policy)
         assert pm.get_policy('newPolicy1')
 
+        # Too long name
+        assert not pm.add_policy('v'*65, policy)
+
         # Obtain not existent policy
         assert pm.get_policy('noexist') == db_setup.SecurityError.POLICY_NOT_EXIST
 
@@ -158,6 +167,9 @@ def test_add_rule(db_setup):
         rum.add_rule(name='test_rule', rule={'MATCH': {'admin': ['admin_role']}})
 
         assert rum.get_rule_by_name(rule_name='test_rule')
+
+        # Too long name
+        assert not rum.add_rule('a'*65, {'MATCH': {'admin': ['admin_role']}})
 
         # Obtain not existent role
         assert rum.get_rule(999) == db_setup.SecurityError.RULE_NOT_EXIST
