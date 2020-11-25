@@ -35,7 +35,7 @@ class LocalServerHandler(server.AbstractServerHandler):
         self.transport = transport
         self.server.clients[self.name] = self
         self.tag = "Local " + self.name
-        # modify filter tags with context vars
+        # Modify filter tags with context vars.
         context_tag.set(self.tag)
         self.logger.debug('Connection received in local server.')
 
@@ -47,7 +47,7 @@ class LocalServerHandler(server.AbstractServerHandler):
         command : bytes
             Received command from client.
         data : bytes
-            Received command from client.
+            Received payload from client.
 
         Returns
         -------
@@ -91,7 +91,7 @@ class LocalServerHandler(server.AbstractServerHandler):
         return self.server.node.get_node()
 
     def get_nodes(self, filter_nodes) -> Tuple[bytes, bytes]:
-        """Handles the 'get_nodes' request. It is implemented differently for master and workers.
+        """Handle the 'get_nodes' request. It is implemented differently for master and workers.
 
         Parameters
         ----------
@@ -106,7 +106,7 @@ class LocalServerHandler(server.AbstractServerHandler):
         raise NotImplementedError
 
     def get_health(self, filter_nodes) -> Tuple[bytes, bytes]:
-        """Handles the 'get_health' request. It is implemented differently for masters and workers.
+        """Handle the 'get_health' request. It is implemented differently for masters and workers.
 
         Parameters
         ----------
@@ -212,7 +212,7 @@ class LocalServer(server.AbstractServer):
         self.tasks.append(local_server.serve_forever)
 
         async with local_server:
-            # use asyncio.gather to run both tasks in parallel
+            # Use asyncio.gather to run both tasks in parallel.
             await asyncio.gather(*map(lambda x: x(), self.tasks))
 
 
@@ -352,7 +352,7 @@ class LocalServerHandlerWorker(LocalServerHandler):
         command : bytes
             Received command from client.
         data : bytes
-            Received command from client.
+            Received payload from client.
 
         Returns
         -------
@@ -361,7 +361,7 @@ class LocalServerHandlerWorker(LocalServerHandler):
         bytes
             Response message.
         """
-        # modify logger filter tag in LocalServerHandlerWorker entry point
+        # Modify logger filter tag in LocalServerHandlerWorker entry point.
         context_tag.set("Local " + self.name)
 
         self.logger.debug2("Command received: {}".format(command))
@@ -458,7 +458,7 @@ class LocalServerHandlerWorker(LocalServerHandler):
         send_res.add_done_callback(self.send_res_callback)
 
     def send_file_request(self, path, node_name):
-        """Send a file from the API to the master, who will forward it to the specified cluster node.
+        """Send a file from the API to the master, which will forward it to the specified cluster node.
 
         Parameters
         ----------

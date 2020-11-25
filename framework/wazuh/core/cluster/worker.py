@@ -26,14 +26,12 @@ from wazuh.core.wdb import WazuhDBConnection
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
     """
-    Create an asyncio.Task that wait until the master sends its integrity information and processes the
+    Create an asyncio.Task that waits until the master sends its integrity information and processes the
     received information.
     """
 
     def set_up_coro(self) -> Callable:
-        """
-        Set up the function to process the integrity files received from master.
-        """
+        """Set up the function to process the integrity files received from master."""
         return self.wazuh_common.process_files_from_master
 
 
@@ -43,7 +41,7 @@ class SyncWorker:
     """
 
     def __init__(self, cmd: bytes, files_to_sync: Dict, checksums: Dict, logger, worker):
-        """Class constructor
+        """Class constructor.
 
         Parameters
         ----------
@@ -68,7 +66,7 @@ class SyncWorker:
 
     async def sync(self):
         """
-        Start synchronization process with the master and send necessary information
+        Start synchronization process with the master and send necessary information.
         """
         result = await self.worker.send_request(command=self.cmd+b'_p', data=b'')
         if isinstance(result, Exception):
@@ -131,12 +129,12 @@ class RetrieveAndSendToMaster:
 
     def __init__(self, worker, destination_daemon, data_retriever: callable, logger=None, msg_format='{payload}',
                  n_retries=3, retry_time=0.2, max_retry_time_allowed=10, cmd=None, expected_res='ok'):
-        """Class constructor
+        """Class constructor.
 
         Parameters
         ----------
         worker : WorkerHandler object
-            Instance of worker object
+            Instance of worker object.
         destination_daemon : str
             Daemon name on the master node to which send information.
         cmd : bytes
@@ -174,7 +172,7 @@ class RetrieveAndSendToMaster:
         self.lc = local_client.LocalClient()
 
     async def retrieve_and_send(self, *args, **kwargs):
-        """Start synchronization process with the master and send necessary information
+        """Start synchronization process with the master and send necessary information.
 
         This method retrieves a list of payloads/chunks from self.data_retriever(*args, **kwargs).
         The chunks are sent one by one through sendsync command.
@@ -182,7 +180,7 @@ class RetrieveAndSendToMaster:
         Parameters
         ----------
         args, optional
-            Variable length argument list to be sent as parameter to data_retriever callable
+            Variable length argument list to be sent as parameter to data_retriever callable.
         kwargs, optional
             Arbitrary keyword arguments to be sent as parameter to data_retriever callable.
         """
@@ -195,7 +193,7 @@ class RetrieveAndSendToMaster:
             return
 
         if self.cmd:
-            # Send command to master so it knows when the task starts
+            # Send command to master so it knows when the task starts.
             result = await self.worker.send_request(command=self.cmd + b'_s', data=b'')
             self.logger.debug(f"Master response for {self.cmd+b'_s'} command: {result}")
 
@@ -210,11 +208,11 @@ class RetrieveAndSendToMaster:
             }).encode()
 
             try:
-                # Send chunk of data to self.daemon of the master
+                # Send chunk of data to self.daemon of the master.
                 result = await self.lc.execute(command=b'sendasync', data=data, wait_for_complete=False)
                 self.logger.debug(f"Master's {self.daemon} response: {result}.")
 
-                # Retry self.n_retries if result was not ok
+                # Retry self.n_retries if result was not ok.
                 if not result.startswith(self.expected_res):
                     for i in range(self.n_retries):
                         if (time.time() - start_time) < self.max_retry_time_allowed:
@@ -238,7 +236,7 @@ class RetrieveAndSendToMaster:
                 self.logger.error(f"Error sending information to {self.daemon}: {e}")
 
         if self.cmd:
-            # Send command to master so it knows when the task ends
+            # Send command to master so it knows when the task ends.
             result = await self.worker.send_request(command=self.cmd + b'_e', data=str(chunks_sent).encode())
             self.logger.debug(f"Master response for {self.cmd+b'_e'} command: {result}")
 
@@ -256,7 +254,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         Parameters
         ----------
         version : str
-            Wazuh version. E.g., '4.0.0'
+            Wazuh version. E.g., '4.0.0'.
         node_type : str
             Type of node (will always be worker but it's set as a variable in case more types are added in the future).
         cluster_name : str
@@ -265,7 +263,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             Arguments for the parent class constructor.
         """
         super().__init__(**kwargs, tag="Worker")
-        # The self.client_data will be sent to the master when doing a hello request
+        # The self.client_data will be sent to the master when doing a hello request.
         self.client_data = "{} {} {} {}".format(self.name, cluster_name, node_type, version).encode()
 
         # Every task logger is configured to log using a tag describing the synchronization process. For example,
@@ -292,7 +290,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 utils.mkdir_with_mode(worker_tmp_files)
 
     def process_request(self, command: bytes, data: bytes) -> Union[bytes, Tuple[bytes, bytes]]:
-        """Define all commands that a worker can receive from the master
+        """Define all commands that a worker can receive from the master.
 
         Parameters
         ----------
@@ -493,7 +491,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         try:
             before = time.time()
             self.logger.debug("Starting to send extra valid files")
-            # Merge all agent-groups files into one and create checksums dict with it (key->filepath, value->metadata)
+            # Merge all agent-groups files into one and create checksums dict with it (key->filepath, value->metadata).
             n_files, merged_file = \
                 wazuh.core.cluster.cluster.merge_info(merge_type='agent-groups', files=extra_valid.keys(),
                                                       time_limit_seconds=0, node_name=self.name)
@@ -551,7 +549,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             logger.info("Analyzing received files: Missing: {}. Shared: {}. Extra: {}. ExtraValid: {}".format(
                 len(ko_files['missing']), len(ko_files['shared']), len(ko_files['extra']), len(ko_files['extra_valid'])))
 
-            # Send extra valid files to the master
+            # Send extra valid files to the master.
             if ko_files['extra_valid']:
                 logger.info("Master requires some worker files.")
                 asyncio.create_task(self.sync_extra_valid(ko_files['extra_valid']))
@@ -569,7 +567,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
     @staticmethod
     def remove_bulk_agents(agent_ids_list: KeysView, logger):
-        """Removes files created by agents in worker nodes.
+        """Remove files created by agents in worker nodes.
 
         This function doesn't remove agents from client.keys since the
         client.keys file is overwritten by the master node.
@@ -583,12 +581,12 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """
 
         def remove_agent_file_type(agent_files: List[str]):
-            """Removes files if they exist
+            """Remove files if they exist.
 
             Parameters
             ----------
             agent_files : list of str
-                Path regexes of the files to remove
+                Path regexes of the files to remove.
             """
             for filetype in agent_files:
 
@@ -616,7 +614,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                                    select=['ip', 'id', 'name'], limit=None)['items']
             logger.debug2("Removing files from agents {}".format(', '.join(agents_ids_sublist)))
 
-            # Remove agent related files inside these paths
+            # Remove agent related files inside these paths.
             files_to_remove = ['{ossec_path}/queue/rootcheck/({name}) {ip}->rootcheck',
                                '{ossec_path}/queue/diff/{name}', '{ossec_path}/queue/agent-groups/{id}',
                                '{ossec_path}/queue/rids/{id}',
@@ -637,8 +635,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
     def _check_removed_agents(new_client_keys_path: str, logger):
         """Check which agents have been removed from the client.keys.
 
-        This function compares the local client.keys file (worker node) and the one sent by the master.
-        It makes a diff and searches for deleted or changed lines.
+        Compare the local client.keys file (worker node) and the one sent by the master.
+        Make diff and search for deleted or changed lines.
 
         Parameters
         ----------
@@ -649,7 +647,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """
 
         def parse_client_keys(client_keys_contents: TextIO):
-            """Parse client.keys file into a dictionary
+            """Parse client.keys file into a dictionary.
 
             Parameters
             ----------
@@ -659,7 +657,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             Returns
             -------
             Generator
-                Generator of dictionaries, e.g: {'001': {'name': 'test', 'ip': 'any', 'key': '<key>'}}
+                Generator of dictionaries, e.g: {'001': {'name': 'test', 'ip': 'any', 'key': '<key>'}}.
             """
             ck_line = re.compile(r'\d+ \S+ \S+ \S+')
             return {a_id: {'name': a_name, 'ip': a_ip, 'key': a_key} for a_id, a_name, a_ip, a_key in
@@ -669,17 +667,17 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         ck_path = "{0}/etc/client.keys".format(common.ossec_path)
         try:
             with open(ck_path) as ck:
-                # can't use readlines function since it leaves a \n at the end of each item of the list
+                # Can't use readlines function since it leaves a \n at the end of each item of the list.
                 client_keys_dict = parse_client_keys(ck)
         except Exception as e:
-            # if client.keys can't be read, it can't be parsed
+            # If client.keys can't be read, it can't be parsed.
             logger.warning("Could not parse client.keys file: {}".format(e))
             return
 
         with open(new_client_keys_path) as n_ck:
             new_client_keys_dict = parse_client_keys(n_ck)
 
-        # get removed agents: the ones missing in the new client keys and present in the old
+        # Get removed agents: the ones missing in the new client keys and present in the old.
         try:
             WorkerHandler.remove_bulk_agents(client_keys_dict.keys() - new_client_keys_dict.keys(), logger)
         except Exception as e:
@@ -707,7 +705,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             Parameters
             ----------
             filename : str
-                Filename inside unzipped dir to update
+                Filename inside unzipped dir to update.
             data : dict
                 File metadata such as modification time, whether it's a merged file or not, etc.
             """
@@ -717,7 +715,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
             if data['merged']:  # worker nodes can only receive agent-groups files
                 # Split merged file into individual files inside zipdir (directory containing unzipped files),
-                # and then move each one to the destination directory (<ossec_path>/filename)
+                # and then move each one to the destination directory (<ossec_path>/filename).
                 for name, content, _ in wazuh.core.cluster.cluster.unmerge_info('agent-groups', zip_path, filename):
                     full_unmerged_name = os.path.join(common.ossec_path, name)
                     tmp_unmerged_path = full_unmerged_name + '.tmp'
@@ -728,10 +726,10 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                               ownership=(common.ossec_uid(), common.ossec_gid())
                               )
             else:
-                # Create destination dir if it doesn't exist
+                # Create destination dir if it doesn't exist.
                 if not os.path.exists(os.path.dirname(full_filename_path)):
                     utils.mkdir_with_mode(os.path.dirname(full_filename_path))
-                # and move the file from zipdir (directory containing unzipped files) to <ossec_path>/filename
+                # Move the file from zipdir (directory containing unzipped files) to <ossec_path>/filename.
                 safe_move("{}{}".format(zip_path, filename), full_filename_path,
                           permissions=self.cluster_items['files'][data['cluster_item_key']]['permissions'],
                           ownership=(common.ossec_uid(), common.ossec_gid())
@@ -741,7 +739,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         errors = {'shared': 0, 'missing': 0, 'extra': 0}
 
         for filetype, files in ko_files.items():
-            # Overwrite local files marked as shared or missing
+            # Overwrite local files marked as shared or missing.
             if filetype == 'shared' or filetype == 'missing':
                 logger.debug("Received {} {} files to update from master.".format(len(ko_files[filetype]),
                                                                                   filetype))
@@ -753,7 +751,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         errors[filetype] += 1
                         logger.error("Error processing {} file '{}': {}".format(filetype, filename, e))
                         continue
-            # Remove local files marked as extra
+            # Remove local files marked as extra.
             elif filetype == 'extra':
                 for file_to_remove in files:
                     try:
@@ -772,7 +770,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         logger.debug2("Error removing file '{}': {}".format(file_to_remove, e))
                         continue
 
-        # Once files are deleted, check and remove subdirectories which are now empty, as specified in cluster.json
+        # Once files are deleted, check and remove subdirectories which are now empty, as specified in cluster.json.
         directories_to_check = (os.path.dirname(f) for f, data in ko_files['extra'].items()
                                 if self.cluster_items['files'][data['cluster_item_key']]['remove_subdirs_if_empty'])
         for directory in directories_to_check:
@@ -802,7 +800,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         Returns
         -------
         Logger object
-            A logger object
+            A logger object.
         """
         return self.logger
 
@@ -813,7 +811,7 @@ class Worker(client.AbstractClientManager):
     """
 
     def __init__(self, **kwargs):
-        """Class constructor
+        """Class constructor.
 
         Parameters
         ----------
@@ -841,12 +839,12 @@ class Worker(client.AbstractClientManager):
                                       (self.dapi.run, tuple())]
 
     def get_node(self) -> Dict:
-        """Get basic information about the worker node. Used in the GET/cluster/node API call
+        """Get basic information about the worker node. Used in the GET/cluster/node API call.
 
         Returns
         -------
         dict
-            Basic node information
+            Basic node information.
         """
         return {'type': self.configuration['node_type'], 'cluster': self.configuration['name'],
                 'node': self.configuration['node_name']}

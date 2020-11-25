@@ -52,7 +52,7 @@ class LocalClientHandler(client.AbstractClient):
         command : bytes
             Received command from client.
         data : bytes
-            Received command from client.
+            Received payload from client.
 
         Returns
         -------
@@ -96,7 +96,7 @@ class LocalClientHandler(client.AbstractClient):
     def process_error_from_peer(self, data: bytes):
         """Handle "err" response.
 
-        Errors from the cluster come already formatted into JSON format, so they can be returned the same way.
+        Errors from the cluster come already formatted into JSON format, they can therefore be returned the same way.
 
         Parameters
         ----------
@@ -132,7 +132,7 @@ class LocalClient(client.AbstractClientManager):
         self.transport = None
 
     async def start(self):
-        """Connects to the server and the necessary asynchronous tasks."""
+        """Connect to the server and the necessary asynchronous tasks."""
         # Get a reference to the event loop as we plan to use low-level APIs.
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         loop = asyncio.get_running_loop()
@@ -191,8 +191,8 @@ class LocalClient(client.AbstractClientManager):
     async def execute(self, command: bytes, data: bytes, wait_for_complete: bool) -> str:
         """Execute a command in the local client.
 
-        This method manages the connection with the local_server by creating such connection and
-        then closing it after sending a request and receiving the response.
+        Manage the connection with the local_server by creating such connection. Then, after sending a request
+        and receiving the response, the connection is closed.
 
         Parameters
         ----------

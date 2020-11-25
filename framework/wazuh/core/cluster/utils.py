@@ -25,7 +25,7 @@ execq_lockfile = join(common.ossec_path, "var/run/.api_execq_lock")
 
 
 def read_cluster_config(config_file=common.ossec_conf) -> typing.Dict:
-    """Read cluster configuration from ossec.conf
+    """Read cluster configuration from ossec.conf.
 
     If some fields are missing in the ossec.conf cluster configuration, they are replaced
     with default values.
@@ -65,7 +65,7 @@ def read_cluster_config(config_file=common.ossec_conf) -> typing.Dict:
     except Exception as e:
         raise WazuhError(3006, extra_message=str(e))
 
-    # If any value is missing from user's cluster configuration, add the default one:
+    # If any value is missing from user's cluster configuration, add the default one.
     for value_name in set(cluster_default_configuration.keys()) - set(config_cluster.keys()):
         config_cluster[value_name] = cluster_default_configuration[value_name]
 
@@ -127,7 +127,7 @@ def get_manager_status() -> typing.Dict:
 
 
 def get_cluster_status() -> typing.Dict:
-    """Get cluster status
+    """Get cluster status.
 
     Returns
     -------
@@ -191,7 +191,7 @@ def get_cluster_items():
         here = os.path.abspath(os.path.dirname(__file__))
         with open(os.path.join(common.ossec_path, here, 'cluster.json')) as f:
             cluster_items = json.load(f)
-        # Rebase permissions
+        # Rebase permissions.
         list(map(lambda x: setitem(x, 'permissions', int(x['permissions'], base=0)),
                  filter(lambda x: 'permissions' in x, cluster_items['files'].values())))
         return cluster_items
@@ -227,14 +227,14 @@ class ClusterFilter(logging.Filter):
     """
 
     def __init__(self, tag: str, subtag: str, name: str = ''):
-        """Class constructor
+        """Class constructor.
 
         Parameters
         ----------
         tag : str
-            First tag to show in the log - Usually describes class
+            First tag to show in the log - Usually describes class.
         subtag : str
-            Second tag to show in the log - Usually describes function
+            Second tag to show in the log - Usually describes function.
         name : str
             If name is specified, it names a logger which, together with its children, will have its events
             allowed through the filter. If name is the empty string, allows every event.

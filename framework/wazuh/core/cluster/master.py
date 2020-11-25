@@ -35,19 +35,19 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
         Parameters
         ----------
         args
-            Arguments for parent constructor class.
+            Positional arguments for parent constructor class.
         kwargs
-            Arguments for parent constructor class.
+            Keyword arguments for parent constructor class.
         """
         super().__init__(*args, **kwargs)
         self.logger_tag = "Integrity"
 
     def set_up_coro(self) -> Callable:
-        """Set up the function to be called when the worker sends its integrity information"""
+        """Set up the function to be called when the worker sends its integrity information."""
         return self.wazuh_common.sync_integrity
 
     def done_callback(self, future=None):
-        """Check whether the synchronization process was correct and frees its lock.
+        """Check whether the synchronization process was correct and free its lock.
 
         Parameters
         ----------
@@ -63,7 +63,7 @@ class ReceiveExtraValidTask(c_common.ReceiveFileTask):
     Define the process and variables necessary to receive and process extra valid files from the worker.
 
     This task is created when the worker starts sending extra valid files and its destroyed once the master has updated
-    all the required information
+    all the required information.
     """
 
     def __init__(self, *args, **kwargs):
@@ -72,19 +72,19 @@ class ReceiveExtraValidTask(c_common.ReceiveFileTask):
         Parameters
         ----------
         args
-            Arguments for parent constructor class.
+            Positional arguments for parent constructor class.
         kwargs
-            Arguments for parent constructor class.
+            Keyword arguments for parent constructor class.
         """
         super().__init__(*args, **kwargs)
         self.logger_tag = "Extra valid"
 
     def set_up_coro(self) -> Callable:
-        """Set up the function to be called when the worker sends the previously required extra valid files"""
+        """Set up the function to be called when the worker sends the previously required extra valid files."""
         return self.wazuh_common.sync_extra_valid
 
     def done_callback(self, future=None):
-        """Check whether the synchronization process was correct and frees its lock.
+        """Check whether the synchronization process was correct and free its lock.
 
         Parameters
         ----------
@@ -112,18 +112,18 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # Sync availability variables. Used to prevent sync process from overlapping.
         self.sync_integrity_free = True  # the worker isn't currently synchronizing integrity
         self.sync_extra_valid_free = True
-        # Sync status variables. Used in cluster_control -i and GET/cluster/healthcheck
+        # Sync status variables. Used in cluster_control -i and GET/cluster/healthcheck.
         self.sync_integrity_status = {'date_start_master': "n/a", 'date_end_master': "n/a",
                                       'total_files': {'missing': 0, 'shared': 0, 'extra': 0, 'extra_valid': 0}}
         self.sync_agent_info_status = {'date_start_master': "n/a", 'date_end_master': "n/a",
                                        'total_agentinfo': 0}
         self.sync_extra_valid_status = {'date_start_master': "n/a", 'date_end_master': "n/a",
                                         'total_agentgroups': 0}
-        # Variables which will be filled when the worker sends the hello request
+        # Variables which will be filled when the worker sends the hello request.
         self.version = ""
         self.cluster_name = ""
         self.node_type = ""
-        # Dictionary to save loggers for each sync task
+        # Dictionary to save loggers for each sync task.
         self.task_loggers = {}
         context_tag.set(self.tag)
 
@@ -353,7 +353,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         Parameters
         ----------
         filter_nodes : dict
-            Whether to filter by a node or return all health information
+            Whether to filter by a node or return all health information.
 
         Returns
         -------
@@ -480,12 +480,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         return super().error_receiving_file(error_msg.decode())
 
     def end_receiving_integrity_checksums(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
-        """Finish receiving a file and starts the function to process it.
+        """Finish receiving a file and start the function to process it.
 
         Parameters
         ----------
         task_and_file_names : str
-            Task ID awaiting the file and the filename separated by a space
+            Task ID awaiting the file and the filename separated by a space (' ').
 
         Returns
         -------
@@ -519,11 +519,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         logger.debug("Received file from worker: '{}'".format(received_filename))
 
-        # Path to checksums file (cluster_control.json) and to zipdir (directory with decompressed files)
+        # Path to checksums file (cluster_control.json) and to zipdir (directory with decompressed files).
         files_checksums, decompressed_files_path = await wazuh.core.cluster.cluster.decompress_files(received_filename)
         logger.info("Analyzing worker files: Received {} files to check.".format(len(files_checksums)))
         try:
-            # Unmerge unzipped files to their destination path inside /var/ossec/ if their modification time is newer
+            # Unmerge unzipped files to their destination path inside /var/ossec/ if their modification time is newer.
             await self.process_files_from_worker(files_checksums, decompressed_files_path, logger)
         finally:
             shutil.rmtree(decompressed_files_path)
@@ -586,7 +586,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         logger.debug("Received file from worker: '{}'".format(received_filename))
 
-        # Path to checksums file (cluster_control.json) and to zipdir (directory with decompressed files)
+        # Path to checksums file (cluster_control.json) and to zipdir (directory with decompressed files).
         files_checksums, decompressed_files_path = await wazuh.core.cluster.cluster.decompress_files(received_filename)
         # There are no files inside decompressed_files_path, only cluster_control.json which has already been loaded.
         shutil.rmtree(decompressed_files_path)
@@ -606,7 +606,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         else:
             logger.info("Analyzing worker integrity: Files checked. There are KO files.")
 
-            # Compress data: master files (only KO shared and missing)
+            # Compress data: master files (only KO shared and missing).
             logger.debug("Analyzing worker integrity: Files checked. Compressing KO files.")
             master_files_paths = worker_files_ko['shared'].keys() | worker_files_ko['missing'].keys()
             compressed_data = wazuh.core.cluster.cluster.compress_files(self.name, master_files_paths, worker_files_ko)
@@ -644,7 +644,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                       cls=c_common.WazuhJSONEncoder).encode()
                 result = await self.send_request(command=b'sync_m_c_r', data=task_name + b' ' + exc_info)
             finally:
-                # Remove local file
+                # Remove local file.
                 os.unlink(compressed_data)
 
         self.sync_integrity_status['date_end_master'] = str(datetime.now())
@@ -658,11 +658,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         Parameters
         ----------
         files_checksums : dict
-            Dictionary containing file metadata (each key is a filepath and each value its metadata) .
+            Dictionary containing file metadata (each key is a filepath and each value its metadata).
         decompressed_files_path : str
             Filepath of the decompressed received zipfile.
         logger : Logger object
-            The logger to use
+            The logger to use.
         """
 
         async def update_file(name: str, data: Dict):
@@ -680,7 +680,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             # Full path
             full_path, error_updating_file, n_merged_files = common.ossec_path + name, False, 0
 
-            # Cluster items information: write mode and permissions
+            # Cluster items information: write mode and permissions.
             lock_full_path = "{}/queue/cluster/lockdir/{}.lock".format(common.ossec_path, os.path.basename(full_path))
             lock_file = open(lock_full_path, 'a+')
             try:
@@ -696,9 +696,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     for file_path, file_data, file_time in wazuh.core.cluster.cluster.unmerge_info(data['merge_type'],
                                                                                                    decompressed_files_path,
                                                                                                    data['merge_name']):
-                        # Destination path
+                        # Destination path.
                         full_unmerged_name = os.path.join(common.ossec_path, file_path)
-                        # Path where to create the file before moving it to the destination path (with safe_move)
+                        # Path where to create the file before moving it to the destination path (with safe_move).
                         tmp_unmerged_path = os.path.join(common.ossec_path, 'queue/cluster', self.name, os.path.basename(file_path))
 
                         try:
@@ -725,7 +725,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                     logger.debug2("Receiving an old file ({})".format(file_path))
                                     continue
 
-                            # Create file in temporal path and safe move it to the destination path
+                            # Create file in temporal path and safe move it to the destination path.
                             with open(tmp_unmerged_path, 'wb') as f:
                                 f.write(file_data)
 
@@ -772,7 +772,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         n_merged_files = 0
         n_errors = {'errors': {}, 'warnings': {}}
 
-        # Create temporary directory for lock files
+        # Create temporary directory for lock files.
         lock_directory = "{}/queue/cluster/lockdir".format(common.ossec_path)
         if not os.path.exists(lock_directory):
             utils.mkdir_with_mode(lock_directory)
@@ -793,7 +793,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             self.logger.error("Error updating worker files: '{}'.".format(e))
             raise e
 
-        # Log errors if any
+        # Log errors if any.
         if sum(n_errors['errors'].values()) > 0:
             logger.error("Errors updating worker files: {}".format(' | '.join(
                 ['{}: {}'.format(key, value) for key, value
@@ -805,7 +805,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     logger.debug2("Received {} group assignments for non-existent agents. Skipping.".format(value))
 
     def get_logger(self, logger_tag: str = ''):
-        """Get a logger object
+        """Get a logger object.
 
         Parameters
         ----------

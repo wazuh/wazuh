@@ -29,9 +29,9 @@ class Response:
 
     def __init__(self):
         """Class constructor."""
-        # Event object which will be set when the response is received
+        # Event object which will be set when the response is received.
         self.received_response = asyncio.Event()
-        # Response content
+        # Response content.
         self.content = None
 
     async def read(self) -> bytes:
@@ -139,7 +139,8 @@ class ReceiveFileTask:
 
         Returns
         -------
-            Return task name (random numeric string)
+        str
+            Task name (random numeric string).
         """
         return self.name
 
@@ -187,39 +188,39 @@ class Handler(asyncio.Protocol):
         """
         super().__init__()
         # The counter is used to identify each message. If an incoming request has a known ID,
-        # it is processed as a response
+        # it is processed as a response.
         self.counter = random.SystemRandom().randint(0, 2 ** 32 - 1)
-        # The box stores all sent messages IDs
+        # The box stores all sent messages IDs.
         self.box = {}
-        # defines command length
+        # Defines command length.
         self.cmd_len = 12
-        # defines header length
+        # Defines header length.
         self.header_len = self.cmd_len + 8  # 4 bytes of counter and 4 bytes of message size
-        # defines header format
+        # Defines header format.
         self.header_format = '!2I{}s'.format(self.cmd_len)
-        # stores received data
+        # Stores received data.
         self.in_buffer = b''
-        # stores last received message
+        # Stores last received message.
         self.in_msg = InBuffer()
-        # stores incoming file information from file commands
+        # Stores incoming file information from file commands.
         self.in_file = {}
-        # stores incoming string information from string commands
+        # Stores incoming string information from string commands.
         self.in_str = {}
-        # maximum message length to send in a single request
+        # Maximum message length to send in a single request.
         self.request_chunk = 5242880
-        # stores message to be sent
+        # Stores message to be sent.
         self.out_msg = bytearray(self.header_len + self.request_chunk * 2)
-        # object use to encrypt and decrypt requests
+        # Object use to encrypt and decrypt requests.
         self.my_fernet = cryptography.fernet.Fernet(base64.b64encode(fernet_key.encode())) if fernet_key else None
-        # logging.Logger object used to write logs
+        # Logging.Logger object used to write logs.
         self.logger = logging.getLogger('wazuh') if not logger else logger
-        # logging tag
+        # Logging tag.
         self.tag = tag
-        # modify filter tags with context vars
+        # Modify filter tags with context vars.
         wazuh.core.cluster.utils.context_tag.set(self.tag)
         wazuh.core.cluster.utils.context_subtag.set("Main")
         self.cluster_items = cluster_items
-        # transports in asyncio are an abstraction of sockets
+        # Transports in asyncio are an abstraction of sockets.
         self.transport = None
 
     def push(self, message: bytes):
@@ -285,13 +286,13 @@ class Handler(asyncio.Protocol):
         """
         if self.in_buffer:
             if self.in_msg.received == 0:
-                # a new message has been received. Both header and payload must be processed.
+                # A new message has been received. Both header and payload must be processed.
                 self.in_buffer = self.in_msg.get_info_from_header(header=self.in_buffer,
                                                                   header_format=self.header_format,
                                                                   header_size=self.header_len)
                 self.in_buffer = self.in_msg.receive_data(data=self.in_buffer)
             else:
-                # the previous message has not been completely received yet. No header to parse, just payload.
+                # The previous message has not been completely received yet. No header to parse, just payload.
                 self.in_buffer = self.in_msg.receive_data(data=self.in_buffer)
             return True
         else:
@@ -306,16 +307,18 @@ class Handler(asyncio.Protocol):
 
         Yields
         -------
-        bytes, int, bytes
-            Last received message command, counter and payload.
+        bytes
+            Last received message command.
+        int
+            Counter.
+        bytes
+            Payload.
         """
         parsed = self.msg_parse()
 
         while parsed:
-            # self.logger.debug("Received message: {} / {}".format(self.in_msg['received'], self.in_msg['total_size']))
             if self.in_msg.received == self.in_msg.total:
-                # the message was correctly received
-                # decrypt received message
+                # Decrypt received message
                 try:
                     decrypted_payload = self.my_fernet.decrypt(bytes(self.in_msg.payload)) if self.my_fernet is not None \
                         else bytes(self.in_msg.payload)
@@ -480,7 +483,7 @@ class Handler(asyncio.Protocol):
         """Handle received data from other peer.
 
         This method overrides asyncio.protocols.Protocol.data_received. It parses the message received, process
-        the response and notify that the corresponding Response object (inside self.box[counter]) is available .
+        the response and notify that the corresponding Response object (inside self.box[counter]) is available.
 
         Parameters
         ----------
@@ -765,7 +768,7 @@ class WazuhCommon:
         self.logger_tag = ''
 
     def get_logger(self, logger_tag: str = '') -> logging.Logger:
-        """Get a logger object
+        """Get a logger object.
 
         Parameters
         ----------
@@ -810,7 +813,7 @@ class WazuhCommon:
         """
         task_name, filename = task_and_file_names.split(' ', 1)
         if task_name not in self.sync_tasks:
-            # Remove filename if task_name does not exists, before raising exception
+            # Remove filename if task_name does not exists, before raising exception.
             if os.path.exists(os.path.join(common.ossec_path, filename)):
                 try:
                     os.remove(os.path.join(common.ossec_path, filename))
@@ -878,7 +881,7 @@ def asyncio_exception_handler(loop, context: Dict):
     Parameters
     ----------
     loop : Asyncio event loop object
-        Event loop
+        Event loop.
     context : dict
         Dictionary containing fields explained in
         https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.call_exception_handler.
@@ -928,12 +931,12 @@ def as_wazuh_object(dct: Dict):
             encoded_callable = dct['__callable__']
             funcname = encoded_callable['__name__']
             if '__wazuh__' in encoded_callable:
-                # Encoded Wazuh instance method
+                # Encoded Wazuh instance method.
                 wazuh_dict = encoded_callable['__wazuh__']
                 wazuh = Wazuh()
                 return getattr(wazuh, funcname)
             else:
-                # Encoded function or static method
+                # Encoded function or static method.
                 qualname = encoded_callable['__qualname__'].split('.')
                 classname = qualname[0] if len(qualname) > 1 else None
                 module_path = encoded_callable['__module__']

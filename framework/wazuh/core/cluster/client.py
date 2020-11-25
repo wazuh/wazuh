@@ -54,9 +54,8 @@ class AbstractClientManager:
         self.file = file
         self.string = string
         self.logger = logging.getLogger('wazuh') if not logger else logger
-        # logging tag
         self.tag = tag
-        # modify filter tags with context vars
+        # Modify filter tags with context vars.
         context_tag.set(self.tag)
         context_subtag.set("Main")
         self.tasks = []
@@ -68,7 +67,7 @@ class AbstractClientManager:
     def add_tasks(self) -> List[Tuple[asyncio.coroutine, Tuple]]:
         """Add client tasks to the task list.
 
-        The client tasks are just test function made to test the protocol.
+        The client tasks are just test functions made to test the protocol.
 
         Returns
         -------
@@ -89,7 +88,7 @@ class AbstractClientManager:
         return [task]
 
     async def start(self):
-        """Connects to the server and wait until the connection is closed."""
+        """Connect to the server and wait until the connection is closed."""
         # Get a reference to the event loop as we plan to use low-level APIs.
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         self.loop.set_exception_handler(common.asyncio_exception_handler)
@@ -224,7 +223,7 @@ class AbstractClient(common.Handler):
         Parameters
         ----------
         command : bytes
-            Response command received
+            Response command received.
         payload : bytes
             Data received.
 
@@ -246,7 +245,7 @@ class AbstractClient(common.Handler):
         command : bytes
             Received command from client.
         data : bytes
-            Received command from client.
+            Received payload from client.
 
         Returns
         -------
@@ -281,7 +280,7 @@ class AbstractClient(common.Handler):
         """Send a 'keepalive' to the server every self.cluster_items['intervals']['worker']['keep_alive'] seconds.
 
         The client will disconnect from the server if more than
-        self.cluster_items['intervals']['worker']['max_failed_keepalive_attempts'] attempts in a row are failed
+        self.cluster_items['intervals']['worker']['max_failed_keepalive_attempts'] attempts in a row are failed.
 
         This asyncio task will be started as soon as the client connects to the server and will be always running.
         """
@@ -326,7 +325,7 @@ class AbstractClient(common.Handler):
     async def concurrency_test_client(self, n_msgs: int):
         """Send lots of requests to the server at the same time.
 
-        Measures the time the server needed to reply all requests. Only for development and testing purposes.
+        Measure the time the server needed to reply all requests. Only for development and testing purposes.
 
         Parameters
         ----------

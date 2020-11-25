@@ -27,9 +27,9 @@ async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, li
     limit : int
         Maximum number of elements to return.
     sort : dict
-        Sorts the collection by a field or fields.
+        Sort the collection by a field or fields.
     search : dict
-        Looks for elements with the specified string.
+        Look for elements with the specified string.
     select : dict
         Select which fields to return.
     filter_type : str
@@ -43,7 +43,7 @@ async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, li
         Data from each node.
     """
     if q:
-        # if exists q parameter, apply limit and offset after filtering by q
+        # If exists q parameter, apply limit and offset after filtering by q.
         arguments = {'filter_node': filter_node, 'offset': 0, 'limit': common.database_limit, 'sort': sort,
                      'search': search, 'select': select, 'filter_type': filter_type}
     else:
@@ -58,9 +58,9 @@ async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, li
 
     if q:
         result['items'] = filter_array_by_query(q, result['items'])
-        # get totalItems after applying q filter
+        # Get totalItems after applying q filter.
         result['totalItems'] = len(result['items'])
-        # apply offset and limit filters
+        # Apply offset and limit filters.
         result['items'] = result['items'][offset:offset + limit]
 
     return result

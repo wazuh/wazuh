@@ -157,7 +157,7 @@ def check_cluster_status():
 
 def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, get_md5=True,
              whoami='master'):
-    """Recursively iterate inside a directory, save the path of each found file and obtain its metadata.
+    """Iterate recursively inside a directory, save the path of each found file and obtain its metadata.
 
     Parameters
     ----------
@@ -202,7 +202,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
             # Relative path to listed file.
             full_path = path.join(dirname, entry)
 
-            # If 'all' files have been requested or entry is in the specified files list
+            # If 'all' files have been requested or entry is in the specified files list.
             if entry in files or files == ["all"]:
 
                 if not path.isdir(common.ossec_path + full_path):
@@ -249,7 +249,7 @@ def get_files_status(node_type, get_md5=True):
     Returns
     -------
     final_items : dict
-        Paths (keys) and metadata (values) of all the files requested in cluster.json['files']
+        Paths (keys) and metadata (values) of all the files requested in cluster.json['files'].
     """
     cluster_items = get_cluster_items()
 
@@ -368,7 +368,7 @@ async def decompress_files(zip_path, ko_files_name="cluster_control.json"):
             shutil.rmtree(zip_dir)
         raise e
     finally:
-        # once read all files, remove the zipfile
+        # Once read all files, remove the zipfile.
         remove(zip_path)
     return ko_files, zip_dir
 
@@ -376,9 +376,9 @@ async def decompress_files(zip_path, ko_files_name="cluster_control.json"):
 def compare_files(good_files, check_files, node_name):
     """Compare metadata of the master files with metadata of files sent by a worker node.
 
-    Compare the integrity information of each file of the master node and the worker node (listed in cluster.json),
-    calculated in get_files_status(). The files are classified in four groups depending on the information of
-    cluster.json: missing, extra, extra_valid and shared.
+    Compare the integrity information of each file of the master node against those in the worker node (listed in
+    cluster.json), calculated in get_files_status(). The files are classified in four groups depending on the
+    information of cluster.json: missing, extra, extra_valid and shared.
 
     Parameters
     ----------
@@ -444,7 +444,7 @@ def compare_files(good_files, check_files, node_name):
                                      node_name=node_name, time_limit_seconds=0)[1],
                           {'cluster_item_key': '/queue/agent-groups/', 'merged': True, 'merge-type': 'agent-groups'})]
 
-        # Dict merging all 'shared' filepaths (keys) and the merged_filepath (key) created above .
+        # Dict merging all 'shared' filepaths (keys) and the merged_filepath (key) created above.
         shared_files = dict(itertools.chain(shared_merged, ((key, good_files[key]) for key in shared)))
     else:
         shared_files = {key: good_files[key] for key in shared}
@@ -521,7 +521,7 @@ def merge_info(merge_type, node_name, files=None, file_type="", time_limit_secon
     file_type : str
         Type of merge. I.e: '-shared'.
     time_limit_seconds : int
-        To be deprecated.
+        TODO: To be deprecated.
 
     Returns
     -------

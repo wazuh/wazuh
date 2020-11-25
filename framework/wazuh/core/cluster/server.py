@@ -82,7 +82,7 @@ class AbstractServerHandler(c_common.Handler):
         command : bytes
             Received command from client.
         data : bytes
-            Received command from client.
+            Received payload from client.
 
         Returns
         -------
@@ -149,7 +149,7 @@ class AbstractServerHandler(c_common.Handler):
         Parameters
         ----------
         command : bytes
-            Response command received
+            Response command received.
         payload : bytes
             Data received.
 
@@ -171,7 +171,7 @@ class AbstractServerHandler(c_common.Handler):
         Parameters
         ----------
         exc : Exception
-            In case the connection was lost due to an exception, it will be contained in this variable
+            In case the connection was lost due to an exception, it will be contained in this variable.
         """
         if self.name:
             if exc is None:
@@ -291,7 +291,7 @@ class AbstractServer:
             Parameters
             ----------
             node_info : dict
-                Node information
+                Node information.
 
             Returns
             -------
@@ -350,7 +350,7 @@ class AbstractServer:
             await asyncio.sleep(self.cluster_items['intervals']['master']['check_worker_lastkeepalive'])
 
     async def echo(self):
-        """Send an echo message to all clients every 3 seconds"""
+        """Send an echo message to all clients every 3 seconds."""
         while True:
             for client_name, client in self.clients.items():
                 self.logger.debug("Sending echo to worker {}".format(client_name))
@@ -379,7 +379,7 @@ class AbstractServer:
             await asyncio.sleep(10)
 
     async def start(self):
-        """Start the server and the infinite asynchronous tasks"""
+        """Start the server and the infinite asynchronous tasks."""
         # Get a reference to the event loop as we plan to use low-level APIs.
         context_tag.set(self.tag)
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -406,5 +406,5 @@ class AbstractServer:
         self.tasks.append(server.serve_forever)
 
         async with server:
-            # use asyncio.gather to run both tasks in parallel
+            # Use asyncio.gather to run both tasks in parallel.
             await asyncio.gather(*map(lambda x: x(), self.tasks))
