@@ -107,7 +107,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
     if (syslog_config->format == DEFAULT_CSYSLOG) {
         /* Build syslog message */
         snprintf(syslog_msg, OS_SIZE_2048,
-                 "<%u>%s %s ossec: Alert Level: %u; Rule: %u - %s; Location: %s;",
+                 "<%u>%s %s wazuh: Alert Level: %u; Rule: %u - %s; Location: %s;",
                  syslog_config->priority, tstamp, hostname,
                  al_data->level,
                  al_data->rule, al_data->comment,

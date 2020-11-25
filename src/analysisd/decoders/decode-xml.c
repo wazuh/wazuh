@@ -249,8 +249,8 @@ int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
         }
 
         /* Get name */
-        if ((!node[i]->attributes) || (!node[i]->values) 
-                || (!node[i]->values[0]) || (!node[i]->attributes[0]) 
+        if ((!node[i]->attributes) || (!node[i]->values)
+                || (!node[i]->values[0]) || (!node[i]->attributes[0])
                 || (strcasecmp(node[i]->attributes[0], xml_decoder_name) != 0)) {
             smerror(log_msg, XML_INVELEM, node[i]->element);
             goto cleanup;
@@ -496,8 +496,8 @@ int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
                     pi->type = DECODER_WINDOWS;
                 } else if (strcmp(elements[j]->content, "host-information") == 0) {
                     pi->type = HOST_INFO;
-                } else if (strcmp(elements[j]->content, "ossec") == 0) {
-                    pi->type = OSSEC_RL;
+                } else if (strcmp(elements[j]->content, "wazuh") == 0) {
+                    pi->type = WAZUH_RL;
                 } else {
                     smerror(log_msg, "Invalid decoder type '%s'.", elements[j]->content);
                     goto cleanup;
