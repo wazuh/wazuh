@@ -57,7 +57,7 @@ void fim_scan() {
     struct timespec start;
     struct timespec end;
     clock_t cputime_start;
-    unsigned int nodes_count;
+    unsigned int nodes_count = 0;
 
     cputime_start = clock();
     gettime(&start);
@@ -123,10 +123,11 @@ void fim_scan() {
             fim_registry_scan();
         }
 #endif
-        w_mutex_lock(&syscheck.fim_entry_mutex);
-        fim_db_set_all_unscanned(syscheck.database);
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
     }
+
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+    fim_db_set_all_unscanned(syscheck.database);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     gettime(&end);
 

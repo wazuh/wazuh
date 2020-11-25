@@ -433,7 +433,7 @@ cJSON *getSyscheckConfig(void) {
 
             cJSON_AddItemToArray(rgi, pair);
         }
-        cJSON_AddItemToObject(syscfg,"value_ignore_regex",rgi);
+        cJSON_AddItemToObject(syscfg,"value_ignore_sregex",rgi);
     }
 
     if (syscheck.registry_nodiff) {

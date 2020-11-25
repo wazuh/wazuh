@@ -423,24 +423,6 @@ fim_registry_key *fim_db_get_registry_key_using_id(fdb_t *fim_sql, unsigned int 
     return reg_key;
 }
 
-int fim_db_get_registry_keys_range(fdb_t *fim_sql, const char *start, const char *top, fim_tmp_file **file, int storage) {
-    if ((*file = fim_db_create_temp_file(storage)) == NULL) {
-        return FIMDB_ERR;
-    }
-
-    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_REG_PATH_RANGE);
-    fim_db_bind_range(fim_sql, FIMDB_STMT_GET_REG_PATH_RANGE, start, top);
-
-    int ret = fim_db_process_get_query(fim_sql, FIM_TYPE_REGISTRY, FIMDB_STMT_GET_REG_PATH_RANGE,
-                                       fim_db_callback_save_reg_data_name, storage, (void*) *file);
-
-    if (*file && (*file)->elements == 0) {
-        fim_db_clean_file(file, storage);
-    }
-
-    return ret;
-}
-
 int fim_db_get_count_registry_key(fdb_t *fim_sql) {
     int res = fim_db_get_count(fim_sql, FIMDB_STMT_GET_COUNT_REG_KEY);
 

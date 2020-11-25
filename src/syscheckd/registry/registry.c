@@ -30,7 +30,6 @@
 
 /* Default values */
 #define MAX_KEY_LENGTH 260
-#define MAX_KEY 2048
 #define MAX_VALUE_NAME 16383
 
 /* Global variables */
@@ -114,7 +113,7 @@ registry *fim_registry_configuration(const char *key, int arch) {
  */
 int fim_registry_validate_recursion_level(const char *key_path, const registry *configuration) {
     const char *pos;
-    int depth = -1;
+    int depth = 0;
     unsigned int parent_path_size;
 
     if (key_path == NULL || configuration == NULL) {
@@ -173,7 +172,9 @@ int fim_registry_validate_ignore(const char *entry, const registry *configuratio
                 continue;
             }
             if (strncasecmp((*ignore_list)[ign_it].entry, entry, strlen((*ignore_list)[ign_it].entry)) == 0) {
-                mdebug2(FIM_IGNORE_ENTRY, key ? "registry" : "value", entry, (*ignore_list)[ign_it].entry);
+                mdebug2(FIM_REG_IGNORE_ENTRY, key ? "registry" : "value",
+                        (*ignore_list)[ign_it].arch == ARCH_32BIT ? "[x32]" : "[x64]", entry,
+                        (*ignore_list)[ign_it].entry);
                 return -1;
             }
         }
@@ -185,7 +186,9 @@ int fim_registry_validate_ignore(const char *entry, const registry *configuratio
 
             }
             if (OSMatch_Execute(entry, strlen(entry), (*ignore_list_regex)[ign_it].regex)) {
-                mdebug2(FIM_IGNORE_SREGEX, key ? "registry" : "value", entry, (*ignore_list_regex)[ign_it].regex->raw);
+                mdebug2(FIM_REG_IGNORE_SREGEX, key ? "registry" : "value",
+                        (*ignore_list_regex)[ign_it].arch == ARCH_32BIT ? "[x32]" : "[x64]", entry,
+                        (*ignore_list_regex)[ign_it].regex->raw);
                 return -1;
             }
         }
@@ -268,15 +271,15 @@ void fim_registry_get_checksum_value(fim_registry_value_data *data) {
  * @param sha256_ctx An uninitialized sha256 context.
  */
 void fim_registry_init_digests(int opts, MD5_CTX *md5_ctx, SHA_CTX *sha1_ctx, SHA256_CTX *sha256_ctx) {
-    if (opts | CHECK_MD5SUM) {
+    if (opts & CHECK_MD5SUM) {
         MD5_Init(md5_ctx);
     }
 
-    if (opts | CHECK_SHA1SUM) {
+    if (opts & CHECK_SHA1SUM) {
         SHA1_Init(sha1_ctx);
     }
 
-    if (opts | CHECK_SHA256SUM) {
+    if (opts & CHECK_SHA256SUM) {
         SHA256_Init(sha256_ctx);
     }
 }
@@ -297,15 +300,15 @@ void fim_registry_update_digests(const BYTE *buffer,
                                  MD5_CTX *md5_ctx,
                                  SHA_CTX *sha1_ctx,
                                  SHA256_CTX *sha256_ctx) {
-    if (opts | CHECK_MD5SUM) {
+    if (opts & CHECK_MD5SUM) {
         MD5_Update(md5_ctx, buffer, (unsigned)length);
     }
 
-    if (opts | CHECK_SHA1SUM) {
+    if (opts & CHECK_SHA1SUM) {
         SHA1_Update(sha1_ctx, buffer, length);
     }
 
-    if (opts | CHECK_SHA256SUM) {
+    if (opts & CHECK_SHA256SUM) {
         SHA256_Update(sha256_ctx, buffer, length);
     }
 }
@@ -333,7 +336,7 @@ void fim_registry_final_digests(int opts,
     unsigned char sha256_digest[SHA256_DIGEST_LENGTH];
     int n;
 
-    if (opts | CHECK_MD5SUM) {
+    if (opts & CHECK_MD5SUM) {
         MD5_Final(md5_digest, md5_ctx);
         for (n = 0; n < 16; n++) {
             snprintf(md5_output, 3, "%02x", md5_digest[n]);
@@ -341,7 +344,7 @@ void fim_registry_final_digests(int opts,
         }
     }
 
-    if (opts | CHECK_SHA1SUM) {
+    if (opts & CHECK_SHA1SUM) {
         SHA1_Final(sha1_digest, sha1_ctx);
         for (n = 0; n < SHA_DIGEST_LENGTH; n++) {
             snprintf(sha1_output, 3, "%02x", sha1_digest[n]);
@@ -349,7 +352,7 @@ void fim_registry_final_digests(int opts,
         }
     }
 
-    if (opts | CHECK_SHA256SUM) {
+    if (opts & CHECK_SHA256SUM) {
         SHA256_Final(sha256_digest, sha256_ctx);
         for (n = 0; n < SHA256_DIGEST_LENGTH; n++) {
             snprintf(sha256_output, 3, "%02x", sha256_digest[n]);
@@ -428,8 +431,7 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
 
     os_calloc(1, sizeof(fim_registry_key), key);
 
-    os_calloc(MAX_KEY, sizeof(char), key->path);
-    snprintf(key->path, MAX_KEY, "%s", path);
+    os_strdup(path, key->path);
 
     key->arch = configuration->arch;
 
@@ -649,19 +651,27 @@ void fim_registry_process_value_event(fim_entry *new,
                                       fim_entry *saved,
                                       fim_event_mode mode,
                                       BYTE *data_buffer) {
-    char value_path[MAX_KEY + 2];
+    char *value_path;
+    size_t value_path_length;
     registry *configuration;
     cJSON *json_event;
     char *diff = NULL;
-    snprintf(value_path, MAX_KEY, "%s\\%s", new->registry_entry.key->path, new->registry_entry.value->name);
 
     configuration = fim_registry_configuration(new->registry_entry.key->path, new->registry_entry.key->arch);
     if (configuration == NULL) {
         return;
     }
-    if (fim_registry_validate_ignore(new->registry_entry.value->name, configuration, 0)) {
+
+    value_path_length = strlen(new->registry_entry.key->path) + strlen(new->registry_entry.value->name) + 2;
+
+    os_malloc(value_path_length, value_path);
+    snprintf(value_path, value_path_length, "%s\\%s", new->registry_entry.key->path, new->registry_entry.value->name);
+
+    if (fim_registry_validate_ignore(value_path, configuration, 0)) {
+        os_free(value_path);
         return;
     }
+    os_free(value_path);
 
     if (fim_check_restrict(new->registry_entry.value->name, configuration->restrict_value)) {
         return;
@@ -715,19 +725,20 @@ void fim_registry_process_value_event(fim_entry *new,
  * @param new A fim_entry object holding the information gathered from the key.
  * @param saved A fim_entry object holding the information from the key retrieved from the database.
  * @param value_count An integer holding the amount of values stored in the queried key.
+ * @param max_value_length The size of longest value name contained in the key in unicode characters.
+ * @param max_value_data_length The size of the biggest data contained in of the keys values in bytes.
  * @param mode A value specifying if the event has been triggered in scheduled, realtime or whodata mode.
  */
 void fim_read_values(HKEY key_handle,
                      fim_entry *new,
                      fim_entry *saved,
                      DWORD value_count,
+                     DWORD max_value_length,
+                     DWORD max_value_data_length,
                      fim_event_mode mode) {
     fim_registry_value_data value_data;
-    TCHAR value_buffer[MAX_VALUE_NAME + 1];
-    DWORD value_size;
-    BYTE data_buffer[MAX_VALUE_NAME + 1];
-    DWORD data_size;
-    DWORD data_type = 0;
+    TCHAR *value_buffer;
+    BYTE *data_buffer;
     DWORD i;
 
     if (new->registry_entry.key->id == 0) {
@@ -742,9 +753,13 @@ void fim_read_values(HKEY key_handle,
     value_data.id = new->registry_entry.key->id;
     new->registry_entry.value = &value_data;
 
+    os_calloc(max_value_length + 1, sizeof(TCHAR), value_buffer);
+    os_calloc(max_value_data_length, sizeof(BYTE), data_buffer);
+
     for (i = 0; i < value_count; i++) {
-        value_size = MAX_VALUE_NAME;
-        data_size = MAX_VALUE_NAME;
+        DWORD value_size = max_value_length + 1;
+        DWORD data_size = max_value_data_length;
+        DWORD data_type = 0;
 
         if (RegEnumValue(key_handle, i, value_buffer, &value_size, NULL, &data_type, data_buffer, &data_size) !=
             ERROR_SUCCESS) {
@@ -764,6 +779,9 @@ void fim_read_values(HKEY key_handle,
 
         fim_registry_process_value_event(new, saved, mode, data_buffer);
     }
+
+    os_free(value_buffer);
+    os_free(data_buffer);
 }
 
 /**
@@ -786,6 +804,8 @@ void fim_open_key(HKEY root_key_handle,
     REGSAM access_rights;
     DWORD sub_key_count = 0;
     DWORD value_count;
+    DWORD max_value_length;
+    DWORD max_value_data_length;
     FILETIME file_time = { 0 };
     DWORD i;
     fim_entry new, saved;
@@ -822,16 +842,17 @@ void fim_open_key(HKEY root_key_handle,
     }
 
     /* We use the class_name, sub_key_count and the value count */
-    if (RegQueryInfoKey(current_key_handle, NULL, NULL, NULL, &sub_key_count, NULL, NULL, &value_count, NULL, NULL,
-                        NULL, &file_time) != ERROR_SUCCESS) {
+    if (RegQueryInfoKey(current_key_handle, NULL, NULL, NULL, &sub_key_count, NULL, NULL, &value_count,
+                        &max_value_length, &max_value_data_length, NULL, &file_time) != ERROR_SUCCESS) {
         RegCloseKey(current_key_handle);
         return;
     }
 
     /* Query each sub_key and call open_key */
     for (i = 0; i < sub_key_count; i++) {
-        char new_full_key[MAX_KEY + 2];
+        char *new_full_key;
         char *new_sub_key;
+        size_t new_full_key_length;
         TCHAR sub_key_name_b[MAX_KEY_LENGTH + 1];
         DWORD sub_key_name_s = MAX_KEY_LENGTH;
 
@@ -840,7 +861,11 @@ void fim_open_key(HKEY root_key_handle,
             continue;
         }
 
-        snprintf(new_full_key, MAX_KEY, "%s\\%s", full_key, sub_key_name_b);
+        new_full_key_length = strlen(full_key) + sub_key_name_s + 2;
+
+        os_malloc(new_full_key_length, new_full_key);
+
+        snprintf(new_full_key, new_full_key_length, "%s\\%s", full_key, sub_key_name_b);
 
         if (new_sub_key = strchr(new_full_key, '\\'), new_sub_key) {
             new_sub_key++;
@@ -848,6 +873,8 @@ void fim_open_key(HKEY root_key_handle,
 
         /* Open sub_key */
         fim_open_key(root_key_handle, new_full_key, new_sub_key, arch, mode, configuration);
+
+        os_free(new_full_key);
     }
     // Done scanning sub_keys, trigger an alert on the current key if required.
     new.type = FIM_TYPE_REGISTRY;
@@ -897,7 +924,8 @@ void fim_open_key(HKEY root_key_handle,
         fim_db_set_registry_key_scanned(syscheck.database, full_key, arch);
 
         if (value_count) {
-            fim_read_values(current_key_handle, &new, &saved, value_count, mode);
+            fim_read_values(current_key_handle, &new, &saved, value_count, max_value_length, max_value_data_length,
+                            mode);
         }
     }
 
