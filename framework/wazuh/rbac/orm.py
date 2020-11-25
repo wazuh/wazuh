@@ -11,7 +11,8 @@ from shutil import chown
 from time import time
 
 import yaml
-from sqlalchemy import create_engine, UniqueConstraint, Column, DateTime, String, Integer, ForeignKey, Boolean, or_
+from sqlalchemy import create_engine, UniqueConstraint, Column, DateTime, String, Integer, ForeignKey, Boolean, or_, \
+    CheckConstraint
 from sqlalchemy import desc
 from sqlalchemy.dialects.sqlite import TEXT
 from sqlalchemy.event import listens_for
@@ -264,11 +265,13 @@ class User(_Base):
     __tablename__ = 'users'
 
     id = Column('id', Integer, primary_key=True)
-    username = Column(String(32), nullable=False)
-    password = Column(String(256), nullable=False)
+    username = Column(String, nullable=False)
+    password = Column(String, nullable=False)
     allow_run_as = Column(Boolean, default=False, nullable=False)
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
-    __table_args__ = (UniqueConstraint('username', name='username_restriction'),)
+    __table_args__ = (UniqueConstraint('username', name='username_restriction'),
+                      CheckConstraint('length(username) <= 64'),
+                      CheckConstraint('length(password) <= 64'))
 
     # Relations
     roles = relationship("Roles", secondary='user_roles', passive_deletes=True, cascade="all,delete", lazy="dynamic")
@@ -329,9 +332,10 @@ class Roles(_Base):
 
     # Schema
     id = Column('id', Integer, primary_key=True)
-    name = Column('name', String(20), nullable=False)
+    name = Column('name', String, nullable=False)
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
-    __table_args__ = (UniqueConstraint('name', name='name_role'),)
+    __table_args__ = (UniqueConstraint('name', name='name_role'),
+                      CheckConstraint('length(name) <= 64'))
 
     # Relations
     policies = relationship("Policies", secondary='roles_policies', passive_deletes=True, cascade="all,delete",
@@ -383,10 +387,11 @@ class Rules(_Base):
 
     # Schema
     id = Column('id', Integer, primary_key=True)
-    name = Column('name', String(20), nullable=False)
+    name = Column('name', String, nullable=False)
     rule = Column('rule', TEXT, nullable=False)
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
-    __table_args__ = (UniqueConstraint('name', name='rule_name'),)
+    __table_args__ = (UniqueConstraint('name', name='rule_name'),
+                      CheckConstraint('length(name) <= 64'))
 
     # Relations
     roles = relationship("Roles", secondary='roles_rules', passive_deletes=True, cascade="all,delete", lazy="dynamic")
@@ -430,11 +435,12 @@ class Policies(_Base):
 
     # Schema
     id = Column('id', Integer, primary_key=True)
-    name = Column('name', String(20), nullable=False)
+    name = Column('name', String, nullable=False)
     policy = Column('policy', TEXT, nullable=False)
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
     __table_args__ = (UniqueConstraint('name', name='name_policy'),
-                      UniqueConstraint('policy', name='policy_definition'))
+                      UniqueConstraint('policy', name='policy_definition'),
+                      CheckConstraint('length(name) <= 64'))
 
     # Relations
     roles = relationship("Roles", secondary='roles_policies', passive_deletes=True, cascade="all,delete",
