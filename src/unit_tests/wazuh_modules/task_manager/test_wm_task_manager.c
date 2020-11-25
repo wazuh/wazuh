@@ -389,6 +389,154 @@ void test_wm_task_manager_dispatch_db_err(void **state)
     assert_string_equal(response, result);
 }
 
+void test_wm_task_manager_dispatch_db_parse_err(void **state)
+{
+    char *response = NULL;
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"name\": \"node05\","
+                    "      \"module\": \"upgrade_module\""
+                    "   },"
+                    "  \"command\": \"upgrade\","
+                    "  \"parameters\": {"
+                    "      \"agents\": [1, 2]"
+                    "   }"
+                    "}";
+
+    wm_task_manager_task *task = wm_task_manager_init_task();
+    wm_task_manager_upgrade *task_parameters = wm_task_manager_init_upgrade_parameters();
+    int *agents = NULL;
+
+    os_calloc(3, sizeof(int), agents);
+    agents[0] = 1;
+    agents[1] = 2;
+    agents[2] = OS_INVALID;
+
+    os_strdup("upgrade_module", task_parameters->module);
+    os_strdup("node05", task_parameters->node);
+    task_parameters->agent_ids = agents;
+
+    task->command = WM_TASK_UPGRADE;
+    task->parameters = task_parameters;
+
+    cJSON *response_error = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response_error, "error", WM_TASK_DATABASE_PARSE_ERROR);
+    cJSON_AddStringToObject(response_error, "message", "Parse DB response error");
+
+    char *result = "{\"error\":5,\"data\":[{\"error\":5,\"message\":\"Parse DB response error\"}],\"message\":\"Parse DB response error\"}";
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
+                                                                               "  \"origin\": {"
+                                                                               "      \"name\": \"node05\","
+                                                                               "      \"module\": \"upgrade_module\""
+                                                                               "   },"
+                                                                               "  \"command\": \"upgrade\","
+                                                                               "  \"parameters\": {"
+                                                                               "      \"agents\": [1, 2]"
+                                                                               "   }"
+                                                                               "}'");
+
+    expect_string(__wrap_wm_task_manager_parse_message, msg, message);
+    will_return(__wrap_wm_task_manager_parse_message, task);
+
+    expect_memory(__wrap_wm_task_manager_process_task, task, task, sizeof(task));
+    will_return(__wrap_wm_task_manager_process_task, WM_TASK_DATABASE_PARSE_ERROR);
+    will_return(__wrap_wm_task_manager_process_task, NULL);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8261): Database error.");
+
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_DATABASE_PARSE_ERROR);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, OS_INVALID);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, OS_INVALID);
+    will_return(__wrap_wm_task_manager_parse_data_response, response_error);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":5,\"data\":[{\"error\":5,\"message\":\"Parse DB response error\"}],\"message\":\"Parse DB response error\"}'");
+
+    int ret = wm_task_manager_dispatch(message, &response);
+
+    state[1] = response;
+
+    assert_int_equal(ret, strlen(result));
+    assert_string_equal(response, result);
+}
+
+void test_wm_task_manager_dispatch_db_request_err(void **state)
+{
+    char *response = NULL;
+    char *message = "{"
+                    "  \"origin\": {"
+                    "      \"name\": \"node05\","
+                    "      \"module\": \"upgrade_module\""
+                    "   },"
+                    "  \"command\": \"upgrade\","
+                    "  \"parameters\": {"
+                    "      \"agents\": [1, 2]"
+                    "   }"
+                    "}";
+
+    wm_task_manager_task *task = wm_task_manager_init_task();
+    wm_task_manager_upgrade *task_parameters = wm_task_manager_init_upgrade_parameters();
+    int *agents = NULL;
+
+    os_calloc(3, sizeof(int), agents);
+    agents[0] = 1;
+    agents[1] = 2;
+    agents[2] = OS_INVALID;
+
+    os_strdup("upgrade_module", task_parameters->module);
+    os_strdup("node05", task_parameters->node);
+    task_parameters->agent_ids = agents;
+
+    task->command = WM_TASK_UPGRADE;
+    task->parameters = task_parameters;
+
+    cJSON *response_error = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response_error, "error", WM_TASK_DATABASE_REQUEST_ERROR);
+    cJSON_AddStringToObject(response_error, "message", "Error in DB request");
+
+    char *result = "{\"error\":6,\"data\":[{\"error\":6,\"message\":\"Error in DB request\"}],\"message\":\"Error in DB request\"}";
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
+                                                                               "  \"origin\": {"
+                                                                               "      \"name\": \"node05\","
+                                                                               "      \"module\": \"upgrade_module\""
+                                                                               "   },"
+                                                                               "  \"command\": \"upgrade\","
+                                                                               "  \"parameters\": {"
+                                                                               "      \"agents\": [1, 2]"
+                                                                               "   }"
+                                                                               "}'");
+
+    expect_string(__wrap_wm_task_manager_parse_message, msg, message);
+    will_return(__wrap_wm_task_manager_parse_message, task);
+
+    expect_memory(__wrap_wm_task_manager_process_task, task, task, sizeof(task));
+    will_return(__wrap_wm_task_manager_process_task, WM_TASK_DATABASE_REQUEST_ERROR);
+    will_return(__wrap_wm_task_manager_process_task, NULL);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, formatted_msg, "(8261): Database error.");
+
+    expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_DATABASE_REQUEST_ERROR);
+    expect_value(__wrap_wm_task_manager_parse_data_response, agent_id, OS_INVALID);
+    expect_value(__wrap_wm_task_manager_parse_data_response, task_id, OS_INVALID);
+    will_return(__wrap_wm_task_manager_parse_data_response, response_error);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":6,\"data\":[{\"error\":6,\"message\":\"Error in DB request\"}],\"message\":\"Error in DB request\"}'");
+
+    int ret = wm_task_manager_dispatch(message, &response);
+
+    state[1] = response;
+
+    assert_int_equal(ret, strlen(result));
+    assert_string_equal(response, result);
+}
+
 void test_wm_task_manager_dispatch_parse_err(void **state)
 {
     char *response = NULL;
@@ -902,6 +1050,8 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_task_manager_dispatch_ok, teardown_string),
         cmocka_unit_test_teardown(test_wm_task_manager_dispatch_command_err, teardown_string),
         cmocka_unit_test_teardown(test_wm_task_manager_dispatch_db_err, teardown_string),
+        cmocka_unit_test_teardown(test_wm_task_manager_dispatch_db_parse_err, teardown_string),
+        cmocka_unit_test_teardown(test_wm_task_manager_dispatch_db_request_err, teardown_string),
         cmocka_unit_test_teardown(test_wm_task_manager_dispatch_parse_err, teardown_string),
         // wm_task_manager_main
         cmocka_unit_test(test_wm_task_manager_main_ok),

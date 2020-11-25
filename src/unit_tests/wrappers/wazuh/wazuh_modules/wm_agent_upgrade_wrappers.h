@@ -31,6 +31,8 @@ char* __wrap_wm_agent_upgrade_process_upgrade_custom_command(const int* agent_id
 
 char* __wrap_wm_agent_upgrade_process_agent_result_command(const int* agent_ids, wm_upgrade_agent_status_task* task);
 
+char* __wrap_wm_agent_upgrade_process_upgrade_result_command(const int* agent_ids);
+
 cJSON* __wrap_wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, cJSON *agents_array, const char* status, const char* error);
 
 int __wrap_wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* task_module_request);
