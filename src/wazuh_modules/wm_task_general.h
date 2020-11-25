@@ -44,6 +44,7 @@ typedef enum _task_manager_json_key {
     WM_TASK_LAST_UPDATE_TIME,
     // Clean tasks request
     WM_TASK_NOW,
+    WM_TASK_INTERVAL,
     WM_TASK_TIMESTAMP
 } task_manager_json_key;
 

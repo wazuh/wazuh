@@ -5564,7 +5564,7 @@ int wdb_parse_task_upgrade_cancel_tasks(wdb_t* wdb, const cJSON *parameters, cha
 int wdb_parse_task_set_timeout(wdb_t* wdb, const cJSON *parameters, char* output) {
     int result = OS_INVALID;
     int now = OS_INVALID;
-    int timestamp = OS_INVALID;
+    int interval = OS_INVALID;
     time_t next_timeout = OS_INVALID;
 
     cJSON *now_json = cJSON_GetObjectItem(parameters, "now");
@@ -5574,16 +5574,16 @@ int wdb_parse_task_set_timeout(wdb_t* wdb, const cJSON *parameters, char* output
     }
     now = now_json->valueint;
 
-    cJSON *timestamp_json = cJSON_GetObjectItem(parameters, "timestamp");
-    if (!timestamp_json || (timestamp_json->type != cJSON_Number)) {
-        snprintf(output, OS_MAXSTR + 1, "err Error set timeout task: 'parsing timestamp error'");
+    cJSON *interval_json = cJSON_GetObjectItem(parameters, "interval");
+    if (!interval_json || (interval_json->type != cJSON_Number)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error set timeout task: 'parsing interval error'");
         return OS_INVALID;
     }
-    timestamp = timestamp_json->valueint;
+    interval = interval_json->valueint;
 
-    next_timeout = now + timestamp;
+    next_timeout = now + interval;
 
-    result = wdb_task_set_timeout_status(wdb, now, timestamp, &next_timeout);
+    result = wdb_task_set_timeout_status(wdb, now, interval, &next_timeout);
 
     cJSON *response = cJSON_CreateObject();
     char *out = NULL;

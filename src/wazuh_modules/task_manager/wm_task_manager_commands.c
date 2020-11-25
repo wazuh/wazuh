@@ -379,7 +379,7 @@ void* wm_task_manager_clean_tasks(void *arg) {
             int error_code = WM_TASK_SUCCESS;
 
             cJSON_AddNumberToObject(parameters, task_manager_json_keys[WM_TASK_NOW], now);
-            cJSON_AddNumberToObject(parameters, task_manager_json_keys[WM_TASK_TIMESTAMP], config->task_timeout);
+            cJSON_AddNumberToObject(parameters, task_manager_json_keys[WM_TASK_INTERVAL], config->task_timeout);
 
             // Set next timeout
             next_timeout = now + config->task_timeout;

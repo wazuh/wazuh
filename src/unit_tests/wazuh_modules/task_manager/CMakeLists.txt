@@ -31,9 +31,8 @@ list(APPEND task_names "test_wm_task_manager_parsing")
 list(APPEND task_flags "-Wl,--wrap,_mterror -Wl,--wrap,w_get_timestamp")
 
 list(APPEND task_names "test_wm_task_manager_commands")
-list(APPEND task_flags "-Wl,--wrap,wm_task_manager_get_upgrade_task_by_agent_id -Wl,--wrap,wm_task_manager_parse_data_response -Wl,--wrap,wm_task_manager_parse_data_result \
-                        -Wl,--wrap,wm_task_manager_insert_task -Wl,--wrap,wm_task_manager_get_upgrade_task_status -Wl,--wrap,wm_task_manager_update_upgrade_task_status -Wl,--wrap,wm_task_manager_cancel_upgrade_tasks \
-                        -Wl,--wrap,wm_task_manager_set_timeout_status -Wl,--wrap,wm_task_manager_delete_old_entries -Wl,--wrap,time -Wl,--wrap,w_sleep_until")
+list(APPEND task_flags "-Wl,--wrap,_mterror -Wl,--wrap,wm_task_manager_parse_data_response -Wl,--wrap,wm_task_manager_parse_data_result \
+                        -Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -Wl,--wrap,time -Wl,--wrap,w_sleep_until")
 
 # Compilig tests
 list(LENGTH task_names count)
