@@ -32,6 +32,7 @@ const char *task_manager_json_keys[] = {
     [WM_TASK_LAST_UPDATE_TIME] = "update_time",
     // Clean tasks request
     [WM_TASK_NOW] = "now",
+    [WM_TASK_INTERVAL] = "interval",
     [WM_TASK_TIMESTAMP] = "timestamp"
 };
 

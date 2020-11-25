@@ -265,7 +265,7 @@ int wdb_task_cancel_upgrade_tasks(wdb_t* wdb, const char *node) {
     return OS_SUCCESS;
 }
 
-int wdb_task_set_timeout_status(wdb_t* wdb, time_t now, int timeout, time_t *next_timeout) {
+int wdb_task_set_timeout_status(wdb_t* wdb, time_t now, int interval, time_t *next_timeout) {
     sqlite3_stmt *stmt = NULL;
     sqlite3_stmt *stmt2 = NULL;
     int result = OS_INVALID;
@@ -289,7 +289,7 @@ int wdb_task_set_timeout_status(wdb_t* wdb, time_t now, int timeout, time_t *nex
         int last_update_time = sqlite3_column_int(stmt, 6);
 
         // Check if the last update time is longer than the timeout
-        if (now >= (last_update_time + timeout)) {
+        if (now >= (last_update_time + interval)) {
 
             if (wdb_stmt_cache(wdb, WDB_STMT_TASK_UPDATE_TASK_STATUS) < 0) {
                 mdebug1(DB_CACHE_ERROR);
@@ -307,8 +307,8 @@ int wdb_task_set_timeout_status(wdb_t* wdb, time_t now, int timeout, time_t *nex
                 return OS_INVALID;
             }
 
-        } else if (*next_timeout > (last_update_time + timeout)) {
-            *next_timeout = last_update_time + timeout;
+        } else if (*next_timeout > (last_update_time + interval)) {
+            *next_timeout = last_update_time + interval;
         }
     }
 
