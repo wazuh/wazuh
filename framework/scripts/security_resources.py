@@ -16,7 +16,7 @@ from wazuh.core.cluster.common import as_wazuh_object
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.security import create_user, add_rule, add_role, add_policy, update_user, update_role, update_policy, \
     update_rule, remove_users, remove_roles, remove_policies, remove_rules, set_user_role, set_role_policy, \
-    set_role_rule
+    set_role_rule, remove_user_role, remove_role_policy, remove_role_rule
 
 logger = logging.getLogger('wazuh')
 
@@ -56,6 +56,16 @@ async def manage_reserved_security_resource(method, resource_type, f_arguments):
             'role': remove_roles,
             'policy': remove_policies,
             'rule': remove_rules
+        },
+        'link': {
+            'user-role': set_user_role,
+            'role-policy': set_role_policy,
+            'role-rule': set_role_rule
+        },
+        'unlink': {
+            'user-role': remove_user_role,
+            'role-policy': remove_role_policy,
+            'role-rule': remove_role_rule
         }
     }
 
@@ -125,10 +135,18 @@ if __name__ == "__main__":
                             help="Add reserved security rules.")
     arg_parser.add_argument("-lur", "--link-user-roles", nargs='+', type=str, action='store', dest='link_user-role',
                             help="Link reserved security user with roles.")
-    arg_parser.add_argument("-lrp", "--link-role-policies", nargs='+', type=str, action='store', dest='link_role-policy',
+    arg_parser.add_argument("-lrp", "--link-role-policies", nargs='+', type=str, action='store',
+                            dest='link_role-policy',
                             help="Link reserved security role with policies.")
-    arg_parser.add_argument("-lrru", "--link-role-rules", nargs='+', type=str, action='store', dest='link_role-rule',
+    arg_parser.add_argument("-lrru", "--link-role-rules", nargs='+', type=str, action='store', dest='unlink_role-rule',
                             help="Link reserved security role with rules.")
+    arg_parser.add_argument("-unur", "--unlink-user-roles", nargs='+', type=str, action='store', dest='unlink_user-role',
+                            help="Unlink reserved security user from roles.")
+    arg_parser.add_argument("-unrp", "--unlink-role-policies", nargs='+', type=str, action='store',
+                            dest='unlink_role-policy',
+                            help="Unlink reserved security role from policies.")
+    arg_parser.add_argument("-unrru", "--unlink-role-rules", nargs='+', type=str, action='store', dest='unlink_role-rule',
+                            help="Unlink reserved security role from rules.")
     args = arg_parser.parse_args()
 
     try:
@@ -136,21 +154,34 @@ if __name__ == "__main__":
         for key, values in args.__dict__.items():
             method, resource_name = key.split('_')
             result = AffectedItemsWazuhResult()
+            # Add resource
             if method == 'add' and values:
                 for resource in values:
                     kwargs = remove_nones_to_dict(asyncio.run(validate_resource(resource, resource_name)))
                     result |= asyncio.run(manage_reserved_security_resource(method, resource_name, kwargs))
+            # Update resource
             elif method == 'update' and values:
                 r_id, new_value = values
                 kwargs = remove_nones_to_dict(asyncio.run(
                     validate_resource(new_value, resource_name if resource_name != 'user' else 'update_user')))
                 kwargs[f'{resource_name}_id'] = r_id
                 result |= asyncio.run(manage_reserved_security_resource(method, resource_name, kwargs))
+            # Remove resource
             elif method == 'remove' and values:
                 if not all(map(str.isnumeric, values)):
-                    raise WazuhError(4019, extra_message='Remove methods only allow IDs')
+                    raise WazuhError(10000, extra_message='Remove methods only allow IDs')
                 result |= asyncio.run(manage_reserved_security_resource(method, resource_name,
                                                                         {f'{resource_name}_ids': values}))
+            # Link resources
+            elif method in ['link', 'unlink'] and values:
+                if len(values) < 2:
+                    raise WazuhError(10000, extra_message='Link methods need at least 2 arguments. '
+                                                          '<MAIN RESOURCE ID> <RELATED RESOURCE ID> '
+                                                          '[<RELATED RESOURCE ID>]')
+                main_id, related_ids = values[0], values[1:]
+                main_r, related_r = resource_name.split('-')
+                kwargs = {f'{main_r}_id': main_id, f'{related_r}_ids': related_ids}
+                result |= asyncio.run(manage_reserved_security_resource(method, resource_name, kwargs))
 
             if result.affected_items or result.failed_items:
                 result_table.append([resource_name.title(),
