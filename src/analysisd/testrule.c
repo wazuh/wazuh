@@ -392,7 +392,7 @@ int main(int argc, char **argv)
                 rulesfiles = Config.includes;
                 while (rulesfiles && *rulesfiles) {
                     mdebug1("Reading rules file: '%s'", *rulesfiles);
-                    if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, &os_analysisd_cdblists, 
+                    if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, &os_analysisd_cdblists,
                                            &os_analysisd_last_events, &os_analysisd_decoder_store, list_msg) < 0) {
                         error_exit = 1;
                     }
@@ -622,7 +622,7 @@ void OS_ReadMSG(char *ut_str)
 #endif
 
             do {
-                if (lf->decoder_info->type == OSSEC_ALERT) {
+                if (lf->decoder_info->type == WAZUH_ALERT) {
                     if (!lf->generated_rule) {
                         break;
                     }

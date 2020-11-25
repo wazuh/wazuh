@@ -1190,7 +1190,7 @@ void test_w_logtest_register_session_remove_old(void ** state) {
     expect_value(__wrap_OSHash_Add, key, session.token);
     expect_value(__wrap_OSHash_Add, data, &session);
     will_return(__wrap_OSHash_Add, 0);
-    
+
 
     w_logtest_register_session(&connection, &session);
     assert_int_equal(connection.active_client, active_session);
@@ -2778,7 +2778,7 @@ void test_w_logtest_process_request_type_log_processing(void ** state) {
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
     will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
-    
+
     will_return(__wrap_cJSON_ParseWithOpts, (cJSON *) 1);
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
     will_return(__wrap_cJSON_IsObject, (cJSON *) 1);
@@ -3115,7 +3115,7 @@ void test_w_logtest_rulesmatching_phase_no_load_rules(void ** state)
 
 }
 
-void test_w_logtest_rulesmatching_phase_ossec_alert(void ** state)
+void test_w_logtest_rulesmatching_phase_wazuh_alert(void ** state)
 {
     Eventinfo lf = {0};
     w_logtest_session_t session = {0};
@@ -3125,7 +3125,7 @@ void test_w_logtest_rulesmatching_phase_ossec_alert(void ** state)
 
     OSDecoderInfo decoder_info = {0};
     lf.decoder_info = &decoder_info;
-    decoder_info.type = OSSEC_ALERT;
+    decoder_info.type = WAZUH_ALERT;
     lf.generated_rule = NULL;
 
     os_calloc(1, sizeof(RuleNode), session.rule_list);
@@ -4991,7 +4991,7 @@ int main(void)
         cmocka_unit_test(test_w_logtest_decoding_phase_no_program_name),
         // Tests w_logtest_rulesmatching_phase
         cmocka_unit_test(test_w_logtest_rulesmatching_phase_no_load_rules),
-        cmocka_unit_test(test_w_logtest_rulesmatching_phase_ossec_alert),
+        cmocka_unit_test(test_w_logtest_rulesmatching_phase_wazuh_alert),
         cmocka_unit_test(test_w_logtest_rulesmatching_phase_dont_match_category),
         cmocka_unit_test(test_w_logtest_rulesmatching_phase_dont_match),
         cmocka_unit_test(test_w_logtest_rulesmatching_phase_match_level_0),

@@ -12,10 +12,10 @@
 #include "eventinfo.h"
 #include "config.h"
 
-/* OSSECAlert decoder init */
-void *OSSECAlert_Decoder_Init()
+/* WazuhAlert decoder init */
+void *WazuhAlert_Decoder_Init()
 {
-    mdebug1("Initializing OSSECAlert decoder.");
+    mdebug1("Initializing WazuhAlert decoder.");
 
 
     /* There is nothing else to do over here */
@@ -24,13 +24,13 @@ void *OSSECAlert_Decoder_Init()
 
 #define oa_strchr(x,y,z) z = strchr(x,y); if(!z){ return(NULL); }
 
-/* OSSECAlert decoder
+/* WazuhAlert decoder
  * Will extract the rule_id and point back to the original rule.
  * Will also extract srcip and username if available.
  * Examples:
  *
  */
-void *OSSECAlert_Decoder_Exec(Eventinfo *lf, OSHash *rules_hash, __attribute__((unused)) regex_matching *decoder_match)
+void *WazuhAlert_Decoder_Exec(Eventinfo *lf, OSHash *rules_hash, __attribute__((unused)) regex_matching *decoder_match)
 {
     char *oa_id = 0;
     char *oa_location;
@@ -40,11 +40,12 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf, OSHash *rules_hash, __attribute__((
     char *tmp_str = NULL;
     RuleInfo *rule_pointer;
 
-    lf->decoder_info->type = OSSEC_ALERT;
+    lf->decoder_info->type = WAZUH_ALERT;
 
     /* Checking the alert level. */
     if (strncmp("Alert Level: ", lf->log, 12) != 0 &&
-       strncmp("ossec: Alert Level:", lf->log, 18) != 0) {
+        strncmp("ossec: Alert Level:", lf->log, 18) != 0 &&
+        strncmp("wazuh: Alert Level:", lf->log, 18) != 0) {
         return (NULL);
     }
 

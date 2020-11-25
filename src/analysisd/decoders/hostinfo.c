@@ -73,7 +73,7 @@ void HostinfoInit()
     /* Zero decoder */
     os_calloc(1, sizeof(OSDecoderInfo), hostinfo_dec);
     hostinfo_dec->id = getDecoderfromlist(HOSTINFO_MOD, &os_analysisd_decoder_store);
-    hostinfo_dec->type = OSSEC_RL;
+    hostinfo_dec->type = WAZUH_RL;
     hostinfo_dec->name = HOSTINFO_MOD;
     hostinfo_dec->fts = 0;
     id_new = getDecoderfromlist(HOSTINFO_NEW, &os_analysisd_decoder_store);
