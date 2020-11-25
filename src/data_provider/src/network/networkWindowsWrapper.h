@@ -275,15 +275,9 @@ public:
         return retVal;
     }
 
-    std::string mtu() const override
+    int mtu() const override
     {
-        std::string retVal { "unknown" };
-        const auto mtu { m_interfaceAddress->Mtu };
-        if (mtu)
-        {
-            retVal = std::to_string(mtu);
-        }
-        return retVal;
+        return m_interfaceAddress->Mtu;
     }
 
     LinkStats stats() const override

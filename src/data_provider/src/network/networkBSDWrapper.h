@@ -166,9 +166,9 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
         return "unknown";
     }
 
-    std::string mtu() const override
+    int mtu() const override
     {
-        return m_interfaceAddress ? std::to_string(reinterpret_cast<if_data *>(m_interfaceAddress->ifa_data)->ifi_mtu) : "";
+        return m_interfaceAddress ? reinterpret_cast<if_data *>(m_interfaceAddress->ifa_data)->ifi_mtu : 0;
     }
 
     LinkStats stats() const override

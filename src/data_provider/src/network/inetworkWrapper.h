@@ -32,7 +32,7 @@ public:
     virtual std::string metrics() const = 0;  
     virtual std::string metricsV6() const = 0;    
     virtual std::string dhcp() const = 0;
-    virtual std::string mtu() const = 0;
+    virtual int mtu() const = 0;
     virtual LinkStats stats() const = 0;
     virtual std::string type() const = 0;
     virtual std::string state() const = 0;

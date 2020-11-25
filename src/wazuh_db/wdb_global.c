@@ -1189,6 +1189,92 @@ int wdb_global_reset_agents_connection(wdb_t *wdb) {
     }
 }
 
+int wdb_global_clean_data_from_tables(wdb_t *wdb) {
+
+    // Clean sys_osinfo table
+    if (OS_SUCCESS != wdb_global_clean_data_from_table(wdb, WDB_STMT_OSINFO_CLEAN));
+    {
+        mdebug1("Global DB - Error while cleaning osinfo table; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    // Clean sys_programs table
+    if (OS_SUCCESS != wdb_global_clean_data_from_table(wdb, WDB_STMT_PROGRAM_CLEAN));
+    {
+        mdebug1("Global DB - Error while cleaning programs table; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    // Clean sys_hardware table
+    if (OS_SUCCESS != wdb_global_clean_data_from_table(wdb, WDB_STMT_HWINFO_CLEAN));
+    {
+        mdebug1("Global DB - Error while cleaning hardware table; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    // Clean sys_ports table
+    if (OS_SUCCESS != wdb_global_clean_data_from_table(wdb, WDB_STMT_PORT_CLEAN));
+    {
+        mdebug1("Global DB - Error while cleaning ports table; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    // Clean sys_processes table
+    if (OS_SUCCESS != wdb_global_clean_data_from_table(wdb, WDB_STMT_PROC_CLEAN));
+    {
+        mdebug1("Global DB - Error while cleaning processes table; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    // Clean sys_netiface table
+    if (OS_SUCCESS != wdb_global_clean_data_from_table(wdb, WDB_STMT_NETINFO_CLEAN));
+    {
+        mdebug1("Global DB - Error while cleaning netiface table; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    // Clean sys_proto table
+    if (OS_SUCCESS != wdb_global_clean_data_from_table(wdb, WDB_STMT_PROTO_CLEAN));
+    {
+        mdebug1("Global DB - Error while cleaning netproto table; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    // Clean sys_netaddr table
+    if (OS_SUCCESS != wdb_global_clean_data_from_table(wdb, WDB_STMT_ADDR_CLEAN));
+    {
+        mdebug1("Global DB - Error while cleaning netaddr table; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+}
+
+int wdb_global_clean_data_from_table(wdb_t *wdb, const int idx_stmt) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("Cannot begin transaction");
+        return OS_INVALID;
+    }
+
+    if (wdb_stmt_cache(wdb, idx_stmt) < 0) {
+        mdebug1("Cannot cache statement");
+        return OS_INVALID;
+    }
+
+    stmt = wdb->stmt[idx_stmt];
+
+    switch (wdb_step(stmt)) {
+    case SQLITE_ROW:
+    case SQLITE_DONE:
+        return OS_SUCCESS;
+        break;
+    default:
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+}
+
+
 // Check the agent 0 status in the global database
 int wdb_global_check_manager_keepalive(wdb_t *wdb) {
     if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE) < 0) {

@@ -64,25 +64,33 @@ typedef enum wdb_stmt {
     WDB_STMT_FIM_UPDATE_ATTRIBUTES,
     WDB_STMT_OSINFO_INSERT,
     WDB_STMT_OSINFO_DEL,
+    WDB_STMT_OSINFO_CLEAN,
     WDB_STMT_PROGRAM_INSERT,
     WDB_STMT_PROGRAM_DEL,
+    WDB_STMT_PROGRAM_CLEAN,
     WDB_STMT_PROGRAM_UPD,
     WDB_STMT_PROGRAM_GET,
     WDB_STMT_HWINFO_INSERT,
     WDB_STMT_HOTFIX_INSERT,
     WDB_STMT_HWINFO_DEL,
+    WDB_STMT_HWINFO_CLEAN,
     WDB_STMT_HOTFIX_DEL,
     WDB_STMT_SET_HOTFIX_MET,
     WDB_STMT_PORT_INSERT,
     WDB_STMT_PORT_DEL,
+    WDB_STMT_PORT_CLEAN,
     WDB_STMT_PROC_INSERT,
     WDB_STMT_PROC_DEL,
+    WDB_STMT_PROC_CLEAN,
     WDB_STMT_NETINFO_INSERT,
     WDB_STMT_PROTO_INSERT,
     WDB_STMT_ADDR_INSERT,
     WDB_STMT_NETINFO_DEL,
     WDB_STMT_PROTO_DEL,
+    WDB_STMT_NETINFO_CLEAN,
+    WDB_STMT_PROTO_CLEAN,
     WDB_STMT_ADDR_DEL,
+    WDB_STMT_ADDR_CLEAN,
     WDB_STMT_CISCAT_INSERT,
     WDB_STMT_CISCAT_DEL,
     WDB_STMT_SCAN_INFO_UPDATEFS,
@@ -1653,6 +1661,14 @@ wdbc_result wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **out
  * @return 0 On success. -1 On error.
  */
 int wdb_global_reset_agents_connection(wdb_t *wdb);
+
+/**
+ * @brief Function to clean all data from syscollector tables.
+ *
+ * @param [in] wdb The Global struct database.
+ * @return 0 On success. -1 On error.
+ */
+int wdb_global_clean_data_from_tables(wdb_t *wdb);
 
 /**
  * @brief Function to get the id of every agent with a specific connection_status.

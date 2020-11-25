@@ -39,7 +39,7 @@ public:
     MOCK_METHOD(std::string, metrics, (), (const override));
     MOCK_METHOD(std::string, metricsV6, (), (const override));
     MOCK_METHOD(std::string, dhcp, (), (const override));
-    MOCK_METHOD(std::string, mtu, (), (const override));
+    MOCK_METHOD(int, mtu, (), (const override));
     MOCK_METHOD(LinkStats, stats, (), (const override));
     MOCK_METHOD(std::string, type, (), (const override));
     MOCK_METHOD(std::string, state, (), (const override));
@@ -132,7 +132,7 @@ TEST_F(SysInfoNetworkWindowsTest, Test_COMMON_DATA)
     const std::string type    { "2001:db8:abcd:0012:ffff:ffff:ffff:ffff" };
     const std::string state   { "up" };
     const std::string MAC     { "00:A0:C9:14:C8:29" };
-    const std::string mtu     { "1500" };
+    const int mtu             { 1500 };
     const std::string gateway { "10.2.2.50" };        
     EXPECT_CALL(*mock, family()).Times(1).WillOnce(Return(Utils::NetworkWindowsHelper::COMMON_DATA));
     EXPECT_CALL(*mock, name()).Times(1).WillOnce(Return(name));
@@ -159,6 +159,6 @@ TEST_F(SysInfoNetworkWindowsTest, Test_COMMON_DATA)
     EXPECT_EQ(7, networkInfo.at("tx_dropped").get<int32_t>());
     EXPECT_EQ(6, networkInfo.at("rx_dropped").get<int32_t>());
 
-    EXPECT_EQ(mtu, networkInfo.at("mtu").get_ref<const std::string&>());
+    EXPECT_EQ(mtu, networkInfo.at("mtu").get<int32_t>());
     EXPECT_EQ(gateway, networkInfo.at("gateway").get_ref<const std::string&>());
 }

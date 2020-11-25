@@ -397,14 +397,14 @@ public:
         return retVal;
     }
 
-    std::string mtu() const override
+    int mtu() const override
     {
-        std::string retVal;
+        int retVal { 0 };
         const auto name { this->name() };
         if (!name.empty())
         {
             const auto mtuFileContent { Utils::getFileContent(std::string(WM_SYS_IFDATA_DIR) + name + "/mtu") };
-            retVal = Utils::splitIndex(mtuFileContent, '\n', 0);
+            retVal = std::stoi(Utils::splitIndex(mtuFileContent, '\n', 0));
         }
         return retVal;
     }

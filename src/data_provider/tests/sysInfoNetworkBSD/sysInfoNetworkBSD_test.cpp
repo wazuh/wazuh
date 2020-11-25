@@ -39,7 +39,7 @@ public:
     MOCK_METHOD(std::string, metricsV6, (), (const override));
     MOCK_METHOD(std::string, gateway, (), (const override));
     MOCK_METHOD(std::string, dhcp, (), (const override));
-    MOCK_METHOD(std::string, mtu, (), (const override));
+    MOCK_METHOD(int, mtu, (), (const override));
     MOCK_METHOD(LinkStats, stats, (), (const override));
     MOCK_METHOD(std::string, type, (), (const override));
     MOCK_METHOD(std::string, state, (), (const override));
@@ -112,7 +112,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_LINK)
     EXPECT_CALL(*mock, state()).Times(1).WillOnce(Return("up"));
     EXPECT_CALL(*mock, MAC()).Times(1).WillOnce(Return("00:A0:C9:14:C8:29"));
     EXPECT_CALL(*mock, stats()).Times(1).WillOnce(Return(LinkStats{0,1,2,3,4,5,6,7}));
-    EXPECT_CALL(*mock, mtu()).Times(1).WillOnce(Return("1500"));
+    EXPECT_CALL(*mock, mtu()).Times(1).WillOnce(Return(1500));
     EXPECT_CALL(*mock, gateway()).Times(1).WillOnce(Return("8.8.4.4"));
     EXPECT_CALL(*mock, adapter()).Times(1).WillOnce(Return(""));
 
@@ -131,7 +131,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_LINK)
     EXPECT_EQ(4,ifaddr.at("rx_errors").get<int32_t>());
     EXPECT_EQ(6,ifaddr.at("rx_dropped").get<int32_t>());
 
-    EXPECT_EQ("1500",ifaddr.at("mtu").get_ref<const std::string&>());
+    EXPECT_EQ(1500, ifaddr.at("mtu").get<int32_t>());
 
     EXPECT_EQ("8.8.4.4",ifaddr.at("gateway").get_ref<const std::string&>());
 }
