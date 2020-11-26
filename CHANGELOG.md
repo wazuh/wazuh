@@ -65,6 +65,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Fixed a `cluster_control` bug that caused an error message when running `wazuh-clusterd` in foreground. ([#6724](https://github.com/wazuh/wazuh/pull/6724))
+- Avoid memory leaks when creating cluster messages. ([#6736](https://github.com/wazuh/wazuh/pull/6736))
 
 - **API:**
   - Fixed an error with `/groups/{group_id}/config` endpoints (GET and PUT) when using complex `localfile` configurations. ([#6276](https://github.com/wazuh/wazuh/pull/6383))
