@@ -95,6 +95,106 @@ void test_os_snprintf_more_parameters(void **state)
     assert_int_equal(ret, 21);
 }
 
+void test_w_remove_substr(void **state)
+{
+    int i;
+    char * ret;
+    char * strings[] = {
+        "remove thisThis is the principal string.",
+        "This is the principal string.remove this",
+        "This isremove this the principal string."
+    };
+    int size_array = sizeof(strings) / sizeof(strings[0]);
+    char * substr = "remove this";
+    char * string;
+    char * str_cpy;
+
+    for (i = 0; i < size_array; i++) {
+        w_strdup(strings[i], string);
+        str_cpy = string;
+        ret = w_remove_substr(str_cpy, substr);
+        assert_string_equal(ret, "This is the principal string.");
+        os_free(str_cpy);
+    }
+}
+
+// Tests W_JSON_AddField
+
+void test_W_JSON_AddField_nest_object(void **state)
+{
+    cJSON * root = cJSON_CreateObject();
+    cJSON_AddObjectToObject(root, "test");
+    const char * key = "test.files";
+    const char * value = "[\"file1\",\"file2\",\"file3\"]";
+    char * output = NULL;
+
+    W_JSON_AddField(root, key, value);
+    output = cJSON_PrintUnformatted(root);
+    assert_string_equal(output, "{\"test\":{\"files\":[\"file1\",\"file2\",\"file3\"]}}");
+
+    os_free(output);
+    cJSON_Delete(root);
+}
+
+void test_W_JSON_AddField_nest_no_object(void **state)
+{
+    cJSON * root = cJSON_CreateObject();
+    const char * key = "test.files";
+    const char * value = "[\"file1\",\"file2\",\"file3\"]";
+    char * output = NULL;
+
+    W_JSON_AddField(root, key, value);
+    output = cJSON_PrintUnformatted(root);
+    assert_string_equal(output, "{\"test\":{\"files\":[\"file1\",\"file2\",\"file3\"]}}");
+
+    os_free(output);
+    cJSON_Delete(root);
+}
+
+void test_W_JSON_AddField_JSON_valid(void **state)
+{
+    cJSON * root = cJSON_CreateObject();
+    const char * key = "files";
+    const char * value = "[\"file1\",\"file2\",\"file3\"]";
+    char * output = NULL;
+
+    W_JSON_AddField(root, key, value);
+    output = cJSON_PrintUnformatted(root);
+    assert_string_equal(output, "{\"files\":[\"file1\",\"file2\",\"file3\"]}");
+
+    os_free(output);
+    cJSON_Delete(root);
+}
+
+void test_W_JSON_AddField_JSON_invalid(void **state)
+{
+    cJSON * root = cJSON_CreateObject();
+    const char * key = "files";
+    const char * value = "[\"file1\",\"file2\"],\"file3\"]";
+    char * output = NULL;
+
+    W_JSON_AddField(root, key, value);
+    output = cJSON_PrintUnformatted(root);
+    assert_string_equal(output, "{\"files\":\"[\\\"file1\\\",\\\"file2\\\"],\\\"file3\\\"]\"}");
+    
+    os_free(output);
+    cJSON_Delete(root);
+}
+
+void test_W_JSON_AddField_string_time(void **state)
+{
+    cJSON * root = cJSON_CreateObject();
+    const char * key = "time";
+    const char * value = "[28/Oct/2020:10:22:11 +0000]";
+    char * output = NULL;
+
+    W_JSON_AddField(root, key, value);
+    output = cJSON_PrintUnformatted(root);
+    assert_string_equal(output, "{\"time\":\"[28/Oct/2020:10:22:11 +0000]\"}");
+
+    os_free(output);
+    cJSON_Delete(root);
+}
 
 /* Tests */
 
@@ -104,9 +204,18 @@ int main(void) {
         cmocka_unit_test(test_w_tolower_str_NULL),
         cmocka_unit_test(test_w_tolower_str_empty),
         cmocka_unit_test(test_w_tolower_str_caps),
+        // Tests os_snprintf
         cmocka_unit_test(test_os_snprintf_short),
         cmocka_unit_test(test_os_snprintf_long),
-        cmocka_unit_test(test_os_snprintf_more_parameters)
+        cmocka_unit_test(test_os_snprintf_more_parameters),
+        // Tests w_remove_substr
+        cmocka_unit_test(test_w_remove_substr),
+        // Tests W_JSON_AddField
+        cmocka_unit_test(test_W_JSON_AddField_nest_object),
+        cmocka_unit_test(test_W_JSON_AddField_nest_no_object),
+        cmocka_unit_test(test_W_JSON_AddField_JSON_valid),
+        cmocka_unit_test(test_W_JSON_AddField_JSON_invalid),
+        cmocka_unit_test(test_W_JSON_AddField_string_time),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

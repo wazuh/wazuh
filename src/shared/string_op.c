@@ -192,15 +192,17 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
 
         free(current);
     } else if (!cJSON_GetObjectItem(root, key)) {
-        char *string_end =  NULL;
+        const char *jsonErrPtr;
+        cJSON * value_json = NULL;
+
         if (*value == '[' &&
-           (string_end = memchr(value, '\0', OS_MAXSTR)) &&
-           (string_end != NULL) &&
-           (']' == *(string_end - 1)))
-        {
-            const char *jsonErrPtr;
-            cJSON_AddItemToObject(root, key, cJSON_ParseWithOpts(value, &jsonErrPtr, 0));
+           (value_json = cJSON_ParseWithOpts(value, &jsonErrPtr, 0), value_json) &&
+           (*jsonErrPtr == '\0')) {
+            cJSON_AddItemToObject(root, key, value_json);
         } else {
+            if (value_json) {
+                cJSON_Delete(value_json);
+            }
             cJSON_AddStringToObject(root, key, value);
         }
     }
@@ -946,4 +948,20 @@ int os_snprintf(char *str, size_t size, const char *format, ...) {
     va_end(args);
 
     return ret;
+}
+
+// Remove a substring from a string
+
+char * w_remove_substr(char *str, const char *sub) {
+    char *p, *q, *r;
+    if ((q = r = strstr(str, sub)) != NULL) {
+        size_t len = strlen(sub);
+        while ((r = strstr(p = r + len, sub)) != NULL) {
+            while (p < r)
+                *q++ = *p++;
+        }
+        while ((*q++ = *p++) != '\0')
+            continue;
+    }
+    return str;
 }

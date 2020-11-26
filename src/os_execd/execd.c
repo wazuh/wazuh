@@ -174,10 +174,6 @@ int main(int argc, char **argv)
         merror_exit(PID_ERROR);
     }
 
-#ifdef CLIENT
-    CheckExecConfig();
-#endif
-
     // Start com request thread
     if (CreateThreadJoinable(&wcom_thread, wcom_main, NULL) < 0) {
         exit(EXIT_FAILURE);

@@ -33,8 +33,9 @@ int __wrap_wm_agent_upgrade_check_status(__attribute__((unused)) const wm_agent_
     return mock();
 }
 
-int __wrap_wm_agent_upgrade_listen_messages(__attribute__((unused)) const wm_manager_configs* manager_configs) {
-    return mock();
+void __wrap_wm_agent_upgrade_start_manager_module(const wm_manager_configs* manager_configs, const int enabled) {
+    check_expected(manager_configs);
+    check_expected(enabled);
 }
 
 int __wrap_wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_ids, char** error) {
@@ -95,7 +96,17 @@ int __wrap_wm_agent_upgrade_parse_agent_response(const char* agent_response, cha
     check_expected(agent_response);
 
     if (data && strchr(agent_response, ' ')) {
-        *data = strchr(agent_response, ' ') + 1;
+        os_strdup(strchr(agent_response, ' ') + 1, *data);
+    }
+
+    return mock();
+}
+
+int __wrap_wm_agent_upgrade_parse_agent_upgrade_command_response(const char* agent_response, char **data) {
+    check_expected(agent_response);
+
+    if (data) {
+        os_strdup(mock_type(char *), *data);
     }
 
     return mock();
@@ -115,6 +126,10 @@ OSHashNode* __wrap_wm_agent_upgrade_get_next_node(unsigned int *index, OSHashNod
     } else {
         return OSHash_Next(hash_table, index, current);
     }
+}
+
+cJSON* __wrap_wm_agent_upgrade_get_agent_ids() {
+    return mock_type(cJSON*);
 }
 
 int __wrap_wm_agent_upgrade_compare_versions(const char *version1, const char *version2) {
@@ -144,15 +159,29 @@ int __wrap_wm_agent_upgrade_validate_status(const char* connection_status) {
     return mock();
 }
 
-int __wrap_wm_agent_upgrade_validate_version(__attribute__((unused)) const wm_agent_info *agent_info, void *task, wm_upgrade_command command, const wm_manager_configs* manager_configs) {
+int __wrap_wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch) {
+    check_expected(platform);
+    check_expected(os_major);
+    check_expected(os_minor);
+    check_expected(arch);
+
+    return mock();
+}
+
+int __wrap_wm_agent_upgrade_validate_version(const char *wazuh_version, wm_upgrade_command command, void *task) {
+    check_expected(wazuh_version);
     check_expected(command);
-    check_expected(manager_configs);
 
     if (command == WM_UPGRADE_UPGRADE) {
         wm_upgrade_task *upgrade_task = (wm_upgrade_task *)task;
-        os_strdup(mock_type(char*), upgrade_task->wpk_file);
-        os_strdup(mock_type(char*), upgrade_task->wpk_sha1);
+        os_strdup(mock_type(char*), upgrade_task->wpk_version);
     }
+
+    return mock();
+}
+
+int __wrap_wm_agent_upgrade_validate_wpk_version(__attribute__((unused)) const wm_agent_info *agent_info, __attribute__((unused)) wm_upgrade_task *task, const char *wpk_repository_config) {
+    check_expected(wpk_repository_config);
 
     return mock();
 }
@@ -231,11 +260,6 @@ bool __wrap_wm_agent_upgrade_validate_task_ids_message(__attribute__ ((__unused_
     if (data) os_strdup(mock_type(char *), *data);
 
     return mock();
-}
-
-void __wrap_wm_agent_upgrade_insert_task_id(int agent_id, int task_id) {
-    check_expected(agent_id);
-    check_expected(task_id);
 }
 
 char* __wrap_wm_agent_upgrade_send_command_to_agent(const char *command, const size_t command_size) {

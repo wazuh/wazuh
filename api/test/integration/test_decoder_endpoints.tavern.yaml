@@ -289,7 +289,7 @@ stages:
       verify: False
       <<: *get_decoders
       params:
-        q: 'details.prematch~wazuh;filename=0005-wazuh_decoders.xml;position<5'
+        q: 'details.prematch.pattern~wazuh;filename=0005-wazuh_decoders.xml;position<5'
     response:
       status_code: 200
       json:

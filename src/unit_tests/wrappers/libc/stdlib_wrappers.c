@@ -37,3 +37,7 @@ int __wrap_system(const char *__command) {
     check_expected(__command);
     return mock();
 }
+
+int __wrap_mkstemp(__attribute__((unused)) char *template) {
+    return mock();
+}

@@ -2414,6 +2414,9 @@ cJSON* getunameJSON()
         if (read_info->os_minor){
             cJSON_AddStringToObject(root, "os_minor", read_info->os_minor);
         }
+        if (read_info->os_patch){
+            cJSON_AddStringToObject(root, "os_patch", read_info->os_patch);
+        }
         if (read_info->os_build){
             cJSON_AddStringToObject(root, "os_build", read_info->os_build);
         }
