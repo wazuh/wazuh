@@ -484,7 +484,7 @@ int OS_ReadXMLRules(const char *rulefile,
                         config_ruleinfo->category = SQUID;
                     } else if (strcmp(rule_opt[k]->content, "windows") == 0) {
                         config_ruleinfo->category = DECODER_WINDOWS;
-                    } else if (strcmp(rule_opt[k]->content, "ossec") == 0) {
+                    } else if (strcmp(rule_opt[k]->content, "wazuh") == 0) {
                         config_ruleinfo->category = WAZUH_RL;
                     } else {
                         merror(INVALID_CAT, rule_opt[k]->content);
