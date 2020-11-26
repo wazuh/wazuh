@@ -1010,6 +1010,11 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
 
                 RegCloseKey(subKey);
 
+                // Expected hotfixes must start with KB*
+                if (strncmp(hotfix, "KB", 2) || strlen(hotfix) != HOTFIX_SIZE) {
+                    continue;
+                }
+
                 // Ignore the hotfix if it is the same as the previous one
                 if (!strcmp(hotfix, prev_hotfix)) {
                     continue;
