@@ -54,26 +54,47 @@ void syscollector_start(const unsigned int inverval,
             callbackLogError(data.c_str());
         }
     };
-
-    Syscollector::instance().init(std::make_shared<SysInfo>(),
-                                  callbackDiffWrapper,
-                                  callbackSyncWrapper,
-                                  callbackLogErrorWrapper,
-                                  inverval,
-                                  scanOnStart,
-                                  hardware,
-                                  os,
-                                  network,
-                                  packages,
-                                  ports,
-                                  portsAll,
-                                  processes,
-                                  hotfixes);
+    try
+    {
+        Syscollector::instance().init(std::make_shared<SysInfo>(),
+                                      callbackDiffWrapper,
+                                      callbackSyncWrapper,
+                                      callbackLogErrorWrapper,
+                                      inverval,
+                                      scanOnStart,
+                                      hardware,
+                                      os,
+                                      network,
+                                      packages,
+                                      ports,
+                                      portsAll,
+                                      processes,
+                                      hotfixes);
+    }
+    catch(const std::exception& ex)
+    {
+        callbackLogErrorWrapper(ex.what());
+    }
 }
 void syscollector_stop()
 {
     Syscollector::instance().destroy();
 }
+
+int syscollector_sync_message(const char* data)
+{
+    int ret{-1};
+    try
+    {
+        Syscollector::instance().push(data);
+        ret = 0;
+    }
+    catch(...)
+    {
+    }
+    return ret;
+}
+
 
 #ifdef __cplusplus
 }

@@ -145,6 +145,10 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS] = "UPDATE agent SET connection_status = 'disconnected' where connection_status != 'disconnected' AND connection_status != 'never_connected' AND id != 0;",
     [WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE] = "SELECT COUNT(*) FROM agent WHERE id=0 AND last_keepalive=253402300799;",
     [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
+    [WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_processes WHERE pid BETWEEN ? and ? ORDER BY pid;",
+    [WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_AROUND] = "DELETE FROM sys_processes WHERE pid < ? OR pid > ?;",
+    [WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_RANGE] = "DELETE FROM sys_processes WHERE pid > ? AND pid < ?;",
+    [WDB_STMT_SYSCOLLECTOR_PROCESSES_CLEAR] = "DELETE FROM sys_processes;",
 };
 
 wdb_config wconfig;

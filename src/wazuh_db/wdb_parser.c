@@ -312,6 +312,16 @@ int wdb_parse(char * input, char * output) {
 
             w_mutex_unlock(&pool_mutex);
             return result;
+        } else if (strncmp(query, "syscollector_", 7) == 0) {
+            if (!next) {
+                mdebug1("DB(%s) Invalid Syscollector query syntax.", sagent_id);
+                mdebug2("DB(%s) Syscollector query error near: %s", sagent_id, query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid Syscollector query syntax, near '%.32s'", query);
+                result = -1;
+            } else {
+                result = wdb_parse_syscollector(wdb, query, next, output);
+            }
+            return result;
         } else {
             mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
             mdebug2("DB(%s) query error near: %s", sagent_id, query);
@@ -869,6 +879,77 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         mdebug1("DB(%s) Invalid FIM query syntax.", wdb->id);
         mdebug2("DB query error near: %s", curr);
         snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
+        return -1;
+    }
+}
+
+int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char * output) {
+    char * curr;
+    char * next;
+    char * checksum;
+    char buffer[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE];
+    int ftype;
+    int result;
+    long ts;
+    wdb_component_t component;
+
+    if (strcmp(query, "syscollector_processes") == 0)
+    {
+        component = WDB_SYSCOLLECTOR_PROCESSES;
+        mdebug2("DB(%s) sys_processes Syscollector query. ", wdb->id);
+    }
+    else
+    {
+        mdebug2("DB(%s) Invalid Syscollector query : %s", wdb->id, query);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid Syscollector query syntax, near '%.32s'", query);
+        return -1;
+    }
+
+    if (next = wstr_chr(input, ' '), !next) {
+        mdebug2("DB(%s) Invalid Syscollector query syntax: %s", wdb->id, input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid Syscollector query syntax, near '%.32s'", input);
+        return -1;
+    }
+
+    curr = input;
+    *next++ = '\0';
+
+    if (strncmp(curr, "integrity_check_", 16) == 0) {
+        switch (wdbi_query_checksum(wdb, component, curr, next)) {
+        case -1:
+            mdebug1("DB(%s) Cannot query Syscollector range checksum.", wdb->id);
+            snprintf(output, OS_MAXSTR + 1, "err Cannot perform range checksum");
+            return -1;
+
+        case 0:
+            snprintf(output, OS_MAXSTR + 1, "ok no_data");
+            break;
+
+        case 1:
+            snprintf(output, OS_MAXSTR + 1, "ok checksum_fail");
+            break;
+
+        default:
+            snprintf(output, OS_MAXSTR + 1, "ok ");
+        }
+
+        return 0;
+    } else if (strcmp(curr, "integrity_clear") == 0) {
+        switch (wdbi_query_clear(wdb, component, next)) {
+        case -1:
+            mdebug1("DB(%s) Cannot query Syscollector range checksum.", wdb->id);
+            snprintf(output, OS_MAXSTR + 1, "err Cannot perform range checksum");
+            return -1;
+
+        default:
+            snprintf(output, OS_MAXSTR + 1, "ok ");
+        }
+
+        return 0;
+    } else {
+        mdebug1("DB(%s) Invalid Syscollector query syntax.", wdb->id);
+        mdebug2("DB query error near: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid Syscollector query syntax, near '%.32s'", curr);
         return -1;
     }
 }

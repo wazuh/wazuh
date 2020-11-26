@@ -162,6 +162,10 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
+    WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_AROUND,
+    WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_RANGE,
+    WDB_STMT_SYSCOLLECTOR_PROCESSES_CLEAR,
     WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
 
@@ -215,7 +219,8 @@ typedef struct wdb_config {
 
 /// Enumeration of components supported by the integrity library.
 typedef enum {
-    WDB_FIM         ///< File integrity monitoring.
+    WDB_FIM,                         ///< File integrity monitoring.
+    WDB_SYSCOLLECTOR_PROCESSES      ///< Processes integrity monitoring.
 } wdb_component_t;
 
 extern char *schema_global_sql;
@@ -908,6 +913,7 @@ int wdb_stmt_cache(wdb_t * wdb, int index);
 int wdb_parse(char * input, char * output);
 
 int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output);
+int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char * output);
 
 /**
  * @brief Parses a rootcheck command

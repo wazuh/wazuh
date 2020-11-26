@@ -52,7 +52,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 5);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 5);
         }
     };
 
@@ -77,7 +77,7 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 100);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 100);
         }
     };
 
@@ -102,7 +102,7 @@ TEST_F(SyscollectorImpTest, noScanOnStart)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 3600, false);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, false);
         }
     };
 
@@ -127,7 +127,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 3600, true, false);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, false);
         }
     };
 
@@ -152,7 +152,7 @@ TEST_F(SyscollectorImpTest, noOs)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 3600, true, true, false);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, true, false);
         }
     };
 
@@ -177,7 +177,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 3600, true, true, true, false);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, true, true, false);
         }
     };
 
@@ -202,7 +202,7 @@ TEST_F(SyscollectorImpTest, noPackages)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 3600, true, true, true, true, false);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, true, true, true, false);
         }
     };
 
@@ -227,7 +227,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 3600, true, true, true, true, true, false);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, true, true, true, true, false);
         }
     };
 
@@ -252,7 +252,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 3600, true, true, true, true, true, true, false);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, true, true, true, true, true, false);
         }
     };
 
@@ -277,7 +277,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 3600, true, true, true, true, true, true, true, false);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, true, true, true, true, true, true, false);
         }
     };
 
@@ -303,7 +303,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 3600, true, true, true, true, true, true, true, true, false);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, true, true, true, true, true, true, true, false);
         }
     };
 
@@ -332,7 +332,7 @@ TEST_F(SyscollectorImpTest, scanOnInverval)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 1);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 1);
         }
     };
 

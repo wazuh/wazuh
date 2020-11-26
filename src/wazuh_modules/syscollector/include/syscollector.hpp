@@ -58,6 +58,7 @@ public:
               const bool hotfixes = true);
 
     void destroy();
+    void push(const std::string& data);
 private:
     Syscollector() = default;
     ~Syscollector() = default;
@@ -65,6 +66,8 @@ private:
     Syscollector& operator=(const Syscollector&) = delete;
     
     std::string getCreateStatement() const;
+    void registerWithRsync();
+
     bool sleepFor();
     void scanHardware();
     void scanOs();

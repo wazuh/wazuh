@@ -18,7 +18,8 @@
 #include <openssl/evp.h>
 
 static const char * COMPONENT_NAMES[] = {
-    [WDB_FIM] = "fim"
+    [WDB_FIM] = "fim",
+    [WDB_SYSCOLLECTOR_PROCESSES] = "syscollector-processes"
 };
 
 #ifdef WAZUH_UNIT_TESTING
@@ -50,7 +51,8 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
     assert(wdb != NULL);
     assert(hexdigest != NULL);
 
-    const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_SELECT_CHECKSUM_RANGE };
+    const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_SELECT_CHECKSUM_RANGE,
+                            [WDB_SYSCOLLECTOR_PROCESSES] = WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE  };
     assert(component < sizeof(INDEXES) / sizeof(int));
 
     if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
@@ -114,8 +116,10 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
 
     assert(wdb != NULL);
 
-    const int INDEXES_AROUND[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_AROUND };
-    const int INDEXES_RANGE[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_RANGE };
+    const int INDEXES_AROUND[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_AROUND,
+                                   [WDB_SYSCOLLECTOR_PROCESSES] = WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_AROUND };
+    const int INDEXES_RANGE[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_RANGE,
+                                  [WDB_SYSCOLLECTOR_PROCESSES] = WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_RANGE };
     assert(component < sizeof(INDEXES_AROUND) / sizeof(int));
     assert(component < sizeof(INDEXES_RANGE) / sizeof(int));
 
@@ -291,7 +295,8 @@ end:
 
 // Query a complete table clear
 int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payload) {
-    const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_CLEAR };
+    const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_CLEAR,
+                            [WDB_SYSCOLLECTOR_PROCESSES] = WDB_STMT_SYSCOLLECTOR_PROCESSES_CLEAR };
     assert(component < sizeof(INDEXES) / sizeof(int));
 
     int retval = -1;

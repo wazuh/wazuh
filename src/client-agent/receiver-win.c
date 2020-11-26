@@ -154,6 +154,12 @@ void *receiver_thread(__attribute__((unused)) void *none)
                     continue;
                 }
 
+                /* syscollector */
+                else if (strncmp(tmp_msg, HC_SYSCOLLECTOR, strlen(HC_SYSCOLLECTOR)) == 0) {
+                    wmcom_sync(tmp_msg);
+                    continue;
+                }
+
                 /* Ack from server */
                 else if (strcmp(tmp_msg, HC_ACK) == 0) {
                     continue;

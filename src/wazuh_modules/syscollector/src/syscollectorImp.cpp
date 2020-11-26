@@ -59,7 +59,7 @@ constexpr auto HOTFIXES_START_CONFIG_STATEMENT
                 "order_by_opt":"hotfix DESC",
                 "count_opt":1
             },
-        "component":"dbsync_hotfixes",
+        "component":"syscollector_hotfixes",
         "index":"hotfix",
         "last_event":"last_event",
         "checksum_field":"checksum",
@@ -112,7 +112,7 @@ constexpr auto PACKAGES_START_CONFIG_STATEMENT
                 "order_by_opt":"name DESC",
                 "count_opt":1
             },
-        "component":"dbsync_packages",
+        "component":"syscollector_packages",
         "index":"name",
         "last_event":"last_event",
         "checksum_field":"checksum",
@@ -146,7 +146,7 @@ constexpr auto PROCESSES_START_CONFIG_STATEMENT
                 "order_by_opt":"pid ASC",
                 "count_opt":1
             },
-        "component":"dbsync_processes",
+        "component":"syscollector_processes",
         "index":"pid",
         "last_event":"last_event",
         "checksum_field":"checksum",
@@ -159,6 +159,45 @@ constexpr auto PROCESSES_START_CONFIG_STATEMENT
                 "count_opt":1000
             }
         })"
+};
+
+constexpr auto PROCESSES_SYNC_CONFIG_STATEMENT
+{
+    R"(
+    {
+        "decoder_type":"JSON_RANGE",
+        "table":"dbsync_processes",
+        "component":"syscollector_processes",
+        "index":"pid",
+        "last_event":"last_event",
+        "checksum_field":"checksum",
+        "no_data_query_json": {
+                "row_filter":" ",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "count_range_query_json": {
+                "row_filter":"WHERE pid BETWEEN '?' and '?' ORDER BY pid",
+                "count_field_name":"count",
+                "column_list":["count(*) AS count "],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "row_data_query_json": {
+                "row_filter":"WHERE pid ='?'",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "range_checksum_query_json": {
+                "row_filter":"WHERE pid BETWEEN '?' and '?' ORDER BY pid",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        }
+    }
+    )"
 };
 
 constexpr auto PROCESSES_SQL_STATEMENT
@@ -215,7 +254,7 @@ constexpr auto PORTS_START_CONFIG_STATEMENT
                 "order_by_opt":"inode ASC",
                 "count_opt":1
             },
-        "component":"dbsync_ports",
+        "component":"syscollector_ports",
         "index":"inode",
         "last_event":"last_event",
         "checksum_field":"checksum",
@@ -267,7 +306,7 @@ constexpr auto NETIFACE_START_CONFIG_STATEMENT
                 "order_by_opt":"name ASC",
                 "count_opt":1
             },
-        "component":"dbsync_network_iface",
+        "component":"syscollector_network_iface",
         "index":"name",
         "last_event":"last_event",
         "checksum_field":"checksum",
@@ -322,7 +361,7 @@ constexpr auto NETPROTO_START_CONFIG_STATEMENT
                 "order_by_opt":"iface ASC",
                 "count_opt":1
             },
-        "component":"dbsync_network_protocol",
+        "component":"syscollector_network_protocol",
         "index":"iface",
         "last_event":"last_event",
         "checksum_field":"checksum",
@@ -368,7 +407,7 @@ constexpr auto NETADDRESS_START_CONFIG_STATEMENT
                 "order_by_opt":"iface ASC",
                 "count_opt":1
             },
-        "component":"dbsync_network_address",
+        "component":"syscollector_network_address",
         "index":"iface",
         "last_event":"last_event",
         "checksum_field":"checksum",
@@ -496,6 +535,19 @@ std::string Syscollector::getCreateStatement() const
     return ret;
 }
 
+
+void Syscollector::registerWithRsync()
+{
+
+    if (m_processes)
+    {
+        m_spRsync->registerSyncID("syscollector_processes", 
+                                  m_spDBSync->handle(),
+                                  nlohmann::json::parse(PROCESSES_SYNC_CONFIG_STATEMENT),
+                                  m_reportSyncFunction);
+    }
+
+}
 void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const std::function<void(const std::string&)> reportDiffFunction,
                         const std::function<void(const std::string&)> reportSyncFunction,
@@ -530,6 +582,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_spRsync = std::make_unique<RemoteSync>();
     RemoteSync::init(logErrorFunction);
     DBSync::init(logErrorFunction);
+    registerWithRsync();
     syncLoop();
 }
 
@@ -765,4 +818,20 @@ void Syscollector::syncLoop()
     m_logErrorFunction("about to destroy dbsyc");
     m_spDBSync.reset(nullptr);
     m_logErrorFunction("exiting syncLoop");
+}
+
+void Syscollector::push(const std::string& data)
+{
+    auto rawData{data};
+    Utils::replaceFirst(rawData, "dbsync ", "");
+    const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
+    m_logErrorFunction(rawData);
+    try
+    {
+        m_spRsync->pushMessage(std::vector<uint8_t>{buff, buff + rawData.size()});
+    }
+    catch(const std::exception& ex)
+    {
+        m_logErrorFunction(ex.what());
+    }
 }

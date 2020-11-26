@@ -391,4 +391,6 @@ cJSON *win_perm_to_json(char *permissions);
  */
 void ag_send_syscheck(char * message);
 
+
+
 #endif /* SYSCHECK_OP_H */
