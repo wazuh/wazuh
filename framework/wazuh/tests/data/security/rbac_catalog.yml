@@ -183,9 +183,9 @@ get_rbac_actions:
             - agent:group:mediterranean
           effect: allow
         related_endpoints:
-          - PUT /agents/{agent_id}/upgrade
-          - PUT /agents/{agent_id}/upgrade_custom
-          - GET /agents/{agent_id}/upgrade_result
+          - PUT /agents/upgrade
+          - PUT /agents/upgrade_custom
+          - GET /agents/upgrade_result
       group:delete:
         description: Delete agent groups
         resources:
@@ -394,6 +394,19 @@ get_rbac_actions:
         related_endpoints:
           - GET /lists
           - GET /lists/files
+      logtest:run:
+        description: Run logtest tool or end a logtest session
+        resources:
+          - "*:*"
+        example:
+          actions:
+            - logtest:run
+          resources:
+            - "*:*:*"
+          effect: allow
+        related_endpoints:
+          - PUT /logtest
+          - DELETE /logtest/sessions/{token}
       manager:read:
         description: Read Wazuh manager configuration
         resources:

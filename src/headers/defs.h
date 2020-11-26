@@ -90,7 +90,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Notify the manager */
 #define NOTIFY_TIME     10      // ... every 10 seconds
 #define RECONNECT_TIME  60      // Time to reconnect
-#define DISCON_TIME     1800    // Take agent as disconnected
 
 /* User Configuration */
 #ifndef MAILUSER
@@ -140,6 +139,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define MON_LOCAL_SOCK  "/queue/ossec/monitor"
 #define CLUSTER_SOCK "/queue/cluster/c-internal.sock"
 #define CONTROL_SOCK "/queue/ossec/control"
+#define LOGTEST_SOCK "/queue/ossec/logtest"
+#define AGENT_UPGRADE_SOCK "/queue/ossec/upgrade"
+
 
 // Tasks socket
 #define TASK_QUEUE "/queue/tasks/task"

@@ -12,6 +12,7 @@ import shutil
 import stat
 import sys
 import typing
+from copy import deepcopy
 from datetime import datetime, timedelta
 from itertools import groupby, chain
 from os import chmod, chown, path, listdir, mkdir, curdir, rename, utime
@@ -802,8 +803,43 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
         else:
             return False
 
+    def get_match_candidates(iterable, key_list: list, candidates: list):
+        """Get the match candidates following a list of keys.
+
+        Parameters
+        ----------
+        iterable : dict or list
+            Iterable object to be iterated over.
+        key_list : list
+            List of keys.
+        candidates : list
+            Empty list that will be filled
+
+        Returns
+        -------
+        True if there is one match at least. False otherwise.
+        """
+        for index, key in enumerate(key_list):
+            if isinstance(iterable, list):
+                candidate_list = list()
+                for element in list(iterable):
+                    candidate_list.append(get_match_candidates(element, key_list[index:], candidates))
+                if True in candidate_list:
+                    return True
+                else:
+                    return False
+            else:
+                if key in iterable:
+                    iterable = iterable[key]
+                else:
+                    return False
+        else:
+            candidates.append(iterable)
+            return True
+
     # compile regular expression only one time when function is called
-    re_get_elements = re.compile(r'([\w\-]+)(?:\.?)((?:[\w\-]*))(=|!=|<|>|~)([\w\-./:]+)')  # get elements in a clause
+    # get elements in a clause
+    re_get_elements = re.compile(r'([\w\-]+)(?:\.?)((?:[\w\-](?:\.[\w\-])*)*)(=|!=|<|>|~)([\w\-./: ]+)')
     # get a list with OR clauses
     or_clauses = q.split(',')
     output_array = []
@@ -817,24 +853,21 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
             for and_clause in and_clauses:
                 # get elements in a clause
                 try:
-                    field_name, field_subname, op, value = re_get_elements.match(and_clause).groups()
+                    field_name, field_subnames, op, value = re_get_elements.match(and_clause).groups()
                 except AttributeError:
                     raise WazuhError(1407, extra_message=f"Parameter 'q' is not valid: '{and_clause}'")
 
                 # check if a clause is satisfied
-                if field_subname:
-                    if field_name in elem and field_subname in elem[field_name] and \
-                            check_clause(elem[field_name][field_subname], op, value):
+                match_candidates = list()
+                if field_subnames and field_name in elem and \
+                        get_match_candidates(deepcopy(elem[field_name]), field_subnames.split('.'), match_candidates):
+                    if any([check_clause(candidate, op, value) for candidate in match_candidates]):
                         continue
-                    else:
-                        match = False
-                        break
                 else:
                     if field_name in elem and check_clause(elem[field_name], op, value):
                         continue
-                    else:
-                        match = False
-                        break
+                match = False
+                break
 
             # if match = True, add element to output and break the loop
             if match:
@@ -1147,9 +1180,7 @@ class WazuhDBQuery(object):
             self.query += " WHERE " if 'WHERE' not in self.query else ' AND '
 
     def _process_filter(self, field_name, field_filter, q_filter):
-        if field_name == "status":
-            self._filter_status(q_filter)
-        elif field_name in self.date_fields and not isinstance(q_filter['value'], (int, float)):
+        if field_name in self.date_fields and not isinstance(q_filter['value'], (int, float)):
             # Filter a date, but only if it is in string (YYYY-MM-DD hh:mm:ss) format.
             # If it matches the same format as DB (timestamp integer), filter directly by value (next if cond).
             self._filter_date(q_filter, field_name)

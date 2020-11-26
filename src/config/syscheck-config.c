@@ -956,9 +956,15 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 strchr(tmp_dir, '?') ||
                 strchr(tmp_dir, '[')) {
             int gindex = 0;
+            int gstatus;
             glob_t g;
 
-            if (glob(tmp_dir, 0, NULL, &g) != 0) {
+            gstatus = glob(tmp_dir, 0, NULL, &g);
+            if (gstatus == GLOB_NOMATCH) {
+                mdebug2(GLOB_NO_MATCH, tmp_dir);
+                dir++;
+                continue;
+            } else if (gstatus != 0) {
                 merror(GLOB_ERROR, tmp_dir);
                 dir++;
                 continue;
@@ -1548,6 +1554,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         else if (strcmp(node[i]->element, xml_scanday) == 0) {
             syscheck->scan_day = OS_IsValidDay(node[i]->content);
             if (!syscheck->scan_day) {
+                merror(INVALID_DAY, node[i]->content);
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }

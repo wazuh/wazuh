@@ -17,3 +17,25 @@ cJSON* __wrap_wdb_get_agent_labels(int id,__attribute__((unused)) int *sock) {
     check_expected(id);
     return mock_ptr_type(cJSON*);
 }
+
+int __wrap_wdb_find_agent(const char *name, const char *ip, __attribute__((unused)) int *sock) {
+    check_expected(name);
+    check_expected(ip);
+    return mock();
+}
+
+int* __wrap_wdb_disconnect_agents(int keepalive, const char *sync_status, __attribute__((unused)) int *sock) {
+    check_expected(keepalive);
+    check_expected(sync_status);
+    return mock_ptr_type(int*);
+}
+
+cJSON* __wrap_wdb_get_agent_info(int id, __attribute__((unused)) int *sock) {
+    check_expected(id);
+    return mock_ptr_type(cJSON*);
+}
+
+int* __wrap_wdb_get_agents_by_connection_status(const char* status, __attribute__((unused)) int *sock) {
+    check_expected(status);
+    return mock_ptr_type(int*);
+}

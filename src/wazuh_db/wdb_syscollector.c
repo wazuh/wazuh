@@ -359,7 +359,7 @@ int wdb_set_hotfix_metadata(wdb_t * wdb, const char * scan_id) {
 }
 
 // Function to save OS info into the DB. Return 0 on success or -1 on error.
-int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release) {
+int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release) {
 
     sqlite3_stmt *stmt = NULL;
 
@@ -391,6 +391,7 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
         os_codename,
         os_major,
         os_minor,
+        os_patch,
         os_build,
         os_platform,
         sysname,
@@ -405,7 +406,7 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 }
 
 // Insert OS info tuple. Return 0 on success or -1 on error. (v2)
-int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release) {
+int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_INSERT) < 0) {
@@ -424,12 +425,13 @@ int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
     sqlite3_bind_text(stmt, 7, os_codename, -1, NULL);
     sqlite3_bind_text(stmt, 8, os_major, -1, NULL);
     sqlite3_bind_text(stmt, 9, os_minor, -1, NULL);
-    sqlite3_bind_text(stmt, 10, os_build, -1, NULL);
-    sqlite3_bind_text(stmt, 11, os_platform, -1, NULL);
-    sqlite3_bind_text(stmt, 12, sysname, -1, NULL);
-    sqlite3_bind_text(stmt, 13, release, -1, NULL);
-    sqlite3_bind_text(stmt, 14, version, -1, NULL);
-    sqlite3_bind_text(stmt, 15, os_release, -1, NULL);
+    sqlite3_bind_text(stmt, 10, os_patch, -1, NULL);
+    sqlite3_bind_text(stmt, 11, os_build, -1, NULL);
+    sqlite3_bind_text(stmt, 12, os_platform, -1, NULL);
+    sqlite3_bind_text(stmt, 13, sysname, -1, NULL);
+    sqlite3_bind_text(stmt, 14, release, -1, NULL);
+    sqlite3_bind_text(stmt, 15, version, -1, NULL);
+    sqlite3_bind_text(stmt, 16, os_release, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE){
         return 0;

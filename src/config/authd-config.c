@@ -128,7 +128,7 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
 
             config->flags.use_password = b;
         } else if (!strcmp(node[i]->element, xml_limit_maxagents)) {
-            minfo("The <%s> tag is deprecated since version 4.1.0.", xml_limit_maxagents);
+            mdebug1("The <%s> tag is deprecated since version 4.1.0.", xml_limit_maxagents);
         } else if (!strcmp(node[i]->element, xml_ciphers)) {
             free(config->ciphers);
             config->ciphers = strdup(node[i]->content);

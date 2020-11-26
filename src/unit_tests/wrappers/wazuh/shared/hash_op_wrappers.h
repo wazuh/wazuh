@@ -27,6 +27,8 @@ OSHash *__wrap_OSHash_Create();
 
 void *__wrap_OSHash_Delete_ex(OSHash *self, const char *key);
 
+void *__wrap_OSHash_Delete(OSHash *self, const char *key);
+
 void *__wrap_OSHash_Get(const OSHash *self, const char *key);
 
 void *__real_OSHash_Get_ex(const OSHash *self, const char *key);

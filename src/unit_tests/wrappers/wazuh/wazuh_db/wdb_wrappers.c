@@ -91,23 +91,28 @@ cJSON * __wrap_wdb_exec_stmt(__attribute__((unused)) sqlite3_stmt *stmt) {
     return mock_ptr_type(cJSON *);
 }
 
-int __wrap_wdbc_parse_result(char *result, char **payload) {
-    int retval = mock();
+cJSON * __wrap_wdb_exec_stmt_sized(__attribute__((unused)) sqlite3_stmt *stmt,
+                                   size_t max_size,
+                                   int* status) {
+    check_expected(max_size);
+    *status = mock();
+    return mock_ptr_type(cJSON *);
+}
 
+int __wrap_wdbc_parse_result(char *result, char **payload) {
     check_expected(result);
 
-    if(payload){
-        *payload = strchr(result, ' ');
+    char *ptr = strchr(result, ' ');
+    if (ptr) {
+        *ptr++ = '\0';
+    } else {
+        ptr = result;
+    }
+    if (payload) {
+        *payload = ptr;
     }
 
-    if(*payload) {
-        (*payload)++;
-    }
-    else {
-        *payload = result;
-    }
-
-    return retval;
+    return mock();
 }
 
 int __wrap_wdbc_query_ex(int *sock, const char *query, char *response, const int len) {
@@ -159,7 +164,26 @@ cJSON* __wrap_wdbc_query_parse_json(__attribute__((unused)) int *sock,
     return mock_ptr_type(cJSON *);
 }
 
-cJSON* __wrap_wdb_exec(__attribute__((unused)) sqlite3 *db, 
+wdbc_result __wrap_wdbc_query_parse(int *sock,
+                                    const char *query,
+                                    char *response,
+                                    const int len,
+                                    char** payload) {
+    check_expected(sock);
+    check_expected(query);
+    check_expected(len);
+
+    snprintf(response, len, "%s", mock_ptr_type(char*));
+
+    char* ptr = strchr(response, ' ');
+    if (payload) {
+        *payload = ptr ? ptr+1 : NULL;
+    }
+
+    return mock();
+}
+
+cJSON* __wrap_wdb_exec(__attribute__((unused)) sqlite3 *db,
                  const char *sql) {
     check_expected(sql);
     return mock_ptr_type(cJSON*);
@@ -171,11 +195,6 @@ int __wrap_wdb_sql_exec(__attribute__((unused)) wdb_t *wdb,
                         const char *sql_exec) {
     check_expected(sql_exec);
     return mock();
-}
-
-cJSON* __wrap_wdb_get_agent_info(int id) {
-    check_expected(id);
-    return mock_ptr_type(cJSON*);
 }
 
 wdb_t* __wrap_wdb_init(__attribute__((unused)) sqlite3* db, const char* id) {

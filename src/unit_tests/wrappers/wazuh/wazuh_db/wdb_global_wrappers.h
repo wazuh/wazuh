@@ -18,23 +18,24 @@ int __wrap_wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, cha
 int __wrap_wdb_global_update_agent_name(wdb_t *wdb, int id, char* name);
 
 int __wrap_wdb_global_update_agent_version(wdb_t *wdb,
-                                    int id,
-                                    const char *os_name,
-                                    const char *os_version,
-                                    const char *os_major,
-                                    const char *os_minor,
-                                    const char *os_codename,
-                                    const char *os_platform,
-                                    const char *os_build,
-                                    const char *os_uname,
-                                    const char *os_arch,
-                                    const char *version,
-                                    const char *config_sum,
-                                    const char *merged_sum,
-                                    const char *manager_host,
-                                    const char *node_name,
-                                    const char *agent_ip,
-                                    const char *sync_status);
+                                           int id,
+                                           const char *os_name,
+                                           const char *os_version,
+                                           const char *os_major,
+                                           const char *os_minor,
+                                           const char *os_codename,
+                                           const char *os_platform,
+                                           const char *os_build,
+                                           const char *os_uname,
+                                           const char *os_arch,
+                                           const char *version,
+                                           const char *config_sum,
+                                           const char *merged_sum,
+                                           const char *manager_host,
+                                           const char *node_name,
+                                           const char *agent_ip,
+                                           const char *connection_status,
+                                           const char *sync_status);
 
 cJSON* __wrap_wdb_global_get_agent_labels(wdb_t *wdb, int id);
 
@@ -42,7 +43,9 @@ int __wrap_wdb_global_del_agent_labels(wdb_t *wdb, int id);
 
 int __wrap_wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value);
 
-int __wrap_wdb_global_update_agent_keepalive(wdb_t *wdb, int id, char* status);
+int __wrap_wdb_global_update_agent_keepalive(wdb_t *wdb, int id, char* connection_status, char* status);
+
+int __wrap_wdb_global_update_agent_connection_status(wdb_t *wdb, int id, char* connection_status);
 
 int __wrap_wdb_global_delete_agent(wdb_t *wdb, int id);
 
@@ -53,10 +56,6 @@ cJSON* __wrap_wdb_global_select_agent_group(wdb_t *wdb, int id);
 int __wrap_wdb_global_delete_agent_belong(wdb_t *wdb, int id);
 
 cJSON* __wrap_wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip);
-
-cJSON* __wrap_wdb_global_select_agent_status(wdb_t *wdb, int id);
-
-int __wrap_wdb_global_update_agent_status(wdb_t *wdb, int id, char *status);
 
 int __wrap_wdb_global_update_agent_group(wdb_t *wdb, int id, char *group);
 
@@ -78,11 +77,15 @@ wdbc_result __wrap_wdb_global_sync_agent_info_get(wdb_t *wdb, int* last_agent_id
 
 int __wrap_wdb_global_sync_agent_info_set(wdb_t *wdb,cJSON * json_agent);
 
-wdbc_result __wrap_wdb_global_get_agents_by_keepalive(wdb_t *wdb, int* last_agent_id, char comparator, int keep_alive, char **output);
-
-wdbc_result __wrap_wdb_global_get_all_agents(wdb_t *wdb, int* last_agent_id, char **output);
+cJSON* __wrap_wdb_global_get_all_agents(wdb_t *wdb, int last_agent_id, wdbc_result* status);
 
 cJSON* __wrap_wdb_global_get_agent_info(wdb_t *wdb, int id);
+
+int __wrap_wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status);
+
+cJSON* __wrap_wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, wdbc_result* status);
+
+cJSON* __wrap_wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int keep_alive, const char *sync_status, wdbc_result* status);
 
 int __wrap_wdb_global_check_manager_keepalive(wdb_t *wdb);
 

@@ -28,17 +28,15 @@ CREATE TABLE IF NOT EXISTS agent (
     node_name TEXT DEFAULT 'unknown',
     date_add INTEGER NOT NULL,
     last_keepalive INTEGER,
-    status TEXT NOT NULL CHECK (status IN ('empty', 'pending', 'updated')) DEFAULT 'empty',
-    fim_offset INTEGER NOT NULL DEFAULT 0,
-    reg_offset INTEGER NOT NULL DEFAULT 0,
     `group` TEXT DEFAULT 'default',
-    sync_status TEXT NOT NULL CHECK (sync_status IN ('synced', 'syncreq')) DEFAULT 'synced'
+    sync_status TEXT NOT NULL CHECK (sync_status IN ('synced', 'syncreq')) DEFAULT 'synced',
+    connection_status TEXT NOT NULL CHECK (connection_status IN ('pending', 'never_connected', 'active', 'disconnected')) DEFAULT 'never_connected'
 );
 
 CREATE INDEX IF NOT EXISTS agent_name ON agent (name);
 CREATE INDEX IF NOT EXISTS agent_ip ON agent (ip);
 
-INSERT INTO agent (id, ip, register_ip, name, date_add, last_keepalive, `group`) VALUES (0, '127.0.0.1', '127.0.0.1', 'localhost', strftime('%s','now'), 253402300799, NULL);
+INSERT INTO agent (id, ip, register_ip, name, date_add, last_keepalive, `group`, connection_status) VALUES (0, '127.0.0.1', '127.0.0.1', 'localhost', strftime('%s','now'), 253402300799, NULL, 'active');
 
 CREATE TABLE IF NOT EXISTS labels (
     id INTEGER,
@@ -68,4 +66,4 @@ CREATE TABLE IF NOT EXISTS metadata (
     value TEXT
 );
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '1');
+INSERT INTO metadata (key, value) VALUES ('db_version', '2');

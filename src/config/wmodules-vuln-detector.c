@@ -265,9 +265,9 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
     os_strdup(feed, upd->dist);
 
     if (upd_list[os_index]) {
-        mwarn("Duplicate OVAL configuration for '%s%s%s'", upd->dist, upd->version ? " " : "", upd->version ? upd->version : "");
-        retval = OS_SUPP_SIZE;
-        goto end;
+        mdebug1("Duplicate OVAL configuration for '%s%s%s'", upd->dist, upd->version ? " " : "", upd->version ? upd->version : "");
+        wm_vuldet_free_update_node(upd_list[os_index]);
+        free(upd_list[os_index]);
     }
 
     upd_list[os_index] = upd;
@@ -743,12 +743,14 @@ int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds, char *pr_nam
             if (!strcmp(node[i]->element, XML_PATH)) {
                 feeds_it = *feeds;
                 while (feeds_it) {
+                    os_free(feeds_it->debian_json_path);
                     os_strdup(node[i]->content, feeds_it->debian_json_path);
                     feeds_it = feeds_it->next;
                 }
             } else if (!strcmp(node[i]->element, XML_URL)) {
                 feeds_it = *feeds;
                 while (feeds_it) {
+                    os_free(feeds_it->debian_json_url);
                     os_strdup(node[i]->content, feeds_it->debian_json_url);
                     for (j = 0; node[i]->attributes && node[i]->attributes[j]; j++) {
                         if (!strcmp(node[i]->attributes[j], XML_PORT)) {
