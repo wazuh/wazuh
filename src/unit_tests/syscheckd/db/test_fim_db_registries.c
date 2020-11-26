@@ -83,7 +83,7 @@ fim_registry_value_data *create_reg_value_data(int id, char *name, unsigned int 
     return ret;
 }
 
-void execute_query(char *query) {
+void execute_query(const char *query) {
     char *err_msg = NULL;
     sqlite3_exec(syscheck.database->db, query, NULL, NULL, &err_msg);
     if (err_msg) {

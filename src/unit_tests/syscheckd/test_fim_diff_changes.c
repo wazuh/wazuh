@@ -1920,9 +1920,9 @@ void test_fim_diff_process_delete_file_folder_not_exist(void **state) {
     expect_fim_diff_delete_compress_folder(COMPRESS_FOLDER, -1, 0, 0);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder 'queue/diff/local/c\\file\\path', not exist.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder 'queue/diff/local/c\\file\\path', it does not exist.");
 #else
-    expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder '/var/ossec/queue/diff/local/path/to/file', not exist.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder '/var/ossec/queue/diff/local/path/to/file', it does not exist.");
 #endif
 
     int ret = fim_diff_process_delete_file(filename);

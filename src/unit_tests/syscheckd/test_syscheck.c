@@ -277,7 +277,8 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state)
     char *syscheck_dirs[] = {"Dir1", NULL};
     syscheck.dir = syscheck_dirs;
 
-    registry syscheck_registry[] = { { "Entry1", 1, 0, 0, 0, NULL, "Tag1" } , { NULL, 0, 0, 0, 0, NULL, NULL }};
+    registry syscheck_registry[] = { { "Entry1", 1, 0, 0, 0, NULL, NULL, "Tag1" },
+                                     { NULL, 0, 0, 0, 0, NULL, NULL, NULL } };
     syscheck.registry = syscheck_registry;
 
     char *syscheck_ignore[] = {"Dir1", NULL};
@@ -288,7 +289,7 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state)
     OSMatch *syscheck_ignore_regex[] = {&regex, NULL};
     syscheck.ignore_regex = syscheck_ignore_regex;
 
-    registry syscheck_registry_ignore[] = { { "Entry1", 1, 0, 0, 0, NULL, "Tag1" } , { NULL, 0, 0, 0, 0, NULL, NULL }};
+    registry_ignore syscheck_registry_ignore[] = { { "Entry1", 1 }, { NULL, 0 } };
     syscheck.key_ignore = syscheck_registry_ignore;
 
     char *syscheck_nodiff[] = {"Diff", NULL};

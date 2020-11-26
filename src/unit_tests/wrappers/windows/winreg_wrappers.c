@@ -20,13 +20,15 @@ LONG wrap_RegQueryInfoKey(__UNUSED_PARAM(HKEY hKey),
                           __UNUSED_PARAM(LPDWORD lpcbMaxSubKeyLen),
                           __UNUSED_PARAM(LPDWORD lpcbMaxClassLen),
                           LPDWORD lpcValues,
-                          __UNUSED_PARAM(LPDWORD lpcbMaxValueNameLen),
-                          __UNUSED_PARAM(LPDWORD lpcbMaxValueLen),
+                          LPDWORD lpcbMaxValueNameLen,
+                          LPDWORD lpcbMaxValueLen,
                           __UNUSED_PARAM(LPDWORD lpcbSecurityDescriptor),
                           PFILETIME lpftLastWriteTime) {
     if (lpcSubKeys) *lpcSubKeys = mock_type(CHAR);
     if (lpcValues) *lpcValues = mock_type(DWORD);
     PFILETIME mock_file_time;
+    *lpcbMaxValueNameLen = mock();
+    *lpcbMaxValueLen = mock();
     mock_file_time = mock_type(PFILETIME);
     lpftLastWriteTime->dwLowDateTime = mock_file_time->dwLowDateTime;
     lpftLastWriteTime->dwHighDateTime = mock_file_time->dwHighDateTime;
@@ -36,6 +38,8 @@ LONG wrap_RegQueryInfoKey(__UNUSED_PARAM(HKEY hKey),
 void expect_RegQueryInfoKey_call(DWORD sub_keys, DWORD values, PFILETIME last_write_time, LONG return_value) {
     will_return(wrap_RegQueryInfoKey, sub_keys);
     will_return(wrap_RegQueryInfoKey, values);
+    will_return(wrap_RegQueryInfoKey, 256);
+    will_return(wrap_RegQueryInfoKey, 256);
     will_return(wrap_RegQueryInfoKey, last_write_time);
     will_return(wrap_RegQueryInfoKey, return_value);
 }

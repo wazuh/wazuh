@@ -516,6 +516,10 @@ static int teardown_process_value_events_success(void **state) {
         free(entry_array);
     }
 
+    if (rmdir_ex(DIFF_DIR) != 0) {
+        return -1;
+    }
+
     return 0;
 }
 
@@ -695,7 +699,9 @@ static void test_fim_registry_validate_recursion_level_invalid_recursion_level(v
     char *path = "HKEY_LOCAL_MACHINE\\Software\\RecursionLevel0\\This\\must\\fail";
     registry *configuration = &syscheck.registry[1];
     int ret;
-    expect_string(__wrap__mdebug2, formatted_msg, "(6217): Maximum level of recursion reached. Depth:2 recursion_level:0 'HKEY_LOCAL_MACHINE\\Software\\RecursionLevel0\\This\\must\\fail'");
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "(6217): Maximum level of recursion reached. Depth:3 recursion_level:0 "
+                  "'HKEY_LOCAL_MACHINE\\Software\\RecursionLevel0\\This\\must\\fail'");
 
     ret = fim_registry_validate_recursion_level(path, configuration);
 
@@ -735,7 +741,9 @@ static void test_fim_registry_validate_ignore_ignore_entry(void **state) {
     registry *configuration = &syscheck.registry[2];
     int ret;
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6204): Ignoring 'registry' 'HKEY_LOCAL_MACHINE\\Software\\Ignore' due to 'HKEY_LOCAL_MACHINE\\Software\\Ignore'");
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "(6258): Ignoring 'registry' '[x64] HKEY_LOCAL_MACHINE\\Software\\Ignore' due to "
+                  "'HKEY_LOCAL_MACHINE\\Software\\Ignore'");
 
     ret = fim_registry_validate_ignore(path, configuration, 1);
 
@@ -747,7 +755,10 @@ static void test_fim_registry_validate_ignore_regex_ignore_entry(void **state) {
     registry *configuration = &syscheck.registry[0];
     int ret;
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6205): Ignoring 'registry' 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\IgnoreRegex\\This\\must\\fail' due to sregex 'IgnoreRegex'");
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "(6259): Ignoring 'registry' '[x64] "
+                  "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\IgnoreRegex\\This\\must\\fail' due to sregex "
+                  "'IgnoreRegex'");
 
     ret = fim_registry_validate_ignore(path, configuration, 1);
 
@@ -881,7 +892,7 @@ static void test_fim_registry_calculate_hashes_CHECK_SHA1SUM(void **state) {
     syscheck.registry = one_entry_config;
     registry *configuration = &syscheck.registry[0];
     configuration->opts = CHECK_SHA1SUM;
-    BYTE *data_buffer = (unsigned char *)"value_data";
+    BYTE *data_buffer = (unsigned char *)"value_data\0";
     entry->registry_entry.value->type = REG_MULTI_SZ;
 
     fim_registry_calculate_hashes(entry, configuration, data_buffer);
@@ -1067,15 +1078,6 @@ static void test_fim_registry_scan_regular_scan(void **state) {
     expect_fim_registry_get_key_data_call(usid, gsid, "username2", "groupname2", acl_size, ace, last_write_time);
 
 
-    // Scan a subkey of depth0
-    expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\RecursionLevel0\\depth0", 0,
-                             KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
-    expect_RegQueryInfoKey_call(1, 0, &last_write_time, ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("depth1", 7, ERROR_SUCCESS);
-    // Inside fim_registry_get_key_data
-    expect_fim_registry_get_key_data_call(usid, gsid, "username2", "groupname2", acl_size, ace, last_write_time);
-
-
     // Test
     fim_registry_scan();
 
@@ -1089,7 +1091,7 @@ static void test_fim_registry_scan_regular_scan(void **state) {
     ret = check_fim_db_reg_key(keys_array[2]);
     assert_int_equal(ret, 0);
     ret = check_fim_db_reg_key(keys_array[3]);
-    assert_int_equal(ret, 0);
+    assert_int_equal(ret, -1);
 }
 
 static void test_fim_registry_scan_RegOpenKeyEx_fail(void **state) {
@@ -1241,10 +1243,16 @@ static void test_fim_registry_process_value_event_ignore_event(void **state) {
     BYTE *data_buffer = (unsigned char *)"value_data";
 
     // Test if the entry is not configured
-    static registry_ignore ignore_conf[] = { { "valuename", ARCH_32BIT}, { "valuename", ARCH_64BIT}, { NULL, 0} };
+    static registry_ignore ignore_conf[] = {
+        { "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\valuename", ARCH_32BIT },
+        { "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\valuename", ARCH_64BIT },
+        { NULL, 0 }
+    };
     syscheck.value_ignore = ignore_conf;
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6204): Ignoring 'value' 'valuename' due to 'valuename'");
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "(6258): Ignoring 'value' '[x64] HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\valuename' due to "
+                  "'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\valuename'");
 
     fim_registry_process_value_event(entry_array[1], entry_array[0], event_mode, data_buffer);
 
@@ -1271,7 +1279,8 @@ static void test_fim_registry_process_value_event_restrict_event(void **state) {
     // Test if the entry is not configured
     syscheck.registry[0].restrict_value = restrict_list;
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6203): Ignoring file 'valuename' due to restriction 'restricted_value'");
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "(6203): Ignoring entry 'valuename' due to restriction 'restricted_value'");
 
     fim_registry_process_value_event(entry_array[1], entry_array[0], event_mode, data_buffer);
 

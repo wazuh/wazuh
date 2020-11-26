@@ -2495,90 +2495,11 @@ static void test_fim_process_alert_no_path(void **state) {
     if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
         fail();
 
-    /* Inside fim_send_db_save */
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
-        "{\"timestamp\":123456789,"
-        "\"attributes\":{"
-            "\"type\":\"file\","
-            "\"size\":4567,"
-            "\"perm\":\"perm\","
-            "\"user_name\":\"user_name\","
-            "\"group_name\":\"group_name\","
-            "\"uid\":\"uid\","
-            "\"gid\":\"gid\","
-            "\"inode\":5678,"
-            "\"mtime\":6789,"
-            "\"hash_md5\":\"hash_md5\","
-            "\"hash_sha1\":\"hash_sha1\","
-            "\"hash_sha256\":\"hash_sha256\","
-            "\"win_attributes\":\"win_attributes\","
-            "\"symlink_path\":\"symlink_path\","
-            "\"checksum\":\"checksum\"}}");
-    expect_any(__wrap_wdbc_query_ex, len);
-    will_return(__wrap_wdbc_query_ex, result);
-    will_return(__wrap_wdbc_query_ex, 0);
-
-    expect_string(__wrap_wdbc_parse_result, result, result);
-    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+    expect_string(__wrap__mdebug1, formatted_msg, "No member 'path' in Syscheck JSON payload");
 
     ret = fim_process_alert(&sdb, input->lf, data);
 
-    assert_int_equal(ret, 0);
-
-    // Assert fim_generate_alert
-    /* assert new attributes */
-    assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
-    assert_string_equal(input->lf->fields[FIM_INODE].value, "5678");
-    assert_int_equal(input->lf->inode_after, 5678);
-    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
-    assert_int_equal(input->lf->mtime_after, 6789);
-    assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
-    assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
-    assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
-    assert_string_equal(input->lf->fields[FIM_UID].value, "uid");
-    assert_string_equal(input->lf->fields[FIM_GID].value, "gid");
-    assert_string_equal(input->lf->fields[FIM_MD5].value, "hash_md5");
-    assert_string_equal(input->lf->fields[FIM_SHA1].value, "hash_sha1");
-    assert_string_equal(input->lf->fields[FIM_SHA256].value, "hash_sha256");
-    assert_string_equal(input->lf->fields[FIM_SYM_PATH].value, "symlink_path");
-
-    /* assert old attributes */
-    assert_string_equal(input->lf->size_before, "1234");
-    assert_int_equal(input->lf->inode_before, 2345);
-    assert_int_equal(input->lf->mtime_before, 3456);
-    assert_string_equal(input->lf->perm_before, "old_perm");
-    assert_string_equal(input->lf->uname_before, "old_user_name");
-    assert_string_equal(input->lf->gname_before, "old_group_name");
-    assert_string_equal(input->lf->owner_before, "old_uid");
-    assert_string_equal(input->lf->gowner_before, "old_gid");
-    assert_string_equal(input->lf->md5_before, "old_hash_md5");
-    assert_string_equal(input->lf->sha1_before, "old_hash_sha1");
-    assert_string_equal(input->lf->sha256_before, "old_hash_sha256");
-
-    /* Assert values gotten from audit */
-    assert_string_equal(input->lf->fields[FIM_PPID].value, "12345");
-    assert_string_equal(input->lf->fields[FIM_PROC_ID].value, "23456");
-    assert_string_equal(input->lf->fields[FIM_USER_ID].value, "user_id");
-    assert_string_equal(input->lf->fields[FIM_USER_NAME].value, "user_name");
-    assert_string_equal(input->lf->fields[FIM_GROUP_ID].value, "group_id");
-    assert_string_equal(input->lf->fields[FIM_GROUP_NAME].value, "group_name");
-    assert_string_equal(input->lf->fields[FIM_PROC_NAME].value, "process_name");
-    assert_string_equal(input->lf->fields[FIM_AUDIT_ID].value, "audit_uid");
-    assert_string_equal(input->lf->fields[FIM_AUDIT_NAME].value, "audit_name");
-    assert_string_equal(input->lf->fields[FIM_EFFECTIVE_UID].value, "effective_uid");
-    assert_string_equal(input->lf->fields[FIM_EFFECTIVE_NAME].value, "effective_name");
-
-    assert_string_equal(input->lf->full_log,
-        "File '(null)' added\n"
-        "Hard links: /a/hard1.file,/b/hard2.file\n"
-        "Mode: whodata\n"
-        "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n");
-
-    /* Assert actual output */
-    assert_int_equal(input->lf->event_type, FIM_ADDED);
-    assert_string_equal(input->lf->decoder_info->name, FIM_NEW);
-    assert_int_equal(input->lf->decoder_info->id, 0);
+    assert_int_equal(ret, -1);
 }
 
 static void test_fim_process_alert_no_hard_links(void **state) {
