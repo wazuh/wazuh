@@ -8,6 +8,9 @@
 * The endpoint's responses has been changed accordingly to the new RBAC standard. See spec schema responses carefully.
 * The responses no longer will have `items` and `totalitems` fields, instead most responses will have the following structure:
 ```
+
+# TEST MARK
+
 {
   "data": {
     "affected_items": [],
@@ -26,7 +29,7 @@
 
 ## Active Response
 ### PUT     /active-response
-* New endpoint. Run commands in all agents by default. 
+* New endpoint. Run commands in all agents by default.
 * Use **agents_list** parameter in query to specify which agents must run the command.
 
 ### PUT     /active-response/{agent_id}
@@ -36,7 +39,7 @@
 ### DELETE  /agents
 * Nothing removed by default, it must be specified with the "all" keyword.
 * Removed **ids** query parameter. Use **agents_list** instead.
-* Added **agents_list** parameter in query used to specify which agents must be deleted. 
+* Added **agents_list** parameter in query used to specify which agents must be deleted.
 * If no **agents_list** is provided in query all agents will be removed.
 
 ### DELETE  /agents/{agent_id}
@@ -44,7 +47,7 @@
 
 ### DELETE  /agents/{agent_id}/group
 * Added **groups_list** parameter in query to specify an array of group IDs to remove from the agent.
-* Removes the agent from all groups by default or a list of them if **groups_list** parameter is found.	
+* Removes the agent from all groups by default or a list of them if **groups_list** parameter is found.
 
 ### DELETE  /agents/group
 * Nothing removed by default, it must be specified with the "all" keyword.
@@ -84,7 +87,7 @@ To get all agents in a group use `GET /groups/{group_id}/agents`.
 * Endpoint removed. Use `GET /groups/{group_id}/files` instead.
 
 ### GET     /agents/groups/{group_id}/files/{file_name}
-* Endpoint removed. Use `GET /groups/{group_id}/files/{filename}/json` or 
+* Endpoint removed. Use `GET /groups/{group_id}/files/{filename}/json` or
 `GET /groups/{group_id}/files/{filename}/xml` instead.
 
 ### GET     /agents/name/{agent_name}
@@ -175,10 +178,10 @@ This agent will use **any** as IP.
 * New endpoint. Restart all agents belonging to a node.
 
 ## Cache
-### DELETE  /cache 
-### GET     /cache 
+### DELETE  /cache
+### GET     /cache
 ### DELETE  /cache{group} (Clear group cache)
-### GET     /cache/config 
+### GET     /cache/config
 * All cache endpoints have been removed.
 
 ## Cluster
@@ -193,7 +196,7 @@ This agent will use **any** as IP.
 
 ### GET     /cluster/configuration/validation
 * Added **nodes_list** parameter in query.
-* Return whether the Wazuh configuration is correct or not in all cluster nodes 
+* Return whether the Wazuh configuration is correct or not in all cluster nodes
 or a list of them if parameter **nodes_list** is used.
 
 ### GET     /cluster/healthcheck
@@ -255,7 +258,7 @@ or a list of them if parameter **nodes_list** is used.
 * Endpoint removed. Use `PUT /cluster/restart?nodes_list=node_id` instead.
 
 ### PUT     /cluster/restart
-* Added **nodes_list** parameter in query 
+* Added **nodes_list** parameter in query
 * Restarts all nodes in the cluster by default or a list of them if **nodes_list** is found.
 
 ## Decoders
@@ -280,7 +283,7 @@ or a list of them if parameter **nodes_list** is used.
 
 ### GET     /decoders/files/{filename}/download
 * New endpoint. Download an specified decoder file.
-* The response has been changed to the new RBAC generic response. 
+* The response has been changed to the new RBAC generic response.
 
 ## Experimental
 ### General
@@ -318,7 +321,7 @@ or a list of them if parameter **nodes_list** is used.
 ### GET     /experimental/syscollector/ports
 * Renamed **local_ip** parameter to **local.ip**.
 * Renamed **local_port** parameter to **local.port**.
-* Renamed **remote_ip**  parameter to **remote.ip**. 
+* Renamed **remote_ip**  parameter to **remote.ip**.
 
 ### DELETE /experimental/syscheck
 * Nothing removed by default, it must be specified with the "all" keyword.
@@ -329,8 +332,8 @@ or a list of them if parameter **nodes_list** is used.
 * New endpoint. Deletes all groups or a list of them.
 
 ### GET ​   /groups
-* New endpoint. Get information about all groups or a list of them. 
-Returns a list containing basic information about each group such as number of agents belonging 
+* New endpoint. Get information about all groups or a list of them.
+Returns a list containing basic information about each group such as number of agents belonging
 to the group and the checksums of the configuration and shared files.
 * Removed **q** parameter in query.
 
@@ -353,7 +356,7 @@ to the group and the checksums of the configuration and shared files.
 * New endpoint. Creates a new group.
 
 ### PUT ​   /groups/{group_id}/configuration
-* New endpoint. Update an specified group's configuration. 
+* New endpoint. Update an specified group's configuration.
 This API call expects a full valid XML file with the shared configuration tags/syntax.
 
 ## Lists
@@ -362,7 +365,7 @@ This API call expects a full valid XML file with the shared configuration tags/s
 * Added **filename** parameter in query used to filter by filename.
 * Renamed **path** parameter in query to **relative_dirname**.
 
-### GET     /lists/files 
+### GET     /lists/files
 * Added **filename** parameter in query used to filter by filename.
 * added **relative_dirname** parameter in query used to filter by relative directory name.
 
@@ -598,8 +601,8 @@ This API call expects a full valid XML file with the shared configuration tags/s
 * Added **process** parameter used to filter by process name.
 * Renamed **local_ip** parameter to **local.ip**.
 * Renamed **local_port** parameter to **local.port**.
-* Renamed **remote_ip**  parameter to **remote.ip**. 
- 
+* Renamed **remote_ip**  parameter to **remote.ip**.
+
 ## Version
-### GET     /version 
+### GET     /version
 * Endpoint removed. Use `GET /` instead.
