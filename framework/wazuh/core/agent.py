@@ -1697,6 +1697,8 @@ def get_agents_info():
     """Get all agent IDs in the system."""
     with open(client_keys, 'r') as f:
         result = {line.split(' ')[0] for line in f}
+
+    result.add('000')
     return result
 
 
