@@ -1734,7 +1734,8 @@ def expand_group(group_name):
                         agents_ids.add(file)
                 except IndexError:
                     pass
-    return agents_ids
+
+    return agents_ids & get_agents_info()
 
 
 def get_rbac_filters(system_resources=None, permitted_resources=None, filters=None):
