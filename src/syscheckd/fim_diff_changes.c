@@ -598,6 +598,7 @@ int fim_diff_delete_compress_folder(const char *folder) {
         return -1;
     }
 
+    mdebug2(FIM_DIFF_FOLDER_DELETED, folder);
     return 0;
 }
 

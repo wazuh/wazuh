@@ -231,6 +231,7 @@ void expect_fim_diff_delete_compress_folder(const char *folder, int isDir_ret, i
 
         if (rmdir_ex_ret >= 0) {
             expect_string(__wrap_remove_empty_folders, folder, folder);
+            expect_any(__wrap__mdebug2, formatted_msg);
             will_return(__wrap_remove_empty_folders, remove_empty_folder_ret);
         } else {
             expect_any(__wrap__mdebug2, formatted_msg);
@@ -693,6 +694,8 @@ void test_fim_diff_delete_compress_folder(void **state) {
 
     expect_string(__wrap_remove_empty_folders, folder, folder);
     will_return(__wrap_remove_empty_folders, 0);
+
+    expect_any(__wrap__mdebug2, formatted_msg);
 
     int ret = fim_diff_delete_compress_folder(folder);
 
