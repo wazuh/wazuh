@@ -73,7 +73,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,
 
 list(APPEND wdb_tests_names "test_wdb_task_parser")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_task_insert_task -Wl,--wrap,wdb_task_get_upgrade_task_status -Wl,--wrap,wdb_task_update_upgrade_task_status -Wl,--wrap,wdb_task_get_upgrade_task_by_agent_id \
-                             -Wl,--wrap,wdb_task_cancel_upgrade_tasks -Wl,--wrap,wdb_task_set_timeout_status -Wl,--wrap,wdb_task_delete_old_entries")
+                             -Wl,--wrap,wdb_task_cancel_upgrade_tasks -Wl,--wrap,wdb_task_set_timeout_status -Wl,--wrap,wdb_task_delete_old_entries -Wl,--wrap,wdb_open_tasks -Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1")
 
 # Add extra compiling flags
 add_compile_options(-Wall)
