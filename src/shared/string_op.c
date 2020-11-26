@@ -965,3 +965,26 @@ char * w_remove_substr(char *str, const char *sub) {
     }
     return str;
 }
+
+char * w_strndup(const char * str, size_t n) {
+
+    char * str_cpy = NULL;
+    size_t str_len;
+
+    if (!str) {
+        return str_cpy;
+    }
+
+    if (str_len = strlen(str), str_len > n) {
+        str_len = n;
+    }
+
+    os_calloc(str_len + 1, sizeof(char), str_cpy);
+    if (str_len > 0) {
+        strncpy(str_cpy, str, str_len);
+    }
+
+    str_cpy[str_len] = '\0';
+
+    return str_cpy;
+}
