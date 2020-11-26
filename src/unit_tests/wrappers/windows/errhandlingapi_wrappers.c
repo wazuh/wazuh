@@ -16,3 +16,7 @@
 DWORD wrap_GetLastError(VOID) {
     return mock();
 }
+
+void expect_GetLastError_call(int error_code) {
+    will_return(wrap_GetLastError, error_code);
+}

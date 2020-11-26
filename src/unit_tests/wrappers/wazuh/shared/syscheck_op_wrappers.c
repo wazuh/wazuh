@@ -42,6 +42,14 @@ char *__wrap_get_user(const char *path, char **sid) {
 
     return mock_type(char*);
 }
+
+char *__wrap_get_file_user(const char *path, char **sid) {
+    check_expected(path);
+    *sid = mock_type(char *);
+
+    return mock_type(char *);
+}
+
 #endif
 
 unsigned int __wrap_w_directory_exists(const char *path) {
@@ -59,3 +67,39 @@ int __wrap_w_get_file_permissions(const char *file_path, char *permissions, int 
     snprintf(permissions, perm_size, "%s", mock_type(char*));
     return mock();
 }
+
+int __wrap_remove_empty_folders(const char *folder) {
+    check_expected(folder);
+    return mock();
+}
+
+void expect_get_group(int gid, char *ret) {
+    expect_value(__wrap_get_group, gid, gid);
+    will_return(__wrap_get_group, ret);
+}
+
+#ifdef WIN32
+void expect_get_user(const char *path, char **sid, char *user) {
+    expect_string(__wrap_get_user, path, path);
+    will_return(__wrap_get_user, sid);
+    will_return(__wrap_get_user, user);
+}
+
+void expect_get_file_user(const char *path, char *sid, char *user) {
+    expect_string(__wrap_get_file_user, path, path);
+    will_return(__wrap_get_file_user, sid);
+    will_return(__wrap_get_file_user, user);
+}
+
+void expect_w_get_file_permissions(const char *file_path, char *perms, int ret) {
+    expect_string(__wrap_w_get_file_permissions, file_path, file_path);
+    will_return(__wrap_w_get_file_permissions, perms);
+    will_return(__wrap_w_get_file_permissions, ret);
+}
+#else
+
+void expect_get_user(int uid, char *ret) {
+    expect_value(__wrap_get_user, uid, uid);
+    will_return(__wrap_get_user, ret);
+}
+#endif

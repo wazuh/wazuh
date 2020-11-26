@@ -5036,7 +5036,7 @@ void test_wdb_global_check_manager_keepalive_step_error(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_stmt_cache, 10);
-    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    expect_sqlite3_step_call(SQLITE_ERROR);
 
     assert_int_equal(wdb_global_check_manager_keepalive(data->wdb), -1);
 }
@@ -5045,7 +5045,7 @@ void test_wdb_global_check_manager_keepalive_step_nodata(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_stmt_cache, 10);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    expect_sqlite3_step_call(SQLITE_DONE);
 
     assert_int_equal(wdb_global_check_manager_keepalive(data->wdb), 0);
 }
@@ -5054,7 +5054,7 @@ void test_wdb_global_check_manager_keepalive_step_ok(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_stmt_cache, 10);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_sqlite3_step_call(SQLITE_ROW);
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, 1);
 

@@ -283,11 +283,13 @@ void fim_db_clean_file(fim_tmp_file **file, int storage) {
 }
 
 #ifndef WIN32
+// LCOV_EXCL_START
 fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql,
                                           __attribute__((unused)) fim_type type,
                                           const char *path) {
     return fim_db_get_path(fim_sql, path);
 }
+// LCOV_EXCL_STOP
 #else
 fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const char *path) {
     char *full_path, *key_path, *value_name;
@@ -686,6 +688,7 @@ int fim_db_get_last_path(fdb_t * fim_sql, int type, char **path) {
     return fim_db_get_string(fim_sql, LAST_PATH_QUERY[type], path);
 }
 
+// LCOV_EXCL_START
 int fim_db_get_first_path(fdb_t * fim_sql, int type, char **path) {
     static const int FIRST_PATH_QUERY[] = {
         [FIM_TYPE_FILE] = FIMDB_STMT_GET_FIRST_PATH,
@@ -694,6 +697,7 @@ int fim_db_get_first_path(fdb_t * fim_sql, int type, char **path) {
 
     return fim_db_get_string(fim_sql, FIRST_PATH_QUERY[type], path);
 }
+// LCOV_EXCL_STOP
 
 int fim_db_get_data_checksum(fdb_t *fim_sql, fim_type type, void *arg) {
     static const int CHECKSUM_QUERY[] = {
@@ -887,9 +891,11 @@ int fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **b
 }
 
 #ifndef WIN32
+// LCOV_EXCL_START
 inline int fim_db_get_count_entries(fdb_t * fim_sql) {
     return fim_db_get_count_file_entry(fim_sql);
 }
+// LCOV_EXCL_STOP
 #else
 int fim_db_get_count_entries(fdb_t * fim_sql) {
     int res = fim_db_get_count(fim_sql, FIMDB_STMT_COUNT_DB_ENTRIES);

@@ -24,6 +24,10 @@ DWORD wrap_FormatMessage(__UNUSED_PARAM(DWORD dwFlags),
     return 0;
 }
 
+void expect_FormatMessage_call(char *buffer) {
+    will_return(wrap_FormatMessage, buffer);
+}
+
 HLOCAL wrap_LocalFree(__UNUSED_PARAM(HLOCAL hMem)) {
     return NULL;
 }
@@ -37,19 +41,23 @@ WINBOOL wrap_LookupAccountSid(__UNUSED_PARAM(LPCSTR lpSystemName),
                               __UNUSED_PARAM(PSID_NAME_USE peUse)) {
     if (Name != NULL) {
         strncpy(Name, mock_type(char*), *cchName);
-    }
-    else {
+    } else {
         *cchName = mock();
     }
 
     if (ReferencedDomainName != NULL) {
         strncpy(ReferencedDomainName, mock_type(char*), *cchReferencedDomainName);
-    }
-    else {
+    } else {
         *cchReferencedDomainName = mock();
     }
 
     return mock();
+}
+
+void expect_LookupAccountSid_call(char *name, char *DomainName, int ret_value) {
+    will_return(wrap_LookupAccountSid, name);
+    will_return(wrap_LookupAccountSid, DomainName);
+    will_return(wrap_LookupAccountSid, ret_value);
 }
 
 WINBOOL wrap_GetFileSecurity(LPCSTR lpFileName,
@@ -61,8 +69,7 @@ WINBOOL wrap_GetFileSecurity(LPCSTR lpFileName,
 
     if(!nLength) {
         *lpnLengthNeeded = mock();
-    }
-    else {
+    } else {
         PSECURITY_DESCRIPTOR sec_desc = mock_type(PSECURITY_DESCRIPTOR);
 
         if(sec_desc) {

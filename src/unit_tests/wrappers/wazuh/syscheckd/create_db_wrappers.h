@@ -32,4 +32,15 @@ int __wrap_fim_registry_event(char *key, fim_file_data *data, int pos);
 
 int __wrap_fim_whodata_event(whodata_evt * w_evt);
 
+/**
+ * @brief This function loads the expect and will_return calls for the wrapper of fim_configuration_directory
+ */
+void expect_fim_configuration_directory_call(const char *path, const char *file, int ret);
+
+/**
+ * @brief This function loads the expect and will_return calls for the wrapper of fim_checker
+ */
+void expect_fim_checker_call(const char *path, int w_evt, int report);
+
+void __wrap_free_entry(fim_entry *entry);
 #endif

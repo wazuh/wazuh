@@ -66,6 +66,7 @@ static void test_wdbi_checksum_range_begin_null(void **state)
 
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, 0);
 
     ret = wdbi_checksum_range(data, 0, NULL, "test_end",test_hex);
 
@@ -81,6 +82,7 @@ static void test_wdbi_checksum_range_end_null(void **state)
     os_sha1 test_hex = "";
 
     will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 0);
 
     ret = wdbi_checksum_range(data, 0, "test_begin", NULL, test_hex);
@@ -122,6 +124,7 @@ static void test_wdbi_checksum_range_no_row(void **state)
 
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, 0);
 
     ret = wdbi_checksum_range(data, 0, "test_begin", "test_end", test_hex);
 
@@ -137,7 +140,9 @@ static void test_wdbi_checksum_range_success(void **state)
     os_sha1 test_hex = {5,5,0,8,6,'c','e','f',9,'c',8,7,'d',6,'d',0,3,1,'c','d',5,'d','b',2,9,'c','d',0,3,'a',2,'e','d',0,2,5,2,'b',4,5};
 
     will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 100);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 0);
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, NULL);
@@ -163,6 +168,7 @@ static void test_wdbi_delete_begin_null(void **state)
 
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_errmsg, "test_begin_null");
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_begin_null");
@@ -181,6 +187,7 @@ static void test_wdbi_delete_end_null(void **state)
 
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_errmsg, "test_end_null");
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_end_null");
@@ -198,6 +205,7 @@ static void test_wdbi_delete_tail_null(void **state)
     data->id = strdup("000");
 
     will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_errmsg, "test_tail_null");
 
@@ -230,6 +238,7 @@ static void test_wdbi_delete_sql_no_done(void **state)
 
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_errmsg, "test_sql_no_done");
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_sql_no_done");
@@ -247,6 +256,7 @@ static void test_wdbi_delete_success(void **state)
     data->id = strdup("000");
 
     will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
 
     ret = wdbi_delete(data, 0, "test_begin", "test_end",NULL);
@@ -275,6 +285,7 @@ static void test_wdbi_update_attempt_no_sql_done(void **state)
     data->id = strdup("000");
 
     will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 1);
     will_return(__wrap_sqlite3_errmsg, "test_no_sql_done");
 
@@ -289,6 +300,7 @@ static void test_wdbi_update_attempt_success(void **state)
     data->id = strdup("000");
 
     will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
 
     wdbi_update_attempt(data, 0, 0);
@@ -315,6 +327,7 @@ static void test_wdbi_update_completion_no_sql_done(void **state)
     data->id = strdup("000");
 
     will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 1);
     will_return(__wrap_sqlite3_errmsg, "test_no_sql_done");
 
@@ -329,6 +342,7 @@ static void test_wdbi_update_completion_success(void **state)
     data->id = strdup("000");
 
     will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
 
     wdbi_update_completion(data, 0, 0);
@@ -399,6 +413,7 @@ void test_wdbi_query_clear_sql_step_error(void **state)
 
     will_return(__wrap_wdb_stmt_cache, 0);
     will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_errmsg, "test_error");
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_error");
@@ -416,8 +431,10 @@ void test_wdbi_query_clear_ok(void **state)
     const char *payload = "{\"id\":5678}";
 
     will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
     will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
 
     ret = wdbi_query_clear(data, WDB_FIM, payload);
@@ -518,10 +535,13 @@ void test_wdbi_query_checksum_range_no_data(void **state)
     const char * payload = "{\"begin\":\"something\",\"end\":\"something\",\"checksum\":\"something\",\"id\":1234}";
 
     will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101); //predelete
     will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101); //pre attemps
     will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
 
     ret = wdbi_query_checksum(data, WDB_FIM, "integrity_check_global", payload);
@@ -537,9 +557,11 @@ void test_wdbi_query_checksum_diff_hexdigest(void **state)
     const char * payload = "{\"begin\":\"something\",\"end\":\"something\",\"checksum\":\"something\",\"id\":1234}";
 
     will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 100);
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, NULL);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
     will_return(__wrap_wdb_stmt_cache, -1);
     will_return(__wrap_wdb_stmt_cache, -1);
@@ -560,12 +582,14 @@ void test_wdbi_query_checksum_equal_hexdigest(void **state)
     const char * payload = "{\"begin\":\"something\",\"end\":\"something\",\"checksum\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"id\":1234}";
 
     will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 100);
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     expect_string(__wrap_EVP_DigestUpdate, data, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     expect_value(__wrap_EVP_DigestUpdate, count, 40);
     will_return(__wrap_EVP_DigestUpdate, 0);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
     will_return(__wrap_wdb_stmt_cache, -1);
     will_return(__wrap_wdb_stmt_cache, -1);
@@ -585,9 +609,11 @@ void test_wdbi_query_checksum_bad_command(void **state)
     const char * payload = "{\"begin\":\"something\",\"end\":\"something\",\"checksum\":\"something\",\"id\":1234}";
 
     will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 100);
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, NULL);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) has a NULL fim checksum.");
@@ -606,12 +632,14 @@ void test_wdbi_query_checksum_check_left_no_tail(void **state)
     const char * payload = "{\"begin\":\"something\",\"end\":\"something\",\"checksum\":\"something\",\"id\":1234}";
 
     will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 100);
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, "something");
     expect_string(__wrap_EVP_DigestUpdate, data, "something");
     expect_value(__wrap_EVP_DigestUpdate, count, 9);
     will_return(__wrap_EVP_DigestUpdate, 0);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
     will_return(__wrap_wdb_stmt_cache, -1);
 
@@ -630,12 +658,14 @@ void test_wdbi_query_checksum_check_left_ok(void **state)
     const char * payload = "{\"begin\":\"something\",\"end\":\"something\",\"checksum\":\"something\",\"id\":1234,\"tail\":\"something\"}";
 
     will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 100);
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, "something");
     expect_string(__wrap_EVP_DigestUpdate, data, "something");
     expect_value(__wrap_EVP_DigestUpdate, count, 9);
     will_return(__wrap_EVP_DigestUpdate, 0);
+    will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
     will_return(__wrap_wdb_stmt_cache, -1);
 
