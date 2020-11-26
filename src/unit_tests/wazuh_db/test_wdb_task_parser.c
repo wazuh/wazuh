@@ -17,13 +17,217 @@
 
 // Setup/teardown
 
+typedef struct test_struct {
+    wdb_t *wdb;
+    char *output;
+} test_struct_t;
+
 static int teardown_json(void **state) {
     cJSON *json = *state;
     cJSON_Delete(json);
     return 0;
 }
 
+static int test_setup(void **state) {
+    test_struct_t *init_data = NULL;
+    os_calloc(1,sizeof(test_struct_t),init_data);
+    os_calloc(1,sizeof(wdb_t),init_data->wdb);
+    os_strdup("000",init_data->wdb->id);
+    os_calloc(256,sizeof(char),init_data->output);
+    os_calloc(1,sizeof(sqlite3 *),init_data->wdb->db);
+    *state = init_data;
+    return 0;
+}
+
+static int test_teardown(void **state){
+    test_struct_t *data  = (test_struct_t *)*state;
+    os_free(data->output);
+    os_free(data->wdb->id);
+    os_free(data->wdb->db);
+    os_free(data->wdb);
+    os_free(data);
+    return 0;
+}
+
 // Tests
+
+void test_wdb_parse_task_open_tasks_fail(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "task ";
+
+    will_return(__wrap_wdb_open_tasks, NULL);
+    expect_string(__wrap__mdebug2, formatted_msg, "Task query: ");
+    expect_string(__wrap__mdebug2, formatted_msg, "Couldn't open DB task: queue/tasks/tasks.db");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Couldn't open DB task");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_task_no_space(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "task";
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid DB query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "DB query: task");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'task'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_task_invalid_command(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "task invalid command";
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Task query: invalid command");
+
+    will_return(__wrap_wdb_open_tasks, data->wdb);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid DB query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Task DB query error near: invalid");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'invalid'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_task_upgrade_invalid_parameters(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "task upgrade no_json";
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Task query: upgrade no_json");
+
+    will_return(__wrap_wdb_open_tasks, data->wdb);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid command parameters, near 'no_json'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_task_upgrade_custom_invalid_parameters(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "task upgrade_custom no_json";
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Task query: upgrade_custom no_json");
+
+    will_return(__wrap_wdb_open_tasks, data->wdb);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid command parameters, near 'no_json'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_task_upgrade_get_status_invalid_parameters(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "task upgrade_get_status no_json";
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Task query: upgrade_get_status no_json");
+
+    will_return(__wrap_wdb_open_tasks, data->wdb);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid command parameters, near 'no_json'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_task_upgrade_update_status_invalid_parameters(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "task upgrade_update_status no_json";
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Task query: upgrade_update_status no_json");
+
+    will_return(__wrap_wdb_open_tasks, data->wdb);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid command parameters, near 'no_json'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_task_upgrade_result_invalid_parameters(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "task upgrade_result no_json";
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Task query: upgrade_result no_json");
+
+    will_return(__wrap_wdb_open_tasks, data->wdb);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid command parameters, near 'no_json'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_task_upgrade_cancel_tasks_invalid_parameters(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "task upgrade_cancel_tasks no_json";
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Task query: upgrade_cancel_tasks no_json");
+
+    will_return(__wrap_wdb_open_tasks, data->wdb);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid command parameters, near 'no_json'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_task_delete_old_invalid_parameters(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "task delete_old no_json";
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Task query: delete_old no_json");
+
+    will_return(__wrap_wdb_open_tasks, data->wdb);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid command parameters, near 'no_json'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_task_set_timeout_invalid_parameters(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "task set_timeout no_json";
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Task query: set_timeout no_json");
+
+    will_return(__wrap_wdb_open_tasks, data->wdb);
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid command parameters, near 'no_json'");
+    assert_int_equal(ret, OS_INVALID);
+}
 
 void test_wdb_parse_task_upgrade_ok(void **state)
 {
@@ -650,6 +854,18 @@ void test_wdb_parse_task_delete_old_timestamp_err(void **state)
 int main()
 {
     const struct CMUnitTest tests[] = {
+        // wdb_parse
+        cmocka_unit_test_setup_teardown(test_wdb_parse_task_open_tasks_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_task_no_space, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_task_invalid_command, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_task_upgrade_invalid_parameters, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_task_upgrade_custom_invalid_parameters, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_task_upgrade_update_status_invalid_parameters, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_task_upgrade_get_status_invalid_parameters, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_task_upgrade_result_invalid_parameters, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_task_upgrade_cancel_tasks_invalid_parameters, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_task_set_timeout_invalid_parameters, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_task_delete_old_invalid_parameters, test_setup, test_teardown),
         // wdb_parse_task_upgrade
         cmocka_unit_test_teardown(test_wdb_parse_task_upgrade_ok, teardown_json),
         cmocka_unit_test_teardown(test_wdb_parse_task_upgrade_err, teardown_json),

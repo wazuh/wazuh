@@ -74,3 +74,7 @@ int __wrap_wdb_task_delete_old_entries(__attribute__((unused)) wdb_t* wdb, int t
 
     return mock();
 }
+
+wdb_t* __wrap_wdb_open_tasks() {
+    return mock_ptr_type(wdb_t*);
+}
