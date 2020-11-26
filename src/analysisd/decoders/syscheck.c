@@ -1456,8 +1456,8 @@ static int fim_generate_alert(Eventinfo *lf, char *event_type, cJSON *attributes
     const char *entry_type = NULL;
     int it;
     int path_len = 0;
-    char path_buffer[757];
-    char *path;
+    char path_buffer[757] = "";
+    char *path = path_buffer;
 
     /* Dynamic Fields */
     lf->nfields = FIM_NFIELDS;
@@ -1566,13 +1566,11 @@ static int fim_generate_alert(Eventinfo *lf, char *event_type, cJSON *attributes
         if (path_len > 756) {
             char *aux = lf->fields[FIM_FILE].value + path_len - 30;
             snprintf(path_buffer, 757, "%.719s [...] %s", lf->fields[FIM_FILE].value, aux);
-            path = path_buffer;
         } else {
             path = lf->fields[FIM_FILE].value;
         }
     } else if (strcmp("registry_key", lf->fields[FIM_ENTRY_TYPE].value) == 0) {
         entry_type = ENTRY_TYPE_REGISTRY_KEY;
-        path = path_buffer;
 
         path_len = 6 + strlen(lf->fields[FIM_FILE].value);
         if (path_len > 756) {
@@ -1585,7 +1583,6 @@ static int fim_generate_alert(Eventinfo *lf, char *event_type, cJSON *attributes
     } else if (strcmp("registry_value", lf->fields[FIM_ENTRY_TYPE].value) == 0) {
         int value_len = strlen(lf->fields[FIM_REGISTRY_VALUE_NAME].value);
         entry_type = ENTRY_TYPE_REGISTRY_VALUE;
-        path = path_buffer;
 
         path_len = 6 + strlen(lf->fields[FIM_FILE].value) + value_len;
         if (path_len > 756) {
