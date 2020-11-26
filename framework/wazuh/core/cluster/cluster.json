@@ -106,9 +106,9 @@
         },
 
         "communication":{
-            "timeout_cluster_request": 20,
+            "timeout_cluster_request": 40,
             "timeout_api_request": 200,
-            "timeout_api_exe": 10,
+            "timeout_api_exe": 30,
             "timeout_receiving_file": 120
         }
     },
