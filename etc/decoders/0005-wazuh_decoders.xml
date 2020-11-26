@@ -6,7 +6,7 @@
 -->
 
 <decoder name="wazuh">
-  <prematch>^wazuh: | ^ossec: </prematch>
+  <prematch>^wazuh: |^ossec: </prematch>
   <type>wazuh</type>
 </decoder>
 
