@@ -15,7 +15,7 @@ class TokenResponseModel(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, token: str=None):  # noqa: E501
+    def __init__(self, token: str = None):  # noqa: E501
         """TokenResponseModel - a model defined in Swagger
 
         :param token: The token of this TokenResponseModel.  # noqa: E501
