@@ -145,6 +145,19 @@ if(NOT ${TARGET} STREQUAL "winagent")
                                      -Wl,--wrap,closeproc -Wl,--wrap,_mdebug2 -Wl,--wrap,get_user \
                                      -Wl,--wrap,get_group -Wl,--wrap,realpath -Wl,--wrap,readlink -Wl,--wrap,fread \
                                      -Wl,--wrap,fseek -Wl,--wrap,remove -Wl,--wrap,atexit -Wl,--wrap,getpid -Wl,--wrap,FOREVER")
+else()
+  list(APPEND syscheckd_event_tests_names "test_win_whodata")
+  list(APPEND syscheckd_event_tests_flags "-Wl,--wrap=_mdebug2,--wrap=_merror,--wrap=_mdebug1,--wrap=_mwarn \
+                                           -Wl,--wrap=wstr_replace -Wl,--wrap=SendMSG,--wrap,OSHash_Add_ex \
+                                           -Wl,--wrap=free_whodata_event,--wrap=IsFile -Wl,--wrap=remove \
+                                           -Wl,--wrap=wm_exec,--wrap=fopen,--wrap=fclose,--wrap=atexit \
+                                           -Wl,--wrap=OSHash_Delete_ex,--wrap=_mterror,--wrap=check_path_type \
+                                           -Wl,--wrap=_minfo -Wl,--wrap=OSHash_Create -Wl,--wrap=pthread_rwlock_unlock\
+                                           -Wl,--wrap=OSHash_SetFreeDataPointer,--wrap=fim_whodata_event \
+                                           -Wl,--wrap=fim_checker,--wrap=OSHash_Get,--wrap=os_random \
+                                           -Wl,--wrap=convert_windows_string,--wrap=OSHash_Get_ex,--wrap=FOREVER \
+                                           -Wl,--wrap=fflush,--wrap=fread,--wrap=fseek,--wrap=fwrite,--wrap=fprintf \
+                                           -Wl,--wrap=fgets -Wl,--wrap=wstr_split -Wl,--wrap=pthread_rwlock_wrlock")
 endif()
 
 set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,lstat -Wl,--wrap,stat,--wrap=_mdebug1 \
