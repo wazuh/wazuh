@@ -250,7 +250,7 @@ void w_expression_PCRE2_fill_regex_match(int captured_groups, const char * str_t
     ovector = pcre2_get_ovector_pointer(match_data);
     for (int i = 1; i < captured_groups; i++) {
         size_t substring_length = ovector[2 * i + 1] - ovector[2 * i];
-        os_strndup(str_test + ovector[2 * i], substring_length, regex_match->sub_strings[i - 1]);
+        regex_match->sub_strings[i - 1] = w_strndup(str_test + ovector[2 * i], substring_length);
     }
     regex_match->sub_strings[captured_groups - 1] = NULL;
 }
