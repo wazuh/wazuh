@@ -28,6 +28,11 @@ list(APPEND logcollector_flags "-Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Add -
                                 -Wl,--wrap,cJSON_GetStringValue -Wl,--wrap,OS_SHA1_File_Nbytes -Wl,--wrap,fileno -Wl,--wrap,fstat \
                                 -Wl,--wrap,stat")
 
+list(APPEND logcollector_names "test_read_multiline_regex")
+list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
+                                -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fseek")
+
+
 list(LENGTH logcollector_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})
