@@ -3,14 +3,16 @@
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
-
 import argparse
-from wazuh.core import common
+import asyncio
+import logging
+import os
+import sys
+
 
 #
 # Aux functions
 #
-
 
 def set_logging(foreground_mode=False, debug_mode=0):
     cluster_logger = cluster_utils.ClusterLogger(foreground_mode=foreground_mode, log_path='logs/cluster.log',
@@ -21,6 +23,7 @@ def set_logging(foreground_mode=False, debug_mode=0):
 
 
 def print_version():
+    from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__
     print("\n{} {} - {}\n\n{}".format(__ossec_name__, __version__, __author__, __licence__))
 
 
@@ -28,6 +31,7 @@ def print_version():
 # Master main
 #
 async def master_main(args, cluster_config, cluster_items, logger):
+    from wazuh.core.cluster import master, local_server
     cluster_utils.context_tag.set('Master')
     cluster_utils.context_subtag.set("Main")
     my_server = master.Master(performance_test=args.performance_test, concurrency_test=args.concurrency_test,
@@ -44,6 +48,7 @@ async def master_main(args, cluster_config, cluster_items, logger):
 # Worker main
 #
 async def worker_main(args, cluster_config, cluster_items, logger):
+    from wazuh.core.cluster import worker, local_server
     cluster_utils.context_tag.set('Worker')
     cluster_utils.context_subtag.set("Main")
     while True:
@@ -66,6 +71,9 @@ async def worker_main(args, cluster_config, cluster_items, logger):
 # Main
 #
 if __name__ == '__main__':
+    import wazuh.core.cluster.cluster
+    import wazuh.core.cluster.utils as cluster_utils
+    from wazuh.core import pyDaemonModule, common, configuration
 
     parser = argparse.ArgumentParser()
     ####################################################################################################################
@@ -95,23 +103,6 @@ if __name__ == '__main__':
                         default=common.ossec_conf)
     args = parser.parse_args()
 
-    import sys
-
-    if args.test_config:
-        sys.exit(0)
-
-    from api import configuration
-
-    configuration.api_conf.update(configuration.read_yaml_config())
-
-    import asyncio
-    import logging
-    import os
-    import wazuh.core.cluster.cluster
-    import wazuh.core.cluster.utils as cluster_utils
-    from wazuh.core import pyDaemonModule, common, configuration
-    from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__, master, local_server, worker
-
     if args.version:
         print_version()
         sys.exit(0)
@@ -138,6 +129,13 @@ if __name__ == '__main__':
     except Exception as e:
         main_logger.error(e)
         sys.exit(1)
+
+    if args.test_config:
+        sys.exit(0)
+
+    from api import configuration
+
+    configuration.api_conf.update(configuration.read_yaml_config())
 
     # clean
     wazuh.core.cluster.cluster.clean_up()
