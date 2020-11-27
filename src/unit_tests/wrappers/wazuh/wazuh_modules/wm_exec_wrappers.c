@@ -20,7 +20,10 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
     check_expected(add_path);
 
     if (output) {
-        os_strdup(mock_type(char *), *output);
+        char *out = mock_type(char *);
+        if (out) {
+            os_strdup(out, *output);
+        }
     }
 
     *exitcode = mock_type(int);
