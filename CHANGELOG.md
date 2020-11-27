@@ -47,12 +47,19 @@ All notable changes to this project will be documented in this file.
 - **API:**
   - Fixed an error with `/groups/{group_id}/config` endpoints (GET and PUT) when using complex `localfile` configurations. ([#6276](https://github.com/wazuh/wazuh/pull/6383))
 - **Core:**
-  - Fix error in Analysisd when getting the ossec group ID ([#6688](https://github.com/wazuh/wazuh/pull/6688))
-  - Prevent FIM from reporting configuration error when setting patterns that match no files. ([#6187](https://github.com/wazuh/wazuh/pull/6187))
+  - Fixed error in Analysisd when getting the ossec group ID ([#6688](https://github.com/wazuh/wazuh/pull/6688))
+  - Prevented FIM from reporting configuration error when setting patterns that match no files. ([#6187](https://github.com/wazuh/wazuh/pull/6187))
+  - Fixed the array parsing when building JSON alerts. ([#6687](https://github.com/wazuh/wazuh/pull/6687))
+  - Added Firefox ESR to the CPE helper to distinguish it from Firefox when looking for vulnerabilities. ([#6610](https://github.com/wazuh/wazuh/pull/6610))
+  - Fixed the evaluation of packages from external sources with the official vendor feeds in Vulnerability Detector. ([#6611](https://github.com/wazuh/wazuh/pull/6611))
+  - Fixed the handling of duplicated tags in the Vulnerability Detector configuration. ([#6683](https://github.com/wazuh/wazuh/pull/6683))
+  - Fixed the validation of hotfixes gathered by Syscollector. ([#6706](https://github.com/wazuh/wazuh/pull/6706))
+  - Fixed the reading of the Linux OS version when `/etc/os-release` doesn't provide it. ([#6674](https://github.com/wazuh/wazuh/pull/6674))
+  - Fixed a false positive when comparing the minor target of CentOS packages in Vulnerability Detector. ([#6709](https://github.com/wazuh/wazuh/pull/6709))
 
 ### Removed
 
-## [v4.0.1] -
+## [v4.0.1] - 2020-11-11
 
 ### Added
 
@@ -82,7 +89,7 @@ All notable changes to this project will be documented in this file.
     - Added new endpoints to run the logtest tool and delete a logtest session ([#5984](https://github.com/wazuh/wazuh/pull/5984))
 - Added new framework modules to use the logtest tool ([#5870](https://github.com/wazuh/wazuh/pull/5870))
 
-## [v4.0.0] -
+## [v4.0.0] - 2020-10-23
 
 ### Added
 
