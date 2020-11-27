@@ -49,9 +49,9 @@
   </rule>
 </group>
 
-<group name="ossec,">
+<group name="wazuh,">
   <rule id="7" level="0" noalert="1">
-    <category>ossec</category>
-    <description>Generic template for all ossec rules.</description>
+    <category>wazuh</category>
+    <description>Generic template for all wazuh rules.</description>
   </rule>
 </group>
