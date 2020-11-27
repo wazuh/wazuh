@@ -1491,7 +1491,7 @@ void test_audit_parse_delete(void **state) {
     will_return(__wrap_W_Vector_insert_unique, 1);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
+    expect_string(__wrap_SendMSG, message, "wazuh: Audit: Detected rules manipulation: Audit rules removed");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 1);
@@ -1537,8 +1537,8 @@ void test_audit_parse_delete_recursive(void **state) {
     // Rule already not added
     will_return_always(__wrap_search_audit_rule, 5);
 
-    expect_string_count(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed", 4);
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
+    expect_string_count(__wrap_SendMSG, message, "wazuh: Audit: Detected rules manipulation: Audit rules removed", 4);
+    expect_string(__wrap_SendMSG, message, "wazuh: Audit: Detected rules manipulation: Max rules reload retries");
     expect_string_count(__wrap_SendMSG, locmsg, SYSCHECK, 5);
     expect_value_count(__wrap_SendMSG, loc, LOCALFILE_MQ, 5);
     will_return_always(__wrap_SendMSG, 1);
@@ -1851,7 +1851,7 @@ void test_audit_parse_delete_folder(void **state) {
     expect_string(__wrap_fim_whodata_event, w_evt->inode, "110");
     expect_value(__wrap_fim_whodata_event, w_evt->ppid, 4340);
 
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Monitored directory was removed: Audit rule removed");
+    expect_string(__wrap_SendMSG, message, "wazuh: Audit: Monitored directory was removed: Audit rule removed");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 1);
@@ -1905,7 +1905,7 @@ void test_audit_parse_delete_folder_hex(void **state) {
     expect_string(__wrap_fim_whodata_event, w_evt->inode, "110");
     expect_value(__wrap_fim_whodata_event, w_evt->ppid, 4340);
 
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Monitored directory was removed: Audit rule removed");
+    expect_string(__wrap_SendMSG, message, "wazuh: Audit: Monitored directory was removed: Audit rule removed");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 1);
@@ -1951,12 +1951,12 @@ void test_audit_parse_delete_folder_hex3_error(void **state) {
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '4'");
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '5'");
 
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
+    expect_string(__wrap_SendMSG, message, "wazuh: Audit: Detected rules manipulation: Audit rules removed");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 1);
 
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
+    expect_string(__wrap_SendMSG, message, "wazuh: Audit: Detected rules manipulation: Max rules reload retries");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 1);
@@ -2004,12 +2004,12 @@ void test_audit_parse_delete_folder_hex4_error(void **state) {
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '5'");
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '6'");
 
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
+    expect_string(__wrap_SendMSG, message, "wazuh: Audit: Detected rules manipulation: Audit rules removed");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 1);
 
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
+    expect_string(__wrap_SendMSG, message, "wazuh: Audit: Detected rules manipulation: Max rules reload retries");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 1);
@@ -2057,12 +2057,12 @@ void test_audit_parse_delete_folder_hex5_error(void **state) {
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '4'");
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '7'");
 
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
+    expect_string(__wrap_SendMSG, message, "wazuh: Audit: Detected rules manipulation: Audit rules removed");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 1);
 
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
+    expect_string(__wrap_SendMSG, message, "wazuh: Audit: Detected rules manipulation: Max rules reload retries");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 1);
@@ -2309,7 +2309,7 @@ void test_audit_read_events_select_success_recv_error_audit_connection_closed(vo
         will_return(__wrap_OS_ConnectUnixDomain, -5);
         expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket '/var/ossec/queue/ossec/audit'.");
     }
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Connection closed");
+    expect_string(__wrap_SendMSG, message, "wazuh: Audit: Connection closed");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 1);

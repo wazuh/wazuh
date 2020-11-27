@@ -3352,7 +3352,7 @@ void test_get_volume_names_no_more_files(void **state) {
 
 void test_notify_SACL_change(void **state) {
     expect_string(__wrap_SendMSG, message,
-        "ossec: Audit: The SACL of 'C:\\a\\path' has been modified and can no longer be scanned in whodata mode.");
+        "wazuh: Audit: The SACL of 'C:\\a\\path' has been modified and can no longer be scanned in whodata mode.");
     expect_string(__wrap_SendMSG, locmsg, "syscheck");
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 0); // Return value is discarded
@@ -6678,7 +6678,7 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
     // Inside notify_SACL_change
     {
         expect_string(__wrap_SendMSG, message,
-            "ossec: Audit: The SACL of 'c:\\a\\path' has been modified and can no longer be scanned in whodata mode.");
+            "wazuh: Audit: The SACL of 'c:\\a\\path' has been modified and can no longer be scanned in whodata mode.");
         expect_string(__wrap_SendMSG, locmsg, "syscheck");
         expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
         will_return(__wrap_SendMSG, 0); // Return value is discarded
