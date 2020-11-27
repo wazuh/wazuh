@@ -70,6 +70,7 @@ def send_msg_to_wdb(msg, raw=False):
         {'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '16.04.1 LTS'}, 'count': 1},
         {'os': {'name': 'unknown', 'platform': 'unknown', 'version': 'unknown'}, 'count': 2}]),
 ])
+@patch('wazuh.core.agent.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_items):
@@ -348,6 +349,7 @@ def test_agent_add_agent(socket_mock, send_mock, open_mock, safe_move_mock, comm
     (['invalid_group'], [])
 ])
 @patch('wazuh.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
+@patch('wazuh.core.agent.shared_path', new=test_shared_path)
 @patch('wazuh.common.shared_path', new=test_shared_path)
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')

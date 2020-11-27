@@ -695,7 +695,6 @@ def test_agent_remove_authd(mock_ossec_socket):
 @patch('wazuh.core.agent.chown')
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.stat')
-@patch('wazuh.core.agent.glob')
 @patch("wazuh.common.ossec_path", new=test_data_path)
 @patch('wazuh.core.agent.path.exists')
 @patch('wazuh.core.database.isfile', return_value=True)
@@ -710,7 +709,7 @@ def test_agent_remove_authd(mock_ossec_socket):
 @patch('wazuh.core.wdb.WazuhDBConnection.run_wdb_command')
 @patch('socket.socket.connect')
 def test_agent_remove_manual(socket_mock, run_wdb_mock, send_mock, grp_mock, pwd_mock, chmod_r_mock, makedirs_mock,
-                             safe_move_mock, isdir_mock, isfile_mock, exists_mock, glob_mock, stat_mock, chmod_mock,
+                             safe_move_mock, isdir_mock, isfile_mock, exists_mock, stat_mock, chmod_mock,
                              chown_mock, rmtree_mock, remove_mock, mock_delete_agents, backup, exists_backup_dir):
     """Test the _remove_manual function
 
@@ -2125,34 +2124,41 @@ def test_send_restart_command(mock_ossec_queue):
     mock_ossec_queue.return_value.send_msg_to_agent.assert_called_once_with(ANY, '001')
 
 
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_get_agents_info(socket_mock, send_mock):
+def test_get_agents_info():
     """Test that get_agents_info() returns expected agent IDs"""
-    expected_result = {'005', '003', '008', '000', '004', '001', '006', '002', '007'}
+    with open(os.path.join(test_data_path, 'client.keys')) as f:
+        client_keys = ''.join(f.readlines())
 
-    result = get_agents_info()
-    assert result == expected_result
+    expected_result = {'000', '001', '002', '003', '004', '005', '006', '007', '008', '009', '010'}
+
+    with patch('wazuh.core.agent.open', mock_open(read_data=client_keys)) as m:
+        result = get_agents_info()
+        assert result == expected_result
 
 
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_get_groups(socket_mock, send_mock):
+def test_get_groups():
     """Test that get_groups() returns expected agent groups"""
     expected_result = {'group-1', 'group-2'}
+    shared = os.path.join(test_data_path, 'shared')
 
-    result = get_groups()
-    assert result == expected_result
+    with patch('wazuh.core.agent.shared_path', new=shared):
+        try:
+            for group in list(expected_result):
+                os.makedirs(os.path.join(shared, group))
+            open(os.path.join(shared, 'non-dir-file'), 'a').close()
+
+            result = get_groups()
+            assert result == expected_result
+        finally:
+            rmtree(shared)
 
 
 @pytest.mark.parametrize('group, expected_agents', [
-    ('group-1', {'000'}),
-    ('group-2', {'001'}),
-    ('*', {'006', '008', '000', '002', '005', '007', '001'})
+    ('group1', {'000'}),
+    ('group2', {'001'}),
+    ('*', {'000', '001', '002', '005'})
 ])
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_expand_group(socket_mock, send_mock, group, expected_agents):
+def test_expand_group(group, expected_agents):
     """Test that expand_group() returns expected agent IDs
 
     Parameters
@@ -2162,9 +2168,22 @@ def test_expand_group(socket_mock, send_mock, group, expected_agents):
     expected_agents : set
         Expected agent IDs for the selected group
     """
-    result = expand_group(group)
-    assert result == expected_agents
+    id_groups = {'000': 'group1', '001': 'group2', '002': 'group3', '004': '', '005': 'group3,group4', '006': ''}
+    agent_groups = os.path.join(test_data_path, 'agent-groups')
 
+    with patch('wazuh.core.agent.groups_path', new=agent_groups):
+        try:
+            os.makedirs(agent_groups)
+            for id_, groups in id_groups.items():
+                with open(os.path.join(agent_groups, id_), 'w+') as f:
+                    f.write(groups)
+
+            result = expand_group(group)
+            assert result == expected_agents
+        except Exception as e:
+            pytest.fail(f'Exception raised: {e}')
+        finally:
+            rmtree(agent_groups)
 
 @pytest.mark.parametrize('agent_id, expected_exception', [
     ('001', 1746),
@@ -2178,7 +2197,6 @@ def test_expand_group(socket_mock, send_mock, group, expected_agents):
 @patch('wazuh.core.agent.chown')
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.stat')
-@patch('wazuh.core.agent.glob')
 @patch("wazuh.common.client_keys", new=os.path.join(test_data_path, 'etc', 'client.keys'))
 @patch('wazuh.core.agent.path.isdir', return_value=True)
 @patch('wazuh.core.agent.makedirs')
@@ -2189,7 +2207,7 @@ def test_expand_group(socket_mock, send_mock, group, expected_agents):
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_remove_manual_ko(socket_mock, send_mock, grp_mock, pwd_mock, chmod_r_mock, makedirs_mock,
-                                isdir_mock, glob_mock, stat_mock, chmod_mock, chown_mock, rmtree_mock, remove_mock, delete_mock,
+                                isdir_mock, stat_mock, chmod_mock, chown_mock, rmtree_mock, remove_mock, delete_mock,
                                  agent_id, expected_exception):
     """Test the _remove_manual function error cases.
 
