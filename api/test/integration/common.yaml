@@ -10,10 +10,10 @@ variables:
   host: localhost
   port: 55000
   user: testing
-  user_auth_context: testing_auth_context
+  user_auth_context: wazuh-wui
   pass: wazuh
   basic_auth: dGVzdGluZzp3YXp1aA== # b64 encoded user:pass, update if user or pass changes
-  basic_auth_context: dGVzdGluZ19hdXRoX2NvbnRleHQ6d2F6dWg== # b64 encoded user:pass, update if user or pass changes
+  basic_auth_context: d2F6dWgtd3VpOndhenVoLXd1aQ== # b64 encoded user:pass, update if user or pass changes
   login_endpoint: /security/user/authenticate
 
   # delays

@@ -456,7 +456,12 @@ os_info *get_unix_version()
                 fclose(version_release);
             }
         }
-    } else {
+    }
+
+    if (!info->os_name || !info->os_version || !info->os_platform) {
+        os_free(info->os_name);
+        os_free(info->os_version);
+        os_free(info->os_platform);
         regex_t regexCompiled;
         regmatch_t match[2];
         int match_size;
