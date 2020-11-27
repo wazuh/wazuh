@@ -11,11 +11,11 @@ from wazuh.core import common
 from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, invalid_run_as_tokens, revoke_tokens
-from wazuh.core.security import load_spec, update_security_conf
+from wazuh.core.security import update_security_conf
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager, \
-    TokenManager, UserRolesManager, RolesRulesManager, RulesManager
+    TokenManager, UserRolesManager, RolesRulesManager, RulesManager, ResourceType
 from wazuh.rbac.orm import SecurityError, max_id_reserved
 
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
@@ -113,7 +113,8 @@ def get_users(user_ids: list = None, offset: int = 0, limit: int = common.databa
 
 
 @expose_resources(actions=['security:create_user'], resources=['*:*:*'])
-def create_user(username: str = None, password: str = None, allow_run_as: bool = False):
+def create_user(username: str = None, password: str = None, allow_run_as: bool = False,
+                resource_type: ResourceType = ResourceType.USER) -> AffectedItemsWazuhResult:
     """Create a new user
 
     Parameters
@@ -124,10 +125,14 @@ def create_user(username: str = None, password: str = None, allow_run_as: bool =
         Password for the new user
     allow_run_as : bool
         Enable authorization context login method for the new user
-
+    resource_type : ResourceType
+        Determines the type of the resource:
+            'default': A system resource that cannot be modified or removed by a user
+            'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+            'user': A user-created resource that is NOT protected and can be modified or removed by a user.
     Returns
     -------
-    result : AffectedItemsWazuhResult
+    AffectedItemsWazuhResult:
         Status message
     """
     if len(password) > 64 or len(password) < 8:
@@ -138,7 +143,7 @@ def create_user(username: str = None, password: str = None, allow_run_as: bool =
     result = AffectedItemsWazuhResult(none_msg='User could not be created',
                                       all_msg='User was successfully created')
     with AuthenticationManager() as auth:
-        if auth.add_user(username, password, allow_run_as=allow_run_as):
+        if auth.add_user(username, password, allow_run_as=allow_run_as, resource_type=resource_type):
             operation = auth.get_user(username)
             if operation:
                 result.affected_items.append(operation)
@@ -152,7 +157,8 @@ def create_user(username: str = None, password: str = None, allow_run_as: bool =
 
 
 @expose_resources(actions=['security:update'], resources=['user:id:{user_id}'])
-def update_user(user_id: str = None, password: str = None, allow_run_as: bool = None):
+def update_user(user_id: str = None, password: str = None, allow_run_as: bool = None,
+                resource_type: ResourceType = None) -> AffectedItemsWazuhResult:
     """Update a specified user
 
     Parameters
@@ -163,10 +169,16 @@ def update_user(user_id: str = None, password: str = None, allow_run_as: bool = 
         Password for the new user
     allow_run_as : bool
         Enable authorization context login method for the new user
+    resource_type : ResourceType
+        Determines the type of the resource:
+            'default': A system resource that cannot be modified or removed by a user
+            'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+            'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
     Returns
     -------
-    Status message
+    AffectedItemsWazuhResult:
+        Status message
     """
     if password is None and allow_run_as is None:
         raise WazuhError(4001)
@@ -178,30 +190,37 @@ def update_user(user_id: str = None, password: str = None, allow_run_as: bool = 
     result = AffectedItemsWazuhResult(all_msg='User was successfully updated',
                                       none_msg='User could not be updated')
     with AuthenticationManager() as auth:
-        query = auth.update_user(int(user_id[0]), password, allow_run_as)
-        if query is False:
+        status = auth.update_user(int(user_id[0]), password, allow_run_as, resource_type=resource_type)
+        if status is False:
             result.add_failed_item(id_=int(user_id[0]), error=WazuhError(5001))
+        elif status == SecurityError.ADMIN_RESOURCES:
+            result.add_failed_item(id_=int(user_id[0]), error=WazuhError(5004))
         else:
             result.affected_items.append(auth.get_user_id(int(user_id[0])))
             result.total_affected_items += 1
             invalid_users_tokens(users=user_id)
-
     return result
 
 
 @expose_resources(actions=['security:delete'], resources=['user:id:{user_ids}'],
                   post_proc_kwargs={'exclude_codes': [5001, 5004, 5008]})
-def remove_users(user_ids):
+def remove_users(user_ids, resource_type: ResourceType = ResourceType.USER) -> AffectedItemsWazuhResult:
     """Remove a specified list of users
 
     Parameters
     ----------
     user_ids : list
         List of IDs
+    resource_type : ResourceType
+        Determines the type of the resource:
+            'default': A system resource that cannot be modified or removed by a user
+            'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+            'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
     Returns
     -------
-    Status message
+    AffectedItemsWazuhResult:
+        Status message
     """
     result = AffectedItemsWazuhResult(none_msg='No user was deleted',
                                       some_msg='Some users were not deleted',
@@ -214,7 +233,7 @@ def remove_users(user_ids):
                 result.add_failed_item(id_=user_id, error=WazuhError(5008))
                 continue
             user = auth.get_user_id(user_id)
-            query = auth.delete_user(user_id)
+            query = auth.delete_user(user_id, resource_type=resource_type)
             if not query:
                 result.add_failed_item(id_=user_id, error=WazuhError(5001))
             elif query == SecurityError.ADMIN_RESOURCES:
@@ -271,11 +290,23 @@ def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None
 
 @expose_resources(actions=['security:delete'], resources=['role:id:{role_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002, 4008]})
-def remove_roles(role_ids):
+def remove_roles(role_ids, resource_type: ResourceType = ResourceType.USER) -> AffectedItemsWazuhResult:
     """Removes a certain role from the system
 
-    :param role_ids: List of roles ids (None for all roles)
-    :return Result of operation
+    Parameters
+    ----------
+    role_ids : list of str
+        List of roles ids (None for all roles)
+    resource_type : ResourceType
+        Determines the type of the resource:
+            'default': A system resource that cannot be modified or removed by a user
+            'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+            'user': A user-created resource that is NOT protected and can be modified or removed by a user.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult:
+        Status message
     """
     result = AffectedItemsWazuhResult(none_msg='No role was deleted',
                                       some_msg='Some roles were not deleted',
@@ -283,7 +314,7 @@ def remove_roles(role_ids):
     with RolesManager() as rm:
         for r_id in role_ids:
             role = rm.get_role_id(int(r_id))
-            role_delete = rm.delete_role(int(r_id))
+            role_delete = rm.delete_role(int(r_id), resource_type=resource_type)
             if role_delete == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=int(r_id), error=WazuhError(4008))
             elif role_delete == SecurityError.RELATIONSHIP_ERROR:
@@ -301,16 +332,28 @@ def remove_roles(role_ids):
 
 
 @expose_resources(actions=['security:create'], resources=['*:*:*'])
-def add_role(name=None):
+def add_role(name: str = None, resource_type: ResourceType = ResourceType.USER) -> AffectedItemsWazuhResult:
     """Creates a role in the system
 
-    :param name: The new role name
-    :return Role information
+    Parameters
+    ----------
+    name : str
+        The new role name
+    resource_type : ResourceType
+        Determines the type of the resource:
+            'default': A system resource that cannot be modified or removed by a user
+            'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+            'user': A user-created resource that is NOT protected and can be modified or removed by a user.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult:
+        Status message
     """
     result = AffectedItemsWazuhResult(none_msg='Role was not created',
                                       all_msg='Role was successfully created')
     with RolesManager() as rm:
-        status = rm.add_role(name=name)
+        status = rm.add_role(name=name, resource_type=resource_type)
         if status == SecurityError.ALREADY_EXIST:
             result.add_failed_item(id_=name, error=WazuhError(4005))
         elif status == SecurityError.INVALID:
@@ -323,19 +366,32 @@ def add_role(name=None):
 
 
 @expose_resources(actions=['security:update'], resources=['role:id:{role_id}'])
-def update_role(role_id=None, name=None):
+def update_role(role_id=None, name=None, resource_type: ResourceType = None) -> AffectedItemsWazuhResult:
     """Updates a role in the system
 
-    :param role_id: Role id to be update
-    :param name: The new role name
-    :return Role information
+    Parameters
+    ----------
+    role_id : str
+        Role id to be update
+    name : str
+        The new role name
+    resource_type : ResourceType
+        Determines the type of the resource:
+            'default': A system resource that cannot be modified or removed by a user
+            'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+            'user': A user-created resource that is NOT protected and can be modified or removed by a user.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult:
+        Status message
     """
     if name is None:
         raise WazuhError(4001)
     result = AffectedItemsWazuhResult(none_msg='Role was not updated',
                                       all_msg='Role was successfully updated')
     with RolesManager() as rm:
-        status = rm.update_role(role_id=role_id[0], name=name)
+        status = rm.update_role(role_id=role_id[0], name=name, resource_type=resource_type)
         if status == SecurityError.ALREADY_EXIST:
             result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4005))
         elif status == SecurityError.INVALID:
@@ -393,11 +449,23 @@ def get_policies(policy_ids, offset=0, limit=common.database_limit, sort_by=None
 
 @expose_resources(actions=['security:delete'], resources=['policy:id:{policy_ids}'],
                   post_proc_kwargs={'exclude_codes': [4007, 4008]})
-def remove_policies(policy_ids=None):
+def remove_policies(policy_ids=None, resource_type: ResourceType = ResourceType.USER) -> AffectedItemsWazuhResult:
     """Removes a certain policy from the system
 
-    :param policy_ids: ID of the policy to be removed (All for all policies)
-    :return Result of operation
+    Parameters
+    ----------
+    policy_ids : list of str
+        ID of the policy to be removed (All for all policies)
+    resource_type : ResourceType
+        Determines the type of the resource:
+            'default': A system resource that cannot be modified or removed by a user
+            'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+            'user': A user-created resource that is NOT protected and can be modified or removed by a user.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult:
+        Status message
     """
     result = AffectedItemsWazuhResult(none_msg='No policy was deleted',
                                       some_msg='Some policies were not deleted',
@@ -405,7 +473,7 @@ def remove_policies(policy_ids=None):
     with PoliciesManager() as pm:
         for p_id in policy_ids:
             policy = pm.get_policy_id(int(p_id))
-            policy_delete = pm.delete_policy(int(p_id))
+            policy_delete = pm.delete_policy(int(p_id), resource_type=resource_type)
             if policy_delete == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=int(p_id), error=WazuhError(4008))
             elif policy_delete == SecurityError.RELATIONSHIP_ERROR:
@@ -424,17 +492,31 @@ def remove_policies(policy_ids=None):
 
 @expose_resources(actions=['security:create'], resources=['*:*:*'],
                   post_proc_kwargs={'exclude_codes': [4006, 4009]})
-def add_policy(name=None, policy=None):
+def add_policy(name: str = None, policy: str = None, resource_type: ResourceType = ResourceType.USER) \
+        -> AffectedItemsWazuhResult:
     """Creates a policy in the system
 
-    :param name: The new policy name
-    :param policy: The new policy
-    :return Policy information
+    Parameters
+    ----------
+    name : str
+        The new policy name
+    policy : str
+        The new policy
+    resource_type : ResourceType
+        Determines the type of the resource:
+            'default': A system resource that cannot be modified or removed by a user
+            'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+            'user': A user-created resource that is NOT protected and can be modified or removed by a user.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult:
+        Status message
     """
     result = AffectedItemsWazuhResult(none_msg='Policy was not created',
                                       all_msg='Policy was successfully created')
     with PoliciesManager() as pm:
-        status = pm.add_policy(name=name, policy=policy)
+        status = pm.add_policy(name=name, policy=policy, resource_type=resource_type)
         if status == SecurityError.ALREADY_EXIST:
             result.add_failed_item(id_=name, error=WazuhError(4009))
         elif status == SecurityError.INVALID:
@@ -447,20 +529,35 @@ def add_policy(name=None, policy=None):
 
 
 @expose_resources(actions=['security:update'], resources=['policy:id:{policy_id}'])
-def update_policy(policy_id=None, name=None, policy=None):
+def update_policy(policy_id=None, name=None, policy=None, resource_type: ResourceType = None) -> AffectedItemsWazuhResult:
     """Updates a policy in the system
 
-    :param policy_id: Policy id to be update
-    :param name: The new policy name
-    :param policy: The new policy
-    :return Policy information
+    Parameters
+    ----------
+    policy_id : int
+        Policy id to be update
+    name : str
+        The new policy name
+    policy : str
+        The new policy
+    resource_type : ResourceType
+        Determines the type of the resource:
+            'default': A system resource that cannot be modified or removed by a user
+            'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+            'user': A user-created resource that is NOT protected and can be modified or removed by a user.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult:
+        Status message
+
     """
     if name is None and policy is None:
         raise WazuhError(4001)
     result = AffectedItemsWazuhResult(none_msg='Policy was not updated',
                                       all_msg='Policy was successfully updated')
     with PoliciesManager() as pm:
-        status = pm.update_policy(policy_id=policy_id[0], name=name, policy=policy)
+        status = pm.update_policy(policy_id=policy_id[0], name=name, policy=policy, resource_type=resource_type)
         if status == SecurityError.ALREADY_EXIST:
             result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4013))
         elif status == SecurityError.INVALID:
@@ -518,17 +615,31 @@ def get_rules(rule_ids=None, offset=0, limit=common.database_limit, sort_by=None
 
 
 @expose_resources(actions=['security:create'], resources=['*:*:*'])
-def add_rule(name=None, rule=None):
+def add_rule(name: str = None, rule: str = None, resource_type: ResourceType = ResourceType.USER) \
+        -> AffectedItemsWazuhResult:
     """Create a rule in the system.
 
-    :param name: The new rule name
-    :param rule: The new rule
-    :return Rule information
+    Parameters
+    ----------
+    name : str
+        The new rule name
+    rule : str
+        The new rule
+    resource_type : ResourceType
+        Determines the type of the resource:
+            'default': A system resource that cannot be modified or removed by a user
+            'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+            'user': A user-created resource that is NOT protected and can be modified or removed by a user.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult:
+        Status message
     """
     result = AffectedItemsWazuhResult(none_msg='Security rule was not created',
                                       all_msg='Security rule was successfully created')
     with RulesManager() as rum:
-        status = rum.add_rule(name=name, rule=rule)
+        status = rum.add_rule(name=name, rule=rule, resource_type=resource_type)
         if status == SecurityError.ALREADY_EXIST:
             result.add_failed_item(id_=name, error=WazuhError(4005))
         elif status == SecurityError.INVALID:
@@ -542,11 +653,23 @@ def add_rule(name=None, rule=None):
 
 @expose_resources(actions=['security:delete'], resources=['rule:id:{rule_ids}'],
                   post_proc_kwargs={'exclude_codes': [4022, 4008]})
-def remove_rules(rule_ids=None):
+def remove_rules(rule_ids=None, resource_type: ResourceType = ResourceType.USER) -> AffectedItemsWazuhResult:
     """Remove a rule from the system.
 
-    :param rule_ids: List of rule ids (None for all rules)
-    :return Result of operation
+    Parameters
+    ----------
+    rule_ids : list of str
+        List of rule ids (None for all rules)
+    resource_type : ResourceType
+        Determines the type of the resource:
+            'default': A system resource that cannot be modified or removed by a user
+            'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+            'user': A user-created resource that is NOT protected and can be modified or removed by a user.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult:
+        Status message
     """
     result = AffectedItemsWazuhResult(none_msg='No security rule was deleted',
                                       some_msg='Some security rules were not deleted',
@@ -554,7 +677,7 @@ def remove_rules(rule_ids=None):
     with RulesManager() as rum:
         for r_id in rule_ids:
             rule = rum.get_rule(int(r_id))
-            role_delete = rum.delete_rule(int(r_id))
+            role_delete = rum.delete_rule(int(r_id), resource_type=resource_type)
             if role_delete == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=int(r_id), error=WazuhError(4008))
             elif role_delete == SecurityError.RELATIONSHIP_ERROR:
@@ -572,20 +695,34 @@ def remove_rules(rule_ids=None):
 
 
 @expose_resources(actions=['security:update'], resources=['rule:id:{rule_id}'])
-def update_rule(rule_id=None, name=None, rule=None):
+def update_rule(rule_id=None, name=None, rule=None, resource_type: ResourceType = None):
     """Update a rule from the system.
 
-    :param rule_id: Rule id to be updated
-    :param name: The new name
-    :param rule: The new rule
-    :return Rule information
+    Parameters
+    ----------
+    rule_id : int
+        Rule id to be updated
+    name : str
+        The new rule name
+    rule : str
+        The new rule
+    resource_type : ResourceType
+        Determines the type of the resource:
+            'default': A system resource that cannot be modified or removed by a user
+            'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+            'user': A user-created resource that is NOT protected and can be modified or removed by a user.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult:
+        Status message
     """
     if name is None and rule is None:
         raise WazuhError(4001)
     result = AffectedItemsWazuhResult(none_msg='Security rule was not updated',
                                       all_msg='Security rule was successfully updated')
     with RulesManager() as rum:
-        status = rum.update_rule(rule_id=rule_id[0], name=name, rule=rule)
+        status = rum.update_rule(rule_id=rule_id[0], name=name, rule=rule, resource_type=resource_type)
         if status == SecurityError.ALREADY_EXIST:
             result.add_failed_item(id_=int(rule_id[0]), error=WazuhError(4005))
         elif status == SecurityError.INVALID:
@@ -912,7 +1049,7 @@ def get_api_endpoints():
     list
         API endpoints
     """
-    info_data = load_spec()
+    info_data = common.load_spec()
     endpoints_list = list()
     for path, path_info in info_data['paths'].items():
         for method in path_info.keys():
@@ -936,11 +1073,11 @@ def get_rbac_resources(resource: str = None):
         RBAC resources
     """
     if not resource:
-        return WazuhResult({'data': load_spec()['x-rbac-catalog']['resources']})
+        return WazuhResult({'data': common.load_spec()['x-rbac-catalog']['resources']})
     else:
-        if resource not in load_spec()['x-rbac-catalog']['resources'].keys():
+        if resource not in common.load_spec()['x-rbac-catalog']['resources'].keys():
             raise WazuhError(4019)
-        return WazuhResult({'data': {resource: load_spec()['x-rbac-catalog']['resources'][resource]}})
+        return WazuhResult({'data': {resource: common.load_spec()['x-rbac-catalog']['resources'][resource]}})
 
 
 @lru_cache(maxsize=None)
@@ -960,7 +1097,7 @@ def get_rbac_actions(endpoint: str = None):
     endpoints_list = get_api_endpoints()
     if endpoint and endpoint not in endpoints_list:
         raise WazuhError(4020, extra_remediation=endpoints_list)
-    info_data = load_spec()
+    info_data = common.load_spec()
     data = dict()
     for path, path_info in info_data['paths'].items():
         for method, payload in path_info.items():

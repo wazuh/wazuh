@@ -94,7 +94,7 @@ def test_auth_roles(db_setup):
                     role.rules = list_rules
                     _role_rules.return_value = {'rules': list_rules}
                     _rule.side_effect = role.rules
-                    initial_index = 100
+                    initial_index = 1000
                     for rule in role['rules']:
                         rule['id'] = initial_index
                         initial_index += 1

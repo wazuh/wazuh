@@ -6,7 +6,7 @@ import json
 import os
 import re
 from datetime import datetime
-from enum import IntEnum
+from enum import IntEnum, Enum
 from shutil import chown
 from time import time
 
@@ -15,7 +15,6 @@ from sqlalchemy import create_engine, UniqueConstraint, Column, DateTime, String
     CheckConstraint
 from sqlalchemy import desc
 from sqlalchemy.dialects.sqlite import TEXT
-from sqlalchemy.event import listens_for
 from sqlalchemy.exc import IntegrityError, InvalidRequestError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
@@ -25,14 +24,16 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from api.configuration import security_conf
 from api.constants import SECURITY_PATH
 
-# Max reserved ID value
-max_id_reserved = 99
+import wazuh.core.common as common
 
-# Start a session and set the default security elements
-_auth_db_file = os.path.join(SECURITY_PATH, 'rbac.db')
-_engine = create_engine('sqlite:///' + _auth_db_file, echo=False)
+# Max reserved ID value
+max_id_reserved = 999
+
+# Database variables
+DATABASE_FILENAME = 'rbac.db'
+_auth_db_file = os.path.join(SECURITY_PATH, DATABASE_FILENAME)
+_tmp_db_file = f'{_auth_db_file}_tmp'
 _Base = declarative_base()
-_Session = sessionmaker(bind=_engine)
 
 # Required rules for role
 # Key: Role - Value: Rules
@@ -65,7 +66,7 @@ class SecurityError(IntEnum):
     ROLE_NOT_EXIST = -2
     # The policy does not exist in the database
     POLICY_NOT_EXIST = -3
-    # Admin resources of the system
+    # Admin or protected resources of the system
     ADMIN_RESOURCES = -4
     # The role does not exist in the database
     USER_NOT_EXIST = -5
@@ -77,16 +78,10 @@ class SecurityError(IntEnum):
     RELATIONSHIP_ERROR = -8
 
 
-@listens_for(_Session, 'after_flush')
-def delete_orphans(session, instances):
-    if session.deleted:
-        query = session.query(UserRoles).filter(or_(UserRoles.user_id.is_(None), UserRoles.role_id.is_(None))).all()
-        query.extend(session.query(RolesRules).filter(or_(RolesRules.role_id.is_(None),
-                                                          RolesRules.rule_id.is_(None))).all())
-        query.extend(session.query(RolesPolicies).filter(or_(RolesPolicies.role_id.is_(None),
-                                                             RolesPolicies.policy_id.is_(None))).all())
-        for orphan in query:
-            session.delete(orphan)
+class ResourceType(Enum):
+    USER = 'user'
+    PROTECTED = 'protected'
+    DEFAULT = 'default'
 
 
 class RolesRules(_Base):
@@ -102,10 +97,10 @@ class RolesRules(_Base):
     __tablename__ = "roles_rules"
 
     # Schema, Many-To-Many relationship
-    id = Column('id', Integer, primary_key=True)
-    role_id = Column('role_id', Integer, ForeignKey("roles.id", ondelete='CASCADE'))
-    rule_id = Column('rule_id', Integer, ForeignKey("rules.id", ondelete='CASCADE'))
-    created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    id = Column(Integer, primary_key=True)
+    role_id = Column(Integer, ForeignKey("roles.id", ondelete='CASCADE'))
+    rule_id = Column(Integer, ForeignKey("rules.id", ondelete='CASCADE'))
+    created_at = Column(DateTime, default=datetime.utcnow())
     __table_args__ = (UniqueConstraint('role_id', 'rule_id', name='role_rule'),
                       )
 
@@ -127,11 +122,11 @@ class RolesPolicies(_Base):
     __tablename__ = "roles_policies"
 
     # Schema, Many-To-Many relationship
-    id = Column('id', Integer, primary_key=True)
-    role_id = Column('role_id', Integer, ForeignKey("roles.id", ondelete='CASCADE'))
-    policy_id = Column('policy_id', Integer, ForeignKey("policies.id", ondelete='CASCADE'))
-    level = Column('level', Integer, default=0)
-    created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    id = Column(Integer, primary_key=True)
+    role_id = Column(Integer, ForeignKey("roles.id", ondelete='CASCADE'))
+    policy_id = Column(Integer, ForeignKey("policies.id", ondelete='CASCADE'))
+    level = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow())
     __table_args__ = (UniqueConstraint('role_id', 'policy_id', name='role_policy'),
                       )
 
@@ -152,11 +147,11 @@ class UserRoles(_Base):
     __tablename__ = "user_roles"
 
     # Schema, Many-To-Many relationship
-    id = Column('id', Integer, primary_key=True)
-    user_id = Column('user_id', Integer, ForeignKey("users.id", ondelete='CASCADE'))
-    role_id = Column('role_id', Integer, ForeignKey("roles.id", ondelete='CASCADE'))
-    level = Column('level', Integer, default=0)
-    created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete='CASCADE'))
+    role_id = Column(Integer, ForeignKey("roles.id", ondelete='CASCADE'))
+    level = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow())
     __table_args__ = (UniqueConstraint('user_id', 'role_id', name='user_role'),
                       )
 
@@ -176,8 +171,8 @@ class RunAsTokenBlacklist(_Base):
     """
     __tablename__ = "runas_token_blacklist"
 
-    nbf_invalid_until = Column('nbf_invalid_until', Integer, primary_key=True)
-    is_valid_until = Column('is_valid_until', Integer, nullable=False)
+    nbf_invalid_until = Column(Integer, primary_key=True)
+    is_valid_until = Column(Integer, nullable=False)
     __table_args__ = (UniqueConstraint('nbf_invalid_until', name='nbf_invalid_until_invalidation_rule'),)
 
     def __init__(self):
@@ -207,9 +202,9 @@ class UsersTokenBlacklist(_Base):
     """
     __tablename__ = "users_token_blacklist"
 
-    user_id = Column('user_id', Integer, primary_key=True)
-    nbf_invalid_until = Column('nbf_invalid_until', Integer, nullable=False)
-    is_valid_until = Column('is_valid_until', Integer, nullable=False)
+    user_id = Column(Integer, primary_key=True)
+    nbf_invalid_until = Column(Integer, nullable=False)
+    is_valid_until = Column(Integer, nullable=False)
     __table_args__ = (UniqueConstraint('user_id', name='user_invalidation_rule'),)
 
     def __init__(self, user_id):
@@ -240,9 +235,9 @@ class RolesTokenBlacklist(_Base):
     """
     __tablename__ = "roles_token_blacklist"
 
-    role_id = Column('role_id', Integer, primary_key=True)
-    nbf_invalid_until = Column('nbf_invalid_until', Integer, nullable=False)
-    is_valid_until = Column('is_valid_until', Integer, nullable=False)
+    role_id = Column(Integer, primary_key=True)
+    nbf_invalid_until = Column(Integer, nullable=False)
+    is_valid_until = Column(Integer, nullable=False)
     __table_args__ = (UniqueConstraint('role_id', name='role_invalidation_rule'),)
 
     def __init__(self, role_id):
@@ -264,24 +259,26 @@ class RolesTokenBlacklist(_Base):
 class User(_Base):
     __tablename__ = 'users'
 
-    id = Column('id', Integer, primary_key=True)
+    id = Column(Integer, primary_key=True)
     username = Column(String, nullable=False)
     password = Column(String, nullable=False)
     allow_run_as = Column(Boolean, default=False, nullable=False)
-    created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    created_at = Column(DateTime, default=datetime.utcnow())
+    resource_type = Column(String, default=ResourceType.USER)
     __table_args__ = (UniqueConstraint('username', name='username_restriction'),
                       CheckConstraint('length(username) <= 64'),
-                      CheckConstraint('length(password) <= 64'))
+                      CheckConstraint('length(password) <= 256'))
 
     # Relations
     roles = relationship("Roles", secondary='user_roles', passive_deletes=True, cascade="all,delete", lazy="dynamic")
 
-    def __init__(self, username, password, allow_run_as=False, user_id=None):
+    def __init__(self, username, password, allow_run_as=False, created_at=None, resource_type=None, user_id=None):
         self.id = user_id
         self.username = username
         self.password = password
         self.allow_run_as = allow_run_as
-        self.created_at = datetime.utcnow()
+        self.created_at = created_at if created_at else datetime.utcnow()
+        self.resource_type = resource_type.value if resource_type else ResourceType.USER.value
 
     def __repr__(self):
         return f"<User(user={self.username})"
@@ -306,14 +303,14 @@ class User(_Base):
         return {'id': self.id, 'username': self.username,
                 'roles': self._get_roles_id(), 'allow_run_as': self.allow_run_as}
 
-    def to_dict(self):
+    def to_dict(self, session=None):
         """Return the information of one policy and the roles that have assigned
 
         Returns
         -------
         Dict with the information
         """
-        with UserRolesManager() as urm:
+        with UserRolesManager(session=session) as urm:
             return {'id': self.id, 'username': self.username,
                     'allow_run_as': self.allow_run_as,
                     'roles': [role.id for role in urm.get_all_roles_from_user(user_id=self.id)]}
@@ -331,22 +328,25 @@ class Roles(_Base):
     __tablename__ = "roles"
 
     # Schema
-    id = Column('id', Integer, primary_key=True)
-    name = Column('name', String, nullable=False)
-    created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow())
+    resource_type = Column(String, default=ResourceType.USER.value)
     __table_args__ = (UniqueConstraint('name', name='name_role'),
                       CheckConstraint('length(name) <= 64'))
 
-    # Relations
+
+# Relations
     policies = relationship("Policies", secondary='roles_policies', passive_deletes=True, cascade="all,delete",
                             lazy="dynamic")
     users = relationship("User", secondary='user_roles', passive_deletes=True, cascade="all,delete", lazy="dynamic")
     rules = relationship("Rules", secondary='roles_rules', passive_deletes=True, cascade="all,delete", lazy="dynamic")
 
-    def __init__(self, name, role_id=None):
+    def __init__(self, name, role_id=None, created_at=None, resource_type=None):
         self.id = role_id
         self.name = name
-        self.created_at = datetime.utcnow()
+        self.created_at = created_at if created_at else datetime.utcnow()
+        self.resource_type = resource_type.value if resource_type else ResourceType.USER.value
 
     def get_role(self):
         """Role's getter
@@ -360,14 +360,14 @@ class Roles(_Base):
     def get_policies(self):
         return list(self.policies)
 
-    def to_dict(self):
+    def to_dict(self, session=None):
         """Return the information of one role and the users, policies and rules assigned to it
 
         Returns
         -------
         Dict with the information
         """
-        with RolesPoliciesManager() as rpm:
+        with RolesPoliciesManager(session=session) as rpm:
             return {'id': self.id, 'name': self.name,
                     'policies': [policy.id for policy in rpm.get_all_policies_from_role(role_id=self.id)],
                     'users': [user.id for user in self.users],
@@ -386,21 +386,23 @@ class Rules(_Base):
     __tablename__ = "rules"
 
     # Schema
-    id = Column('id', Integer, primary_key=True)
-    name = Column('name', String, nullable=False)
-    rule = Column('rule', TEXT, nullable=False)
-    created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    rule = Column(TEXT, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow())
+    resource_type = Column(String, default=ResourceType.USER.value)
     __table_args__ = (UniqueConstraint('name', name='rule_name'),
                       CheckConstraint('length(name) <= 64'))
 
     # Relations
     roles = relationship("Roles", secondary='roles_rules', passive_deletes=True, cascade="all,delete", lazy="dynamic")
 
-    def __init__(self, name, rule, rule_id=None):
+    def __init__(self, name, rule, rule_id=None, created_at=None, resource_type=None):
         self.id = rule_id
         self.name = name
         self.rule = rule
-        self.created_at = datetime.utcnow()
+        self.created_at = created_at if created_at else datetime.utcnow()
+        self.resource_type = resource_type.value if resource_type else ResourceType.USER.value
 
     def get_rule(self):
         """Rule getter
@@ -434,10 +436,11 @@ class Policies(_Base):
     __tablename__ = "policies"
 
     # Schema
-    id = Column('id', Integer, primary_key=True)
-    name = Column('name', String, nullable=False)
-    policy = Column('policy', TEXT, nullable=False)
-    created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    policy = Column(TEXT, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow())
+    resource_type = Column(String, default=ResourceType.USER.value)
     __table_args__ = (UniqueConstraint('name', name='name_policy'),
                       UniqueConstraint('policy', name='policy_definition'),
                       CheckConstraint('length(name) <= 64'))
@@ -446,11 +449,12 @@ class Policies(_Base):
     roles = relationship("Roles", secondary='roles_policies', passive_deletes=True, cascade="all,delete",
                          lazy="dynamic")
 
-    def __init__(self, name, policy, policy_id=None):
+    def __init__(self, name, policy, policy_id=None, created_at=None, resource_type=None):
         self.id = policy_id
         self.name = name
         self.policy = policy
-        self.created_at = datetime.utcnow()
+        self.created_at = created_at if created_at else datetime.utcnow()
+        self.resource_type = resource_type.value if resource_type else ResourceType.USER.value
 
     def get_policy(self):
         """Policy's getter
@@ -461,14 +465,14 @@ class Policies(_Base):
         """
         return {'id': self.id, 'name': self.name, 'policy': json.loads(self.policy)}
 
-    def to_dict(self):
+    def to_dict(self, session=None):
         """Return the information of one policy and the roles that have assigned
 
         Returns
         -------
         Dict with the information
         """
-        with RolesPoliciesManager() as rpm:
+        with RolesPoliciesManager(session=session) as rpm:
             return {'id': self.id, 'name': self.name, 'policy': json.loads(self.policy),
                     'roles': [role.id for role in rpm.get_all_roles_from_policy(policy_id=self.id)]}
 
@@ -478,6 +482,9 @@ class TokenManager:
     This class is the manager of Token blacklist, this class provides
     all the methods needed for the token blacklist administration.
     """
+    def __init__(self, session=None):
+        self.session = session if session else sessionmaker(
+            bind=create_engine('sqlite:///' + _auth_db_file, echo=False))()
 
     def is_token_valid(self, token_nbf_time: int, user_id: int = None, role_id: int = None, run_as: bool = False):
         """Check if specified token is valid
@@ -668,7 +675,6 @@ class TokenManager:
             return False
 
     def __enter__(self):
-        self.session = _Session()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -679,8 +685,12 @@ class AuthenticationManager:
     """Class for dealing with authentication stuff without worrying about database.
     It manages users and token generation.
     """
+    def __init__(self, session=None):
+        self.session = session if session else sessionmaker(
+            bind=create_engine('sqlite:///' + _auth_db_file, echo=False))()
 
-    def add_user(self, username: str, password: str, allow_run_as: bool = False, check_default: bool = True):
+    def add_user(self, username: str, password: str, hash_password: bool = True, allow_run_as: bool = False,
+                 created_at: DateTime = None, resource_type: ResourceType = None, check_default: bool = True) -> bool:
         """Creates a new user if it does not exist.
 
         Parameters
@@ -688,34 +698,49 @@ class AuthenticationManager:
         username : str
             Unique user name
         password : str
-            Password provided by user. It will be stored hashed
+            Password provided by user. It will be stored hashed if 'hash_password' is true.
+        hash_password : bool
+            Determines if the specified password must be stored hashed or as provided in 'password'. This is used during
+            database migrations.
         allow_run_as : bool
             Flag that indicates if the user can log into the API throw an authorization context
+        created_at : DateTime
+            Creation time for this resource. Specified during a migration.
+        resource_type : ResourceType
+            Determines the type of the resource:
+                'default': A system resource that cannot be modified or removed by a user
+                'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+                'user': A user-created resource that is NOT protected and can be modified or removed by a user.
         check_default : bool
             Flag that indicates if the user ID can be less than max_id_reserved
 
         Returns
         -------
-        True if the user has been created successfully. False otherwise (i.e. already exists)
+        bool:
+            True if the user has been created successfully. False otherwise (i.e. already exists)
         """
         try:
             user_id = None
             try:
-                if check_default and self.session.query(User).order_by(desc(User.id)
-                                                                       ).limit(1).scalar().id < max_id_reserved:
+                if check_default and self.session.query(User).order_by(desc(User.id)).limit(
+                        1).scalar().id < max_id_reserved:
                     user_id = max_id_reserved + 1
             except (TypeError, AttributeError):
                 pass
-            self.session.add(User(username=username, password=generate_password_hash(password),
-                                  allow_run_as=allow_run_as, user_id=user_id))
+            self.session.add(User(username=username,
+                                  password=generate_password_hash(password) if hash_password else password,
+                                  allow_run_as=allow_run_as,
+                                  created_at=created_at,
+                                  resource_type=resource_type,
+                                  user_id=user_id))
             self.session.commit()
             return True
         except IntegrityError:
             self.session.rollback()
             return False
 
-    def update_user(self, user_id: int, password: str, allow_run_as: bool):
-        """Update the password an existent user
+    def update_user(self, user_id: int, password: str, allow_run_as: bool, resource_type: ResourceType = None):
+        """Update the password of an existing user, regardless of its resource_type
 
         Parameters
         ----------
@@ -725,19 +750,30 @@ class AuthenticationManager:
             Password provided by user. It will be stored hashed
         allow_run_as : bool
             Enable authorization context login method for the new user
+        resource_type : ResourceType
+            Determines the type of the resource:
+                'default': A system resource that cannot be modified or removed by a user
+                'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+                'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
         Returns
         -------
-        True if the user has been modify successfully. False otherwise
+        bool:
+            True if the user has been modify successfully. False otherwise
         """
         try:
             user = self.session.query(User).filter_by(id=user_id).first()
             if user is not None:
+                if resource_type is not None:
+                    if user.resource_type == ResourceType.USER.value or user.resource_type == resource_type.value:
+                        user.resource_type = resource_type.value
+                    else:
+                        return SecurityError.ADMIN_RESOURCES
                 if password:
                     user.password = generate_password_hash(password)
                 if allow_run_as is not None:
                     user.allow_run_as = allow_run_as
-                if password or allow_run_as is not None:
+                if password or allow_run_as or resource_type is not None:
                     self.session.commit()
                     return True
             return False
@@ -745,13 +781,18 @@ class AuthenticationManager:
             self.session.rollback()
             return False
 
-    def delete_user(self, user_id: int):
+    def delete_user(self, user_id: int, resource_type: ResourceType = ResourceType.USER):
         """Remove the specified user
 
         Parameters
         ----------
         user_id : int
             Unique user id
+        resource_type : ResourceType
+            Determines the type of the resource:
+                'default': A system resource that cannot be modified or removed by a user
+                'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+                'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
         Returns
         -------
@@ -762,6 +803,8 @@ class AuthenticationManager:
                 user = self.session.query(User).filter_by(id=user_id).first()
                 if user is None:
                     return False
+                elif user.resource_type != ResourceType.USER.value and user.resource_type != resource_type.value:
+                    return SecurityError.ADMIN_RESOURCES
                 self.session.delete(user)
                 self.session.commit()
                 return True
@@ -787,7 +830,8 @@ class AuthenticationManager:
         """
         try:
             if username is not None:
-                return self.session.query(User).filter_by(username=username).first().to_dict()
+                return self.session.query(User).filter_by(username=username).first().to_dict(session=self.session)
+
         except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
@@ -806,7 +850,7 @@ class AuthenticationManager:
         """
         try:
             if user_id is not None:
-                return self.session.query(User).filter_by(id=user_id).first().to_dict()
+                return self.session.query(User).filter_by(id=user_id).first().to_dict(session=self.session)
         except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
@@ -846,7 +890,6 @@ class AuthenticationManager:
         return user_ids
 
     def __enter__(self):
-        self.session = _Session()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -858,6 +901,9 @@ class RolesManager:
     This class is the manager of the Roles, this class provided
     all the methods needed for the roles administration.
     """
+    def __init__(self, session=None):
+        self.session = session if session else sessionmaker(
+            bind=create_engine('sqlite:///' + _auth_db_file, echo=False))()
 
     def get_role(self, name: str):
         """Get the information about one role specified by name
@@ -875,7 +921,7 @@ class RolesManager:
             role = self.session.query(Roles).filter_by(name=name).first()
             if not role:
                 return SecurityError.ROLE_NOT_EXIST
-            return role.to_dict()
+            return role.to_dict(session=self.session)
         except IntegrityError:
             return SecurityError.ROLE_NOT_EXIST
 
@@ -895,7 +941,7 @@ class RolesManager:
             role = self.session.query(Roles).filter_by(id=role_id).first()
             if not role:
                 return SecurityError.ROLE_NOT_EXIST
-            return role.to_dict()
+            return role.to_dict(session=self.session)
         except IntegrityError:
             return SecurityError.ROLE_NOT_EXIST
 
@@ -912,19 +958,28 @@ class RolesManager:
         except IntegrityError:
             return SecurityError.ROLE_NOT_EXIST
 
-    def add_role(self, name: str, check_default: bool = True):
+    def add_role(self, name: str, created_at: DateTime = None, resource_type: ResourceType = None,
+                 check_default: bool = True):
         """Add a new role.
 
         Parameters
         ----------
         name : str
             Name of the new role
+        created_at : DateTime
+            Creation time for this resource. Specified during a migration.
+        resource_type : ResourceType
+            Determines the type of the resource:
+                'default': A system resource that cannot be modified or removed by a user
+                'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+                'user': A user-created resource that is NOT protected and can be modified or removed by a user.
         check_default : bool
             Flag that indicates if the user ID can be less than max_id_reserved
 
         Returns
         -------
-        True -> Success | Role already exist
+        bool:
+            True -> Success | Role already exist
         """
         try:
             role_id = None
@@ -934,20 +989,25 @@ class RolesManager:
                     role_id = max_id_reserved + 1
             except (TypeError, AttributeError):
                 pass
-            self.session.add(Roles(name=name, role_id=role_id))
+            self.session.add(Roles(name=name, role_id=role_id, created_at=created_at, resource_type=resource_type))
             self.session.commit()
             return True
         except IntegrityError:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
 
-    def delete_role(self, role_id: int):
+    def delete_role(self, role_id: int, resource_type: ResourceType = ResourceType.USER):
         """Delete an existent role in the system
 
         Parameters
         ----------
         role_id : int
             ID of the role to be deleted
+        resource_type : ResourceType
+            Determines the type of the resource:
+                'default': A system resource that cannot be modified or removed by a user
+                'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+                'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
         Returns
         -------
@@ -958,6 +1018,8 @@ class RolesManager:
                 role = self.session.query(Roles).filter_by(id=role_id).first()
                 if role is None:
                     return False
+                elif role.resource_type != ResourceType.USER.value and role.resource_type != resource_type.value:
+                    return SecurityError.ADMIN_RESOURCES
                 self.session.delete(role)
                 self.session.commit()
                 return True
@@ -1009,7 +1071,7 @@ class RolesManager:
             self.session.rollback()
             return False
 
-    def update_role(self, role_id: int, name: str):
+    def update_role(self, role_id: int, name: str, resource_type: ResourceType = ResourceType.USER):
         """Update an existent role in the system
 
         Parameters
@@ -1018,7 +1080,11 @@ class RolesManager:
             ID of the role to be updated
         name : str
             New name for the role
-
+        resource_type : ResourceType
+            Determines the type of the resource:
+                'default': A system resource that cannot be modified or removed by a user
+                'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+                'user': A user-created resource that is NOT protected and can be modified or removed by a user.
         Returns
         -------
         True -> Success | Invalid rule | Name already in use | Role not exist
@@ -1026,10 +1092,13 @@ class RolesManager:
         try:
             role_to_update = self.session.query(Roles).filter_by(id=role_id).first()
             if role_to_update and role_to_update is not None:
-                if role_to_update.id > max_id_reserved:
+                if role_to_update.id > max_id_reserved and (role_to_update.resource_type == ResourceType.USER.value or
+                                                            role_to_update.resource_type == resource_type.value):
                     # Change the name of the role
                     if name is not None:
                         role_to_update.name = name
+                    if resource_type is not None:
+                        role_to_update.resource_type = resource_type.value
                     self.session.commit()
                     return True
                 return SecurityError.ADMIN_RESOURCES
@@ -1039,7 +1108,6 @@ class RolesManager:
             return SecurityError.ALREADY_EXIST
 
     def __enter__(self):
-        self.session = _Session()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -1050,6 +1118,9 @@ class RulesManager:
     """
         This class is Rules manager. This class provides all the methods needed for the rules administration.
         """
+    def __init__(self, session=None):
+        self.session = session if session else sessionmaker(
+            bind=create_engine('sqlite:///' + _auth_db_file, echo=False))()
 
     def get_rule(self, rule_id: int):
         """Get the information about one rule specified by id.
@@ -1104,7 +1175,8 @@ class RulesManager:
         except IntegrityError:
             return SecurityError.RULE_NOT_EXIST
 
-    def add_rule(self, name: str, rule: dict, check_default: bool = True):
+    def add_rule(self, name: str, rule: dict, created_at: DateTime = None, resource_type: ResourceType = None,
+                 check_default: bool = True):
         """Add a new rule.
 
         Parameters
@@ -1113,6 +1185,13 @@ class RulesManager:
             Name of the new rule.
         rule : dict
             Rule dictionary.
+        created_at : DateTime
+            Creation time for this resource. Specified during a migration.
+        resource_type : ResourceType
+            Determines the type of the resource:
+                'default': A system resource that cannot be modified or removed by a user
+                'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+                'user': A user-created resource that is NOT protected and can be modified or removed by a user.
         check_default : bool
             Flag that indicates if the user ID can be less than max_id_reserved
 
@@ -1131,20 +1210,26 @@ class RulesManager:
                     rule_id = max_id_reserved + 1
             except (TypeError, AttributeError):
                 pass
-            self.session.add(Rules(name=name, rule=json.dumps(rule), rule_id=rule_id))
+            self.session.add(Rules(name=name, rule=json.dumps(rule), rule_id=rule_id, created_at=created_at,
+                                   resource_type=resource_type))
             self.session.commit()
             return True
         except IntegrityError:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
 
-    def delete_rule(self, rule_id: int):
+    def delete_rule(self, rule_id: int, resource_type: ResourceType = ResourceType.USER):
         """Delete an existent rule from the system specified by its ID.
 
         Parameters
         ----------
         rule_id : int
             Id of the rule.
+        resource_type : ResourceType
+            Determines the type of the resource:
+                'default': A system resource that cannot be modified or removed by a user
+                'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+                'user': A user-created resource that is NOT protected and can be modified or removed by a user.
         Returns
         -------
         True -> Success | False -> Failure
@@ -1154,6 +1239,8 @@ class RulesManager:
                 rule = self.session.query(Rules).filter_by(id=rule_id).first()
                 if rule is None:
                     return False
+                elif rule.resource_type != ResourceType.USER.value and rule.resource_type != resource_type.value:
+                    return SecurityError.ADMIN_RESOURCES
                 self.session.delete(rule)
                 self.session.commit()
                 return True
@@ -1205,7 +1292,7 @@ class RulesManager:
             self.session.rollback()
             return False
 
-    def update_rule(self, rule_id: int, name: str, rule: dict):
+    def update_rule(self, rule_id: int, name: str, rule: dict, resource_type: ResourceType = ResourceType.USER):
         """Update an existent rule in the system.
 
         Parameters
@@ -1216,6 +1303,11 @@ class RulesManager:
             Name of the rule.
         rule : dict
             Dictionary with the rule itself.
+        resource_type : ResourceType
+            Determines the type of the resource:
+                'default': A system resource that cannot be modified or removed by a user
+                'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+                'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
         Returns
         -------
@@ -1224,7 +1316,8 @@ class RulesManager:
         try:
             rule_to_update = self.session.query(Rules).filter_by(id=rule_id).first()
             if rule_to_update and rule_to_update is not None:
-                if rule_to_update.id > max_id_reserved:
+                if rule_to_update.id > max_id_reserved and (rule_to_update.resource_type == ResourceType.USER.value or
+                                                            rule_to_update.resource_type == resource_type.value):
                     # Rule is not a valid json
                     if rule is not None and not json_validator(rule):
                         return SecurityError.INVALID
@@ -1242,7 +1335,6 @@ class RulesManager:
             return SecurityError.ALREADY_EXIST
 
     def __enter__(self):
-        self.session = _Session()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -1254,6 +1346,9 @@ class PoliciesManager:
     This class is the manager of the Policies, this class provided
     all the methods needed for the policies administration.
     """
+    def __init__(self, session=None):
+        self.session = session if session else sessionmaker(
+            bind=create_engine('sqlite:///' + _auth_db_file, echo=False))()
 
     def get_policy(self, name: str):
         """Get the information about one policy specified by name
@@ -1271,7 +1366,7 @@ class PoliciesManager:
             policy = self.session.query(Policies).filter_by(name=name).first()
             if not policy:
                 return SecurityError.POLICY_NOT_EXIST
-            return policy.to_dict()
+            return policy.to_dict(session=self.session)
         except IntegrityError:
             return SecurityError.POLICY_NOT_EXIST
 
@@ -1291,7 +1386,7 @@ class PoliciesManager:
             policy = self.session.query(Policies).filter_by(id=policy_id).first()
             if not policy:
                 return SecurityError.POLICY_NOT_EXIST
-            return policy.to_dict()
+            return policy.to_dict(session=self.session)
         except IntegrityError:
             return SecurityError.POLICY_NOT_EXIST
 
@@ -1308,7 +1403,8 @@ class PoliciesManager:
         except IntegrityError:
             return SecurityError.POLICY_NOT_EXIST
 
-    def add_policy(self, name: str, policy: dict, check_default: bool = True):
+    def add_policy(self, name: str, policy: dict, created_at: DateTime = None, resource_type: ResourceType = None,
+                   check_default: bool = True):
         """Add a new policy.
 
         Parameters
@@ -1317,6 +1413,13 @@ class PoliciesManager:
             Name of the new policy
         policy : dict
             Policy of the new policy
+        created_at : DateTime
+            Creation time for this resource. Specified during a migration.
+        resource_type : ResourceType
+            Determines the type of the resource:
+                'default': A system resource that cannot be modified or removed by a user
+                'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+                'user': A user-created resource that is NOT protected and can be modified or removed by a user.
         check_default : bool
             Flag that indicates if the user ID can be less than max_id_reserved
 
@@ -1351,7 +1454,8 @@ class PoliciesManager:
                                 policy_id = max_id_reserved + 1
                         except (TypeError, AttributeError):
                             pass
-                        self.session.add(Policies(name=name, policy=json.dumps(policy), policy_id=policy_id))
+                        self.session.add(Policies(name=name, policy=json.dumps(policy), policy_id=policy_id,
+                                                  created_at=created_at, resource_type=resource_type))
                         self.session.commit()
                         return True
                     else:
@@ -1360,18 +1464,22 @@ class PoliciesManager:
                     return SecurityError.INVALID
             else:
                 return SecurityError.INVALID
-            return False
         except IntegrityError:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
 
-    def delete_policy(self, policy_id: int):
+    def delete_policy(self, policy_id: int, resource_type: ResourceType = ResourceType.USER):
         """Delete an existent policy in the system
 
         Parameters
         ----------
         policy_id : int
             ID of the policy to be deleted
+        resource_type : ResourceType
+            Determines the type of the resource:
+                'default': A system resource that cannot be modified or removed by a user
+                'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+                'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
         Returns
         -------
@@ -1382,6 +1490,8 @@ class PoliciesManager:
                 policy = self.session.query(Policies).filter_by(id=policy_id).first()
                 if policy is None:
                     return False
+                elif policy.resource_type != ResourceType.USER.value and policy.resource_type != resource_type.value:
+                    return SecurityError.ADMIN_RESOURCES
                 self.session.delete(policy)
                 self.session.commit()
                 return True
@@ -1434,7 +1544,7 @@ class PoliciesManager:
             self.session.rollback()
             return False
 
-    def update_policy(self, policy_id: int, name: str, policy: dict):
+    def update_policy(self, policy_id: int, name: str, policy: dict, resource_type: ResourceType = ResourceType.USER):
         """Update an existent policy in the system
 
         Parameters
@@ -1445,6 +1555,11 @@ class PoliciesManager:
             New name for the Policy
         policy : dict
             New policy for the Policy
+        resource_type : ResourceType
+            Determines the type of the resource:
+                'default': A system resource that cannot be modified or removed by a user
+                'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+                'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
         Returns
         -------
@@ -1453,7 +1568,8 @@ class PoliciesManager:
         try:
             policy_to_update = self.session.query(Policies).filter_by(id=policy_id).first()
             if policy_to_update and policy_to_update is not None:
-                if policy_to_update.id > max_id_reserved:
+                if policy_to_update.id > max_id_reserved and (policy_to_update.resource_type == ResourceType.USER.value
+                                                              or policy_to_update.resource_type == resource_type.value):
                     # Policy is not a valid json
                     if policy is not None and not json_validator(policy):
                         return SecurityError.INVALID
@@ -1470,6 +1586,8 @@ class PoliciesManager:
                             if not re.match(regex, resource):
                                 return SecurityError.INVALID
                         policy_to_update.policy = json.dumps(policy)
+                    if resource_type is not None:
+                        policy_to_update.resource_type = resource_type.value
                     self.session.commit()
                     return True
                 return SecurityError.ADMIN_RESOURCES
@@ -1479,7 +1597,6 @@ class PoliciesManager:
             return SecurityError.ALREADY_EXIST
 
     def __enter__(self):
-        self.session = _Session()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -1491,9 +1608,12 @@ class UserRolesManager:
     This class is the manager of the relationship between the user and the roles, this class provided
     all the methods needed for the user-roles administration.
     """
+    def __init__(self, session=None):
+        self.session = session if session else sessionmaker(
+            bind=create_engine('sqlite:///' + _auth_db_file, echo=False))()
 
-    def add_role_to_user(self, user_id: int, role_id: int, position: int = None, force_admin: bool = False,
-                         atomic: bool = True):
+    def add_role_to_user(self, user_id: int, role_id: int, position: int = None, created_at: DateTime = None,
+                         force_admin: bool = False, atomic: bool = True):
         """Add a relation between one specified user and one specified role.
 
         Parameters
@@ -1504,6 +1624,8 @@ class UserRolesManager:
             ID of the role
         position : int
             Order to be applied in case of multiples roles in the same user
+        created_at : DateTime
+            Creation time for this resource. Specified during a migration.
         force_admin : bool
             By default, changing an administrator user is not allowed. If True, it will be applied to admin users too
         atomic : bool
@@ -1527,15 +1649,15 @@ class UserRolesManager:
                 if position is not None or \
                         self.session.query(UserRoles).filter_by(user_id=user_id, role_id=role_id).first() is None:
                     if position is not None and \
-                            self.session.query(UserRoles).filter_by(user_id=user_id, level=position).first() and \
+                            self.session.query(UserRoles).filter_by(user_id=user_id, position=position).first() and \
                             self.session.query(UserRoles).filter_by(user_id=user_id, role_id=role_id).first() is None:
                         user_roles = [row for row in self.session.query(
                             UserRoles).filter(UserRoles.user_id == user_id, UserRoles.level >= position
                                               ).order_by(UserRoles.level).all()]
                         new_level = position
                         for relation in user_roles:
-                            relation.level = new_level + 1
                             new_level += 1
+                            relation.level = new_level
 
                     user.roles.append(role)
                     user_role = self.session.query(UserRoles).filter_by(user_id=user_id, role_id=role_id).first()
@@ -1550,6 +1672,9 @@ class UserRolesManager:
                         elif position > max_position + 1:
                             position = max_position + 1
                     user_role.level = position
+
+                    if created_at:
+                        user_role.created_at = created_at
 
                     atomic and self.session.commit()
                     return True
@@ -1804,7 +1929,6 @@ class UserRolesManager:
         return False
 
     def __enter__(self):
-        self.session = _Session()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -1816,9 +1940,12 @@ class RolesPoliciesManager:
     This class is the manager of the relationship between the roles and the policies, this class provided
     all the methods needed for the roles-policies administration.
     """
+    def __init__(self, session=None):
+        self.session = session if session else sessionmaker(
+            bind=create_engine('sqlite:///' + _auth_db_file, echo=False))()
 
-    def add_policy_to_role(self, role_id: int, policy_id: int, position: int = None, force_admin: bool = False,
-                           atomic: bool = True):
+    def add_policy_to_role(self, role_id: int, policy_id: int, position: int = None, created_at: DateTime = None,
+                           force_admin: bool = False, atomic: bool = True):
         """Add a relation between one specified policy and one specified role
 
         Parameters
@@ -1829,6 +1956,8 @@ class RolesPoliciesManager:
             ID of the policy
         position : int
             Order to be applied in case of multiples roles in the same user
+        created_at : DateTime
+            Creation time for this resource. Specified during a migration.
         force_admin : bool
             By default, changing an administrator roles is not allowed. If True, it will be applied to admin roles too
         atomic : bool
@@ -1856,17 +1985,15 @@ class RolesPoliciesManager:
                     return SecurityError.POLICY_NOT_EXIST
                 if position is not None or self.session.query(
                         RolesPolicies).filter_by(role_id=role_id, policy_id=policy_id).first() is None:
-                    if position is not None and \
-                            self.session.query(RolesPolicies).filter_by(role_id=role_id, level=position).first() and \
-                            self.session.query(RolesPolicies).filter_by(role_id=role_id,
-                                                                        policy_id=policy_id).first() is None:
+                    if position is not None and self.session.query(RolesPolicies).filter_by(role_id=role_id, level=position).first() \
+                            and self.session.query(RolesPolicies).filter_by(role_id=role_id, policy_id=policy_id).first() is None:
                         role_policies = [row for row in self.session.query(
                             RolesPolicies).filter(RolesPolicies.role_id == role_id, RolesPolicies.level >= position
                                                   ).order_by(RolesPolicies.level).all()]
                         new_level = position
                         for relation in role_policies:
-                            relation.level = new_level + 1
                             new_level += 1
+                            relation.level = new_level
 
                     role.policies.append(policy)
                     role_policy = self.session.query(RolesPolicies).filter_by(role_id=role_id,
@@ -1882,6 +2009,8 @@ class RolesPoliciesManager:
                             position = max_position + 1
                     role_policy.level = position
 
+                    if created_at:
+                        role_policy.created_at = created_at
                     atomic and self.session.commit()
                     return True
                 else:
@@ -2155,7 +2284,6 @@ class RolesPoliciesManager:
         return False
 
     def __enter__(self):
-        self.session = _Session()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -2167,8 +2295,12 @@ class RolesRulesManager:
     This class is the manager of the relationships between the roles and the rules. This class provides
     all the methods needed for the roles-rules administration.
     """
+    def __init__(self, session=None):
+        self.session = session if session else sessionmaker(
+            bind=create_engine('sqlite:///' + _auth_db_file, echo=False))()
 
-    def add_rule_to_role(self, rule_id: int, role_id: int, atomic: bool = True, force_admin: bool = False):
+    def add_rule_to_role(self, rule_id: int, role_id: int, position: int = None, created_at: DateTime = None,
+                         atomic: bool = True, force_admin: bool = False):
         """Add a relation between one specified role and one specified rule.
 
         Parameters
@@ -2177,6 +2309,10 @@ class RolesRulesManager:
             ID of the rule
         role_id : int
             ID of the role
+        position : int
+            Order to be applied in case of multiples roles in the same user
+        created_at : DateTime
+            Creation time for this resource. Specified during a migration.
         atomic : bool
             This parameter indicates if the operation is atomic. If this function is called within
             a loop or a function composed of several operations, atomicity cannot be guaranteed.
@@ -2199,6 +2335,11 @@ class RolesRulesManager:
                     return SecurityError.ROLE_NOT_EXIST
                 if self.session.query(RolesRules).filter_by(rule_id=rule_id, role_id=role_id).first() is None:
                     role.rules.append(rule)
+                    role_rule = self.session.query(RolesRules).filter_by(rule_id=rule_id, role_id=role_id).first()
+                    if created_at:
+                        role_rule.created_at = created_at
+                    if position:
+                        role_rule.level = position
                     atomic and self.session.commit()
                     return True
                 else:
@@ -2412,78 +2553,252 @@ class RolesRulesManager:
         return False
 
     def __enter__(self):
-        self.session = _Session()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.session.close()
 
 
-# This is the actual sqlite database creation
-_Base.metadata.create_all(_engine)
-# Only if executing as root
-chown(_auth_db_file, 'ossec', 'ossec')
-os.chmod(_auth_db_file, 0o640)
+class DatabaseManager:
+    def __init__(self):
+        self.engines = dict()
+        self.sessions = dict()
 
-default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'default')
+    def delete_orphans(self, session):
+        query = self.sessions[session].query(UserRoles).filter(or_(UserRoles.user_id.is_(None),
+                                                                   UserRoles.role_id.is_(None))).all()
+        query.extend(self.sessions[session].query(RolesRules).filter(or_(RolesRules.role_id.is_(None),
+                                                                         RolesRules.rule_id.is_(None))).all())
+        query.extend(self.sessions[session].query(RolesPolicies).filter(or_(RolesPolicies.role_id.is_(None),
+                                                                            RolesPolicies.policy_id.is_(None))).all())
+        for orphan in query:
+            self.sessions[session].delete(orphan)
 
-# Create default users if they don't exist yet
-with open(os.path.join(default_path, "users.yaml"), 'r') as stream:
-    default_users = yaml.safe_load(stream)
+    def close_sessions(self):
+        for session in self.sessions:
+            self.sessions[session].close()
 
-    with AuthenticationManager() as auth:
-        for d_username, payload in default_users[next(iter(default_users))].items():
-            auth.add_user(username=d_username, password=payload['password'],
-                          allow_run_as=payload['allow_run_as'], check_default=False)
+    def connect(self, database):
+        print(f"la base ed datos es: {database}")
+        self.engines[database] = create_engine('sqlite:///' + database, echo=False)
+        self.sessions[database] = sessionmaker(bind=self.engines[database])()
 
-# Create default roles if they don't exist yet
-with open(os.path.join(default_path, "roles.yaml"), 'r') as stream:
-    default_roles = yaml.safe_load(stream)
+    def create_database(self, database):
+        """Create database structure using the metadata"""
+        _Base.metadata.create_all(self.engines[database])
 
-    with RolesManager() as rm:
-        for d_role_name, payload in default_roles[next(iter(default_roles))].items():
-            rm.add_role(name=d_role_name, check_default=False)
+    @staticmethod
+    def get_api_revision():
+        """Get the current API revision from the Spec.yaml."""
+        return common.load_spec()['info']['x-revision']
 
-with open(os.path.join(default_path, 'rules.yaml'), 'r') as stream:
-    default_rules = yaml.safe_load(stream)
+    def get_database_version(self, database):
+        return str(self.sessions[database].execute('pragma user_version').first()[0])
 
-    with RulesManager() as rum:
-        for d_rule_name, payload in default_rules[next(iter(default_rules))].items():
-            rum.add_rule(name=d_rule_name, rule=payload['rule'], check_default=False)
+    def insert_data_from_yaml(self, database: str, resource_type: ResourceType = ResourceType.DEFAULT):
+        default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'default')
+        # Create default users if they don't exist yet
 
-# Create default policies if they don't exist yet
-with open(os.path.join(default_path, "policies.yaml"), 'r') as stream:
-    default_policies = yaml.safe_load(stream)
+        with open(os.path.join(default_path, "users.yaml"), 'r') as stream:
+            default_users = yaml.safe_load(stream)
+            with AuthenticationManager(self.sessions[database]) as auth:
+                for d_username, payload in default_users[next(iter(default_users))].items():
+                    auth.add_user(username=d_username, password=payload['password'],
+                                  allow_run_as=payload['allow_run_as'], resource_type=resource_type,
+                                  check_default=False)
 
-    with PoliciesManager() as pm:
-        for d_policy_name, payload in default_policies[next(iter(default_policies))].items():
-            for name, policy in payload['policies'].items():
-                pm.add_policy(name=f'{d_policy_name}_{name}', policy=policy, check_default=False)
+        # Create default roles if they don't exist yet
+        with open(os.path.join(default_path, "roles.yaml"), 'r') as stream:
+            default_roles = yaml.safe_load(stream)
 
-# Create the relationships
-with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
-    default_relationships = yaml.safe_load(stream)
+            with RolesManager(self.sessions[database]) as rm:
+                for d_role_name, payload in default_roles[next(iter(default_roles))].items():
+                    rm.add_role(name=d_role_name, resource_type=resource_type, check_default=False)
 
-    # User-Roles relationships
-    with UserRolesManager() as urm:
-        for d_username, payload in default_relationships[next(iter(default_relationships))]['users'].items():
-            with AuthenticationManager() as am:
-                d_user_id = am.get_user(username=d_username)['id']
-            for d_role_name in payload['role_ids']:
-                urm.add_role_to_user(user_id=d_user_id, role_id=rm.get_role(name=d_role_name)['id'], force_admin=True)
+        with open(os.path.join(default_path, 'rules.yaml'), 'r') as stream:
+            default_rules = yaml.safe_load(stream)
 
-    # Role-Policies relationships
-    with RolesPoliciesManager() as rpm:
-        for d_role_name, payload in default_relationships[next(iter(default_relationships))]['roles'].items():
-            for d_policy_name in payload['policy_ids']:
-                for sub_name in default_policies[next(iter(default_policies))][d_policy_name]['policies'].keys():
-                    rpm.add_policy_to_role(role_id=rm.get_role(name=d_role_name)['id'],
-                                           policy_id=pm.get_policy(name=f'{d_policy_name}_{sub_name}')['id'],
-                                           force_admin=True)
+            with RulesManager(self.sessions[database]) as rum:
+                for d_rule_name, payload in default_rules[next(iter(default_rules))].items():
+                    rum.add_rule(name=d_rule_name, rule=payload['rule'], resource_type=resource_type,
+                                 check_default=False)
 
-    # Role-Rules relationships
-    with RolesRulesManager() as rrum:
-        for d_role_name, payload in default_relationships[next(iter(default_relationships))]['roles'].items():
-            for d_rule_name in payload['rule_ids']:
-                rrum.add_rule_to_role(role_id=rm.get_role(name=d_role_name)['id'],
-                                      rule_id=rum.get_rule_by_name(d_rule_name)['id'], force_admin=True)
+        # Create default policies if they don't exist yet
+        with open(os.path.join(default_path, "policies.yaml"), 'r') as stream:
+            default_policies = yaml.safe_load(stream)
+
+            with PoliciesManager(self.sessions[database]) as pm:
+                for d_policy_name, payload in default_policies[next(iter(default_policies))].items():
+                    for name, policy in payload['policies'].items():
+                        pm.add_policy(name=f'{d_policy_name}_{name}', policy=policy, resource_type=resource_type,
+                                      check_default=False)
+
+        # Create the relationships
+        with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
+            default_relationships = yaml.safe_load(stream)
+
+            # User-Roles relationships
+            with UserRolesManager(self.sessions[database]) as urm:
+                for d_username, payload in default_relationships[next(iter(default_relationships))]['users'].items():
+                    with AuthenticationManager(self.sessions[database]) as am:
+                        d_user_id = am.get_user(username=d_username)['id']
+                    for d_role_name in payload['role_ids']:
+                        urm.add_role_to_user(user_id=d_user_id, role_id=rm.get_role(name=d_role_name)['id'],
+                                             force_admin=True)
+
+            # Role-Policies relationships
+            with RolesPoliciesManager(self.sessions[database]) as rpm:
+                for d_role_name, payload in default_relationships[next(iter(default_relationships))]['roles'].items():
+                    for d_policy_name in payload['policy_ids']:
+                        for sub_name in default_policies[next(iter(default_policies))][d_policy_name]['policies'].keys():
+                            rpm.add_policy_to_role(role_id=rm.get_role(name=d_role_name)['id'],
+                                                   policy_id=pm.get_policy(name=f'{d_policy_name}_{sub_name}')[
+                                                       'id'],
+                                                   force_admin=True)
+
+            # Role-Rules relationships
+            with RolesRulesManager(self.sessions[database]) as rrum:
+                for d_role_name, payload in default_relationships[next(iter(default_relationships))]['roles'].items():
+                    for d_rule_name in payload['rule_ids']:
+                        rrum.add_rule_to_role(role_id=rm.get_role(name=d_role_name)['id'],
+                                              rule_id=rum.get_rule_by_name(d_rule_name)['id'], force_admin=True)
+
+    def migrate_data(self, source, target, from_id: int = None, to_id: int = None, resource_type: ResourceType = None):
+        def format_datetime(created_at):
+            return datetime.strptime(created_at, '%Y-%m-%d %H:%M:%S.%f')
+
+        if from_id and to_id:
+            id_range = f"WHERE id BETWEEN {from_id} and {to_id}"
+        elif from_id:
+            id_range = f'WHERE id >= {from_id}'
+        elif to_id:
+            id_range = f'WHERE id <= {to_id}'
+        else:
+            id_range = ''
+
+        old_users = self.sessions[source].execute(
+            f'SELECT username, password, allow_run_as, created_at FROM users {id_range};').fetchall()
+
+        with AuthenticationManager(self.sessions[target]) as auth_manager:
+            for user in old_users:
+                auth_manager.add_user(username=user[0], password=user[1], allow_run_as=user[2],
+                                      created_at=format_datetime(user[3]), resource_type=resource_type,
+                                      check_default=True)
+        old_roles = self.sessions[source].execute(f'SELECT name, created_at FROM roles {id_range};').fetchall()
+        with RolesManager(self.sessions[target]) as role_manager:
+            for role in old_roles:
+                role_manager.add_role(name=role[0], created_at=format_datetime(role[1]), resource_type=resource_type,
+                                      check_default=True)
+
+        old_rules = self.sessions[source].execute(f'SELECT name, rule, created_at FROM rules {id_range};').fetchall()
+        with RulesManager(self.sessions[target]) as rule_manager:
+            for rule in old_rules:
+                rule_manager.add_rule(name=rule[0], rule=rule[1], created_at=format_datetime(rule[2]),
+                                      check_default=True)
+
+        old_policies = self.sessions[source].execute(f'SELECT name, policy, created_at FROM policies {id_range};').fetchall()
+        with PoliciesManager(self.sessions[target]) as policy_manager:
+            for policy in old_policies:
+                policy_manager.add_policy(name=policy[0], policy=policy[1], created_at=format_datetime(policy[2]),
+                                          check_default=True)
+
+        old_user_roles = self.sessions[source].execute(
+            f'SELECT user_id, role_id, level, created_at FROM user_roles {id_range};').fetchall()
+        with UserRolesManager(self.sessions[target]) as user_role_manager:
+            for user_role in old_user_roles:
+                user_role_manager.add_role_to_user(user_id=user_role[0],  role_id=user_role[1], position=user_role[2],
+                                                   created_at=format_datetime(user_role[3]),
+                                                   force_admin=True)
+
+        # Role-Policies relationships
+        old_roles_policies = self.sessions[source].execute(
+            f'SELECT role_id, policy_id, level, created_at FROM roles_policies {id_range};').fetchall()
+        with RolesPoliciesManager(self.sessions[target]) as role_policy_manager:
+            for role_policy in old_roles_policies:
+                role_policy_manager.add_policy_to_role(role_id=role_policy[0],
+                                                       policy_id=role_policy[1],
+                                                       position=role_policy[2],
+                                                       created_at=format_datetime(role_policy[3]),
+                                                       force_admin=True)
+
+        # Role-Rules relationships
+        old_roles_rules = self.sessions[source].execute(
+            f'SELECT role_id, rule_id, created_at FROM roles_rules {id_range};').fetchall()
+        with RolesRulesManager(self.sessions[target]) as role_rule_manager:
+            for role_rule in old_roles_rules:
+                role_rule_manager.add_rule_to_role(role_id=role_rule[0],
+                                                   rule_id=role_rule[1],
+                                                   created_at=format_datetime(role_rule[2]),
+                                                   force_admin=True)
+
+    def set_database_version(self, database, version):
+        self.sessions[database].execute(f'pragma user_version={version}')
+
+
+def check_database_integrity():
+    def set_permission(database):
+        chown(database, 'ossec', 'ossec')
+        os.chmod(database, 0o640)
+
+    import logging
+    logger = logging.getLogger('wazuh')
+    db_manager = DatabaseManager()
+    try:
+        if os.path.exists(_auth_db_file):
+            logger.info(f'{_auth_db_file} file was detected')
+            set_permission(_auth_db_file)
+            db_manager.connect(_auth_db_file)
+            current_version = db_manager.get_database_version(_auth_db_file)
+            expected_version = db_manager.get_api_revision()
+
+            # Check if an upgrade is required
+            if int(current_version) < int(expected_version):
+                logger.info(f'RBAC database migration required. '
+                            f'Current version is {current_version} but it should be {expected_version}')
+                # From <= 4.0.0 to 4.1.0
+                if (current_version == '0' or re.match(r'400[0-9].*', current_version)) \
+                        and re.match(r'401[0-9].*', expected_version):
+                    logger.info(f'Upgrading RBAC database to {expected_version} version')
+                    # Remove tmp database if present
+                    os.path.exists(_tmp_db_file) and os.remove(_tmp_db_file)
+
+                    # Create new tmp database and populate it
+                    db_manager.connect(_tmp_db_file)
+                    db_manager.connect(_auth_db_file)
+                    db_manager.create_database(_tmp_db_file)
+                    set_permission(_tmp_db_file)
+                    db_manager.insert_data_from_yaml(_tmp_db_file)
+
+                    # Migrate data from old database
+                    db_manager.migrate_data(source=_auth_db_file, target=_tmp_db_file, from_id=39, to_id=99,
+                                            resource_type=ResourceType.PROTECTED)
+                    db_manager.migrate_data(source=_auth_db_file, target=_tmp_db_file, from_id=100,
+                                            resource_type=ResourceType.USER)
+
+                    # Apply changes and replace database
+                    db_manager.delete_orphans(_tmp_db_file)
+                    db_manager.set_database_version(_tmp_db_file, db_manager.get_api_revision())
+                    db_manager.close_sessions()
+                    os.remove(_auth_db_file)
+                    os.rename(_tmp_db_file, _auth_db_file)
+                    logger.info(f'{_auth_db_file} database upgraded successfully.')
+
+        # If database does not exists it means this is a fresh installation and must be created properly
+        else:
+            logger.info(f'RBAC database not found. Creating a new one.')
+            db_manager.connect(_auth_db_file)
+            db_manager.create_database(_auth_db_file)
+            set_permission(_auth_db_file)
+            db_manager.insert_data_from_yaml(_auth_db_file)
+            db_manager.set_database_version(_auth_db_file, db_manager.get_api_revision())
+            db_manager.close_sessions()
+            logger.info(f'{_auth_db_file} database created successfully')
+
+    except Exception as e:
+        logger.error('Error during the database migration. Restoring the previous database.')
+        logger.error(f'Error details: {str(e)}')
+        db_manager.delete_orphans(_tmp_db_file)
+        db_manager.close_sessions()
+
+    # Remove tmp database if present
+    os.path.exists(_tmp_db_file) and os.remove(_tmp_db_file)

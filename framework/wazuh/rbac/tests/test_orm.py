@@ -9,23 +9,23 @@ from unittest.mock import patch
 
 import pytest
 from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from wazuh.rbac.tests.utils import init_db
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data')
 
+with patch('wazuh.core.common.ossec_uid'), patch('wazuh.core.common.ossec_gid'):
+    with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
+        with patch('shutil.chown'), patch('os.chmod'):
+            with patch('api.constants.SECURITY_PATH', new=test_data_path):
+                import wazuh.rbac.orm as orm
+
 
 @pytest.fixture(scope='function')
 def db_setup():
-    with patch('wazuh.core.common.ossec_uid'), patch('wazuh.core.common.ossec_gid'):
-        with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
-            with patch('shutil.chown'), patch('os.chmod'):
-                with patch('api.constants.SECURITY_PATH', new=test_data_path):
-                    import wazuh.rbac.orm as rbac
-    init_db('schema_security_test.sql', test_data_path)
-
-    yield rbac
+    yield init_db('schema_security_test.sql', test_data_path)
 
 
 def test_database_init(db_setup):
@@ -34,7 +34,7 @@ def test_database_init(db_setup):
         assert rm.get_role('wazuh') != db_setup.SecurityError.ROLE_NOT_EXIST
 
 
-def test_json_validator(db_setup):
+def test_json_validator():
     assert not db_setup.json_validator('Not a dictionary')
 
 
@@ -93,7 +93,7 @@ def test_delete_all_rules(db_setup):
 
 def test_delete_all_expired_rules(db_setup):
     """Check that rules are correctly deleted"""
-    with patch('wazuh.rbac.orm.time', return_value=0):
+    with patch('wazuh.rbac.db_setup.time', return_value=0):
         test_add_token(db_setup)
     with db_setup.TokenManager() as tm:
         assert tm.delete_all_expired_rules()
@@ -172,7 +172,7 @@ def test_add_rule(db_setup):
         assert not rum.add_rule('a'*65, {'MATCH': {'admin': ['admin_role']}})
 
         # Obtain not existent role
-        assert rum.get_rule(999) == db_setup.SecurityError.RULE_NOT_EXIST
+        assert rum.get_rule(9999) == db_setup.SecurityError.RULE_NOT_EXIST
         assert rum.get_rule_by_name('not_exists') == db_setup.SecurityError.RULE_NOT_EXIST
 
 
@@ -182,6 +182,7 @@ def test_get_user(db_setup):
         users = am.get_users()
         assert users
         for user in users:
+            print(f"---> user: {user}")
             assert isinstance(user['user_id'], int)
 
         assert users[0]['user_id'] == 1
@@ -228,7 +229,7 @@ def test_delete_users(db_setup):
     with db_setup.AuthenticationManager() as am:
         am.add_user(username='toDelete', password='testingA3!')
         len_users = len(am.get_users())
-        am.delete_user(user_id=106)
+        am.delete_user(user_id=1006)
         assert len_users == len(am.get_users()) + 1
 
 
@@ -322,15 +323,15 @@ def test_update_user(db_setup):
     """Check update a user in the database"""
     with db_setup.AuthenticationManager() as am:
         am.add_user(username='toUpdate', password='testingA6!')
-        assert am.update_user(user_id='106', password='testingA0!', allow_run_as=False)
-        assert not am.update_user(user_id='999', password='testingA0!', allow_run_as=True)
+        assert am.update_user(user_id='1006', password='testingA0!', allow_run_as=False)
+        assert not am.update_user(user_id='9999', password='testingA0!', allow_run_as=True)
 
 
 def test_update_role(db_setup):
     """Check update a role in the database"""
     with db_setup.RolesManager() as rm:
         rm.add_role(name='toUpdate')
-        tid = rm.get_role_id(role_id=106)['id']
+        tid = rm.get_role_id(role_id=1006)['id']
         tname = rm.get_role(name='toUpdate')['name']
         rm.update_role(role_id=tid, name='updatedName')
         assert tid == rm.get_role(name='updatedName')['id']
@@ -361,7 +362,7 @@ def test_update_policy(db_setup):
             'effect': 'allow'
         }
         pm.add_policy(name='toUpdate', policy=policy)
-        tid = pm.get_policy_id(policy_id=110)['id']
+        tid = pm.get_policy_id(policy_id=1010)['id']
         tname = pm.get_policy(name='toUpdate')['name']
         policy['effect'] = 'deny'
         pm.update_policy(policy_id=tid, name='updatedName', policy=policy)
@@ -632,7 +633,7 @@ def test_exist_user_role(db_setup):
                     assert am.get_user(username='normalUser')
                 assert urm.exist_user_role(user_id=user_id, role_id=role)
 
-        assert urm.exist_user_role(user_id='999', role_id=8) == db_setup.SecurityError.USER_NOT_EXIST
+        assert urm.exist_user_role(user_id='9999', role_id=8) == db_setup.SecurityError.USER_NOT_EXIST
         assert urm.exist_user_role(user_id=user_ids[0], role_id=99) == db_setup.SecurityError.ROLE_NOT_EXIST
 
 
@@ -644,8 +645,8 @@ def test_exist_role_rule(db_setup):
             for rule in rule_ids:
                 assert rrum.exist_role_rule(rule_id=rule, role_id=role)
 
-        assert rrum.exist_role_rule(rule_id=999, role_id=role_ids[0]) == db_setup.SecurityError.RULE_NOT_EXIST
-        assert rrum.exist_role_rule(rule_id=rule_ids[0], role_id=999) == db_setup.SecurityError.ROLE_NOT_EXIST
+        assert rrum.exist_role_rule(rule_id=9999, role_id=role_ids[0]) == db_setup.SecurityError.RULE_NOT_EXIST
+        assert rrum.exist_role_rule(rule_id=rule_ids[0], role_id=9999) == db_setup.SecurityError.ROLE_NOT_EXIST
         assert not rrum.exist_role_rule(rule_id=rule_ids[0], role_id=1)
 
 
@@ -668,8 +669,8 @@ def test_exist_role_policy(db_setup):
             for role in roles_ids:
                 assert rpm.exist_role_policy(policy_id=policy, role_id=role)
 
-    assert rpm.exist_role_policy(policy_id=policy, role_id=9999) == db_setup.SecurityError.ROLE_NOT_EXIST
-    assert rpm.exist_role_policy(policy_id=9999, role_id=roles_ids[0]) == db_setup.SecurityError.POLICY_NOT_EXIST
+    assert rpm.exist_role_policy(policy_id=policy, role_id=999999) == db_setup.SecurityError.ROLE_NOT_EXIST
+    assert rpm.exist_role_policy(policy_id=999999, role_id=roles_ids[0]) == db_setup.SecurityError.POLICY_NOT_EXIST
 
 
 def test_get_all_roles_from_user(db_setup):
