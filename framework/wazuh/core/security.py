@@ -5,7 +5,6 @@
 import yaml
 
 import api.middlewares as middlewares
-
 from api.authentication import change_secret
 from api.constants import SECURITY_CONFIG_PATH
 from wazuh import WazuhInternalError, WazuhError
