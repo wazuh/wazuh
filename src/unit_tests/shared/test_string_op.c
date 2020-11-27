@@ -118,6 +118,84 @@ void test_w_remove_substr(void **state)
     }
 }
 
+// Tests W_JSON_AddField
+
+void test_W_JSON_AddField_nest_object(void **state)
+{
+    cJSON * root = cJSON_CreateObject();
+    cJSON_AddObjectToObject(root, "test");
+    const char * key = "test.files";
+    const char * value = "[\"file1\",\"file2\",\"file3\"]";
+    char * output = NULL;
+
+    W_JSON_AddField(root, key, value);
+    output = cJSON_PrintUnformatted(root);
+    assert_string_equal(output, "{\"test\":{\"files\":[\"file1\",\"file2\",\"file3\"]}}");
+
+    os_free(output);
+    cJSON_Delete(root);
+}
+
+void test_W_JSON_AddField_nest_no_object(void **state)
+{
+    cJSON * root = cJSON_CreateObject();
+    const char * key = "test.files";
+    const char * value = "[\"file1\",\"file2\",\"file3\"]";
+    char * output = NULL;
+
+    W_JSON_AddField(root, key, value);
+    output = cJSON_PrintUnformatted(root);
+    assert_string_equal(output, "{\"test\":{\"files\":[\"file1\",\"file2\",\"file3\"]}}");
+
+    os_free(output);
+    cJSON_Delete(root);
+}
+
+void test_W_JSON_AddField_JSON_valid(void **state)
+{
+    cJSON * root = cJSON_CreateObject();
+    const char * key = "files";
+    const char * value = "[\"file1\",\"file2\",\"file3\"]";
+    char * output = NULL;
+
+    W_JSON_AddField(root, key, value);
+    output = cJSON_PrintUnformatted(root);
+    assert_string_equal(output, "{\"files\":[\"file1\",\"file2\",\"file3\"]}");
+
+    os_free(output);
+    cJSON_Delete(root);
+}
+
+void test_W_JSON_AddField_JSON_invalid(void **state)
+{
+    cJSON * root = cJSON_CreateObject();
+    const char * key = "files";
+    const char * value = "[\"file1\",\"file2\"],\"file3\"]";
+    char * output = NULL;
+
+    W_JSON_AddField(root, key, value);
+    output = cJSON_PrintUnformatted(root);
+    assert_string_equal(output, "{\"files\":\"[\\\"file1\\\",\\\"file2\\\"],\\\"file3\\\"]\"}");
+    
+    os_free(output);
+    cJSON_Delete(root);
+}
+
+void test_W_JSON_AddField_string_time(void **state)
+{
+    cJSON * root = cJSON_CreateObject();
+    const char * key = "time";
+    const char * value = "[28/Oct/2020:10:22:11 +0000]";
+    char * output = NULL;
+
+    W_JSON_AddField(root, key, value);
+    output = cJSON_PrintUnformatted(root);
+    assert_string_equal(output, "{\"time\":\"[28/Oct/2020:10:22:11 +0000]\"}");
+
+    os_free(output);
+    cJSON_Delete(root);
+}
+
 /* Tests */
 
 int main(void) {
@@ -132,6 +210,12 @@ int main(void) {
         cmocka_unit_test(test_os_snprintf_more_parameters),
         // Tests w_remove_substr
         cmocka_unit_test(test_w_remove_substr),
+        // Tests W_JSON_AddField
+        cmocka_unit_test(test_W_JSON_AddField_nest_object),
+        cmocka_unit_test(test_W_JSON_AddField_nest_no_object),
+        cmocka_unit_test(test_W_JSON_AddField_JSON_valid),
+        cmocka_unit_test(test_W_JSON_AddField_JSON_invalid),
+        cmocka_unit_test(test_W_JSON_AddField_string_time),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
