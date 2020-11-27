@@ -7,6 +7,7 @@
  * Foundation
  */
 
+#include "headers/shared.h"
 #include "wm_exec_wrappers.h"
 #include <stddef.h>
 #include <stdarg.h>
@@ -19,7 +20,7 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
     check_expected(add_path);
 
     if (output) {
-        *output = mock_type(char *);
+        os_strdup(mock_type(char *), *output);
     }
 
     *exitcode = mock_type(int);
