@@ -44,7 +44,6 @@ void *WazuhAlert_Decoder_Exec(Eventinfo *lf, OSHash *rules_hash, __attribute__((
 
     /* Checking the alert level. */
     if (strncmp("Alert Level: ", lf->log, 12) != 0 &&
-        strncmp("ossec: Alert Level:", lf->log, 18) != 0 &&
         strncmp("wazuh: Alert Level:", lf->log, 18) != 0) {
         return (NULL);
     }
