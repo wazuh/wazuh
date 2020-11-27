@@ -7,21 +7,16 @@ from tabulate import tabulate
 
 from connexion import ProblemException
 
-from api.models.security import RoleModel, RuleModel, PolicyModel, CreateUserModel, UpdateUserModel
 from api.util import remove_nones_to_dict
 from wazuh import WazuhError
-from wazuh.core.cluster import local_client
-from wazuh.core.cluster.common import WazuhJSONEncoder
-from wazuh.core.cluster.common import as_wazuh_object
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.security import create_user, add_rule, add_role, add_policy, update_user, update_role, update_policy, \
-    update_rule, remove_users, remove_roles, remove_policies, remove_rules, set_user_role, set_role_policy, \
-    set_role_rule, remove_user_role, remove_role_policy, remove_role_rule
 
 logger = logging.getLogger('wazuh')
 
 
 async def validate_resource(resource, r_type):
+    from api.models.security import RoleModel, RuleModel, PolicyModel, CreateUserModel, UpdateUserModel
+
     resource_body = {
         'user': CreateUserModel,
         'role': RoleModel,
@@ -38,6 +33,14 @@ async def validate_resource(resource, r_type):
 
 
 async def manage_reserved_security_resource(method, resource_type, f_arguments):
+    from wazuh.security import create_user, add_rule, add_role, add_policy, update_user, update_role, update_policy, \
+        update_rule, remove_users, remove_roles, remove_policies, remove_rules, set_user_role, set_role_policy, \
+        set_role_rule, remove_user_role, remove_role_policy, remove_role_rule
+
+    from wazuh.core.cluster import local_client
+    from wazuh.core.cluster.common import WazuhJSONEncoder
+    from wazuh.core.cluster.common import as_wazuh_object
+
     func = {
         'add': {
             'user': create_user,
