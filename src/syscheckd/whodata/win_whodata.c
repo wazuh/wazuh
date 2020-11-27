@@ -1156,7 +1156,7 @@ int whodata_hash_add(OSHash *table, char *id, void *data, char *tag) {
 
 void notify_SACL_change(char *dir) {
     char msg_alert[OS_SIZE_1024 + 1];
-    snprintf(msg_alert, OS_SIZE_1024, "ossec: Audit: The SACL of '%s' has been modified and can no longer be scanned in whodata mode.", dir);
+    snprintf(msg_alert, OS_SIZE_1024, "wazuh: Audit: The SACL of '%s' has been modified and can no longer be scanned in whodata mode.", dir);
     SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
 }
 
