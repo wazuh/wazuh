@@ -245,7 +245,7 @@ char *fim_registry_value_diff(const char *key_name,
     }
 
     // If it exists, estimate the new compressed file
-    float backup_file_size = (FileSize(diff->compress_file) / 1024);
+    float backup_file_size = (FileSize(diff->compress_file) / 1024.0f);
     syscheck.diff_folder_size -= backup_file_size;
     if (fim_diff_create_compress_file(diff) == -1) {
         syscheck.diff_folder_size += backup_file_size;
@@ -780,7 +780,7 @@ void save_compress_file(const diff_data *diff){
         return;
     }
     if (syscheck.disk_quota_enabled){
-        syscheck.diff_folder_size += FileSize(diff->compress_file) / 1024;
+        syscheck.diff_folder_size += FileSize(diff->compress_file) / 1024.0f;
     }
     return;
 }
