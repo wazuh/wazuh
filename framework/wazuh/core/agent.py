@@ -1715,6 +1715,7 @@ def get_groups():
     return groups
 
 
+@common.context_cached('system_expanded_groups')
 def expand_group(group_name):
     """Expand a certain group or all (*) of them
 
