@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 2.6.4)
 
 project(syscollector)
 
+enable_testing()
+
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()

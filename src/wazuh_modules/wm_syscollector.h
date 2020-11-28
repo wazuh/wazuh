@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-#include "../../wmodules_def.h"
+#include "wmodules_def.h"
 #include "os_xml/os_xml.h"
 
 #ifndef WM_SYSCOLLECTOR

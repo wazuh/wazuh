@@ -104,6 +104,7 @@ nlohmann::json SysInfo::getPackages() const
             package["version"] = data[2];
             package["architecture"] = data[3];
             package["description"] = data[4];
+            package["format"] = "pkg";
             ret.push_back(package);
         }
     }

@@ -386,7 +386,7 @@ static void updateAndNotifyChanges(const DBSYNC_HANDLE handle,
     {
         // LCOV_EXCL_START
         {MODIFIED, "MODIFIED"},
-        {DELETED , "DELETED "},
+        {DELETED , "DELETED"},
         {INSERTED, "INSERTED"},
         {MAX_ROWS, "MAX_ROWS"},
         {DB_ERROR, "DB_ERROR"},
@@ -592,6 +592,7 @@ void Syscollector::scanNetwork()
                     addressTableDataList.push_back(addressTableData);
                 }
 
+<<<<<<< HEAD
                 if (item.find("IPv6") != item.end())
                 {
                     nlohmann::json addressTableData(item.at("IPv6"));
@@ -604,6 +605,14 @@ void Syscollector::scanNetwork()
                     addressTableDataList.push_back(addressTableData);
                 }
                 protoTableDataList.push_back(protoTableData);
+=======
+                updateAndNotifyChanges(m_spDBSync->handle(), netIfaceTable,    ifaceTableDataList, m_reportFunction);
+                updateAndNotifyChanges(m_spDBSync->handle(), netAddressTable,  addressTableDataList, m_reportFunction);
+                updateAndNotifyChanges(m_spDBSync->handle(), netProtocolTable, protoTableDataList, m_reportFunction);
+                m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETIFACE_START_CONFIG_STATEMENT), m_reportFunction);
+                m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETADDRESS_START_CONFIG_STATEMENT), m_reportFunction);
+                m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETPROTO_START_CONFIG_STATEMENT), m_reportFunction);
+>>>>>>> 1e3d09694... Fix masters unit tests
             }
 
             updateAndNotifyChanges(m_spDBSync->handle(), netIfaceTable,    ifaceTableDataList, m_reportFunction);
