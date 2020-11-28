@@ -193,6 +193,16 @@ typedef enum global_db_access {
     WDB_DISCONNECT_AGENTS
 } global_db_access;
 
+struct stmt_cache { 
+    sqlite3_stmt *stmt;
+    char *query;
+};
+
+struct stmt_cache_list { 
+    struct stmt_cache value;
+    struct stmt_cache_list *next;
+};
+
 typedef struct wdb_t {
     sqlite3 * db;
     sqlite3_stmt * stmt[WDB_STMT_SIZE];
@@ -202,6 +212,7 @@ typedef struct wdb_t {
     time_t last;
     time_t transaction_begin_time;
     pthread_mutex_t mutex;
+    struct stmt_cache_list *cache_list;
     struct wdb_t * next;
 } wdb_t;
 
@@ -260,6 +271,37 @@ typedef struct agent_info_data {
     char *connection_status;
     char *sync_status;
 } agent_info_data;
+
+typedef enum {
+    FIELD_INTEGER,
+    FIELD_TEXT,
+    FIELD_REAL
+} FIELD_TYPE;
+
+struct field { 
+    FIELD_TYPE type;
+    int index;
+    bool is_old_implementation;
+    bool is_pk;
+    char name[OS_SIZE_256];
+};
+
+struct column_list { 
+    struct field value;
+    const struct column_list *next;
+};
+
+struct kv { 
+    char key[OS_SIZE_256];
+    char value[OS_SIZE_256];
+    bool single_row_table;
+    struct column_list const *column_list;
+};
+
+struct kv_list { 
+    struct kv current;
+    const struct kv_list *next;
+};
 
 /**
  * @brief Opens global database and stores it in DB pool.
@@ -944,6 +986,9 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output);
 int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
+
+int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output);
+
 
 /**
  * @brief Function to get values from MITRE database.
@@ -1688,5 +1733,53 @@ cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int keep_alive);
  * @retval -1 The table "agent" is missing or an error occurred.
  */
 int wdb_global_check_manager_keepalive(wdb_t *wdb);
+
+/**
+ * @brief Function to clean table and write new values, this is only
+ * for single row tables. Its necessary to have the table PKs well.
+ *
+ * @param wdb The Global struct database.
+ * @param kv_value Table metadata to build dynamic queries.
+ * @param data Values separated with pipe character '|'.
+ * @retval true when the proposed action is executed.
+ * @retval false on error.
+ */
+bool wdb_single_row_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
+
+/**
+ * @brief Function to insert new rows with a dynamic query based on metadata.
+ * Its necessary to have the table PKs well.
+ *
+ * @param wdb The Global struct database.
+ * @param kv_value Table metadata to build dynamic queries.
+ * @param data Values separated with pipe character '|'.
+ * @retval true when the proposed action is executed.
+ * @retval false on error.
+ */
+bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
+
+/**
+ * @brief Function to modify existing rows with a dynamic query based on metadata.
+ * Its necessary to have the table PKs well.
+ *
+ * @param wdb The Global struct database.
+ * @param kv_value Table metadata to build dynamic queries.
+ * @param data Values separated with pipe character '|'.
+ * @retval true when the proposed action is executed.
+ * @retval false on error.
+ */
+bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
+
+/**
+ * @brief Function to delete rows with a dynamic query based on metadata.
+ * Its necessary to have the table PKs well.
+ *
+ * @param wdb The Global struct database.
+ * @param kv_value Table metadata to build dynamic queries.
+ * @param data Values separated with pipe character '|'.
+ * @retval true when the proposed action is executed.
+ * @retval false on error.
+ */
+bool wdb_delete_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
 
 #endif

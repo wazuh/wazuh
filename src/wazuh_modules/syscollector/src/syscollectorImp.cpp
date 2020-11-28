@@ -551,76 +551,70 @@ void Syscollector::scanNetwork()
         nlohmann::json protoTableDataList {};
         nlohmann::json addressTableDataList {};
 
-        const auto& itIface { networks.find("iface") };
-
-        if (networks.end() != itIface)
+        if (!networks.is_null())
         {
-            for (const auto& item : itIface.value())
+            const auto& itIface { networks.find("iface") };
+
+            if (networks.end() != itIface)
             {
-                // Split the resulting networks data into the specific DB tables
-                // "network_iface" table data to update and notify
-                nlohmann::json ifaceTableData {};
-                ifaceTableData["name"]       = item.at("name");
-                ifaceTableData["adapter"]    = item.at("adapter");
-                ifaceTableData["type"]       = item.at("type");
-                ifaceTableData["state"]      = item.at("state");
-                ifaceTableData["mtu"]        = item.at("mtu");
-                ifaceTableData["mac"]        = item.at("mac");
-                ifaceTableData["tx_packets"] = item.at("tx_packets");
-                ifaceTableData["rx_packets"] = item.at("rx_packets");
-                ifaceTableData["tx_errors"]  = item.at("tx_errors");
-                ifaceTableData["rx_errors"]  = item.at("rx_errors");
-                ifaceTableData["tx_dropped"] = item.at("tx_dropped");
-                ifaceTableData["rx_dropped"] = item.at("rx_dropped");
-                ifaceTableDataList.push_back(ifaceTableData);
-
-                // "network_protocol" table data to update and notify
-                nlohmann::json protoTableData {};
-                protoTableData["iface"]   = item.at("name");
-                protoTableData["type"]    = item.at("type");
-                protoTableData["gateway"] = item.at("gateway");
-
-                if (item.find("IPv4") != item.end())
+                for (const auto& item : itIface.value())
                 {
-                    nlohmann::json addressTableData(item.at("IPv4"));
-                    protoTableData["dhcp"]    = addressTableData.at("dhcp");
-                    protoTableData["metric"]  = addressTableData.at("metric");
+                    // Split the resulting networks data into the specific DB tables
+                    // "dbsync_network_iface" table data to update and notify
+                    nlohmann::json ifaceTableData {};
+                    ifaceTableData["name"]       = item.at("name");
+                    ifaceTableData["adapter"]    = item.at("adapter");
+                    ifaceTableData["type"]       = item.at("type");
+                    ifaceTableData["state"]      = item.at("state");
+                    ifaceTableData["mtu"]        = item.at("mtu");
+                    ifaceTableData["mac"]        = item.at("mac");
+                    ifaceTableData["tx_packets"] = item.at("tx_packets");
+                    ifaceTableData["rx_packets"] = item.at("rx_packets");
+                    ifaceTableData["tx_errors"]  = item.at("tx_errors");
+                    ifaceTableData["rx_errors"]  = item.at("rx_errors");
+                    ifaceTableData["tx_dropped"] = item.at("tx_dropped");
+                    ifaceTableData["rx_dropped"] = item.at("rx_dropped");
+                    ifaceTableDataList.push_back(ifaceTableData);
 
-                    // "network_address" table data to update and notify
-                    addressTableData["iface"]   = item.at("name");
-                    addressTableData["proto"]   = "IPv4";
-                    addressTableDataList.push_back(addressTableData);
+                    // "dbsync_network_protocol" table data to update and notify
+                    nlohmann::json protoTableData {};
+                    protoTableData["iface"]   = item.at("name");
+                    protoTableData["type"]    = item.at("type");
+                    protoTableData["gateway"] = item.at("gateway");
+
+                    if (item.find("IPv4") != item.end())
+                    {
+                        nlohmann::json addressTableData(item.at("IPv4"));
+                        protoTableData["dhcp"]    = addressTableData.at("dhcp");
+                        protoTableData["metric"]  = addressTableData.at("metric");
+
+                        // "dbsync_network_address" table data to update and notify
+                        addressTableData["iface"]   = item.at("name");
+                        addressTableData["proto"]   = "IPv4";
+                        addressTableDataList.push_back(addressTableData);
+                    }
+
+                    if (item.find("IPv6") != item.end())
+                    {
+                        nlohmann::json addressTableData(item.at("IPv6"));
+                        protoTableData["dhcp"]    = addressTableData.at("dhcp");
+                        protoTableData["metric"]  = addressTableData.at("metric");
+
+                        // "dbsync_network_address" table data to update and notify
+                        addressTableData["iface"] = item.at("name");
+                        addressTableData["proto"] = "IPv6";
+                        addressTableDataList.push_back(addressTableData);
+                    }
+                    protoTableDataList.push_back(protoTableData);
                 }
 
-<<<<<<< HEAD
-                if (item.find("IPv6") != item.end())
-                {
-                    nlohmann::json addressTableData(item.at("IPv6"));
-                    protoTableData["dhcp"]    = addressTableData.at("dhcp");
-                    protoTableData["metric"]  = addressTableData.at("metric");
-
-                    // "network_address" table data to update and notify
-                    addressTableData["iface"] = item.at("name");
-                    addressTableData["proto"] = "IPv6";
-                    addressTableDataList.push_back(addressTableData);
-                }
-                protoTableDataList.push_back(protoTableData);
-=======
                 updateAndNotifyChanges(m_spDBSync->handle(), netIfaceTable,    ifaceTableDataList, m_reportFunction);
-                updateAndNotifyChanges(m_spDBSync->handle(), netAddressTable,  addressTableDataList, m_reportFunction);
                 updateAndNotifyChanges(m_spDBSync->handle(), netProtocolTable, protoTableDataList, m_reportFunction);
+                updateAndNotifyChanges(m_spDBSync->handle(), netAddressTable,  addressTableDataList, m_reportFunction);
                 m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETIFACE_START_CONFIG_STATEMENT), m_reportFunction);
-                m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETADDRESS_START_CONFIG_STATEMENT), m_reportFunction);
                 m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETPROTO_START_CONFIG_STATEMENT), m_reportFunction);
->>>>>>> 1e3d09694... Fix masters unit tests
+                m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETADDRESS_START_CONFIG_STATEMENT), m_reportFunction);
             }
-
-            updateAndNotifyChanges(m_spDBSync->handle(), netIfaceTable,    ifaceTableDataList, m_reportFunction);
-            updateAndNotifyChanges(m_spDBSync->handle(), netProtocolTable, protoTableDataList, m_reportFunction);
-            updateAndNotifyChanges(m_spDBSync->handle(), netAddressTable,  addressTableDataList, m_reportFunction);
-            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETIFACE_START_CONFIG_STATEMENT), m_reportFunction);
-            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETPROTO_START_CONFIG_STATEMENT), m_reportFunction);
-            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETADDRESS_START_CONFIG_STATEMENT), m_reportFunction);
         }
     }
 }
@@ -633,27 +627,31 @@ void Syscollector::scanPackages()
         nlohmann::json packages;
         nlohmann::json hotfixes;
         const auto& packagesData { m_spInfo->packages() };
-        for (const auto& item : packagesData)
+
+        if (!packagesData.is_null())
         {
-            if(item.find("hotfix") != item.end())
+            for (const auto& item : packagesData)
             {
-                if (m_hotfixes)
+                if(item.find("hotfix") != item.end())
                 {
-                    hotfixes.push_back(item);
+                    if (m_hotfixes)
+                    {
+                        hotfixes.push_back(item);
+                    }
+                }
+                else
+                {
+                    packages.push_back(item);
                 }
             }
-            else
+            updateAndNotifyChanges(m_spDBSync->handle(), tablePackages, packages, m_reportFunction);
+            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PACKAGES_START_CONFIG_STATEMENT), m_reportFunction);
+            if (m_hotfixes)
             {
-                packages.push_back(item);
+                constexpr auto tableHotfixes{"dbsync_hotfixes"};
+                updateAndNotifyChanges(m_spDBSync->handle(), tableHotfixes, hotfixes, m_reportFunction);
+                m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HOTFIXES_START_CONFIG_STATEMENT), m_reportFunction);
             }
-        }
-        updateAndNotifyChanges(m_spDBSync->handle(), tablePackages, packages, m_reportFunction);
-        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PACKAGES_START_CONFIG_STATEMENT), m_reportFunction);
-        if (m_hotfixes)
-        {
-            constexpr auto tableHotfixes{"hotfixes"};
-            updateAndNotifyChanges(m_spDBSync->handle(), tableHotfixes, hotfixes, m_reportFunction);
-            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HOTFIXES_START_CONFIG_STATEMENT), m_reportFunction);
         }
     }
 }
@@ -668,34 +666,37 @@ void Syscollector::scanPorts()
         const auto& data { m_spInfo->ports() };
         nlohmann::json portsList{};
 
-        const auto& itPorts { data.find("ports") };
-
-        if (data.end() != itPorts)
+        if (!data.is_null())
         {
-            for (const auto& item : itPorts.value())
+            const auto& itPorts { data.find("ports") };
+
+            if (data.end() != itPorts)
             {
-                const auto isListeningState { item.at("state") == PORT_LISTENING_STATE };
-                if(isListeningState)
+                for (const auto& item : itPorts.value())
                 {
-                    // Only update and notify "Listening" state ports
-                    if (m_portsAll)
+                    const auto isListeningState { item.at("state") == PORT_LISTENING_STATE };
+                    if(isListeningState)
                     {
-                        // TCP and UDP ports
-                        portsList.push_back(item);
-                    }
-                    else
-                    {
-                        // Only TCP ports
-                        const auto isTCPProto { item.at("protocol") == TCP_PROTOCOL };
-                        if (isTCPProto)
+                        // Only update and notify "Listening" state ports
+                        if (m_portsAll)
                         {
+                            // TCP and UDP ports
                             portsList.push_back(item);
+                        }
+                        else
+                        {
+                            // Only TCP ports
+                            const auto isTCPProto { item.at("protocol") == TCP_PROTOCOL };
+                            if (isTCPProto)
+                            {
+                                portsList.push_back(item);
+                            }
                         }
                     }
                 }
+                updateAndNotifyChanges(m_spDBSync->handle(), table, portsList, m_reportFunction);
+                m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PORTS_START_CONFIG_STATEMENT), m_reportFunction);
             }
-            updateAndNotifyChanges(m_spDBSync->handle(), table, portsList, m_reportFunction);
-            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PORTS_START_CONFIG_STATEMENT), m_reportFunction);
         }
     }
 }
@@ -706,8 +707,11 @@ void Syscollector::scanProcesses()
     {
         constexpr auto table{"dbsync_processes"};
         const auto& processes{m_spInfo->processes()};
-        updateAndNotifyChanges(m_spDBSync->handle(), table, processes, m_reportFunction);
-        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PROCESSES_START_CONFIG_STATEMENT), m_reportFunction);
+        if (!processes.is_null())
+        {
+            updateAndNotifyChanges(m_spDBSync->handle(), table, processes, m_reportFunction);
+            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PROCESSES_START_CONFIG_STATEMENT), m_reportFunction);
+        }
     }
 }
 

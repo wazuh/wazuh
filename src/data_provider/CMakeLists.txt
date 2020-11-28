@@ -32,8 +32,10 @@ include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/external/cJSON/)
 include_directories(${SRC_FOLDER}/external/procps/)
 include_directories(${SRC_FOLDER}/external/bzip2/)
+include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/shared_modules/utils)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
+include_directories(${SRC_FOLDER}/external/openssl/include/)
 
 link_directories(${SRC_FOLDER}/external/sqlite/)
 link_directories(${SRC_FOLDER}/external/cJSON/)
@@ -53,26 +55,28 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
       "${CMAKE_SOURCE_DIR}/src/*Linux.cpp"
       "${CMAKE_SOURCE_DIR}/src/network/*Linux.cpp"
       "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  file(GLOB SYSINFO_SRC
+      "${CMAKE_SOURCE_DIR}/src/*Mac.cpp"
+      "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
+      "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
+      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+  file(GLOB SYSINFO_SRC
+      "${CMAKE_SOURCE_DIR}/src/*FreeBSD.cpp"
+      "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
+      "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
+      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+  file(GLOB SYSINFO_SRC
+      "${CMAKE_SOURCE_DIR}/src/*OpenBSD.cpp"
+      "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
+      "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
+      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
 else()
-  if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    file(GLOB SYSINFO_SRC
-        "${CMAKE_SOURCE_DIR}/src/*Mac.cpp"
-        "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
-        "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
-        "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
-  elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
-    file(GLOB SYSINFO_SRC
-        "${CMAKE_SOURCE_DIR}/src/*FreeBSD.cpp"
-        "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
-        "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
-        "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
-  elseif(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
-    file(GLOB SYSINFO_SRC
-        "${CMAKE_SOURCE_DIR}/src/*OpenBSD.cpp"
-        "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
-        "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
-        "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
-  endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  file(GLOB SYSINFO_SRC
+      "${CMAKE_SOURCE_DIR}/src/*Unix.cpp"
+      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 

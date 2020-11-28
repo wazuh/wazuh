@@ -316,32 +316,67 @@ std::string SysInfo::getSerialNumber() const
 
 std::string SysInfo::getCpuName() const
 {
+    std::string retVal { "unknown" };
     std::map<std::string, std::string> systemInfo;
     getSystemInfo(WM_SYS_CPU_DIR, ":", systemInfo);
-    return systemInfo.at("model name");
+    const auto& it { systemInfo.find("model name") };
+    if (it != systemInfo.end())
+    {
+        retVal = it->second;
+    }
+    return retVal;
 }
 
 int SysInfo::getCpuCores() const
 {
+    int retVal { 0 };
     std::map<std::string, std::string> systemInfo;
     getSystemInfo(WM_SYS_CPU_DIR, ":", systemInfo);
-    return (std::stoi(systemInfo.at("processor")) + 1);
+    const auto& it { systemInfo.find("processor") };
+    if (it != systemInfo.end())
+    {
+        retVal = std::stoi(it->second) + 1;
+    }
+
+    return retVal;
 }
 
 int SysInfo::getCpuMHz() const
 {
+    int retVal { 0 };
     std::map<std::string, std::string> systemInfo;
     getSystemInfo(WM_SYS_CPU_DIR, ":", systemInfo);
-    return (std::stoi(systemInfo.at("cpu MHz")));
+
+    const auto& it { systemInfo.find("cpu MHz") };
+    if (it != systemInfo.end())
+    {
+        retVal = std::stoi(it->second) + 1;
+    }
+
+    return retVal;
 }
 
 void SysInfo::getMemory(nlohmann::json& info) const
 {
     std::map<std::string, std::string> systemInfo;
     getSystemInfo(WM_SYS_MEM_DIR, ":", systemInfo);
-    const auto memTotal{std::stoi(systemInfo.at("MemTotal"))};
-    const auto memFree{std::stoi(systemInfo.at("MemFree"))};
-    info["ram_total"] = memTotal;
+
+    auto memTotal{ 1 };
+    auto memFree{ 0 };
+
+    const auto& itTotal { systemInfo.find("MemTotal") };
+    if (itTotal != systemInfo.end())
+    {
+        memTotal = std::stoi(itTotal->second);
+    }
+
+    const auto& itFree { systemInfo.find("MemFree") };
+    if (itFree != systemInfo.end())
+    {
+        memFree = std::stoi(itFree->second);
+    }
+
+    info["ram_total"] = memTotal == 0 ? 1 : memTotal;
     info["ram_free"] = memFree;
     info["ram_usage"] = 100 - (100*memFree/memTotal);
 }
@@ -408,39 +443,15 @@ static bool getOsInfoFromFiles(nlohmann::json& info)
     return ret;
 }
 
-static void getOsInfoFromUname(nlohmann::json& info)
-{
-    bool result{false};
-    std::string platform;
-    const auto osPlatform{Utils::exec("uname")};
-    if (osPlatform.find("SunOS") != std::string::npos)
-    {
-        constexpr auto SOLARIS_RELEASE_FILE{"/etc/release"};
-        const auto spParser{FactorySysOsParser::create("solaris")};
-        std::fstream file{SOLARIS_RELEASE_FILE, std::ios_base::in};
-        result = spParser && file.is_open() && spParser->parseFile(file, info);
-    }
-    else if(osPlatform.find("HP-UX") != std::string::npos)
-    {
-        const auto spParser{FactorySysOsParser::create("hp-ux")};
-        result = spParser && spParser->parseUname(Utils::exec("uname -r"), info);
-    }
-    if(!result)
-    {
-        info["os_name"] = "Linux";
-        info["os_platform"] = "linux";
-        info["os_version"] = "unknown";
-    }
-}
-
-
 nlohmann::json SysInfo::getOsInfo() const
 {
     nlohmann::json ret;
     struct utsname uts{};
     if (!getOsInfoFromFiles(ret))
     {
-        getOsInfoFromUname(ret);
+        ret["os_name"] = "Linux";
+        ret["os_platform"] = "linux";
+        ret["os_version"] = "unknown";
     }
     if (uname(&uts) >= 0)
     {

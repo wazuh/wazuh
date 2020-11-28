@@ -877,6 +877,15 @@ int wdb_close(wdb_t * wdb, bool commit) {
             }
         }
 
+        struct stmt_cache_list *node_stmt = wdb->cache_list;
+        while (node_stmt){
+            if (node_stmt->value.stmt) {
+                sqlite3_finalize(node_stmt->value.stmt);
+            }
+            os_free(node_stmt->value.query);
+            node_stmt = wdb->cache_list->next;
+        }
+
         result = sqlite3_close_v2(wdb->db);
 
         if (result == SQLITE_OK) {

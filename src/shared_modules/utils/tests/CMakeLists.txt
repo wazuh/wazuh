@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 2.6.4)
 
 project(utils_unit_test)
 
@@ -25,7 +25,7 @@ link_directories(${SRC_FOLDER}/external/googletest/lib/)
 link_directories(${SRC_FOLDER}/external/openssl/)
 
 add_executable(utils_unit_test 
-    "${UTIL_CXX_UNITTEST_SRC}")
+    ${UTIL_CXX_UNITTEST_SRC})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_definitions(-DWIN32=1
@@ -56,9 +56,9 @@ else()
         optimized gmockd
         optimized gtest_maind
         optimized gmock_maind
-        pthread
         crypto
         dl
+        pthread
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 

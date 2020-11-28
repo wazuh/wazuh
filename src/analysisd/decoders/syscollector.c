@@ -29,15 +29,161 @@ static int prev_port_id = 0;
 static int error_process = 0;
 static int prev_process_id = 0;
 
-static int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket);
-static int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket);
-static int decode_hardware( Eventinfo *lf, cJSON * logJSON,int *socket);
-static int decode_package( Eventinfo *lf, cJSON * logJSON,int *socket);
+static int decode_netinfo( Eventinfo *lf, cJSON * logJSON, int *socket);
+static int decode_osinfo( Eventinfo *lf, cJSON * logJSON, int *socket);
+static int decode_hardware( Eventinfo *lf, cJSON * logJSON, int *socket);
+static int decode_package( Eventinfo *lf, cJSON * logJSON, int *socket);
 static int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket);
-static int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket);
-static int decode_process( Eventinfo *lf, cJSON * logJSON,int *socket);
+static int decode_port( Eventinfo *lf, cJSON * logJSON, int *socket);
+static int decode_process( Eventinfo *lf, cJSON * logJSON, int *socket);
+static int decode_dbsync( char const *agent_id, char *msg_type, cJSON * logJSON, int *socket);
 
 static OSDecoderInfo *sysc_decoder = NULL;
+
+static const char* hotfixes_fields[] = { 
+    "hotfix", 
+    "checksum",
+    NULL 
+};
+
+static const char* packages_fields[] = { 
+    "format",
+    "name",
+    "priority",
+    "groups",
+    "size",
+    "vendor",
+    "install_time",
+    "version",
+    "architecture",
+    "multiarch",
+    "source",
+    "description",
+    "location",
+    "triaged",
+    "cpe",
+    "msu_name",
+    "checksum",
+    NULL 
+};
+
+    
+static const char* processes_fields[] = { 
+    "pid",
+    "name",
+    "state",
+    "ppid",
+    "utime",
+    "stime",
+    "cmd",
+    "argvs",
+    "euser",
+    "ruser",
+    "suser",
+    "egroup",
+    "rgroup",
+    "sgroup",
+    "fgroup",
+    "priority",
+    "nice",
+    "size",
+    "vm_size",
+    "resident",
+    "share",
+    "start_time",
+    "pgrp",
+    "session",
+    "nlwp",
+    "tgid",
+    "tty",
+    "processor",
+    "checksum",
+    NULL
+};
+
+static const char* ports_fields[] = { 
+    "protocol",
+    "local_ip",
+    "local_port",
+    "remote_ip",
+    "remote_port",
+    "tx_queue",
+    "rx_queue",
+    "inode",
+    "state",
+    "pid",
+    "process_name",
+    "checksum",
+    NULL 
+};
+
+static const char* network_iface_fields[] = { 
+    "name",
+    "adapter",
+    "type",
+    "state",
+    "mtu",
+    "mac",
+    "tx_packets",
+    "rx_packets",
+    "tx_bytes",
+    "rx_bytes",
+    "tx_errors",
+    "rx_errors",
+    "tx_dropped",
+    "rx_dropped",
+    "checksum",
+    NULL 
+};
+
+static const char* network_protocol_fields[] = { 
+    "iface",
+    "type",
+    "gateway",
+    "dhcp",
+    "metric",
+    "checksum",
+    NULL 
+};
+
+static const char* network_address_fields[] = { 
+    "iface",
+    "proto",
+    "address",
+    "netmask",
+    "broadcast",
+    "checksum",
+    NULL 
+};
+
+static const char* hardware_fields[] = { 
+    "board_serial", 
+    "cpu_name", 
+    "cpu_cores", 
+    "cpu_MHz", 
+    "ram_total", 
+    "ram_free", 
+    "ram_usage", 
+    NULL 
+};
+
+static const char* os_fields[] = { 
+    "host_name",
+    "architecture",
+    "os_name",
+    "os_version",
+    "os_codename",
+    "os_major",
+    "os_minor",
+    "os_patch",
+    "os_build",
+    "os_platform",
+    "sysname", 
+    "release",
+    "version",
+    "os_release",
+    NULL 
+};
 
 void SyscollectorInit(){
 
@@ -85,6 +231,8 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
         mdebug2("Input JSON: '%s", lf->log);
         return (0);
     }
+    char *array_buffer = cJSON_Print(logJSON);
+    os_free(array_buffer);
 
     // Detect message type
     json_type = cJSON_GetObjectItem(logJSON, "type");
@@ -140,6 +288,13 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
     else if (strcmp(msg_type, "process") == 0 || strcmp(msg_type, "process_end") == 0) {
         if (decode_process(lf, logJSON,socket) < 0) {
             mdebug1("Unable to send processes information to Wazuh DB.");
+            cJSON_Delete (logJSON);
+            return (0);
+        }
+    }
+    else if (strncmp(msg_type, "dbsync_", 7) == 0) {
+        if (decode_dbsync(lf->agent_id, msg_type, logJSON, socket) < 0) {
+            mdebug1("Unable to send %s information to Wazuh DB.", msg_type);
             cJSON_Delete (logJSON);
             return (0);
         }
@@ -1756,3 +1911,105 @@ end:
     free(msg);
     return retval;
 }
+
+const char** get_field_list(const char *type) {
+    char const **ret_val = NULL;
+    if (NULL != type) {
+        if (strcmp(type, "hotfixes") == 0) {
+            ret_val = hotfixes_fields;
+        } else if(strcmp(type, "packages") == 0) {
+            ret_val = packages_fields;
+        } else if(strcmp(type, "processes") == 0) {
+            ret_val = processes_fields;
+        } else if(strcmp(type, "ports") == 0) {
+            ret_val = ports_fields;
+        } else if(strcmp(type, "network_iface") == 0) {
+            ret_val = network_iface_fields;
+        } else if(strcmp(type, "network_protocol") == 0) {
+            ret_val = network_protocol_fields;
+        } else if(strcmp(type, "network_address") == 0) {
+            ret_val = network_address_fields;
+        } else if(strcmp(type, "hardware") == 0) {
+            ret_val = hardware_fields;
+        } else if(strcmp(type, "os") == 0) {
+            ret_val = os_fields;
+        } else {
+            merror("Incorrrect/unknown type value %s.", type);
+            ret_val = false;
+        }
+    } else {
+        merror("null type value.");
+        ret_val = false;
+    }
+    return ret_val;
+}
+
+bool fill_data_dbsync(cJSON *data, const char *field_list[], char *msg) {
+    int ret_val = false;
+
+    while (NULL != *field_list) {
+        cJSON *key = cJSON_GetObjectItem(data, *field_list);
+        if (NULL != key) {
+            if (NULL != cJSON_IsNumber(key)) {
+                char value[OS_SIZE_128] = { 0 };
+                snprintf(value, OS_SIZE_128 - 1, "%d", key->valueint);
+                strcat(msg, value);
+            } else if (NULL != cJSON_IsString(key)) {
+                if(strlen(key->valuestring) == 0) {
+                    strcat(msg, "NULL");
+                } else {
+                    strcat(msg, key->valuestring);
+                }
+            } else {
+                strcat(msg, "NULL");
+            }
+        } else {
+            strcat(msg, "NULL");
+        }
+        strcat(msg, "|");
+        ++field_list;
+        ret_val = true;
+    }
+    return ret_val;
+}
+
+int decode_dbsync(char const *agent_id, char *msg_type, cJSON *logJSON, int *socket) {
+    int ret_val = -1;
+    if (NULL != msg_type && NULL != agent_id && NULL != logJSON) {
+        char *type = NULL;
+        if (strtok(msg_type, "_")) {
+            type = strtok(NULL, "\0");
+        }
+        if (NULL != type) {
+            cJSON * operation_object = cJSON_GetObjectItem(logJSON, "operation");
+            cJSON * data = cJSON_GetObjectItem(logJSON, "data");
+            if (NULL != operation_object && NULL != data && cJSON_IsString(operation_object) && cJSON_IsObject(data)) {
+                const char **field_list = get_field_list(type);
+                
+                if (NULL != field_list) {
+                    char *msg = NULL;
+                    char *response = NULL;
+                    os_calloc(OS_SIZE_6144, sizeof(char), msg);
+                    os_calloc(OS_SIZE_6144, sizeof(char), response);
+                    snprintf(msg, OS_SIZE_6144 - 1, "agent %s dbsync %s %s ", agent_id, type, cJSON_GetStringValue(operation_object));
+                    if (fill_data_dbsync(data, field_list, msg))
+                    {
+                        ret_val = 0;
+                        if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) != 0) {
+                            merror("Wazuh-db query error, check wdb logs.");
+                        }
+                    }
+                    os_free(msg);
+                    os_free(response);
+                }
+            } else {
+                merror("Incorrrect/unknown operation.");
+            }
+        } else {
+            merror("Incorrect message prefix.");
+        }
+    }
+    return ret_val;
+}
+
+
