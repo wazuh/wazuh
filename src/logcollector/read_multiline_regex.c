@@ -19,8 +19,19 @@
 #endif
 
 STATIC char * multiline_getlog(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg);
-STATIC void multiline_replace(char * buffer, w_multiline_replace_type_t type);
-STATIC char * remove_char(char * str, const char * find);
+
+/**
+ * @brief If the last character of the string is an end of line, replace it.
+ * 
+ * Replace the last character of `str` (only if it is an end of line) according to` type`.
+ * if type is ML_REPLACE_NO_REPLACE does not replace the end of the line
+ * if type is ML_REPLACE_NONE remove the end of the line
+ * if type is ML_REPLACE_WSPACE replace the end of line with a blank space ' '
+ * if type is ML_REPLACE_TAB replace the end of line with a tab character '\t'
+ * @param str String to replace character.
+ * @param type Replacement type
+ */
+STATIC void multiline_replace(char * str, w_multiline_replace_type_t type);
 
 void *read_multiline_regex(logreader *lf, int *rc, int drop_it) {
     int __ms = 0;
@@ -144,20 +155,6 @@ void *read_multiline_regex(logreader *lf, int *rc, int drop_it) {
         return (NULL);
 }
 
-STATIC char * remove_char(char * str, const char * find) {
-    char * c;
-    char * d;
-
-    if (str != NULL) {
-        str = &str[strspn(str, find)];
-        for (c = str + strcspn(str, find); *(d = c + strspn(c, find)); c = d + strcspn(d, find))
-            ;
-        *c = '\0';
-    }
-    return str;
-}
-
-
 STATIC char * multiline_getlog(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg) {
 
     char * str = buffer;
@@ -184,26 +181,53 @@ STATIC char * multiline_getlog(char * buffer, int length, FILE * stream, w_multi
     return buffer;
 }
 
-STATIC void multiline_replace(char * buffer, w_multiline_replace_type_t type) {
+STATIC void multiline_replace(char * str, w_multiline_replace_type_t type) {
 
-#ifndef WIN32
-    const char * newline = "\n";
-#else
-    const char * newline = "\r\n";
-#endif
-    const char * tab = "\t";
-    const char * wspace = " ";
+    const char newline = '\n';
+    const char creturn = '\r';
+    const char tab = '\t';
+    const char wspace = ' ';
+    size_t buffer_len;
+    char * pos_newline;
+    char * pos_creturn;
+
+    if (!str || str[0] == '\0') {
+        return;
+    }
+
+    if(pos_newline = (str + strlen(str) - 1),  *pos_newline != newline) {
+        return;
+    }
+
+    pos_creturn = (*(pos_newline - 1) == creturn) ? (pos_newline - 1) : NULL;
+
     switch (type) {
     case ML_REPLACE_WSPACE:
-        wstr_replace(buffer, newline, wspace);
+        if (pos_creturn) {
+            *pos_creturn = wspace;
+            *pos_newline = '\0';
+        } else {
+            *pos_newline = wspace;
+        }
+
         break;
 
     case ML_REPLACE_TAB:
-        wstr_replace(buffer, newline, tab);
+        if (pos_creturn) {
+            *pos_creturn = tab;
+            *pos_newline = '\0';
+        } else {
+            *pos_newline = tab;
+        }
+
         break;
 
     case ML_REPLACE_NONE:
-        remove_char(buffer, newline);
+        if (pos_creturn) {
+            *pos_creturn = '\0';
+        } else {
+            *pos_newline = '\0';
+        }
         break;
 
     default:
