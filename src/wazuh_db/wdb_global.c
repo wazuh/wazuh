@@ -1333,21 +1333,21 @@ bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data) {
             while (NULL != column) {
                 if (column->value.is_old_implementation) {
                     if (FIELD_INTEGER == column->value.type || FIELD_REAL == column->value.type) {
-                        if (sqlite3_bind_int(stmt, column->value.index, 0)) {
+                        if (SQLITE_OK != sqlite3_bind_int(stmt, column->value.index, 0)) {
                             merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
                         }
                     } else {
-                        if (sqlite3_bind_text(stmt, column->value.index, "", -1, NULL) != SQLITE_OK) {
+                        if (SQLITE_OK != sqlite3_bind_text(stmt, column->value.index, "", -1, NULL)) {
                             merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
                         }
                     }
                 } else {
                     if (FIELD_INTEGER == column->value.type || FIELD_REAL == column->value.type) {
-                        if (sqlite3_bind_int(stmt, column->value.index, strcmp(field_value, "NULL") == 0 ? 0 : atoi(field_value))) {
+                        if (SQLITE_OK != sqlite3_bind_int(stmt, column->value.index, strcmp(field_value, "NULL") == 0 ? 0 : atoi(field_value))) {
                             merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
                         }
                     } else {
-                        if (sqlite3_bind_text(stmt, column->value.index, strcmp(field_value, "NULL") == 0 ? "" : field_value, -1, NULL) != SQLITE_OK) {
+                        if (SQLITE_OK != sqlite3_bind_text(stmt, column->value.index, strcmp(field_value, "NULL") == 0 ? "" : field_value, -1, NULL)) {
                             merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
                         }
                     }
@@ -1357,7 +1357,7 @@ bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data) {
                 }
                 column = column->next;
             }
-            ret_val = SQLITE_DONE == wdb_step(stmt) ? true : false;
+            ret_val = SQLITE_DONE == wdb_step(stmt);
         } else {
             mdebug1("Cannot get cache statement");
         }
@@ -1447,11 +1447,11 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
                 if (!column->value.is_old_implementation && NULL != *curr) {
                     if (!column->value.is_pk && strcmp(*curr, "NULL") != 0) {
                         if (FIELD_INTEGER == column->value.type || FIELD_REAL == column->value.type) {
-                            if (sqlite3_bind_int(stmt, index, atoi(*curr))) {
+                            if (SQLITE_OK != sqlite3_bind_int(stmt, index, atoi(*curr))) {
                                 merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
                             }
                         } else {
-                            if (sqlite3_bind_text(stmt, index, *curr, -1, NULL) != SQLITE_OK) {
+                            if (SQLITE_OK != sqlite3_bind_text(stmt, index, *curr, -1, NULL)) {
                                 merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
                             }
                         }
@@ -1468,11 +1468,11 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
                 if (!column->value.is_old_implementation && NULL != *curr) {
                     if (column->value.is_pk && strcmp(*curr, "NULL") != 0) {
                         if (FIELD_INTEGER == column->value.type || FIELD_REAL == column->value.type) {
-                            if (sqlite3_bind_int(stmt, index, atoi(*curr))) {
+                            if (SQLITE_OK != sqlite3_bind_int(stmt, index, atoi(*curr))) {
                                 merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
                             }
                         } else {
-                            if (sqlite3_bind_text(stmt, index, *curr, -1, NULL) != SQLITE_OK) {
+                            if (SQLITE_OK != sqlite3_bind_text(stmt, index, *curr, -1, NULL)) {
                                 merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
                             }
                         }
@@ -1482,8 +1482,7 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
                 }
                 column = column->next;
             }
-            ret_val = SQLITE_DONE == wdb_step(stmt) ? true : false;
-            printf("%s\n",sqlite3_expanded_sql(stmt));
+            ret_val = SQLITE_DONE == wdb_step(stmt);
         } else {
             mdebug1("Cannot get cache statement");
         }
@@ -1531,11 +1530,11 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
                 if (!column->value.is_old_implementation) {
                     if (column->value.is_pk) {
                         if (FIELD_INTEGER == column->value.type || FIELD_REAL == column->value.type) {
-                            if (sqlite3_bind_int(stmt, index, strcmp(field_value, "NULL") == 0 ? 0 : atoi(field_value))) {
+                            if (SQLITE_OK != sqlite3_bind_int(stmt, index, strcmp(field_value, "NULL") == 0 ? 0 : atoi(field_value))) {
                                 merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
                             }
                         } else {
-                            if (sqlite3_bind_text(stmt, index, strcmp(field_value, "NULL") == 0 ? "" : field_value, -1, NULL) != SQLITE_OK) {
+                            if (SQLITE_OK != sqlite3_bind_text(stmt, index, strcmp(field_value, "NULL") == 0 ? "" : field_value, -1, NULL)) {
                                 merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
                             }
                         }
@@ -1547,7 +1546,7 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
                 }
                 column = column->next;
             }
-            ret_val = SQLITE_DONE == wdb_step(stmt) ? true : false;
+            ret_val = SQLITE_DONE == wdb_step(stmt);
         } else {
             mdebug1("Cannot get cache statement");
         }

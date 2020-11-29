@@ -276,10 +276,10 @@ typedef enum {
     FIELD_INTEGER,
     FIELD_TEXT,
     FIELD_REAL
-} FIELD_TYPE;
+} field_type_t;
 
 struct field { 
-    FIELD_TYPE type;
+    field_type_t type;
     int index;
     bool is_old_implementation;
     bool is_pk;
@@ -987,6 +987,18 @@ int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
 
+
+/**
+ * @brief Function to parse generic dbsync message operation, and generate
+ * a message to process in wazuh-db process.
+ *
+ * @param wdb The Global struct database.
+ * @param input buffer input
+ * @param output buffer output, on success responses are:
+ *        "ok" -> If entry was processed
+ *        "error" -> If entry wasn't processed.
+ * @return -1 on error, and 0 on success.
+ */
 int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output);
 
 
@@ -1741,7 +1753,7 @@ int wdb_global_check_manager_keepalive(wdb_t *wdb);
  * @param wdb The Global struct database.
  * @param kv_value Table metadata to build dynamic queries.
  * @param data Values separated with pipe character '|'.
- * @retval true when the proposed action is executed.
+ * @retval true when the database single row insertion is executed successfully.
  * @retval false on error.
  */
 bool wdb_single_row_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
@@ -1753,7 +1765,7 @@ bool wdb_single_row_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *
  * @param wdb The Global struct database.
  * @param kv_value Table metadata to build dynamic queries.
  * @param data Values separated with pipe character '|'.
- * @retval true when the proposed action is executed.
+ * @retval true when the database insertion is executed successfully.
  * @retval false on error.
  */
 bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
@@ -1765,7 +1777,7 @@ bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
  * @param wdb The Global struct database.
  * @param kv_value Table metadata to build dynamic queries.
  * @param data Values separated with pipe character '|'.
- * @retval true when the proposed action is executed.
+ * @retval true when the database update is executed successfully.
  * @retval false on error.
  */
 bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
@@ -1777,7 +1789,7 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
  * @param wdb The Global struct database.
  * @param kv_value Table metadata to build dynamic queries.
  * @param data Values separated with pipe character '|'.
- * @retval true when the proposed action is executed.
+ * @retval true when the database delete is executed successfully.
  * @retval false on error.
  */
 bool wdb_delete_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);

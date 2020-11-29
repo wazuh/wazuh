@@ -40,13 +40,13 @@ static int decode_dbsync( char const *agent_id, char *msg_type, cJSON * logJSON,
 
 static OSDecoderInfo *sysc_decoder = NULL;
 
-static const char* hotfixes_fields[] = { 
+static const char* HOTFIXES_FIELDS[] = { 
     "hotfix", 
     "checksum",
     NULL 
 };
 
-static const char* packages_fields[] = { 
+static const char* PACKAGES_FIELDS[] = { 
     "format",
     "name",
     "priority",
@@ -68,7 +68,7 @@ static const char* packages_fields[] = {
 };
 
     
-static const char* processes_fields[] = { 
+static const char* PROCESSES_FIELDS[] = { 
     "pid",
     "name",
     "state",
@@ -101,7 +101,7 @@ static const char* processes_fields[] = {
     NULL
 };
 
-static const char* ports_fields[] = { 
+static const char* PORTS_FIELDS[] = { 
     "protocol",
     "local_ip",
     "local_port",
@@ -117,7 +117,7 @@ static const char* ports_fields[] = {
     NULL 
 };
 
-static const char* network_iface_fields[] = { 
+static const char* NETWORK_IFACE_FIELDS[] = { 
     "name",
     "adapter",
     "type",
@@ -136,7 +136,7 @@ static const char* network_iface_fields[] = {
     NULL 
 };
 
-static const char* network_protocol_fields[] = { 
+static const char* NETWORK_PROTOCOL_FIELDS[] = { 
     "iface",
     "type",
     "gateway",
@@ -146,7 +146,7 @@ static const char* network_protocol_fields[] = {
     NULL 
 };
 
-static const char* network_address_fields[] = { 
+static const char* NETWORK_ADDRESS_FIELDS[] = { 
     "iface",
     "proto",
     "address",
@@ -156,7 +156,7 @@ static const char* network_address_fields[] = {
     NULL 
 };
 
-static const char* hardware_fields[] = { 
+static const char* HARDWARE_FIELDS[] = { 
     "board_serial", 
     "cpu_name", 
     "cpu_cores", 
@@ -167,7 +167,7 @@ static const char* hardware_fields[] = {
     NULL 
 };
 
-static const char* os_fields[] = { 
+static const char* OS_FIELDS[] = { 
     "host_name",
     "architecture",
     "os_name",
@@ -1916,25 +1916,25 @@ const char** get_field_list(const char *type) {
     char const **ret_val = NULL;
     if (NULL != type) {
         if (strcmp(type, "hotfixes") == 0) {
-            ret_val = hotfixes_fields;
+            ret_val = HOTFIXES_FIELDS;
         } else if(strcmp(type, "packages") == 0) {
-            ret_val = packages_fields;
+            ret_val = PACKAGES_FIELDS;
         } else if(strcmp(type, "processes") == 0) {
-            ret_val = processes_fields;
+            ret_val = PROCESSES_FIELDS;
         } else if(strcmp(type, "ports") == 0) {
-            ret_val = ports_fields;
+            ret_val = PORTS_FIELDS;
         } else if(strcmp(type, "network_iface") == 0) {
-            ret_val = network_iface_fields;
+            ret_val = NETWORK_IFACE_FIELDS;
         } else if(strcmp(type, "network_protocol") == 0) {
-            ret_val = network_protocol_fields;
+            ret_val = NETWORK_PROTOCOL_FIELDS;
         } else if(strcmp(type, "network_address") == 0) {
-            ret_val = network_address_fields;
+            ret_val = NETWORK_ADDRESS_FIELDS;
         } else if(strcmp(type, "hardware") == 0) {
-            ret_val = hardware_fields;
+            ret_val = HARDWARE_FIELDS;
         } else if(strcmp(type, "os") == 0) {
-            ret_val = os_fields;
+            ret_val = OS_FIELDS;
         } else {
-            merror("Incorrrect/unknown type value %s.", type);
+            merror("Incorrect/unknown type value %s.", type);
             ret_val = false;
         }
     } else {
@@ -1945,16 +1945,16 @@ const char** get_field_list(const char *type) {
 }
 
 bool fill_data_dbsync(cJSON *data, const char *field_list[], char *msg) {
-    int ret_val = false;
+    bool ret_val = false;
 
     while (NULL != *field_list) {
-        cJSON *key = cJSON_GetObjectItem(data, *field_list);
+        const cJSON *key = cJSON_GetObjectItem(data, *field_list);
         if (NULL != key) {
-            if (NULL != cJSON_IsNumber(key)) {
+            if (cJSON_False != cJSON_IsNumber(key)) {
                 char value[OS_SIZE_128] = { 0 };
                 snprintf(value, OS_SIZE_128 - 1, "%d", key->valueint);
                 strcat(msg, value);
-            } else if (NULL != cJSON_IsString(key)) {
+            } else if (cJSON_False != cJSON_IsString(key)) {
                 if(strlen(key->valuestring) == 0) {
                     strcat(msg, "NULL");
                 } else {
@@ -1966,6 +1966,9 @@ bool fill_data_dbsync(cJSON *data, const char *field_list[], char *msg) {
         } else {
             strcat(msg, "NULL");
         }
+        // Message separated by pipes, includes the values to be processed in the wazuhdb
+        // this must maintain order and must always be completed, and the values that
+        // do not correspond will not be proccessed in wazuh-db
         strcat(msg, "|");
         ++field_list;
         ret_val = true;
@@ -1983,7 +1986,7 @@ int decode_dbsync(char const *agent_id, char *msg_type, cJSON *logJSON, int *soc
         if (NULL != type) {
             cJSON * operation_object = cJSON_GetObjectItem(logJSON, "operation");
             cJSON * data = cJSON_GetObjectItem(logJSON, "data");
-            if (NULL != operation_object && NULL != data && cJSON_IsString(operation_object) && cJSON_IsObject(data)) {
+            if (NULL != operation_object && NULL != data && cJSON_False != cJSON_IsString(operation_object) && cJSON_False != cJSON_IsObject(data)) {
                 const char **field_list = get_field_list(type);
                 
                 if (NULL != field_list) {
@@ -2003,10 +2006,10 @@ int decode_dbsync(char const *agent_id, char *msg_type, cJSON *logJSON, int *soc
                     os_free(response);
                 }
             } else {
-                merror("Incorrrect/unknown operation.");
+                merror("Incorrect/unknown operation.");
             }
         } else {
-            merror("Incorrect message prefix.");
+            merror("Incorrect prefix message.");
         }
     }
     return ret_val;
