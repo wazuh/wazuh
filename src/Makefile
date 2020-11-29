@@ -2089,6 +2089,7 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf $(EXTERNAL_GOOGLE_TEST)lib
 	rm -rf $(EXTERNAL_GOOGLE_TEST)build
 	-cd ${EXTERNAL_LIBPLIST} && ${MAKE} clean && rm -rf bin/*
+	-cd ${EXTERNAL_LIBPCRE2} && rm -rf .libs/*
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && ${MAKE} realclean

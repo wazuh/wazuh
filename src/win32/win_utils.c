@@ -15,9 +15,14 @@
 #include "os_execd/execd.h"
 #include "wazuh_modules/wmodules.h"
 #include "sysInfo.h"
+#include "sym_load.h"
 
 HANDLE hMutex;
 int win_debug_level;
+
+void *sysinfo_module = NULL;
+sysinfo_networks_func sysinfo_network_ptr = NULL;
+sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
 
 /** Prototypes **/
 int Start_win32_Syscheck();
@@ -54,6 +59,12 @@ int local_start()
     while (debug_level != 0) {
         nowDebug();
         debug_level--;
+    }
+
+    if (sysinfo_module = so_get_module_handle("sysinfo"), sysinfo_module)
+    {
+        sysinfo_free_result_ptr = so_get_function_sym(sysinfo_module, "sysinfo_free_result");
+        sysinfo_network_ptr = so_get_function_sym(sysinfo_module, "sysinfo_networks");
     }
 
     /* Initialize logging module*/
@@ -264,6 +275,10 @@ int local_start()
     /* Start logcollector -- main process here */
     LogCollectorStart();
 
+    if (sysinfo_module){
+        so_free_library(sysinfo_module);
+    }
+
     WSACleanup();
     return (0);
 }
@@ -338,32 +353,34 @@ char *get_agent_ip()
     char *agent_ip = NULL;
 
     cJSON *object;
-    sysinfo_networks(&object);
-    if (object) {
-        const cJSON *iface = cJSON_GetObjectItem(object, "iface");
-        if (iface) {
-            const int size_ids = cJSON_GetArraySize(iface);
-            for (int i = 0; i < size_ids; i++){
-                const cJSON *element = cJSON_GetArrayItem(iface, i);
-                if(!element) {
-                    continue;
-                }
-                cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
-                if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring,"unkwown")) {
-                    const cJSON *ipv4 = cJSON_GetObjectItem(element, "IPv4");
-                    if (!ipv4) {
+    if (sysinfo_network_ptr && sysinfo_free_result_ptr) {
+        sysinfo_network_ptr(&object);
+        if (object) {
+            const cJSON *iface = cJSON_GetObjectItem(object, "iface");
+            if (iface) {
+                const int size_ids = cJSON_GetArraySize(iface);
+                for (int i = 0; i < size_ids; i++){
+                    const cJSON *element = cJSON_GetArrayItem(iface, i);
+                    if(!element) {
                         continue;
                     }
-                    cJSON *address = cJSON_GetObjectItem(ipv4, "address");
-                    if (address && cJSON_GetStringValue(address))
-                    {
-                        os_strdup(address->valuestring, agent_ip);
-                        break;
+                    cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
+                    if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring,"unkwown")) {
+                        const cJSON *ipv4 = cJSON_GetObjectItem(element, "IPv4");
+                        if (!ipv4) {
+                            continue;
+                        }
+                        cJSON *address = cJSON_GetObjectItem(ipv4, "address");
+                        if (address && cJSON_GetStringValue(address))
+                        {
+                            os_strdup(address->valuestring, agent_ip);
+                            break;
+                        }
                     }
                 }
             }
+            sysinfo_free_result_ptr(&object);
         }
-        sysinfo_free_result(&object);
     }
     return agent_ip;
 }
