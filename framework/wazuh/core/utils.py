@@ -127,6 +127,8 @@ def process_array(array, search_text=None, complementary_search=False, search_in
 
     if select:
         array = select_array(array, select=select, required_fields=required_fields)
+        if 'id' not in select:
+            sort_by = [select[0]]
 
     if search_text:
         array = search_array(array, search_text=search_text, complementary_search=complementary_search,

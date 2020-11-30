@@ -179,7 +179,7 @@ async def logout_user(request, pretty=False, wait_for_complete=False):
 
 
 async def get_users(request, user_ids: list = None, pretty=False, wait_for_complete=False,
-                    offset=0, limit=None, search=None, sort=None):
+                    offset=0, limit=None, search=None, select=None, sort=None):
     """Returns information from all system roles.
 
     Parameters
@@ -197,6 +197,8 @@ async def get_users(request, user_ids: list = None, pretty=False, wait_for_compl
         Maximum number of items to return
     search : str
         Looks for elements with the specified string
+    select : str
+        Select which fields to return (separated by comma)
     sort : str, optional
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
         ascending or descending order
@@ -205,7 +207,7 @@ async def get_users(request, user_ids: list = None, pretty=False, wait_for_compl
     -------
     Users information
     """
-    f_kwargs = {'user_ids': user_ids, 'offset': offset, 'limit': limit,
+    f_kwargs = {'user_ids': user_ids, 'offset': offset, 'limit': limit, 'select': select,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,

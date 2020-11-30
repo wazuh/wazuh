@@ -14362,6 +14362,7 @@ paths:
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
