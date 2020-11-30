@@ -295,18 +295,6 @@ def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None
     -------
     Roles information
     """
-    """Returns information from all system roles, does not return information from its associated policies
-
-    :param role_ids: List of roles ids (None for all roles)
-    :param offset: First item to return
-    :param limit: Maximum number of items to return
-    :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
-    :param sort_ascending: Sort in ascending (true) or descending (false) order
-    :param search_text: Text to search
-    :param complementary_search: Find items without the text to search
-    :param search_in_fields: Fields to search in
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-    """
     affected_items = list()
     result = AffectedItemsWazuhResult(none_msg='No role was returned',
                                       some_msg='Some roles were not returned',
@@ -540,19 +528,34 @@ def update_policy(policy_id=None, name=None, policy=None):
 
 @expose_resources(actions=['security:read'], resources=['rule:id:{rule_ids}'],
                   post_proc_kwargs={'exclude_codes': [4022]})
-def get_rules(rule_ids=None, offset=0, limit=common.database_limit, sort_by=None,
+def get_rules(rule_ids=None, offset=0, limit=common.database_limit, sort_by=None, select=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Return information from all the security rules. It does not return information from its associated roles.
 
-    :param rule_ids: List of rule ids (None for all rules)
-    :param offset: First item to return
-    :param limit: Maximum number of items to return
-    :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
-    :param sort_ascending: Sort in ascending (true) or descending (false) order
-    :param search_text: Text to search
-    :param complementary_search: Find items without the text to search
-    :param search_in_fields: Fields to search in
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    Parameters
+    ----------
+    rule_ids : list, optional
+        List of rule ids (None for all rules)
+    offset : int, optional
+        First item to return
+    limit : int, optional
+        Maximum number of items to return
+    sort_by : dict
+        Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    sort_ascending : bool
+        Sort in ascending (true) or descending (false) order
+    search_text : str
+        Text to search
+    select : str
+        Select which fields to return (separated by comma)
+    complementary_search : bool
+        Find items without the text to search
+    search_in_fields : list
+        Fields to search in
+
+    Returns
+    -------
+    Rules information
     """
     affected_items = list()
     result = AffectedItemsWazuhResult(none_msg='No security rule was returned',
@@ -568,7 +571,7 @@ def get_rules(rule_ids=None, offset=0, limit=common.database_limit, sort_by=None
                 # Rule id does not exist
                 result.add_failed_item(id_=ru_id, error=WazuhError(4022))
 
-    data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
+    data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields, select=select,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
                          offset=offset, limit=limit)
     result.affected_items = data['items']
