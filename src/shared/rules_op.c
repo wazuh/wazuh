@@ -484,8 +484,8 @@ int OS_ReadXMLRules(const char *rulefile,
                         config_ruleinfo->category = SQUID;
                     } else if (strcmp(rule_opt[k]->content, "windows") == 0) {
                         config_ruleinfo->category = DECODER_WINDOWS;
-                    } else if (strcmp(rule_opt[k]->content, "ossec") == 0) {
-                        config_ruleinfo->category = OSSEC_RL;
+                    } else if (strcmp(rule_opt[k]->content, "wazuh") == 0) {
+                        config_ruleinfo->category = WAZUH_RL;
                     } else {
                         merror(INVALID_CAT, rule_opt[k]->content);
                         retval = -1;
@@ -709,7 +709,7 @@ int OS_ReadXMLRules(const char *rulefile,
                     if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                         config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
-                } else if (strcmp(rule_opt[k]->element, xml_different_id) == 0 || 
+                } else if (strcmp(rule_opt[k]->element, xml_different_id) == 0 ||
                            strcmp(rule_opt[k]->element, xml_notsame_id) == 0) {
                     config_ruleinfo->different_field |= FIELD_ID;
 
@@ -777,7 +777,7 @@ int OS_ReadXMLRules(const char *rulefile,
                     }
                 } else if (strcasecmp(rule_opt[k]->element,
                                       xml_different_user) == 0 ||
-                           strcasecmp(rule_opt[k]->element, 
+                           strcasecmp(rule_opt[k]->element,
                                       xml_notsame_user) == 0) {
                     config_ruleinfo->different_field |= FIELD_USER;
 
@@ -793,7 +793,7 @@ int OS_ReadXMLRules(const char *rulefile,
 
                     if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                         config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
-                    } 
+                    }
                 } else if (strcasecmp(rule_opt[k]->element,
                                       xml_global_frequency) == 0) {
                     config_ruleinfo->context_opts |= FIELD_GFREQUENCY;
@@ -1007,7 +1007,7 @@ int OS_ReadXMLRules(const char *rulefile,
             }
 
             /* Check for a valid use of frequency */
-            if ((config_ruleinfo->context_opts || config_ruleinfo->same_field || 
+            if ((config_ruleinfo->context_opts || config_ruleinfo->same_field ||
                     config_ruleinfo->different_field ||
                     config_ruleinfo->frequency) &&
                     !config_ruleinfo->context) {

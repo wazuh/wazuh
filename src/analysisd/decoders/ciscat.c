@@ -29,7 +29,7 @@ void CiscatInit(){
     os_calloc(1, sizeof(OSDecoderInfo), ciscat_decoder);
     ciscat_decoder->id = getDecoderfromlist(CISCAT_MOD, &os_analysisd_decoder_store);
     ciscat_decoder->name = CISCAT_MOD;
-    ciscat_decoder->type = OSSEC_RL;
+    ciscat_decoder->type = WAZUH_RL;
     ciscat_decoder->fts = 0;
 
     mdebug1("CiscatInit completed.");

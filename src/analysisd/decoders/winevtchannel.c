@@ -41,7 +41,7 @@ void WinevtInit(){
     os_calloc(1, sizeof(OSDecoderInfo), winevt_decoder);
     winevt_decoder->id = getDecoderfromlist(WINEVT_MOD, &os_analysisd_decoder_store);
     winevt_decoder->name = WINEVT_MOD;
-    winevt_decoder->type = OSSEC_RL;
+    winevt_decoder->type = WAZUH_RL;
     winevt_decoder->fts = 0;
 
     mdebug1("WinevtInit completed.");
