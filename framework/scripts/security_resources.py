@@ -1,7 +1,6 @@
 import argparse
 import asyncio
 import json
-import logging
 import sys
 from json import JSONDecodeError
 
@@ -10,12 +9,9 @@ from tabulate import tabulate
 from wazuh import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
 
-logger = logging.getLogger('wazuh')
-
 
 async def validate_resource(resource, r_type):
     from api.models.security import RoleModel, RuleModel, PolicyModel, CreateUserModel, UpdateUserModel
-    from connexion import ProblemException
 
     resource_body = {
         'user': CreateUserModel,
@@ -27,11 +23,9 @@ async def validate_resource(resource, r_type):
 
     try:
         loaded_json = json.loads(resource)
-        return await resource_body[r_type].get_kwargs(loaded_json)
+        return await resource_body[r_type].validate_kwargs(loaded_json)
     except JSONDecodeError:
         raise WazuhError(1018)
-    except ProblemException as e:
-        raise WazuhError(10001, extra_message=e.detail)
 
 
 async def manage_reserved_security_resource(method, resource_type, f_arguments):
@@ -83,6 +77,7 @@ async def manage_reserved_security_resource(method, resource_type, f_arguments):
         'wait_for_complete': False
     }
 
+    # Distribute function to master node
     response = json.loads(await lc.execute(command=b'dapi',
                                            data=json.dumps(input_json, cls=WazuhJSONEncoder).encode(),
                                            wait_for_complete=False),
@@ -96,7 +91,34 @@ async def manage_reserved_security_resource(method, resource_type, f_arguments):
 
 if __name__ == "__main__":
 
-    arg_parser = argparse.ArgumentParser()
+    arg_parser = argparse.ArgumentParser(description='Wazuh RBAC protected resources manager',
+                                         usage=
+                                         '\nAdd resources\n\n'
+                                         '-au \'{"username": "USERNAME", "password": "PASSWORD", '
+                                         '"allow_run_as": TRUE/FALSE}\' \n'
+                                         '-ar \'{"name": "ROLE_NAME"}\' \n'
+                                         '-ap \'{"name": "POLICY_NAME", "policy": {"actions": ["agent:read"], '
+                                         '"resources": ["agent:id:001"], "effect": "allow"}}\' \n'
+                                         '-aru \'{"name": "RULE_NAME", "rule": {"MATCH": {"sample": "yes"}}}\' \n\n'
+                                         'Update resources \n\n'
+                                         '-uu <SAME_AS_ADD>\n'
+                                         '-ur <SAME_AS_ADD>\n'
+                                         '-up <SAME_AS_ADD>\n'
+                                         '-uru <SAME_AS_ADD>\n\n'
+                                         'Delete resources \n\n'
+                                         '-ru [USER_IDs] \n'
+                                         '-rr [ROLE_IDs] \n'
+                                         '-rp [POLICY_IDs] \n'
+                                         '-rru [RULE_IDs] \n\n'
+                                         'Link resources \n\n'
+                                         '-lur USER_ID [ROLE_IDs] \n'
+                                         '-lrp ROLE_ID [POLICY_IDs] \n'
+                                         '-lrru ROLE_ID [RULE_IDs] \n\n'
+                                         'Unlink resources \n\n'
+                                         '-unur USER_ID [ROLE_IDs] \n'
+                                         '-unrp ROLE_ID [POLICY_IDs] \n'
+                                         '-unrru ROLE_ID [RULE_ID]'
+                                         )
     arg_parser.add_argument("-au", "--add-user", nargs='+', type=str, action='store', dest='add_user',
                             help="Add reserved security users.")
     arg_parser.add_argument("-ar", "--add-role", nargs='+', type=str, action='store', dest='add_role',
@@ -138,7 +160,7 @@ if __name__ == "__main__":
     args = arg_parser.parse_args()
 
     if not len(sys.argv) > 1:
-        arg_parser.print_help()
+        arg_parser.print_usage()
         sys.exit(0)
 
     try:
@@ -165,7 +187,7 @@ if __name__ == "__main__":
                         raise WazuhError(10000, extra_message='Remove methods only allow IDs')
                     result |= asyncio.run(manage_reserved_security_resource(method, resource_name,
                                                                             {f'{resource_name}_ids': values}))
-                # Link resources
+                # Link/unlink resources
                 elif method in ['link', 'unlink'] and values:
                     if len(values) < 2:
                         raise WazuhError(10000, extra_message='Link methods need at least 2 arguments. '
@@ -176,17 +198,18 @@ if __name__ == "__main__":
                     kwargs = {f'{main_r}_id': main_id, f'{related_r}_ids': related_ids}
                     result |= asyncio.run(manage_reserved_security_resource(method, resource_name, kwargs))
             except WazuhError as e:
-                if e.code == 10001:
+                if e.code in (10001, 10002):
                     result.add_failed_item(id_='Bad format', error=e)
                 else:
                     for v in values:
-                        result.add_failed_item(id_=v, error=e)
+                        result.add_failed_item(id_=str(v), error=e)
 
+            # Construct result table
             if result.affected_items or result.failed_items:
                 result_table.append([resource_name.title(),
                                      method,
                                      ', '.join([str(item['id']) for item in result.affected_items]),
-                                     '\n'.join(f"{', '.join(ids)} || {error}"
+                                     '\n'.join(f"{', '.join(map(str, ids))} || {error}"
                                                for error, ids in result.failed_items.items())])
 
         table_headers = ['Resource', 'Method', 'Success', 'Failed']
