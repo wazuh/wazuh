@@ -73,11 +73,12 @@ def build_and_up(interval: int = 10):
 
 
 def down_env():
-    """Stop all Docker environments for the current test."""
-    pwd = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'env')
-    os.chdir(pwd)
-    current_process = subprocess.Popen(["docker-compose", "down", "-t", "0"])
-    current_process.wait()
+    pass
+    # """Stop all Docker environments for the current test."""
+    # pwd = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'env')
+    # os.chdir(pwd)
+    # current_process = subprocess.Popen(["docker-compose", "down", "-t", "0"])
+    # current_process.wait()
 
 
 def check_health(interval: int = 10, node_type: str = 'manager', agents: list = None):
