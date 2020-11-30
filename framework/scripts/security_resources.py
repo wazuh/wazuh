@@ -92,23 +92,6 @@ async def manage_reserved_security_resource(method, resource_type, f_arguments):
     return response
 
 
-def print_results(resource_name, full_result):
-    print(resource_name.title())
-    print(f"{'-' * len(resource_name)}")
-    if not full_result.affected_items:
-        print('No security resources were managed.\n')
-    else:
-        if full_result.failed_items:
-            print('Some security resources could not be managed.\n')
-        else:
-            print('All security resources were managed.')
-            return
-    print('Failed resources:\n')
-    for error, ids in full_result.failed_items.items():
-        print(f"IDs: {', '.join(ids)}")
-        print(f"\t{error}\n\n")
-
-
 if __name__ == "__main__":
 
     arg_parser = argparse.ArgumentParser()
@@ -157,46 +140,52 @@ if __name__ == "__main__":
         for key, values in args.__dict__.items():
             method, resource_name = key.split('_')
             result = AffectedItemsWazuhResult()
-            # Add resource
-            if method == 'add' and values:
-                for resource in values:
-                    kwargs = remove_nones_to_dict(asyncio.run(validate_resource(resource, resource_name)))
+            try:
+                # Add resource
+                if method == 'add' and values:
+                    for resource in values:
+                        kwargs = remove_nones_to_dict(asyncio.run(validate_resource(resource, resource_name)))
+                        result |= asyncio.run(manage_reserved_security_resource(method, resource_name, kwargs))
+                # Update resource
+                elif method == 'update' and values:
+                    r_id, new_value = values
+                    kwargs = remove_nones_to_dict(asyncio.run(
+                        validate_resource(new_value, resource_name if resource_name != 'user' else 'update_user')))
+                    kwargs[f'{resource_name}_id'] = r_id
                     result |= asyncio.run(manage_reserved_security_resource(method, resource_name, kwargs))
-            # Update resource
-            elif method == 'update' and values:
-                r_id, new_value = values
-                kwargs = remove_nones_to_dict(asyncio.run(
-                    validate_resource(new_value, resource_name if resource_name != 'user' else 'update_user')))
-                kwargs[f'{resource_name}_id'] = r_id
-                result |= asyncio.run(manage_reserved_security_resource(method, resource_name, kwargs))
-            # Remove resource
-            elif method == 'remove' and values:
-                if not all(map(str.isnumeric, values)):
-                    raise WazuhError(10000, extra_message='Remove methods only allow IDs')
-                result |= asyncio.run(manage_reserved_security_resource(method, resource_name,
-                                                                        {f'{resource_name}_ids': values}))
-            # Link resources
-            elif method in ['link', 'unlink'] and values:
-                if len(values) < 2:
-                    raise WazuhError(10000, extra_message='Link methods need at least 2 arguments. '
-                                                          '<MAIN RESOURCE ID> <RELATED RESOURCE ID> '
-                                                          '[<RELATED RESOURCE ID>]')
-                main_id, related_ids = values[0], values[1:]
-                main_r, related_r = resource_name.split('-')
-                kwargs = {f'{main_r}_id': main_id, f'{related_r}_ids': related_ids}
-                result |= asyncio.run(manage_reserved_security_resource(method, resource_name, kwargs))
+                # Remove resource
+                elif method == 'remove' and values:
+                    if not all(map(str.isnumeric, values)):
+                        raise WazuhError(10000, extra_message='Remove methods only allow IDs')
+                    result |= asyncio.run(manage_reserved_security_resource(method, resource_name,
+                                                                            {f'{resource_name}_ids': values}))
+                # Link resources
+                elif method in ['link', 'unlink'] and values:
+                    if len(values) < 2:
+                        raise WazuhError(10000, extra_message='Link methods need at least 2 arguments. '
+                                                              '<MAIN RESOURCE ID> <RELATED RESOURCE ID> '
+                                                              '[<RELATED RESOURCE ID>]')
+                    main_id, related_ids = values[0], values[1:]
+                    main_r, related_r = resource_name.split('-')
+                    kwargs = {f'{main_r}_id': main_id, f'{related_r}_ids': related_ids}
+                    result |= asyncio.run(manage_reserved_security_resource(method, resource_name, kwargs))
+            except (WazuhError, ProblemException) as e:
+                if isinstance(e, ProblemException):
+                    result.add_failed_item(id_='Bad format', error=WazuhError(10000, extra_message=e.detail))
+                else:
+                    for v in values:
+                        result.add_failed_item(id_=v, error=e)
 
             if result.affected_items or result.failed_items:
                 result_table.append([resource_name.title(),
                                      method,
                                      ', '.join([str(item['id']) for item in result.affected_items]),
-                                     '\n'.join(f"{ids} || {error}" for error, ids in result.failed_items.items())])
+                                     '\n'.join(f"{', '.join(ids)} || {error}"
+                                               for error, ids in result.failed_items.items())])
 
         table_headers = ['Resource', 'Method', 'Success', 'Failed']
         print(tabulate(result_table, headers=table_headers, tablefmt='fancy_grid'))
     except WazuhError as e:
         print(f"Error {e.code}: {e.message}")
-    except ProblemException as e:
-        print(f'Bad format error: {e.detail}')
     except Exception as e:
         print(f"Internal error: {e}")
