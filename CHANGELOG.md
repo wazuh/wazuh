@@ -1,7 +1,14 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.0.2] -
+## [v4.0.3] - 
+
+### Fixed
+
+- **API:**
+  - Fixed a problem with certain API calls exceeding timeout in highly loaded cluster environments. ([#6753](https://github.com/wazuh/wazuh/pull/6753))
+
+## [v4.0.2] - 2020-11-24
 
 ### Added
 
