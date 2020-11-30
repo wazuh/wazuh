@@ -222,6 +222,7 @@ All notable changes to this project will be documented in this file.
   - Added new framework modules to use the logtest tool. ([#5870](https://github.com/wazuh/wazuh/pull/5870))
   - Improved `q` parameter on rules, decoders and cdb-lists modules to allow multiple nested fields. ([#6560](https://github.com/wazuh/wazuh/pull/6560))
   - Added character length limitation on RBAC resources at db level. ([#6676](https://github.com/wazuh/wazuh/issues/6676))
+  - Added CLI to manage RBAC resources as admin. ([#6672](https://github.com/wazuh/wazuh/issues/6672))
 
 ### Changed
 
