@@ -367,7 +367,7 @@ typedef struct _win32rtfim {
 
 void free_win32rtfim_data(win32rtfim *data);
 int realtime_win32read(win32rtfim *rtlocald);
-int fim_check_realtime_directory(const char *dir);
+int fim_check_realtime_directory(win32rtfim *rtlocald);
 
 void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 {
@@ -562,8 +562,10 @@ int realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int fo
     /* Set key for hash */
     wdchar[260] = '\0';
     snprintf(wdchar, 260, "%s", dir);
-    if(OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
-        fim_check_realtime_directory(dir);
+
+    rtlocald = OSHash_Get_ex(syscheck.realtime->dirtb, wdchar);
+    if(rtlocald != NULL) {
+        fim_check_realtime_directory(rtlocald);
     }
     else {
         os_calloc(1, sizeof(win32rtfim), rtlocald);
@@ -610,26 +612,19 @@ int realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int fo
     return 1;
 }
 
-int fim_check_realtime_directory(const char *dir) {
+int fim_check_realtime_directory(win32rtfim *rtlocald) {
+    assert(rtlocald != NULL);
 
-    char wdchar[260 + 1];
-    win32rtfim *rtlocald;
-
-    wdchar[260] = '\0';
-    snprintf(wdchar, 260, "%s", dir);
-
-    if (!w_directory_exists(wdchar)) {
+    if (!w_directory_exists(rtlocald->dir)) {
         /* If directory monitored doesn't exist now,
         close handle to remove watcher and set watch_status to one.
         Maybe, it will be removed from the hash table in RTCallBack.
         If it doesn't happend, we will remove in next call to the function */
 
-        rtlocald = OSHash_Get(syscheck.realtime->dirtb, wdchar);
-
         if (rtlocald->watch_status == FIM_RT_HANDLE_CLOSED) {
-            rtlocald = OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar);
+            mdebug1(FIM_REALTIME_CALLBACK, rtlocald->dir);
+            rtlocald = OSHash_Delete_ex(syscheck.realtime->dirtb, rtlocald->dir);
             free_win32rtfim_data(rtlocald);
-            mdebug1(FIM_REALTIME_CALLBACK, wdchar);
             return 1;
         }
 
