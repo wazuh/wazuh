@@ -105,3 +105,60 @@ void OS_SHA1_Hexdigest(const unsigned char * digest, os_sha1 output) {
         output += 2;
     }
 }
+
+int OS_SHA1_File_Nbytes(const char *fname, SHA_CTX *c, os_sha1 output, int mode, ssize_t nbytes)
+{
+    FILE *fp;
+    unsigned char buf[2048 + 2];
+    unsigned char md[SHA_DIGEST_LENGTH];
+    size_t n;
+    ssize_t bytes_count = 0;
+
+    memset(output, 0, sizeof(os_sha1));
+    buf[2049] = '\0';
+
+    fp = fopen(fname, mode == OS_BINARY ? "rb" : "r");
+    if (!fp) {
+        return (-1);
+    }
+
+    SHA1_Init(c);
+    for (bytes_count;bytes_count < nbytes;bytes_count+=2048) {
+        if(bytes_count+2048 < nbytes) {
+            n = fread(buf, 1, 2048, fp);
+        }
+        else
+        {
+            n = fread(buf, 1, nbytes-bytes_count, fp);
+        }
+
+        buf[n] = '\0';
+        SHA1_Update(c, buf, n);
+    }
+
+    SHA_CTX aux = *c;
+
+    SHA1_Final(&(md[0]), &aux);
+
+    OS_SHA1_Hexdigest(md, output);
+
+    fclose(fp);
+
+    return (0);
+}
+
+void OS_SHA1_Stream(SHA_CTX *c, os_sha1 output, char * buf)
+{
+    size_t n = strlen(buf);
+    memset(output, 0, sizeof(os_sha1));
+    unsigned char md[SHA_DIGEST_LENGTH];
+
+    SHA1_Update(c, buf, n);
+
+    SHA_CTX aux = *c;
+
+    SHA1_Final(&(md[0]), &aux);
+
+    OS_SHA1_Hexdigest(md, output);
+
+}
