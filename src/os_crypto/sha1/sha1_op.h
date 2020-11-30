@@ -12,6 +12,7 @@
 #define SHA1_OP_H
 
 #include <sys/types.h>
+#include <openssl/sha.h>
 
 typedef char os_sha1[41];
 
