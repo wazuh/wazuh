@@ -565,7 +565,8 @@ class WazuhException(Exception):
 
         # 10000 CLI related
         10000: {'message': 'Invalid CLI syntax'},
-        10001: {'message': 'Invalid field'}
+        10001: {'message': 'Invalid field'},
+        10002: {'message': 'Missing fields'}
     }
 
     def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, title=None,
