@@ -1,4 +1,4 @@
-@REM Copyright (C) 2015-2020, Wazuh Inc.
+@REM Copyright (C) 2015-2020, Wazuh
 
 @ECHO OFF
 
