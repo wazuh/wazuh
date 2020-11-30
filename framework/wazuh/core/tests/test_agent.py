@@ -13,6 +13,7 @@ import pytest
 from freezegun import freeze_time
 
 from api.util import remove_nones_to_dict
+from wazuh.core.common import reset_context_cache
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
@@ -2168,6 +2169,10 @@ def test_expand_group(group, expected_agents):
     expected_agents : set
         Expected agent IDs for the selected group
     """
+    # Clear and set get_agents_info cache
+    reset_context_cache()
+    test_get_agents_info()
+
     id_groups = {'000': 'group1', '001': 'group2', '002': 'group3', '004': '', '005': 'group3,group4', '006': ''}
     agent_groups = os.path.join(test_data_path, 'agent-groups')
 
