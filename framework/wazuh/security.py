@@ -266,8 +266,35 @@ def remove_users(user_ids):
 
 @expose_resources(actions=['security:read'], resources=['role:id:{role_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002]})
-def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None,
+def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None, select=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+    """
+
+    Parameters
+    ----------
+    role_ids : list, optional
+        List of roles ids to be obtained
+    offset : int, optional
+        First item to return
+    limit : int, optional
+        Maximum number of items to return
+    sort_by : dict
+        Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    sort_ascending : bool
+        Sort in ascending (true) or descending (false) order
+    search_text : str
+        Text to search
+    select : str
+        Select which fields to return (separated by comma)
+    complementary_search : bool
+        Find items without the text to search
+    search_in_fields : list
+        Fields to search in
+
+    Returns
+    -------
+    Roles information
+    """
     """Returns information from all system roles, does not return information from its associated policies
 
     :param role_ids: List of roles ids (None for all roles)
@@ -293,7 +320,7 @@ def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None
                 # Role id does not exist
                 result.add_failed_item(id_=int(r_id), error=WazuhError(4002))
 
-    data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
+    data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields, select=select,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
                          offset=offset, limit=limit)
     result.affected_items = data['items']
