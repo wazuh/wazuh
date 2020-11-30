@@ -84,6 +84,7 @@
 #define HOTFIX_INSTALLED  112
 #define HOTFIX_SUPERSEDED 80
 #define HOTFIX_STAGED     64
+#define HOTFIX_SIZE       9 // KB0000001
 
 /* MAC package scan */
 #define INFO_FILE       "Contents/Info.plist"
@@ -198,7 +199,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION);
 
 /**
  * @brief This function normalize the macOS package's name.
- *
+ * 
  * @param [in] source_package The name of the package that may include the vendor's name, version or others.
  * @param [out] vendor_name The vendor's name extracted from the package's name.
  * @param [out] package_name The package's name after normalizing it.
@@ -208,7 +209,7 @@ int normalize_mac_package_name(const char * source_package, char ** vendor_name,
 
 /**
  * @brief Get the vendor of a mac package from CFBundleIdentifier.
- *
+ * 
  * @param input CFBundleIdentifier string.
  * @return char* Returns the vendor or null.
  */

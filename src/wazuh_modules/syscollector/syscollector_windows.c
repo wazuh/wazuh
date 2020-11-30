@@ -1003,12 +1003,17 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
                         RegCloseKey(subKey);
                         continue;
                     }
-
+                
                 } else if (extension = strchr(hotfix, '_'), extension) {
                     *extension = '\0';
                 }
 
                 RegCloseKey(subKey);
+
+                // Expected hotfixes must start with KB*
+                if (strncmp(hotfix, "KB", 2) || strlen(hotfix) != HOTFIX_SIZE) {
+                    continue;
+                }
 
                 // Ignore the hotfix if it is the same as the previous one
                 if (!strcmp(hotfix, prev_hotfix)) {
@@ -1058,8 +1063,8 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
 char * parse_Rollup_hotfix(HKEY hKey, char *value) {
     DWORD dataSize = MAXSTR;
     LONG result;
-
-    result = RegQueryValueEx(hKey, "InstallLocation", NULL, NULL, (LPBYTE)value, &dataSize);
+    
+    result = RegQueryValueEx(hKey, "InstallLocation", NULL, NULL, (LPBYTE)value, &dataSize);  
     if (result != ERROR_SUCCESS ) {
         mterror(WM_SYS_LOGTAG, "Error reading 'InstallLocation' from Windows registry. (Error %u)",(unsigned int)result);
         return NULL;
@@ -1081,9 +1086,9 @@ char * parse_Rollup_hotfix(HKEY hKey, char *value) {
 // Check if any error ocurred at installation time.
 bool found_hotfix_error(HKEY hKey) {
     LONG result;
-
+    
     // The Value only exists when an arror occurred.
-    result = RegQueryValueEx(hKey, "LastError", NULL, NULL, 0, 0);
+    result = RegQueryValueEx(hKey, "LastError", NULL, NULL, 0, 0);  
 
     return (result != ERROR_SUCCESS)? false : true;
 }
@@ -1093,21 +1098,21 @@ bool valid_hotfix_status(HKEY hKey) {
     DWORD dataSize = sizeof(DWORD);
     DWORD value;
     LONG result;
-
-    result = RegQueryValueEx(hKey, "CurrentState", NULL, NULL, (LPBYTE)&value, &dataSize);
+    
+    result = RegQueryValueEx(hKey, "CurrentState", NULL, NULL, (LPBYTE)&value, &dataSize);  
     if (result != ERROR_SUCCESS ) {
         mterror(WM_SYS_LOGTAG, "Error reading 'CurrentState' from Windows registry. (Error %u)",(unsigned int)result);
         return false;
     }
 
-    if (value != HOTFIX_INSTALLED &&
-        value != HOTFIX_SUPERSEDED &&
+    if (value != HOTFIX_INSTALLED && 
+        value != HOTFIX_SUPERSEDED && 
         value != HOTFIX_STAGED) {
         mtdebug2(WM_SYS_LOGTAG, "Invalid hotfix status: %ld", value);
         return false;
     }
 
-    return true;
+    return true;  
 }
 
 // List Windows users from the registry
