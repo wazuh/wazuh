@@ -191,33 +191,18 @@ int main(int argc, char **argv)
         OS_ClearXML(&xml);
     }
 
-    // Do not monitor agents in client nodes
-
-    OS_XML cl_xml;
-    const char * xmlf[] = {"ossec_config", "cluster", "disabled", NULL};
-    const char * xmlf2[] = {"ossec_config", "cluster", "node_type", NULL};
-
-    if (OS_ReadXML(cfg, &cl_xml) < 0) {
-        mdebug1(XML_ERROR, cfg, cl_xml.err, cl_xml.err_line);
-    } else {
-        // Read the cluster status and the node type from the configuration file
-        char * cl_status = OS_GetOneContentforElement(&cl_xml, xmlf);
-        if (cl_status && cl_status[0] != '\0') {
-            if (!strncmp(cl_status, "no", 2)) {
-                char * cl_type = OS_GetOneContentforElement(&cl_xml, xmlf2);
-                if (cl_type && cl_type[0] != '\0') {
-                    if (!strncmp(cl_type, "client", 6) || !strncmp(cl_type, "worker", 6)) {
-                        mdebug1("Cluster client node: Disabled the agent monitoring");
-                        mond.monitor_agents = 0;
-                    }
-                    free(cl_type);
-                }
-            }
-
-            free(cl_status);
-        }
+    // Read the cluster status and the node type from the configuration file
+    // Do not monitor agents in client/worker nodes
+    switch (w_is_worker()){
+        case 0:
+            worker_node = false;
+            break;
+        case 1:
+            mdebug1("Cluster client node: Disabled the agent monitoring");
+            worker_node = true;
+            mond.monitor_agents = 0;
+            break;
     }
-    OS_ClearXML(&cl_xml);
 
     /* Exit here if test config is set */
     if (test_config) {

@@ -276,5 +276,6 @@
 #define MOD_TASK_RESPONSE_MESSAGE           "(8205): Response to message: '%s'"
 #define MOD_TASK_RUNNING_CLEAN              "(8206): Running daily clean DB thread."
 #define MOD_TASK_DISABLED_WORKER            "(8207): Module Task Manager only runs on Master nodes in cluster configuration."
+#define GLOB_NO_MATCH                       "(6351): No matches found for the glob pattern: '%s'"
 
 #endif /* DEBUG_MESSAGES_H */

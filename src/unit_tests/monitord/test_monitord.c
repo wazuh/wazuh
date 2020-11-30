@@ -400,7 +400,7 @@ void test_getMonitorGlobalOptions_success(void **state) {
     cJSON *object = NULL;
 
     // Arbitrary configuration
-    mond.global.agents_disconnection_time = 200;
+    mond.global.agents_disconnection_time = 20;
     mond.global.agents_disconnection_alert_time = 100;
 
     root = getMonitorGlobalOptions();
@@ -480,7 +480,7 @@ void test_MonitordConfig_success(void **state) {
 
     assert_int_equal(result, OS_SUCCESS);
     assert_int_equal(mond.global.agents_disconnection_time, 20);
-    assert_int_equal(mond.global.agents_disconnection_alert_time, 120);
+    assert_int_equal(mond.global.agents_disconnection_alert_time, 100);
 
     assert_null(mond.agents);
     assert_null(mond.smtpserver);

@@ -101,7 +101,7 @@ The Wazuh WUI provides a powerful user interface for data visualization and anal
 
 ## Orchestration
 
-Here you can find all the automation tools manteined by the Wazuh team.
+Here you can find all the automation tools maintained by the Wazuh team.
 
 * [Wazuh AWS CloudFormation](https://github.com/wazuh/wazuh-cloudformation)
 

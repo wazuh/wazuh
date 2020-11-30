@@ -6,11 +6,14 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "hash_op.h"
+#include "os_err.h"
 #include "wazuh_db/wdb.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_global_wrappers.h"
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
+#include "wazuhdb_op.h"
 
 typedef struct test_struct {
     wdb_t *wdb;
@@ -855,14 +858,14 @@ void test_wdb_parse_global_update_connection_status_query_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global update-connection-status {\"id\":1,\"connection_status\":\"active\"}";
+    char query[OS_BUFFER_SIZE] = "global update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_value(__wrap_wdb_global_update_agent_connection_status, id, 1);
     expect_string(__wrap_wdb_global_update_agent_connection_status, connection_status, "active");
     will_return(__wrap_wdb_global_update_agent_connection_status, OS_INVALID);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-connection-status {\"id\":1,\"connection_status\":\"active\"}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}");
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
 
@@ -876,14 +879,14 @@ void test_wdb_parse_global_update_connection_status_success(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global update-connection-status {\"id\":1,\"connection_status\":\"active\"}";
+    char query[OS_BUFFER_SIZE] = "global update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_value(__wrap_wdb_global_update_agent_connection_status, id, 1);
     expect_string(__wrap_wdb_global_update_agent_connection_status, connection_status, "active");
     will_return(__wrap_wdb_global_update_agent_connection_status, OS_SUCCESS);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-connection-status {\"id\":1,\"connection_status\":\"active\"}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}");
 
     ret = wdb_parse(query, data->output);
 
@@ -1934,10 +1937,8 @@ void test_wdb_parse_global_disconnect_agents_syntax_error(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
     char query[OS_BUFFER_SIZE] = "global disconnect-agents";
 
-    // Logging command and opening database
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect-agents");
     will_return(__wrap_wdb_open_global, data->wdb);
-    // Logging command syntax error
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect-agents");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for disconnect-agents.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: disconnect-agents");
 
@@ -1947,57 +1948,51 @@ void test_wdb_parse_global_disconnect_agents_syntax_error(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_parse_global_disconnect_agents_error_getting_agents(void **state)
+void test_wdb_parse_global_disconnect_agents_last_id_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global disconnect-agents 100";
+    char query[OS_BUFFER_SIZE] = "global disconnect-agents ";
 
-    // Logging command and opening database
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect-agents 100");
     will_return(__wrap_wdb_open_global, data->wdb);
-    // Getting the list of agents to disconnect
-    expect_value(__wrap_wdb_global_get_agents_to_disconnect, keep_alive, 100);
-    will_return(__wrap_wdb_global_get_agents_to_disconnect, NULL);
-    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "Error getting agents to disconnect; err database queue/db/global.db: ERROR MESSAGE");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect-agents ");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments last id not found.");
 
     ret = wdb_parse(query, data->output);
 
-    assert_string_equal(data->output, "err Error getting agents to disconnect; ERROR MESSAGE");
+    assert_string_equal(data->output, "err Invalid arguments last id not found");
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_parse_global_disconnect_agents_error_setting_agent_to_disconnected(void **state)
+void test_wdb_parse_global_disconnect_agents_keepalive_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global disconnect-agents 100";
+    char query[OS_BUFFER_SIZE] = "global disconnect-agents 0";
 
-    cJSON *root = NULL;
-    cJSON *j_object = NULL;
-
-    root = cJSON_CreateArray();
-    j_object = cJSON_CreateObject();
-    cJSON_AddNumberToObject(j_object, "id", 1);
-    cJSON_AddItemToArray(root, j_object);
-
-    // Logging command and opening database
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect-agents 100");
     will_return(__wrap_wdb_open_global, data->wdb);
-    // Getting the list of agents to disconnect
-    expect_value(__wrap_wdb_global_get_agents_to_disconnect, keep_alive, 100);
-    will_return(__wrap_wdb_global_get_agents_to_disconnect, root);
-    // Setting agents to disconnected
-    expect_value(__wrap_wdb_global_update_agent_connection_status, id, 1);
-    expect_string(__wrap_wdb_global_update_agent_connection_status, connection_status, AGENT_CS_DISCONNECTED);
-    will_return(__wrap_wdb_global_update_agent_connection_status, OS_INVALID);
-    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "Error setting agent 1 as disconnected; err database queue/db/global.db: ERROR MESSAGE");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect-agents 0");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments keepalive not found.");
 
     ret = wdb_parse(query, data->output);
 
-    assert_string_equal(data->output, "err Cannot set agent 1 as disconnected; ERROR MESSAGE");
+    assert_string_equal(data->output, "err Invalid arguments keepalive not found");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_disconnect_agents_sync_status_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global disconnect-agents 0 100";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect-agents 0 100");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments sync_status not found.");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid arguments sync_status not found");
     assert_int_equal(ret, OS_INVALID);
 }
 
@@ -2005,36 +2000,23 @@ void test_wdb_parse_global_disconnect_agents_success(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global disconnect-agents 100";
+    char query[OS_BUFFER_SIZE] = "global disconnect-agents 0 100 syncreq";
+    cJSON* root = cJSON_CreateArray();
+    cJSON* json_agent = cJSON_CreateObject();
+    cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(10));
+    cJSON_AddItemToArray(root, json_agent);
 
-    cJSON *root = NULL;
-    cJSON *j_object1 = NULL;
-    cJSON *j_object2 = NULL;
-
-    root = cJSON_CreateArray();
-    j_object1 = cJSON_CreateObject();
-    cJSON_AddNumberToObject(j_object1, "id", 1);
-    cJSON_AddItemToArray(root, j_object1);
-    j_object2 = cJSON_CreateObject();
-    cJSON_AddNumberToObject(j_object2, "id", 2);
-    cJSON_AddItemToArray(root, j_object2);
-
-    // Logging command and opening database
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect-agents 100");
     will_return(__wrap_wdb_open_global, data->wdb);
-    // Getting the list of agents to disconnect
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect-agents 0 100 syncreq");
+    expect_value(__wrap_wdb_global_get_agents_to_disconnect, last_agent_id, 0);
     expect_value(__wrap_wdb_global_get_agents_to_disconnect, keep_alive, 100);
+    expect_string(__wrap_wdb_global_get_agents_to_disconnect, sync_status, "syncreq");
+    will_return(__wrap_wdb_global_get_agents_to_disconnect, WDBC_OK);
     will_return(__wrap_wdb_global_get_agents_to_disconnect, root);
-    // Setting agents to disconnected
-    will_return_always(__wrap_wdb_global_update_agent_connection_status, OS_SUCCESS);
-    expect_value(__wrap_wdb_global_update_agent_connection_status, id, 1);
-    expect_string(__wrap_wdb_global_update_agent_connection_status, connection_status, AGENT_CS_DISCONNECTED);
-    expect_value(__wrap_wdb_global_update_agent_connection_status, id, 2);
-    expect_string(__wrap_wdb_global_update_agent_connection_status, connection_status, AGENT_CS_DISCONNECTED);
 
     ret = wdb_parse(query, data->output);
 
-    assert_string_equal(data->output, "ok [{\"id\":1},{\"id\":2}]");
+    assert_string_equal(data->output, "ok [{\"id\":10}]");
     assert_int_equal(ret, OS_SUCCESS);
 }
 
@@ -2094,16 +2076,20 @@ void test_wdb_parse_global_get_all_agents_success(void **state)
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     char query[OS_BUFFER_SIZE] = "global get-all-agents last_id 1";
+    cJSON* root = cJSON_CreateArray();
+    cJSON* json_agent = cJSON_CreateObject();
+    cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(10));
+    cJSON_AddItemToArray(root, json_agent);
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-all-agents last_id 1");
-    expect_value(__wrap_wdb_global_get_all_agents, *last_agent_id, 1);
-    will_return(__wrap_wdb_global_get_all_agents, "1,2,3,4,5");
+    expect_value(__wrap_wdb_global_get_all_agents, last_agent_id, 1);
     will_return(__wrap_wdb_global_get_all_agents, WDBC_OK);
+    will_return(__wrap_wdb_global_get_all_agents, root);
 
     ret = wdb_parse(query, data->output);
 
-    assert_string_equal(data->output, "ok 1,2,3,4,5");
+    assert_string_equal(data->output, "ok [{\"id\":10}]");
     assert_int_equal(ret, OS_SUCCESS);
 }
 
@@ -2167,7 +2153,7 @@ void test_wdb_parse_global_get_agent_info_success(void **state)
 
 /* Tests wdb_parse_reset_agents_connection */
 
-void test_wdb_parse_reset_agents_connection_query_error(void **state)
+void test_wdb_parse_reset_agents_connection_syntax_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -2175,6 +2161,24 @@ void test_wdb_parse_reset_agents_connection_query_error(void **state)
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: reset-agents-connection");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for reset-agents-connection.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: reset-agents-connection");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'reset-agents-connection'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_reset_agents_connection_query_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global reset-agents-connection syncreq";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: reset-agents-connection syncreq");
+    expect_string(__wrap_wdb_global_reset_agents_connection, sync_status, "syncreq");
     will_return(__wrap_wdb_global_reset_agents_connection, OS_INVALID);
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
@@ -2189,10 +2193,11 @@ void test_wdb_parse_reset_agents_connection_success(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global reset-agents-connection";
+    char query[OS_BUFFER_SIZE] = "global reset-agents-connection syncreq";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: reset-agents-connection");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: reset-agents-connection syncreq");
+    expect_string(__wrap_wdb_global_reset_agents_connection, sync_status, "syncreq");
     will_return(__wrap_wdb_global_reset_agents_connection, OS_SUCCESS);
 
     ret = wdb_parse(query, data->output);
@@ -2220,42 +2225,43 @@ void test_wdb_parse_global_get_agents_by_connection_status_syntax_error(void **s
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_parse_global_get_agents_by_connection_status_query_error(void **state)
+void test_wdb_parse_global_get_agents_by_connection_status_status_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-agents-by-connection-status active";
+    char query[OS_BUFFER_SIZE] = "global get-agents-by-connection-status 0 ";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-connection-status active");
-    expect_string(__wrap_wdb_global_get_agents_by_connection_status, status, "active");
-    will_return(__wrap_wdb_global_get_agents_by_connection_status, NULL);
-    expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent information from global.db.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-connection-status 0 ");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'connection_status' not found.");
 
     ret = wdb_parse(query, data->output);
 
-    assert_string_equal(data->output, "err Error getting agent information from global.db.");
+    assert_string_equal(data->output, "err Invalid arguments 'connection_status' not found");
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_parse_global_get_agents_by_connection_status_success(void **state)
+void test_wdb_parse_global_get_agents_by_connection_status_query_success(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-agents-by-connection-status active";
-    cJSON *j_object = NULL;
+    char query[OS_BUFFER_SIZE] = "global get-agents-by-connection-status 0 active";
+    cJSON* root = cJSON_CreateArray();
+    cJSON* json_agent = cJSON_CreateObject();
+    cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(10));
+    cJSON_AddItemToArray(root, json_agent);
 
-    j_object = cJSON_CreateObject();
-    cJSON_AddNumberToObject(j_object, "id", 1);
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-connection-status active");
-    expect_string(__wrap_wdb_global_get_agents_by_connection_status, status, "active");
-    will_return(__wrap_wdb_global_get_agents_by_connection_status, j_object);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-connection-status 0 active");
+    expect_value(__wrap_wdb_global_get_agents_by_connection_status, last_agent_id, 0);
+    expect_string(__wrap_wdb_global_get_agents_by_connection_status, connection_status, "active");
+    will_return(__wrap_wdb_global_get_agents_by_connection_status, WDBC_OK);
+    will_return(__wrap_wdb_global_get_agents_by_connection_status, root);
 
     ret = wdb_parse(query, data->output);
 
-    assert_string_equal(data->output, "ok {\"id\":1}");
+    assert_string_equal(data->output, "ok [{\"id\":10}]");
     assert_int_equal(ret, OS_SUCCESS);
 }
 
@@ -2380,9 +2386,11 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_set_label_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_disconnect_agents */
+
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_syntax_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_error_getting_agents, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_error_setting_agent_to_disconnected, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_last_id_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_keepalive_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_sync_status_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_get_all_agents */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_all_agents_syntax_error, test_setup, test_teardown),
@@ -2394,12 +2402,13 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agent_info_query_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agent_info_success, test_setup, test_teardown),
         /* Tests wdb_parse_reset_agents_connection */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_reset_agents_connection_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_reset_agents_connection_query_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_reset_agents_connection_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_get_agent_info */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_syntax_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_query_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_status_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_query_success, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
