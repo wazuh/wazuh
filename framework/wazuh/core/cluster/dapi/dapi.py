@@ -582,7 +582,12 @@ class APIRequestQueue(WazuhRequestQueue):
             name_2 = '' if len(names) == 1 else names[1] + ' '
 
             # Get reference to MasterHandler or WorkerHandler
-            node = self.server.client if names[0] == 'master' else self.server.clients[names[0]]
+            try:
+                node = self.server.client if names[0] == 'master' else self.server.clients[names[0]]
+            except KeyError as e:
+                self.logger.error(f"Error in DAPI request. The destination node is not connected or does not exist: {e}.")
+                continue
+
             try:
                 request = json.loads(request, object_hook=c_common.as_wazuh_object)
                 self.logger.info("Receiving request: {} from {}".format(
