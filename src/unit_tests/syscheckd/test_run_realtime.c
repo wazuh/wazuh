@@ -1487,6 +1487,7 @@ void test_realtime_adddir_max_limit_reached(void **state) {
 }
 
 void test_realtime_adddir_duplicate_entry(void **state) {
+    win32rtfim rtlocald = { .dir = "C:\\a\\path" };
     int ret;
 
     syscheck.realtime->fd = 128;
@@ -1495,10 +1496,103 @@ void test_realtime_adddir_duplicate_entry(void **state) {
 
     expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
     expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
-    will_return(__wrap_OSHash_Get_ex, 1);
+    will_return(__wrap_OSHash_Get_ex, &rtlocald);
 
     expect_string(__wrap_w_directory_exists, path, "C:\\a\\path");
     will_return(__wrap_w_directory_exists, 1);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    ret = realtime_adddir("C:\\a\\path", 0, 0);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_realtime_adddir_duplicate_entry_non_existent_directory_valid_handle(void **state) {
+    win32rtfim rtlocald = { .dir = "C:\\a\\path", .watch_status = FIM_RT_HANDLE_OPEN, .h = (HANDLE)1234 };
+    int ret;
+
+    syscheck.realtime->fd = 128;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
+    will_return(__wrap_OSHash_Get_ex, &rtlocald);
+
+    expect_string(__wrap_w_directory_exists, path, "C:\\a\\path");
+    will_return(__wrap_w_directory_exists, 0);
+
+    expect_value(wrap_CloseHandle, hObject, 1234);
+    will_return(wrap_CloseHandle, 0);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    ret = realtime_adddir("C:\\a\\path", 0, 0);
+
+    assert_int_equal(ret, 1);
+
+}
+
+void test_realtime_adddir_duplicate_entry_non_existent_directory_closed_handle(void **state) {
+    win32rtfim *rtlocald = calloc(1, sizeof(win32rtfim));
+    char debug_msg[OS_SIZE_128];
+    int ret;
+
+    if (rtlocald == NULL) {
+        fail_msg("Failed to allocate 'rtlocald'");
+    }
+
+
+    rtlocald->dir = strdup("C:\\a\\path");
+
+    if (rtlocald->dir == NULL) {
+        free(rtlocald);
+        fail_msg("Failed to allocate 'rtlocald->dir'");
+    }
+
+    rtlocald->watch_status = FIM_RT_HANDLE_CLOSED;
+    rtlocald->h = (HANDLE)1234;
+
+    syscheck.realtime->fd = 128;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
+    will_return(__wrap_OSHash_Get_ex, rtlocald);
+
+    expect_string(__wrap_w_directory_exists, path, "C:\\a\\path");
+    will_return(__wrap_w_directory_exists, 0);
+
+    expect_value(__wrap_OSHash_Delete_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Delete_ex, key, "C:\\a\\path");
+    will_return(__wrap_OSHash_Delete_ex, rtlocald);
+
+    snprintf(debug_msg, OS_SIZE_128, FIM_REALTIME_CALLBACK, "C:\\a\\path");
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    ret = realtime_adddir("C:\\a\\path", 0, 0);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_realtime_adddir_duplicate_entry_non_existent_directory_invalid_handle(void **state) {
+    win32rtfim rtlocald = { .dir = "C:\\a\\path", .watch_status = FIM_RT_HANDLE_OPEN, .h = INVALID_HANDLE_VALUE };
+    int ret;
+
+    syscheck.realtime->fd = 128;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
+    will_return(__wrap_OSHash_Get_ex, &rtlocald);
+
+    expect_string(__wrap_w_directory_exists, path, "C:\\a\\path");
+    will_return(__wrap_w_directory_exists, 0);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
@@ -1767,6 +1861,9 @@ int main(void) {
         cmocka_unit_test(test_realtime_adddir_max_limit_reached),
         cmocka_unit_test(test_realtime_adddir_duplicate_entry),
         cmocka_unit_test(test_realtime_adddir_handle_error),
+        cmocka_unit_test(test_realtime_adddir_duplicate_entry_non_existent_directory_valid_handle),
+        cmocka_unit_test(test_realtime_adddir_duplicate_entry_non_existent_directory_closed_handle),
+        cmocka_unit_test(test_realtime_adddir_duplicate_entry_non_existent_directory_invalid_handle),
         cmocka_unit_test_setup_teardown(test_realtime_adddir_success, setup_OSHash, teardown_OSHash),
     };
 #endif
