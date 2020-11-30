@@ -59,8 +59,10 @@ STATIC char * w_save_files_status_to_cJSON();
 
 ///> Struct to save the position of last line read and the SHA1 hash content
 typedef struct file_status {
-    long offset;    ///> Position to read
-    char * hash;    ///> Content file SHA1 hash
+    long offset;        ///> Position to read
+    SHA_CTX context;    ///> It stores the hashed data calculated so far 
+    char * hash;        ///> Content file SHA1 hash
+    off_t st_size;      ///> Size of file
 } os_file_status_t;
 
 /* Global variables */
