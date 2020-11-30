@@ -2,12 +2,11 @@ import argparse
 import asyncio
 import json
 import logging
+import sys
 from json import JSONDecodeError
+
 from tabulate import tabulate
 
-from connexion import ProblemException
-
-from api.util import remove_nones_to_dict
 from wazuh import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
 
@@ -16,6 +15,7 @@ logger = logging.getLogger('wazuh')
 
 async def validate_resource(resource, r_type):
     from api.models.security import RoleModel, RuleModel, PolicyModel, CreateUserModel, UpdateUserModel
+    from connexion import ProblemException
 
     resource_body = {
         'user': CreateUserModel,
@@ -27,9 +27,11 @@ async def validate_resource(resource, r_type):
 
     try:
         loaded_json = json.loads(resource)
+        return await resource_body[r_type].get_kwargs(loaded_json)
     except JSONDecodeError:
         raise WazuhError(1018)
-    return await resource_body[r_type].get_kwargs(loaded_json)
+    except ProblemException as e:
+        raise WazuhError(10001, extra_message=e.detail)
 
 
 async def manage_reserved_security_resource(method, resource_type, f_arguments):
@@ -135,6 +137,10 @@ if __name__ == "__main__":
                             help="Unlink reserved security role from rules.")
     args = arg_parser.parse_args()
 
+    if not len(sys.argv) > 1:
+        arg_parser.print_help()
+        sys.exit(0)
+
     try:
         result_table = list()
         for key, values in args.__dict__.items():
@@ -144,13 +150,13 @@ if __name__ == "__main__":
                 # Add resource
                 if method == 'add' and values:
                     for resource in values:
-                        kwargs = remove_nones_to_dict(asyncio.run(validate_resource(resource, resource_name)))
+                        kwargs = asyncio.run(validate_resource(resource, resource_name))
                         result |= asyncio.run(manage_reserved_security_resource(method, resource_name, kwargs))
                 # Update resource
                 elif method == 'update' and values:
                     r_id, new_value = values
-                    kwargs = remove_nones_to_dict(asyncio.run(
-                        validate_resource(new_value, resource_name if resource_name != 'user' else 'update_user')))
+                    kwargs = asyncio.run(
+                        validate_resource(new_value, resource_name if resource_name != 'user' else 'update_user'))
                     kwargs[f'{resource_name}_id'] = r_id
                     result |= asyncio.run(manage_reserved_security_resource(method, resource_name, kwargs))
                 # Remove resource
@@ -169,9 +175,9 @@ if __name__ == "__main__":
                     main_r, related_r = resource_name.split('-')
                     kwargs = {f'{main_r}_id': main_id, f'{related_r}_ids': related_ids}
                     result |= asyncio.run(manage_reserved_security_resource(method, resource_name, kwargs))
-            except (WazuhError, ProblemException) as e:
-                if isinstance(e, ProblemException):
-                    result.add_failed_item(id_='Bad format', error=WazuhError(10000, extra_message=e.detail))
+            except WazuhError as e:
+                if e.code == 10001:
+                    result.add_failed_item(id_='Bad format', error=e)
                 else:
                     for v in values:
                         result.add_failed_item(id_=v, error=e)

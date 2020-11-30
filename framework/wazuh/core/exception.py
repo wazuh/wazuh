@@ -564,7 +564,8 @@ class WazuhException(Exception):
         # > 9000: Authd
 
         # 10000 CLI related
-        10000: {'message': 'Invalid CLI syntax'}
+        10000: {'message': 'Invalid CLI syntax'},
+        10001: {'message': 'Invalid field'}
     }
 
     def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, title=None,
