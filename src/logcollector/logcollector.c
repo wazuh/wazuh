@@ -57,13 +57,33 @@ STATIC void w_load_files_status(cJSON *global_json);
  */
 STATIC char * w_save_files_status_to_cJSON();
 
+/**
+ * @brief Set file on the last line read or on the end in case the status hasn't been saved.
+ * @param lf logreader to set
+ * @return 0 on success, otherwise -1
+ */
+STATIC int w_set_to_last_line_read(logreader *lf);
+
+/**
+ * @brief Set file on the end
+ * @param lf logreader to set
+ * @return 0 on success, otherwise -1
+ */
+STATIC int w_set_to_end(logreader *lf);
+
+/**
+ * @brief Free memory of os_file_status_t entity
+ * @param file_status entity to remove
+ */
+STATIC void w_free_os_file_status_t(void * file_status);
+
 ///> Struct to save the position of last line read and the SHA1 hash content
 typedef struct file_status {
     long offset;        ///> Position to read
     SHA_CTX context;    ///> It stores the hashed data calculated so far 
     char * hash;        ///> Content file SHA1 hash
-    off_t st_size;      ///> Size of file
 } os_file_status_t;
+
 
 /* Global variables */
 int loop_timeout;
@@ -500,7 +520,7 @@ void LogCollectorStart()
 
                     /* Variable file name */
                     else if (!current->fp && open_file_attempts - current->ign > 0) {
-                        handle_file(i, j, current->future, 1);
+                        handle_file(i, j, 1, 1);
                         continue;
                     }
                 }
@@ -746,7 +766,7 @@ void LogCollectorStart()
                         continue;
                     } else {
                         /* Try for a few times to open the file */
-                        handle_file(i, j, current->future, 1);
+                        handle_file(i, j, 1, 1);
                         continue;
                     }
                 }
@@ -934,18 +954,14 @@ int handle_file(int i, int j, int do_fseek, int do_log)
         return 0;
     }
 
-    /* Only seek the end of the file if set to */
-    if (do_fseek == 1 && S_ISREG(stat_fd.st_mode)) {
-        /* Windows and fseek causes some weird issues */
+/* Windows and fseek causes some weird issues */
 #ifndef WIN32
-        if (fseek(lf->fp, 0, SEEK_END) < 0) {
-            merror(FSEEK_ERROR, lf->file, errno, strerror(errno));
-            fclose(lf->fp);
-            lf->fp = NULL;
+    if (do_fseek == 1 && S_ISREG(stat_fd.st_mode)) {
+        if (w_set_to_last_line_read(lf) < 0) {
             goto error;
         }
-#endif
     }
+#endif
 
     /* Set ignore to zero */
     lf->ign = 0;
@@ -1103,13 +1119,13 @@ void set_read(logreader *current, int i, int j) {
         /* Day must be zero for all files to be initialized */
         _cday = 0;
         if (update_fname(i, j)) {
-            handle_file(i, j, current->future, 1);
+            handle_file(i, j, 1, 1);
         } else {
             merror_exit(PARSE_ERROR, current->ffile);
         }
 
     } else {
-        handle_file(i, j, current->future, 1);
+        handle_file(i, j, 1, 1);
     }
 
     tg = 0;
@@ -2502,12 +2518,15 @@ STATIC void w_initialize_file_status() {
         merror_exit(HSETSIZE_ERROR, files_status_name);
     }
 
+    OSHash_SetFreeDataPointer(files_status,  &w_free_os_file_status_t);
+
+    /* Read json file to load last read positions */
     FILE * fd = NULL;
 
     if (fd = fopen(LOCALFILE_STATUS_PATH, "r"), fd != NULL) {
         char str[OS_MAXSTR];
 
-        if(fread(str, 1, OS_MAXSTR, fd) == 0) {
+        if(fread(str, 1, OS_MAXSTR, fd) < 1) {
             merror(FREAD_ERROR, LOCALFILE_STATUS_PATH, errno, strerror(errno));
             clearerr(fd);
         } else {
@@ -2544,6 +2563,8 @@ STATIC void w_save_file_status() {
     else {
         merror_exit(FOPEN_ERROR, LOCALFILE_STATUS_PATH, errno, strerror(errno));
     }
+
+    os_free(str);
 }
 
 STATIC void w_load_files_status(cJSON *global_json) {
@@ -2589,8 +2610,8 @@ STATIC void w_load_files_status(cJSON *global_json) {
         if (value < 0 || value > 65534 || *end != '\0') {
             continue;
         }
-
         os_file_status_t * data;
+
         os_malloc(sizeof(os_file_status_t), data);
         os_strdup(hash_str, data->hash);
         data->offset = value;
@@ -2619,6 +2640,7 @@ STATIC char * w_save_files_status_to_cJSON() {
         char * path = hash_node->key;
         char offset[11] = {0};
         sprintf(offset, "%ld", data->offset);
+
         cJSON *item = cJSON_CreateObject();
 
         cJSON_AddStringToObject(item, OS_LOGCOLLECTOR_JSON_PATH, path);
@@ -2629,5 +2651,71 @@ STATIC char * w_save_files_status_to_cJSON() {
         hash_node = OSHash_Next(files_status, &index, hash_node);
     }
 
-    return cJSON_Print(global_json);
+    char * global_json_str = cJSON_Print(global_json);
+    cJSON_Delete(global_json);
+
+    return global_json_str;
+}
+
+STATIC void w_free_os_file_status_t(void * file_status) {
+    os_file_status_t * data = file_status;
+    os_free(data->hash);
+    os_free(data);
+}
+
+STATIC int w_set_to_last_line_read(logreader *lf) {
+    OSHashNode * hash_node;
+    unsigned int index = 0;
+
+    if(hash_node = OSHash_Begin(files_status, &index), !hash_node) {
+        return -1;
+    }
+
+    while (hash_node) {
+        os_file_status_t *data = hash_node->data;
+        char * path = hash_node->key;
+
+        if (!strcmp(lf->file, path)) {
+            struct stat stat_fd;
+
+            if (fstat(fileno(lf->fp), &stat_fd) == -1) {
+                merror(FSTAT_ERROR, lf->file, errno, strerror(errno));
+                return -1;
+            }
+
+            if(stat_fd.st_size - data->offset > MAX_SIZE_TO_SHA1) {
+                return w_set_to_end(lf);
+            } else {
+                if (fseek(lf->fp, data->offset, SEEK_SET) < 0) {
+                    merror(FSEEK_ERROR, lf->file, errno, strerror(errno));
+                    fclose(lf->fp);
+                    lf->fp = NULL;
+                    return -1;
+                } else {
+                    return 0;
+                }
+            }
+        }
+
+        hash_node = OSHash_Next(files_status, &index, hash_node);
+    }
+
+    if(lf->future) {
+        return w_set_to_end(lf);
+    }
+
+    return 0;
+}
+
+STATIC int w_set_to_end(logreader *lf) {
+
+    if (fseek(lf->fp, 0, SEEK_END) < 0) {
+        merror(FSEEK_ERROR, lf->file, errno, strerror(errno));
+        fclose(lf->fp);
+        lf->fp = NULL;
+        return -1;
+    }
+    else {
+        return 0;
+    }
 }
