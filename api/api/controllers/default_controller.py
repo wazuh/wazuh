@@ -8,7 +8,7 @@ import time
 
 from aiohttp import web
 from api.encoder import dumps, prettify
-from api.models.basic_info import BasicInfo
+from api.models.basic_info_model import BasicInfo
 from wazuh.core.results import WazuhResult
 from wazuh.core.security import load_spec
 

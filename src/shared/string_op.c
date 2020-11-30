@@ -192,15 +192,17 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
 
         free(current);
     } else if (!cJSON_GetObjectItem(root, key)) {
-        char *string_end =  NULL;
+        const char *jsonErrPtr;
+        cJSON * value_json = NULL;
+
         if (*value == '[' &&
-           (string_end = memchr(value, '\0', OS_MAXSTR)) &&
-           (string_end != NULL) &&
-           (']' == *(string_end - 1)))
-        {
-            const char *jsonErrPtr;
-            cJSON_AddItemToObject(root, key, cJSON_ParseWithOpts(value, &jsonErrPtr, 0));
+           (value_json = cJSON_ParseWithOpts(value, &jsonErrPtr, 0), value_json) &&
+           (*jsonErrPtr == '\0')) {
+            cJSON_AddItemToObject(root, key, value_json);
         } else {
+            if (value_json) {
+                cJSON_Delete(value_json);
+            }
             cJSON_AddStringToObject(root, key, value);
         }
     }
