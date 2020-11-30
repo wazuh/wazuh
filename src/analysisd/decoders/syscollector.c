@@ -1950,11 +1950,11 @@ bool fill_data_dbsync(cJSON *data, const char *field_list[], char *msg) {
     while (NULL != *field_list) {
         const cJSON *key = cJSON_GetObjectItem(data, *field_list);
         if (NULL != key) {
-            if (cJSON_False != cJSON_IsNumber(key)) {
+            if (cJSON_IsNumber(key)) {
                 char value[OS_SIZE_128] = { 0 };
                 snprintf(value, OS_SIZE_128 - 1, "%d", key->valueint);
                 strcat(msg, value);
-            } else if (cJSON_False != cJSON_IsString(key)) {
+            } else if (cJSON_IsString(key)) {
                 if(strlen(key->valuestring) == 0) {
                     strcat(msg, "NULL");
                 } else {
@@ -1986,7 +1986,7 @@ int decode_dbsync(char const *agent_id, char *msg_type, cJSON *logJSON, int *soc
         if (NULL != type) {
             cJSON * operation_object = cJSON_GetObjectItem(logJSON, "operation");
             cJSON * data = cJSON_GetObjectItem(logJSON, "data");
-            if (NULL != operation_object && NULL != data && cJSON_False != cJSON_IsString(operation_object) && cJSON_False != cJSON_IsObject(data)) {
+            if (NULL != operation_object && NULL != data && cJSON_IsString(operation_object) && cJSON_IsObject(data)) {
                 const char **field_list = get_field_list(type);
                 
                 if (NULL != field_list) {
