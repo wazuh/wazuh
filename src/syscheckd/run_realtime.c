@@ -356,8 +356,6 @@ void realtime_sanitize_watch_map() {
 
 #elif defined(WIN32)
 
-static pthread_mutex_t adddir_mutex;
-
 typedef struct _win32rtfim {
     HANDLE h;
     OVERLAPPED overlap;
@@ -409,11 +407,11 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
     }
 
     if(rtlocald->watch_status == FIM_RT_HANDLE_CLOSED) {
-        w_mutex_lock(&adddir_mutex);
+        w_mutex_lock(&syscheck.fim_realtime_mutex);
         rtlocald = OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar);
         free_win32rtfim_data(rtlocald);
         mdebug1(FIM_REALTIME_CALLBACK, wdchar);
-        w_mutex_unlock(&adddir_mutex);
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
         return;
     }
 
@@ -468,10 +466,7 @@ void free_win32rtfim_data(win32rtfim *data) {
     os_free(data);
 }
 
-int realtime_start()
-{
-    w_mutex_init(&adddir_mutex, NULL);
-
+int realtime_start() {
     os_calloc(1, sizeof(rtfim), syscheck.realtime);
 
     syscheck.realtime->dirtb = OSHash_Create();
@@ -555,12 +550,12 @@ int realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int fo
         }
     }
 
-    w_mutex_lock(&adddir_mutex);
+    w_mutex_lock(&syscheck.fim_realtime_mutex);
 
     /* Maximum limit for realtime on Windows */
     if (syscheck.realtime->fd > syscheck.max_fd_win_rt) {
         merror(FIM_ERROR_REALTIME_MAXNUM_WATCHES, dir);
-        w_mutex_unlock(&adddir_mutex);
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
         return (0);
     }
 
@@ -585,7 +580,7 @@ int realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int fo
             free(rtlocald);
             rtlocald = NULL;
             mdebug2(FIM_REALTIME_ADD, dir);
-            w_mutex_unlock(&adddir_mutex);
+            w_mutex_unlock(&syscheck.fim_realtime_mutex);
             return (0);
         }
         syscheck.realtime->fd++;
@@ -599,7 +594,7 @@ int realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int fo
         if(realtime_win32read(rtlocald) == 0) {
             mdebug1(FIM_REALTIME_DIRECTORYCHANGES, rtlocald->dir);
             free_win32rtfim_data(rtlocald);
-            w_mutex_unlock(&adddir_mutex);
+            w_mutex_unlock(&syscheck.fim_realtime_mutex);
             return 0;
         }
 
@@ -610,7 +605,7 @@ int realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int fo
         mdebug1(FIM_REALTIME_NEWDIRECTORY, dir);
     }
 
-    w_mutex_unlock(&adddir_mutex);
+    w_mutex_unlock(&syscheck.fim_realtime_mutex);
 
     return 1;
 }
@@ -635,7 +630,6 @@ int fim_check_realtime_directory(const char *dir) {
             rtlocald = OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar);
             free_win32rtfim_data(rtlocald);
             mdebug1(FIM_REALTIME_CALLBACK, wdchar);
-            w_mutex_unlock(&adddir_mutex);
             return 1;
         }
 
