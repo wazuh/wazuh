@@ -27,6 +27,7 @@ from wazuh.core import common, exception
 from wazuh.core.cluster import local_client, common as c_common
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 from wazuh.core.wazuh_socket import wazuh_sendsync
+from sqlalchemy.exc import OperationalError
 
 
 class DistributedAPI:
@@ -234,6 +235,8 @@ class DistributedAPI:
                 data = await asyncio.wait_for(task, timeout=timeout)
             except asyncio.TimeoutError:
                 raise exception.WazuhInternalError(3021)
+            except OperationalError:
+                raise exception.WazuhError(2008)
 
             self.logger.debug(f"Time calculating request result: {time.time() - before}s")
             return data
