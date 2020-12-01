@@ -689,7 +689,7 @@ InstallCommon()
     INSTALL="install"
 
     if [ ${INSTYPE} = 'server' ]; then
-        OSSEC_CONTROL_SRC='./init/ossec-server.sh'
+        OSSEC_CONTROL_SRC='./init/wazuh-server.sh'
         OSSEC_CONF_SRC='../etc/ossec-server.conf'
     elif [ ${INSTYPE} = 'agent' ]; then
         OSSEC_CONTROL_SRC='./init/ossec-client.sh'
