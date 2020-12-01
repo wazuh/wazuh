@@ -18,7 +18,64 @@
 #define STATIC static
 #endif
 
-STATIC char * multiline_getlog(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg);
+/* Timeout functions */
+STATIC bool multiline_restore_timeout(char * buffer, int * readed_lines, w_multiline_timeout_ctxt_t * to_ctxt);
+STATIC void multiline_backup_timeout(char * buffer, int readed_lines, w_multiline_timeout_ctxt_t * to_ctxt);
+STATIC void multiline_free_timeout(w_multiline_timeout_ctxt_t * to_ctxt);
+
+/**
+ * @brief Get log from file with multiline log support.
+ * 
+ * @param buffer readed log output
+ * @param length max lenth
+ * @param stream log file
+ * @param ml_cfg multiline configuration
+ * @return  if < 0 indicates incomplete reading. 
+ *          if = 0 indicates no more logs available.
+ *          if > 0 indicate log's lines count.
+ */
+STATIC int multiline_getlog(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg);
+
+/**
+ * @brief Get log from file with multiline log support using \ref ML_MATCH_START
+ * 
+ * @param buffer readed log output
+ * @param length max lenth
+ * @param stream log file
+ * @param ml_cfg multiline configuration
+ * @return  if < 0 indicates incomplete reading. 
+ *          if = 0 indicates no more logs available.
+ *          if > 0 indicate log's lines count.
+ */
+STATIC int multiline_getlog_start(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg);
+
+/**
+ * @brief Get log from file with multiline log support using \ref ML_MATCH_END
+ * 
+ * @param buffer readed log output
+ * @param length max lenth
+ * @param stream log file
+ * @param ml_cfg multiline configuration
+ * @return  if < 0 indicates incomplete reading. 
+ *          if = 0 indicates no more logs available.
+ *          if > 0 indicate log's lines count.
+ */
+STATIC int multiline_getlog_end(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg);
+
+/**
+ * @brief Get log from file with multiline log support using \ref ML_MATCH_ALL
+ * 
+ * @param buffer readed log output
+ * @param length max lenth
+ * @param stream log file
+ * @param ml_cfg multiline configuration
+ * @return  if < 0 indicates incomplete reading. 
+ *          if = 0 indicates no more logs available.
+ *          if > 0 indicate log's lines count.
+ */
+STATIC int multiline_getlog_all(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg);
+
+/* Misc functions */
 
 /**
  * @brief If the last character of the string is an end of line, replace it.
@@ -34,151 +91,165 @@ STATIC char * multiline_getlog(char * buffer, int length, FILE * stream, w_multi
 STATIC void multiline_replace(char * str, w_multiline_replace_type_t type);
 
 void *read_multiline_regex(logreader *lf, int *rc, int drop_it) {
-    int __ms = 0;
-    int __ms_reported = 0;
-    char str[OS_MAXSTR + 1];
+    char read_buffer[OS_MAXSTR + 1];
+    int count_logs, count_lines, ret;
     fpos_t fp_pos;
-    int lines = 0;
-#ifdef WIN32
-    int64_t offset;
-    int64_t rbytes;
-#else
-    long offset = 0;
-    long rbytes = 0;
-#endif
+    const int max_line_len =  OS_MAXSTR - OS_HEADER_SIZE - 1;
 
-    str[OS_MAXSTR] = '\0';
+    read_buffer[OS_MAXSTR] = '\0';
     *rc = 0;
 
     /* Get initial file location */
     fgetpos(lf->fp, &fp_pos);
+    
+    for (count_lines = 0, count_logs = 0;
+        ret = multiline_getlog(read_buffer, max_line_len, lf->fp, lf->multiline),
+            ret && count_lines < maximum_lines;
+        count_lines += ret, count_logs++) {
 
-    for (offset = w_ftell(lf->fp); can_read() 
-        && multiline_getlog(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp, lf->multiline) != NULL 
-        && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
-        rbytes = w_ftell(lf->fp) - offset;
-        lines++;
-
-        /* Flow control */
-        if (rbytes <= 0) {
-            break;
-        }
-
-        /* Get the last occurrence of \n */
-        if (str[rbytes - 1] == '\n') {
-            str[rbytes - 1] = '\0';
-
-            if ((int64_t)strlen(str) != rbytes - 1)
-            {
-                mdebug2("Line in '%s' contains some zero-bytes (valid=" FTELL_TT "/ total=" FTELL_TT "). Dropping line.", lf->file, FTELL_INT64 strlen(str), FTELL_INT64 rbytes - 1);
-                continue;
-            }
-        }
-
-        /* If we didn't get the new line, because the
-         * size is large, send what we got so far.
-         */
-        else if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1) {
-            /* Message size > maximum allowed */
-            __ms = 1;
-            str[rbytes - 1] = '\0';
-        } else {
-            /* We may not have gotten a line feed
-             * because we reached EOF.
-             */
-             if (feof(lf->fp)) {
-                /* Message not complete. Return. */
-                mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, rbytes > sample_log_length ? "..." : "");
-                fsetpos(lf->fp, &fp_pos);
-                break;
-            }
-        }
-
-#ifdef WIN32
-        char * p;
-
-        if ((p = strrchr(str, '\r')) != NULL) {
-            *p = '\0';
-        }
-
-        /* Look for empty string (only on Windows) */
-        if (rbytes <= 2) {
-            fgetpos(lf->fp, &fp_pos);
-            continue;
-        }
-
-        /* Windows can have comment on their logs */
-        if (str[0] == '#') {
-            fgetpos(lf->fp, &fp_pos);
-            continue;
-        }
-#endif
-
-        mdebug2("Reading multi-line-regex message: '%.*s'%s", sample_log_length, str, rbytes > sample_log_length ? "..." : "");
-
-        /* Send message to queue */
         if (drop_it == 0) {
-            w_msg_hash_queues_push(str, lf->file, rbytes, lf->log_target, LOCALFILE_MQ);
+            w_msg_hash_queues_push(read_buffer, lf->file, strlen(read_buffer), lf->log_target, LOCALFILE_MQ);
         }
-        /* Incorrect message size */
-        if (__ms) {
-            // strlen(str) >= (OS_MAXSTR - OS_LOG_HEADER - 2)
-            // truncate str before logging to ossec.log
-
-            if (!__ms_reported) {
-                merror("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
-                __ms_reported = 1;
-            } else {
-                mdebug2("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
-            }
-
-            for (offset += rbytes; fgets(str, OS_MAXSTR - 2, lf->fp) != NULL; offset += rbytes) {
-                rbytes = w_ftell(lf->fp) - offset;
-
-                /* Flow control */
-                if (rbytes <= 0) {
-                    break;
-                }
-
-                /* Get the last occurrence of \n */
-                if (str[rbytes - 1] == '\n') {
-                    break;
-                }
-            }
-            __ms = 0;
-        }
-        fgetpos(lf->fp, &fp_pos);
-        continue;
     }
 
-        mdebug2("Read %d lines from %s", lines, lf->file);
-        return (NULL);
+    return NULL;
 }
 
-STATIC char * multiline_getlog(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg) {
+STATIC int multiline_getlog(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg) {
+
+    int readed_lines = 0;
+
+    switch (ml_cfg->match_type) {
+        case ML_MATCH_START:
+            readed_lines = multiline_getlog_start(buffer,length,stream,ml_cfg);
+            break;
+
+        case ML_MATCH_END:
+            readed_lines = multiline_getlog_end(buffer,length,stream,ml_cfg);
+            break;
+
+        case ML_MATCH_ALL:
+            readed_lines = multiline_getlog_all(buffer,length,stream,ml_cfg);
+            break;
+
+        default:
+            *buffer = '\0';
+            break;
+    }
+
+    return readed_lines;
+}
+
+STATIC int multiline_getlog_start(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg) {
+
+    char * str = buffer;
+    char * retstr = NULL;
+    int offset = 0, chunk_sz = 0;
+    long pos = w_ftell(stream);
+    bool already_match = false;
+    int readed_lines = 0;
+
+    if (multiline_restore_timeout(str, &readed_lines, ml_cfg->timeout_ctxt)) {
+        offset = strlen(str);
+        already_match = true;
+    } else {
+        readed_lines = 0;
+        *str = '\0';
+        offset = 0;
+        already_match = false;
+    }
+
+    for (chunk_sz = 0;
+        retstr = fgets(str, length - offset, stream), retstr;
+        str += chunk_sz, readed_lines++, pos = w_ftell(stream)) {
+        if (already_match ^ w_expression_match(ml_cfg->regex, str, NULL, NULL)) {
+            // start pattern finded or already found
+            already_match = true;
+            multiline_replace(str,ml_cfg->replace_type);
+            chunk_sz = strlen(str);
+            offset += chunk_sz;
+        } else{
+            if(already_match){
+                // Discard the last readed line. It purpose was to detect the end of multiline log
+                buffer[offset] = '\0';
+                fseek(stream, pos, SEEK_SET);
+                break;
+            }
+            else{
+                // Single line log
+                readed_lines++;
+                break;
+            }
+
+        }
+    }
+
+    if (already_match && !retstr) {
+        // Multiline log start found but not finished yet
+        multiline_backup_timeout(buffer, readed_lines, ml_cfg->timeout_ctxt);
+        readed_lines = 0;
+    }
+
+    return readed_lines;
+}
+
+STATIC int multiline_getlog_end(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg) {
+    char * str = buffer;
+    int offset, chunk_sz;
+    int readed_lines = 0;
+
+    if (multiline_restore_timeout(str, &readed_lines, ml_cfg->timeout_ctxt)) {
+        offset = strlen(str);
+    } else {
+        readed_lines = 0;
+        *str = '\0';
+        offset = 0;
+    }
+
+    for (chunk_sz = 0;
+        fgets(str, length - offset, stream);
+        str += chunk_sz) {
+        readed_lines++;
+        chunk_sz = strlen(str);
+        offset += chunk_sz;
+        multiline_replace(str,ml_cfg->replace_type);
+        if (w_expression_match(ml_cfg->regex, str, NULL, NULL)) {
+            break;
+        }
+    }
+    /** TODO: check if timeout backup is necessary in this case **/
+
+    return readed_lines;
+}
+
+STATIC int multiline_getlog_all(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg) {
 
     char * str = buffer;
     int offset, chunk_sz;
-    long pos = ftell(stream);
-    bool already_match = false;
+    int readed_lines = 0;
 
-    for (*str = '\0', offset = 0, chunk_sz = 0, already_match = false; fgets(str, length - offset, stream);
-         str += chunk_sz) {
+    if (multiline_restore_timeout(str, &readed_lines, ml_cfg->timeout_ctxt)) {
+        offset = strlen(str);
+    } else {
+        readed_lines = 0;
+        *str = '\0';
+        offset = 0;
+    }
 
-        pos = w_ftell(stream);
+    for (chunk_sz = 0; 
+        fgets(str, length - offset, stream);
+        str += chunk_sz) {
+        readed_lines++;
         chunk_sz = strlen(str);
         offset += chunk_sz;
-
-        if (already_match ^ w_expression_match(ml_cfg->regex, str, NULL, NULL)) {
-            already_match = true;
-        } else {
-            // Discard the last readed line. It purpose was to detect the end of multiline log
-            buffer[offset - chunk_sz] = '\0';
-            fseek(stream, pos, SEEK_SET);
+        multiline_replace(str,ml_cfg->replace_type);
+        if (w_expression_match(ml_cfg->regex, buffer, NULL, NULL)) {
             break;
         }
     }
-    return buffer;
+
+    /** TODO: check if timeout backup is necessary in this case **/
+    return readed_lines;
 }
 
 STATIC void multiline_replace(char * str, w_multiline_replace_type_t type) {
@@ -187,7 +258,6 @@ STATIC void multiline_replace(char * str, w_multiline_replace_type_t type) {
     const char creturn = '\r';
     const char tab = '\t';
     const char wspace = ' ';
-    size_t buffer_len;
     char * pos_newline;
     char * pos_creturn;
 
@@ -234,4 +304,39 @@ STATIC void multiline_replace(char * str, w_multiline_replace_type_t type) {
     case ML_REPLACE_NO_REPLACE:
         break;
     }
+}
+
+STATIC void multiline_backup_timeout(char * buffer, int readed_lines, w_multiline_timeout_ctxt_t * to_ctxt){
+    if(to_ctxt){ /** TODO: check if barely freeing last to_ctxt is the right thing*/
+        multiline_free_timeout(to_ctxt);
+    }
+    os_calloc(1, sizeof(w_multiline_timeout_ctxt_t), to_ctxt);
+    os_malloc(strlen(buffer)+ 1, to_ctxt->buffer);
+    strcpy(to_ctxt->buffer, buffer);
+    to_ctxt->lines_count = readed_lines;
+    /** TODO: implement time set here*/
+}
+
+STATIC void multiline_free_timeout(w_multiline_timeout_ctxt_t * to_ctxt){
+    if(!to_ctxt){
+        return;
+    }
+    if(to_ctxt->buffer)
+        os_free(to_ctxt->buffer);
+
+    os_free(to_ctxt);
+    to_ctxt = NULL;
+}
+
+STATIC bool multiline_restore_timeout(char * buffer, int * readed_lines, w_multiline_timeout_ctxt_t * to_ctxt){
+
+    if(!to_ctxt)
+        return false;
+    if(true){ /** TODO: check timeexpiration. True if it's expired */
+        multiline_free_timeout(to_ctxt);
+        return false;
+    }
+
+    strcpy(buffer, to_ctxt->buffer);
+    *readed_lines = to_ctxt->lines_count;
 }
