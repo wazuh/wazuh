@@ -54,7 +54,7 @@ stages:
               task_id: !anyint
           total_affected_items: 4
           total_failed_items: 0
-          failed_items: [ ]
+          failed_items: []
         message: !anystr
 
   - name: Upgrade an agent (Invalid version)
@@ -77,7 +77,7 @@ stages:
               task_id: !anyint
           total_affected_items: 1
           total_failed_items: 0
-          failed_items: [ ]
+          failed_items: []
         message: !anystr
 
 ---
@@ -100,14 +100,14 @@ stages:
         error: !anyint
         data:
           affected_items: &task
-            - agent_id: !anyint
+            - agent_id: !anystr
               create_time: !anyint
               node: !anystr
               status: "In progress"
               last_update_time: !anyint
               command: "upgrade"
               module: "upgrade_module"
-              task_id: !anyint
+              task_id: 1
           failed_items: []
           total_affected_items: 5
           total_failed_items: 0
@@ -134,6 +134,40 @@ stages:
           total_affected_items: 5
           total_failed_items: 0
 
+---
+test_name: GET /tasks/status (Filters)
+
+stages:
+
+  - name: Get all existent tasks, task_id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        task_list: 4,3
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - <<: *task
+              status: "Legacy"
+              last_update_time: !anyint
+              agent_id: !anystr
+              task_id: 3
+            - <<: *task
+              status: "Legacy"
+              last_update_time: !anyint
+              agent_id: !anystr
+              task_id: 4
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+
   - name: Get all existent tasks, Failed
     request:
       verify: False
@@ -149,8 +183,7 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - <<: *task
-            - agent_id: 7
+            - agent_id: "007"
               create_time: !anyint
               node: !anystr
               status: "Failed"
@@ -163,7 +196,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Get all existent tasks, Upgrade_module
+  - name: Get all existent tasks, upgrade_module
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
@@ -172,8 +205,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         module: "upgrade_module"
-        offset: 1
-        limit: 1
     response:
       status_code: 200
       json:
@@ -181,10 +212,21 @@ stages:
         data:
           affected_items:
             - <<: *task
-              agent_id: anyint
-              status: !anystr
+              status: "Legacy"
+              last_update_time: !anyint
+              task_id: 1
+            - <<: *task
+              status: "Legacy"
+              last_update_time: !anyint
               task_id: 2
-              module: "upgrade_module"
-          failed_items: [ ]
+            - <<: *task
+              status: "Legacy"
+              last_update_time: !anyint
+              task_id: 3
+            - <<: *task
+              status: "Legacy"
+              last_update_time: !anyint
+              task_id: 4
+          failed_items: []
           total_affected_items: 5
           total_failed_items: 0
