@@ -558,7 +558,7 @@ void LogCollectorStart()
                                  current->file);
 
                         /* Send message about log rotated */
-                        w_msg_hash_queues_push(msg_alert, "wazuh-logcollector", strlen(msg_alert) + 1, default_target, LOCALFILE_MQ);
+                        w_msg_hash_queues_push(msg_alert, "ossec-logcollector", strlen(msg_alert) + 1, default_target, LOCALFILE_MQ);
 
                         mdebug1("File inode changed. %s",
                                current->file);
@@ -588,7 +588,7 @@ void LogCollectorStart()
                                  current->file);
 
                         /* Send message about log rotated */
-                        w_msg_hash_queues_push(msg_alert, "wazuh-logcollector", strlen(msg_alert) + 1, default_target, LOCALFILE_MQ);
+                        w_msg_hash_queues_push(msg_alert, "ossec-logcollector", strlen(msg_alert) + 1, default_target, LOCALFILE_MQ);
 
                         mdebug1("File size reduced. %s",
                                 current->file);
