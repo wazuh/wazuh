@@ -30,32 +30,32 @@ variables:
 
 # PHP checks
 checks:
-  - id: 10500
+  - id: 14000 
     title: "PHP - Ensure 'Register globals' are not enabled"
     condition: all
     rules:
       - 'f:$php.ini -> r:^register_globals\s*\t*=\s*\t*Off|register_globals\s*\t*=\s*\t*off'
 
-  - id: 10501
+  - id: 14001 
     title: "PHP - Ensure 'Expose PHP' is not enabled"
     condition: all
     rules:
       - 'f:$php.ini -> r:^expose_php\s*\t*=\s*\t*Off|^expose_php\s*\t*=\s*\t*off'
 
-  - id: 10502
+  - id: 14002 
     title: "PHP - Ensure 'Allow URL fopen' is not enabled"
     condition: all
     rules:
       - 'f:$php.ini -> r:^allow_url_fopen\s*\t*=\s*\t*Off|^allow_url_fopen\s*\t*=\s*\t*off'
 
-  - id: 10503
+  - id: 14003 
     title: "PHP - Ensure 'Displaying of errors' is not enabled"
     condition: all
     rules:
       - 'f:$php.ini -> r:^display_errors\s*\t*=\s*\t*Off|^display_errors\s*\t*=\s*\t*off'
 
 # WEB checks
-  - id: 10504
+  - id: 14004 
     title: "Web exploits: '.yop' is an uncommon file name inside htdocs - Possible compromise"
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
@@ -65,7 +65,7 @@ checks:
     rules:
       - 'd:$web_dirs -> ^.yop$'
 
-  - id: 10505
+  - id: 14005 
     title: "Web exploits: 'id' is an uncommon file name inside htdocs - Possible compromise"
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
@@ -75,7 +75,7 @@ checks:
     rules:
       - 'd:$web_dirs -> ^id$'
 
-  - id: 10506
+  - id: 14006 
     title: "Web exploits: '.ssh' is an uncommon file name inside htdocs"
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
@@ -85,7 +85,7 @@ checks:
     rules:
       - 'd:$web_dirs -> ^.ssh$'
 
-  - id: 10507
+  - id: 14007 
     title: "Web exploits: '...' is an uncommon file name inside htdocs - Possible compromise"
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
@@ -95,7 +95,7 @@ checks:
     rules:
       - 'd:$web_dirs -> ^...$'
 
-  - id: 10508
+  - id: 14008 
     title: "Web exploits: '.shell' is an uncommon file name inside htdocs - Possible compromise"
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
@@ -106,7 +106,7 @@ checks:
       - 'd:$web_dirs -> ^.shell$'
 
 # Outdated Web applications
-  - id: 10509
+  - id: 14009 
     title: "Web vulnerability - Outdated WordPress installation"
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
@@ -116,7 +116,7 @@ checks:
     rules:
       - 'd:$web_dirs -> ^version.php$ -> r:^\.wp_version && r:4.4.2'
 
-  - id: 10510
+  - id: 14010 
     title: "Web vulnerability - Outdated Joomla installation"
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
@@ -126,7 +126,7 @@ checks:
     rules:
       - 'd:$web_dirs -> ^version.php$ -> r:var \.RELEASE && r:3.4.8'
 
-  - id: 10511
+  - id: 14011 
     title: "Web vulnerability - Outdated osCommerce (v2.2) installation"
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
@@ -137,7 +137,7 @@ checks:
       - 'd:$web_dirs -> ^application_top.php$ -> r:osCommerce && r:2.2-'
 
 # Known backdoors
-  - id: 10512
+  - id: 14012 
     title: "Web vulnerability - Backdoors / Web based malware found - eval(base64_decode)"
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
@@ -147,7 +147,7 @@ checks:
     rules:
       - 'd:$web_dirs -> .php$ -> r:eval\(base64_decode\(\paWYo'
 
-  - id: 10513
+  - id: 14013 
     title: "Web vulnerability - Backdoors / Web based malware found - eval(base64_decode(POST))"
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
@@ -157,7 +157,7 @@ checks:
     rules:
       - 'd:$web_dirs -> .php$ -> r:eval\(base64_decode\(\S_POST'
 
-  - id: 10514
+  - id: 14014 
     title: "Web vulnerability - .htaccess file compromised"
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
@@ -169,7 +169,7 @@ checks:
     rules:
       - 'd:$web_dirs -> ^.htaccess$ -> r:RewriteCond\s+\S+HTTP_REFERERS\s+\S+google'
 
-  - id: 10515
+  - id: 14015 
     title: "Web vulnerability - .htaccess file compromised - auto append"
     compliance:
       - pci_dss: ["6.5", "6.6", "11.4"]
