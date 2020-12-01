@@ -1,0 +1,190 @@
+---
+test_name: GET /tasks/status
+
+marks:
+  - base_tests
+
+stages:
+
+  - name: Get all existent tasks (At this point there is no task created)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
+---
+test_name: PUT /agents/upgrade
+
+stages:
+
+  - name: Upgrade an agent
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        force: True
+        agents_list: '003,004,005,006'
+        version: '4.0.1'
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - agent: '003'
+              task_id: !anyint
+            - agent: '004'
+              task_id: !anyint
+            - agent: '005'
+              task_id: !anyint
+            - agent: '006'
+              task_id: !anyint
+          total_affected_items: 4
+          total_failed_items: 0
+          failed_items: [ ]
+        message: !anystr
+
+  - name: Upgrade an agent (Invalid version)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        force: True
+        agents_list: '007'
+        version: '2.0.0'
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - agent: '007'
+              task_id: !anyint
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: [ ]
+        message: !anystr
+
+---
+test_name: GET /tasks/status
+
+stages:
+
+  - name: Get all existent tasks, in progress (Limit 1)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: &task
+            - agent_id: !anyint
+              create_time: !anyint
+              node: !anystr
+              status: "In progress"
+              last_update_time: !anyint
+              command: "upgrade"
+              module: "upgrade_module"
+              task_id: !anyint
+          failed_items: []
+          total_affected_items: 5
+          total_failed_items: 0
+
+  - name: Get all existent tasks, completed (Limit 1)
+    delay_before: 30
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - <<: *task
+              status: "Legacy"
+          failed_items: []
+          total_affected_items: 5
+          total_failed_items: 0
+
+  - name: Get all existent tasks, Failed
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        status: "Failed"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - <<: *task
+            - agent_id: 7
+              create_time: !anyint
+              node: !anystr
+              status: "Failed"
+              last_update_time: !anyint
+              command: "upgrade"
+              module: "upgrade_module"
+              error_message: !anystr
+              task_id: 5
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Get all existent tasks, Upgrade_module
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        module: "upgrade_module"
+        offset: 1
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - <<: *task
+              agent_id: anyint
+              status: !anystr
+              task_id: 2
+              module: "upgrade_module"
+          failed_items: [ ]
+          total_affected_items: 5
+          total_failed_items: 0

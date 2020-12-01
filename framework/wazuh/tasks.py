@@ -20,25 +20,14 @@ node_id = get_node().get('node') if cluster_enabled else None
 
 
 @expose_resources(actions=["tasks:status"], resources=["*:*:*"], post_proc_kwargs={'exclude_codes': [1817]})
-def get_task_status(task_list=None, agent_id: str = None, command: str = None, node: str = None, module: str = None,
-                    status: str = None, select: list = None, search: dict = None, offset: int = 0,
+def get_task_status(filters: dict = None, select: list = None, search: dict = None, offset: int = 0,
                     limit: int = database_limit, sort: dict = None, q: str = None, ) -> Dict:
     """Read the status of the specified task IDs
 
     Parameters
     ----------
-    task_list : list
-        List of task ID's.
-    agent_id : str
-        Specified agent id
-    command : str
-        Command executed in the task
-    node : str
-        Node where task is executed
-    module : str
-        Module responsible for task
-    status : str
-        Task's status
+    filters : dict
+        Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
     select : dict
         Select fields to return. Format: {"fields":["field1","field2"]}
     search : str
@@ -60,24 +49,17 @@ def get_task_status(task_list=None, agent_id: str = None, command: str = None, n
                                       some_msg='Some status were not returned',
                                       none_msg='No status was returned')
 
-    if agent_id:
-        q = f'{q};agent_id={int(agent_id)}' if q else f'agent_id={int(agent_id)}'
-    if module:
-        q = f'{q};module={module}' if q else f'module={module}'
-    if status:
-        q = f'{q};status={status}' if q else f'status={status}'
-    if node:
-        q = f'{q};node={node}' if q else f'node={node}'
-    if command:
-        q = f'{q};command={command}' if q else f'command={command}'
-
-    db_query = WazuhDBQueryTasks(filters={'task_id': task_list} if task_list else None, offset=offset,
-                                 limit=limit, query=q, sort=sort, search=search, select=select)
+    db_query = WazuhDBQueryTasks(filters=filters, offset=offset, limit=limit, query=q, sort=sort, search=search,
+                                 select=select)
     data = db_query.run()
 
     # Sort result array
     if sort and 'json' not in sort['fields']:
         data['items'] = sort_array(data['items'], sort_by=sort['fields'], sort_ascending=sort['order'] == 'asc')
+
+    # Add zeros to agent IDs
+    for element in data['items']:
+        element['agent_id'] = str(element['agent_id']).zfill(3)
 
     result.affected_items.extend(data['items'])
     result.total_affected_items = data['totalItems']

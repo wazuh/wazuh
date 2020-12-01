@@ -34,10 +34,16 @@ async def get_tasks_status(request, pretty=False, wait_for_complete=False, offse
     -------
     Tasks's status
     """
-    f_kwargs = {'task_list': task_list, 'agent_id': agent_id,
-                'command': command, 'node': node, 'module': module, 'status': status,
-                'select': select, 'search': parse_api_param(search, 'search'),
+    f_kwargs = {'select': select, 'search': parse_api_param(search, 'search'),
                 'offset': offset, 'limit': limit,
+                'filters': {
+                    'task_id': task_list,
+                    'agent_id': agent_id,
+                    'status': status,
+                    'module': module,
+                    'command': command,
+                    'node': node
+                },
                 'sort': parse_api_param(sort, 'sort'), 'q': q
                 }
 

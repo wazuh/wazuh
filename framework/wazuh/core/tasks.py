@@ -77,18 +77,9 @@ class WazuhDBQueryTasks(WazuhDBQuery):
         result = list()
         # We construct result from the query data
         for entry in self._data:
-            try:
-                # We find if we already have a dict with this id
-                found_in_pos = list(more_itertools.locate(result, pred=lambda d: d['task_id'] == entry['task_id']))[0]
-                for k, v in entry.items():
-                    if k not in unique_fields and v not in result[found_in_pos][k]:
-                        # We append the fields to their corresponding dict if id is already present
-                        result[found_in_pos][k].append(v)
-            except IndexError:
-                # We format and add a dict to result if id was not found
-                result.append(
-                    {k: (json.loads(v) if k == 'json' else v) if k in unique_fields else [v] for k, v in entry.items()})
+            result.append({k: v for k, v in entry.items()})
         self._data = result
+
         return super()._format_data_into_dictionary()
 
 

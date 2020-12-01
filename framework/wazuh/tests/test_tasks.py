@@ -67,7 +67,8 @@ def test_get_task_status_task_id(mock_task_db, task_id, total):
     total : int
         Total records for agent id
     """
-    result = tasks.get_task_status(task_list=task_id)
+    filters = {'task_id': task_id}
+    result = tasks.get_task_status(filters=filters)
 
     assert result.total_affected_items == total
 
@@ -92,7 +93,8 @@ def test_get_task_status_agent_id(mock_task_db, agent_id):
     rows = cur.fetchone()
     expected_total_items = rows[0]
 
-    result = tasks.get_task_status(agent_id=agent_id)
+    filters = {'agent_id': agent_id}
+    result = tasks.get_task_status(filters=filters)
 
     assert result.total_affected_items == expected_total_items
 
@@ -163,7 +165,9 @@ def test_get_task_status_status(mock_task_db, status):
                 f"(status='{status}' COLLATE NOCASE)")
     rows = cur.fetchone()
     expected_total_items = rows[0]
-    result = tasks.get_task_status(status=status)
+
+    filters = {'status': status}
+    result = tasks.get_task_status(filters=filters)
 
     assert result.total_affected_items == expected_total_items
 
@@ -188,7 +192,9 @@ def test_get_task_status_node(mock_task_db, node):
                 f"(node='{node}' COLLATE NOCASE)")
     rows = cur.fetchone()
     expected_total_items = rows[0]
-    result = tasks.get_task_status(node=node)
+
+    filters = {'node': node}
+    result = tasks.get_task_status(filters=filters)
 
     assert result.total_affected_items == expected_total_items
 
@@ -212,7 +218,9 @@ def test_get_task_status_command(mock_task_db, command):
                 f"(command='{command}' COLLATE NOCASE)")
     rows = cur.fetchone()
     expected_total_items = rows[0]
-    result = tasks.get_task_status(command=command)
+
+    filters = {'command': command}
+    result = tasks.get_task_status(filters=filters)
 
     assert result.total_affected_items == expected_total_items
 
@@ -236,7 +244,9 @@ def test_get_task_status_module(mock_task_db, module):
                 f"(module='{module}' COLLATE NOCASE)")
     rows = cur.fetchone()
     expected_total_items = rows[0]
-    result = tasks.get_task_status(module=module)
+
+    filters = {'module': module}
+    result = tasks.get_task_status(filters=filters)
 
     assert result.total_affected_items == expected_total_items
 
