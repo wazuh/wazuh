@@ -66,10 +66,18 @@ typedef enum{
     ML_MATCH_MAX,
 } w_multiline_match_type_t;
 
+
+typedef struct {
+    int lines_count;
+    char * buffer;
+    long timeout;
+} w_multiline_timeout_ctxt_t;
+
 typedef struct {
     w_expression_t * regex;
     w_multiline_match_type_t match_type;
     w_multiline_replace_type_t replace_type;
+    w_multiline_timeout_ctxt_t * timeout_ctxt;
 } w_multiline_config_t;
 
 /* Logreader config */
