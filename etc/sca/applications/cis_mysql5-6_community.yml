@@ -13,7 +13,7 @@
 policy:
   id: "cis_mysql_community"
   file: "cis_mysql5-6_community.yml"
-  name: "CIS benchmark for Oracle MySQL Community Server 5.6"
+  name: "CIS Benchmark for Oracle MySQL Community Server 5.6"
   description: "This document, CIS Oracle MySQL Community Server 5.6 Benchmark, provides prescriptive guidance for establishing a secure configuration posture for MySQL Community Server 5.6. This guide was tested against MySQL Community Server 5.6 running on Ubuntu Linux 14.04, but applies to other linux distributions as well."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
@@ -21,13 +21,14 @@ policy:
 requirements:
   title: "Check that MySQL is installed on the system"
   description: "Requirements for running the SCA scan against the MySQL policy."
-  condition: all
+  condition: any
   rules:
     - 'd:/etc/mysql'
+    - 'd:/var/lib/mysql'
 
 checks:
 #1 Operating System Level Configuration
-  - id: 9500
+  - id: 10500 
     title: "Disable MySQL Command History"
     description: "On Linux/UNIX, the MySQL client logs statements executed interactively to a history file. By default, this file is named .mysql_history in the user's home directory. Most interactive commands run in the MySQL client application are saved to a history file. The MySQL command history should be disabled."
     rationale: "Disabling the MySQL command history reduces the probability of exposing sensitive information, such as passwords and encryption keys."
@@ -42,7 +43,7 @@ checks:
       - 'd:/home -> ^.mysql_history$'
       - 'd:/root -> ^.mysql_history$'
 
-  - id: 9501
+  - id: 10501 
     title: "Disable Interactive Login"
     description: "When created, the MySQL user may have interactive access to the operating system, which means that the MySQL user could login to the host as any other user would."
     rationale: "Preventing the MySQL user from logging in interactively may reduce the impact of a compromised MySQL account. There is also more accountability as accessing the operating system where the MySQL server lies will require the user's own account. Interactive access by the MySQL user is unnecessary and should be disabled."
@@ -53,7 +54,7 @@ checks:
     rules:
       - 'c:getent passwd mysql -> r:/bin/false|/sbin/nologin'
 
-  - id: 9502
+  - id: 10502 
     title: "Verify That 'MYSQL_PWD' Is Not Set In Users' Profiles"
     description: "MySQL can read a default database password from an environment variable called MYSQL_PWD."
     rationale: "The use of the MYSQL_PWD environment variable implies the clear text storage of MySQL credentials. Avoiding this may increase assurance that the confidentiality of MySQL credentials is preserved."
@@ -67,7 +68,7 @@ checks:
       - 'c:find /home -maxdepth 2 -type f -exec grep MYSQL_PWD {} + -> r:.profile|.bashrc|.bash_profile && r:$MYSQL_PWD'
 
 #4 General
-  - id: 9503
+  - id: 10503 
     title: "Ensure 'allow-suspicious-udfs' Is Set to 'FALSE'"
     description: "This option prevents attaching arbitrary shared library functions as user-defined functions by checking for at least one corresponding method named _init, _deinit, _reset, _clear, or _add."
     rationale: "Preventing shared libraries that do not contain user-defined functions from loading will reduce the attack surface of the server."
@@ -81,7 +82,7 @@ checks:
     rules:
       - 'c:my_print_defaults mysqld -> r:allow-suspicious-udfs'
 
-  - id: 9504
+  - id: 10504 
     title: "Ensure 'local_infile' is Disabled"
     description: "The 'local_infile' parameter dictates whether files located on the MySQL client's computer can be loaded or selected via 'LOAD DATA INFILE' or 'SELECT local_file'."
     rationale: "Disabling 'local_infile' reduces an attacker's ability to read sensitive files off the affected server via a SQL injection vulnerability."
@@ -95,7 +96,7 @@ checks:
     rules:
       - 'c:grep -Rh local-infile /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> r:local-infile\s*=\s*0'
 
-  - id: 9505
+  - id: 10505 
     title: "Ensure 'mysqld' Is Not Started with '--skip-grant-tables'"
     description: "This option causes mysqld to start without using the privilege system."
     rationale: "If this option is used, all clients of the affected server will have unrestricted access to all databases."
@@ -108,11 +109,11 @@ checks:
     rules:
       - 'c:grep -Rh skip-grant-tables /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> r:skip-grant-tables\s*=\s*FALSE|skip-grant-tables\s*=\s*false'
 
-  - id: 9506
+  - id: 10506 
     title: "Ensure '--skip-symbolic-links' Is Enabled"
     description: "The symbolic-links and skip-symbolic-links options for MySQL determine whether symbolic link support is available.  When use of symbolic links are enabled, they have different effects depending on the host platform.  When symbolic links are disabled, then symbolic links stored in files or entries in tables are not used by the database. "
     rationale: "Prevents sym links being used for data base files. This is especially important when MySQL is executing as root as arbitrary files may be overwritten. The symbolic-links option might allow someone to direct actions by to MySQL server to other files and/or directories."
-    remediation: "Open the MySQL configuration file (my.cnf), locate 'skip_symbolic_links' and set it to YES. If the option does not existe, create it in the 'mysqld' section."
+    remediation: "Open the MySQL configuration file (my.cnf), locate 'skip_symbolic_links' and set it to YES. If the option does not exist, create it in the 'mysqld' section."
     compliance:
       - cis: ["4.6"]
     references:
@@ -122,7 +123,7 @@ checks:
     rules:
       - 'c:grep -Rh skip_symbolic_links /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> r:skip_symbolic_links\s*=\s*YES|skip_symbolic_links\s*=\s*yes'
 
-  - id: 9507
+  - id: 10507 
     title: "Ensure 'secure_file_priv' is not empty"
     description: "The secure_file_priv option restricts to paths used by LOAD DATA INFILE or SELECT local_file. It is recommended that this option be set to a file system location that contains only resources expected to be loaded by MySQL."
     rationale: "Setting secure_file_priv reduces an attacker's ability to read sensitive files off the affected server via a SQL injection vulnerability. "
@@ -135,7 +136,7 @@ checks:
     rules:
       - 'c:grep -Rh secure_file_priv /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> r:secure_file_priv\s*=\s*\.'
 
-  - id: 9508
+  - id: 10508 
     title: "Ensure 'sql_mode' Contains 'STRICT_ALL_TABLES'"
     description: "When data changing statements are made (i.e. INSERT, UPDATE), MySQL can handle invalid or missing values differently depending on whether strict SQL mode is enabled. When strict SQL mode is enabled, data may not be truncated or otherwise 'adjusted' to make the data changing statement work."
     rationale: "Without strict mode the server tries to do proceed with the action when an error might have been a more secure choice. For example, by default MySQL will truncate data if it does not fit in a field, which can lead to unknown behavior, or be leveraged by an attacker to circumvent data validation. "
@@ -147,10 +148,10 @@ checks:
       - 'c:grep -Rh strict_all_tables /etc/mysql/my.cnf /etc/mysql/my.ini /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> r:strict_all_tables'
 
 #6 Auditing and Logging
-  - id: 9509
+  - id: 10509 
     title: "Ensure 'log_error' is not empty"
     description: "The error log contains information about events such as mysqld starting and stopping, when a table needs to be checked or repaired, and, depending on the host operating system, stack traces when mysqld fails"
-    rationale: "nabling error logging may increase the ability to detect malicious attempts against MySQL, and other critical messages, such as if the error log is not enabled then connection error might go unnoticed."
+    rationale: "Enabling error logging may increase the ability to detect malicious attempts against MySQL, and other critical messages, such as if the error log is not enabled then connection error might go unnoticed."
     remediation: "Set the log-error option to the path for the error log in the MySQL configuration file (my.cnf or my.ini)."
     compliance:
       - cis: ["6.1"]
@@ -160,7 +161,7 @@ checks:
     rules:
       - 'c:grep -Rh log_error /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> r:log_error\s*=\s*\S+\s*'
 
-  - id: 9510
+  - id: 10510 
     title: "Ensure Log Files are not Stored on a non-system partition"
     description: "MySQL log files can be set in the MySQL configuration to exist anywhere on the filesystem.  It is common practice to ensure that the system filesystem is left uncluttered by application logs.  System filesystems include the root, /var, or /usr."
     rationale: "Moving the MySQL logs off the system partition will reduce the probability of denial of service via the exhaustion of available disk space to the operating system."
@@ -174,7 +175,7 @@ checks:
     rules:
       - 'c:grep -Rh log_bin /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> r:log_bin\s*\t*/+$|log_bin\s*\t*/+var/*$|log_bin\s*\t*/+usr/*$'
 
-  - id: 9511
+  - id: 10511 
     title: "Ensure 'log_warning' is set to 2"
     description: "The log_warnings system variable, enabled by default, provides additional information to the MySQL log.  A value of 1 enables logging of warning messages, and higher integer values tend to enable more logging."
     rationale: "This might help to detect malicious behavior by logging communication errors and aborted connections."
@@ -187,7 +188,7 @@ checks:
     rules:
       - 'c:grep -Rh log_warnings /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> !r:^\s*\t*# && r:log_warnings\s*=\s*2'
 
-  - id: 9512
+  - id: 10512 
     title: "Ensure 'log_raw' is set to 'OFF'"
     description: "The log-raw MySQL option determines whether passwords are rewritten by the server so as not to appear in log files as plain text.  If log-raw is enabled, then passwords are written to the various log files (general query log, slow query log, and binary log) in plain text. "
     rationale: "With raw logging of passwords enabled someone with access to the log files might see plain text passwords."
@@ -202,7 +203,7 @@ checks:
       - 'c:grep -Rh log-raw /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> !r:^\s*\t*# && r:log-raw\s*OFF$|log-raw\s*off$'
 
 #7 Authentication
-  - id: 9513
+  - id: 10513 
     title: "Ensure 'old_passwords' Is Not Set to '1' or 'ON'"
     description: "This variable controls the password hashing method used by the PASSWORD() function and for the IDENTIFIED BY clause of the CREATE USER and GRANT statements.  Before 5.6.6, the value can be 0 (or OFF), or 1 (or ON). As of 5.6.6, the following value can be one of the following: 0 - authenticate with the mysql_native_password plugin; 1 - authenticate with the mysql_old_password plugin; 2 - authenticate with the sha256_password plugin"
     rationale: "The mysql_old_password plugin leverages an algorithm that can be quickly brute forced using an offline dictionary attack. See CVE-2003-1480 for additional details."
@@ -219,7 +220,7 @@ checks:
       - 'c:grep -Rh old_passwords /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> !r:^\s*\t*# && r:old_passwords\s*=\s*1'
       - 'c:grep -Rh old_passwords /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> !r:^\s*\t*# && r:old_passwords\s*=\s*ON|old_passwords\s*=\s*on'
 
-  - id: 9514
+  - id: 10514 
     title: "Ensure 'secure_auth' is set to 'ON'"
     description: "This option dictates whether the server will deny connections by clients that attempt to use accounts that have their password stored in the mysql_old_password format."
     rationale: "Enabling this option will prevent all use of passwords employing the old format (and hence insecure communication over the network)."
@@ -232,7 +233,7 @@ checks:
     rules:
       - 'c:grep -Rh secure_auth /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> r:secure_auth\s*=\s*ON|secure_auth\s*=\s*on'
 
-  - id: 9515
+  - id: 10515 
     title: "Ensure Passwords Are Not Stored in the Global Configuration"
     description: "The [client] section of the MySQL configuration file allows setting a user and password to be used. Verify the password option is not used in the global configuration file (my.cnf)."
     rationale: "The use of the password parameter may negatively impact the confidentiality of the user's password."
@@ -245,7 +246,7 @@ checks:
     rules:
       - 'c:grep -Rh password /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> !r:^\s*\t*# && r:^\s*password\.*'
 
-  - id: 9516
+  - id: 10516 
     title: "Ensure 'sql_mode' Contains 'NO_AUTO_CREATE_USER'"
     description: "NO_AUTO_CREATE_USER is an option for sql_mode that prevents a GRANT statement from automatically creating a user when authentication information is not provided."
     rationale: "Blank passwords negate the benefits provided by authentication mechanisms. Without this setting an administrative user might accidentally create a user without a password."
@@ -256,7 +257,7 @@ checks:
     rules:
       - 'c:grep -Rh no_auto_create_user /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> !r:^\s*\t*# && r:\s*no_auto_create_user\s*$'
 
-  - id: 9517
+  - id: 10517 
     title: "Ensure Password Policy is in Place"
     description: "Password complexity includes password characteristics such as length, case, length, and character sets."
     rationale: "Complex passwords help mitigate dictionary, brute forcing, and other password attacks. This recommendation prevents users from choosing weak passwords which can easily be guessed."
@@ -276,8 +277,8 @@ checks:
       - 'c:grep -Rh validate_password_policy /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> r:validate_password_policy\s*=\s*MEDIUM\s*|validate_password_policy\s*=\s*STRONG\s*|validate_password_policy\s*=\s*medium\s*|validate_password_policy\s*=\s*strong\s*'
 
 #9 Replication
-  - id: 9518
-    title: "Ensure 'master_info_repositrory' is set to 'TABLE'"
+  - id: 10518 
+    title: "Ensure 'master_info_repository' is set to 'TABLE'"
     description: "The master_info_repository setting determines to where a slave logs master status and connection information.  The options are FILE or TABLE. Note also that this setting is associated with the sync_master_info setting as well."
     rationale: "The password which the client uses is stored in the master info repository, which by default is a plaintext file. The TABLE master info repository is a bit safer, but with filesystem access it's still possible to gain access to the password the slave is using."
     remediation: "Open the MySQL configuration file (my.cnf); locate master_info_repository; set the master_info_repository value to TABLE. Add the option if it does not exist."
