@@ -95,7 +95,6 @@ int force_reload;
 int reload_interval;
 int reload_delay;
 int free_excluded_files_interval;
-int multiline_timeout;
 OSHash * msg_queues_table;
 
 ///> To asociate the path, the position to read, and the hash key of lines read.
@@ -2089,15 +2088,17 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                 /* We check for the end of file. If is returns EOF,
                 * we don't attempt to read it.
                 */
-                if ((r = fgetc(current->fp)) == EOF) {
-                    clearerr(current->fp);
-                    w_mutex_unlock(&current->mutex);
-                    w_rwlock_unlock(&files_update_rwlock);
-                    continue;
-                }
+               if (!current->multiline){
+                   if ((r = fgetc(current->fp)) == EOF) {
+                       clearerr(current->fp);
+                       w_mutex_unlock(&current->mutex);
+                       w_rwlock_unlock(&files_update_rwlock);
+                       continue;
+                   }
 
-                /* If it is not EOF, we need to return the read character */
-                ungetc(r, current->fp);
+                   /* If it is not EOF, we need to return the read character */
+                   ungetc(r, current->fp);
+                }
     #endif
 
 #ifdef WIN32

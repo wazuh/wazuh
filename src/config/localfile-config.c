@@ -341,6 +341,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
                 logf[pl].multiline->match_type = w_get_attr_match(node[i]);
                 logf[pl].multiline->replace_type = w_get_attr_replace(node[i]);
+                logf[pl].multiline->timeout = w_get_attr_timeout(node[i]);
 
             } else {
                 mwarn("duplicate tag '%s' is ignored", xml_localfile_multiline_regex);
@@ -427,17 +428,26 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         return (OS_INVALID);
     }
 
-    /* Only log format multi-line-regex support multiline_regex */
-    if (logf[pl].multiline && (strcmp(logf[pl].logformat, MULTI_LINE_REGEX) != 0)) {
+    /* Verify Multiline Regex Config */
+    if (strcmp(logf[pl].logformat, MULTI_LINE_REGEX) == 0) {
+
+        if (!logf[pl].multiline) {
+            /* Multiline_regex must be configured */
+            merror(MISS_MULT_REGEX);
+            return (OS_INVALID);
+
+        } else if (logf[pl].age && logf[pl].age <= logf[pl].multiline->timeout) {
+            /* Avoid dismissing an incomplete multiline log */
+            mwarn(LOGCOLLECTOR_MULTILINE_AGE_TIMEOUT);
+            logf[pl].age = 0;
+            os_free(logf[pl].age_str);
+        }
+
+    } else if (logf[pl].multiline) {
+        /* Only log format multi-line-regex support multiline_regex */
         mwarn(LOGCOLLECTOR_MULTILINE_SUPPORT, logf[pl].logformat);
         w_free_expression_t(&logf[pl].multiline->regex);
         os_free(logf[pl].multiline);
-    }
-
-    /* If the log format is MULTI_LINE_REGEX, then multiline_regex must be configured */
-    if ((strcmp(logf[pl].logformat, MULTI_LINE_REGEX) == 0) && !logf[pl].multiline) {
-        merror(MISS_MULT_REGEX);
-        return (OS_INVALID);
     }
 
         /* Verify a valid event log config */
@@ -716,7 +726,6 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *gl
     return (OS_INVALID);
 }
 
-// @TODO @TO-DO fixme
 w_multiline_match_type_t w_get_attr_match(xml_node * node) {
 
     const char * xml_attr_name = "match";
@@ -728,7 +737,7 @@ w_multiline_match_type_t w_get_attr_match(xml_node * node) {
     if (!str_match) {
         return retval;
     }
-    
+
     if (strcasecmp(str_match, multiline_attr_match_str(ML_MATCH_START)) == 0) {
         retval = ML_MATCH_START;
     } else if (strcasecmp(str_match, multiline_attr_match_str(ML_MATCH_ALL)) == 0) {
@@ -742,7 +751,6 @@ w_multiline_match_type_t w_get_attr_match(xml_node * node) {
     return retval;
 }
 
-// @TODO @TO-DO fixme
 w_multiline_replace_type_t w_get_attr_replace(xml_node * node) {
 
     const char * xml_attr_name = "replace";
@@ -770,12 +778,34 @@ w_multiline_replace_type_t w_get_attr_replace(xml_node * node) {
     return retval;
 }
 
-const char * multiline_attr_replace_str(w_multiline_replace_type_t replace_type){
-    const char * const replace_str[ML_REPLACE_MAX] = { "no-replace", "none", "wspace", "tab" };
+unsigned int w_get_attr_timeout(xml_node * node) {
+
+    const char * xml_attr_name = "timeout";
+
+    /* default value: 1 seg */
+    unsigned int retval = MULTI_LINE_REGEX_TIMEOUT;
+    const char * str_timeout = w_get_attr_val_by_name(node, xml_attr_name);
+    char * endptr = NULL;
+
+    if (!str_timeout) {
+        return retval;
+    }
+
+    retval = strtoul(str_timeout, &endptr, 0);
+    if (*endptr != '\0' || retval == 0 || retval > MULTI_LINE_REGEX_MAX_TIMEOUT) {
+        mwarn(LOGCOLLECTOR_INV_VALUE_DEFAULT, str_timeout, xml_attr_name, "multiline_regex");
+        retval = MULTI_LINE_REGEX_TIMEOUT;
+    }
+
+    return retval;
+}
+
+const char * multiline_attr_replace_str(w_multiline_replace_type_t replace_type) {
+    const char * const replace_str[ML_REPLACE_MAX] = {"no-replace", "none", "wspace", "tab"};
     return replace_str[replace_type];
 }
 
-const char *  multiline_attr_match_str(w_multiline_match_type_t match_type){
-    const char * const match_str[ML_MATCH_MAX] = { "start", "all", "end" };
+const char * multiline_attr_match_str(w_multiline_match_type_t match_type) {
+    const char * const match_str[ML_MATCH_MAX] = {"start", "all", "end"};
     return match_str[match_type];
 }

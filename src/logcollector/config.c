@@ -47,8 +47,6 @@ int LogCollectorConfig(const char *cfgfile)
     reload_interval = getDefine_Int("logcollector", "reload_interval", 1, 86400);
     reload_delay = getDefine_Int("logcollector", "reload_delay", 0, 30000);
     free_excluded_files_interval = getDefine_Int("logcollector", "exclude_files_interval", 1, 172800);
-    multiline_timeout = getDefine_Int("logcollector", "multiline_timeout", 1, 10);
-
 
     /* Current and total files counter */
     total_files = 0;
@@ -152,6 +150,7 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
             cJSON_AddStringToObject(multiline, "match", multiline_attr_match_str(list[i].multiline->match_type));
             cJSON_AddStringToObject(multiline, "replace", multiline_attr_replace_str(list[i].multiline->replace_type));
             cJSON_AddStringToObject(multiline, "regex",w_expression_get_regex_pattern(list[i].multiline->regex));
+            cJSON_AddNumberToObject(multiline, "timeout",list[i].multiline->timeout);
             cJSON_AddItemToObject(file,"multiline_regex",multiline);
         }
         cJSON_AddItemToArray(array, file);
@@ -242,7 +241,6 @@ cJSON *getLogcollectorInternalOptions(void) {
     cJSON_AddNumberToObject(logcollector,"force_reload",force_reload);
     cJSON_AddNumberToObject(logcollector,"reload_interval",reload_interval);
     cJSON_AddNumberToObject(logcollector,"reload_delay",reload_delay);
-    cJSON_AddNumberToObject(logcollector,"multiline_timeout",multiline_timeout);
 
 #ifndef WIN32
     cJSON_AddNumberToObject(logcollector,"rlimit_nofile",nofile);
