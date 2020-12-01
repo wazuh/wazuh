@@ -88,7 +88,7 @@ UpdateStartOSSEC()
    elif [ `stat /proc/1/exe 2> /dev/null | grep "init.d" | wc -l` -ne 0 ]; then
        service wazuh-$TYPE start
    else
-       $DIRECTORY/bin/ossec-control start
+       $DIRECTORY/bin/wazuh-control start
    fi
 }
 
@@ -118,7 +118,7 @@ UpdateStopOSSEC()
     fi
 
     # Make sure Wazuh is stopped
-    $DIRECTORY/bin/ossec-control stop > /dev/null 2>&1
+    $DIRECTORY/bin/wazuh-control stop > /dev/null 2>&1
     sleep 2
 
    # We also need to remove all syscheck queue file (format changed)

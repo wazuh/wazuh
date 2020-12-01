@@ -11,7 +11,7 @@ if [ "X${DIRECTORY}" = "X" ]; then
     DIRECTORY="/var/ossec"
 fi
 
-OSSEC_CONTROL="${DIRECTORY}/bin/ossec-control"
+OSSEC_CONTROL="${DIRECTORY}/bin/wazuh-control"
 
 depend() {
     need net

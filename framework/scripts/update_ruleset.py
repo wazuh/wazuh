@@ -529,7 +529,7 @@ def main():
                 no_output = " > /dev/null 2>&1"
 
             ret = 0
-            ret = os.system("{0}/bin/ossec-control restart{1}".format(ossec_path, no_output))
+            ret = os.system("{0}/bin/wazuh-control restart{1}".format(ossec_path, no_output))
             if ret != 0:
                 exit(2, "OSSEC restart failed")
             status['restarted'] = True

@@ -261,7 +261,7 @@ start()
     if [ $? = 0 ]; then
         echo ""
         echo "Starting sub agent directory (for hybrid mode)"
-        ${DIR}/ossec-agent/bin/ossec-control start
+        ${DIR}/ossec-agent/bin/wazuh-control start
     fi
 
     echo "Completed."
@@ -341,7 +341,7 @@ stopa()
     if [ $? = 0 ]; then
         echo ""
         echo "Stopping sub agent directory (for hybrid mode)"
-        ${DIR}/ossec-agent/bin/ossec-control stop
+        ${DIR}/ossec-agent/bin/wazuh-control stop
     fi
     echo "$NAME $VERSION Stopped"
 }

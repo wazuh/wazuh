@@ -55,7 +55,7 @@ Index: ossec-hids-2.8.2/Makefile
 +	cp -pr bin/syscheck_control $(DIR)/bin/
 +	cp -pr bin/rootcheck_control $(DIR)/bin/
 +	cp -pr contrib/util.sh $(DIR)/bin/
-+	cp -pr src/init/ossec-server.sh $(DIR)/bin/ossec-control
++	cp -pr src/init/ossec-server.sh $(DIR)/bin/wazuh-control
 +	cp -pr etc/decoder.xml $(DIR)/etc/
 +	chmod -x $(DIR)/etc/decoder.xml
 +	cp -pr etc/local_decoder.xml $(DIR)/etc/ > /dev/null 2>&1 || /bin/true
