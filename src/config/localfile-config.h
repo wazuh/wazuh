@@ -13,7 +13,9 @@
 
 #define EVENTLOG     "eventlog"
 #define EVENTCHANNEL "eventchannel"
-#define MULTI_LINE_REGEX "multi-line-regex"
+#define MULTI_LINE_REGEX              "multi-line-regex"
+#define MULTI_LINE_REGEX_TIMEOUT      1
+#define MULTI_LINE_REGEX_MAX_TIMEOUT  60
 #define DATE_MODIFIED   1
 #define DEFAULT_EVENTCHANNEL_REC_TIME 5
 #define DIFF_DEFAULT_SIZE 10240
@@ -77,6 +79,8 @@ typedef struct {
     w_expression_t * regex;
     w_multiline_match_type_t match_type;
     w_multiline_replace_type_t replace_type;
+    /* Max waiting time to receive a new line. If the time expires, the collected lines are sent.*/
+    unsigned int timeout;
     w_multiline_timeout_ctxt_t * timeout_ctxt;
 } w_multiline_config_t;
 
@@ -172,7 +176,28 @@ w_multiline_match_type_t w_get_attr_match(xml_node * node);
  */
 w_multiline_replace_type_t w_get_attr_replace(xml_node * node);
 
+/**
+ * @brief Get timeout attribute for multiline regex
+ * @param node node to find match value
+ * @retval MULTI_LINE_REGEX_TIMEOUT if the attribute is invalid or not present
+ * @retval timeout value otherwise
+ */
+unsigned int w_get_attr_timeout(xml_node * node);
+
+/**
+ * @brief 
+ * 
+ * @param replace_type 
+ * @return const char* 
+ */
 const char * multiline_attr_replace_str(w_multiline_replace_type_t replace_type);
+
+/**
+ * @brief 
+ * 
+ * @param match_type 
+ * @return const char* 
+ */
 const char * multiline_attr_match_str(w_multiline_match_type_t match_type);
 
 
