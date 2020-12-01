@@ -528,6 +528,7 @@ void log_realtime_status(int next) {
 // LCOV_EXCL_START
 static void *symlink_checker_thread(__attribute__((unused)) void * data) {
     char *real_path;
+    struct stat sb;
     int i;
 
     mdebug1(FIM_LINKCHECK_START, syscheck.sym_checker_interval);
@@ -538,13 +539,21 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
 
         w_mutex_lock(&syscheck.fim_scan_mutex);
         for (i = 0; syscheck.dir[i]; i++) {
-            if (!syscheck.symbolic_links[i] || !(CHECK_FOLLOW & syscheck.opts[i])) {
+            if (!(CHECK_FOLLOW & syscheck.opts[i])) {
+                continue;
+            }
+
+            // Check if syscheck.dir[i] is a symbolic link
+            memset(&sb, 0, sizeof(struct stat));
+            lstat(syscheck.dir[i], &sb);
+
+            if ((sb.st_mode & S_IFMT) != S_IFLNK) {
                 continue;
             }
 
             real_path = realpath(syscheck.dir[i], NULL);
 
-            if (*syscheck.symbolic_links[i]) {
+            if (syscheck.symbolic_links[i]) {
                 if (real_path) {
                     // Check if link has changed
                     if (strcmp(real_path, syscheck.symbolic_links[i])) {
@@ -586,8 +595,18 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
 
 STATIC void fim_link_update(int pos, char *new_path) {
     int i;
+    int in_configuration = false;
 
-    if (*syscheck.dir[pos]) {
+    // Check if the previously pointed folder is in the configuration
+    // and delete its database entries if it isn't
+    for (i = 0; syscheck.dir[i] != NULL; i++) {
+        if (strcmp(syscheck.symbolic_links[pos], syscheck.dir[i]) == 0) {
+            in_configuration = true;
+            break;
+        }
+    }
+
+    if (!in_configuration) {
         fim_link_delete_range(pos);
     }
 
@@ -595,7 +614,7 @@ STATIC void fim_link_update(int pos, char *new_path) {
     for (i = 0; syscheck.dir[i] != NULL; i++) {
         if (strcmp(new_path, syscheck.dir[i]) == 0) {
             mdebug1(FIM_LINK_ALREADY_ADDED, syscheck.dir[i]);
-            *syscheck.symbolic_links[pos] = '\0';
+            syscheck.symbolic_links[pos] = NULL;
             return;
         }
     }
@@ -612,7 +631,7 @@ STATIC void fim_link_check_delete(int pos) {
 
     if (w_stat(syscheck.symbolic_links[pos], &statbuf) < 0) {
         if (errno == ENOENT) {
-            *syscheck.symbolic_links[pos] = '\0';
+            syscheck.symbolic_links[pos] = NULL;
             return;
         }
 
@@ -624,7 +643,7 @@ STATIC void fim_link_check_delete(int pos) {
             fim_delete_realtime_watches(pos);
         }
 
-        *syscheck.symbolic_links[pos] = '\0';
+        syscheck.symbolic_links[pos] = NULL;
     }
 }
 
