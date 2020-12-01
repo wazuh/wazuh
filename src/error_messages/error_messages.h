@@ -500,6 +500,8 @@
 #define FIM_DB_ERROR_RM_RANGE                       "(6708): Failed to delete a range of paths between '%s' and '%s'"
 #define FIM_DB_ERROR_RM_NOT_SCANNED                 "(6709): Failed to delete from db all unscanned files."
 #define FIM_ERROR_WHODATA_INIT                      "(6710): Failed to start the Whodata engine. Directories/files will be monitored in Realtime mode"
+#define FIM_WARN_OPEN_HANDLE_FILE                   "(6711): Could not open handle for '(%s)', which returned (%lu)."
+#define FIM_WARN_GET_FILETIME                       "(6712): Could not get the filetime of the file '(%s)', which returned (%lu)."
 
 /* Wazuh Logtest error messsages */
 #define LOGTEST_ERROR_BIND_SOCK                     "(7300): Unable to bind to socket '%s'. Errno: (%d) %s"

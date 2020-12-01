@@ -765,7 +765,11 @@ fim_entry_data * fim_get_data(const char *file, fim_element *item) {
 #endif
 
     if (item->configuration & CHECK_MTIME) {
+#ifdef WIN32
+        data->mtime = (time_t)get_UTC_modification_time(file);
+#else
         data->mtime = item->statbuf.st_mtime;
+#endif
     }
 
 #ifdef WIN32

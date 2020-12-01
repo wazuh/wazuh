@@ -1269,6 +1269,28 @@ end:
 }
 
 
+long long get_UTC_modification_time(const char *file){
+    HANDLE hdle;
+    FILETIME modification_date;
+
+    if (hdle = CreateFile(file, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL), hdle == INVALID_HANDLE_VALUE) {
+        mferror(FIM_WARN_OPEN_HANDLE_FILE, file, GetLastError());
+        return 0;
+    }
+
+    if (!GetFileTime(hdle, NULL, NULL, &modification_date)) {
+        CloseHandle(hdle);
+        mferror(FIM_WARN_GET_FILETIME, file, GetLastError());
+        return 0;
+    }
+
+    CloseHandle(hdle);
+    long long ret_val = get_windows_file_time_epoch(modification_date);
+
+    return ret_val;
+}
+
+
 char *basename_ex(char *path)
 {
     return (PathFindFileNameA(path));
