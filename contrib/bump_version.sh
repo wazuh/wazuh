@@ -59,7 +59,7 @@ cd $(dirname $0)
 VERSION_FILE="../src/VERSION"
 REVISION_FILE="../src/REVISION"
 DEFS_FILE="../src/headers/defs.h"
-NSIS_FILE="../src/win32/ossec-installer.nsi"
+NSIS_FILE="../src/win32/wazuh-installer.nsi"
 MSI_FILE="../src/win32/wazuh-installer.wxs"
 FW_SETUP="../framework/setup.py"
 FW_INIT="../framework/wazuh/__init__.py"
@@ -88,7 +88,7 @@ then
 
     sed -E -i'' -e "s/^(#define __ossec_version +)\"v.*\"/\1\"$version\"/" $DEFS_FILE
 
-    # File ossec-installer.nsi
+    # File wazuh-installer.nsi
 
     egrep "^\!define VERSION \".+\"" $NSIS_FILE > /dev/null
 
@@ -142,7 +142,7 @@ then
 
     echo $revision > $REVISION_FILE
 
-    # File ossec-installer.nsi
+    # File wazuh-installer.nsi
 
     egrep "^\!define REVISION \".+\"" $NSIS_FILE > /dev/null
 
@@ -170,7 +170,7 @@ fi
 if [ -n "$product" ]
 then
 
-    # File ossec-installer.nsi
+    # File wazuh-installer.nsi
 
     egrep "^VIProductVersion \".+\"" $NSIS_FILE > /dev/null
 
