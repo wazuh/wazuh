@@ -104,9 +104,8 @@ def test_check_removed_agents(remove_agents_patch, old_ck, new_ck, agents_to_rem
 @patch('os.remove')
 @patch('glob.iglob')
 @patch('wazuh.core.agent.Agent.get_agents_overview')
-@patch('wazuh.core.cluster.worker.Connection')
 @patch('os.path.isdir')
-def test_remove_bulk_agents(isdir_mock, connection_mock, agents_mock, glob_mock, remove_mock, rmtree_mock, wdb_mock,
+def test_remove_bulk_agents(isdir_mock, agents_mock, glob_mock, remove_mock, rmtree_mock, wdb_mock,
                             agents_to_remove):
     """
     Tests WorkerHandler.remove_bulk_agents function.
@@ -181,7 +180,7 @@ async def test_SyncWorker(create_log, caplog):
 
     worker_handler = get_worker_handler()
 
-    sync_worker = worker.SyncWorker(cmd=b'testing', files_to_sync={'files': ['testing']}, checksums={'testing': '0'},
+    sync_worker = worker.SyncWorker(cmd=b'testing', files_to_sync={'files': ['testing']}, files_metadata={'testing': '0'},
                                     logger=logger, worker=worker_handler)
 
     send_request_mock = KeyError(1)
