@@ -1451,7 +1451,6 @@ parallel-regex: util/parallel-regex.o
 
 rootcheck_c := $(wildcard rootcheck/*.c)
 rootcheck_o := $(rootcheck_c:.c=.o)
-rootcheck_rk_o := $(rootcheck_c:.c=_rk.o)
 rootcheck_o_lib := $(filter-out rootcheck/rootcheck-config.o, ${rootcheck_o})
 rootcheck_o_cmd := $(filter-out rootcheck/config.o, ${rootcheck_o})
 
@@ -1459,19 +1458,10 @@ rootcheck_o_cmd := $(filter-out rootcheck/config.o, ${rootcheck_o})
 rootcheck/%.o: rootcheck/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"rootcheck\" -c $^ -o $@
 
-rootcheck/%_rk.o: rootcheck/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"rootcheck\" -UOSSECHIDS -c $^ -o $@
-
-
 rootcheck.a: ${rootcheck_o_lib}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
 
-#ossec-rootcheck: rootcheck/rootcheck-config.o rootcheck.a
-#	@echo ${rootcheck_o_cmd}
-#	@echo ${rootcheck_o_lib}
-#	@echo ${rootcheck_o}
-#	${OSSEC_CC} ${OSSEC_CFLAGS} rootcheck/rootcheck-config.o rootcheck.a rootcheck/rootcheck.c  -o $@
 
 #### syscheck ######
 
@@ -2001,7 +1991,7 @@ clean-internals: clean-unit-tests
 	rm -f ${client_agent_o}
 	rm -f ${addagent_o}
 	rm -f ${util_o} ${util_programs}
-	rm -f ${rootcheck_o} ${rootcheck_rk_o} rootcheck.a
+	rm -f ${rootcheck_o} rootcheck.a
 	rm -f ${syscheck_o} ${syscheck_eventchannel_o}
 	rm -f ${monitor_o}
 	rm -f ${os_auth_o}
