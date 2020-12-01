@@ -445,6 +445,7 @@ void fim_whodata_event(whodata_evt * w_evt) {
 
 void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt) {
     fim_entry *saved_data = NULL;
+    fim_tmp_file *files = NULL;
 
     // Search path in DB.
     w_mutex_lock(&syscheck.fim_entry_mutex);
@@ -460,29 +461,20 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
     }
 
     // Since the file doesn't exist, research if it's directory and have files in DB.
-    fim_tmp_file *files = NULL;
-    char first_entry[PATH_MAX];
-    char last_entry[PATH_MAX];
+    char pattern[PATH_MAX] = {0};
 
-#ifdef WIN32
-    snprintf(first_entry, PATH_MAX, "%s\\", pathname);
-    snprintf(last_entry, PATH_MAX, "%s]", pathname);
-
-#else
-    snprintf(first_entry, PATH_MAX, "%s/", pathname);
-    snprintf(last_entry, PATH_MAX, "%s0", pathname);
-
-#endif
+    // Create the sqlite LIKE pattern -> "pathname/%"
+    snprintf(pattern, PATH_MAX, "%s%c%%", pathname, PATH_SEP);
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
-    fim_db_get_path_range(syscheck.database, FIM_TYPE_FILE, first_entry, last_entry, &files, syscheck.database_store);
+    fim_db_get_path_from_pattern(syscheck.database, pattern, &files, syscheck.database_store);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (files && files->elements) {
         if (fim_db_process_missing_entry(syscheck.database, files, &syscheck.fim_entry_mutex,
             syscheck.database_store, mode, w_evt) != FIMDB_OK) {
-                merror(FIM_DB_ERROR_RM_RANGE, first_entry, last_entry);
-            }
+                merror(FIM_DB_ERROR_RM_PATTERN, pattern);
+        }
     }
 }
 

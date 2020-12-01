@@ -99,6 +99,14 @@ void fim_db_bind_get_inode_id(fdb_t *fim_sql, const char *file_path);
  */
 void fim_db_bind_get_path_inode(fdb_t *fim_sql, const char *file_path);
 
+/**
+ * @brief Binds data into a select path like statement.
+ *
+ * @param fim_sql FIM database structure.
+ * @param pattern Pattern that will be used for the LIKE operator.
+ */
+void fim_db_bind_get_path_from_pattern(fdb_t *fim_sql, const char *pattern);
+
 int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
     if ((*file = fim_db_create_temp_file(storage)) == NULL) {
         return FIMDB_ERR;
@@ -260,6 +268,11 @@ void fim_db_bind_get_inode_id(fdb_t *fim_sql, const char *file_path) {
 /* FIMDB_STMT_GET_INODE */
 void fim_db_bind_get_path_inode(fdb_t *fim_sql, const char *file_path) {
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_GET_INODE], 1, file_path, -1, NULL);
+}
+
+/* FIMDB_STMT_GET_PATH_FROM_PATTERN */
+void fim_db_bind_get_path_from_pattern(fdb_t *fim_sql, const char *pattern) {
+    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_GET_PATH_FROM_PATTERN], 1, pattern, -1, NULL);
 }
 
 fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path) {
@@ -578,4 +591,21 @@ int fim_db_get_count_file_entry(fdb_t * fim_sql) {
         merror("Step error getting count entry path: %s", sqlite3_errmsg(fim_sql->db));
     }
     return res;
+}
+
+int fim_db_get_path_from_pattern(fdb_t *fim_sql, const char *pattern, fim_tmp_file **file, int storage) {
+    if ((*file = fim_db_create_temp_file(storage)) == NULL) {
+        return FIMDB_ERR;
+    }
+
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_FROM_PATTERN);
+    fim_db_bind_get_path_from_pattern(fim_sql, pattern);
+
+    int ret = fim_db_process_get_query(fim_sql, FIM_FILE, FIMDB_STMT_GET_PATH_FROM_PATTERN, fim_db_callback_save_path, storage, (void*) *file);
+
+    if (*file && (*file)->elements == 0) {
+        fim_db_clean_file(file, storage);
+    }
+
+    return ret;
 }
