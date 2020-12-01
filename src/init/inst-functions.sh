@@ -692,7 +692,7 @@ InstallCommon()
         OSSEC_CONTROL_SRC='./init/wazuh-server.sh'
         OSSEC_CONF_SRC='../etc/ossec-server.conf'
     elif [ ${INSTYPE} = 'agent' ]; then
-        OSSEC_CONTROL_SRC='./init/ossec-client.sh'
+        OSSEC_CONTROL_SRC='./init/wazuh-client.sh'
         OSSEC_CONF_SRC='../etc/ossec-agent.conf'
     elif [ ${INSTYPE} = 'local' ]; then
         OSSEC_CONTROL_SRC='./init/wazuh-local.sh'
