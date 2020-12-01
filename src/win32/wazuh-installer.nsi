@@ -46,7 +46,7 @@ VIAddVersionKey ProductVersion "${VERSION}"
 VIAddVersionKey InternalName "Wazuh Agent"
 VIAddVersionKey OriginalFilename "${OutFile}"
 
-InstallDir "$PROGRAMFILES\wazuh-agent"
+InstallDir "$PROGRAMFILES\ossec-agent"
 InstallDirRegKey HKLM Software\OSSEC ""
 
 ; show (un)installation details
