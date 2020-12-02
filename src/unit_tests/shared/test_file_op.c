@@ -546,8 +546,68 @@ void test_w_uncompress_gzfile_success(void **state) {
 
 }
 
+#ifdef TEST_WINAGENT
+void test_get_UTC_modification_time_success(void **state) {
+    HANDLE hdle = (HANDLE)1234;
+    FILETIME modification_date;
+    modification_date.dwLowDateTime = (DWORD)1234;
+    modification_date.dwHighDateTime = (DWORD)4321;
+
+    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_CreateFile, hdle);
+
+    expect_value(wrap_GetFileTime, hFile, hdle);
+    will_return(wrap_GetFileTime, &modification_date);
+    will_return(wrap_GetFileTime, 1);
+
+    expect_value(wrap_CloseHandle, hObject, hdle);
+    will_return(wrap_CloseHandle, 0);
+
+    expect_value(__wrap_get_windows_file_time_epoch, ftime.dwLowDateTime, modification_date.dwLowDateTime);
+    expect_value(__wrap_get_windows_file_time_epoch, ftime.dwHighDateTime, modification_date.dwHighDateTime);
+    will_return(__wrap_get_windows_file_time_epoch, 123456LL);
+
+    long long ret = get_UTC_modification_time("C:\\a\\path");
+    assert_int_equal(ret, 123456LL);
+}
+
+void test_get_UTC_modification_time_fail_get_handle(void **state) {
+
+    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_CreateFile, INVALID_HANDLE_VALUE);
+
+    expect_string(__wrap__mferror, formatted_msg, "(6711): Could not open handle for '(C:\\a\\path)', which returned (2).");
+
+    long long ret = get_UTC_modification_time("C:\\a\\path");
+    assert_int_equal(ret, 0);
+}
+
+void test_get_UTC_modification_time_fail_get_filetime(void **state) {
+    HANDLE hdle = (HANDLE)1234;
+    FILETIME modification_date;
+    modification_date.dwLowDateTime = (DWORD)1234;
+    modification_date.dwHighDateTime = (DWORD)4321;
+
+    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_CreateFile, (HANDLE)1234);
+
+    expect_value(wrap_GetFileTime, hFile, (HANDLE)1234);
+    will_return(wrap_GetFileTime, &modification_date);
+    will_return(wrap_GetFileTime, 0);
+
+    expect_string(__wrap__mferror, formatted_msg, "(6712): Could not get the filetime of the file '(C:\\a\\path)', which returned (2).");
+
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)1234);
+    will_return(wrap_CloseHandle, 0);
+
+    long long ret = get_UTC_modification_time("C:\\a\\path");
+    assert_int_equal(ret, 0);
+}
+#endif
+
 int main(void) {
     const struct CMUnitTest tests[] = {
+#ifndef TEST_WINAGENT
         cmocka_unit_test(test_CreatePID_success),
         cmocka_unit_test(test_CreatePID_failure_chmod),
         cmocka_unit_test(test_CreatePID_failure_fopen),
@@ -571,6 +631,13 @@ int main(void) {
         cmocka_unit_test(test_w_uncompress_gzfile_first_read_fail),
         cmocka_unit_test(test_w_uncompress_gzfile_first_read_success),
         cmocka_unit_test(test_w_uncompress_gzfile_success)
+#else
+        cmocka_unit_test(test_get_UTC_modification_time_success),
+        cmocka_unit_test(test_get_UTC_modification_time_fail_get_handle),
+        cmocka_unit_test(test_get_UTC_modification_time_fail_get_filetime)
+#endif
+
+
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
