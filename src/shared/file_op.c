@@ -1269,7 +1269,7 @@ end:
 }
 
 
-long long get_UTC_modification_time(const char *file){
+time_t get_UTC_modification_time(const char *file){
     HANDLE hdle;
     FILETIME modification_date;
 
@@ -1285,9 +1285,8 @@ long long get_UTC_modification_time(const char *file){
     }
 
     CloseHandle(hdle);
-    long long ret_val = get_windows_file_time_epoch(modification_date);
 
-    return ret_val;
+    return (time_t)get_windows_file_time_epoch(modification_date);
 }
 
 
