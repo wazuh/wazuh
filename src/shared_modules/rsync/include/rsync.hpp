@@ -29,13 +29,10 @@
 #include "json.hpp"
 
 using SyncCallbackData = const std::function<void(const std::string&)>;
-using LogFunction = std::function<void(const std::string&)>;
 
 class EXPORTED RemoteSync 
 {
 public:
-    static void init(LogFunction logFunciont);
-
     /**
      * @brief Remote sync initializes the instance. 
      */

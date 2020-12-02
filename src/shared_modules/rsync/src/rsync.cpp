@@ -24,7 +24,6 @@ extern "C" {
 using namespace RSync;
 
 static log_fnc_t gs_logFunction{ nullptr };
-static LogFunction gs_logFunctionCpp;
 
 static void log_message(const std::string& msg)
 {
@@ -33,10 +32,6 @@ static void log_message(const std::string& msg)
         if (gs_logFunction)
         {
             gs_logFunction(msg.c_str());
-        }
-        if (gs_logFunctionCpp)
-        {
-            gs_logFunctionCpp(msg);
         }
     }
 }
@@ -262,12 +257,4 @@ void RemoteSync::registerSyncID(const std::string&    messageHeaderID,
 void RemoteSync::pushMessage(const std::vector<uint8_t>& payload)
 {
     RSyncImplementation::instance().push(m_handle, payload);       
-}
-
-void RemoteSync::init(LogFunction logFunction)
-{
-    if (!gs_logFunctionCpp)
-    {
-        gs_logFunctionCpp = logFunction;
-    }
 }

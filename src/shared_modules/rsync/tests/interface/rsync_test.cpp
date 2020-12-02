@@ -273,7 +273,7 @@ TEST_F(RSyncTest, startSyncIntegrityGlobal)
 
     const auto expectedResult1
     {
-        R"({"component":"test_component","data":{"begin":"/boot/grub2/i386-pc/gzio.mod","checksum":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","end":"/boot/grub2/fonts/unicode.pf2")"
+        R"({"component":"test_component","data":{"begin":"/boot/grub2/i386-pc/gzio.mod","checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709","end":"/boot/grub2/fonts/unicode.pf2")"
     };
 
     const auto expectedResult2
@@ -345,7 +345,6 @@ TEST_F(RSyncTest, startSyncIntegrityGlobal)
 
     dbsync_teardown();
 }
-
 TEST_F(RSyncTest, registerSyncId)
 {
     const auto handle { rsync_create() };
@@ -383,12 +382,12 @@ TEST_F(RSyncTest, RegisterAndPush)
 
     const auto expectedResult1
     {
-        R"({"component":"test_component","data":{"begin":"/boot/grub2/fonts/unicode.pf2","checksum":"2d567d2a180a96ad6b3ecd9ec7beae31d103d090280e7eaec8383ef27c8ab4a5","end":"/boot/grub2/grubenv","id":1,"tail":"/boot/grub2/i386-pc/datehook.mod"},"type":"integrity_check_left"})"
+        R"({"component":"test_component","data":{"begin":"/boot/grub2/fonts/unicode.pf2","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"/boot/grub2/grubenv","id":1,"tail":"/boot/grub2/i386-pc/datehook.mod"},"type":"integrity_check_left"})"
     };
 
     const auto expectedResult2
     {
-        R"({"component":"test_component","data":{"begin":"/boot/grub2/i386-pc/datehook.mod","checksum":"cc933107bbe6c3eee784b74e180b9da2dbfa6766807aa1483257f055e52e4ca9","end":"/boot/grub2/i386-pc/gzio.mod","id":1},"type":"integrity_check_right"})"
+        R"({"component":"test_component","data":{"begin":"/boot/grub2/i386-pc/datehook.mod","checksum":"891333533a9c7d989b92928d200ed8402fe67813","end":"/boot/grub2/i386-pc/gzio.mod","id":1},"type":"integrity_check_right"})"
     };
     
     const auto expectedResult3
@@ -575,12 +574,12 @@ TEST_F(RSyncTest, RegisterAndPushCPP)
     
     const auto expectedResult1
     {
-        R"({"component":"test_component","data":{"begin":"/boot/grub2/fonts/unicode.pf2","checksum":"2d567d2a180a96ad6b3ecd9ec7beae31d103d090280e7eaec8383ef27c8ab4a5","end":"/boot/grub2/grubenv","id":1,"tail":"/boot/grub2/i386-pc/datehook.mod"},"type":"integrity_check_left"})"
+        R"({"component":"test_component","data":{"begin":"/boot/grub2/fonts/unicode.pf2","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"/boot/grub2/grubenv","id":1,"tail":"/boot/grub2/i386-pc/datehook.mod"},"type":"integrity_check_left"})"
     };
 
     const auto expectedResult2
     {
-        R"({"component":"test_component","data":{"begin":"/boot/grub2/i386-pc/datehook.mod","checksum":"cc933107bbe6c3eee784b74e180b9da2dbfa6766807aa1483257f055e52e4ca9","end":"/boot/grub2/i386-pc/gzio.mod","id":1},"type":"integrity_check_right"})"
+        R"({"component":"test_component","data":{"begin":"/boot/grub2/i386-pc/datehook.mod","checksum":"891333533a9c7d989b92928d200ed8402fe67813","end":"/boot/grub2/i386-pc/gzio.mod","id":1},"type":"integrity_check_right"})"
     };
     
     const auto expectedResult3
@@ -870,12 +869,12 @@ TEST_F(RSyncTest, RegisterAndPushCPPByInode)
     
     const auto expectedResult1
     {
-        R"({"component":"test_component","data":{"begin":"1","checksum":"2d567d2a180a96ad6b3ecd9ec7beae31d103d090280e7eaec8383ef27c8ab4a5","end":"2","id":1,"tail":"3"},"type":"integrity_check_left"})"
+        R"({"component":"test_component","data":{"begin":"1","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"2","id":1,"tail":"3"},"type":"integrity_check_left"})"
     };
 
     const auto expectedResult2
     {
-        R"({"component":"test_component","data":{"begin":"3","checksum":"cc933107bbe6c3eee784b74e180b9da2dbfa6766807aa1483257f055e52e4ca9","end":"5","id":1},"type":"integrity_check_right"})"
+        R"({"component":"test_component","data":{"begin":"3","checksum":"891333533a9c7d989b92928d200ed8402fe67813","end":"5","id":1},"type":"integrity_check_right"})"
     };
     
     const auto expectedResult3

@@ -40,6 +40,44 @@ constexpr auto HOTFIXES_SQL_STATEMENT
     PRIMARY KEY (hotfix)) WITHOUT ROWID;)"
 };
 
+constexpr auto HOTFIXES_SYNC_CONFIG_STATEMENT
+{
+    R"(
+    {
+        "decoder_type":"JSON_RANGE",
+        "table":"dbsync_hotfixes",
+        "component":"syscollector_hotfixes",
+        "index":"hotfix",
+        "checksum_field":"checksum",
+        "no_data_query_json": {
+                "row_filter":" ",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "count_range_query_json": {
+                "row_filter":"WHERE hotfix BETWEEN '?' and '?' ORDER BY hotfix",
+                "count_field_hotfix":"count",
+                "column_list":["count(*) AS count "],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "row_data_query_json": {
+                "row_filter":"WHERE hotfix ='?'",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "range_checksum_query_json": {
+                "row_filter":"WHERE hotfix BETWEEN '?' and '?' ORDER BY hotfix",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        }
+    }
+    )"
+};
+
 constexpr auto HOTFIXES_START_CONFIG_STATEMENT
 {
     R"({"table":"dbsync_hotfixes",
@@ -48,7 +86,7 @@ constexpr auto HOTFIXES_START_CONFIG_STATEMENT
                 "column_list":["hotfix"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"hotfix ASC",
+                "order_by_opt":"hotfix DESC",
                 "count_opt":1
             },
         "last_query":
@@ -56,7 +94,7 @@ constexpr auto HOTFIXES_START_CONFIG_STATEMENT
                 "column_list":["hotfix"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"hotfix DESC",
+                "order_by_opt":"hotfix ASC",
                 "count_opt":1
             },
         "component":"syscollector_hotfixes",
@@ -89,8 +127,47 @@ constexpr auto PACKAGES_SQL_STATEMENT
     priority TEXT,
     multiarch TEXT,
     source TEXT,
+    format TEXT,
     checksum TEXT,
     PRIMARY KEY (name,version,architecture)) WITHOUT ROWID;)"
+};
+
+constexpr auto PACKAGES_SYNC_CONFIG_STATEMENT
+{
+    R"(
+    {
+        "decoder_type":"JSON_RANGE",
+        "table":"dbsync_packages",
+        "component":"syscollector_packages",
+        "index":"name",
+        "checksum_field":"checksum",
+        "no_data_query_json": {
+                "row_filter":" ",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "count_range_query_json": {
+                "row_filter":"WHERE name BETWEEN '?' and '?' ORDER BY name",
+                "count_field_name":"count",
+                "column_list":["count(*) AS count "],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "row_data_query_json": {
+                "row_filter":"WHERE name ='?'",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "range_checksum_query_json": {
+                "row_filter":"WHERE name BETWEEN '?' and '?' ORDER BY name",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        }
+    }
+    )"
 };
 
 constexpr auto PACKAGES_START_CONFIG_STATEMENT
@@ -101,7 +178,7 @@ constexpr auto PACKAGES_START_CONFIG_STATEMENT
                 "column_list":["name"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"name ASC",
+                "order_by_opt":"name DESC",
                 "count_opt":1
             },
         "last_query":
@@ -109,7 +186,7 @@ constexpr auto PACKAGES_START_CONFIG_STATEMENT
                 "column_list":["name"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"name DESC",
+                "order_by_opt":"name ASC",
                 "count_opt":1
             },
         "component":"syscollector_packages",
@@ -169,7 +246,6 @@ constexpr auto PROCESSES_SYNC_CONFIG_STATEMENT
         "table":"dbsync_processes",
         "component":"syscollector_processes",
         "index":"pid",
-        "last_event":"last_event",
         "checksum_field":"checksum",
         "no_data_query_json": {
                 "row_filter":" ",
@@ -240,33 +316,71 @@ constexpr auto PORTS_START_CONFIG_STATEMENT
     R"({"table":"dbsync_ports",
         "first_query":
             {
-                "column_list":["inode"],
+                "column_list":["local_port"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"inode DESC",
+                "order_by_opt":"local_port DESC",
                 "count_opt":1
             },
         "last_query":
             {
-                "column_list":["inode"],
+                "column_list":["local_port"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"inode ASC",
+                "order_by_opt":"local_port ASC",
                 "count_opt":1
             },
         "component":"syscollector_ports",
-        "index":"inode",
+        "index":"local_port",
         "last_event":"last_event",
         "checksum_field":"checksum",
         "range_checksum_query_json":
             {
-                "row_filter":"WHERE inode BETWEEN '?' and '?' ORDER BY inode",
-                "column_list":["inode, checksum"],
+                "row_filter":"WHERE local_port BETWEEN '?' and '?' ORDER BY local_port",
+                "column_list":["local_port, checksum"],
                 "distinct_opt":false,
                 "order_by_opt":"",
                 "count_opt":1000
             }
         })"
+};
+
+constexpr auto PORTS_SYNC_CONFIG_STATEMENT
+{
+    R"(
+    {
+        "decoder_type":"JSON_RANGE",
+        "table":"dbsync_ports",
+        "component":"syscollector_ports",
+        "index":"local_port",
+        "checksum_field":"checksum",
+        "no_data_query_json": {
+                "row_filter":" ",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "count_range_query_json": {
+                "row_filter":"WHERE local_port BETWEEN '?' and '?' ORDER BY local_port",
+                "count_field_name":"count",
+                "column_list":["count(*) AS count "],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "row_data_query_json": {
+                "row_filter":"WHERE local_port ='?'",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "range_checksum_query_json": {
+                "row_filter":"WHERE local_port BETWEEN '?' and '?' ORDER BY local_port",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        }
+    }
+    )"
 };
 
 constexpr auto PORTS_SQL_STATEMENT
@@ -319,6 +433,44 @@ constexpr auto NETIFACE_START_CONFIG_STATEMENT
                 "count_opt":1000
             }
         })"
+};
+
+constexpr auto NETIFACE_SYNC_CONFIG_STATEMENT
+{
+    R"(
+    {
+        "decoder_type":"JSON_RANGE",
+        "table":"dbsync_network_iface",
+        "component":"syscollector_network_iface",
+        "index":"name",
+        "checksum_field":"checksum",
+        "no_data_query_json": {
+                "row_filter":" ",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "count_range_query_json": {
+                "row_filter":"WHERE name BETWEEN '?' and '?' ORDER BY name",
+                "count_field_name":"count",
+                "column_list":["count(*) AS count "],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "row_data_query_json": {
+                "row_filter":"WHERE name ='?'",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "range_checksum_query_json": {
+                "row_filter":"WHERE name BETWEEN '?' and '?' ORDER BY name",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        }
+    }
+    )"
 };
 
 constexpr auto NETIFACE_SQL_STATEMENT
@@ -376,6 +528,44 @@ constexpr auto NETPROTO_START_CONFIG_STATEMENT
         })"
 };
 
+constexpr auto NETPROTO_SYNC_CONFIG_STATEMENT
+{
+    R"(
+    {
+        "decoder_type":"JSON_RANGE",
+        "table":"dbsync_network_protocol",
+        "component":"syscollector_network_protocol",
+        "index":"iface",
+        "checksum_field":"checksum",
+        "no_data_query_json": {
+                "row_filter":" ",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "count_range_query_json": {
+                "row_filter":"WHERE iface BETWEEN '?' and '?' ORDER BY iface",
+                "count_field_name":"count",
+                "column_list":["count(*) AS count "],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "row_data_query_json": {
+                "row_filter":"WHERE iface ='?'",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "range_checksum_query_json": {
+                "row_filter":"WHERE iface BETWEEN '?' and '?' ORDER BY iface",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        }
+    }
+    )"
+};
+
 constexpr auto NETPROTO_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_network_protocol (
@@ -421,6 +611,45 @@ constexpr auto NETADDRESS_START_CONFIG_STATEMENT
             }
         })"
 };
+
+constexpr auto NETADDRESS_SYNC_CONFIG_STATEMENT
+{
+    R"(
+    {
+        "decoder_type":"JSON_RANGE",
+        "table":"dbsync_network_address",
+        "component":"syscollector_network_address",
+        "index":"iface",
+        "checksum_field":"checksum",
+        "no_data_query_json": {
+                "row_filter":" ",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "count_range_query_json": {
+                "row_filter":"WHERE iface BETWEEN '?' and '?' ORDER BY iface",
+                "count_field_name":"count",
+                "column_list":["count(*) AS count "],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "row_data_query_json": {
+                "row_filter":"WHERE iface ='?'",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "range_checksum_query_json": {
+                "row_filter":"WHERE iface BETWEEN '?' and '?' ORDER BY iface",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        }
+    }
+    )"
+};
+
 
 constexpr auto NETADDR_SQL_STATEMENT
 {
@@ -546,7 +775,42 @@ void Syscollector::registerWithRsync()
                                   nlohmann::json::parse(PROCESSES_SYNC_CONFIG_STATEMENT),
                                   m_reportSyncFunction);
     }
-
+    if (m_packages)
+    {
+        m_spRsync->registerSyncID("syscollector_packages",
+                                  m_spDBSync->handle(),
+                                  nlohmann::json::parse(PACKAGES_SYNC_CONFIG_STATEMENT),
+                                  m_reportSyncFunction);
+        if (m_hotfixes)
+        {
+            m_spRsync->registerSyncID("syscollector_hotfixes",
+                                      m_spDBSync->handle(),
+                                      nlohmann::json::parse(HOTFIXES_SYNC_CONFIG_STATEMENT),
+                                      m_reportSyncFunction);
+        }
+    }
+    if (m_ports)
+    {
+        m_spRsync->registerSyncID("syscollector_ports",
+                                  m_spDBSync->handle(),
+                                  nlohmann::json::parse(PORTS_SYNC_CONFIG_STATEMENT),
+                                  m_reportSyncFunction);
+    }
+    if (m_network)
+    {
+        m_spRsync->registerSyncID("syscollector_network_iface",
+                                  m_spDBSync->handle(),
+                                  nlohmann::json::parse(NETIFACE_SYNC_CONFIG_STATEMENT),
+                                  m_reportSyncFunction);
+        m_spRsync->registerSyncID("syscollector_network_protocol",
+                                  m_spDBSync->handle(),
+                                  nlohmann::json::parse(NETPROTO_SYNC_CONFIG_STATEMENT),
+                                  m_reportSyncFunction);
+        m_spRsync->registerSyncID("syscollector_network_address",
+                                  m_spDBSync->handle(),
+                                  nlohmann::json::parse(NETADDRESS_SYNC_CONFIG_STATEMENT),
+                                  m_reportSyncFunction);
+    }
 }
 void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const std::function<void(const std::string&)> reportDiffFunction,
@@ -580,8 +844,6 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_running = false;
     m_spDBSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, "syscollector.db", getCreateStatement());
     m_spRsync = std::make_unique<RemoteSync>();
-    RemoteSync::init(logErrorFunction);
-    DBSync::init(logErrorFunction);
     registerWithRsync();
     syncLoop();
 }
@@ -825,13 +1087,14 @@ void Syscollector::push(const std::string& data)
     auto rawData{data};
     Utils::replaceFirst(rawData, "dbsync ", "");
     const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
-    m_logErrorFunction(rawData);
     try
     {
         m_spRsync->pushMessage(std::vector<uint8_t>{buff, buff + rawData.size()});
     }
+    // LCOV_EXCL_START
     catch(const std::exception& ex)
     {
         m_logErrorFunction(ex.what());
     }
+    // LCOV_EXCL_STOP
 }

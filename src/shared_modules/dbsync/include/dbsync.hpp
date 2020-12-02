@@ -30,12 +30,10 @@
 #include "db_exception.h"
 
 using ResultCallbackData = const std::function<void(ReturnTypeCallback, const nlohmann::json&) >;
-using LogFunction = std::function<void(const std::string&)>;
 
 class EXPORTED DBSync 
 {
 public:
-    static void init(LogFunction logFunction);
     /**
      * @brief Explicit DBSync Constructor.
      *
