@@ -145,13 +145,13 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
         if (list[i].ign && list[i].logformat != NULL && (strcmp(list[i].logformat,"command")==0 || strcmp(list[i].logformat,"full_command")==0)) cJSON_AddNumberToObject(file,"frequency",list[i].ign);
         if (list[i].future && list[i].logformat != NULL && strcmp(list[i].logformat,"eventchannel")==0) cJSON_AddStringToObject(file,"only-future-events","yes");
         if (list[i].reconnect_time && list[i].logformat != NULL && strcmp(list[i].logformat,"eventchannel")==0) cJSON_AddNumberToObject(file,"reconnect_time",list[i].reconnect_time);
-        if (list[i].multiline){
+        if (list[i].multiline) {
             cJSON * multiline = cJSON_CreateObject();
             cJSON_AddStringToObject(multiline, "match", multiline_attr_match_str(list[i].multiline->match_type));
             cJSON_AddStringToObject(multiline, "replace", multiline_attr_replace_str(list[i].multiline->replace_type));
-            cJSON_AddStringToObject(multiline, "regex",w_expression_get_regex_pattern(list[i].multiline->regex));
-            cJSON_AddNumberToObject(multiline, "timeout",list[i].multiline->timeout);
-            cJSON_AddItemToObject(file,"multiline_regex",multiline);
+            cJSON_AddStringToObject(multiline, "regex", w_expression_get_regex_pattern(list[i].multiline->regex));
+            cJSON_AddNumberToObject(multiline, "timeout", list[i].multiline->timeout);
+            cJSON_AddItemToObject(file, "multiline_regex", multiline);
         }
         cJSON_AddItemToArray(array, file);
         i++;
