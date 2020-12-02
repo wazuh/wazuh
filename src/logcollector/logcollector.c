@@ -23,6 +23,13 @@
 #define MAX_ASCII_LINES 10
 #define MAX_UTF8_CHARS 1400
 
+///> Struct to save the position of last line read and the SHA1 hash content
+typedef struct file_status {
+    long offset;        ///> Position to read
+    SHA_CTX context;    ///> It stores the hashed data calculated so far
+    char * hash;        ///> Content file SHA1 hash
+} os_file_status_t;
+
 /* Prototypes */
 static int update_fname(int i, int j);
 static int update_current(logreader **current, int *i, int *j);
@@ -75,14 +82,7 @@ STATIC int w_set_to_end(logreader *lf);
  * @brief Free memory of os_file_status_t entity
  * @param file_status entity to remove
  */
-STATIC void w_free_os_file_status_t(void * file_status);
-
-///> Struct to save the position of last line read and the SHA1 hash content
-typedef struct file_status {
-    long offset;        ///> Position to read
-    SHA_CTX context;    ///> It stores the hashed data calculated so far 
-    char * hash;        ///> Content file SHA1 hash
-} os_file_status_t;
+STATIC void w_free_os_file_status_t(os_file_status_t *data);
 
 
 /* Global variables */
@@ -325,7 +325,7 @@ void LogCollectorStart()
              * always returns 0 (even after clearerr).
              */
 #ifdef WIN32
-            if (current->fp && current->future) {
+            if (current->fp) {
                 set_can_read(1);
                 current->read(current, &r, 1);
                 set_can_read(0);
@@ -341,7 +341,7 @@ void LogCollectorStart()
                 minfo(READING_FILE, current->file);
             }
 
-            if (current->fp && current->future) {
+            if (current->fp) {
                 set_can_read(1);
                 current->read(current, &r, 1);
                 set_can_read(0);
@@ -957,8 +957,10 @@ int handle_file(int i, int j, int do_fseek, int do_log)
 /* Windows and fseek causes some weird issues */
 #ifndef WIN32
     if (do_fseek == 1 && S_ISREG(stat_fd.st_mode)) {
-        if (w_set_to_last_line_read(lf) < 0) {
-            goto error;
+        if (!lf->future) {
+            if (w_set_to_last_line_read(lf) < 0) goto error;
+        } else {
+            if (w_set_to_end(lf) < 0) goto error;
         }
     }
 #endif
@@ -2495,7 +2497,7 @@ int w_update_file_status(const char * path, long pos) {
 
     os_file_status_t *data;
     os_malloc(sizeof(os_file_status_t), data);
-    data->hash = "skdajfleignjs";
+    os_strdup("skdajfleignjs", data->hash);
     data->offset = pos;
 
     if (OSHash_Update_ex(files_status, path, data) != 1) {
@@ -2518,7 +2520,7 @@ STATIC void w_initialize_file_status() {
         merror_exit(HSETSIZE_ERROR, files_status_name);
     }
 
-    OSHash_SetFreeDataPointer(files_status,  &w_free_os_file_status_t);
+    OSHash_SetFreeDataPointer(files_status,  (void (*)(void *))w_free_os_file_status_t);
 
     /* Read json file to load last read positions */
     FILE * fd = NULL;
@@ -2657,8 +2659,7 @@ STATIC char * w_save_files_status_to_cJSON() {
     return global_json_str;
 }
 
-STATIC void w_free_os_file_status_t(void * file_status) {
-    os_file_status_t * data = file_status;
+STATIC void w_free_os_file_status_t(os_file_status_t *data) {
     os_free(data->hash);
     os_free(data);
 }
@@ -2667,7 +2668,7 @@ STATIC int w_set_to_last_line_read(logreader *lf) {
     OSHashNode * hash_node;
     unsigned int index = 0;
 
-    if(hash_node = OSHash_Begin(files_status, &index), !hash_node) {
+    if (hash_node = OSHash_Begin(files_status, &index), !hash_node) {
         return -1;
     }
 
@@ -2683,7 +2684,7 @@ STATIC int w_set_to_last_line_read(logreader *lf) {
                 return -1;
             }
 
-            if(stat_fd.st_size - data->offset > MAX_SIZE_TO_SHA1) {
+            if (stat_fd.st_size - data->offset > lf->diff_max_size) {
                 return w_set_to_end(lf);
             } else {
                 if (fseek(lf->fp, data->offset, SEEK_SET) < 0) {
@@ -2700,11 +2701,7 @@ STATIC int w_set_to_last_line_read(logreader *lf) {
         hash_node = OSHash_Next(files_status, &index, hash_node);
     }
 
-    if(lf->future) {
-        return w_set_to_end(lf);
-    }
-
-    return 0;
+    return w_set_to_end(lf);
 }
 
 STATIC int w_set_to_end(logreader *lf) {

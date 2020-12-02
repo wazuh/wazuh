@@ -19,7 +19,6 @@
 #define N_OUPUT_THREADS 1
 #define OUTPUT_MIN_QUEUE_SIZE 128
 #define WIN32_MAX_FILES 200
-#define MAX_SIZE_TO_SHA1 10240
 
 ///> JSON path wich contains the files position of last read
 #ifdef WIN32

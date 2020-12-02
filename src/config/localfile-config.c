@@ -29,6 +29,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_frequency = "frequency";
     const char *xml_localfile_alias = "alias";
     const char *xml_localfile_future = "only-future-events";
+    const char *xml_localfile_max_size_attr = "max-size";
     const char *xml_localfile_query = "query";
     const char *xml_localfile_label = "label";
     const char *xml_localfile_target = "target";
@@ -92,6 +93,20 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
         } else if (strcmp(node[i]->element, xml_localfile_future) == 0) {
+            logf[pl].diff_max_size = DIFF_MAX_SIZE;
+            if (node[i]->attributes) {
+                for (int j = 0; node[i]->attributes[j]; j++) {
+                    if (strcmp(node[i]->attributes[j], xml_localfile_max_size_attr) == 0) {
+                        char * end;
+                        long value = strtol(node[i]->values[j], &end, 10);
+                        if (value < 0 || value > 65534 || *end != '\0') {
+                            mwarn(XML_INVATTR, node[i]->element, node[i]->content);
+                            continue;
+                        }
+                        logf[pl].diff_max_size = value;
+                    }
+                }
+            }
             if (strcmp(node[i]->content, "yes") == 0) {
                 logf[pl].future = 1;
             } else if (strcmp(node[i]->content, "no") == 0) {
