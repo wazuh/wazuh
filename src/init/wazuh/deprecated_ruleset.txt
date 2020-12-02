@@ -1,8 +1,11 @@
 decoders/0020-amazon_decoders.xml
 decoders/0005-json_decoders.xml
+decoders/0200-ossec_decoders.xml
 rules/0355-amazon-ec2_rules.xml
 rules/0370-amazon-iam_rules.xml
 rules/0465-amazon-s3_rules.xml
 rules/0470-suricata_rules.xml
 rules/0520-vulnerability-detector.xml
 rules/0565-ms_ipsec_rules_json.xml
+rules/0015-ossec_rules.xml
+rules/0016-wazuh_rules.xml
