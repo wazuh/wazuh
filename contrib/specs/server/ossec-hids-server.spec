@@ -194,8 +194,6 @@ fi
 %attr(550, root, ossec) /var/ossec/bin/ossec-maild
 /var/ossec/bin/ossec-analysisd
 %attr(550, root, ossec) /var/ossec/bin/ossec-analysisd
-/var/ossec/bin/syscheck_update
-%attr(550, root, ossec) /var/ossec/bin/syscheck_update
 %dir /var/ossec/etc
 %attr(550, root, ossec) /var/ossec/etc
 /var/ossec/etc/internal_options.conf
