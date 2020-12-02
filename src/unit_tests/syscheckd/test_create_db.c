@@ -3777,6 +3777,9 @@ static void test_fim_get_data_no_hashes(void **state) {
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
 #else
+    expect_string(__wrap_get_UTC_modification_time, file_path, "test");
+    will_return(__wrap_get_UTC_modification_time, 123456LL);
+
     will_return(__wrap_get_user, "0");
     will_return(__wrap_get_user, strdup("user"));
     expect_string(__wrap_get_user, path, "test");
