@@ -1233,8 +1233,8 @@ cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id
 sqlite3_stmt * wdb_get_cache_stmt(wdb_t * wdb, char const *query) {
     sqlite3_stmt * ret_val = NULL;
     if (NULL != wdb && NULL != query) {
-        struct stmt_cache_list *node_stmt = wdb->cache_list;
-        while (NULL != node_stmt){
+        struct stmt_cache_list *node_stmt = NULL;
+        for (node_stmt = wdb->cache_list; node_stmt ; node_stmt=node_stmt->next) {
             if (node_stmt->value.query) {
                 if (strcmp(node_stmt->value.query, query) == 0) 
                 {
@@ -1242,20 +1242,19 @@ sqlite3_stmt * wdb_get_cache_stmt(wdb_t * wdb, char const *query) {
                     break;
                 }
             }
-            node_stmt = node_stmt->next;
         }
-
+        bool is_first_element = true;
         if (NULL == ret_val) {
-            node_stmt = wdb->cache_list;
-
             struct stmt_cache_list *new_item = NULL;
-            if (NULL == node_stmt) {
-                os_malloc(sizeof(struct stmt_cache_list), node_stmt);
-                new_item = node_stmt;
+            if (NULL == wdb->cache_list) {
+                os_malloc(sizeof(struct stmt_cache_list), wdb->cache_list);
+                new_item = wdb->cache_list;
             } else {
+                node_stmt = wdb->cache_list;
                 while (node_stmt){
                     node_stmt = node_stmt->next;
                 }
+                is_first_element = false;
                 os_malloc(sizeof(struct stmt_cache_list), node_stmt->next);
                 new_item = node_stmt->next;
             }
@@ -1268,8 +1267,17 @@ sqlite3_stmt * wdb_get_cache_stmt(wdb_t * wdb, char const *query) {
 
             if (sqlite3_prepare_v2(wdb->db, new_item->value.query, -1, &new_item->value.stmt, NULL) != SQLITE_OK) {
                 merror("DB(%s) sqlite3_prepare_v2() : %s", wdb->id, sqlite3_errmsg(wdb->db));
+                os_free(new_item->value.query);
+                if (is_first_element) {
+                    os_free(wdb->cache_list);
+                    wdb->cache_list = NULL;
+                } else {
+                    os_free(node_stmt->next);
+                    node_stmt->next = NULL;
+                }
+            } else {
+                ret_val = new_item->value.stmt;
             }
-            ret_val = new_item->value.stmt;          
         }
     }
     return ret_val;
@@ -1303,14 +1311,13 @@ bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data) {
         strcat(query, "INSERT INTO ");
         strcat(query, kv_value->value);
         strcat(query, " VALUES (");
-        struct column_list const *column = kv_value->column_list;
+        struct column_list const *column = NULL;
                 
-        while (NULL != column) {
+        for (column = kv_value->column_list; column ; column=column->next) {
             strcat(query, "?");
             if (column->next) {
                 strcat(query, ",");
             }
-            column = column->next;
         }
 
         strcat(query, ");");
@@ -1318,34 +1325,32 @@ bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data) {
         sqlite3_stmt *stmt = wdb_get_cache_stmt(wdb, query);
         
         if (NULL != stmt) {
-            char *field_value = strtok(data,"|");     
-            struct column_list const *column = kv_value->column_list;
-            while (NULL != column) {
+            char *field_value = strtok(data,"|");
+            for (column = kv_value->column_list; column ; column=column->next) {
                 if (column->value.is_old_implementation) {
-                    if (FIELD_INTEGER == column->value.type || FIELD_REAL == column->value.type) {
-                        if (SQLITE_OK != sqlite3_bind_int(stmt, column->value.index, 0)) {
-                            merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-                        }
-                    } else {
+                    if (FIELD_TEXT == column->value.type) {
                         if (SQLITE_OK != sqlite3_bind_text(stmt, column->value.index, "", -1, NULL)) {
                             merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
                         }
-                    }
-                } else {
-                    if (FIELD_INTEGER == column->value.type || FIELD_REAL == column->value.type) {
-                        if (SQLITE_OK != sqlite3_bind_int(stmt, column->value.index, strcmp(field_value, "NULL") == 0 ? 0 : atoi(field_value))) {
+                    } else {
+                        if (SQLITE_OK != sqlite3_bind_int(stmt, column->value.index, 0)) {
                             merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
                         }
-                    } else {
+                    }
+                } else {
+                    if (FIELD_TEXT == column->value.type) {
                         if (SQLITE_OK != sqlite3_bind_text(stmt, column->value.index, strcmp(field_value, "NULL") == 0 ? "" : field_value, -1, NULL)) {
                             merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+                        }
+                    } else {
+                        if (SQLITE_OK != sqlite3_bind_int(stmt, column->value.index, strcmp(field_value, "NULL") == 0 ? 0 : atoi(field_value))) {
+                            merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
                         }
                     }
                     if (column->next && NULL != field_value) {
                         field_value = strtok(NULL,"|");
                     }
                 }
-                column = column->next;
             }
             ret_val = SQLITE_DONE == wdb_step(stmt);
         } else {
@@ -1364,17 +1369,8 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
         strcat(query, kv_value->value);
         strcat(query, " SET ");
 
-        int total_fields = 1;
-        char *pos = data;
-        while (*pos) {
-            if('|' == *pos){
-                ++total_fields;
-            }
-            ++pos;
-        }
-
         char **field_values = NULL;
-        size_t size = sizeof(char*) * total_fields;
+        const size_t size = sizeof(char*) * (os_strcnt(data, '|') + 1);
         field_values = (char **)malloc(size);
         char *tok = strtok(data, "|");
         char **curr = field_values;
@@ -1388,8 +1384,8 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
 
         bool first_condition_element = true;
         curr = field_values;
-        struct column_list const *column = kv_value->column_list;
-        while (NULL != column) {
+        struct column_list const *column = NULL;
+        for (column = kv_value->column_list; column ; column=column->next) {
             if (!column->value.is_old_implementation && NULL != *curr) {
                 if (!column->value.is_pk && strcmp(*curr, "NULL") != 0) {
                     if (first_condition_element) {
@@ -1404,13 +1400,11 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
                 }
                 ++curr;
             }
-            column = column->next;
         }
         strcat(query, " WHERE ");
          
         first_condition_element = true;
-        column = kv_value->column_list;
-        while (NULL != column) {
+        for (column = kv_value->column_list; column ; column=column->next) {
             if (column->value.is_pk) {
                 if (first_condition_element) {
                     strcat(query, column->value.name);
@@ -1422,7 +1416,6 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
                     strcat(query, "=?");
                 }
             }
-            column = column->next;
         }
         strcat(query, ";");
 
@@ -1431,46 +1424,43 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
         if (NULL != stmt) {
             int index = 1;
 
-            column = kv_value->column_list;
             curr = field_values;
-            while (NULL != column) {
+            for (column = kv_value->column_list; column ; column=column->next) {
                 if (!column->value.is_old_implementation && NULL != *curr) {
                     if (!column->value.is_pk && strcmp(*curr, "NULL") != 0) {
-                        if (FIELD_INTEGER == column->value.type || FIELD_REAL == column->value.type) {
-                            if (SQLITE_OK != sqlite3_bind_int(stmt, index, atoi(*curr))) {
-                                merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-                            }
-                        } else {
+                        if (FIELD_TEXT == column->value.type) {
                             if (SQLITE_OK != sqlite3_bind_text(stmt, index, *curr, -1, NULL)) {
                                 merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+                            }
+                        } else {
+                            if (SQLITE_OK != sqlite3_bind_int(stmt, index, atoi(*curr))) {
+                                merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
                             }
                         }
                         ++index;
                     }
                     ++curr;
                 }
-                column = column->next;
             }
 
             column = kv_value->column_list;
             curr = field_values;
-            while (NULL != column) {
+            for (column = kv_value->column_list; column ; column=column->next) {
                 if (!column->value.is_old_implementation && NULL != *curr) {
                     if (column->value.is_pk && strcmp(*curr, "NULL") != 0) {
-                        if (FIELD_INTEGER == column->value.type || FIELD_REAL == column->value.type) {
-                            if (SQLITE_OK != sqlite3_bind_int(stmt, index, atoi(*curr))) {
-                                merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-                            }
-                        } else {
+                        if (FIELD_TEXT == column->value.type) {
                             if (SQLITE_OK != sqlite3_bind_text(stmt, index, *curr, -1, NULL)) {
                                 merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+                            }
+                        } else {
+                            if (SQLITE_OK != sqlite3_bind_int(stmt, index, atoi(*curr))) {
+                                merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
                             }
                         }
                         ++index;
                     }
                     ++curr;
                 }
-                column = column->next;
             }
             ret_val = SQLITE_DONE == wdb_step(stmt);
         } else {
@@ -1491,8 +1481,8 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
         strcat(query, " WHERE ");
 
         bool first_condition_element = true;
-        struct column_list const *column = kv_value->column_list;
-        while (NULL != column) {
+        struct column_list const *column = NULL;
+        for (column = kv_value->column_list; column ; column=column->next) {
             if (!column->value.is_old_implementation) {
                 if (column->value.is_pk) {
                     if (first_condition_element) {
@@ -1514,18 +1504,18 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
 
         if (NULL != stmt) {
             char *field_value = strtok(data,"|");     
-            struct column_list const *column = kv_value->column_list;
+            struct column_list const *column = NULL;
             int index = 1;
-            while (column) {
+            for (column = kv_value->column_list; column ; column=column->next) {
                 if (!column->value.is_old_implementation) {
                     if (column->value.is_pk) {
-                        if (FIELD_INTEGER == column->value.type || FIELD_REAL == column->value.type) {
-                            if (SQLITE_OK != sqlite3_bind_int(stmt, index, strcmp(field_value, "NULL") == 0 ? 0 : atoi(field_value))) {
-                                merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-                            }
-                        } else {
+                        if (FIELD_TEXT == column->value.type) {
                             if (SQLITE_OK != sqlite3_bind_text(stmt, index, strcmp(field_value, "NULL") == 0 ? "" : field_value, -1, NULL)) {
                                 merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+                            }
+                        } else {
+                            if (SQLITE_OK != sqlite3_bind_int(stmt, index, strcmp(field_value, "NULL") == 0 ? 0 : atoi(field_value))) {
+                                merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
                             }
                         }
                         ++index;
@@ -1534,7 +1524,6 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
                         field_value = strtok(NULL,"|");
                     }
                 }
-                column = column->next;
             }
             ret_val = SQLITE_DONE == wdb_step(stmt);
         } else {

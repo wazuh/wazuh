@@ -19,6 +19,7 @@
 #include "wazuh_modules/wmodules.h"
 #include "os_net/os_net.h"
 #include "string_op.h"
+#include "buffer_op.h"
 #include <time.h>
 #include "wazuhdb_op.h"
 
@@ -231,8 +232,6 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
         mdebug2("Input JSON: '%s", lf->log);
         return (0);
     }
-    char *array_buffer = cJSON_Print(logJSON);
-    os_free(array_buffer);
 
     // Detect message type
     json_type = cJSON_GetObjectItem(logJSON, "type");
@@ -1935,41 +1934,40 @@ const char** get_field_list(const char *type) {
             ret_val = OS_FIELDS;
         } else {
             merror("Incorrect/unknown type value %s.", type);
-            ret_val = false;
         }
     } else {
         merror("null type value.");
-        ret_val = false;
     }
     return ret_val;
 }
 
-bool fill_data_dbsync(cJSON *data, const char *field_list[], char *msg) {
+bool fill_data_dbsync(cJSON *data, const char *field_list[], buffer_t * const msg) {
     bool ret_val = false;
-
+    static const int NULL_TEXT_LENGTH = 4;
+    static const int PIPE_SEPARATOR_LENGTH = 1;
     while (NULL != *field_list) {
         const cJSON *key = cJSON_GetObjectItem(data, *field_list);
         if (NULL != key) {
             if (cJSON_IsNumber(key)) {
                 char value[OS_SIZE_128] = { 0 };
-                snprintf(value, OS_SIZE_128 - 1, "%d", key->valueint);
-                strcat(msg, value);
+                int value_size = os_snprintf(value, OS_SIZE_128 - 1, "%d", key->valueint);
+                buffer_push(msg, value, value_size);
             } else if (cJSON_IsString(key)) {
                 if(strlen(key->valuestring) == 0) {
-                    strcat(msg, "NULL");
+                    buffer_push(msg, "NULL", NULL_TEXT_LENGTH);
                 } else {
-                    strcat(msg, key->valuestring);
+                    buffer_push(msg, key->valuestring, strlen(key->valuestring));
                 }
             } else {
-                strcat(msg, "NULL");
+                buffer_push(msg, "NULL", NULL_TEXT_LENGTH);
             }
         } else {
-            strcat(msg, "NULL");
+            buffer_push(msg, "NULL", NULL_TEXT_LENGTH);
         }
         // Message separated by pipes, includes the values to be processed in the wazuhdb
         // this must maintain order and must always be completed, and the values that
         // do not correspond will not be proccessed in wazuh-db
-        strcat(msg, "|");
+        buffer_push(msg, "|", PIPE_SEPARATOR_LENGTH);
         ++field_list;
         ret_val = true;
     }
@@ -1990,26 +1988,29 @@ int decode_dbsync(char const *agent_id, char *msg_type, cJSON *logJSON, int *soc
                 const char **field_list = get_field_list(type);
                 
                 if (NULL != field_list) {
-                    char *msg = NULL;
                     char *response = NULL;
-                    os_calloc(OS_SIZE_6144, sizeof(char), msg);
-                    os_calloc(OS_SIZE_6144, sizeof(char), response);
-                    snprintf(msg, OS_SIZE_6144 - 1, "agent %s dbsync %s %s ", agent_id, type, cJSON_GetStringValue(operation_object));
-                    if (fill_data_dbsync(data, field_list, msg))
-                    {
-                        ret_val = 0;
-                        if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) != 0) {
+                    char header[OS_SIZE_256] = { 0 };
+                    os_calloc(OS_SIZE_128, sizeof(char), response);
+                    int header_size = snprintf(header, OS_SIZE_6144 - 1, "agent %s dbsync %s %s ", agent_id, type, cJSON_GetStringValue(operation_object));
+                    
+                    buffer_t *msg = buffer_initialize(OS_SIZE_6144);
+                    buffer_push(msg, header, header_size);
+                    if (fill_data_dbsync(data, field_list, msg) && TRUE == msg->status) {
+                        ret_val = wdbc_query_ex(socket, msg->data, response, OS_SIZE_6144);
+                        if (ret_val != 0) {
                             merror("Wazuh-db query error, check wdb logs.");
                         }
+                    } else {
+                        merror("Error in fill data population");
                     }
-                    os_free(msg);
+                    buffer_free(msg);
                     os_free(response);
                 }
             } else {
-                merror("Incorrect/unknown operation.");
+                merror("Incorrect/unknown operation, type: %s.", type);
             }
         } else {
-            merror("Incorrect prefix message.");
+            merror("Incorrect prefix message, message type: %s.", msg_type);
         }
     }
     return ret_val;
