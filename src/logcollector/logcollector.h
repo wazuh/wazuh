@@ -34,7 +34,6 @@
 #define OS_LOGCOLLECTOR_JSON_HASH       "hash"
 #define OS_LOGCOLLECTOR_JSON_OFFSET     "offset"
 
-
 #include "shared.h"
 #include "config/localfile-config.h"
 #include "config/config.h"
@@ -223,9 +222,18 @@ int can_read();
  * @brief Update the read position in file status hash table
  * @param path the path is the hash key
  * @param pos new read position
+ * @param context SHA1 context.
  * @return 0 on succes, otherwise -1
  */
-int w_update_file_status(const char * path, long pos);
+int w_update_file_status(const char * path, long pos, SHA_CTX *context);
+
+/**
+ * @brief Get SHA1 context or inicilize it
+ * @param path the path is the hash key
+ * @param context SHA1 context.
+ * @param poisition end file position.
+ */
+void w_get_hash_context (const char * path, SHA_CTX *context, ssize_t position);
 
 extern int sample_log_length;
 extern int lc_debug_level;

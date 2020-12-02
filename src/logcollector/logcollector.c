@@ -12,6 +12,7 @@
 #include "logcollector.h"
 #include <math.h>
 #include <pthread.h>
+#include "os_crypto/sha1/sha1_op.h"
 
 // Remove STATIC qualifier from tests
 #ifdef WAZUH_UNIT_TESTING
@@ -27,7 +28,7 @@
 typedef struct file_status {
     long offset;        ///> Position to read
     SHA_CTX context;    ///> It stores the hashed data calculated so far
-    char * hash;        ///> Content file SHA1 hash
+    os_sha1 hash;       ///> Content file SHA1 hash
 } os_file_status_t;
 
 /* Prototypes */
@@ -77,12 +78,6 @@ STATIC int w_set_to_last_line_read(logreader *lf);
  * @return 0 on success, otherwise -1
  */
 STATIC int w_set_to_end(logreader *lf);
-
-/**
- * @brief Free memory of os_file_status_t entity
- * @param file_status entity to remove
- */
-STATIC void w_free_os_file_status_t(os_file_status_t *data);
 
 
 /* Global variables */
@@ -2493,11 +2488,17 @@ int can_read() {
     return ret;
 }
 
-int w_update_file_status(const char * path, long pos) {
+int w_update_file_status(const char * path, long pos, SHA_CTX *context) {
 
     os_file_status_t *data;
     os_malloc(sizeof(os_file_status_t), data);
-    os_strdup("skdajfleignjs", data->hash);
+
+    data->context = *context;
+
+    os_sha1 output;
+    OS_SHA1_Stream(context, output, NULL);
+    strncpy(data->hash, output, sizeof(os_sha1));
+
     data->offset = pos;
 
     if (OSHash_Update_ex(files_status, path, data) != 1) {
@@ -2515,12 +2516,11 @@ STATIC void w_initialize_file_status() {
     if (files_status = OSHash_Create(), !files_status) {
         merror_exit(HCREATE_ERROR, files_status_name);
     }
-
     if (!OSHash_setSize(files_status, 256)) {
         merror_exit(HSETSIZE_ERROR, files_status_name);
     }
 
-    OSHash_SetFreeDataPointer(files_status,  (void (*)(void *))w_free_os_file_status_t);
+    OSHash_SetFreeDataPointer(files_status, (void (*)(void *))free);
 
     /* Read json file to load last read positions */
     FILE * fd = NULL;
@@ -2608,15 +2608,20 @@ STATIC void w_load_files_status(cJSON *global_json) {
         }
 
         char *end;
-        long value = strtol(offset_str, &end, 10);
-        if (value < 0 || value > 65534 || *end != '\0') {
+        long value_offset = strtol(offset_str, &end, 10);
+        if (value_offset < 0 || value_offset > 65534 || *end != '\0') {
             continue;
         }
         os_file_status_t * data;
 
         os_malloc(sizeof(os_file_status_t), data);
-        os_strdup(hash_str, data->hash);
-        data->offset = value;
+        strncpy(data->hash, hash_str, sizeof(os_sha1));
+        data->offset = value_offset;
+
+        SHA_CTX context;
+        os_sha1 output;
+        OS_SHA1_File_Nbytes(path_str, &context, output, OS_BINARY, value_offset);
+        data->context = context;
 
         if (OSHash_Update_ex(files_status, path_str, data) != 1){
             if (OSHash_Add_ex(files_status, path_str, data) != 2) {
@@ -2657,11 +2662,6 @@ STATIC char * w_save_files_status_to_cJSON() {
     cJSON_Delete(global_json);
 
     return global_json_str;
-}
-
-STATIC void w_free_os_file_status_t(os_file_status_t *data) {
-    os_free(data->hash);
-    os_free(data);
 }
 
 STATIC int w_set_to_last_line_read(logreader *lf) {
@@ -2714,5 +2714,18 @@ STATIC int w_set_to_end(logreader *lf) {
     }
     else {
         return 0;
+    }
+}
+
+void w_get_hash_context (const char * path, SHA_CTX *context, ssize_t position) {
+    os_file_status_t *data;
+    os_malloc(sizeof(os_file_status_t), data);
+
+    if (data = (os_file_status_t *)OSHash_Get_ex(files_status, path), data == NULL) {
+        os_sha1 output;
+        OS_SHA1_File_Nbytes(path, context, output, OS_BINARY, position);
+    }
+    else {
+        *context = data->context;
     }
 }

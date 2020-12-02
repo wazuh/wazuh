@@ -21,3 +21,19 @@ int __wrap_OS_SHA1_File(const char *fname, os_sha1 output, int mode) {
 
     return mock();
 }
+
+ int __wrap_OS_SHA1_File_Nbytes(const char *fname, SHA_CTX *c, os_sha1 output, int mode, ssize_t nbytes) {
+        check_expected(fname);
+    check_expected(mode);
+
+    snprintf(output, 41, "%s", mock_type(char *));
+
+    return mock();
+ }
+
+void __wrap_OS_SHA1_Stream(SHA_CTX *c, os_sha1 output, char * buf) {
+    check_expected(buf);
+
+    snprintf(output, 41, "%s", mock_type(char *));
+
+}

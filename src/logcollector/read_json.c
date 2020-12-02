@@ -11,6 +11,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
+#include "os_crypto/sha1/sha1_op.h"
 
 
 /* Read json files */
@@ -32,9 +33,18 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
     /* Get initial file location */
     fgetpos(lf->fp, &fp_pos);
 
+    SHA_CTX context;
+#ifdef WIN32
+    w_get_hash_context(lf->file, &context, lf->size);
+#else
+    w_get_hash_context(lf->file, &context, lf->size);
+#endif
+
     for (offset = w_ftell(lf->fp); can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
+
+        OS_SHA1_Stream(&context, NULL, str);
 
         /* Flow control */
         if (rbytes <= 0) {
@@ -137,9 +147,9 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
 
     /* For Windows fpos_t is a __int64 type. In contrast, for Linux is a __fpos_t type */
 #ifdef WIN32
-    w_update_file_status(lf->file, fp_pos);
+    w_update_file_status(lf->file, fp_pos, &context);
 #else
-    w_update_file_status(lf->file, fp_pos.__pos);
+    w_update_file_status(lf->file, fp_pos.__pos, &context);
 #endif
 
     mdebug2("Read %d lines from %s", lines, lf->file);

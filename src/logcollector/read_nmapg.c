@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
+#include "os_crypto/sha1/sha1_op.h"
 
 #define NMAPG_HOST  "Host: "
 #define NMAPG_PORT  "Ports:"
@@ -146,9 +147,19 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
     port[16] = '\0';
     proto[16] = '\0';
 
+    SHA_CTX context;
+#ifdef WIN32
+    w_get_hash_context(lf->file, &context, lf->size);
+#else
+    w_get_hash_context(lf->file, &context, lf->size);
+#endif
+
     while (can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
+
+        OS_SHA1_Stream(&context, NULL, str);
+
         /* If need clear is set, we need to clear the line */
         if (need_clear) {
             if (q = strchr(str, '\n'), q != NULL) {
@@ -259,9 +270,9 @@ file_error:
 
     /* For Windows fpos_t is a __int64 type. In contrast, for Linux is a __fpos_t type */
 #ifdef WIN32
-    w_update_file_status(lf->file, pos);
+    w_update_file_status(lf->file, pos, &context);
 #else
-    w_update_file_status(lf->file, pos.__pos);
+    w_update_file_status(lf->file, pos.__pos, &context);
 #endif
 
     mdebug2("Read %d lines from %s", lines, lf->file);

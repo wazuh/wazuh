@@ -9,6 +9,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
+#include "os_crypto/sha1/sha1_op.h"
 
 #define MAX_CACHE 16
 #define MAX_HEADER 64
@@ -55,8 +56,17 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
 
     *rc = 0;
 
+    SHA_CTX context;
+#ifdef WIN32
+    w_get_hash_context(lf->file, &context, lf->size);
+#else
+    w_get_hash_context(lf->file, &context, lf->size);
+#endif
+
     for (offset = w_ftell(lf->fp); can_read() && fgets(buffer, OS_MAXSTR, lf->fp) && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
+
+        OS_SHA1_Stream(&context, NULL, buffer);
 
         /* Flow control */
         if (rbytes <= 0) {
@@ -130,7 +140,7 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
     if (icache > 0)
         audit_send_msg(cache, icache, lf->file, drop_it, lf->log_target);
 
-    w_update_file_status(lf->file, offset);
+    w_update_file_status(lf->file, offset, &context);
 
     mdebug2("Read %d lines from %s", lines, lf->file);
     return NULL;

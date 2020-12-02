@@ -11,6 +11,7 @@
 #include "shared.h"
 #include "headers/read-alert.h"
 #include "logcollector.h"
+#include "os_crypto/sha1/sha1_op.h"
 
 
 void *read_ossecalert(logreader *lf, __attribute__((unused)) int *rc, int drop_it) {
@@ -29,11 +30,16 @@ void *read_ossecalert(logreader *lf, __attribute__((unused)) int *rc, int drop_i
     fpos_t pos;
     fgetpos(lf->fp, &pos);
 
+    SHA_CTX context;
+    os_sha1 output;
+
     /* For Windows fpos_t is a __int64 type. In contrast, for Linux is a __fpos_t type */
 #ifdef WIN32
-    w_update_file_status(lf->file, pos);
+    OS_SHA1_File_Nbytes(lf->file, &context, output, OS_BINARY, pos);
+    w_update_file_status(lf->file, pos, &context);
 #else
-    w_update_file_status(lf->file, pos.__pos);
+    OS_SHA1_File_Nbytes(lf->file, &context, output, OS_BINARY, pos.__pos);
+    w_update_file_status(lf->file, pos.__pos, &context);
 #endif
 
     memset(syslog_msg, '\0', OS_SIZE_2048 + 1);

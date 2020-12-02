@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
+#include "os_crypto/sha1/sha1_op.h"
 
 
 /* Read snort_full files */
@@ -27,9 +28,19 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     str[OS_MAXSTR] = '\0';
     f_msg[OS_MAXSTR] = '\0';
 
+    SHA_CTX context;
+#ifdef WIN32
+    w_get_hash_context(lf->file, &context, lf->size);
+#else
+    w_get_hash_context(lf->file, &context, lf->size);
+#endif
+
     while (can_read() && fgets(str, OS_MAXSTR, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
+
+        OS_SHA1_Stream(&context, NULL, str);
+
         /* Remove \n at the end of the string */
         if ((q = strrchr(str, '\n')) != NULL) {
             *q = '\0';
@@ -116,9 +127,9 @@ file_error:
 
     /* For Windows fpos_t is a __int64 type. In contrast, for Linux is a __fpos_t type */
 #ifdef WIN32
-    w_update_file_status(lf->file, pos);
+    w_update_file_status(lf->file, pos, &context);
 #else
-    w_update_file_status(lf->file, pos.__pos);
+    w_update_file_status(lf->file, pos.__pos, &context);
 #endif
 
     mdebug2("Read %d lines from %s", lines, lf->file);

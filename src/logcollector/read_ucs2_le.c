@@ -13,6 +13,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
+#include "os_crypto/sha1/sha1_op.h"
 
 
 /* Read ucs2 files */
@@ -31,9 +32,19 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
     /* Get initial file location */
     fgetpos(lf->fp, &fp_pos);
 
+    SHA_CTX context;
+#ifdef WIN32
+    w_get_hash_context(lf->file, &context, lf->size);
+#else
+    w_get_hash_context(lf->file, &context, lf->size);
+#endif
+
     for (offset = w_ftell(lf->fp); can_read() && fgetws(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
+
+        OS_SHA1_Stream(&context, NULL, str);
+
         mdebug2("Bytes read from '%s': %lld bytes",lf->file,rbytes);
 
         /* Flow control */
@@ -137,9 +148,9 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
         fgetpos(lf->fp, &fp_pos);
     }
 
-    w_update_file_status(lf->file, fp_pos);
+    w_update_file_status(lf->file, fp_pos, &context);
 
-    mdebug2("Read %d lines from %s", lines, lf->file);
+    mdebug2("Read %d lines from %s", lines, lf->file, &context);
     return (NULL);
 }
 #endif
