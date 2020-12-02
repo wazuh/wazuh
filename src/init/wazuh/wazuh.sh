@@ -128,4 +128,10 @@ WazuhUpgrade()
 
     rm -f $DIRECTORY/wodles/cve.db
     rm -f $DIRECTORY/queue/vulnerabilities/cve.db
+
+	# Remove deprecated tools in previous versions
+
+	rm -f $DIRECTORY/bin/rootcheck_control
+	rm -f $DIRECTORY/bin/syscheck_control
+	rm -f $DIRECTORY/bin/syscheck_update
 }
