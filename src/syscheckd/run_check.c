@@ -545,9 +545,8 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
 
             // Check if syscheck.dir[i] is a symbolic link
             memset(&sb, 0, sizeof(struct stat));
-            lstat(syscheck.dir[i], &sb);
 
-            if ((sb.st_mode & S_IFMT) != S_IFLNK) {
+            if (lstat(syscheck.dir[i], &sb) != -1  && (sb.st_mode & S_IFMT) != S_IFLNK) {
                 continue;
             }
 
