@@ -53,33 +53,46 @@ typedef struct _logtarget {
 } logtarget;
 
 /* Logreader config */
-typedef enum{
-    ML_REPLACE_NO_REPLACE = 0,
-    ML_REPLACE_NONE,
-    ML_REPLACE_WSPACE,
-    ML_REPLACE_TAB,
-    ML_REPLACE_MAX
+/**
+ * @brief Specifies end-of-line replacement type in multiline log (multi-line-regex log format)
+ */
+typedef enum {
+    ML_REPLACE_NO_REPLACE = 0, ///< Not replace
+    ML_REPLACE_NONE,           ///< Remove end of line character
+    ML_REPLACE_WSPACE,         ///< Replace with a white space character (' ')
+    ML_REPLACE_TAB,            ///< Replace with a tab character ('\t')
+    ML_REPLACE_MAX             ///< Flow control
 } w_multiline_replace_type_t;
 
-typedef enum{
-    ML_MATCH_START = 0,
-    ML_MATCH_ALL,
-    ML_MATCH_END,
-    ML_MATCH_MAX,
+/**
+ * @brief Specifies the type of multiline matching
+ */
+typedef enum {
+    ML_MATCH_START = 0, ///< Matches a log by its header
+    ML_MATCH_ALL,       ///< Matches a log of all your content
+    ML_MATCH_END,       ///< Matches a log by its tail
+    ML_MATCH_MAX,       ///< Flow control
 } w_multiline_match_type_t;
 
-
+/**
+ * @brief Context of a multiline log that was not completely written.
+ * 
+ * An instance of w_multiline_timeout_ctxt_t allow save the context of a log that have not yet matched with the regex.
+ */
 typedef struct {
     int lines_count;
     char * buffer;
     time_t timestamp;
 } w_multiline_ctxt_t;
 
+/**
+ * @brief An instance of w_multiline_config_t represents a multiline log file and its read configuration
+ */
 typedef struct {
-    w_expression_t * regex;
-    w_multiline_match_type_t match_type;
-    w_multiline_replace_type_t replace_type;
-    /* Max waiting time to receive a new line. If the time expires, the collected lines are sent.*/
+    w_expression_t * regex;                  ///< regex to identify log entries
+    w_multiline_match_type_t match_type;     ///< type of multiline matching
+    w_multiline_replace_type_t replace_type; ///< replacement type
+    /** Max waiting time to receive a new line, once the time has expired, the collected lines are sent */
     unsigned int timeout;
     w_multiline_ctxt_t * ctxt;
 } w_multiline_config_t;
@@ -184,18 +197,16 @@ w_multiline_replace_type_t w_get_attr_replace(xml_node * node);
 unsigned int w_get_attr_timeout(xml_node * node);
 
 /**
- * @brief 
- * 
- * @param replace_type 
- * @return const char* 
+ * @brief Get replace type in string format
+ * @param replace_type replace type of multiline matching
+ * @return const char* replace type
  */
 const char * multiline_attr_replace_str(w_multiline_replace_type_t replace_type);
 
 /**
- * @brief 
- * 
- * @param match_type 
- * @return const char* 
+ * @brief Get match type in string format
+ * @param match_type  type of multiline matching
+ * @return const char* match type
  */
 const char * multiline_attr_match_str(w_multiline_match_type_t match_type);
 
