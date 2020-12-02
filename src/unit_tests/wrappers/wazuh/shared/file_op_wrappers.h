@@ -52,10 +52,14 @@ int __wrap_rename_ex(const char *source, const char *destination);
 
 float __wrap_DirSize(const char *path);
 
-#endif
-
 int __wrap_w_ref_parent_folder(const char * path);
 
 int __wrap_cldir_ex(const char *name);
 
 int __wrap_UnmergeFiles(const char *finalpath, const char *optdir, int mode);
+
+#ifdef WIN32
+long long __wrap_get_UTC_modification_time(const char *file_path);
+#endif
+
+#endif
