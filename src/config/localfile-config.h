@@ -15,6 +15,7 @@
 #define EVENTCHANNEL "eventchannel"
 #define DATE_MODIFIED   1
 #define DEFAULT_EVENTCHANNEL_REC_TIME 5
+#define DIFF_MAX_SIZE 10240
 
 #include <pthread.h>
 
@@ -71,6 +72,7 @@ typedef struct _logreader {
     char *alias;
     int reconnect_time;
     char future;
+    long diff_max_size;
     char *query;
     int filter_binary;
     int ucs2;
