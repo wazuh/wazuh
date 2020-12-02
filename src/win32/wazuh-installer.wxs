@@ -307,14 +307,14 @@
                     <Component Id="MANAGE_AGENTS.EXE" DiskId="1" Guid="C15C5883-00FB-41D7-B7E6-53C8BC30761F">
                         <File Id="MANAGE_AGENTS.EXE" Name="manage_agents.exe" Source="manage_agents.exe" />
                     </Component>
-                    <Component Id="OSSEC_AGENT_EVENTCHANNEL.EXE" DiskId="1" Guid="044E7997-12B6-4178-BD00-B90500DBA53F">
-                        <File Id="OSSEC_AGENT_EVENTCHANNEL.EXE" Name="ossec-agent.exe" Source="ossec-agent-eventchannel.exe" />
+                    <Component Id="WAZUH_AGENT_EVENTCHANNEL.EXE" DiskId="1" Guid="044E7997-12B6-4178-BD00-B90500DBA53F">
+                        <File Id="WAZUH_AGENT_EVENTCHANNEL.EXE" Name="wazuh-agent.exe" Source="wazuh-agent-eventchannel.exe" />
                         <ServiceInstall Name="OssecSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install_eventchannel" />
                         <ServiceControl Id="svc_uninstall_eventchannel" Name="OssecSvc" Remove="uninstall" Stop="uninstall" Wait="yes" />
                         <Condition>VersionNT &gt;= 600</Condition>
                     </Component>
-                    <Component Id="OSSEC_AGENT.EXE" DiskId="1" Guid="5CCEA6DC-8434-4137-9486-55AE3949266B">
-                        <File Id="OSSEC_AGENT.EXE" Name="ossec-agent.exe" Source="ossec-agent.exe" />
+                    <Component Id="WAZUH_AGENT.EXE" DiskId="1" Guid="5CCEA6DC-8434-4137-9486-55AE3949266B">
+                        <File Id="WAZUH_AGENT.EXE" Name="wazuh-agent.exe" Source="wazuh-agent.exe" />
                         <ServiceInstall Name="OssecSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install" />
                         <ServiceControl Id="svc_uninstall" Name="OssecSvc" Remove="uninstall" Stop="uninstall" Wait="yes" />
                         <Condition>VersionNT &lt; 600</Condition>
@@ -345,6 +345,7 @@
                         <RemoveFile Id="NSIS_LIBWINPTHREAD_1_DLL" Name="libwinpthread-1.dll" On="install" />
                         <RemoveFile Id="NSIS_MANAGE_AGENTS_EXE" Name="manage_agents.exe" On="install" />
                         <RemoveFile Id="NSIS_OSSEC_AGENT_EXE" Name="ossec-agent.exe" On="install" />
+                        <RemoveFile Id="NSIS_OSSEC_AGENT_EXE" Name="wazuh-agent.exe" On="install" />
                         <RemoveFile Id="NSIS_VERSION_TXT" Name="VERSION.txt" On="install" />
                         <RemoveFile Id="NSIS_HELP_TXT" Name="help.txt" On="install" />
                     </Component>
@@ -560,8 +561,8 @@
             <ComponentRef Id="LICENSE.TXT" />
             <ComponentRef Id="LIBWINPTHREAD_1.DLL" />
             <ComponentRef Id="MANAGE_AGENTS.EXE" />
-            <ComponentRef Id="OSSEC_AGENT_EVENTCHANNEL.EXE" />
-            <ComponentRef Id="OSSEC_AGENT.EXE" />
+            <ComponentRef Id="WAZUH_AGENT_EVENTCHANNEL.EXE" />
+            <ComponentRef Id="WAZUH_AGENT.EXE" />
             <ComponentRef Id="VISTA_SEC.TXT" />
             <ComponentRef Id="RESTART_OSSEC.CMD" />
             <ComponentRef Id="ROUTE_NULL.CMD" />

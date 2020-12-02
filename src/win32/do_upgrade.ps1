@@ -39,7 +39,7 @@ function check-installation
 
 # Get current version
 $current_version = (Get-Content VERSION)
-$current_file_date = (Get-Item ".\ossec-agent.exe").LastWriteTime
+$current_file_date = (Get-Item ".\wazuh-agent.exe").LastWriteTime
 write-output "$(Get-Date -format u) - Current version: $($current_version)" > .\upgrade\upgrade.log
 
 # Generating backup
@@ -49,7 +49,7 @@ backup
 # Ensure implicated processes are stopped before launch the upgrade
 Get-Process msiexec | Stop-Process -ErrorAction SilentlyContinue -Force
 Get-Service -Name "Wazuh" | Stop-Service -ErrorAction SilentlyContinue -Force
-$process_id = (Get-Process ossec-agent -ErrorAction SilentlyContinue).id
+$process_id = (Get-Process wazuh-agent -ErrorAction SilentlyContinue).id
 $counter = 5
 while($process_id -ne $null -And $counter -gt 0)
 {
@@ -58,7 +58,7 @@ while($process_id -ne $null -And $counter -gt 0)
     Get-Service -Name "Wazuh" | Stop-Service
     taskkill /pid $process_id /f /T
     Start-Sleep 2
-    $process_id = (Get-Process ossec-agent -ErrorAction SilentlyContinue).id
+    $process_id = (Get-Process wazuh-agent -ErrorAction SilentlyContinue).id
 }
 
 # Install
@@ -67,14 +67,14 @@ check-installation
 write-output "$(Get-Date -format u) - Installation finished." >> .\upgrade\upgrade.log
 
 # Check process status
-$process_id = (Get-Process ossec-agent).id
+$process_id = (Get-Process wazuh-agent).id
 $counter = 5
 while($process_id -eq $null -And $counter -gt 0)
 {
     $counter--
     Start-Service -Name "Wazuh"
     Start-Sleep 2
-    $process_id = (Get-Process ossec-agent).id
+    $process_id = (Get-Process wazuh-agent).id
 }
 write-output "$(Get-Date -format u) - Process ID: $($process_id)" >> .\upgrade\upgrade.log
 # Wait for agent state to be cleaned
@@ -96,7 +96,7 @@ If ($status -eq $null)
     Get-Service -Name "Wazuh" | Stop-Service
     restore
     write-output "$(Get-Date -format u) - Upgrade failed: Restoring." >> .\upgrade\upgrade.log
-    .\ossec-agent.exe install-service >> .\upgrade\upgrade.log
+    .\wazuh-agent.exe install-service >> .\upgrade\upgrade.log
     Start-Service -Name "Wazuh" -ErrorAction SilentlyContinue
 }
 Else
