@@ -53,7 +53,7 @@ def start(foreground, root, config_file):
 
     # Set up logger
     set_logging(log_path=log_path, debug_mode=api_conf['logs']['level'], foreground_mode=foreground)
-    logger = logging.getLogger('wazuh')
+    logger = logging.getLogger('wazuh-api')
 
     # Set correct permissions on api.log file
     if os.path.exists(os.path.join(common.ossec_path, log_path)):
@@ -158,9 +158,9 @@ def start(foreground, root, config_file):
 
 
 def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):
-    for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh'):
+    for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh-api'):
         api_logger = alogging.APILogger(log_path=log_path, foreground_mode=foreground_mode,
-                                        debug_level='info' if logger_name != 'wazuh'
+                                        debug_level='info' if logger_name != 'wazuh-api'
                                         and debug_mode != 'debug2' else debug_mode,
                                         logger_name=logger_name)
         api_logger.setup_logger()

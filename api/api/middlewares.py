@@ -17,7 +17,7 @@ from api.configuration import api_conf
 from api.util import raise_if_exc
 from wazuh.core.exception import WazuhTooManyRequests, WazuhPermissionError
 
-logger = getLogger('wazuh')
+logger = getLogger('wazuh-api')
 pool = concurrent.futures.ThreadPoolExecutor()
 
 

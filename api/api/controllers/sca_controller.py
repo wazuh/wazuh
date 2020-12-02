@@ -13,7 +13,7 @@ import wazuh.sca as sca
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import database_limit
 
-logger = logging.getLogger('wazuh')
+logger = logging.getLogger('wazuh-api')
 
 
 async def get_sca_agent(request, agent_id=None, pretty=False, wait_for_complete=False, name=None, description=None,
