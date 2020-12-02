@@ -747,7 +747,6 @@ InstallCommon()
   ${INSTALL} -m 0750 -o root -g 0 ossec-syscheckd ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 ossec-execd ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 manage_agents ${PREFIX}/bin
-  ${INSTALL} -m 0750 -o root -g 0 ../contrib/util.sh ${PREFIX}/bin/
   ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
   ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${PREFIX}/bin/
 
