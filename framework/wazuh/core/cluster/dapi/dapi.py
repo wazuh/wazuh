@@ -236,7 +236,7 @@ class DistributedAPI:
             except asyncio.TimeoutError:
                 raise exception.WazuhInternalError(3021)
             except OperationalError:
-                raise exception.WazuhError(2008)
+                raise exception.WazuhInternalError(2008)
 
             self.logger.debug(f"Time calculating request result: {time.time() - before}s")
             return data
