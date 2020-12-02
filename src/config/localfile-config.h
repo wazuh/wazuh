@@ -72,8 +72,8 @@ typedef enum{
 typedef struct {
     int lines_count;
     char * buffer;
-    long timeout;
-} w_multiline_timeout_ctxt_t;
+    time_t timestamp;
+} w_multiline_ctxt_t;
 
 typedef struct {
     w_expression_t * regex;
@@ -81,7 +81,7 @@ typedef struct {
     w_multiline_replace_type_t replace_type;
     /* Max waiting time to receive a new line. If the time expires, the collected lines are sent.*/
     unsigned int timeout;
-    w_multiline_timeout_ctxt_t * timeout_ctxt;
+    w_multiline_ctxt_t * ctxt;
 } w_multiline_config_t;
 
 /* Logreader config */
@@ -105,7 +105,6 @@ typedef struct _logreader {
     char *file;
     char *logformat;
     w_multiline_config_t * multiline;
-    long timeout; // internal
     long linecount;
     char *djb_program_name;
     char *command;
