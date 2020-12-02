@@ -76,7 +76,7 @@ WriteSyscheck()
 ##########
 DisableAuthd()
 {
-    echo "  <!-- Configuration for ossec-authd -->" >> $NEWCONFIG
+    echo "  <!-- Configuration for wazuh-authd -->" >> $NEWCONFIG
     echo "  <auth>" >> $NEWCONFIG
     echo "    <disabled>yes</disabled>" >> $NEWCONFIG
     echo "    <port>1515</port>" >> $NEWCONFIG
@@ -227,12 +227,12 @@ GenerateAuthCert()
         if [ ! -f "${INSTALLDIR}/etc/sslmanager.key" ] && [ ! -f "${INSTALLDIR}/etc/sslmanager.cert" ]; then
             if [ ! "X${USER_GENERATE_AUTHD_CERT}" = "Xn" ]; then
                 if type openssl >/dev/null 2>&1; then
-                    echo "Generating self-signed certificate for ossec-authd..."
+                    echo "Generating self-signed certificate for wazuh-authd..."
                     openssl req -x509 -batch -nodes -days 365 -newkey rsa:2048 -subj "/C=US/ST=California/CN=Wazuh/" -keyout ${INSTALLDIR}/etc/sslmanager.key -out ${INSTALLDIR}/etc/sslmanager.cert 2>/dev/null
                     chmod 640 ${INSTALLDIR}/etc/sslmanager.key
                     chmod 640 ${INSTALLDIR}/etc/sslmanager.cert
                 else
-                    echo "ERROR: OpenSSL not found. Cannot generate certificate for ossec-authd."
+                    echo "ERROR: OpenSSL not found. Cannot generate certificate for wazuh-authd."
                 fi
             fi
         fi
@@ -743,9 +743,9 @@ InstallCommon()
         fi
     fi
 
-  ${INSTALL} -m 0750 -o root -g 0 ossec-logcollector ${PREFIX}/bin
-  ${INSTALL} -m 0750 -o root -g 0 ossec-syscheckd ${PREFIX}/bin
-  ${INSTALL} -m 0750 -o root -g 0 ossec-execd ${PREFIX}/bin
+  ${INSTALL} -m 0750 -o root -g 0 wazuh-logcollector ${PREFIX}/bin
+  ${INSTALL} -m 0750 -o root -g 0 wazuh-syscheckd ${PREFIX}/bin
+  ${INSTALL} -m 0750 -o root -g 0 wazuh-execd ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 manage_agents ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 ../contrib/util.sh ${PREFIX}/bin/
   ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
@@ -852,14 +852,14 @@ InstallLocal()
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/api
     ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/rootcheck
 
-    ${INSTALL} -m 0750 -o root -g 0 ossec-agentlessd ${PREFIX}/bin
-    ${INSTALL} -m 0750 -o root -g 0 ossec-analysisd ${PREFIX}/bin
-    ${INSTALL} -m 0750 -o root -g 0 ossec-monitord ${PREFIX}/bin
-    ${INSTALL} -m 0750 -o root -g 0 ossec-reportd ${PREFIX}/bin
-    ${INSTALL} -m 0750 -o root -g 0 ossec-maild ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-agentlessd ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-analysisd ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-monitord ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-reportd ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-maild ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 ossec-logtest ${PREFIX}/bin
-    ${INSTALL} -m 0750 -o root -g 0 ossec-csyslogd ${PREFIX}/bin
-    ${INSTALL} -m 0750 -o root -g 0 ossec-dbd ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-csyslogd ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-dbd ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 ossec-makelists ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} verify-agent-conf ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 clear_stats ${PREFIX}/bin/
@@ -868,7 +868,7 @@ InstallLocal()
     ${INSTALL} -m 0750 -o root -g 0 agent_control ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 syscheck_control ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 rootcheck_control ${PREFIX}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 ossec-integratord ${PREFIX}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-integratord ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 wazuh-db ${PREFIX}/bin/
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/stats
@@ -973,8 +973,8 @@ InstallServer()
 
     TransferShared
 
-    ${INSTALL} -m 0750 -o root -g 0 ossec-remoted ${PREFIX}/bin
-    ${INSTALL} -m 0750 -o root -g 0 ossec-authd ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-remoted ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-authd ${PREFIX}/bin
 
     ${INSTALL} -d -m 0770 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
     ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-groups
@@ -1031,7 +1031,7 @@ InstallAgent()
 
     InstallSecurityConfigurationAssessmentFiles "agent"
 
-    ${INSTALL} -m 0750 -o root -g 0 ossec-agentd ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-agentd ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 agent-auth ${PREFIX}/bin
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
