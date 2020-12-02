@@ -73,15 +73,6 @@ class WazuhDBQueryTasks(WazuhDBQuery):
 
         self._data = self.backend.execute(self.query, self.request)
 
-    def _format_data_into_dictionary(self):
-        result = list()
-        # We construct result from the query data
-        for entry in self._data:
-            result.append({k: v for k, v in entry.items()})
-        self._data = result
-
-        return super()._format_data_into_dictionary()
-
 
 def send_to_tasks_socket(command):
     """Send command task module

@@ -30,7 +30,7 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 
 def fake_final_query(self):
     """
-    :return: The final mitre query
+    :return: The final task query
     """
     return self._default_query() + f" WHERE task_id IN ({self.query}) LIMIT {self.limit} OFFSET :offset"
 
