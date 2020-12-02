@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import concurrent.futures
+from json import JSONDecodeError
 
 from logging import getLogger
 from time import time
@@ -61,6 +62,17 @@ async def prevent_bruteforce_attack(request, attempts=5):
 
         if ip_stats[request.remote]['attempts'] >= attempts:
             ip_block.add(request.remote)
+
+
+@web.middleware
+async def request_logging(request, handler):
+    try:
+        body = await request.json()
+    except JSONDecodeError:
+        body = {}
+    logger.debug(f'Receiving request "{request.method} {request.path}" with parameters {dict(request.query)} '
+                 f'and body {body}')
+    return await handler(request)
 
 
 @web.middleware
