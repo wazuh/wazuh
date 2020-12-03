@@ -1238,6 +1238,9 @@ sqlite3_stmt * wdb_get_cache_stmt(wdb_t * wdb, char const *query) {
             if (node_stmt->value.query) {
                 if (strcmp(node_stmt->value.query, query) == 0) 
                 {
+                    if (sqlite3_reset(node_stmt->value.stmt) != SQLITE_OK || sqlite3_clear_bindings(node_stmt->value.stmt) != SQLITE_OK) {
+                        mdebug1("DB(%s) sqlite3_reset() stmt(%s): %s", wdb->id, sqlite3_sql(node_stmt->value.stmt), sqlite3_errmsg(wdb->db));
+                    }
                     ret_val = node_stmt->value.stmt;
                     break;
                 }
@@ -1251,17 +1254,15 @@ sqlite3_stmt * wdb_get_cache_stmt(wdb_t * wdb, char const *query) {
                 new_item = wdb->cache_list;
             } else {
                 node_stmt = wdb->cache_list;
-                while (node_stmt){
+                while (node_stmt->next){
                     node_stmt = node_stmt->next;
                 }
                 is_first_element = false;
                 os_malloc(sizeof(struct stmt_cache_list), node_stmt->next);
+                //Add element in the end list
                 new_item = node_stmt->next;
             }
-
-            //Add element in the end list
             new_item->next = NULL;
-
             os_malloc(strlen(query) + 1, new_item->value.query);
             strcpy(new_item->value.query, query);
 
@@ -1319,7 +1320,6 @@ bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data) {
                 strcat(query, ",");
             }
         }
-
         strcat(query, ");");
 
         sqlite3_stmt *stmt = wdb_get_cache_stmt(wdb, query);
@@ -1368,7 +1368,6 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
         strcat(query, "UPDATE ");
         strcat(query, kv_value->value);
         strcat(query, " SET ");
-
         char **field_values = NULL;
         const size_t size = sizeof(char*) * (os_strcnt(data, '|') + 1);
         field_values = (char **)malloc(size);
@@ -1496,7 +1495,6 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
                     }
                 }
             }
-            column = column->next;
         }
         strcat(query, ";");
 
