@@ -4291,12 +4291,14 @@ components:
     statusAgentParam:
       in: query
       name: status
+      required: true
       description: "Filter by agent status (use commas to enter multiple statuses)"
       schema:
         type: array
         items:
           type: string
           enum:
+          - all
           - active
           - pending
           - never_connected
