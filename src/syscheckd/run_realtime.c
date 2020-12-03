@@ -401,7 +401,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 
     /* Get hash to parse the data */
     wdchar[260] = '\0';
-    snprintf(wdchar, 260, "%s", (char*)overlap->Pointer);
+    snprintf(wdchar, 260, "%s", (char*)overlap->hEvent);
     rtlocald = OSHash_Get(syscheck.realtime->dirtb, wdchar);
     if (rtlocald == NULL) {
         merror(FIM_ERROR_REALTIME_WINDOWS_CALLBACK_EMPTY);
@@ -463,7 +463,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 
 void free_win32rtfim_data(win32rtfim *data) {
     if (!data) return;
-    os_free(data->overlap.Pointer);
+    os_free(data->overlap.hEvent);
     os_free(data->dir);
     os_free(data);
 }
@@ -592,7 +592,7 @@ int realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int fo
 
         /* Add final elements to the hash */
         os_strdup(dir, rtlocald->dir);
-        os_strdup(dir, rtlocald->overlap.Pointer);
+        os_strdup(dir, rtlocald->overlap.hEvent);
         rtlocald->watch_status = FIM_RT_HANDLE_OPEN;
 
         /* Add directory to be monitored */
