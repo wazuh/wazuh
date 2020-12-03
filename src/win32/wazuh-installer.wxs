@@ -345,7 +345,7 @@
                         <RemoveFile Id="NSIS_LIBWINPTHREAD_1_DLL" Name="libwinpthread-1.dll" On="install" />
                         <RemoveFile Id="NSIS_MANAGE_AGENTS_EXE" Name="manage_agents.exe" On="install" />
                         <RemoveFile Id="NSIS_OSSEC_AGENT_EXE" Name="ossec-agent.exe" On="install" />
-                        <RemoveFile Id="NSIS_OSSEC_AGENT_EXE" Name="wazuh-agent.exe" On="install" />
+                        <RemoveFile Id="NSIS_WAZUH_AGENT_EXE" Name="wazuh-agent.exe" On="install" />
                         <RemoveFile Id="NSIS_VERSION_TXT" Name="VERSION.txt" On="install" />
                         <RemoveFile Id="NSIS_HELP_TXT" Name="help.txt" On="install" />
                     </Component>
