@@ -78,25 +78,28 @@ static nlohmann::json getProcessInfo(const SysInfoProcess& process)
     jsProcessInfo["ppid"]       = process->ppid;
     jsProcessInfo["utime"]      = process->utime;
     jsProcessInfo["stime"]      = process->stime;
+    std::string commandLine;
+    std::string commandLineArgs;
 
     if (process->cmdline && process->cmdline[0])
     {
-        nlohmann::json jsCmdlineArgs{};
-        jsProcessInfo["cmd"]    = process->cmdline[0];
+        commandLine = process->cmdline[0];
         for (int idx = 1; process->cmdline[idx]; ++idx)
         {
             const auto cmdlineArgSize { sizeof(process->cmdline[idx]) };
             if(strnlen(process->cmdline[idx], cmdlineArgSize) != 0)
             {
-                jsCmdlineArgs += process->cmdline[idx];
+                commandLineArgs += process->cmdline[idx];
+                if (process->cmdline[idx+1])
+                {
+                    commandLineArgs += " ";
+                }
             }
-        }
-        if (!jsCmdlineArgs.empty())
-        {
-            jsProcessInfo["argvs"]  = jsCmdlineArgs;
         }
     }
 
+    jsProcessInfo["cmd"]        = commandLine;
+    jsProcessInfo["argvs"]      = commandLineArgs;
     jsProcessInfo["euser"]      = process->euser;
     jsProcessInfo["ruser"]      = process->ruser;
     jsProcessInfo["suser"]      = process->suser;

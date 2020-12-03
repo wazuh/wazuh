@@ -1950,7 +1950,7 @@ bool fill_data_dbsync(cJSON *data, const char *field_list[], buffer_t * const ms
         if (NULL != key) {
             if (cJSON_IsNumber(key)) {
                 char value[OS_SIZE_128] = { 0 };
-                int value_size = os_snprintf(value, OS_SIZE_128 - 1, "%d", key->valueint);
+                const int value_size = os_snprintf(value, OS_SIZE_128 - 1, "%d", key->valueint);
                 buffer_push(msg, value, value_size);
             } else if (cJSON_IsString(key)) {
                 if(strlen(key->valuestring) == 0) {
