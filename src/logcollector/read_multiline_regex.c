@@ -307,17 +307,23 @@ STATIC void multiline_replace(char * str, w_multiline_replace_type_t type) {
 
 STATIC void multiline_ctxt_backup(char * buffer, int readed_lines, w_multiline_ctxt_t ** ctxt) {
 
-    if (*ctxt) {
-        if (readed_lines == (*ctxt)->lines_count) {
-            return;
-        } else {
-            multiline_ctxt_free(ctxt);
-        }
+    size_t current_bsize = strlen(buffer);
+
+    if (*ctxt && (strlen((*ctxt)->buffer) == current_bsize)) {
+            return;    
     }
 
-    os_calloc(1, sizeof(w_multiline_ctxt_t), *ctxt);
-    os_malloc(strlen(buffer) + 1, (*ctxt)->buffer);
-    strcpy((*ctxt)->buffer, buffer);
+    if (*ctxt) {
+        size_t old_size = strlen((*ctxt)->buffer);
+        os_realloc((*ctxt)->buffer,  sizeof(char) * (current_bsize + 1), (*ctxt)->buffer);
+        strcpy((*ctxt)->buffer + old_size, buffer + old_size);
+
+    } else {
+        os_calloc(1, sizeof(w_multiline_ctxt_t), *ctxt);
+        os_calloc(current_bsize + 1, sizeof(char), (*ctxt)->buffer);
+        strcpy((*ctxt)->buffer, buffer);
+    }
+
     (*ctxt)->lines_count = readed_lines;
     (*ctxt)->timestamp = time(NULL);
 }
@@ -327,25 +333,28 @@ STATIC void multiline_ctxt_free(w_multiline_ctxt_t ** ctxt) {
     if (!(*ctxt)) {
         return;
     }
-    if ((*ctxt)->buffer)
+    if ((*ctxt)->buffer) {
         os_free((*ctxt)->buffer);
+    }
 
     os_free(*ctxt);
-    ctxt = NULL;
 }
 
 STATIC bool multiline_ctxt_restore(char * buffer, int * readed_lines, w_multiline_ctxt_t * ctxt) {
 
-    if (!ctxt)
+    if (!ctxt) {
         return false;
+    }
     strcpy(buffer, ctxt->buffer);
     *readed_lines = ctxt->lines_count;
     return true;
 }
 
 STATIC bool multiline_ctxt_is_expired(unsigned int timeout, w_multiline_ctxt_t * ctxt) {
-    if (!ctxt)
+
+    if (!ctxt) {
         return true;
+    }
 
     if (time(NULL) - ctxt->timestamp > timeout) {
         return true;

@@ -12,15 +12,23 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <stdio.h>
+#include <time.h>
 
 #include "../../logcollector/logcollector.h"
 #include "../../headers/shared.h"
 
 void multiline_replace(char * buffer, w_multiline_replace_type_t type);
+bool multiline_ctxt_is_expired(unsigned int timeout, w_multiline_ctxt_t * ctxt);
+bool multiline_ctxt_restore(char * buffer, int * readed_lines, w_multiline_ctxt_t * ctxt);
+void multiline_ctxt_free(w_multiline_ctxt_t ** ctxt);
+void multiline_ctxt_backup(char * buffer, int readed_lines, w_multiline_ctxt_t ** ctxt);
 
 /* setup/teardown */
 
 /* wraps */
+time_t __wrap_time(time_t * t) {
+    return mock_type(time_t);
+}
 
 /* tests */
 
@@ -337,6 +345,138 @@ void test_multiline_replace_w_noreplace_char_replace_last(void ** state) {
     multiline_replace(str, type);
     assert_string_equal(str, str_expected);
 }
+// Test multiline_ctxt_is_expired
+void test_multiline_ctxt_is_expired_not_found(void ** state) {
+    assert_true(multiline_ctxt_is_expired(1, NULL));
+}
+
+void test_multiline_ctxt_is_expired_not_expired(void ** state) {
+
+    w_multiline_ctxt_t ctxt = {.timestamp = 50};
+    unsigned int timeout = 75;
+
+    will_return(__wrap_time, (unsigned int) 100);
+
+    assert_false(multiline_ctxt_is_expired(timeout, &ctxt));
+}
+
+void test_multiline_ctxt_is_expired_expired(void ** state) {
+    w_multiline_ctxt_t ctxt = {.timestamp = 50};
+    unsigned int timeout = 10;
+
+    will_return(__wrap_time, (unsigned int) 100);
+
+    assert_true(multiline_ctxt_is_expired(timeout, &ctxt));
+}
+
+/* multiline_ctxt_restore */
+void test_multiline_ctxt_restore_restore(void ** state) {
+
+    // orginal content
+    w_multiline_ctxt_t ctxt = {
+        .buffer = "Test buffer",
+        .lines_count = 100,
+        .timestamp = 0,
+    };
+    // restore
+    int readed_lines = -1;
+    char * buffer;
+    os_calloc(strlen(ctxt.buffer) + 1, sizeof(char), buffer);
+
+    assert_true(multiline_ctxt_restore(buffer, &readed_lines, &ctxt));
+    assert_int_equal(readed_lines, ctxt.lines_count);
+    assert_string_equal(buffer, ctxt.buffer);
+
+    os_free(buffer);
+
+}
+
+void test_multiline_ctxt_restore_null(void ** state) {
+
+    // restore
+    int readed_lines = -1;
+    char * buffer = NULL;
+
+    assert_false(multiline_ctxt_restore(buffer, &readed_lines, NULL));
+    assert_int_equal(readed_lines, -1);
+    assert_null(buffer);
+
+}
+
+/* multiline_ctxt_free */
+void test_multiline_ctxt_free_null(void ** state) {
+
+    w_multiline_ctxt_t * ctxt = NULL;
+    multiline_ctxt_free(&ctxt);
+
+}
+
+void test_multiline_ctxt_free_free(void ** state) {
+
+    w_multiline_ctxt_t * ctxt;
+    os_calloc(1, sizeof(w_multiline_ctxt_t), ctxt);
+    os_calloc(1, sizeof(char), ctxt->buffer);
+    multiline_ctxt_free(&ctxt);
+    assert_null(ctxt);
+
+}
+
+/* multiline_ctxt_backup */
+void test_multiline_ctxt_backup_no_restore(void ** state) {
+
+    char buffer[] = "hi!, no new content";
+    int readed_lines = 6;
+    w_multiline_ctxt_t * ctxt;
+    os_calloc(1, sizeof(w_multiline_ctxt_t), ctxt);
+    w_strdup(buffer, ctxt->buffer);
+    ctxt->lines_count = readed_lines;
+    ctxt->timestamp = (time_t) 5;
+
+    multiline_ctxt_backup(buffer, readed_lines, &ctxt);
+    
+    assert_int_equal(ctxt->timestamp, 5);
+    assert_int_equal(readed_lines, 6);
+    assert_string_equal(buffer, ctxt->buffer);
+
+    multiline_ctxt_free(&ctxt);
+}
+
+void test_multiline_ctxt_backup_new_ctxt(void ** state) {
+
+    char buffer[] = "hi!, new content";
+    int readed_lines = 6;
+    w_multiline_ctxt_t * ctxt = NULL;
+
+    will_return(__wrap_time, 10);
+    multiline_ctxt_backup(buffer, readed_lines, &ctxt);
+    
+    assert_int_equal(ctxt->timestamp, 10);
+    assert_int_equal(readed_lines, 6);
+    assert_string_equal(buffer, ctxt->buffer);
+
+    multiline_ctxt_free(&ctxt);
+}
+
+void test_multiline_ctxt_backup_increment(void ** state) {
+
+    char buffer[] = "old content + New content";
+    int readed_lines = 6;
+    w_multiline_ctxt_t * ctxt;
+    os_calloc(1, sizeof(w_multiline_ctxt_t), ctxt);
+    w_strdup("old content + ", ctxt->buffer);
+    ctxt->lines_count = 5;
+    ctxt->timestamp = (time_t) 5;
+
+    will_return(__wrap_time, 10);
+    multiline_ctxt_backup(buffer, readed_lines, &ctxt);
+
+    assert_int_equal(ctxt->timestamp, 10);
+    assert_int_equal(readed_lines, 6);
+    assert_string_equal(buffer, ctxt->buffer);
+
+    multiline_ctxt_free(&ctxt);
+
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -377,6 +517,20 @@ int main(void) {
         cmocka_unit_test(test_multiline_replace_w_noreplace_char_null_str),
         cmocka_unit_test(test_multiline_replace_w_noreplace_char_noreplace),
         cmocka_unit_test(test_multiline_replace_w_noreplace_char_replace_last),
+        // Test multiline_ctxt_is_expired
+        cmocka_unit_test(test_multiline_ctxt_is_expired_not_found),
+        cmocka_unit_test(test_multiline_ctxt_is_expired_not_expired),
+        cmocka_unit_test(test_multiline_ctxt_is_expired_expired),
+        // Test multiline_ctxt_restore
+        cmocka_unit_test(test_multiline_ctxt_restore_null),
+        cmocka_unit_test(test_multiline_ctxt_restore_restore),
+        // Test multiline_ctxt_free
+        cmocka_unit_test(test_multiline_ctxt_free_null),
+        cmocka_unit_test(test_multiline_ctxt_free_free),
+        // Test multiline_ctxt_backup
+        cmocka_unit_test(test_multiline_ctxt_backup_no_restore),
+        cmocka_unit_test(test_multiline_ctxt_backup_new_ctxt),
+        cmocka_unit_test(test_multiline_ctxt_backup_increment),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

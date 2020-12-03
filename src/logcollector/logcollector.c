@@ -2088,7 +2088,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                 /* We check for the end of file. If is returns EOF,
                 * we don't attempt to read it.
                 */
-               if (!current->multiline){
+               if (!current->multiline) {
                    if ((r = fgetc(current->fp)) == EOF) {
                        clearerr(current->fp);
                        w_mutex_unlock(&current->mutex);
