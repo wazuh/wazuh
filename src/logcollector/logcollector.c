@@ -23,6 +23,7 @@
 
 #define MAX_ASCII_LINES 10
 #define MAX_UTF8_CHARS 1400
+#define OFFSET_SIZE 11
 
 ///> Struct to save the position of last line read and the SHA1 hash content
 typedef struct file_status {
@@ -2503,6 +2504,7 @@ int w_update_file_status(const char * path, long pos, SHA_CTX *context) {
 
     if (OSHash_Update_ex(files_status, path, data) != 1) {
         if (OSHash_Add_ex(files_status, path, data) != 2) {
+            os_free(data);
             return -1;
         }
     }
@@ -2645,7 +2647,7 @@ STATIC char * w_save_files_status_to_cJSON() {
     while (hash_node) {
         os_file_status_t *data = hash_node->data;
         char * path = hash_node->key;
-        char offset[11] = {0};
+        char offset[OFFSET_SIZE] = {0};
         sprintf(offset, "%ld", data->offset);
 
         cJSON *item = cJSON_CreateObject();
@@ -2719,7 +2721,6 @@ STATIC int w_set_to_end(logreader *lf) {
 
 void w_get_hash_context (const char * path, SHA_CTX *context, ssize_t position) {
     os_file_status_t *data;
-    os_malloc(sizeof(os_file_status_t), data);
 
     if (data = (os_file_status_t *)OSHash_Get_ex(files_status, path), data == NULL) {
         os_sha1 output;

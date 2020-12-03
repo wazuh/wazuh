@@ -29,11 +29,7 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     f_msg[OS_MAXSTR] = '\0';
 
     SHA_CTX context;
-#ifdef WIN32
     w_get_hash_context(lf->file, &context, lf->size);
-#else
-    w_get_hash_context(lf->file, &context, lf->size);
-#endif
 
     while (can_read() && fgets(str, OS_MAXSTR, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 

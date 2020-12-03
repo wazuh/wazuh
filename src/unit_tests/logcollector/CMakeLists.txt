@@ -16,7 +16,11 @@ set_target_properties(
 target_link_libraries(LOGCOLLECTOR_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 # Generate logcollector tests
 list(APPEND logcollector_names "test_logcollector")
-list(APPEND logcollector_flags "-Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Get_ex")
+list(APPEND logcollector_flags "-Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Add -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Get \
+                                -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Update_ex \
+                                -Wl,--wrap,OS_SHA1_Stream -Wl,--wrap,merror_exit -Wl,--wrap,OSHash_setSize -Wl,--wrap,OSHash_SetFreeDataPointer \
+                                -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fseek \
+                                -Wl,--wrap,fwrite -Wl,--wrap,remove")
 
 list(LENGTH logcollector_names count)
 math(EXPR count "${count} - 1")

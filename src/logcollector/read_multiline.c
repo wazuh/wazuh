@@ -35,11 +35,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
     fgetpos(lf->fp, &fp_pos);
 
     SHA_CTX context;
-#ifdef WIN32
     w_get_hash_context(lf->file, &context, lf->size);
-#else
-    w_get_hash_context(lf->file, &context, lf->size);
-#endif
 
     for (offset = w_ftell(lf->fp); can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;

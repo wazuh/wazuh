@@ -148,11 +148,7 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
     proto[16] = '\0';
 
     SHA_CTX context;
-#ifdef WIN32
     w_get_hash_context(lf->file, &context, lf->size);
-#else
-    w_get_hash_context(lf->file, &context, lf->size);
-#endif
 
     while (can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
