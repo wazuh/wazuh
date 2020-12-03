@@ -28,6 +28,10 @@ list(APPEND shared_tests_flags " ")
 list(APPEND shared_tests_names "test_string_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,_mwarn")
 
+list(APPEND shared_tests_names "test_expression")
+list(APPEND shared_tests_flags "-Wl,--wrap,OS_IsValidIP -Wl,--wrap,OSMatch_Execute -Wl,--wrap,OSRegex_Compile \
+                             -Wl,--wrap,OSRegex_Execute -Wl,--wrap,OSRegex_Execute_ex -Wl,--wrap,OSMatch_Compile")
+
 list(APPEND shared_tests_names "test_version_op")
 set(VERSION_OP_BASE_FLAGS "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
                            -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fprintf -Wl,--wrap,fgets \
