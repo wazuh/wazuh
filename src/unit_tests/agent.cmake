@@ -26,5 +26,3 @@ endif()
 
 add_subdirectory(wazuh_modules)
 add_subdirectory(logcollector)
-add_subdirectory(config)
-
