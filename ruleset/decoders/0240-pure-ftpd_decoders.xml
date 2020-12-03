@@ -37,7 +37,7 @@
 </decoder>
 
 <!-- Pure-FTPd transfer log decoder
-  - Examples from ossec-list:
+  - Examples:
   - example.com - user1 [11/Mar/2013:12:10:23 -0000] "PUT /ftpdrive/user1/FinalBackup.zip" 200 25268220
   - example.com - user1 [11/Mar/2013:12:24:57 -0000] "GET /ftpdrive/user1/FinalBackup.zip" 200 25268220
   -->
