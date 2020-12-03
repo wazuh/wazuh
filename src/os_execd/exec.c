@@ -28,7 +28,7 @@ int ReadExecConfig()
     int i = 0, j = 0, dup_entry = 0;
     FILE *fp;
     FILE *process_file;
-    char buffer[OS_MAXSTR + 1];
+    char buffer[OS_MAXSTR + 1]
 
     /* Clean up */
     for (i = 0; i <= exec_size + 1; i++) {
