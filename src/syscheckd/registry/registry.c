@@ -292,13 +292,13 @@ void fim_registry_init_digests(int opts, MD5_CTX *md5_ctx, SHA_CTX *sha1_ctx, SH
  * @param sha256_ctx An SHA256 CTX to be updated with the contents of buffer.
  */
 void fim_registry_update_digests(const BYTE *buffer,
-                                 int length,
+                                 size_t length,
                                  int opts,
                                  MD5_CTX *md5_ctx,
                                  SHA_CTX *sha1_ctx,
                                  SHA256_CTX *sha256_ctx) {
     if (opts & CHECK_MD5SUM) {
-        MD5_Update(md5_ctx, buffer, (unsigned)length);
+        MD5_Update(md5_ctx, buffer, length);
     }
 
     if (opts & CHECK_SHA1SUM) {
@@ -328,14 +328,14 @@ void fim_registry_final_digests(int opts,
                                 os_md5 md5_output,
                                 os_sha1 sha1_output,
                                 os_sha256 sha256_output) {
-    unsigned char md5_digest[16];
+    unsigned char md5_digest[MD5_DIGEST_LENGTH];
     unsigned char sha1_digest[SHA_DIGEST_LENGTH];
     unsigned char sha256_digest[SHA256_DIGEST_LENGTH];
     int n;
 
     if (opts & CHECK_MD5SUM) {
         MD5_Final(md5_digest, md5_ctx);
-        for (n = 0; n < 16; n++) {
+        for (n = 0; n < MD5_DIGEST_LENGTH; n++) {
             snprintf(md5_output, 3, "%02x", md5_digest[n]);
             md5_output += 2;
         }
@@ -372,7 +372,7 @@ void fim_registry_calculate_hashes(fim_entry *entry, registry *configuration, BY
 
     char *string_it;
     BYTE buffer[OS_SIZE_2048];
-    int length;
+    size_t length;
 
     entry->registry_entry.value->hash_md5[0] = '\0';
     entry->registry_entry.value->hash_sha1[0] = '\0';
