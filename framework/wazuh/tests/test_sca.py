@@ -192,10 +192,9 @@ def test_sca_checks_select_and_q(mock_agent, mock_sca_agent):
     """
     with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_sca_test.sql')
-        result = get_sca_checks('cis_debian', agent_list=['000'], q="compliance.value!=9.2",
+        result = get_sca_checks('cis_debian', agent_list=['000'], q="rules.type!=file",
                                 select=['compliance', 'policy_id', 'result', 'rules']).to_dict()
-        for affected_item in result['affected_items']:
-            assert any(map(lambda x: x['type'] != '9.2', affected_item['rules']))
+        assert result['affected_items'][0]['rules'][1]['type'] != 'file'
         assert set(result['affected_items'][0].keys()).issubset({'compliance', 'policy_id', 'result', 'rules'})
 
 
