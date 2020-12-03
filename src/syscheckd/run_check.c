@@ -543,13 +543,6 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
                 continue;
             }
 
-            // Check if syscheck.dir[i] is a symbolic link
-            memset(&sb, 0, sizeof(struct stat));
-
-            if (lstat(syscheck.dir[i], &sb) != -1  && (sb.st_mode & S_IFMT) != S_IFLNK) {
-                continue;
-            }
-
             real_path = realpath(syscheck.dir[i], NULL);
 
             if (syscheck.symbolic_links[i]) {
@@ -575,8 +568,12 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
                     }
                 }
             } else {
+                // Check if syscheck.dir[i] is a symbolic link
+                memset(&sb, 0, sizeof(struct stat));
+                lstat(syscheck.dir[i], &sb);
+
                 // Check real_path to reload broken link.
-                if (real_path) {
+                if (real_path && (sb.st_mode & S_IFMT) == S_IFLNK) {
                     fim_link_reload_broken_link(real_path, i);
                 }
             }
