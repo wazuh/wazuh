@@ -35,7 +35,7 @@ if [ "x$1" = "xlist" ]; then
 elif [ "x$1" = "xsave" ]; then
     ls -la /etc/ossec-init.conf > /dev/null 2>&1
     if [ ! $? = 0 ]; then
-        echo "ERROR: Unable to save rules. You must have OSSEC installed to do so."
+        echo "ERROR: Unable to save rules. You must have Wazuh installed to do so."
         exit 1;
     fi
 
@@ -74,7 +74,7 @@ elif [ "x$1" = "xrestore" ]; then
 
     ls -la /etc/ossec-init.conf > /dev/null 2>&1
     if [ ! $? = 0 ]; then
-        echo "ERROR: Unable to restore rules. You must have OSSEC installed to do so."
+        echo "ERROR: Unable to restore rules. You must have Wazuh installed to do so."
         exit 1;
     fi
 
@@ -173,4 +173,3 @@ else
     exit 1;
 
 fi
-
