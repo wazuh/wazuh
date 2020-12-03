@@ -860,7 +860,6 @@ InstallLocal()
     ${INSTALL} -m 0750 -o root -g 0 ossec-logtest ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 ossec-csyslogd ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 ossec-dbd ${PREFIX}/bin
-    ${INSTALL} -m 0750 -o root -g 0 ossec-makelists ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} verify-agent-conf ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 clear_stats ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 ossec-regex ${PREFIX}/bin/
@@ -1073,11 +1072,4 @@ InstallWazuh()
         InstallCDB
     fi
 
-}
-
-
-InstallCDB()
-{
-    echo "Building CDB lists..."
-    ${PREFIX}/bin/ossec-makelists > /dev/null 2>&1
 }

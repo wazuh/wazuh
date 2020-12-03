@@ -27,7 +27,6 @@ Index: ossec-hids-2.8.2/Makefile
 +	rm -f src/Config.OS
 +	rm -f src/analysisd/compiled_rules/compiled_rules.h
 +	rm -f src/isbigendian.c
-+	rm -f src/analysisd/ossec-makelists
 +	rm -f src/analysisd/ossec-logtest
 +	rm -f src/isbigendian
 +
