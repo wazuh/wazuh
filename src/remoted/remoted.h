@@ -12,7 +12,7 @@
 #define LOGREMOTE_H
 
 #ifndef ARGV0
-#define ARGV0 "ossec-remoted"
+#define ARGV0 "wazuh-remoted"
 #endif
 
 #include "config/config.h"

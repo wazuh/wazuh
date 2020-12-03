@@ -1,4 +1,4 @@
-  <!-- Configuration for ossec-authd -->
+  <!-- Configuration for wazuh-authd -->
   <auth>
     <disabled>no</disabled>
     <port>1515</port>

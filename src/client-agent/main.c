@@ -14,7 +14,7 @@
 #include "agentd.h"
 
 #ifndef ARGV0
-#define ARGV0 "ossec-agentd"
+#define ARGV0 "wazuh-agentd"
 #endif
 
 

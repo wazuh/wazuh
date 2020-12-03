@@ -80,13 +80,13 @@ write-output "$(Get-Date -format u) - Process ID: $($process_id)" >> .\upgrade\u
 # Wait for agent state to be cleaned
 Start-Sleep 10
 # Check status file
-$status = Get-Content .\ossec-agent.state | select-string "status='connected'" -SimpleMatch
+$status = Get-Content .\wazuh-agent.state | select-string "status='connected'" -SimpleMatch
 $counter = 5
 while($status -eq $null -And $counter -gt 0)
 {
     $counter--
     Start-Sleep 2
-    $status = Get-Content .\ossec-agent.state | select-string "status='connected'" -SimpleMatch
+    $status = Get-Content .\wazuh-agent.state | select-string "status='connected'" -SimpleMatch
 }
 write-output "$(Get-Date -format u) - Reading status file: $($status)" >> .\upgrade\upgrade.log
 
