@@ -13,7 +13,7 @@
 <group name="windows,">
 
   <rule id="60000" level="0">
-    <category>ossec</category>
+    <category>wazuh</category>
     <decoded_as>windows_eventchannel</decoded_as>
     <field name="win.system.providerName">\.+</field>
     <options>no_full_log</options>
@@ -107,7 +107,7 @@
     <options>no_full_log</options>
     <group>gpg13_4.12,</group>
   </rule>
-  
+
   <rule id="60011" level="5">
     <if_sid>60000</if_sid>
     <field name="win.system.severityValue">^ERROR$</field>

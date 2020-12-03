@@ -19,7 +19,7 @@
   <order>extra_data</order>
 </decoder>
 
-<!-- Oct  1 17:56:52 puppet puppet-master[7879]: Permission denied - /etc/puppet/modules/ossec/files/ossec-agent-win32-2.8.exe -->
+<!-- Oct  1 17:56:52 puppet puppet-master[7879]: Permission denied - /etc/puppet/modules/wazuh/wazuh-agent-4.1.0-1.msi -->
 <decoder name="puppet-master-permission">
   <parent>puppet-master</parent>
   <prematch>^Permission denied - </prematch>

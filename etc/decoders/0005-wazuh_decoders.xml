@@ -6,7 +6,51 @@
 -->
 
 <decoder name="wazuh">
-  <prematch>^wazuh: </prematch>
+  <prematch>^wazuh: |^ossec: </prematch>
+  <type>wazuh</type>
+</decoder>
+
+<decoder name="wazuh-logcollector">
+  <type>wazuh</type>
+  <prematch>^\d\d\d\d/\d\d/\d\d \d\d:\d\d:\d\d ossec-logcollector|^\d\d\d\d/\d\d/\d\d \d\d:\d\d:\d\d wazuh-logcollector</prematch>
+  <regex offset="after_prematch">^\(\d+\): (\.)</regex>
+  <order>extra_data</order>
+</decoder>
+
+<decoder name="wazuh-syscheck-audit">
+  <parent>wazuh</parent>
+  <type>wazuh</type>
+  <prematch offset="after_parent">^Audit:</prematch>
+  <regex offset="after_prematch">^ (\.+)</regex>
+  <order>extra_data</order>
+</decoder>
+
+<decoder name="wazuh-agent">
+  <parent>wazuh</parent>
+  <type>wazuh</type>
+  <prematch offset="after_parent">^Agent started:</prematch>
+  <regex offset="after_prematch">^ '(\S+\S)'</regex>
+  <order>extra_data</order>
+  <fts>name, location, extra_data</fts>
+</decoder>
+
+<decoder name="wazuh-alert1">
+   <parent>wazuh</parent>
+   <prematch>^wazuh: Alert Level:</prematch>
+   <plugin_decoder>WazuhAlert_Decoder</plugin_decoder>
+</decoder>
+
+<decoder name="wazuh-alert">
+  <program_name>^ossec$|^wazuh$</program_name>
+  <plugin_decoder>WazuhAlert_Decoder</plugin_decoder>
+</decoder>
+
+<decoder name="wazuh-authd">
+  <parent>wazuh</parent>
+  <type>wazuh</type>
+  <prematch offset="after_parent">^Duplicated IP</prematch>
+  <regex offset="after_prematch">^ (\S+)$</regex>
+  <order>srcip</order>
 </decoder>
 
 <decoder name="agent-buffer">

@@ -26,7 +26,7 @@
 # For files, use "->" to look for a specific value in the file.
 #
 # Values can be preceeded by: =: (for equal) - default
-#                             r: (for ossec regexes)
+#                             r: (for Wazuh regexes)
 #                             >: (for strcmp greater)
 #                             <: (for strcmp  lower)
 # Multiple patterns can be specified by using " && " between them.
@@ -81,7 +81,7 @@ r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> CrashOnAuditFail ->
 r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> CrashOnAuditFail -> 2;
 #
 #
-#2.3.4.1 Ensure 'Devices: Allowed to format and eject removable media' is set to 'Administrators' 
+#2.3.4.1 Ensure 'Devices: Allowed to format and eject removable media' is set to 'Administrators'
 [CIS - Microsoft Windows Server 2012 R2 - 2.3.4.1: Ensure 'Devices: Allowed to format and eject removable media' is set to 'Administrators'] [any] [https://workbench.cisecurity.org/benchmarks/288]
 r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> AllocateDASD -> 1;
 r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> AllocateDASD -> 2;
@@ -502,7 +502,7 @@ r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\F
 #
 #9.2.5 Ensure 'Windows Firewall: Private: Settings: Apply local firewall rules' is set to 'Yes (default)'
 [CIS - Microsoft Windows Server 2012 R2 - 9.2.5: Ensure 'Windows Firewall: Private: Settings: Apply local firewall rules' is set to 'Yes'] [any] [https://workbench.cisecurity.org/benchmarks/288]
-r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> AllowLocalPolicyMerge -> 0; 
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> AllowLocalPolicyMerge -> 0;
 r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile -> AllowLocalPolicyMerge -> 0;
 #
 #
@@ -526,7 +526,7 @@ r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFileSize -> r:1\w\w\w;
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFileSize -> r:2\w\w\w;
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFileSize -> r:3\w\w\w;
-r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile\Logging -> LogFileSize -> r:\w; 
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile\Logging -> LogFileSize -> r:\w;
 r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile\Logging -> LogFileSize -> r:\w\w;
 r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile\Logging -> LogFileSize -> r:\w\w\w;
 r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile\Logging -> LogFileSize -> r:1\w\w\w;
@@ -585,7 +585,7 @@ r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\F
 #9.3.7 Ensure 'Windows Firewall: Private: Logging: Name' is set to '%SYSTEMROOT%\System32\logfiles\firewall\*.log'
 [CIS - Microsoft Windows Server 2012 R2 - 9.3.7: Ensure 'Windows Firewall: Private: Logging: Name' is set to '%SYSTEMROOT%\System32\logfiles\firewall\*.log'] [any] [https://workbench.cisecurity.org/benchmarks/288]
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFilePath -> r:\psystemroot\p\\system32\logfiles\firewall\\w+\plog;
-r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\PublicProfile\Logging -> LogFilePath -> r:\psystemroot\p\\system32\logfiles\firewall\\w+\plog; 
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\PublicProfile\Logging -> LogFilePath -> r:\psystemroot\p\\system32\logfiles\firewall\\w+\plog;
 #
 #
 #9.3.8 Ensure 'Windows Firewall: Public: Logging: Size limit (KB)' is set to '16384 KB or greater'

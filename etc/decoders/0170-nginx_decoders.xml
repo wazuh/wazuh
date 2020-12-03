@@ -10,7 +10,7 @@
 <!--
   - Will extract the srcip.
   - Examples:
-  - 2009/09/15 20:55:40 [error] 63858#0: *3663 open() "/srv/www/ossec.net/robots.txt" failed (2: No such file or directory), client: 1.2.3.4, server: ossec.net, request: "GET /robots.txt HTTP/1.1", host: "www.ossec.net"
+  - 2009/09/15 20:55:40 [error] 63858#0: *3663 open() "/srv/www.wazuh.com/robots.txt" failed (2: No such file or directory), client: 1.2.3.4, server: wazuh.com, request: "GET /robots.txt HTTP/1.1", host: "www.wazuh.com"
   - 2009/09/15 19:51:07 [error] 37992#0: accept() failed (53: Software caused connection abort)
   -->
 <decoder name="nginx-errorlog">
