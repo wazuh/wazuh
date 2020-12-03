@@ -1047,6 +1047,9 @@ wrappers_wazuh_os_net_o := $(wrappers_wazuh_os_net_c:.c=.o)
 wrappers_wazuh_os_regex_c := $(wildcard unit_tests/wrappers/wazuh/os_regex/*.c)
 wrappers_wazuh_os_regex_o := $(wrappers_wazuh_os_regex_c:.c=.o)
 
+wrappers_wazuh_os_xml_c := $(wildcard unit_tests/wrappers/wazuh/os_xml/*.c)
+wrappers_wazuh_os_xml_o := $(wrappers_wazuh_os_xml_c:.c=.o)
+
 wrappers_wazuh_shared_c := $(wildcard unit_tests/wrappers/wazuh/shared/*.c)
 wrappers_wazuh_shared_o := $(wrappers_wazuh_shared_c:.c=.o)
 
@@ -1097,6 +1100,7 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_crypto_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_net_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_regex_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_xml_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_shared_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_syscheckd_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_wazuh_db_o}
@@ -2036,6 +2040,7 @@ clean-unit-tests:
 	rm -f ${wrappers_wazuh_os_crypto_o}
 	rm -f ${wrappers_wazuh_os_net_o}
 	rm -f ${wrappers_wazuh_os_regex_o}
+	rm -f ${wrappers_wazuh_os_xml_o}
 	rm -f ${wrappers_wazuh_shared_o}
 	rm -f ${wrappers_wazuh_syscheckd_o}
 	rm -f ${wrappers_wazuh_wazuh_db_o}
