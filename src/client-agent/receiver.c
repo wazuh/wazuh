@@ -268,7 +268,7 @@ int receive_msg()
                                 if(!UnmergeFiles(file, SHAREDCFG_DIRPATH, OS_TEXT)){
                                     char msg_output[OS_MAXSTR];
 
-                                    snprintf(msg_output, OS_MAXSTR, "%c:%s:%s",  LOCALFILE_MQ, "ossec-agent", AG_IN_UNMERGE);
+                                    snprintf(msg_output, OS_MAXSTR, "%c:%s:%s",  LOCALFILE_MQ, "wazuh-agent", AG_IN_UNMERGE);
                                     send_msg(msg_output, -1);
                                 }
                                 else if (agt->flags.remote_conf && !verifyRemoteConf()) {

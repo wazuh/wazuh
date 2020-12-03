@@ -14,7 +14,7 @@
 #include "config/agentlessd-config.h"
 
 #ifndef ARGV0
-#define ARGV0 "ossec-agentlessd"
+#define ARGV0 "wazuh-agentlessd"
 #endif
 
 /** Prototypes **/
