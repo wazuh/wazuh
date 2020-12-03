@@ -491,13 +491,13 @@ x-rbac-catalog:
         actions: ['syscollector:read']
         resources: ['agent:id:*']
         effect: "allow"
-    'tasks:status':
-      description: "Access tasks's status information"
+    'task:status':
+      description: "Access task's status information"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
-        actions: [ 'tasks:status' ]
-        resources: [ '*:*:*' ]
+        actions: ['task:status']
+        resources: ['*:*:*']
         effect: "deny"
 
 components:
@@ -4230,9 +4230,9 @@ components:
       schema:
         type: integer
         minimum: 0
-    task_list:
+    tasks_list:
       in: query
-      name: 'task_list'
+      name: 'tasks_list'
       description: "List of task IDs (separated by comma)"
       schema:
         type: array
@@ -15395,9 +15395,9 @@ paths:
         - tasks
       summary: "List tasks"
       description: "Returns all available information about the specified tasks"
-      operationId: api.controllers.tasks_controller.get_tasks_status
+      operationId: api.controllers.task_controller.get_tasks_status
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/tasks:status'
+        - $ref: '#/x-rbac-catalog/actions/task:status'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -15408,7 +15408,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/agents_list'
-        - $ref: '#/components/parameters/task_list'
+        - $ref: '#/components/parameters/tasks_list'
         - $ref: '#/components/parameters/command'
         - $ref: '#/components/parameters/node'
         - $ref: '#/components/parameters/module'

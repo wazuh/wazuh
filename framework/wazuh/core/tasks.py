@@ -48,6 +48,9 @@ class WazuhDBQueryTasks(WazuhDBQuery):
         if 'agent_list' in field_name:
             self.query += f"agent_id {q_filter['operator']} (:{field_filter})"
             self.request[field_filter] = q_filter['value']
+        elif 'task_list' in field_name:
+            self.query += f"task_id {q_filter['operator']} (:{field_filter})"
+            self.request[field_filter] = q_filter['value']
         else:
             super()._process_filter(field_name, field_filter, q_filter)
 

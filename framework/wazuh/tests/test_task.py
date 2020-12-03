@@ -51,23 +51,23 @@ def test_get_task_status_no_filter(mock_task_db):
 
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_tasks_test.sql'))
 @patch.object(WazuhDBQueryTasks, '_final_query', fake_final_query)
-@pytest.mark.parametrize("task_id, total", [
+@pytest.mark.parametrize("task_list, total", [
     (['1'], 1),
     (['2'], 1),
     (['1', '2'], 2),
     (['99'], 0)
 ])
-def test_get_task_status_task_id(mock_task_db, task_id, total):
-    """Check system's tasks (task_id)
+def test_get_task_status_task_list(mock_task_db, task_list, total):
+    """Check system's tasks (task_list)
 
     Parameters
     ----------
-    task_id : str
-        Specific task id
+    task_list : list
+        Specific task ids
     total : int
         Total records for agent id
     """
-    filters = {'task_id': task_id}
+    filters = {'task_list': task_list}
     result = tasks.get_task_status(filters=filters)
 
     assert result.total_affected_items == total

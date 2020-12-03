@@ -308,7 +308,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        task_list: 4,3
+        tasks_list: 4,3
     response:
       status_code: 200
       json:

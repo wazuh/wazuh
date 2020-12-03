@@ -16,14 +16,14 @@ logger = logging.getLogger('wazuh')
 
 
 async def get_tasks_status(request, pretty=False, wait_for_complete=False, offset=0, limit=database_limit,
-                           task_list=None, agents_list=None, command=None, node=None, module=None, status=None, q=None,
+                           tasks_list=None, agents_list=None, command=None, node=None, module=None, status=None, q=None,
                            search=None, select=None, sort=None):
     """Check the status of the specified tasks
 
     Parameters
     ----------
     request
-    task_list : list
+    tasks_list : list
         List of task's IDs
     pretty : bool, optional
         Show results in human-readable format
@@ -37,7 +37,7 @@ async def get_tasks_status(request, pretty=False, wait_for_complete=False, offse
     f_kwargs = {'select': select, 'search': parse_api_param(search, 'search'),
                 'offset': offset, 'limit': limit,
                 'filters': {
-                    'task_id': task_list,
+                    'task_list': tasks_list,
                     'agent_list': agents_list,
                     'status': status,
                     'module': module,
