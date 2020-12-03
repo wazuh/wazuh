@@ -11,7 +11,7 @@ request_pattern = re.compile(r'\[.+\]|\s+\*\s+')
 
 
 class AccessLogger(AbstractAccessLogger):
-
+    this is an error
     def log(self, request, response, time):
         self.logger.info(f'{request.get("user", "unknown_user")} '
                          f'{request.remote} '
