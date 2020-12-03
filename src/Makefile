@@ -1821,7 +1821,7 @@ run_valgrind_tests:
 	@$(foreach bin,${test_programs},valgrind --leak-check=full --track-origins=yes --trace-children=no --vgdb=no --gen-suppressions=all --suppressions=tests/valgrind.supp ./${bin} || exit 1;)
 
 run_tests:
-	@$(foreach bin,${test_programs},./${bin} || exit 1;)
+	exit 1;)
 
 build_tests: external
 	${MAKE} DEBUG=yes TEST=yes ${test_programs}
