@@ -52,6 +52,19 @@ stages:
           total_affected_items: 1
 
   # PUT /security/roles/{role_id}
+  - name: Modify a role in the system (using a very long name)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/102"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: "test_very_long_role_name_so_the_request_fails_because_of_maximum_length"
+    response:
+      status_code: 400
+
+  # PUT /security/roles/{role_id}
   - name: Modify a role in the system (using same name for a different ID)
     request:
       verify: False
@@ -168,6 +181,19 @@ stages:
                   - agent:id:003
               roles: !anything
           total_affected_items: 1
+
+  # PUT /security/policies/{policy_id}
+  - name: Modify a policy in the system (using a very long name)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/104"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: "test_very_long_policy_name_so_the_request_fails_because_of_maximum_length"
+    response:
+      status_code: 400
 
   # PUT /security/policies/{policy_id}
   - name: Modify a policy in the system (without change name)
@@ -312,6 +338,19 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
+
+  # PUT /security/rules/{rule_id}
+  - name: Modify a rule in the system (using a very long name)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules/102"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: "test_very_long_rule_name_so_the_request_fails_because_of_maximum_length"
+    response:
+      status_code: 400
 
   # PUT /security/rules/{rule_id}
   - name: Modify a rule in the system (using same name for a different ID)

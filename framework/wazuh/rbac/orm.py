@@ -1825,6 +1825,10 @@ class RolesPoliciesManager:
             Order to be applied in case of multiples roles in the same user
         force_admin : bool
             By default, changing an administrator roles is not allowed. If True, it will be applied to admin roles too
+        atomic : bool
+            This parameter indicates if the operation is atomic. If this function is called within
+            a loop or a function composed of several operations, atomicity cannot be guaranteed.
+            And it must be the most external function that ensures it
 
         Returns
         -------
@@ -2158,7 +2162,7 @@ class RolesRulesManager:
     all the methods needed for the roles-rules administration.
     """
 
-    def add_rule_to_role(self, rule_id: int, role_id: int, atomic: bool = True):
+    def add_rule_to_role(self, rule_id: int, role_id: int, atomic: bool = True, force_admin: bool = False):
         """Add a relation between one specified role and one specified rule.
 
         Parameters
@@ -2171,6 +2175,8 @@ class RolesRulesManager:
             This parameter indicates if the operation is atomic. If this function is called within
             a loop or a function composed of several operations, atomicity cannot be guaranteed.
             And it must be the most external function that ensures it
+        force_admin : bool
+            By default, changing an administrator roles is not allowed. If True, it will be applied to admin roles too
 
         Returns
         -------
@@ -2178,18 +2184,20 @@ class RolesRulesManager:
         """
         try:
             # Create a rule-role relationship if both exist
-            rule = self.session.query(Rules).filter_by(id=rule_id).first()
-            if rule is None:
-                return SecurityError.RULE_NOT_EXIST
-            role = self.session.query(Roles).filter_by(id=role_id).first()
-            if role is None:
-                return SecurityError.ROLE_NOT_EXIST
-            if self.session.query(RolesRules).filter_by(rule_id=rule_id, role_id=role_id).first() is None:
-                role.rules.append(rule)
-                atomic and self.session.commit()
-                return True
-            else:
-                return SecurityError.ALREADY_EXIST
+            if int(rule_id) > max_id_reserved or force_admin:
+                rule = self.session.query(Rules).filter_by(id=rule_id).first()
+                if rule is None:
+                    return SecurityError.RULE_NOT_EXIST
+                role = self.session.query(Roles).filter_by(id=role_id).first()
+                if role is None:
+                    return SecurityError.ROLE_NOT_EXIST
+                if self.session.query(RolesRules).filter_by(rule_id=rule_id, role_id=role_id).first() is None:
+                    role.rules.append(rule)
+                    atomic and self.session.commit()
+                    return True
+                else:
+                    return SecurityError.ALREADY_EXIST
+            return SecurityError.ADMIN_RESOURCES
         except (IntegrityError, InvalidRequestError):
             self.session.rollback()
             return SecurityError.INVALID
@@ -2286,7 +2294,7 @@ class RolesRulesManager:
         True -> Success | False -> Failure | Role not exists | Rule not exist s| Non-existent relationship
         """
         try:
-            if role_id > max_id_reserved:  # Required rule
+            if int(rule_id) > max_id_reserved:  # Required rule
                 rule = self.session.query(Rules).filter_by(id=rule_id).first()
                 if rule is None:
                     return SecurityError.RULE_NOT_EXIST
@@ -2472,4 +2480,4 @@ with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
         for d_role_name, payload in default_relationships[next(iter(default_relationships))]['roles'].items():
             for d_rule_name in payload['rule_ids']:
                 rrum.add_rule_to_role(role_id=rm.get_role(name=d_role_name)['id'],
-                                      rule_id=rum.get_rule_by_name(d_rule_name)['id'])
+                                      rule_id=rum.get_rule_by_name(d_rule_name)['id'], force_admin=True)

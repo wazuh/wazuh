@@ -16,6 +16,8 @@ All notable changes to this project will be documented in this file.
 
 - **API:**
   - Added endpoints to query and manage Rootcheck data. ([#6496](https://github.com/wazuh/wazuh/pull/6496))
+  - Added new endpoints to run the logtest tool and delete a logtest session ([#5984](https://github.com/wazuh/wazuh/pull/5984))
+  - Added new framework modules to use the logtest tool ([#5870](https://github.com/wazuh/wazuh/pull/5870))
 
 - **AWS Module:**
   - Added support for AWS load balancers (Application Load Balancer, Classic Load Balancer and Network Load Balancer). ([#6034](https://github.com/wazuh/wazuh/issues/6034))
@@ -59,9 +61,45 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 
-## [v4.0.1] - 2020-11-11
+
+## [v4.0.3] - 2020-11-30
+
+### Fixed
+
+- **API:**
+  - Fixed a problem with certain API calls exceeding timeout in highly loaded cluster environments. ([#6753](https://github.com/wazuh/wazuh/pull/6753))
+
+
+## [v4.0.2] - 2020-11-24
 
 ### Added
+
+- **Core:**
+  - Added macOS Big Sur version detection in the agent. ([#6603](https://github.com/wazuh/wazuh/pull/6603))
+
+### Changed
+
+- **API:**
+  - `GET /agents/summary/os`, `GET /agents/summary/status` and `GET /overview/agents` will no longer consider `000` as an agent. ([#6574](https://github.com/wazuh/wazuh/pull/6574))
+  - Increased to 64 the maximum number of characters that can be used in security users, roles, rules, and policies names. ([#6657](https://github.com/wazuh/wazuh/issues/6657))
+
+### Fixed
+
+- **API:**
+  - Fixed an error with `POST /security/roles/{role_id}/rules` when removing role-rule relationships with admin resources. ([#6594](https://github.com/wazuh/wazuh/issues/6594))
+  - Fixed a timeout error with `GET /manager/configuration/validation` when using it in a slow environment. ([#6530](https://github.com/wazuh/wazuh/issues/6530))
+- **Framework:**
+  - Fixed an error with some distributed requests when the cluster configuration is empty. ([#6612](https://github.com/wazuh/wazuh/pull/6612))
+  - Fixed special characters in default policies. ([#6575](https://github.com/wazuh/wazuh/pull/6575))
+- **Core:**
+  - Fixed a bug in Remoted that limited the maximum agent number to `MAX_AGENTS-3` instead of `MAX_AGENTS-2`. ([#4560](https://github.com/wazuh/wazuh/pull/4560))
+  - Fixed an error in the network library when handling disconnected sockets. ([#6444](https://github.com/wazuh/wazuh/pull/6444))
+  - Fixed an error in FIM when handling temporary files and registry keys exceeding the path size limit. ([#6538](https://github.com/wazuh/wazuh/pull/6538))
+  - Fixed a bug in FIM that stopped monitoring folders pointed by a symbolic link. ([#6613](https://github.com/wazuh/wazuh/pull/6613))
+  - Fixed a race condition in FIM that could cause Syscheckd to stop unexpectedly. ([#6696](https://github.com/wazuh/wazuh/pull/6696))
+
+
+## [v4.0.1] - 2020-11-11
 
 ### Changed
 
@@ -81,13 +119,6 @@ All notable changes to this project will be documented in this file.
   - Prevent unprivileged users from accessing the Wazuh Agent folder in Windows. ([#3593](https://github.com/wazuh/wazuh/pull/3593))
   - Fix a bug that may lead the agent to crash when reading an invalid Logcollector configuration. ([#6463](https://github.com/wazuh/wazuh/pull/6463))
 
-### Removed
-
-### Added
-
-- Wazuh API:
-    - Added new endpoints to run the logtest tool and delete a logtest session ([#5984](https://github.com/wazuh/wazuh/pull/5984))
-- Added new framework modules to use the logtest tool ([#5870](https://github.com/wazuh/wazuh/pull/5870))
 
 ## [v4.0.0] - 2020-10-23
 

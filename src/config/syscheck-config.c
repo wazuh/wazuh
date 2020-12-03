@@ -146,24 +146,23 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
 
         if (syscheck->dir == NULL) {
             os_calloc(2, sizeof(char *), syscheck->dir);
-            os_calloc(strlen(entry) + 2, sizeof(char), syscheck->dir[0]);
-            if (link && !(CHECK_FOLLOW & vals)) {
-                // Taking the link itself if follow_symbolic_link is not enabled
-                snprintf(syscheck->dir[0], strlen(link) + 1, "%s", link);
-            }
-            else {
-                snprintf(syscheck->dir[0], strlen(entry) + 1, "%s", entry);
-            }
+
+            // If a symbolic link is configured, `link` is the configured path
+            // and `entry` is the resolved path
+            os_strdup(link == NULL ? entry : link, syscheck->dir[pl]);
+
             syscheck->dir[1] = NULL;
 
 #ifdef WIN32
             os_calloc(2, sizeof(whodata_dir_status), syscheck->wdata.dirs_status);
 #endif
             os_calloc(2, sizeof(char *), syscheck->symbolic_links);
+
             syscheck->symbolic_links[0] = NULL;
             syscheck->symbolic_links[1] = NULL;
-            if (link) {
-                os_strdup(link, syscheck->symbolic_links[0]);
+
+            if (link != NULL && (CHECK_FOLLOW & vals)) {
+                os_strdup(entry, syscheck->symbolic_links[0]);
             }
 
             os_calloc(2, sizeof(int), syscheck->opts);
@@ -189,16 +188,12 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
             while (syscheck->dir[pl] != NULL) {
                 pl++;
             }
+
             os_realloc(syscheck->dir, (pl + 2) * sizeof(char *), syscheck->dir);
+
+            os_strdup(link == NULL ? entry : link, syscheck->dir[pl]);
+
             syscheck->dir[pl + 1] = NULL;
-            os_calloc(strlen(entry) + 2, sizeof(char), syscheck->dir[pl]);
-            if (link && !(CHECK_FOLLOW & vals)) {
-                // Taking the link itself if follow_symbolic_link is not enabled
-                snprintf(syscheck->dir[pl], strlen(link) + 1, "%s", link);
-            }
-            else {
-                snprintf(syscheck->dir[pl], strlen(entry) + 1, "%s", entry);
-            }
 
 #ifdef WIN32
             os_realloc(syscheck->wdata.dirs_status, (pl + 2) * sizeof(whodata_dir_status),
@@ -207,10 +202,12 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
 #endif
 
             os_realloc(syscheck->symbolic_links, (pl + 2) * sizeof(char *), syscheck->symbolic_links);
+
             syscheck->symbolic_links[pl] = NULL;
             syscheck->symbolic_links[pl + 1] = NULL;
-            if (link) {
-                os_strdup(link, syscheck->symbolic_links[pl]);
+
+            if (link != NULL && (CHECK_FOLLOW & vals)) {
+                os_strdup(entry, syscheck->symbolic_links[pl]);
             }
 
             os_realloc(syscheck->opts, (pl + 2) * sizeof(int),
@@ -244,10 +241,15 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
             syscheck->tag[pl] = NULL;
             syscheck->tag[pl + 1] = NULL;
         } else {
-            if (link) {
-                os_free(syscheck->symbolic_links[pl]);
-                os_strdup(link, syscheck->symbolic_links[pl]);
+            os_free(syscheck->dir[pl]);
+            os_free(syscheck->symbolic_links[pl]);
+
+            os_strdup(link == NULL ? entry : link, syscheck->dir[pl]);
+
+            if (link != NULL && (CHECK_FOLLOW & vals)) {
+                os_strdup(entry, syscheck->symbolic_links[pl]);
             }
+
             syscheck->opts[pl] = vals;
 
             if (diff_size == -1) {
@@ -968,16 +970,17 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             }
 
             while (g.gl_pathv[gindex]) {
-                char *resolved_path = NULL;
+                char *resolved_path = realpath(g.gl_pathv[gindex], NULL);
 
-                if (resolved_path = realpath(g.gl_pathv[gindex], NULL), resolved_path) {
-                    if (!strcmp(resolved_path, g.gl_pathv[gindex])) {
-                        dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0, restrictfile, recursion_limit,
-                                            clean_tag, NULL, tmp_diff_size);
-                    } else {
+                if (resolved_path != NULL) {
+                    if (strcmp(resolved_path, g.gl_pathv[gindex]) != 0 && (opts & CHECK_FOLLOW)) {
                         dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile, recursion_limit, clean_tag,
                                             g.gl_pathv[gindex], tmp_diff_size);
+                    } else {
+                        dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0, restrictfile, recursion_limit,
+                                            clean_tag, NULL, tmp_diff_size);
                     }
+
                     os_free(resolved_path);
                 } else {
                     mdebug1("Could not check the real path of '%s' due to [(%d)-(%s)].",
@@ -992,11 +995,10 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         else {
             char *resolved_path = realpath(real_path, NULL);
 
-            if (resolved_path && strcmp(resolved_path, real_path)) {
+            if (resolved_path != NULL && strcmp(resolved_path, real_path) != 0 && (opts & CHECK_FOLLOW)) {
                 dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile, recursion_limit, clean_tag,
                                     real_path, tmp_diff_size);
-            }
-            else {
+            } else {
                 dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL,
                                     tmp_diff_size);
             }

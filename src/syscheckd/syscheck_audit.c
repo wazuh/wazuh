@@ -222,32 +222,32 @@ int add_audit_rules_syscheck(bool first_time) {
     }
 
     while (syscheck.dir[i] != NULL) {
-        // Check if dir[i] is set in whodata mode and isn't a broken link (syscheck.dir[i] = '\0')
-        if (syscheck.opts[i] & WHODATA_ACTIVE && *syscheck.dir[i]) {
+        // Check if dir[i] is set in whodata mode
+        if (syscheck.opts[i] & WHODATA_ACTIVE) {
             int retval;
             if (W_Vector_length(audit_added_rules) < syscheck.max_audit_entries) {
-                int found = search_audit_rule(syscheck.dir[i], "wa", AUDIT_KEY);
+                int found = search_audit_rule(fim_get_real_path(i), "wa", AUDIT_KEY);
                 if (found == 0) {
-                    if (retval = audit_add_rule(syscheck.dir[i], AUDIT_KEY), retval > 0) {
+                    if (retval = audit_add_rule(fim_get_real_path(i), AUDIT_KEY), retval > 0) {
                         w_mutex_lock(&audit_rules_mutex);
-                        if(!W_Vector_insert_unique(audit_added_rules, syscheck.dir[i])) {
-                            mdebug1(FIM_AUDIT_NEWRULE, syscheck.dir[i]);
+                        if(!W_Vector_insert_unique(audit_added_rules, fim_get_real_path(i))) {
+                            mdebug1(FIM_AUDIT_NEWRULE, fim_get_real_path(i));
                         } else {
-                            mdebug1(FIM_AUDIT_RELOADED, syscheck.dir[i]);
+                            mdebug1(FIM_AUDIT_RELOADED, fim_get_real_path(i));
                         }
                         w_mutex_unlock(&audit_rules_mutex);
                         rules_added++;
                     } else {
                         if (first_time) {
-                            mwarn(FIM_WARN_WHODATA_ADD_RULE, syscheck.dir[i]);
+                            mwarn(FIM_WARN_WHODATA_ADD_RULE, fim_get_real_path(i));
                         } else {
-                            mdebug1(FIM_WARN_WHODATA_ADD_RULE, syscheck.dir[i]);
+                            mdebug1(FIM_WARN_WHODATA_ADD_RULE, fim_get_real_path(i));
                         }
                     }
                 } else if (found == 1) {
                     w_mutex_lock(&audit_rules_mutex);
-                    if(!W_Vector_insert_unique(audit_added_rules, syscheck.dir[i])) {
-                        mdebug1(FIM_AUDIT_RULEDUP, syscheck.dir[i]);
+                    if(!W_Vector_insert_unique(audit_added_rules, fim_get_real_path(i))) {
+                        mdebug1(FIM_AUDIT_RULEDUP, fim_get_real_path(i));
                     }
                     w_mutex_unlock(&audit_rules_mutex);
                     rules_added++;
@@ -258,14 +258,15 @@ int add_audit_rules_syscheck(bool first_time) {
                 static bool reported = false;
 
                 if (first_time || !reported) {
-                    merror(FIM_ERROR_WHODATA_MAXNUM_WATCHES, syscheck.dir[i], syscheck.max_audit_entries);
+                    merror(FIM_ERROR_WHODATA_MAXNUM_WATCHES, fim_get_real_path(i), syscheck.max_audit_entries);
                 } else {
-                    mdebug1(FIM_ERROR_WHODATA_MAXNUM_WATCHES, syscheck.dir[i], syscheck.max_audit_entries);
+                    mdebug1(FIM_ERROR_WHODATA_MAXNUM_WATCHES, fim_get_real_path(i), syscheck.max_audit_entries);
                 }
 
                 reported = true;
             }
         }
+
         i++;
     }
 
