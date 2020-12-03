@@ -16,6 +16,7 @@ with patch('wazuh.core.common.ossec_uid'):
         from wazuh.core.agent import *
         from wazuh.core.exception import WazuhException
         from api.util import remove_nones_to_dict
+        from wazuh.core.common import reset_context_cache
 
 from pwd import getpwnam
 from grp import getgrnam
@@ -1468,7 +1469,7 @@ def test_get_groups():
     expected_result = {'group-1', 'group-2'}
     shared = os.path.join(test_data_path, 'shared')
 
-    with patch('wazuh.core.agent.shared_path', new=shared):
+    with patch('wazuh.core.common.shared_path', new=shared):
         try:
             for group in list(expected_result):
                 os.makedirs(os.path.join(shared, group))
@@ -1502,7 +1503,7 @@ def test_expand_group(group, expected_agents):
     id_groups = {'000': 'group1', '001': 'group2', '002': 'group3', '004': '', '005': 'group3,group4', '006': ''}
     agent_groups = os.path.join(test_data_path, 'agent-groups')
 
-    with patch('wazuh.core.agent.groups_path', new=agent_groups):
+    with patch('wazuh.core.common.groups_path', new=agent_groups):
         try:
             os.makedirs(agent_groups)
             for id_, groups in id_groups.items():
