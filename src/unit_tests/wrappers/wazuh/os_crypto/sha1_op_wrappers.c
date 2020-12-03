@@ -22,8 +22,8 @@ int __wrap_OS_SHA1_File(const char *fname, os_sha1 output, int mode) {
     return mock();
 }
 
- int __wrap_OS_SHA1_File_Nbytes(const char *fname, SHA_CTX *c, os_sha1 output, int mode, ssize_t nbytes) {
-        check_expected(fname);
+int __wrap_OS_SHA1_File_Nbytes(const char *fname, SHA_CTX *c, os_sha1 output, int mode, ssize_t nbytes) {
+    check_expected(fname);
     check_expected(mode);
 
     snprintf(output, 41, "%s", mock_type(char *));
