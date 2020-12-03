@@ -147,6 +147,12 @@ void read_internal(int debug_level);
  */
 void fim_scan();
 
+/**
+ * @brief Sleep the file scan one second when at least syscheck.max_fps files have been readed in one second.
+ *
+ * @param mode Mode of the event.
+ */
+void check_max_fps(int mode);
 
 /**
  * @brief

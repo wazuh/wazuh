@@ -371,6 +371,8 @@ typedef struct _config {
     float comp_estimation_perc;     /* Estimation of the percentage of compression each file will have */
     uint16_t disk_quota_full_msg;   /* Specify if the full disk_quota message can be written (Once per scan) */
 
+    unsigned int max_fps;           /* Max number of files readed per second. */
+
     char **nodiff;                  /* list of files/dirs to never output diff */
     OSMatch **nodiff_regex;         /* regex of files/dirs to never output diff */
 
@@ -408,6 +410,7 @@ typedef struct _config {
     pthread_mutex_t fim_entry_mutex;
     pthread_mutex_t fim_scan_mutex;
     pthread_mutex_t fim_realtime_mutex;
+    pthread_mutex_t fim_scheduled_max_fps;
 
     rtfim *realtime;
     fdb_t *database;

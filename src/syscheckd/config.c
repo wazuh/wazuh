@@ -73,6 +73,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.sync_queue_size = 16384;
     syscheck.sync_max_eps = 10;
     syscheck.max_eps        = 100;
+    syscheck.max_fps = 0;
     syscheck.allow_remote_prefilter_cmd  = false;
     syscheck.disk_quota_enabled = true;
     syscheck.disk_quota_limit = 1024 * 1024; // 1 GB

@@ -158,6 +158,7 @@
 #define FIM_HEALTHCHECK_SUCCESS             "(6261): Whodata health-check: Success."
 #define FIM_HEALTHCHECK_CHECK_RULE          "(6262): Couldn't delete audit health check rule."
 #define FIM_SACL_CHECK_CONFIGURE            "(6263): Setting up SACL for '%s'"
+#define FIM_REACHED_MAX_FPS                 "(6264): Maximum number of files readed per second reached, sleeping."
 #define FIM_SACL_RESTORED                   "(6265): The SACL of '%s' has been restored correctly."
 #define FIM_SACL_CONFIGURE                  "(6266): The SACL of '%s' will be configured."
 #define FIM_SACL_NOT_FOUND                  "(6267): No SACL found on target. A new one will be created."

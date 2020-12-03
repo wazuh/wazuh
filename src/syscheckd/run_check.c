@@ -120,6 +120,31 @@ void fim_send_scan_info(fim_scan_event event) {
     cJSON_Delete(json);
 }
 
+void check_max_fps(int mode) {
+    static unsigned int files_read = 0;
+    static time_t last_time = 0;
+    time_t now ;
+    if (mode != FIM_SCHEDULED || syscheck.max_fps == 0) {
+        return;
+    }
+
+    now = time(0);
+    if (now != last_time) {
+        files_read = 0;
+        last_time = now;
+    }
+    //w_mutex_lock(&syscheck.fim_scheduled_max_fps);
+    if (files_read < syscheck.max_fps) {
+        files_read++;
+        //w_mutex_unlock(&syscheck.fim_scheduled_max_fps);
+        return;
+    }
+
+    mdebug2(FIM_REACHED_MAX_FPS);
+    sleep(1);
+
+    //w_mutex_unlock(&syscheck.fim_scheduled_max_fps);
+}
 
 // LCOV_EXCL_START
 // Send a message related to logs

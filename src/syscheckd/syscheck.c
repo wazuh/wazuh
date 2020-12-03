@@ -88,6 +88,8 @@ void fim_initialize() {
     w_mutex_init(&syscheck.fim_entry_mutex, NULL);
     w_mutex_init(&syscheck.fim_scan_mutex, NULL);
     w_mutex_init(&syscheck.fim_realtime_mutex, NULL);
+    w_mutex_init(&syscheck.fim_scheduled_max_fps, NULL);
+
 }
 
 
