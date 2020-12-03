@@ -53,7 +53,7 @@
 
     <!--
     Permission
-    - Oct  1 17:56:52 puppet puppet-master[7879]: Permission denied - /etc/puppet/modules/ossec/files/ossec-agent-win32-2.8.exe
+    - Oct  1 17:56:52 puppet puppet-master[7879]: Permission denied - /etc/puppet/modules/wazuh/wazuh-agent-4.1.0-1.msi
     -->
     <rule id="80004" level="5">
         <if_sid>80000</if_sid>
@@ -82,16 +82,16 @@
 
     *Manifest Errors
     - Sep 30 15:55:46 puppet puppet-master[3594]: Could not parse for environment production: No file(s) found for import of 'nodes.pp' at /etc/puppet/manifests/site.pp:2 on node ubuntu.localdomain
-    - Sep 30 16:07:13 puppet puppet-master[3594]: You cannot collect exported resources without storeconfigs being set; the collection will be ignored on line 96 in file /etc/puppet/modules/ossec/manifests/server.pp
-    - Oct  1 16:13:38 puppet puppet-master[7879]: too few arguments at /etc/puppet/modules/ossec/manifests/params.pp:71 on node windows.localdomain
-    - Oct  1 16:16:56 puppet puppet-master[7879]: Duplicate declaration: Concat[undef] is already declared in file /etc/puppet/modules/ossec/manifests/client.pp:68; cannot redeclare at /etc/puppet/modules/ossec/manifests/client.pp:88 on node windows.localdomain
-    - Oct  1 19:25:42 puppet puppet-master[7879]: Unrecognised escape sequence '\P' in file /etc/puppet/modules/ossec/manifests/params.pp at line 71
-    - Oct  2 19:24:14 puppet puppet-master[1027]: Invalid parameter create_parents on File[C:/installers/ossec-agent-win32-2.8.exe] at /etc/puppet/modules/ossec/manifests/client.pp:40 on node windows.localdomain
+    - Sep 30 16:07:13 puppet puppet-master[3594]: You cannot collect exported resources without storeconfigs being set; the collection will be ignored on line 96 in file /etc/puppet/modules/wazuh/manifests/server.pp
+    - Oct  1 16:13:38 puppet puppet-master[7879]: too few arguments at /etc/puppet/modules/wazuh/manifests/params.pp:71 on node windows.localdomain
+    - Oct  1 16:16:56 puppet puppet-master[7879]: Duplicate declaration: Concat[undef] is already declared in file /etc/puppet/modules/wazuh/manifests/client.pp:68; cannot redeclare at /etc/puppet/modules/wazuh/manifests/client.pp:88 on node windows.localdomain
+    - Oct  1 19:25:42 puppet puppet-master[7879]: Unrecognised escape sequence '\P' in file /etc/puppet/modules/wazuh/manifests/params.pp at line 71
+    - Oct  2 19:24:14 puppet puppet-master[1027]: Invalid parameter create_parents on File[C:/wazuh-agent-4.1.0-1.msi] at /etc/puppet/modules/wazuh/manifests/client.pp:40 on node windows.localdomain
     - Oct  1 16:41:38 puppet puppet-master[7879]: "${env_programfiles(x86)}/ossec-agent/ossec.conf" is not an absolute path. at /etc/puppet/modules/concat/manifests/init.pp:71 on node windows.localdomain
-    - Oct  2 18:21:46 puppet puppet-master[1027]: "" is not a boolean.  It looks to be a String at /etc/puppet/modules/ossec/manifests/client.pp:12 on node windows.localdomains
-    - Oct  1 17:56:46 puppet puppet-master[7879]: This ossec module has not been tested on your distribution at /etc/puppet/modules/ossec/manifests/common.pp:95 on node windows.localdomain
+    - Oct  2 18:21:46 puppet puppet-master[1027]: "" is not a boolean.  It looks to be a String at /etc/puppet/modules/wazuh/manifests/client.pp:12 on node windows.localdomains
+    - Oct  1 17:56:46 puppet puppet-master[7879]: This Wazuh module has not been tested on your distribution at /etc/puppet/modules/wazuh/manifests/common.pp:95 on node windows.localdomain
     - Oct  8 09:24:44 vpc-puppet puppet-master[1399]: Unknown function includes at /etc/puppet/manifests/nodes.pp:3 on node vpc-puppet.wazuh.com
-    - Sep 30 16:07:13 puppet puppet-master[3594]: Puppet::Parser::AST::Resource failed with error ArgumentError: Invalid resource type apt::source at /etc/puppet/modules/ossec/manifests/common.pp:24 on node server.yokatan.com
+    - Sep 30 16:07:13 puppet puppet-master[3594]: Puppet::Parser::AST::Resource failed with error ArgumentError: Invalid resource type apt::source at /etc/puppet/modules/wazuh/manifests/common.pp:24 on node server.yokatan.com
     - *failed*
     - *has failure*
 
@@ -338,7 +338,7 @@
             Check the field "time:last_run" in file /var/lib/puppet/state/last_run_summary.yaml
 
         Setup:
-        These rules need to read a command output, so it is necessary to copy the code below to /var/ossec/etc/ossec.conf (in every agent)
+        These rules need to read a command output, so it is necessary to copy the code below to /<INSTALLATION_PATH>/etc/ossec.conf (in every agent)
 
         <localfile>
             <log_format>full_command</log_format>
@@ -346,16 +346,16 @@
             <frequency>2100</frequency>
         </localfile>
 
-        *Also you can copy the code to /var/ossec/etc/shared/agent.conf in OSSEC Master and configure in every agent the logcollector option to accept remote commands from the manager:
-            /var/ossec/etc/internal_options.conf:
+        *Also you can copy the code to /<INSTALLATION_PATH>/etc/shared/agent.conf in Wazuh Master and configure in every agent the logcollector option to accept remote commands from the manager:
+            /<INSTALLATION_PATH>/etc/internal_options.conf:
                 # Logcollector - If it should accept remote commands from the manager
                 logcollector.remote_commands=1
-            /var/ossec/etc/shared/agent.conf:
+            /<INSTALLATION_PATH>/etc/shared/agent.conf:
                 <agent_config> localfile_code </agent_config>
     -->
     <rule id="80090" level="0">
         <if_sid>530</if_sid>
-        <match>^ossec: output: 'timestamp_puppet</match>
+        <match>^ossec: output: 'timestamp_puppet|^wazuh: output: 'timestamp_puppet</match>
         <description>Command check if puppet runs every 30 min or less</description>
     </rule>
 

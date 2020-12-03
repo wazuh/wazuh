@@ -13,7 +13,7 @@
   - 2017-05-24 00:00:10 VShellSSH2 dbg 44269 116.31.116.28 15482 - - - 0 0 0 0 - - "44269: Connection from 116.31.116.28 rejected by Deny Hosts file 'C:\Program Files\VanDyke Software\VShell\Deny\deny.txt'"
   - 2017-05-24 00:04:45 VShellSSH2 auth 44286 213.86.218.94 59858 j_biggles - - 0 0 0 0 - - "44286: password for user j_biggles accepted"
 
-  - Requires a new local file definition in the ossec agent config.
+  - Requires a new local file definition in the Wazuh Agent config.
   - Example:
   - <localfile>
      <location>D:\VShell_Logs\%Y%m%d.log</location>

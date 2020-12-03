@@ -6,7 +6,7 @@
 -->
 
 <!--
-  - It's needed to paste the following in /var/ossec/etc/ossec.conf for the decoder to work properly:
+  - It's needed to paste the following in /<INSTALLATION_PATH>/etc/ossec.conf for the decoder to work properly:
 
     <localfile>
         <location>ABSOLUTE_PATH_TO_YOUR_OWNCLOUD_.json_LOG_FILE</location>

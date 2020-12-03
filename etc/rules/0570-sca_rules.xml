@@ -8,7 +8,7 @@
 <group name="sca,gdpr_IV_35.7.d,pci_dss_2.2,nist_800_53_CM.1,tsc_CC7.1,tsc_CC7.2,">
 
   <rule id="19000" level="0">
-    <category>ossec</category>
+    <category>wazuh</category>
     <decoded_as>sca</decoded_as>
     <options>no_full_log</options>
     <description>Group of Security Configuration Assessment rules</description>

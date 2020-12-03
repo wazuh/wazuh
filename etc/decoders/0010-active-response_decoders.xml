@@ -9,13 +9,13 @@
 
 <!--
 - Examples
-Sat May  7 03:17:27 CDT 2011 /var/ossec/active-response/bin/firewall-drop.sh add - 172.16.0.1 1304756247.60385 31151
-Sat May  7 03:27:57 CDT 2011 /var/ossec/active-response/bin/firewall-drop.sh delete - 172.16.0.1 1304756247.60385 31151
-Sat May  7 03:17:27 CDT 2011 /var/ossec/active-response/bin/host-deny.sh add - 172.16.0.1 1304756247.60385 31151
-Sat May  7 03:27:57 CDT 2011 /var/ossec/active-response/bin/host-deny.sh delete - 172.16.0.1 1304756247.60385 31151
-Wed Dec  7 18:11:34 UTC 2016 /var/ossec/active-response/bin/route-null.sh add - 192.168.2.4 1481134294.521764 100001
-Wed Dec  7 18:12:14 UTC 2016 /var/ossec/active-response/bin/route-null.sh delete - 192.168.2.4 1481134294.521764 100001
-Wed Dec  7 19:42:30 UTC 2016 /var/ossec/active-response/bin/restart-ossec.sh add - 10.99.99.12 (from_the_server) (no_rule_id)
+Sat May  7 03:17:27 CDT 2011 /<INSTALLATION_PATH>/active-response/bin/firewall-drop.sh add - 172.16.0.1 1304756247.60385 31151
+Sat May  7 03:27:57 CDT 2011 /<INSTALLATION_PATH>/active-response/bin/firewall-drop.sh delete - 172.16.0.1 1304756247.60385 31151
+Sat May  7 03:17:27 CDT 2011 /<INSTALLATION_PATH>/active-response/bin/host-deny.sh add - 172.16.0.1 1304756247.60385 31151
+Sat May  7 03:27:57 CDT 2011 /<INSTALLATION_PATH>/active-response/bin/host-deny.sh delete - 172.16.0.1 1304756247.60385 31151
+Wed Dec  7 18:11:34 UTC 2016 /<INSTALLATION_PATH>/active-response/bin/route-null.sh add - 192.168.2.4 1481134294.521764 100001
+Wed Dec  7 18:12:14 UTC 2016 /<INSTALLATION_PATH>/active-response/bin/route-null.sh delete - 192.168.2.4 1481134294.521764 100001
+Wed Dec  7 19:42:30 UTC 2016 /<INSTALLATION_PATH>/active-response/bin/restart-ossec.sh add - 10.99.99.12 (from_the_server) (no_rule_id)
 
 Windows:
 Wed 12/07/2016 19:39:40.15 "active-response/bin/route-null.cmd" add "-" "10.99.99.12" "(from_the_server) (no_rule_id)"
