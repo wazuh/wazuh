@@ -230,6 +230,20 @@ stages:
             key: "agent_id"
             expected_values: "004"
 
+  - name: Verify that query parameter work as expected
+    request:
+      verify: False
+      <<: *get_tasks
+      params:
+        q: "agent_id>004;agent_id<006"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "agent_id"
+            expected_values: "005"
+
   - name: Verify that query parameter work as expected (using non-existent agent_id)
     request:
       verify: False
@@ -323,7 +337,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agent_id: "003"
+        agents_list: ["003","000"]
     response:
       status_code: 200
       json:
@@ -347,7 +361,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agent_id: "000"
+        agents_list: ["000"]
     response:
       status_code: 200
       json:
