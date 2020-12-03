@@ -211,7 +211,7 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
     char *w_sum = NULL;
     char *f_name;
 
-    /* Every syscheck message must be in the following format (OSSEC - Wazuh v3.10):
+    /* Every syscheck message must be in the following format (Wazuh v3.10):
      * 'checksum' 'filename'
      * or
      * 'checksum'!'extradata' 'filename'
