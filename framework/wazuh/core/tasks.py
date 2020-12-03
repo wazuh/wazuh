@@ -17,8 +17,6 @@ from wazuh.core.wazuh_socket import OssecSocket
 tasks_fields = {'task_id': 'task_id', 'agent_id': 'agent_id', 'node': 'node', 'module': 'module',
                 'command': 'command', 'create_time': 'create_time', 'last_update_time': 'last_update_time',
                 'status': 'status', 'error_message': 'error_message'}
-inner_select = 'DISTINCT(task_id)'
-unique_fields = ['task_id']
 
 
 class WazuhDBQueryTasks(WazuhDBQuery):
@@ -46,32 +44,12 @@ class WazuhDBQueryTasks(WazuhDBQuery):
         """
         return self._default_query() + f" WHERE task_id IN ({self.query}) " + "LIMIT :limit OFFSET :offset"
 
-    def _default_count_query(self):
-        return "COUNT(DISTINCT task_id)"
-
-    def _get_total_items(self):
-        self.total_items = self.backend.execute(self.query.format(self._default_count_query()), self.request, True)
-
-    def _add_limit_to_query(self):
-        if self.limit:
-            if self.limit > database_limit:
-                raise WazuhError(1405, str(self.limit))
-
-            # We add offset and limit only to the inner SELECT (subquery)
-            self.query += ' LIMIT :inner_limit OFFSET :inner_offset'
-            self.request['inner_offset'] = self.offset
-            self.request['inner_limit'] = self.limit
-            self.request['offset'] = 0
-            self.request['limit'] = 0
-        elif self.limit == 0:  # 0 is not a valid limit
-            raise WazuhError(1406)
-
-    def _execute_data_query(self):
-        self.query = self.query.format(inner_select)
-        self.query = self._final_query().format(','.join(map(lambda x: f"{self.fields[x]} as '{x}'",
-                                                             self.select | self.min_select_fields)))
-
-        self._data = self.backend.execute(self.query, self.request)
+    def _process_filter(self, field_name, field_filter, q_filter):
+        if 'agent_list' in field_name:
+            self.query += f"agent_id {q_filter['operator']} (:{field_filter})"
+            self.request[field_filter] = q_filter['value']
+        else:
+            super()._process_filter(field_name, field_filter, q_filter)
 
 
 def send_to_tasks_socket(command):
