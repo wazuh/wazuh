@@ -21,9 +21,9 @@ set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virt
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  set(CMAKE_INSTALL_RPATH "@executable_path/lib")
+  set(CMAKE_INSTALL_RPATH "@executable_path/../lib")
 else()
-  set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
+  set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
 
