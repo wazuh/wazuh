@@ -61,7 +61,7 @@ int __wrap_audit_restore(void) {
 }
 #endif
 
-/* Setup */
+/* Setup/Teardown */
 
 static int setup_group(void ** state) {
 #ifdef TEST_WINAGENT
@@ -121,17 +121,70 @@ static int setup_group(void ** state) {
 }
 
 #ifndef TEST_WINAGENT
+
+static int setup_symbolic_links(void **state) {
+    if (syscheck.dir[1] != NULL) {
+        free(syscheck.dir[1]);
+        syscheck.dir[1] = NULL;
+    }
+
+    syscheck.dir[1] = strdup("/link");
+    syscheck.symbolic_links[1] = strdup("/folder");
+    syscheck.opts[1] |= REALTIME_ACTIVE;
+
+    if (syscheck.dir[1] == NULL || syscheck.symbolic_links[1] == NULL) {
+        return -1;
+    }
+
+    return 0;
+}
+
+static int teardown_symbolic_links(void **state) {
+    if (syscheck.dir[1] != NULL) {
+        free(syscheck.dir[1]);
+        syscheck.dir[1] = NULL;
+    }
+
+    if (syscheck.symbolic_links[1] != NULL) {
+        free(syscheck.symbolic_links[1]);
+        syscheck.symbolic_links[1] = NULL;
+    }
+
+    syscheck.dir[1] = strdup("/etc");
+    syscheck.opts[1] &= ~REALTIME_ACTIVE;
+
+    if (syscheck.dir[1] == NULL) {
+        return -1;
+    }
+
+    return 0;
+}
+
 static int setup_tmp_file(void **state) {
     fim_tmp_file *tmp_file = calloc(1, sizeof(fim_tmp_file));
     tmp_file->elements = 1;
+
+    if (setup_symbolic_links(NULL) < 0) {
+        return -1;
+    }
 
     *state = tmp_file;
 
     return 0;
 }
-#endif
 
-/* teardown */
+static int teardown_tmp_file(void **state) {
+    fim_tmp_file *tmp_file = *state;
+    free(tmp_file);
+
+    if (teardown_symbolic_links(NULL) < 0) {
+        return -1;
+    }
+
+    return 0;
+}
+
+#endif
 
 static int teardown_group(void **state) {
 #ifdef TEST_WINAGENT
@@ -150,21 +203,13 @@ static int teardown_group(void **state) {
     return 0;
 }
 
-#ifndef TEST_WINAGENT
-static int teardown_tmp_file(void **state) {
-    fim_tmp_file *tmp_file = *state;
-    free(tmp_file);
-
-    return 0;
-}
-#endif
-
 /**
  * @brief This function loads expect and will_return calls for the function send_sync_msg
 */
 static void expect_w_send_sync_msg(const char *msg, const char *locmsg, char location, int ret) {
     expect_SendMSG_call(msg, locmsg, location, ret);
 }
+
 /* tests */
 
 void test_fim_whodata_initialize(void **state)
@@ -529,76 +574,90 @@ void test_fim_send_scan_info(void **state) {
 void test_fim_link_update(void **state) {
     (void) state;
 
-    int pos = 0;
-    char *link_path = "/folder/test";
+    int pos = 1;
+    char *new_path = "/new_path";
 
-    expect_wrapper_fim_db_get_path_range_call(syscheck.database, "/boot/", "/boot0", FIM_DB_DISK, NULL, FIMDB_OK);
-    expect_realtime_adddir_call(link_path, 0, 0);
+    expect_wrapper_fim_db_get_path_range_call(syscheck.database, "/folder/", "/folder0", FIM_DB_DISK, NULL, FIMDB_OK);
+    expect_realtime_adddir_call(new_path, 0, 0);
 
-    expect_fim_checker_call(link_path, 0, 0);
+    expect_fim_checker_call(new_path, 0, 0);
 
-    fim_link_update(pos, link_path);
+    fim_link_update(pos, new_path);
 
-    assert_string_equal(syscheck.dir[pos], link_path);
+    assert_string_equal(syscheck.dir[pos], "/link");
+    assert_string_equal(syscheck.symbolic_links[pos], new_path);
 }
 
 void test_fim_link_update_already_added(void **state) {
     (void) state;
 
-    int pos = 0;
-    char *link_path = "/folder/test";
+    int pos = 1;
+    char *link_path = "/link";
+    char error_msg[OS_SIZE_128];
 
-    expect_wrapper_fim_db_get_path_range_call(syscheck.database, "/folder/test/", "/folder/test0", FIM_DB_DISK, NULL, FIMDB_OK);
-    expect_string(__wrap__mdebug1, formatted_msg, "(6234): Directory '/folder/test' already monitored, ignoring link '(null)'");
+    expect_wrapper_fim_db_get_path_range_call(syscheck.database, "/folder/", "/folder0", FIM_DB_DISK, NULL, FIMDB_OK);
+
+    snprintf(error_msg, OS_SIZE_128, FIM_LINK_ALREADY_ADDED, link_path);
+
+    expect_string(__wrap__mdebug1, formatted_msg, error_msg);
 
     fim_link_update(pos, link_path);
 
-    assert_string_equal(syscheck.dir[pos], "");
+    assert_string_equal(syscheck.dir[pos], link_path);
+    assert_string_equal(syscheck.symbolic_links[pos], "");
 }
 
 void test_fim_link_check_delete(void **state) {
     (void) state;
 
     int pos = 1;
-    char *link_path = "/etc";
+    char *link_path = "/link";
+    char *pointed_folder = "/folder";
 
-    expect_string(__wrap_lstat, filename, link_path);
+    expect_string(__wrap_lstat, filename, syscheck.symbolic_links[pos]);
     will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, 0);
 
-    expect_wrapper_fim_db_get_path_range_call(syscheck.database, "/etc/", "/etc0", FIM_DB_DISK, NULL, FIMDB_OK);
-    expect_fim_configuration_directory_call("/etc", "file", -1);
+    expect_wrapper_fim_db_get_path_range_call(syscheck.database, "/folder/", "/folder0", FIM_DB_DISK, NULL, FIMDB_OK);
+    expect_fim_configuration_directory_call(pointed_folder, "file", -1);
 
     fim_link_check_delete(pos);
 
-    assert_string_equal(syscheck.dir[pos], "");
+    assert_string_equal(syscheck.dir[pos], link_path);
+    assert_string_equal(syscheck.symbolic_links[pos], "");
 }
 
 void test_fim_link_check_delete_lstat_error(void **state) {
     (void) state;
 
-    int pos = 2;
-    char *link_path = "/home";
+    int pos = 1;
+    char *link_path = "/link";
+    char *pointed_folder = "/folder";
+    char error_msg[OS_SIZE_128];
 
-    expect_string(__wrap_lstat, filename, link_path);
+    expect_string(__wrap_lstat, filename, pointed_folder);
     will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, -1);
     errno = 0;
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6222): Stat() function failed on: '/home' due to [(0)-(Success)]");
+    snprintf(error_msg, OS_SIZE_128, FIM_STAT_FAILED, pointed_folder, 0, "Success");
+
+    expect_string(__wrap__mdebug1, formatted_msg, error_msg);
 
     fim_link_check_delete(pos);
 
     assert_string_equal(syscheck.dir[pos], link_path);
+    assert_string_equal(syscheck.symbolic_links[pos], pointed_folder);
 }
 
 void test_fim_link_check_delete_noentry_error(void **state) {
     (void) state;
 
-    int pos = 2;
-    char *link_path = "/home";
+    int pos = 1;
+    char *link_path = "/link";
+    char *pointed_folder = "/folder";
 
-    expect_string(__wrap_lstat, filename, link_path);
+    expect_string(__wrap_lstat, filename, pointed_folder);
     will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, -1);
 
@@ -608,15 +667,18 @@ void test_fim_link_check_delete_noentry_error(void **state) {
 
     errno = 0;
 
-    assert_string_equal(syscheck.dir[pos], "");
+    assert_string_equal(syscheck.dir[pos], link_path);
+    assert_string_equal(syscheck.symbolic_links[pos], "");
 }
 
 void test_fim_delete_realtime_watches(void **state) {
     (void) state;
 
     unsigned int pos = 1;
+    char *link_path = "/link";
+    char *pointed_folder = "/folder";
 
-    expect_fim_configuration_directory_call("", "file", 0);
+    expect_fim_configuration_directory_call(pointed_folder, "file", 0);
     expect_fim_configuration_directory_call("data", "file", 0);
 
     will_return(__wrap_inotify_rm_watch, 1);
@@ -627,26 +689,29 @@ void test_fim_delete_realtime_watches(void **state) {
 }
 
 void test_fim_link_delete_range(void **state) {
-    int pos = 3;
-
+    int pos = 1;
     fim_tmp_file *tmp_file = *state;
 
-    expect_wrapper_fim_db_get_path_range_call(syscheck.database, "/media/", "/media0", FIM_DB_DISK, tmp_file, FIMDB_OK);
+    expect_wrapper_fim_db_get_path_range_call(syscheck.database, "/folder/", "/folder0", FIM_DB_DISK, tmp_file, FIMDB_OK);
     expect_wrapper_fim_db_delete_range_call(syscheck.database, FIM_DB_DISK, tmp_file, FIMDB_OK);
 
     fim_link_delete_range(pos);
 }
 
 void test_fim_link_delete_range_error(void **state) {
-    int pos = 3;
-
+    int pos = 1;
+    char error_msg[OS_SIZE_128];
     fim_tmp_file *tmp_file = *state;
 
-    expect_wrapper_fim_db_get_path_range_call(syscheck.database, "/media/", "/media0", FIM_DB_DISK, tmp_file, FIMDB_ERR);
-    expect_string(__wrap__merror, formatted_msg, "(6708): Failed to delete a range of paths between '/media/' and '/media0'");
+    snprintf(error_msg, OS_SIZE_128, FIM_DB_ERROR_RM_RANGE, "/folder/", "/folder0");
+
+    expect_wrapper_fim_db_get_path_range_call(syscheck.database, "/folder/", "/folder0", FIM_DB_DISK, tmp_file, FIMDB_ERR);
+
+    expect_string(__wrap__merror, formatted_msg, error_msg);
 
     expect_wrapper_fim_db_delete_range_call(syscheck.database, FIM_DB_DISK, tmp_file, FIMDB_ERR);
-    expect_string(__wrap__merror, formatted_msg, "(6708): Failed to delete a range of paths between '/media/' and '/media0'");
+
+    expect_string(__wrap__merror, formatted_msg, error_msg);
 
     fim_link_delete_range(pos);
 }
@@ -655,7 +720,7 @@ void test_fim_link_silent_scan(void **state) {
     (void) state;
 
     int pos = 3;
-    char *link_path = "/folder/test";
+    char *link_path = "/link";
 
     expect_realtime_adddir_call(link_path, 0, 0);
     expect_fim_checker_call(link_path, 0, 0);
@@ -666,27 +731,38 @@ void test_fim_link_silent_scan(void **state) {
 void test_fim_link_reload_broken_link_already_monitored(void **state) {
     (void) state;
 
-    int pos = 4;
-    char *link_path = "/usr/bin";
+    int pos = 1;
+    char *link_path = "/link";
+    char *pointed_folder = "/folder";
+    char error_msg[OS_SIZE_128];
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6234): Directory '/usr/bin' already monitored, ignoring link '(null)'");
+    snprintf(error_msg, OS_SIZE_128, FIM_LINK_ALREADY_ADDED, link_path);
+
+    expect_string(__wrap__mdebug1, formatted_msg, error_msg);
 
     fim_link_reload_broken_link(link_path, pos);
 
     assert_string_equal(syscheck.dir[pos], link_path);
+    assert_string_equal(syscheck.symbolic_links[pos], pointed_folder);
 }
 
 void test_fim_link_reload_broken_link_reload_broken(void **state) {
     (void) state;
 
-    int pos = 5;
-    char *link_path = "/test";
+    int pos = 1;
+    char *link_path = "/link";
+    char *pointed_folder = "/new_path";
 
-    expect_fim_checker_call(link_path, 0, 0);
+    expect_fim_checker_call(pointed_folder, 0, 0);
 
-    fim_link_reload_broken_link(link_path, pos);
+    expect_string(__wrap_realtime_adddir, dir, pointed_folder);
+    expect_value(__wrap_realtime_adddir, whodata, 0);
+    will_return(__wrap_realtime_adddir, 0);
+
+    fim_link_reload_broken_link(pointed_folder, pos);
 
     assert_string_equal(syscheck.dir[pos], link_path);
+    assert_string_equal(syscheck.symbolic_links[pos], pointed_folder);
 }
 #endif
 
@@ -716,17 +792,17 @@ int main(void) {
         cmocka_unit_test(test_send_syscheck_msg_0_eps),
         cmocka_unit_test(test_fim_send_scan_info),
 #ifndef TEST_WINAGENT
-        cmocka_unit_test(test_fim_link_update),
-        cmocka_unit_test(test_fim_link_update_already_added),
-        cmocka_unit_test(test_fim_link_check_delete),
-        cmocka_unit_test(test_fim_link_check_delete_lstat_error),
-        cmocka_unit_test(test_fim_link_check_delete_noentry_error),
-        cmocka_unit_test(test_fim_delete_realtime_watches),
+        cmocka_unit_test_setup_teardown(test_fim_link_update, setup_symbolic_links, teardown_symbolic_links),
+        cmocka_unit_test_setup_teardown(test_fim_link_update_already_added, setup_symbolic_links, teardown_symbolic_links),
+        cmocka_unit_test_setup_teardown(test_fim_link_check_delete, setup_symbolic_links, teardown_symbolic_links),
+        cmocka_unit_test_setup_teardown(test_fim_link_check_delete_lstat_error, setup_symbolic_links, teardown_symbolic_links),
+        cmocka_unit_test_setup_teardown(test_fim_link_check_delete_noentry_error, setup_symbolic_links, teardown_symbolic_links),
+        cmocka_unit_test_setup_teardown(test_fim_delete_realtime_watches, setup_symbolic_links, teardown_symbolic_links),
         cmocka_unit_test_setup_teardown(test_fim_link_delete_range, setup_tmp_file, teardown_tmp_file),
         cmocka_unit_test_setup_teardown(test_fim_link_delete_range_error, setup_tmp_file, teardown_tmp_file),
-        cmocka_unit_test(test_fim_link_silent_scan),
-        cmocka_unit_test(test_fim_link_reload_broken_link_already_monitored),
-        cmocka_unit_test(test_fim_link_reload_broken_link_reload_broken),
+        cmocka_unit_test_setup_teardown(test_fim_link_silent_scan, setup_symbolic_links, teardown_symbolic_links),
+        cmocka_unit_test_setup_teardown(test_fim_link_reload_broken_link_already_monitored, setup_symbolic_links, teardown_symbolic_links),
+        cmocka_unit_test_setup_teardown(test_fim_link_reload_broken_link_reload_broken, setup_symbolic_links, teardown_symbolic_links),
 #endif
     };
 

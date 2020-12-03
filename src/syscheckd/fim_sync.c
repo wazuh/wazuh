@@ -341,7 +341,7 @@ void fim_sync_send_list(const char *start, const char *top) {
         return;
     }
 
-    for (it = 0; (fim_db_read_line_from_file(file, syscheck.database_store, it, &line) != 1) ; it++) {
+    for (it = 0; (fim_db_read_line_from_file(file, syscheck.database_store, it, &line) == 0) ; it++) {
         fim_entry *entry;
         cJSON *file_data;
         char *plain;

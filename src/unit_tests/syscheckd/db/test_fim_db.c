@@ -185,12 +185,12 @@ void expect_fim_db_create_temp_file_fail(int storage) {
     will_return(__wrap_os_random, 2345);
 
 #ifndef TEST_WINAGENT
-    expect_string(__wrap_fopen, path, "./tmp_19283746523452345");
+    expect_string(__wrap_wfopen, __filename, "./tmp_19283746523452345");
 #else
-    expect_string(__wrap_fopen, path, ".\\tmp_19283746523452345");
+    expect_string(__wrap_wfopen, __filename, ".\\tmp_19283746523452345");
 #endif
-    expect_string(__wrap_fopen, mode, "w+");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, __modes, "w+");
+    will_return(__wrap_wfopen, 0);
 
 #ifndef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg,
@@ -206,22 +206,26 @@ void expect_fim_db_create_temp_file_success(int storage) {
         will_return(__wrap_os_random, 2345);
 
 #ifndef TEST_WINAGENT
-        expect_string(__wrap_fopen, path, "./tmp_19283746523452345");
+        expect_string(__wrap_wfopen, __filename, "./tmp_19283746523452345");
 #else
-        expect_string(__wrap_fopen, path, ".\\tmp_19283746523452345");
+        expect_string(__wrap_wfopen, __filename, ".\\tmp_19283746523452345");
 #endif
-        expect_string(__wrap_fopen, mode, "w+");
-        will_return(__wrap_fopen, 1);
+        expect_string(__wrap_wfopen, __modes, "w+");
+        will_return(__wrap_wfopen, 1);
+
+#ifndef TEST_WINAGENT
+        expect_string(__wrap_remove, filename, "./tmp_19283746523452345");
+#else
+        expect_string(__wrap_remove, filename, ".\\tmp_19283746523452345");
+#endif
+        will_return(__wrap_remove, 1);
     }
 }
 
-void expect_fim_db_clean_file(const FILE *fd, const char *path, int storage) {
+void expect_fim_db_clean_file(const FILE *fd, int storage) {
     if (storage == FIM_DB_DISK) {
         expect_value(__wrap_fclose, _File, fd);
         will_return(__wrap_fclose, 1);
-
-        expect_string(__wrap_remove, filename, path);
-        will_return(__wrap_remove, 1);
     }
 }
 
@@ -265,8 +269,6 @@ static int teardown_fim_tmp_file_disk(void **state) {
     expect_value(__wrap_fclose, _File, file->fd);
     will_return(__wrap_fclose, 1);
 
-    expect_string(__wrap_remove, filename, file->path);
-    will_return(__wrap_remove, 1);
     fim_db_clean_file(&file, FIM_DB_DISK);
     return 0;
 }
@@ -638,9 +640,9 @@ void test_fim_db_get_path_range_query_failed(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 
 #ifndef TEST_WINAGENT
-    expect_fim_db_clean_file((FILE *)1, "./tmp_19283746523452345", FIM_DB_DISK);
+    expect_fim_db_clean_file((FILE *)1, FIM_DB_DISK);
 #else
-    expect_fim_db_clean_file((FILE *)1, ".\\tmp_19283746523452345", FIM_DB_DISK);
+    expect_fim_db_clean_file((FILE *)1, FIM_DB_DISK);
 #endif
 
     int ret = fim_db_get_path_range(&fim_sql, FIM_TYPE_FILE, start, top, &file, FIM_DB_DISK);
@@ -662,9 +664,9 @@ void test_fim_db_get_path_range_no_elements_in_range(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
 #ifndef TEST_WINAGENT
-    expect_fim_db_clean_file((FILE *)1, "./tmp_19283746523452345", FIM_DB_DISK);
+    expect_fim_db_clean_file((FILE *)1, FIM_DB_DISK);
 #else
-    expect_fim_db_clean_file((FILE *)1, ".\\tmp_19283746523452345", FIM_DB_DISK);
+    expect_fim_db_clean_file((FILE *)1, FIM_DB_DISK);
 #endif
 
     int ret = fim_db_get_path_range(&fim_sql, FIM_TYPE_FILE, start, top, &file, FIM_DB_DISK);
@@ -678,10 +680,10 @@ void test_fim_db_get_path_range_success(void **state) {
     const char *start = "start", *top = "top";
 #ifndef TEST_WINAGENT
     const char *path = "/some/random/path";
-    char *expected_str = "/some/random/path\n";
+    char *expected_str = "00000000000000000000000000000018/some/random/path\n";
 #else
     const char *path = "c:\\some\\random\\path";
-    char *expected_str = "c:\\some\\random\\path\n";
+    char *expected_str = "00000000000000000000000000000020c:\\some\\random\\path\n";
 #endif
 
     expect_fim_db_create_temp_file_success(FIM_DB_DISK);
@@ -1273,12 +1275,12 @@ void test_fim_db_callback_save_path_disk(void **state) {
 
 #ifndef TEST_WINAGENT
     expect_value(__wrap_fprintf, __stream, 2345);
-    expect_string(__wrap_fprintf, formatted_msg, "/test/path\n");
-    will_return(__wrap_fprintf, 11);
+    expect_string(__wrap_fprintf, formatted_msg, "00000000000000000000000000000011/test/path\n");
+    will_return(__wrap_fprintf, 43);
 #else
     expect_value(wrap_fprintf, __stream, 2345);
-    expect_string(wrap_fprintf, formatted_msg, "/test/path\n");
-    will_return(wrap_fprintf, 11);
+    expect_string(wrap_fprintf, formatted_msg, "00000000000000000000000000000011/test/path\n");
+    will_return(wrap_fprintf, 43);
 #endif
 
     fim_db_callback_save_path(test_data->fim_sql, test_data->entry, syscheck.database_store, test_data->tmp_file);
@@ -1295,8 +1297,9 @@ void test_fim_db_callback_save_path_disk_registry(void **state) {
     will_return(__wrap_wstr_escape_json, strdup("HKEY_LOCAL_MACHINE\\\\some\\\\random\\\\key"));
 
     expect_value(wrap_fprintf, __stream, 2345);
-    expect_string(wrap_fprintf, formatted_msg, "1 HKEY_LOCAL_MACHINE\\\\some\\\\random\\\\key\n");
-    will_return(wrap_fprintf, 40);
+    expect_string(wrap_fprintf, formatted_msg,
+                  "000000000000000000000000000000401 HKEY_LOCAL_MACHINE\\\\some\\\\random\\\\key\n");
+    will_return(wrap_fprintf, 72);
 
     fim_db_callback_save_path(&fim_sql, &entry, FIM_DB_DISK, &file);
     assert_int_equal(file.elements, 1);
@@ -1311,12 +1314,12 @@ void test_fim_db_callback_save_path_disk_error(void **state) {
 
 #ifndef TEST_WINAGENT
     expect_value(__wrap_fprintf, __stream, 2345);
-    expect_string(__wrap_fprintf, formatted_msg, "/test/path\n");
-    will_return(__wrap_fprintf, 0);
+    expect_string(__wrap_fprintf, formatted_msg, "00000000000000000000000000000011/test/path\n");
+    will_return(__wrap_fprintf, -1);
 #else
     expect_value(wrap_fprintf, __stream, 2345);
-    expect_string(wrap_fprintf, formatted_msg, "/test/path\n");
-    will_return(wrap_fprintf, 0);
+    expect_string(wrap_fprintf, formatted_msg, "00000000000000000000000000000011/test/path\n");
+    will_return(wrap_fprintf, -1);
 #endif
 
     errno = 0;
@@ -1364,13 +1367,20 @@ void test_fim_db_create_temp_file_disk(void **state) {
     will_return(__wrap_os_random, 2345);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_fopen, path, ".\\tmp_19283746523452345");
+    expect_string(__wrap_wfopen, __filename, ".\\tmp_19283746523452345");
 #else
-    expect_string(__wrap_fopen, path, "./tmp_19283746523452345");
+    expect_string(__wrap_wfopen, __filename, "./tmp_19283746523452345");
 #endif
 
-    expect_string(__wrap_fopen, mode, "w+");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __modes, "w+");
+    will_return(__wrap_wfopen, 1);
+
+#ifdef TEST_WINAGENT
+    expect_string(__wrap_remove, filename, ".\\tmp_19283746523452345");
+#else
+    expect_string(__wrap_remove, filename, "./tmp_19283746523452345");
+#endif
+    will_return(__wrap_remove, 1);
 
     fim_tmp_file *ret = fim_db_create_temp_file(FIM_DB_DISK);
     *state = ret;
@@ -1389,13 +1399,13 @@ void test_fim_db_create_temp_file_disk_error(void **state) {
     will_return(__wrap_os_random, 2345);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_fopen, path, ".\\tmp_19283746523452345");
+    expect_string(__wrap_wfopen, __filename, ".\\tmp_19283746523452345");
 #else
-    expect_string(__wrap_fopen, path, "./tmp_19283746523452345");
+    expect_string(__wrap_wfopen, __filename, "./tmp_19283746523452345");
 #endif
 
-    expect_string(__wrap_fopen, mode, "w+");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, __modes, "w+");
+    will_return(__wrap_wfopen, 0);
 
 #ifdef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg,
@@ -1431,9 +1441,6 @@ void test_fim_db_clean_file_disk() {
 
     expect_value(__wrap_fclose, _File, file->fd);
     will_return(__wrap_fclose, 1);
-
-    expect_string(__wrap_remove, filename, file->path);
-    will_return(__wrap_remove, 1);
 
     fim_db_clean_file(&file, FIM_DB_DISK);
 
@@ -1614,12 +1621,12 @@ static void test_fim_db_callback_save_string_disk_fail_to_print(void **state) {
 
 #ifndef TEST_WINAGENT
     expect_value(__wrap_fprintf, __stream, 1234);
-    expect_string(__wrap_fprintf, formatted_msg, "test string\n");
-    will_return(__wrap_fprintf, 0);
+    expect_string(__wrap_fprintf, formatted_msg, "00000000000000000000000000000012test string\n");
+    will_return(__wrap_fprintf, -1);
 #else
     expect_value(wrap_fprintf, __stream, 1234);
-    expect_string(wrap_fprintf, formatted_msg, "test string\n");
-    will_return(wrap_fprintf, 0);
+    expect_string(wrap_fprintf, formatted_msg, "00000000000000000000000000000012test string\n");
+    will_return(wrap_fprintf, -1);
 #endif
 
     expect_string(__wrap__merror, formatted_msg, "Can't save entry: test string Success");
@@ -1645,12 +1652,12 @@ static void test_fim_db_callback_save_string_disk_success(void **state) {
 
 #ifndef TEST_WINAGENT
     expect_value(__wrap_fprintf, __stream, 1234);
-    expect_string(__wrap_fprintf, formatted_msg, "test string\n");
-    will_return(__wrap_fprintf, 12);
+    expect_string(__wrap_fprintf, formatted_msg, "00000000000000000000000000000012test string\n");
+    will_return(__wrap_fprintf, 44);
 #else
     expect_value(wrap_fprintf, __stream, 1234);
-    expect_string(wrap_fprintf, formatted_msg, "test string\n");
-    will_return(wrap_fprintf, 12);
+    expect_string(wrap_fprintf, formatted_msg, "00000000000000000000000000000012test string\n");
+    will_return(wrap_fprintf, 44);
 #endif
 
     fim_db_callback_save_string(&fim_sql, str, FIM_DB_DISK, &file);
@@ -1797,12 +1804,37 @@ static void test_fim_db_read_line_from_file_already_done_reading(void **state) {
 
 static void test_fim_db_read_line_from_file_disk_fail_to_fseek(void **state) {
     fim_tmp_file file = { .elements = 3, .path = "/some/random/path" };
+    char warning_message[OS_SIZE_256];
     char *line = NULL;
     int retval;
 
     will_return(__wrap_fseek, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "Failed fseek in /some/random/path");
+    snprintf(warning_message, OS_SIZE_256, FIM_DB_TEMPORARY_FILE_POSITION, 0, "Success");
+    expect_string(__wrap__mwarn, formatted_msg, warning_message);
+
+    retval = fim_db_read_line_from_file(&file, FIM_DB_DISK, 0, &line);
+
+    assert_int_equal(retval, -1);
+    assert_null(line);
+}
+
+static void test_fim_db_read_line_from_file_disk_fail_to_read_line_length(void **state) {
+    fim_tmp_file file = { .elements = 3, .path = "/some/random/path", .fd = (FILE *)2345 };
+    char *line = NULL;
+    int retval;
+
+    will_return(__wrap_fseek, 0);
+
+#ifndef TEST_WINAGENT
+    expect_value(__wrap_fgets, __stream, (FILE *)2345);
+    will_return(__wrap_fgets, NULL);
+#else
+    expect_value(wrap_fgets, __stream, (FILE *)2345);
+    will_return(wrap_fgets, NULL);
+#endif
+
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_UNABLE_TO_READ_TEMP_FILE);
 
     retval = fim_db_read_line_from_file(&file, FIM_DB_DISK, 0, &line);
 
@@ -1819,15 +1851,25 @@ static void test_fim_db_read_line_from_file_disk_fail_to_read_line(void **state)
 
 #ifndef TEST_WINAGENT
     expect_value(__wrap_fgets, __stream, (FILE *)2345);
+    will_return(__wrap_fgets, "00000000000000000000000000000018");
+#else
+    expect_value(wrap_fgets, __stream, (FILE *)2345);
+    will_return(wrap_fgets, "00000000000000000000000000000018");
+#endif
+
+#ifndef TEST_WINAGENT
+    expect_value(__wrap_fgets, __stream, (FILE *)2345);
     will_return(__wrap_fgets, NULL);
 #else
     expect_value(wrap_fgets, __stream, (FILE *)2345);
     will_return(wrap_fgets, NULL);
 #endif
 
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_UNABLE_TO_READ_TEMP_FILE);
+
     retval = fim_db_read_line_from_file(&file, FIM_DB_DISK, 0, &line);
 
-    assert_int_equal(retval, 0);
+    assert_int_equal(retval, -1);
     assert_null(line);
 }
 
@@ -1837,6 +1879,14 @@ static void test_fim_db_read_line_from_file_disk_read_corrupt_line(void **state)
     int retval;
 
     will_return(__wrap_fseek, 0);
+
+#ifndef TEST_WINAGENT
+    expect_value(__wrap_fgets, __stream, (FILE *)2345);
+    will_return(__wrap_fgets, "00000000000000000000000000000014");
+#else
+    expect_value(wrap_fgets, __stream, (FILE *)2345);
+    will_return(wrap_fgets, "00000000000000000000000000000014");
+#endif
 
 #ifndef TEST_WINAGENT
     expect_value(__wrap_fgets, __stream, (FILE *)2345);
@@ -1851,7 +1901,7 @@ static void test_fim_db_read_line_from_file_disk_read_corrupt_line(void **state)
 
     retval = fim_db_read_line_from_file(&file, FIM_DB_DISK, 0, &line);
 
-    assert_int_equal(retval, 0);
+    assert_int_equal(retval, -1);
     assert_null(line);
 }
 
@@ -1859,6 +1909,14 @@ static void test_fim_db_read_line_from_file_disk_line_read(void **state) {
     fim_tmp_file file = { .elements = 3, .path = "/some/random/path", .fd = (FILE *)2345 };
     char *line = NULL;
     int retval;
+
+#ifndef TEST_WINAGENT
+    expect_value(__wrap_fgets, __stream, (FILE *)2345);
+    will_return(__wrap_fgets, "00000000000000000000000000000011");
+#else
+    expect_value(wrap_fgets, __stream, (FILE *)2345);
+    will_return(wrap_fgets, "00000000000000000000000000000011");
+#endif
 
 #ifndef TEST_WINAGENT
     expect_value(__wrap_fgets, __stream, (FILE *)2345);
@@ -1908,12 +1966,21 @@ static void test_fim_db_read_line_from_file_memory_line_read(void **state) {
 \**********************************************************************************************************************/
 static void test_fim_db_process_read_file_fail_to_read_line(void **state) {
     fdb_t fim_sql;
-    fim_tmp_file file = { .elements = 1, .path = "/some/random/path" };
+    fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
     int retval;
 
-    expect_fim_db_read_line_from_file_fail();
+    if (file == NULL) {
+        fail();
+    }
 
-    retval = fim_db_process_read_file(&fim_sql, &file, FIM_TYPE_FILE, &syscheck.fim_entry_mutex, read_file_callback,
+    file->elements = 1;
+    file->path = strdup("/some/random/path");
+    file->fd = (FILE *)1234;
+
+    expect_fim_db_read_line_from_file_fail();
+    expect_fim_db_clean_file(file->fd, FIM_DB_DISK);
+
+    retval = fim_db_process_read_file(&fim_sql, file, FIM_TYPE_FILE, &syscheck.fim_entry_mutex, read_file_callback,
                                       FIM_DB_DISK, NULL, NULL, NULL);
 
     assert_int_equal(retval, FIMDB_ERR);
@@ -1934,11 +2001,12 @@ static void test_fim_db_process_read_file_success(void **state) {
     file->path = strdup("/some/random/path");
     file->fd = (FILE *)1234;
 
-    expect_fim_db_read_line_from_file_disk_success(0, file->fd, "/media/some/path\n");
+    expect_fim_db_read_line_from_file_disk_success(0, file->fd, "/media/some/path\n",
+                                                   "00000000000000000000000000000017");
 
     expect_fim_db_get_path_success("/media/some/path", &entry);
 
-    expect_fim_db_clean_file(file->fd, file->path, FIM_DB_DISK);
+    expect_fim_db_clean_file(file->fd, FIM_DB_DISK);
 
     retval = fim_db_process_read_file(&fim_sql, file, FIM_TYPE_FILE, &syscheck.fim_entry_mutex, read_file_callback,
                                       FIM_DB_DISK, NULL, NULL, NULL);
@@ -1960,11 +2028,12 @@ void test_fim_db_process_read_file_fail_to_read_registry_entry(void **state) {
     file->path = strdup("/some/random/path");
     file->fd = (FILE *)1234;
 
-    expect_fim_db_read_line_from_file_disk_success(0, file->fd, "HKEY_WRONG_FORMAT\\\n");
+    expect_fim_db_read_line_from_file_disk_success(0, file->fd, "HKEY_WRONG_FORMAT\\\n",
+                                                   "00000000000000000000000000000019");
 
     expect_string(__wrap__merror, formatted_msg, "Temporary path file '/some/random/path' is corrupt: Wrong format");
 
-    expect_fim_db_clean_file(file->fd, file->path, FIM_DB_DISK);
+    expect_fim_db_clean_file(file->fd, FIM_DB_DISK);
 
     retval = fim_db_process_read_file(&fim_sql, file, FIM_TYPE_REGISTRY, &syscheck.fim_entry_mutex, read_file_callback,
                                       FIM_DB_DISK, NULL, NULL, NULL);
@@ -1986,11 +2055,12 @@ void test_fim_db_process_read_registry_entry_fail_to_get_key(void **state) {
     file->path = strdup("/some/random/path");
     file->fd = (FILE *)1234;
 
-    expect_fim_db_read_line_from_file_disk_success(0, file->fd, "1 HKEY_LOCAL_MACHINE\\software\\some:\\key\n");
+    expect_fim_db_read_line_from_file_disk_success(0, file->fd, "1 HKEY_LOCAL_MACHINE\\software\\some:\\key\n",
+                                                   "00000000000000000000000000000040");
 
     expect_fim_db_get_registry_key_fail(&data);
 
-    expect_fim_db_clean_file(file->fd, file->path, FIM_DB_DISK);
+    expect_fim_db_clean_file(file->fd, FIM_DB_DISK);
 
     retval = fim_db_process_read_file(&fim_sql, file, FIM_TYPE_REGISTRY, &syscheck.fim_entry_mutex, read_file_callback,
                                       FIM_DB_DISK, NULL, NULL, NULL);
@@ -2012,11 +2082,12 @@ void test_fim_db_process_read_registry_entry_success(void **state) {
     file->path = strdup("/some/random/path");
     file->fd = (FILE *)1234;
 
-    expect_fim_db_read_line_from_file_disk_success(0, file->fd, "1 HKEY_LOCAL_MACHINE\\software\\some:\\key\n");
+    expect_fim_db_read_line_from_file_disk_success(0, file->fd, "1 HKEY_LOCAL_MACHINE\\software\\some:\\key\n",
+                                                   "00000000000000000000000000000040");
 
     expect_fim_db_get_registry_key(&data);
 
-    expect_fim_db_clean_file(file->fd, file->path, FIM_DB_DISK);
+    expect_fim_db_clean_file(file->fd, FIM_DB_DISK);
 
     retval = fim_db_process_read_file(&fim_sql, file, FIM_TYPE_REGISTRY, &syscheck.fim_entry_mutex, read_file_callback,
                                       FIM_DB_DISK, NULL, NULL, NULL);
@@ -2272,6 +2343,7 @@ int main(void) {
         // fim_db_read_line_from_file
         cmocka_unit_test(test_fim_db_read_line_from_file_already_done_reading),
         cmocka_unit_test(test_fim_db_read_line_from_file_disk_fail_to_fseek),
+        cmocka_unit_test(test_fim_db_read_line_from_file_disk_fail_to_read_line_length),
         cmocka_unit_test(test_fim_db_read_line_from_file_disk_fail_to_read_line),
         cmocka_unit_test(test_fim_db_read_line_from_file_disk_read_corrupt_line),
         cmocka_unit_test_teardown(test_fim_db_read_line_from_file_disk_line_read, teardown_string),

@@ -86,6 +86,15 @@ static char *dir_config[] = {
     NULL,
 };
 
+static char *symbolic_links_config[] = {
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+};
+
 static int diff_size_limit_config[] = {
     1024,
     1024,
@@ -259,6 +268,7 @@ static int setup_group(void **state) {
     syscheck.nodiff_regex = syscheck_nodiff_regex;
 
     syscheck.dir = dir_config;
+    syscheck.symbolic_links = symbolic_links_config;
     syscheck.diff_size_limit = diff_size_limit_config;
 
 #ifdef TEST_WINAGENT
@@ -1257,7 +1267,7 @@ void test_fim_diff_registry_tmp_default_type(void **state) {
 
     expect_fopen(diff->file_origin, "w", fp);
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6935): Wrong registry value type processed for report_changes.");
+    expect_string(__wrap__mwarn, formatted_msg, FIM_REG_VAL_WRONG_TYPE);
 
     expect_fclose(fp, 0);
 

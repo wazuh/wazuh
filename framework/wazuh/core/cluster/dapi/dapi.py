@@ -110,9 +110,9 @@ class DistributedAPI:
         """
         try:
             if 'password' in self.f_kwargs:
-                self.logger.debug("Receiving parameters {}".format({**self.f_kwargs, 'password': '****'}))
+                self.logger.debug(f"Receiving parameters { {**self.f_kwargs, 'password': '****'} }")
             else:
-                self.logger.debug("Receiving parameters {}".format(self.f_kwargs))
+                self.logger.debug(f"Receiving parameters {self.f_kwargs}")
 
             is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
             # First case: execute the request locally.
@@ -235,8 +235,7 @@ class DistributedAPI:
             except asyncio.TimeoutError:
                 raise exception.WazuhInternalError(3021)
 
-            after = time.time()
-            self.logger.debug("Time calculating request result: {}s".format(after - before))
+            self.logger.debug(f"Time calculating request result: {time.time() - before}s")
             return data
         except (exception.WazuhError, exception.WazuhResourceNotFound) as e:
             e.dapi_errors = self.get_error_info(e)
@@ -497,7 +496,7 @@ class DistributedAPI:
                                                             filters=filters)['items']
             node_name = defaultdict(list)
             for element in system_agents:
-                node_name[element['node_name']].append(element['id'])
+                node_name[element.get('node_name', '')].append(element['id'])
 
             # Update node_name in case it is empty or a node has no agents
             if 'node_id' in self.f_kwargs:
@@ -558,7 +557,7 @@ class WazuhRequestQueue:
         request : bytes
             Request to add.
         """
-        self.logger.debug("Received request: {}".format(request))
+        self.logger.debug(f"Received request: {request}")
         self.request_queue.put_nowait(request.decode())
 
 
@@ -583,7 +582,12 @@ class APIRequestQueue(WazuhRequestQueue):
             name_2 = '' if len(names) == 1 else names[1] + ' '
 
             # Get reference to MasterHandler or WorkerHandler
-            node = self.server.client if names[0] == 'master' else self.server.clients[names[0]]
+            try:
+                node = self.server.client if names[0] == 'master' else self.server.clients[names[0]]
+            except KeyError as e:
+                self.logger.error(f"Error in DAPI request. The destination node is not connected or does not exist: {e}.")
+                continue
+
             try:
                 request = json.loads(request, object_hook=c_common.as_wazuh_object)
                 self.logger.info("Receiving request: {} from {}".format(
@@ -593,7 +597,7 @@ class APIRequestQueue(WazuhRequestQueue):
                                               node=node).distribute_function()
                 task_id = await node.send_string(json.dumps(result, cls=c_common.WazuhJSONEncoder).encode())
             except Exception as e:
-                self.logger.error("Error in distributed API: {}".format(e), exc_info=True)
+                self.logger.error(f"Error in distributed API: {e}", exc_info=True)
                 task_id = b'Error in distributed API: ' + str(e).encode()
 
             if task_id.startswith(b'Error'):
@@ -628,15 +632,19 @@ class SendSyncRequestQueue(WazuhRequestQueue):
             # request -> JSON containing request's necessary information
             name_2 = '' if len(names) == 1 else names[1] + ' '
 
-            node = self.server.clients[names[0]]
+            try:
+                node = self.server.clients[names[0]]
+            except KeyError as e:
+                self.logger.error(f"Error in Sendsync. The destination node is not connected or does not exist: {e}.")
+                continue
+
             try:
                 request = json.loads(request, object_hook=c_common.as_wazuh_object)
-                self.logger.debug("Receiving SendSync request ({}) from {} ({})".format(
-                    request['daemon_name'], names[0], names[1]))
+                self.logger.debug(f"Receiving SendSync request ({request['daemon_name']}) from {names[0]} ({names[1]})")
                 result = await wazuh_sendsync(**request)
                 task_id = await node.send_string(result.encode())
             except Exception as e:
-                self.logger.error("Error in SendSync: {}".format(e), exc_info=True)
+                self.logger.error(f"Error in SendSync: {e}", exc_info=True)
                 task_id = b'Error in SendSync: ' + str(e).encode()
 
             if task_id.startswith(b'Error'):

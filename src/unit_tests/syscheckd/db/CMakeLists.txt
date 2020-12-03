@@ -14,9 +14,9 @@ set(FIM_DB_BASE_FLAGS "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_v2
                        -Wl,--wrap=sqlite3_bind_text,--wrap=sqlite3_column_int,--wrap=sqlite3_column_text \
                        -Wl,--wrap=EVP_DigestUpdate,--wrap=_minfo,--wrap=_mdebug1,--wrap=_mdebug2,--wrap=fseek \
                        -Wl,--wrap=fclose,--wrap=fopen,--wrap=getpid,--wrap=fflush,--wrap=wstr_escape_json \
-                       -Wl,--wrap=sqlite3_column_int64,--wrap=fread,--wrap=fwrite \
+                       -Wl,--wrap=sqlite3_column_int64,--wrap=fread,--wrap=fwrite,--wrap=_mwarn \
                        -Wl,--wrap=fprintf,--wrap=fgets,--wrap=stat,--wrap=wstr_split,--wrap=os_random \
-                       -Wl,--wrap=DirSize,--wrap=IsDir,--wrap=sqlite3_column_count,--wrap=getDefine_Int")
+                       -Wl,--wrap=DirSize,--wrap=IsDir,--wrap=sqlite3_column_count,--wrap=getDefine_Int,--wrap=wfopen")
 
 target_link_libraries(test_fim_db SYSCHECK_O ${TEST_DEPS} fim_shared)
 if(${TARGET} STREQUAL "winagent")

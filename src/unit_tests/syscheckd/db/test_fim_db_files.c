@@ -914,13 +914,13 @@ void test_fim_db_get_not_scanned_failed(void **state) {
     will_return(__wrap_os_random, 2345);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_fopen, path, ".\\tmp_19283746523452345");
+    expect_string(__wrap_wfopen, __filename, ".\\tmp_19283746523452345");
 #else
-    expect_string(__wrap_fopen, path, "./tmp_19283746523452345");
+    expect_string(__wrap_wfopen, __filename, "./tmp_19283746523452345");
 #endif
 
-    expect_string(__wrap_fopen, mode, "w+");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, __modes, "w+");
+    will_return(__wrap_wfopen, 0);
 #ifndef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage './tmp_19283746523452345': Success (0)");
 #else
@@ -939,13 +939,13 @@ void test_fim_db_get_not_scanned_success(void **state) {
     will_return(__wrap_os_random, 2345);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_fopen, path, ".\\tmp_19283746523452345");
+    expect_string(__wrap_wfopen, __filename, ".\\tmp_19283746523452345");
 #else
-    expect_string(__wrap_fopen, path, "./tmp_19283746523452345");
+    expect_string(__wrap_wfopen, __filename, "./tmp_19283746523452345");
 #endif
 
-    expect_string(__wrap_fopen, mode, "w+");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __modes, "w+");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);

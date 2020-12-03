@@ -269,7 +269,7 @@ void fim_db_callback_save_reg_data_name(__attribute__((unused))fdb_t * fim_sql, 
     snprintf(buffer, length, "%d %s", entry->registry_entry.value->id, base);
 
     if (storage == FIM_DB_DISK) { // disk storage enabled
-        if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", buffer) != (strlen(buffer) + sizeof(char))) {
+        if (fprintf(((fim_tmp_file *) arg)->fd, "%032ld%s\n", (unsigned long)(length), buffer) < 0) {
             merror("Can't save entry: %s %s", entry->registry_entry.value->name, strerror(errno));
             goto end;
         }
@@ -552,7 +552,8 @@ int fim_db_process_read_registry_data_file(fdb_t *fim_sql, fim_tmp_file *file, p
 
     for (i = 0; i < file->elements; i++) {
         // Read line has to be: 234(row id of the key) some_reg(name of the registry). Get the rowid and the name
-        if(fim_db_read_line_from_file(file, storage, i, &read_line) == -1) {
+        if(fim_db_read_line_from_file(file, storage, i, &read_line) != 0) {
+            fim_db_clean_file(&file, storage);
             return FIMDB_ERR;
         }
 

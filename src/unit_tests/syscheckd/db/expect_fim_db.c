@@ -119,13 +119,21 @@ void expect_fim_db_force_commit() {
 void expect_fim_db_read_line_from_file_fail() {
     will_return(__wrap_fseek, -1);
 
-    expect_any(__wrap__merror, formatted_msg);
+    expect_any(__wrap__mwarn, formatted_msg);
 }
 
-void expect_fim_db_read_line_from_file_disk_success(int index, FILE *fd, const char *line) {
+void expect_fim_db_read_line_from_file_disk_success(int index, FILE *fd, const char *line, const char *line_length) {
     if (index == 0) {
         will_return(__wrap_fseek, 0);
     }
+
+#ifndef TEST_WINAGENT
+    expect_value(__wrap_fgets, __stream, fd);
+    will_return(__wrap_fgets, line_length);
+#else
+    expect_value(wrap_fgets, __stream, fd);
+    will_return(wrap_fgets, line_length);
+#endif
 
 #ifndef TEST_WINAGENT
     expect_value(__wrap_fgets, __stream, fd);

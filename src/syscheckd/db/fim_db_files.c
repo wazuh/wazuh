@@ -121,9 +121,9 @@ int fim_db_delete_not_scanned(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex
                                     (void *) true, (void *) FIM_SCHEDULED, NULL);
 }
 
-int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
+int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage, fim_event_mode mode) {
     return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_db_remove_path, storage,
-                                    (void *) false, (void *) FIM_SCHEDULED, NULL);
+                                    (void *) false, (void *) mode, NULL);
 }
 
 int fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage,
@@ -360,6 +360,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_file_data *new, fim
         if (syscheck.file_limit_enabled) {
             nodes_count = fim_db_get_count_entries(syscheck.database);
             if (nodes_count >= syscheck.file_limit) {
+                fim_sql->full = true;
                 mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.",
                         file_path);
                 return FIMDB_FULL;
@@ -493,6 +494,8 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
                 w_mutex_unlock(mutex);
                 goto end;
             }
+
+            fim_sql->full = false;
             break;
         }
     }
@@ -513,8 +516,10 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
             goto end;
         }
 
+        w_mutex_lock(mutex);
         json_event = fim_json_event(entry->file_entry.path, NULL, entry->file_entry.data, pos, FIM_DELETE, mode,
                                     whodata_event, NULL);
+        w_mutex_unlock(mutex);
 
         if (!strcmp(FIM_ENTRY_TYPE[entry->type], "file") && syscheck.opts[pos] & CHECK_SEECHANGES) {
             fim_diff_process_delete_file(entry->file_entry.path);

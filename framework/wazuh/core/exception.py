@@ -505,7 +505,7 @@ class WazuhException(Exception):
         # User management
         5000: {'message': 'The user could not be created',
                'remediation': 'Please check that the user does not exist, '
-                              'to do this you can use the `GET /security/users/{username}` call'},
+                              'to do this you can use the `GET /security/users` call'},
         5001: {'message': 'The user does not exist',
                'remediation': 'The user can be created with the endpoint POST /security/users'},
         5002: {'message': 'There are no users in the system'},

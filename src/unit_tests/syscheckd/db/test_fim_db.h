@@ -36,7 +36,7 @@ void expect_fim_db_clean_stmt();
 void expect_fim_db_get_count_entries(int retval);
 void expect_fim_db_force_commit();
 void expect_fim_db_read_line_from_file_fail();
-void expect_fim_db_read_line_from_file_disk_success(int index, FILE *fd, const char *line);
+void expect_fim_db_read_line_from_file_disk_success(int index, FILE *fd, const char *line, const char *line_length);
 void expect_fim_db_get_path_success(const char *path, const fim_entry *entry);
 
 /* fim_db_files.c */

@@ -147,10 +147,12 @@ int fim_db_delete_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_
  * @param file Structure of the file which contains all the paths.
  * @param mutex FIM database's mutex for thread synchronization.
  * @param storage 1 Store database in memory, disk otherwise.
+ * @param mode FIM mode (scheduled, realtime or whodata)
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage);
+int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file,
+                        pthread_mutex_t *mutex, int storage, fim_event_mode mode);
 
 /**
  * @brief Remove a range of paths from database if they have a specific monitoring mode.

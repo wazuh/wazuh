@@ -1721,6 +1721,8 @@ components:
         name:
           description: "Policy name"
           type: string
+          maxLength: 64
+          format: names
         policy:
           description: "New policy definition"
           type: object
@@ -1748,6 +1750,8 @@ components:
         name:
           description: "Policy name"
           type: string
+          maxLength: 64
+          format: names
         policy:
           description: "New policy definition"
           type: object
@@ -1815,12 +1819,16 @@ components:
         name:
           type: string
           description: "Role name"
+          maxLength: 64
+          format: names
     RolesRequest_no_required:
       type: object
       properties:
         name:
           type: string
           description: "Role name"
+          maxLength: 64
+          format: names
     SecurityRulesRequest:
       type: object
       required:
@@ -1830,6 +1838,8 @@ components:
         name:
           type: string
           description: "Rule name"
+          maxLength: 64
+          format: names
         rule:
           type: object
           description: "Rule body"
@@ -1839,6 +1849,8 @@ components:
         name:
           type: string
           description: "Rule name"
+          maxLength: 64
+          format: names
         rule:
           type: object
           description: "Rule body"
@@ -13972,7 +13984,7 @@ paths:
                 username:
                   type: string
                   minLength: 4
-                  maxLength: 20
+                  maxLength: 64
                   format: names
                 password:
                   type: string
@@ -14167,7 +14179,7 @@ paths:
                         - 1
                       users:
                         - 1
-                      rule:
+                      rules:
                         - 1
                     - id: 2
                       name: 'normal_user'
@@ -14176,7 +14188,7 @@ paths:
                         - 5
                       users:
                         - 3
-                      rule:
+                      rules:
                         - 3
                   total_affected_items: 2
                 message: "All specified roles were returned"
@@ -14227,10 +14239,6 @@ paths:
                   affected_items:
                     - id: 2
                       name: normal_user
-                      policies: []
-                      rule:
-                        MATCH:
-                          definition: limit_access
                   total_affected_items: 1
                 message: "Role was successfully created"
                 error: 0
@@ -14279,28 +14287,13 @@ paths:
                     - id: 4
                       name: administrator
                       policies:
-                        - id: 4
-                          name: administratorPolicy
-                          policy:
-                            actions:
-                              - agent:delete
-                            effect: allow
-                            resources:
-                              - agent:id:*
-                        - id: 5
-                          name: normalPolicy
-                          policy:
-                            actions:
-                              - agent:delete
-                            effect: deny
-                            resources:
-                              - agent:id:*
-                      rule:
-                        MATCH:
-                          definition: administratorRule
+                        - 4
+                        - 5
+                      rules:
+                        - 8
                       users:
-                        - normal
-                        - rbac
+                        - 101
+                        - 104
                   failed_items: []
                   total_affected_items: 1
                   total_failed_items: 0
@@ -14357,9 +14350,8 @@ paths:
                     - id: 5
                       name: normal8
                       policies: []
-                      rule:
-                        MATCH:
-                          definition: normalRule8
+                      rules:
+                        - 100
                   total_affected_items: 1
                 message: "Role was successfully updated"
                 error: 0
@@ -14781,16 +14773,8 @@ paths:
                         resources:
                           - role:id:1
                       roles:
-                        - id: 3
-                          name: technical
-                          rule:
-                            MATCH:
-                              definition: technicalRule
-                        - id: 6
-                          name: ossec
-                          rule:
-                            MATCH:
-                              definition: ossecRule
+                        - 3
+                        - 6
                   failed_items: []
                   total_affected_items: 1
                   total_failed_items: 0
@@ -15007,29 +14991,10 @@ paths:
                     - id: 3
                       name: normal
                       policies:
-                        - id: 2
-                          name: normal_policy
-                          policy:
-                            actions:
-                              - agent:delete
-                            effect: allow
-                            resources:
-                              - agent:id:001
-                              - agent:id:002
-                              - agent:id:003
-                        - id: 3
-                          name: normal_policy1
-                          policy:
-                            actions:
-                              - agent:delete1
-                            effect: allow
-                            resources:
-                              - agent:id:001
-                              - agent:id:002
-                              - agent:id:003
-                      rule:
-                        MATCH:
-                          definition: normalRule
+                        - 2
+                        - 3
+                      rules:
+                        - 5
                       users: []
                   failed_items: []
                   total_affected_items: 2
@@ -15075,9 +15040,8 @@ paths:
                     - id: 3
                       name: normal
                       policies: []
-                      rule:
-                        MATCH:
-                          definition: normalRule
+                      rules:
+                        - 1
                       users: []
                   failed_items: []
                   total_affected_items: 2
@@ -15391,4 +15355,3 @@ paths:
 externalDocs:
   description: "Find more about Wazuh API usage"
   url: 'https://documentation.wazuh.com/4.1/user-manual/api/index.html'
-

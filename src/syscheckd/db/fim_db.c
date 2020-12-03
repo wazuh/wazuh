@@ -254,9 +254,17 @@ fim_tmp_file *fim_db_create_temp_file(int storage) {
                     getpid(),
                     os_random());
 
-        file->fd = fopen(file->path, "w+");
+        file->fd = wfopen(file->path, "w+");
         if (file->fd == NULL) {
             merror("Failed to create temporal storage '%s': %s (%d)", file->path, strerror(errno), errno);
+            os_free(file->path);
+            os_free(file);
+            return NULL;
+        }
+
+        // Have the file removed on close.
+        if (remove(file->path) < 0) {
+            merror("Failed to remove '%s': %s (%d)", file->path, strerror(errno), errno);
             os_free(file->path);
             os_free(file);
             return NULL;
@@ -271,9 +279,6 @@ fim_tmp_file *fim_db_create_temp_file(int storage) {
 void fim_db_clean_file(fim_tmp_file **file, int storage) {
     if (storage == FIM_DB_DISK) {
         fclose((*file)->fd);
-        if (remove((*file)->path) < 0) {
-            merror("Failed to remove '%s': %s (%d)", (*file)->path, strerror(errno), errno);
-        }
         os_free((*file)->path);
     } else {
         W_Vector_free((*file)->list);
@@ -475,7 +480,7 @@ void fim_db_callback_save_string(__attribute__((unused))fdb_t * fim_sql, const c
     }
 
     if (storage == FIM_DB_DISK) { // disk storage enabled
-        if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", base) != (strlen(base) + sizeof(char))) {
+        if (fprintf(((fim_tmp_file *) arg)->fd, "%032ld%s\n", (unsigned long) strlen(base) + 1, base) < 0) {
             merror("Can't save entry: %s %s", str, strerror(errno));
             free(base);
             return;
@@ -513,7 +518,7 @@ void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry
     }
 
     if (storage == FIM_DB_DISK) { // disk storage enabled
-        if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", write_buffer) != (line_length + sizeof(char))) {
+        if (fprintf(((fim_tmp_file *) arg)->fd, "%032ld%s\n", (unsigned long)(line_length + 1), write_buffer) < 0) {
             merror("Can't save entry: %s %s", path, strerror(errno));
             goto end;
         }
@@ -575,6 +580,7 @@ int fim_db_process_read_file(fdb_t *fim_sql,
 
     do {
         if (fim_db_read_line_from_file(file, storage, i, &read_line) == -1) {
+            fim_db_clean_file(&file, storage);
             return FIMDB_ERR;
         }
 
@@ -853,33 +859,47 @@ int fim_db_get_path_range(fdb_t *fim_sql,
 }
 
 int fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **buffer) {
-    char line[OS_MAXSTR];
-
     if (it == file->elements) {
         return 1;
     }
 
     if (storage == FIM_DB_DISK) {
+        char *line;
+        char path_length[OS_SIZE_32 + 1];
+
         if (it == 0 && fseek(file->fd, 0, SEEK_SET) != 0) {
-            merror("Failed fseek in %s", file->path);
+            mwarn(FIM_DB_TEMPORARY_FILE_POSITION, errno, strerror(errno));
             return -1;
         }
 
+        /* First 32 bytes hold the path length including the line break */
+        if (fgets(path_length, OS_SIZE_32 + 1, file->fd) == NULL) {
+            mdebug1(FIM_UNABLE_TO_READ_TEMP_FILE);
+            return -1;
+        }
+
+        size_t len = atoi(path_length);
+        os_malloc(len + 1, line);
+
         // fgets() adds \n(newline) to the end of the string,
         // So it must be removed.
-        if (fgets(line, sizeof(line), file->fd)) {
-            size_t len = strlen(line);
-
-            if (len > 2 && line[len - 1] == '\n') {
-                line[len - 1] = '\0';
-            }
-            else {
-                merror("Temporary path file '%s' is corrupt: missing line end.", file->path);
-                return 0;
-            }
-
-            *buffer = wstr_unescape_json(line);
+        if (fgets(line, len + 1, file->fd) == NULL) {
+            mdebug1(FIM_UNABLE_TO_READ_TEMP_FILE);
+            os_free(line);
+            return -1;
         }
+
+        if (len > 2 && line[len - 1] == '\n') {
+            line[len - 1] = '\0';
+        }
+        else {
+            merror("Temporary path file '%s' is corrupt: missing line end.", file->path);
+            os_free(line);
+            return -1;
+        }
+
+        *buffer = wstr_unescape_json(line);
+        os_free(line);
     } else {
         if (it > file->list->size) {
             merror("Attempted to retrieve an out of bounds line.");

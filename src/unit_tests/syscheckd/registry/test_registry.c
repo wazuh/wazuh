@@ -742,7 +742,7 @@ static void test_fim_registry_validate_ignore_ignore_entry(void **state) {
     int ret;
 
     expect_string(__wrap__mdebug2, formatted_msg,
-                  "(6258): Ignoring 'registry' '[x64] HKEY_LOCAL_MACHINE\\Software\\Ignore' due to "
+                  "(6260): Ignoring 'registry' '[x64] HKEY_LOCAL_MACHINE\\Software\\Ignore' due to "
                   "'HKEY_LOCAL_MACHINE\\Software\\Ignore'");
 
     ret = fim_registry_validate_ignore(path, configuration, 1);
@@ -1251,7 +1251,7 @@ static void test_fim_registry_process_value_event_ignore_event(void **state) {
     syscheck.value_ignore = ignore_conf;
 
     expect_string(__wrap__mdebug2, formatted_msg,
-                  "(6258): Ignoring 'value' '[x64] HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\valuename' due to "
+                  "(6260): Ignoring 'value' '[x64] HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\valuename' due to "
                   "'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\valuename'");
 
     fim_registry_process_value_event(entry_array[1], entry_array[0], event_mode, data_buffer);
