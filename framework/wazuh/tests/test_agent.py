@@ -280,7 +280,7 @@ def test_agent_delete_agents(socket_mock, send_mock, mock_remove, agent_list, ol
         List of expected agent ID's returned by
     """
     mock_remove.side_effect = remove_msg
-    result = delete_agents(agent_list, older_than=older_than)
+    result = delete_agents(agent_list, status='all', older_than=older_than)
     assert result.affected_items == sorted(expected_items), \
         f'"Affected_items" does not match. Should be "{result.affected_items}".'
     if result.failed_items:
