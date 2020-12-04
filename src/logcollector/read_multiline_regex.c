@@ -148,6 +148,7 @@ STATIC int multiline_getlog_start(char * buffer, int length, FILE * stream, w_mu
     if (ml_cfg->ctxt) {
         multiline_ctxt_restore(str, &readed_lines, ml_cfg->ctxt);
         offset = strlen(str);
+        str += offset;
         collecting_lines = true;
         /* If the context it's expired then free it and return log */
         if (multiline_ctxt_is_expired(ml_cfg->timeout, ml_cfg->ctxt)) {
@@ -213,6 +214,7 @@ STATIC int multiline_getlog_end(char * buffer, int length, FILE * stream, w_mult
     if (ml_cfg->ctxt) {
         multiline_ctxt_restore(str, &readed_lines, ml_cfg->ctxt);
         offset = strlen(str);
+        str += offset;
         collecting_lines = true;
         /* If the context it's expired then free it and return log */
         if (multiline_ctxt_is_expired(ml_cfg->timeout, ml_cfg->ctxt)) {
@@ -271,6 +273,7 @@ STATIC int multiline_getlog_all(char * buffer, int length, FILE * stream, w_mult
     if (ml_cfg->ctxt) {
         multiline_ctxt_restore(str, &readed_lines, ml_cfg->ctxt);
         offset = strlen(str);
+        str += offset;
         collecting_lines = true;
         /* If the context it's expired then free it and return log */
         if (multiline_ctxt_is_expired(ml_cfg->timeout, ml_cfg->ctxt)) {
