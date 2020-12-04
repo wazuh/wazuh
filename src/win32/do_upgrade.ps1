@@ -102,7 +102,15 @@ If ($status -eq $null)
     Get-Service -Name "Wazuh" | Stop-Service
     restore
     write-output "$(Get-Date -format u) - Upgrade failed: Restoring." >> .\upgrade\upgrade.log
-    .\$current_process.exe install-service >> .\upgrade\upgrade.log
+    If ($current_process -eq "wazuh-agent")
+    {
+        .\wazuh-agent.exe install-service >> .\upgrade\upgrade.log
+    }
+    Else
+    {
+        Remove-Item -path .\wazuh-agent.exe
+        .\ossec-agent.exe install-service >> .\upgrade\upgrade.log
+    }
     Start-Service -Name "Wazuh" -ErrorAction SilentlyContinue
 }
 Else
