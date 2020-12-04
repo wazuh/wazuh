@@ -488,12 +488,12 @@ def main():
         status['old_version'] = get_ruleset_version()
         status['new_version'] = get_new_ruleset(arguments['source'], arguments['url'], arguments['branch-name'])
         # Compare major
-        old_version = ossec_version.replace('"', '')
+        old_version = wazuh_version.replace('"', '')
         if not same_major_minor(old_version, status['new_version']) and not arguments['force']:
-            copy(ossec_ruleset_version_path + '-old', ossec_ruleset_version_path)
-            copy(ossec_update_script + '-old', ossec_update_script, 0o750)
-            os.remove(ossec_update_script + '-old')
-            os.remove(ossec_ruleset_version_path + '-old')
+            copy(wazuh_ruleset_version_path + '-old', wazuh_ruleset_version_path)
+            copy(wazuh_update_script + '-old', wazuh_update_script, 0o750)
+            os.remove(wazuh_update_script + '-old')
+            os.remove(wazuh_ruleset_version_path + '-old')
             exit(2, "Upgrade aborted: Unexpected version in the new ruleset. " + \
                  "Expected version {0}. Found version {1}".format(old_version[:-1] + 'x',
                                                                   status['new_version']))
