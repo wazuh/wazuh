@@ -88,23 +88,20 @@ STATIC void multiline_replace(char * str, w_multiline_replace_type_t type);
 
 void * read_multiline_regex(logreader * lf, int * rc, int drop_it) {
     char read_buffer[OS_MAXSTR + 1];
-    int count_logs, count_lines, rlines;
-    fpos_t fp_pos;
+    int count_lines = 0;
+    int rlines;
     const int max_line_len = OS_MAXSTR - OS_HEADER_SIZE - 1;
 
     read_buffer[OS_MAXSTR] = '\0';
     *rc = 0;
 
-    /* Get initial file location */
-    fgetpos(lf->fp, &fp_pos);
-
-    for (count_lines = 0, count_logs = 0;
-         ( rlines = multiline_getlog(read_buffer, max_line_len, lf->fp, lf->multiline)) > 0 && (!maximum_lines || count_lines < maximum_lines);
-         count_lines += rlines, count_logs++) {
+    while (rlines = multiline_getlog(read_buffer, max_line_len, lf->fp, lf->multiline),
+           rlines > 0 && (!maximum_lines || count_lines < maximum_lines)) {
 
         if (drop_it == 0) {
             w_msg_hash_queues_push(read_buffer, lf->file, strlen(read_buffer), lf->log_target, LOCALFILE_MQ);
         }
+        count_lines += rlines;
     }
 
     return NULL;
@@ -141,16 +138,16 @@ STATIC int multiline_getlog_start(char * buffer, int length, FILE * stream, w_mu
     char * retstr = NULL;
     int offset = 0;
     int chunk_sz = 0;
-    long pos = w_ftell(stream);
-    bool already_match = false;
+    bool collecting_lines = false;
     int readed_lines = 0;
     int c = 0;
+    long pos = w_ftell(stream);
     *str = '\0';
 
     if (ml_cfg->ctxt) {
         multiline_ctxt_restore(str, &readed_lines, ml_cfg->ctxt);
         offset = strlen(str);
-        already_match = true;
+        collecting_lines = true;
         if (multiline_ctxt_is_expired(ml_cfg->timeout, ml_cfg->ctxt)) {
             multiline_ctxt_free(&ml_cfg->ctxt);
             multiline_replace(buffer, ML_REPLACE_NONE);
@@ -158,12 +155,14 @@ STATIC int multiline_getlog_start(char * buffer, int length, FILE * stream, w_mu
         }
     }
 
-    while(can_read() && (retstr = fgets(str, length - offset, stream)) != NULL){
+    while (can_read() && (retstr = fgets(str, length - offset, stream)) != NULL) {
 
-        if (already_match && w_expression_match(ml_cfg->regex, str, NULL, NULL)) {
+        /* Check if current line match start regex */
+        if (collecting_lines && w_expression_match(ml_cfg->regex, str, NULL, NULL)) {
+            /* Rewind. This line dont belong to last log */
             buffer[offset] = '\0';
             multiline_replace(buffer, ML_REPLACE_NONE);
-            fseek(stream, pos, SEEK_SET); 
+            fseek(stream, pos, SEEK_SET);
             break;
         }
 
@@ -173,16 +172,20 @@ STATIC int multiline_getlog_start(char * buffer, int length, FILE * stream, w_mu
         str += chunk_sz;
         readed_lines++;
         pos = w_ftell(stream);
-        already_match = true;
+        collecting_lines = true;
     }
 
-    if (already_match && !retstr && length > offset) {
-        // Multiline log start found but not finished yet
+    if (collecting_lines && !retstr && length > offset) {
+        // Multiline log found but not finished yet
         multiline_ctxt_backup(buffer, readed_lines, &ml_cfg->ctxt);
         readed_lines = 0;
     } else if (length == offset) {
         // Discard the rest of the log, moving the pointer to the next end of line
-        while( c = fgetc(stream), c != '\n' || c != EOF ){};
+        while (c = fgetc(stream), c != '\n' || c != '\0' || c != EOF) {};
+    }
+
+    if (ml_cfg->ctxt && readed_lines > 0) {
+        multiline_ctxt_free(&ml_cfg->ctxt);
     }
 
     return readed_lines;
@@ -190,32 +193,51 @@ STATIC int multiline_getlog_start(char * buffer, int length, FILE * stream, w_mu
 
 STATIC int multiline_getlog_end(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg) {
     char * str = buffer;
-    *str = '\0';
+    char * retstr = NULL;
     int offset = 0;
     int chunk_sz = 0;
+    bool collecting_lines = false;
     int readed_lines = 0;
     int c = 0;
+    *str = '\0';
 
-    if (multiline_ctxt_restore(str, &readed_lines, ml_cfg->ctxt)) {
+    if (ml_cfg->ctxt) {
+        multiline_ctxt_restore(str, &readed_lines, ml_cfg->ctxt);
         offset = strlen(str);
+        collecting_lines = true;
+        if (multiline_ctxt_is_expired(ml_cfg->timeout, ml_cfg->ctxt)) {
+            multiline_ctxt_free(&ml_cfg->ctxt);
+            multiline_replace(buffer, ML_REPLACE_NONE);
+            return readed_lines;
+        }
     }
 
-    while(can_read() && fgets(str, length - offset, stream)){
+    while (can_read() && (retstr = fgets(str, length - offset, stream)) != NULL) {
         readed_lines++;
         chunk_sz = strlen(str);
         offset += chunk_sz;
         multiline_replace(str, ml_cfg->replace_type);
         if (w_expression_match(ml_cfg->regex, str, NULL, NULL)) {
+            collecting_lines = false;
             break;
         }
         str += chunk_sz;
+        collecting_lines = true;
     }
 
-    if (length == offset) {
+    if (collecting_lines && !retstr && length > offset) {
+        // Multiline log found but not finished yet
+        multiline_ctxt_backup(buffer, readed_lines, &ml_cfg->ctxt);
+        readed_lines = 0;
+    } else if (length == offset) {
         // Discard the rest of the log, moving the pointer to the next end of line
-        while( c = fgetc(stream), c != '\n' || c != EOF ){};
+        while (c = fgetc(stream), c != '\n' || c != '\0' || c != EOF) {};
     }
-    
+
+    if (ml_cfg->ctxt && readed_lines > 0) {
+        multiline_ctxt_free(&ml_cfg->ctxt);
+    }
+
     return readed_lines;
 }
 
@@ -310,7 +332,7 @@ STATIC void multiline_ctxt_backup(char * buffer, int readed_lines, w_multiline_c
     size_t current_bsize = strlen(buffer);
 
     if (*ctxt && (strlen((*ctxt)->buffer) == current_bsize)) {
-            return;    
+            return;
     }
 
     if (*ctxt) {
