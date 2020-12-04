@@ -6,9 +6,6 @@
 
 from setuptools import setup, find_packages
 
-NAME = "api"
-VERSION = "4.1.0"
-
 # To install the library, run the following
 #
 # python setup.py install
@@ -16,17 +13,15 @@ VERSION = "4.1.0"
 # prerequisite: setuptools
 # http://pypi.python.org/pypi/setuptools
 
-REQUIRES = []
-
 setup(
-    name=NAME,
-    version=VERSION,
+    name='api',
+    version='4.1.0',
     description="Wazuh API",
     author_email="hello@wazuh.com",
     author="Wazuh",
     url="https://github.com/wazuh",
     keywords=["Wazuh API"],
-    install_requires=REQUIRES,
+    install_requires=[],
     packages=find_packages(exclude=["*.test", "*.test.*", "test.*", "test"]),
     package_data={'': ['spec/spec.yaml']},
     include_package_data=True,
