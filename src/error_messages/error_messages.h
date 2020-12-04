@@ -176,6 +176,7 @@
 #define HCREATE_ERROR   "(1296): Unable to create a '%s' hash table"
 #define HSETSIZE_ERROR  "(1297): Unable to set size of '%s' hash table"
 #define HADD_ERROR      "(1298): Failure to add '%s' to '%s' hash table"
+#define HUPDATE_ERROR   "(1299): Failure to update '%s' to '%s' hash table"
 
 /* Log collector messages */
 #define MISS_LOG_FORMAT "(1901): Missing 'log_format' element."

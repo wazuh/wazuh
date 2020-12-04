@@ -28,8 +28,16 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     str[OS_MAXSTR] = '\0';
     f_msg[OS_MAXSTR] = '\0';
 
+    /* Get initial file location */
+    fpos_t fp_pos;
+    fgetpos(lf->fp, &fp_pos);
+
     SHA_CTX context;
-    w_get_hash_context(lf->file, &context, lf->size);
+#ifdef WIN32
+    w_get_hash_context(lf->file, &context, fp_pos);
+#else
+    w_get_hash_context(lf->file, &context, fp_pos.__pos);
+#endif
 
     while (can_read() && fgets(str, OS_MAXSTR, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
