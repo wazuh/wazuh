@@ -2,28 +2,22 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
+import copy
 import fcntl
 import hashlib
 import ipaddress
 from base64 import b64encode
 from datetime import date, datetime
-
 from json import dumps, loads
-from os import chown, chmod, path, makedirs, urandom, stat, remove
-from datetime import date, datetime, timedelta, timezone
 from os import chown, chmod, makedirs, urandom, stat, remove
 from os import listdir, path
 from platform import platform
 from shutil import copyfile, rmtree
 from time import time
 
-import copy
-from platform import platform
-
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
-from wazuh.core.common import client_keys, shared_path, groups_path
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.ossec_queue import OssecQueue
 from wazuh.core.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
@@ -1078,7 +1072,7 @@ def send_restart_command(agent_id):
 @common.context_cached('system_agents')
 def get_agents_info():
     """Get all agent IDs in the system."""
-    with open(client_keys, 'r') as f:
+    with open(common.client_keys, 'r') as f:
         result = {line.split(' ')[0] for line in f}
 
     result.add('000')
@@ -1092,8 +1086,8 @@ def get_groups():
     :return: List of group names
     """
     groups = set()
-    for shared_file in listdir(shared_path):
-        path.isdir(path.join(shared_path, shared_file)) and groups.add(shared_file)
+    for shared_file in listdir(common.shared_path):
+        path.isdir(path.join(common.shared_path, shared_file)) and groups.add(shared_file)
 
     return groups
 
@@ -1107,12 +1101,12 @@ def expand_group(group_name):
     """
     agents_ids = set()
     if group_name == '*':
-        for file in listdir(groups_path):
-            if path.getsize(path.join(groups_path, file)) > 0:
+        for file in listdir(common.groups_path):
+            if path.getsize(path.join(common.groups_path, file)) > 0:
                 agents_ids.add(file)
     else:
-        for file in listdir(groups_path):
-            with open(path.join(groups_path, file), 'r') as f:
+        for file in listdir(common.groups_path):
+            with open(path.join(common.groups_path, file), 'r') as f:
                 try:
                     if group_name in f.readlines()[0]:
                         agents_ids.add(file)
