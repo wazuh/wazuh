@@ -17,8 +17,8 @@ GOTO Exit;
 
 :ADD
 ECHO %DATE%%TIME% %0 %1 %2 %3 %4 %5 %6 %7 %8 %9 >> active-response/active-responses.log
-net stop WazuhSvc
-net start WazuhSvc
+net stop OssecSvc
+net start OssecSvc
 GOTO Exit;
 
 :DEL

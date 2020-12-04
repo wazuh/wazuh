@@ -39,8 +39,14 @@ function check-installation
 
 # Get current version
 $current_version = (Get-Content VERSION)
-$current_file_date = (Get-Item ".\wazuh-agent.exe").LastWriteTime
 write-output "$(Get-Date -format u) - Current version: $($current_version)" > .\upgrade\upgrade.log
+
+# Get process name
+$current_process = "wazuh-agent"
+If (!(Test-Path ".\wazuh-agent.exe"))
+{
+    $current_process = "ossec-agent"
+}
 
 # Generating backup
 write-output "$(Get-Date -format u) - Generating backup." >> .\upgrade\upgrade.log
@@ -49,7 +55,7 @@ backup
 # Ensure implicated processes are stopped before launch the upgrade
 Get-Process msiexec | Stop-Process -ErrorAction SilentlyContinue -Force
 Get-Service -Name "Wazuh" | Stop-Service -ErrorAction SilentlyContinue -Force
-$process_id = (Get-Process wazuh-agent -ErrorAction SilentlyContinue).id
+$process_id = (Get-Process $current_process -ErrorAction SilentlyContinue).id
 $counter = 5
 while($process_id -ne $null -And $counter -gt 0)
 {
@@ -58,7 +64,7 @@ while($process_id -ne $null -And $counter -gt 0)
     Get-Service -Name "Wazuh" | Stop-Service
     taskkill /pid $process_id /f /T
     Start-Sleep 2
-    $process_id = (Get-Process wazuh-agent -ErrorAction SilentlyContinue).id
+    $process_id = (Get-Process $current_process -ErrorAction SilentlyContinue).id
 }
 
 # Install
@@ -96,7 +102,7 @@ If ($status -eq $null)
     Get-Service -Name "Wazuh" | Stop-Service
     restore
     write-output "$(Get-Date -format u) - Upgrade failed: Restoring." >> .\upgrade\upgrade.log
-    .\wazuh-agent.exe install-service >> .\upgrade\upgrade.log
+    .\$current_process.exe install-service >> .\upgrade\upgrade.log
     Start-Service -Name "Wazuh" -ErrorAction SilentlyContinue
 }
 Else

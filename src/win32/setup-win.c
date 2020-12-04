@@ -30,7 +30,7 @@ int main(int argc, char **argv)
     }
 
     /* Configure OSSEC for automatic startup */
-    system("sc config WazuhSvc start= auto");
+    system("sc config OssecSvc start= auto");
 
     /* Change permissions */
     if (checkVista()) {

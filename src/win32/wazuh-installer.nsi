@@ -23,7 +23,7 @@
 !define VERSION "4.2.0"
 !define REVISION "40200"
 !define NAME "Wazuh"
-!define SERVICE "WazuhSvc"
+!define SERVICE "OssecSvc"
 
 ; output file
 !ifndef OutFile
