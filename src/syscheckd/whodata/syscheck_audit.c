@@ -93,12 +93,12 @@ int check_auditd_enabled(void) {
     struct audit_reply rep;
 
     if (audit_request_status(auditd_fd) < 0) {
-        mdebug1("Error in audit_request_status().");
+        mdebug2("Error in audit_request_status().");
         return -1;
     }
 
     if (audit_get_reply(auditd_fd, &rep, GET_REPLY_BLOCKING, 0) <= 0) {
-        mdebug1("Error in audit_get_reply()");
+        mdebug2("Error in audit_get_reply().");
         return -1;
     }
 
