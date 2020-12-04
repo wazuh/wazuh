@@ -311,6 +311,10 @@ int set_agent_group(const char * id, const char * group) {
         return -1;
     }
 
+    if (fchmod(fileno(fp), 0660) < 0) {
+        merror(CHMOD_ERROR, path, errno, strerror(errno));
+    }
+
     fprintf(fp, "%s\n", group);
     fclose(fp);
 
