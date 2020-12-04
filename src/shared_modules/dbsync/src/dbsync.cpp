@@ -717,6 +717,7 @@ void DBSync::updateWithSnapshot(const nlohmann::json&     jsInput,
     DBSyncImplementation::instance().updateSnapshotData(m_dbsyncHandle, jsInput, callbackWrapper);
 }
 
+
 DBSyncTxn::DBSyncTxn(const DBSYNC_HANDLE   handle,
                      const nlohmann::json& tables,
                      const unsigned int    threadNumber,

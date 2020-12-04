@@ -43,7 +43,7 @@ static void wm_sys_send_diff_message(const void* data) {
     const int eps = 1000000/wm_max_eps;
     wm_sendmsg(eps,queue_fd, data, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
  }
- 
+
 static void wm_sys_send_dbsync_message(const void* data) {
     const int eps = 1000000/wm_max_eps;
     wm_sendmsg(eps,queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ);

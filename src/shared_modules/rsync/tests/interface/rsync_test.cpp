@@ -866,7 +866,7 @@ TEST_F(RSyncTest, RegisterAndPushCPPByInode)
 
     std::unique_ptr<RemoteSync> remoteSync;
     EXPECT_NO_THROW(remoteSync = std::make_unique<RemoteSync>());
-    
+
     const auto expectedResult1
     {
         R"({"component":"test_component","data":{"begin":"1","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"2","id":1,"tail":"3"},"type":"integrity_check_left"})"
@@ -876,7 +876,7 @@ TEST_F(RSyncTest, RegisterAndPushCPPByInode)
     {
         R"({"component":"test_component","data":{"begin":"3","checksum":"891333533a9c7d989b92928d200ed8402fe67813","end":"5","id":1},"type":"integrity_check_right"})"
     };
-    
+
     const auto expectedResult3
     {
         R"({"component":"test_component","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/fonts/unicode.pf2","scanned":1},"index":1,"timestamp":1596489273},"type":"state"})"
@@ -947,12 +947,12 @@ TEST_F(RSyncTest, RegisterAndPushCPPByInode)
     };
 
     CallbackMock wrapper;
-    SyncCallbackData callbackData 
-    { 
+    SyncCallbackData callbackData
+    {
         [&wrapper](const std::string& data)
         {
             wrapper.callbackMock(data);
-        } 
+        }
     };
     EXPECT_CALL(wrapper, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult2)).Times(1);
@@ -963,7 +963,7 @@ TEST_F(RSyncTest, RegisterAndPushCPPByInode)
     EXPECT_CALL(wrapper, callbackMock(expectedResult7)).Times(1);
 
     ASSERT_NO_THROW(remoteSync->registerSyncID("test_id", dbSync->handle(), nlohmann::json::parse(registerConfigStmt), callbackData));
-    
+
     std::string buffer1{R"(test_id checksum_fail {"begin":1,"end":5,"id":1})"};
 
     ASSERT_NO_THROW(remoteSync->pushMessage({ buffer1.begin(), buffer1.end() }));
