@@ -1,49 +1,211 @@
 <!--
-  -  OSSEC rules
-  -  Author: Daniel Cid.
-  -  Updated by Wazuh, Inc.
+  -  Wazuh rules
+  -  Created by Wazuh, Inc. Based on OSSEC rules, credits to Daniel Cid.
   -  Copyright (C) 2015-2020, Wazuh Inc.
-  -  Copyright (C) 2009 Trend Micro Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-<group name="ossec,">
-  <rule id="500" level="0">
-    <category>ossec</category>
-    <decoded_as>ossec</decoded_as>
-    <description>Grouping of ossec rules.</description>
+<group name="wazuh,">
+  <rule id="200" level="0">
+    <category>wazuh</category>
+    <decoded_as>wazuh</decoded_as>
+    <description>Grouping of wazuh rules.</description>
+  </rule>
+
+  <!-- Agent buffer rules -->
+  <rule id="201" level="0">
+    <if_sid>200</if_sid>
+    <match>^wazuh: Agent buffer: </match>
+    <description>Agent event queue rule</description>
+    <group>agent_flooding,</group>
+  </rule>
+
+  <rule id="202" level="7">
+    <if_sid>201</if_sid>
+    <field name="level">%</field>
+    <description>Agent event queue is $(level) full.</description>
+    <group>agent_flooding,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <rule id="203" level="9">
+    <if_sid>201</if_sid>
+    <field name="level">full</field>
+    <description>Agent event queue is full. Events may be lost.</description>
+    <group>agent_flooding,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <rule id="204" level="12">
+    <if_sid>201</if_sid>
+    <field name="level">flooded</field>
+    <description>Agent event queue is flooded. Check the agent configuration.</description>
+    <group>agent_flooding,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <rule id="205" level="3">
+    <if_sid>201</if_sid>
+    <field name="level">normal</field>
+    <description>Agent event queue is back to normal load.</description>
+    <group>agent_flooding,</group>
+  </rule>
+
+
+  <!-- Remote upgrading rules -->
+  <!--
+    wazuh: Upgrade procedure on agent 001 (TestAgent): started. Current version: v3.0.0
+    wazuh: Upgrade procedure on agent 001 (TestAgent): aborted: Cannot execute installer
+    wazuh: Upgrade procedure on agent 001 (TestAgent): succeeded. New version: v3.1.0
+    wazuh: Upgrade procedure on agent 001 (TestAgent): failed: Restored to previous version
+    wazuh: Upgrade procedure on agent 001 (TestAgent): lost: Maximum attempts exceeded
+    wazuh: Custom installation on agent 001 (TestAgent): started.
+    wazuh: Custom installation on agent 001 (TestAgent): aborted: Could not verify signature
+  -->
+  <rule id="210" level="0">
+    <if_sid>200</if_sid>
+    <match>Upgrade procedure</match>
+    <description>Remote upgrade alert</description>
+    <group>upgrade,</group>
+  </rule>
+
+  <rule id="211" level="0">
+    <if_sid>200</if_sid>
+    <match>Custom installation</match>
+    <description>Remote installation alert</description>
+    <group>upgrade,</group>
+  </rule>
+
+  <rule id="212" level="3">
+    <if_sid>210</if_sid>
+    <status>started</status>
+    <description>Remote upgrade started.</description>
+    <group>upgrade,</group>
+  </rule>
+
+  <rule id="213" level="7">
+    <if_sid>210</if_sid>
+    <status>aborted</status>
+    <description>Remote upgrade could not be launched. Error: $(error).</description>
+    <group>upgrade,upgrade_failure,</group>
+  </rule>
+
+  <rule id="214" level="3">
+    <if_sid>210</if_sid>
+    <status>succeeded</status>
+    <description>Remote upgrade finished successfully.</description>
+    <group>upgrade,upgrade_success,</group>
+  </rule>
+
+  <rule id="215" level="6">
+    <if_sid>210</if_sid>
+    <status>failed</status>
+    <description>Remote upgrade failed. Agent restored to previous version.</description>
+    <group>upgrade,upgrade_failure,</group>
+  </rule>
+
+  <rule id="216" level="7">
+    <if_sid>210</if_sid>
+    <status>lost</status>
+    <description>Remote upgrade failed. Agent disconnected.</description>
+    <group>upgrade,upgrade_failure,</group>
+  </rule>
+
+  <rule id="217" level="3">
+    <if_sid>211</if_sid>
+    <status>started</status>
+    <description>Custom installation started.</description>
+    <group>upgrade,</group>
+  </rule>
+
+  <rule id="218" level="7">
+    <if_sid>211</if_sid>
+    <status>aborted</status>
+    <description>Custom installation could not be launched. Error: $(error).</description>
+    <group>upgrade,upgrade_failure,</group>
+  </rule>
+
+  <rule id="220" level="7">
+    <if_sid>200</if_sid>
+    <match>^wazuh: Invalid remote configuration: </match>
+    <description>The agent could not restart due to a $(module) failure in the remote configuration</description>
+    <group>agent_restarting,configuration_failure,</group>
+  </rule>
+
+  <!-- Ignore syscollector events -->
+  <rule id="221" level="0">
+    <category>wazuh</category>
+    <decoded_as>syscollector</decoded_as>
+    <description>Syscollector event.</description>
+  </rule>
+
+  <rule id="222" level="7">
+    <if_sid>200</if_sid>
+    <match>^wazuh: Could not unmerge shared file.</match>
+    <description>The agent could not restart due to a error while unmerging files.</description>
+    <group>agent_restarting,configuration_failure,</group>
+  </rule>
+
+  <!-- FIM DB state rules -->
+  <rule id="230" level="0">
+    <if_sid>200</if_sid>
+    <match>^wazuh: FIM DB: </match>
+    <location>syscheck$</location>
+    <description>FIM DB rule</description>
+    <group>syscheck,fim_db_state,</group>
+  </rule>
+
+  <rule id="231" level="7">
+    <if_sid>230</if_sid>
+    <field name="alert_type">80_percentage</field>
+    <description>The file limit set for this agent is $(file_limit). Now, $(file_count) files are being monitored and all files that come after the limit will not be monitored. Change this setting in centralized configuration or locally on the agent.</description>
+    <group>syscheck,fim_db_state,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <rule id="232" level="9">
+    <if_sid>230</if_sid>
+    <field name="alert_type">90_percentage</field>
+    <description>The file limit set for this agent is $(file_limit). Now, $(file_count) files are being monitored and all files that come after the limit will not be monitored. Change this setting in centralized configuration or locally on the agent.</description>
+    <group>syscheck,fim_db_state,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <rule id="233" level="12">
+    <if_sid>230</if_sid>
+    <field name="alert_type">full</field>
+    <description>The file limit set for this agent is $(file_limit). Now, $(file_count) files are being monitored and no more files will be monitored. Change this setting in centralized configuration or locally on the agent.</description>
+    <group>syscheck,fim_db_state,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <rule id="234" level="3">
+    <if_sid>230</if_sid>
+    <field name="alert_type">normal</field>
+    <description>The file limit set for this agent is $(file_limit). Now, $(file_count) files are being monitored.</description>
+    <group>syscheck,fim_db_state,</group>
   </rule>
 
   <rule id="501" level="3">
-    <if_sid>500</if_sid>
+    <if_sid>200</if_sid>
     <if_fts />
-    <options>alert_by_email</options>
     <match>Agent started</match>
-    <description>New ossec agent connected.</description>
+    <description>New wazuh agent connected.</description>
     <group>pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="502" level="3">
-    <if_sid>500</if_sid>
-    <options>alert_by_email</options>
-    <match>Ossec started</match>
-    <description>Ossec server started.</description>
+    <if_sid>200</if_sid>
+    <match>Wazuh started</match>
+    <description>Wazuh server started.</description>
     <group>pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="503" level="3">
-    <if_sid>500</if_sid>
-    <options>alert_by_email</options>
+    <if_sid>200</if_sid>
     <match>Agent started</match>
-    <description>Ossec agent started.</description>
+    <description>Wazuh agent started.</description>
     <group>pci_dss_10.6.1,pci_dss_10.2.6,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AU.5,tsc_CC7.2,tsc_CC7.3,tsc_CC6.8,</group>
   </rule>
 
   <rule id="504" level="3">
-    <if_sid>500</if_sid>
-    <options>alert_by_email</options>
+    <if_sid>200</if_sid>
     <match>Agent disconnected</match>
-    <description>Ossec agent disconnected.</description>
+    <description>Wazuh agent disconnected.</description>
     <mitre>
       <id>T1089</id>
     </mitre>
@@ -51,10 +213,9 @@
   </rule>
 
   <rule id="505" level="3">
-    <if_sid>500</if_sid>
-    <options>alert_by_email</options>
+    <if_sid>200</if_sid>
     <match>Agent removed</match>
-    <description>Ossec agent removed.</description>
+    <description>Wazuh agent removed.</description>
     <mitre>
       <id>T1089</id>
     </mitre>
@@ -62,10 +223,10 @@
   </rule>
 
   <rule id="509" level="0">
-    <category>ossec</category>
+    <category>wazuh</category>
     <decoded_as>rootcheck</decoded_as>
     <description>Rootcheck event.</description>
-    <group>rootcheck,</group>
+    <group>pci_dss_10.6.1,rootcheck,</group>
   </rule>
 
   <rule id="510" level="7">
@@ -88,7 +249,7 @@
     <if_sid>510</if_sid>
     <match>^Windows Audit</match>
     <description>Windows Audit event.</description>
-    <group>rootcheck,</group>
+    <group>pci_dss_10.6.1,hipaa_164.312.b,rootcheck,</group>
   </rule>
 
   <rule id="513" level="9">
@@ -102,7 +263,7 @@
     <if_sid>510</if_sid>
     <match>^Application Found</match>
     <description>Windows application monitor event.</description>
-    <group>rootcheck,</group>
+    <group>pci_dss_10.6.1,hipaa_164.312.b,rootcheck,</group>
   </rule>
 
   <rule id="515" level="0">
@@ -125,8 +286,8 @@
   </rule>
 
   <rule id="517" level="7">
-    <if_sid>500</if_sid>
-    <match>^ossec: Audit:</match>
+    <if_sid>200</if_sid>
+    <match>^ossec: Audit:|^wazuh: Audit:</match>
     <description>Syscheck Audit: $(extra_data)</description>
     <group>syscheck,gdpr_II_5.1.f,gdpr_IV_35.7.d,</group>
   </rule>
@@ -149,7 +310,7 @@
   </rule>
 
   <rule id="520" level="3">
-    <if_sid>500</if_sid>
+    <if_sid>200</if_sid>
     <match>Duplicated IP</match>
     <description>Trying to add an agent with duplicated IP.</description>
     <group>pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
@@ -158,15 +319,15 @@
 
   <!-- Process monitoring rules -->
   <rule id="530" level="0">
-    <if_sid>500</if_sid>
-    <match>^ossec: output: </match>
-    <description>OSSEC process monitoring rules.</description>
+    <if_sid>200</if_sid>
+    <match>^ossec: output: |^wazuh: output: </match>
+    <description>Wazuh process monitoring rules.</description>
     <group>process_monitor,</group>
   </rule>
 
   <rule id="531" level="7" ignore="7200">
     <if_sid>530</if_sid>
-    <match>ossec: output: 'df -P': /dev/</match>
+    <match>ossec: output: 'df -P': /dev/|wazuh: output: 'df -P': /dev/</match>
     <regex>100%</regex>
     <description>Partition usage reached 100% (disk space monitor).</description>
     <group>low_diskspace,pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
@@ -180,7 +341,7 @@
 
   <rule id="533" level="7">
     <if_sid>530</if_sid>
-    <match>ossec: output: 'netstat listening ports</match>
+    <match>ossec: output: 'netstat listening ports|wazuh: output: 'netstat listening ports</match>
     <check_diff />
     <description>Listened ports status (netstat) changed (new port opened or closed).</description>
     <group>pci_dss_10.2.7,pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AU.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
@@ -188,7 +349,7 @@
 
   <rule id="534" level="1">
     <if_sid>530</if_sid>
-    <match>ossec: output: 'w'</match>
+    <match>ossec: output: 'w'|wazuh: output: 'w'</match>
     <check_diff />
     <options>no_log</options>
     <description>List of logged in users. It will not be alerted by default.</description>
@@ -196,10 +357,11 @@
 
   <rule id="535" level="1">
     <if_sid>530</if_sid>
-    <match>ossec: output: 'last -n </match>
+    <match>ossec: output: 'last -n |wazuh: output: 'last -n </match>
     <check_diff />
     <options>no_log</options>
     <description>List of the last logged in users.</description>
+    <group>pci_dss_10.6.1,hipaa_164.312.b,</group>
   </rule>
 
   <rule id="536" level="0">
@@ -210,7 +372,7 @@
 
 
   <rule id="550" level="7">
-    <category>ossec</category>
+    <category>wazuh</category>
     <decoded_as>syscheck_integrity_changed</decoded_as>
     <description>Integrity checksum changed.</description>
     <mitre>
@@ -220,7 +382,7 @@
   </rule>
 
   <rule id="553" level="7">
-    <category>ossec</category>
+    <category>wazuh</category>
     <decoded_as>syscheck_deleted</decoded_as>
     <description>File deleted.</description>
     <mitre>
@@ -231,36 +393,36 @@
   </rule>
 
   <rule id="554" level="5">
-    <category>ossec</category>
+    <category>wazuh</category>
     <decoded_as>syscheck_new_entry</decoded_as>
     <description>File added to the system.</description>
     <group>syscheck,pci_dss_11.5,gpg13_4.11,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="555" level="7">
-    <if_sid>500</if_sid>
-    <match>^ossec: agentless: </match>
+    <if_sid>200</if_sid>
+    <match>^wazuh: agentless: </match>
     <description>Integrity checksum for agentless device changed.</description>
     <group>syscheck,agentless,pci_dss_11.5,pci_dss_10.6.1,gpg13_4.11,gdpr_II_5.1.f,gdpr_IV_35.7.d,hipaa_164.312.c.1,hipaa_164.312.c.2,hipaa_164.312.b,nist_800_53_SI.7,nist_800_53_AU.6,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="560" level="7">
-    <if_sid>500</if_sid>
-    <match>^ossec: Real-time inotify kernel queue is full.</match>
+    <if_sid>200</if_sid>
+    <match>^ossec: Real-time inotify kernel queue is full.|^wazuh: Real-time inotify kernel queue is full.</match>
     <description>FIM real-time queue is full. Some real-time events may be lost.</description>
     <group>syscheck,agentless,pci_dss_11.5,pci_dss_10.6.1,gpg13_4.11,gdpr_II_5.1.f,gdpr_IV_35.7.d,hipaa_164.312.c.1,hipaa_164.312.c.2,hipaa_164.312.b,nist_800_53_SI.7,nist_800_53_AU.6,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <!-- Hostinfo rules -->
   <rule id="580" level="8">
-    <category>ossec</category>
+    <category>wazuh</category>
     <decoded_as>hostinfo_modified</decoded_as>
     <description>Host information changed.</description>
     <group>hostinfo,pci_dss_10.2.7,gpg13_4.13,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="581" level="8">
-    <category>ossec</category>
+    <category>wazuh</category>
     <decoded_as>hostinfo_new</decoded_as>
     <description>Host information added.</description>
     <group>hostinfo,pci_dss_10.2.7,gpg13_4.13,hipaa_164.312.b,nist_800_53_AU.14,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
@@ -269,15 +431,15 @@
 
   <!-- File rotation/truncation rules -->
   <rule id="591" level="3">
-    <if_sid>500</if_sid>
-    <match>^ossec: File rotated </match>
+    <if_sid>200</if_sid>
+    <match>^ossec: File rotated |^wazuh: File rotated </match>
     <description>Log file rotated.</description>
     <group>pci_dss_10.5.2,pci_dss_10.5.5,gpg13_10.1,gdpr_II_5.1.f,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.9,tsc_CC6.1,tsc_CC7.2,tsc_CC7.3,tsc_PI1.4,tsc_PI1.5,tsc_CC7.1,tsc_CC8.1,</group>
   </rule>
 
   <rule id="592" level="8">
-    <if_sid>500</if_sid>
-    <match>^ossec: File size reduced</match>
+    <if_sid>200</if_sid>
+    <match>^ossec: File size reduced|^wazuh: File size reduced</match>
     <description>Log file size reduced.</description>
     <mitre>
       <id>T1492</id>
@@ -286,8 +448,8 @@
   </rule>
 
   <rule id="593" level="9">
-    <if_sid>500</if_sid>
-    <match>^ossec: Event log cleared</match>
+    <if_sid>200</if_sid>
+    <match>^ossec: Event log cleared|^wazuh: Event log cleared</match>
     <description>Microsoft Event log cleared.</description>
     <mitre>
       <id>T1070</id>
@@ -296,7 +458,7 @@
   </rule>
 
   <rule id="594" level="5">
-    <category>ossec</category>
+    <category>wazuh</category>
     <if_sid>550</if_sid>
     <hostname>syscheck-registry</hostname>
     <group>syscheck,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
@@ -307,7 +469,7 @@
   </rule>
 
   <rule id="597" level="5">
-    <category>ossec</category>
+    <category>wazuh</category>
     <if_sid>553</if_sid>
     <hostname>syscheck-registry</hostname>
     <group>syscheck,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
@@ -319,7 +481,7 @@
   </rule>
 
   <rule id="598" level="5">
-    <category>ossec</category>
+    <category>wazuh</category>
     <if_sid>554</if_sid>
     <hostname>syscheck-registry</hostname>
     <group>syscheck,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
@@ -328,7 +490,7 @@
 
   <!-- active response rules
   Example:
-  Sat May  7 03:27:57 CDT 2011 /var/ossec/active-response/bin/firewall-drop.sh delete - 172.16.0.1 1304756247.60385 31151
+  Sat May  7 03:27:57 CDT 2011 /<INSTALLATION_PATH>/active-response/bin/firewall-drop.sh delete - 172.16.0.1 1304756247.60385 31151
   -->
 
   <rule id="600" level="0">
@@ -392,8 +554,8 @@
   </rule>
 
   <rule id="700" level="0">
-    <category>ossec</category>
-    <decoded_as>ossec-logcollector</decoded_as>
+    <category>wazuh</category>
+    <decoded_as>wazuh-logcollector</decoded_as>
     <description>Logcollector Messages Grouped</description>
   </rule>
 

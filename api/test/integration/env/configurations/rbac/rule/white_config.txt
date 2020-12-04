@@ -1,8 +1,8 @@
 | Resource  | List                                                         |
 |-----------|--------------------------------------------------------------|
-| rule:file | 0010-rules_config.xml 0015-ossec_rules.xml local_rules.xml   |
+| rule:file | 0010-rules_config.xml 0015-wazuh_rules.xml local_rules.xml   |
 |           | 0610-win-ms_logs_rules.xml 0620-win-generic_rules.xml ...    |
 
 | Actions    | Resources | Allow                                      | Deny |
 |------------|-----------|--------------------------------------------|------|
-| rules:read | rule:file | 0010-rules_config.xml 0015-ossec_rules.xml |      |
+| rules:read | rule:file | 0010-rules_config.xml                      |      |

@@ -29,7 +29,7 @@ data_path = 'core/tests/data/rules'
 
 ruleset_conf = {
     'decoder_dir': ['ruleset/decoders', 'etc/decoders'],
-    'rule_dir': ['ruleset/rules', 'etc/rules'], 'rule_exclude': ['0215-policy_rules.xml'],
+    'rule_dir': ['framework/wazuh/core/tests/data/rules'], 'rule_exclude': ['0215-policy_rules.xml'],
     'list': ['etc/lists/audit-keys', 'etc/lists/amazon/aws-eventnames', 'etc/lists/security-eventchannel']
 }
 
@@ -64,7 +64,7 @@ def test_check_status(status, expected_result):
 
 @pytest.mark.parametrize('rule_file, rule_path, rule_status, exception', [
     ('0010-rules_config.xml', 'tests/data/rules', 'enabled', None),
-    ('0015-ossec_rules.xml', 'tests/data/rules', 'enabled', None),
+    ('0015-wazuh_rules.xml', 'tests/data/rules', 'enabled', None),
     ('0225-mcafee_av_rules.xml', 'tests/data/rules', 'enabled', None),
     ('0260-nginx_rules.xml', 'tests/data/rules', 'enabled', None),
     ('0350-amazon_rules.xml', 'tests/data/rules', 'enabled', None),
@@ -154,8 +154,8 @@ def test_remove_files(tmp_data, parameters, expected_result):
 
 
 @pytest.mark.parametrize('rule_file, rule_path, rule_status', [
-    ('0015-ossec_rules.xml', 'etc/rules', 'enabled'),
-    ('0350-amazon_rules.xml', 'etc/rules', 'enabled'),
+    ('0015-wazuh_rules.xml', 'framework/wazuh/core/tests/data/rules', 'enabled'),
+    ('0350-amazon_rules.xml', 'framework/wazuh/core/tests/data/rules', 'enabled'),
 ])
 def test_format_rule_decoder_file(rule_file, rule_path, rule_status):
     """Test format_rule_decoder_file rule core function."""

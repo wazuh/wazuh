@@ -987,7 +987,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        path: ruleset/rules/0016-wazuh_rules.xml
+        path: ruleset/rules/0015-wazuh_rules.xml
     response:
       status_code: 200
       json:

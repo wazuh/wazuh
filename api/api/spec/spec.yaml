@@ -11016,13 +11016,13 @@ paths:
                     - file: 0010-rules_config.xml
                       path: ruleset/rules
                       status: enabled
-                    - file: 0015-ossec_rules.xml
-                      path: ruleset/rules
-                      status: enabled
-                    - file: 0016-wazuh_rules.xml
+                    - file: 0015-wazuh_rules.xml
                       path: ruleset/rules
                       status: enabled
                     - file: 0020-syslog_rules.xml
+                      path: ruleset/rules
+                      status: enabled
+                    - file: 0025-sendmail_rules.xml
                       path: ruleset/rules
                       status: enabled
                   total_affected_items: 4
