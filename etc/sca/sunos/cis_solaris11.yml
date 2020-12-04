@@ -13,7 +13,7 @@
 policy:
   id: "cis_solaris11"
   file: "cis_solaris11.yml"
-  name: "CIS benchmark for Oracle Solaris 11"
+  name: "CIS Benchmark for Oracle Solaris 11"
   description: "This document, CIS Oracle Solaris 11 Benchmark v1.1.0, provides prescriptive guidance for establishing a secure configuration posture for Oracle Solaris 11 on both x86 and SPARC platforms. This guide was tested against  Solaris 11 11/11 release, updated to the Software Repository Update 5 (SRU5). As of the publication of this document, Solaris 11 11/11 SRU5 is the latest available support update for the Solaris 11 OS. The recommendations included in this document may need to be adjusted for future Solaris 11 updates."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
@@ -27,7 +27,7 @@ requirements:
 
 checks:
 # 2 Disable Unnecessary Services
-  - id: 7000
+  - id: 8000 
     title: "Disable Local-only Graphical Login Environment"
     description: "The graphical login service provides the capability of logging into the system using an X- windows type interface from the console. If graphical login access for the console is required, leave the service in local-only mode."
     rationale: "This service should be disabled if it is not required."
@@ -38,7 +38,7 @@ checks:
     rules:
       - 'c:svcs -xv svc:/application/graphical-login/gdm:default -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
 
-  - id: 7001
+  - id: 8001 
     title: "Configure sendmail Service for Local-Only Mode"
     description: "In Solaris 11, the sendmail service is set to local only mode by default. This means that users on remote systems cannot connect to the sendmail service, eliminating the possibility of a remote exploit attack against some future sendmail vulnerability. Leaving sendmail in local-only mode permits mail to be sent out from the local system. If the local system will not be processing or sending any mail, this service can be disabled. However, if sendmail is disabled completely, email messages sent to the root account (such as cron job output or audit service warnings) will fail to be delivered. An alternative approach is to disable the sendmail service and create a cron job to process all mail that is queued on the local system, sending it to a relay host defined in the sendmail.cf file. It is recommended that sendmail be left in local-only mode unless there is a specific requirement to completely disable it."
     rationale: "The software for all Mail Transfer Agents is complex and most have a long history of security issues. While it is important to ensure that the system can process local mail messages, it is not necessary to have the MTA's daemon listening on a port unless the server is intended to be a mail server that receives and processes mail from other systems."
@@ -49,7 +49,7 @@ checks:
     rules:
       - 'c:netstat -an -> r:.25\s*\t*|:25\s*\t* && !r:127.0.0.1|::1'
 
-  - id: 7002
+  - id: 8002 
     title: "Disable RPC Encryption Key"
     description: "The keyserv service is only required for sites that are using the Secure RPC mechanism. The most common use for Secure RPC on Solaris machines is \"secure NFS\", which uses the Secure RPC mechanism to provide higher levels of security than the standard NFS protocols. (\"Secure NFS\" is unrelated to Kerberos authentication as a mechanism for providing higher levels of NFS security. \"Kerberized\" NFS does not require the keyserv service to be running.)"
     rationale: "This service should be disabled if it is not required."
@@ -60,7 +60,7 @@ checks:
     rules:
       - 'c:svcs -xv svc:/network/rpc/keyserv -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
 
-  - id: 7003
+  - id: 8003 
     title: "Disable NIS Server Services"
     description: "The NIS server software is not installed by default and is only required on systems that are acting as an NIS server for the local site. Typically there are only a small number of NIS servers on any given network. These services are disabled by default unless the system has been previously configured to act as a NIS server."
     rationale: "As RPC-based services such as NIS may use non-secure authentication and share sensitive network object information with systems and applications using RPC-based services, this service should be disabled. Users are encouraged to use LDAP as a name service in place of NIS."
@@ -72,7 +72,7 @@ checks:
       - 'c:svcs -xv svc:/network/nis/server -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
       - 'c:svcs -xv svc:/network/nis/domain -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
 
-  - id: 7004
+  - id: 8004 
     title: "Disable NIS Client Services"
     description: "If the local site is not using the NIS naming service to distribute system and user configuration information, this service may be disabled. This service is disabled by default unless the NIS service has been installed and configured on the system."
     rationale: "As RPC-based services such as NIS may use non-secure authentication and share sensitive network object information with systems and applications using RPC-based service, NIS client daemons should be disabled. Users are encouraged to use LDAP as a name service in place of NIS."
@@ -84,7 +84,7 @@ checks:
       - 'c:svcs -xv svc:/network/nis/client -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
       - 'c:svcs -xv svc:/network/nis/domain -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
 
-  - id: 7005
+  - id: 8005 
     title: "Disable Kerberos TGT Expiration Warning"
     description: "The Kerberos TGT warning service is used to warn users when their Kerberos tickets are about expire or to renew those tickets before they expire. This service is not used if Kerberos has not been configured. This service is configured to be \"local only\" by default."
     rationale: "This service should be disabled if it is not required."
@@ -95,7 +95,7 @@ checks:
     rules:
       - 'c:svcs -xv svc:/network/security/ktkt_warn -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
 
-  - id: 7006
+  - id: 8006 
     title: "Disable Generic Security Services (GSS)"
     description: "The GSS API is a security abstraction layer that is designed to make it easier for developers to integrate with different authentication schemes. It is most commonly used in applications for sites that use Kerberos for network authentication, though it can also allow applications to interoperate with other authentication schemes."
     rationale: "GSS does not expose anything external to the system as it is configured to use TLI (protocol = ticotsord) by default. This service should be disabled if it is not required."
@@ -106,7 +106,7 @@ checks:
     rules:
       - 'c:svcs -xv svc:/network/rpc/gss -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
 
-  - id: 7007
+  - id: 8007 
     title: "Disable Removable Volume Manager"
     description: "The HAL-aware removable volume manager in the Solaris 11 OS automatically mounts external devices for users whenever the device is attached to the system. These devices include CD-R, CD-RW, floppies, DVD, USB and 1394 mass storage devices. See the rmvolmgr(1M) manual page for more details."
     rationale: "Allowing users to mount and access data from removable media devices makes it easier for malicious programs and data to be imported onto the network. It also introduces the risk that sensitive data may be transferred off the system without a log record. By adding rmvolmgr to the .xinitrc file, user-isolated instances of rmvolmgr can be run via a session startup script. In such cases, the rmvolmgr instance will not allow management of volumes that belong to other than the owner of the startup script. When a user logs onto the workstation console (/dev/console), any instance of user-initiated rmvolmgr will only own locally connected devices, such as CD-ROMs or flash memory hardware, locally connected to USB or FireWire ports."
@@ -118,7 +118,7 @@ checks:
       - 'c:svcs -xv svc:/system/filesystem/rmvolmgr -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
       - 'c:svcs -xv svc:/network/rpc/smserver -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
 
-  - id: 7008
+  - id: 8008 
     title: "Disable automount Service"
     description: "The automount daemon is normally used to automatically mount NFS file systems from remote file servers when needed. However, the automount daemon can also be configured to mount local (loopback) file systems as well, which may include local user home directories, depending on the system configuration."
     rationale: "This service should be disabled if it is not required."
@@ -129,7 +129,7 @@ checks:
     rules:
       - 'c:svcs -xv svc:/system/filesystem/autofs -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
 
-  - id: 7009
+  - id: 8009 
     title: "Disable Apache Service"
     description: "The Apache service provides an instance of the Apache web server."
     rationale: "This service should be disabled if it is not required."
@@ -142,7 +142,7 @@ checks:
     rules:
       - 'c:svcs -xv svc:/network/http:apache22 -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
 
-  - id: 7010
+  - id: 8010 
     title: "Disable Local-only RPC Port Mapping Service"
     description: "Remote Procedure Call (RPC) is used by many services within the Solaris 11 operating system. Some of these services allow external connections to use the service (e.g. NFS, NIS). By default, the Solaris 11 OS configures this service to be local only."
     rationale: "RPC-based services typically have weak or non-existent authentication and yet may share very sensitive information, which is vulnerable to network traffic sniffers. Unless one of these services is required on this host, RPC-based tools should be fully disabled."
@@ -153,7 +153,7 @@ checks:
     rules:
       - 'c:svcs -xv svc:/network/rpc/bind -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
 
-  - id: 7011
+  - id: 8011 
     title: "Configure TCP Wrappers"
     description: "TCP Wrappers is a host-based access control system that allows administrators to control who has access to various network services based on the IP address of the remote end of the connection. TCP Wrappers also provide logging information via syslog about both successful and unsuccessful connections."
     rationale: "TCP Wrappers provides granular control over what services can be accessed over the network. Its logs show attempted access to services from non-authorized systems, which can help identify unauthorized access attempts."
@@ -168,7 +168,7 @@ checks:
       - 'f:/etc/hosts.allow'
       - 'f:/etc/hosts.deny'
 
-  - id: 7012
+  - id: 8012 
     title: "Disable Telnet Service"
     description: "The telnet daemon, which accepts connections from users from other systems via the telnet protocol and can be used for remote shell access."
     rationale: "The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission medium could allow a user with access to sniff network traffic the ability to steal credentials. The ssh protocol provides an encrypted session and stronger security."
@@ -180,7 +180,7 @@ checks:
       - 'c:svcs -xv svc:/network/telnet -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
 
 # 3 Kernel Tuning
-  - id: 7013
+  - id: 8013 
     title: "Restrict Core Dumps to Protected Directory"
     description: "The action described in this section creates a protected directory to store core dumps and also causes the system to create a log entry whenever a regular process dumps core."
     rationale: "Core dumps, particularly those from set-UID and set-GID processes, may contain sensitive data."
@@ -194,7 +194,7 @@ checks:
       - 'c:coreadm -> r:per-process setid core dumps: disabled'
       - 'c:stat -c%u-%g-%a /var/cores -> r:^\d-\d-700'
 
-  - id: 7014
+  - id: 8014 
     title: "Enable Stack Protection"
     description: "Buffer overflow exploits have been the basis for many highly publicized compromises and defacements of large numbers of Internet connected systems. Many of the automated tools in use by system attackers exploit well-known buffer overflow problems in vendor- supplied and third party software."
     rationale: "Enabling stack protection prevents certain classes of buffer overflow attacks and is a significant security enhancement. However, this does not protect against buffer overflow attacks that do not execute code on the stack (such as return-to-libc exploits). While most of the Solaris OS is already configured to employ a non-executable stack, this setting is still recommended to provide a more comprehensive solution for both Solaris and other software that may be installed."
@@ -207,7 +207,7 @@ checks:
       - 'f:/etc/system -> r:\s*\t*noexec_user_stack\s*\t*=\s*\t*1'
       - 'f:/etc/system -> r:\s*\t*noexec_user_stack_log\s*\t*=\s*\t*1'
 
-  - id: 7015
+  - id: 8015 
     title: "Enable Strong TCP Sequence Number Generation"
     description: "The variable TCP_STRONG_ISS defines the mechanism used for TCP initial sequence number generation. If an attacker can predict the next sequence number, it is possible to inject fraudulent packets into the data stream to hijack the session."
     rationale: "The RFC 1948 method is widely accepted as the strongest mechanism for TCP packet generation. This makes remote session hijacking attacks more difficult, as well as any other network-based attack that relies on predicting TCP sequence number information. It is theoretically possible that there may be a small performance hit in connection setup time when this setting is used, but there are no publicly available benchmarks that establish this."
@@ -220,7 +220,7 @@ checks:
       - 'c:ipadm show-prop -p _strong_iss -co current tcp -> r:2'
 
 # 4 Auditing and Logging
-  - id: 7016
+  - id: 8016 
     title: "Create CIS Audit Class"
     description: "To group a set of related audit events, the Solaris Audit service provides the ability for sites to define their own audit classes that contain just those events that the site wants to audit."
     rationale: "To simplify administration, a CIS specific audit class should be created."
@@ -231,7 +231,7 @@ checks:
     rules:
       - 'f:/etc/security/audit_class -> 0x0100000000000000:cis:CIS Solaris Benchmark'
 
-  - id: 7017
+  - id: 8017 
     title: "Enable Auditing of Incoming Network Connections"
     description: "The Solaris Audit service can be configured to record incoming network connections to any listening service running on the system."
     rationale: "This recommendation will provide an audit trail that contains information related to incoming network connections. While this functionality can be enabled using service- specific mechanisms, using the Solaris Audit service provides a more centralized and complete window into incoming network activity."
@@ -246,7 +246,7 @@ checks:
       - 'f:/etc/security/audit_event -> r:^\d+:AUE_SOCKCONNECT:\.+cis\.*'
       - 'f:/etc/security/audit_event -> r:^\d+:AUE_inetd_connect:\.+cis\.*'
 
-  - id: 7018
+  - id: 8018 
     title: "Enable Auditing of File Metadata Modification Events"
     description: "The Solaris Audit service can be configured to record file metadata modification events for every process running on the system. This will allow the auditing service to determine when file ownership, permissions and related information is changed."
     rationale: "This recommendation will provide an audit trail that contains information related to changes of file metadata. The Solaris Audit service is used to provide a more centralized and complete window into activities such as these."
@@ -263,7 +263,7 @@ checks:
       - 'f:/etc/security/audit_event -> r:^\d+:AUE_ACLSET:\.+cis\.*'
       - 'f:/etc/security/audit_event -> r:^\d+:AUE_FACLSET:\.+cis\.*'
 
-  - id: 7019
+  - id: 8019 
     title: "Enable Auditing of Process and Privilege Events"
     description: "The Solaris Audit service can be configured to record the use of privileges by processes running on the system. This will capture events such as the setting of UID and GID values, setting of privileges, as well as the use of functionality such as chroot(2)."
     rationale: "This recommendation will provide an audit trail that contains information related to the use of privileges by processes running on the system. The Solaris Audit service is used to provide a more centralized and complete window into activities such as these."
@@ -287,7 +287,7 @@ checks:
       - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETSID:\.+cis\.*'
       - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETPGID:\.+cis\.*'
 
-  - id: 7020
+  - id: 8020 
     title: "Configure Solaris Auditing"
     description: "Solaris auditing service keeps a record of how a system is being used. Solaris auditing can be configured to record different classes of events based upon site policy. This recommendation will set and verify a consensus-developed auditing policy. That said, all organizations are encouraged to tailor this policy based upon their specific needs. For more information on the Solaris auditing service including how to filter and view events, see the Oracle Solaris product documentation. The \"cis\" class is a \"custom class\" that CIS recommends creating that includes specifically those events that are of interest (defined in the sections above). In addition to those events, this recommendation also includes auditing of login and logout (lo) events, administrative (ad) events, file transfer (ft) events, and command execution (ex) events. This recommendation also configures the Solaris auditing service to capture and report command line arguments (for command execution events) and the zone name in which a command was executed (for global and non-global zones). Further, this recommendation sets a disk utilization threshold of 1%. If this threshold is crossed (for the volume that includes /var/audit), then a warning e-mail will be sent to advise the system administrators that audit events may be lost if the disk becomes full. Finally, this recommendation will also ensure that new audit trails are created at the start of each new day (to help keep the size of the files small to facilitate analysis)."
     rationale: "The consensus settings described in this section are an effort to log interesting system events without consuming excessive amounts of resources logging significant but usually uninteresting system calls."
@@ -305,7 +305,7 @@ checks:
       - 'f:/var/spool/cron/crontabs/root -> r:/usr/sbin/audit -n'
 
 # 5 File/Directory Permissions/Access
-  - id: 7021
+  - id: 8021 
     title: "Default Service File Creation Mask"
     description: "The default system file creation mask applies to processes that are started by init - including most system services. To ensure that files are not created with write access to anyone other than their owner, the default file creation mask should be set to 022. Some sites with more stringent security requirements may prefer to set this value to 077 to eliminate all permissions for group and world. Note that changing this value from the Solaris default of 022 may negatively impact services that may not be able to operate with a stricter setting."
     rationale: "The default file creation mask should be set to 022 to avoid unnecessarily giving files write access to group or world."
@@ -317,7 +317,7 @@ checks:
       - 'c:svcprop -p umask/umask svc:/system/environment:init -> 022'
 
 # 6 System Access, Authentication, and Authorization
-  - id: 7022
+  - id: 8022 
     title: "Disable \"nobody\" Access for RPC Encryption Key Storage Service"
     description: "This action listed prevents keyserv from using default keys for the nobody user, effectively stopping the nobody user from accessing information via Secure RPC."
     rationale: "If login by the user nobody is allowed for secure RPC, there is an increased risk of system compromise. If keyserv holds a private key for the nobody user, it will be used by key_encryptsession to compute a magic phrase which can be easily recovered by a malicious user."
@@ -329,7 +329,7 @@ checks:
       - 'f:/etc/default/keyserv'
       - 'f:/etc/default/keyserv -> !r:^# && r:ENABLE_NOBODY_KEYS\s*\t*=\s*\t*NO'
 
-  - id: 7023
+  - id: 8023 
     title: "Disable X11 Forwarding for SSH"
     description: "The 'X11 Forwarding' parameter defined within the /etc/ssh/sshd_config file specifies whether or not X11 Forwarding via SSH is enabled on the server: The Secure Shell service provides an encrypted 'tunnel' for the data traffic passing through it. While commonly used to substitute for clear-text, CLI-based remote connections such as telnet, Secure Shell can be used to forward an 'X Window' session through the encrypted tunnel, allowing the remote user to have a GUI interface."
     rationale: "As enabling X11Forwarding on the host can permit a malicious user to secretly open another X11 connection to another remote client during the session and perform unobtrusive activities such as keystroke monitoring, if the X11 services are not required for the system's intended function, it should be disabled or restricted as appropriate to the user's needs."
@@ -340,7 +340,7 @@ checks:
     rules:
       - 'f:/etc/ssh/sshd_config -> !r:^# && r:X11Forwarding\s+no'
 
-  - id: 7024
+  - id: 8024 
     title: "Limit Consecutive Login Attempts for SSH"
     description: "The 'MaxAuthTries' parameter in the /etc/ssh/sshd_config file specifies the maximum number of authentication attempts permitted per connection. By restricting the number of failed authentication attempts before the server terminates the connection, malicious users are blocked from gaining access to the host by using repetitive brute-force login exploits."
     rationale: "By setting the authentication login limit to a low value this will disconnect the attacker and force a reconnect, which severely limits the speed of such brute force attacks."
@@ -351,7 +351,7 @@ checks:
     rules:
       - 'f:/etc/ssh/sshd_config -> !r:^# && n:MaxAuthTries\s*\t*(\d+) compare <= 3'
 
-  - id: 7025
+  - id: 8025 
     title: "Disable Rhost-based Authentication for SSH"
     description: "The IgnoreRhosts parameter specifies that existing .rhosts and .shosts files, which may apply to application rather than user logins, will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
     rationale: "Setting this parameter forces users to enter a password when authenticating with SSH."
@@ -362,7 +362,7 @@ checks:
     rules:
       - 'f:/etc/ssh/sshd_config -> !r:^# && r:IgnoreRhosts\s+yes'
 
-  - id: 7026
+  - id: 8026 
     title: "Disable root login for SSH"
     description: "The PermitRootLogin value (in /etc/ssh/sshd_config) allows for direct root login by a remote user/application to resources on the local host."
     rationale: "By default, it is not possible for the root account to log directly into the system console because the account is configured as a role. This setting therefore does not significantly alter the security posture of the system unless the root account is changed from this default and configured to be a normal user."
@@ -373,7 +373,7 @@ checks:
     rules:
       - 'f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\s+no'
 
-  - id: 7027
+  - id: 8027 
     title: "Blocking Authentication Using Empty/Null Passwords for SSH"
     description: "The PermitEmptyPasswords value allows for direct login through SSH without a password by a remote user/application to resources on the local host in the same way a standard remote login would."
     rationale: "Permitting login without a password is inherently risky."
@@ -384,7 +384,7 @@ checks:
     rules:
       - 'f:/etc/ssh/sshd_config -> !r:^# && r:PermitEmptyPasswords\s+no'
 
-  - id: 7028
+  - id: 8028 
     title: "Disable Host-based Authentication for Login-based Services"
     description: "The .rhosts files are used for automatic login to remote hosts and contain username and hostname combinations. The .rhosts files are unencrypted (usually group- or world- readable) and present a serious risk in that a malicious user could use the information within to gain access to a remote host with the privileges of the original application or user."
     rationale: "The use of .rhosts authentication is an old and insecure protocol and can be replaced with public-key authentication using Secure Shell. As automatic authentication settings in the .rhosts files can provide a malicious user with sensitive system credentials, the use of .rhosts files should be disabled. It should be noted that by default the Solaris services that use this file, including rsh and rlogin, are disabled by default."
@@ -396,7 +396,7 @@ checks:
       - 'f:/etc/pam.conf -> r:^#\s*\t*rlogin && r:auth && r:sufficient && r:pam_rhosts_auth.so.1'
       - 'f:/etc/pam.conf -> r:^#\s*\t*rsh && r:auth && r:sufficient && r:pam_rhosts_auth.so.1'
 
-  - id: 7029
+  - id: 8029 
     title: "Set Delay between Failed Login Attempts to 4"
     description: "The SLEEPTIME variable in the /etc/default/login file controls the number of seconds to wait before printing the \"login incorrect\" message when a bad password is provided."
     rationale: "As an immediate return of an error message, coupled with the capability to try again may facilitate automatic and rapid-fire brute-force password attacks by a malicious user, this delay time should be set as appropriate to the needs of the user."
@@ -407,7 +407,7 @@ checks:
     rules:
       - 'f:/etc/default/login -> !r:^# && n:^SLEEPTIME\s*\t*=\s*\t*(\d+) compare >= 4'
 
-  - id: 7030
+  - id: 8030 
     title: "Remove Autologin Capabilities from the GNOME desktop"
     description: "The GNOME Display Manager is used for login session management. See the manual page gdm(1) for more information. By default, GNOME automatic login is defined in pam.conf(4) to allow users to access the system without a password."
     rationale: "As automatic logins are a known security risk for other than \"kiosk\" types of systems, GNOME automatic login should be disabled in pam.conf(4)."
@@ -418,7 +418,7 @@ checks:
     rules:
       - 'f:/etc/pam.conf -> !r:^# && r:gdm-autologin'
 
-  - id: 7031
+  - id: 8031 
     title: "Set Default Screen Lock for GNOME Users"
     description: "The timeout parameter dictates the invocation of a password-protected screen saver after a specified time of keyboard and mouse inactivity, specific to the xscreensaver application used in the GNOME windowing environment."
     rationale: "As a screensaver timeout provides protection for a desktop that has not been locked by the user upon his/her departure, to help prevent session hijacking, this value should be set as appropriate to the needs of the user."
@@ -432,7 +432,7 @@ checks:
       - 'f:/usr/share/X11/app-defaults/XScreensaver -> r:^*locktimeout:\s*\t*\d+:\d+:\d+'
       - 'f:/usr/share/X11/app-defaults/XScreensaver -> r:^*lock:\s*\t*true'
 
-  - id: 7032
+  - id: 8032 
     title: "Restrict at/cron to Authorized Users"
     description: "The cron.allow and at.allow files contain a list of users who are allowed to run the crontab and at commands to submit jobs to be run at scheduled intervals."
     rationale: "On many systems, only the system administrator needs the ability to schedule jobs. Even though a given user is not listed in cron.allow, cron jobs can still be run as that user. The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs. Much more effective access controls for the cron system can be obtained by using Role-Based Access Controls (RBAC)."
@@ -448,7 +448,7 @@ checks:
       - 'f:/etc/cron.d/at.allow'
       - 'c:wc -l /etc/cron.d/at.allow -> r:\s*0\s'
 
-  - id: 7033
+  - id: 8033 
     title: "Restrict root Login to System Console"
     description: "Privileged access to the system via root must be accountable to a particular user."
     rationale: "Use an authorized mechanism such as RBAC and the su command to provide administrative access to unprivileged accounts. These mechanisms provide an audit trail in the event of problems."
@@ -459,7 +459,7 @@ checks:
     rules:
       - 'f:/etc/default/login -> !r:^# && r:CONSOLE|console && r:=\s*\t*/dev/console'
 
-  - id: 7034
+  - id: 8034 
     title: "Set Retry Limit for Account Lockout"
     description: "The RETRIES parameter is the number of failed login attempts a user is allowed before being disconnected from the system and forced to reconnect. When LOCK_AFTER_RETRIES is set in /etc/security/policy.conf, then the user's account is locked after this many failed retries (the account can only be unlocked by the administrator using the command: passwd -u <username>). The account lockout threshold (RETRIES parameter) restricts the number of failed login attempts allowed before requiring the offending account be locked. The lockout requirement will help block malicious users from gaining access to the host via automated, repetitive brute-force login exploits--trying different passwords until one fits a user name."
     rationale: "Setting the failed login limit to an appropriate value locks the user account, which will severely limit the speed of such attacks, making it much more likely that the attacker's pattern will be noticed and the offending source address and/or port blocked, so this should be set according to the needs of the user."
@@ -471,7 +471,7 @@ checks:
       - 'f:/etc/default/login -> !r:^# && r:retries|RETRIES && n:=\s*\t*(\d+) compare <=3'
       - 'f:/etc/security/policy.conf -> !r:^# && r:LOCK_AFTER_RETRIES|lock_after_retries && r:=\s*\t*yes'
 
-  - id: 7035
+  - id: 8035 
     title: "Secure the GRUB Menu (Intel)"
     description: "GRUB is a boot loader for x64 based systems that permits loading an OS image from any location. Oracle x64 systems support the use of a GRUB Menu password for the console."
     rationale: "The flexibility that GRUB provides creates a security risk if its configuration is modified by an unauthorized user. The failsafe menu entry needs to be secured in the same environments that require securing the systems firmware to avoid unauthorized removable media boots. Setting the GRUB Menu password helps prevent attackers with physical access to the system console from booting off some external device (such as a CD- ROM or floppy) and subverting the security of the system. The actions described in this section will ensure you cannot get to failsafe or any of the GRUB command line options without first entering the password."
@@ -484,7 +484,7 @@ checks:
       - 'f:/rpool/boot/grub/menu.lst -> r:^password\s*--md5'
 
 # 7 User Accounts and Environment
-  - id: 7036
+  - id: 8036 
     title: "Set Password Expiration Parameters on Active Accounts"
     description: "The characteristics of an operating system that make 'user identification' via password a secure and workable solution is the combination of settings chosen. By requiring that a series of password-choices be security-centric, it reduces the risk of a malicious user breaking the password through dictionary/brute force attacks or fortuitous guessing based upon 'social engineering.' A basic password security strategy is requiring a new password to be chosen every 45-90 days, so that repeated attempts to gain entry by brute-force tactics will fail when a new password is chosen, which requires starting over again to break the new password."
     rationale: "The commands for this item set all active accounts (except the root account) to force password changes every 91 days (13 weeks), and then prevent password changes for seven days (one week), thereafter. Users will begin receiving warnings 28 days (4 weeks) before their password expires. Sites also have the option of expiring idle accounts after a certain number of days (see the on-line manual page for the usermod command, particularly the -f option)."
@@ -497,7 +497,7 @@ checks:
       - 'f:/etc/default/passwd -> !r:^# && r:minweeks|MINWEEKS && n:=\s*\t*(\d+) compare == 1'
       - 'f:/etc/default/passwd -> !r:^# && r:warnweeks|WARNWEEKS && n:=\s*\t*(\d+) compare == 4'
 
-  - id: 7037
+  - id: 8037 
     title: "Set Strong Password Creation Policies"
     description: "The variables in the /etc/default/passwd file indicate various strategies for creating differences required between an old and a new password. As requiring users to select a specific numbers of differences between the characters in the existing password and the new one can strengthen the password by increasing the symbol-set space, to further increase the difficulty of breaking any password by brute-force attacks, these values should be set as appropriate to the needs of the user."
     rationale: "Administrators may wish to add site-specific dictionaries to the DICTIONLIST parameter. Warning: Sites often have differing opinions on the optimal value of the HISTORY parameter (how many previous passwords to remember per user in order to prevent re- use). The values specified here are in compliance with NSA/DISA requirements. If this is too restrictive for your site, you may wish to set a HISTORY value of 4 and a MAXREPEATS of 2. Consult your local security rules for guidance."
@@ -519,7 +519,7 @@ checks:
       - 'f:/etc/default/passwd -> !r:^# && r:dictiondbdir|DICTIONDBDIR && r:=\s*\t*/var/passwd'
       - 'f:/etc/default/passwd -> !r:^# && r:dictionlist|DICTIONLIST && r:=\s*\t*/usr/share/lib/dict/words'
 
-  - id: 7038
+  - id: 8038 
     title: "Set Default umask for users"
     description: "The default umask(1) determines the permissions of files created by users. The user creating the file has the discretion of making their files and directories readable by others via the chmod(1) command. Users who wish to allow their files and directories to be readable by others by default may choose a different default umask by inserting the umask command into the standard shell configuration files (.profile, .cshrc, etc.) in their home directories."
     rationale: "Setting a very secure default value for umask ensures that users make a conscious choice about their file permissions. A default umask setting of 077 causes files and directories created by users to not be readable by any other user on the system. A umask of 027 would allow files and directories readable by users in the same Unix group, while a umask of 022 would make files readable by every user on the system."
@@ -530,7 +530,7 @@ checks:
     rules:
       - 'f:/etc/default/login -> !r:^# && r:UMASK|umask && r:=\s*\t*027'
 
-  - id: 7039
+  - id: 8039 
     title: "Set Default File Creation Mask for FTP Users"
     description: "If FTP is permitted, set a strong, default file creation mask to apply to files created by the FTP server."
     rationale: "Many users assume that the FTP server will use their system file creation mask; generally it does not. This setting ensures that files transmitted over FTP use a strong file creation mask."
@@ -541,7 +541,7 @@ checks:
     rules:
       - 'f:/etc/proftpd.conf -> !r:^# && r:Umask && r:\s*\t*027'
 
-  - id: 7040
+  - id: 8040 
     title: "Set \"mesg n\" as Default for All Users"
     description: "The \"mesg n\" command blocks attempts to use the write or talk commands to contact users at their terminals, but has the side effect of slightly strengthening permissions on the user's tty device."
     rationale: "Since write and talk are no longer widely used at most sites, the incremental security increase is worth the loss of functionality."
@@ -554,7 +554,7 @@ checks:
       - 'f:/etc/profile -> r:^mesg\s*\t*n'
 
 # 8 Warning Banners
-  - id: 7041
+  - id: 8041 
     title: "Create Warnings for Standard Login Services"
     description: "The contents of the /etc/issue file are displayed prior to the login prompt on the system's console and serial devices and also prior to logins via telnet and Secure Shell. The contents of the /etc/motd file are generally displayed after all successful logins, regardless from where the user is logging in."
     rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. As implementing a logon banner to deter inappropriate use and can provide a foundation for legal action against abuse, this warning content should be set as appropriate. Consult with your organization's legal counsel for the appropriate wording as the examples below are for demonstration purposes only."
@@ -567,7 +567,7 @@ checks:
       - 'f:/etc/motd -> r:Authorized users only. All activity may be monitored and reported'
       - 'c:stat -c%u-%g-%a /etc/issue -> r:^0-0-644'
 
-  - id: 7042
+  - id: 8042 
     title: "Enable a Warning Banner for the SSH Service"
     description: "The contents of the Banner string in the /etc/ssh/sshd_config file are sent to the remote user before authentication is allowed, requiring that the user read the legal caution."
     remediation: "Perform the following to implement the recommended state: # awk '/^#Banner/ { $1 = \"Banner\" } { print }' /etc/ssh/sshd_config > /etc/ssh/sshd_config.CIS    # mv /etc/ssh/sshd_config.CIS /etc/ssh/sshd_config    # svcadm restart svc:/network/ssh"
@@ -577,7 +577,7 @@ checks:
     rules:
       - 'f:/etc/ssh/sshd_config -> !r:^# && r:Banner\s*/etc/issue'
 
-  - id: 7043
+  - id: 8043 
     title: "Enable a Warning Banner for the GNOME Service"
     description: "The GNOME Display Manager is used for login session management. See the manual page gdm(1) for more information on configuration of the settings, which can be user- or group specific."
     rationale: "The remediation action for this item sets a pre-login warning message for GDM users. Additional methods can be employed to display a similar message to a user post- authentication. For more information, see the Oracle Solaris 11 Security Guidelines document."
@@ -589,7 +589,7 @@ checks:
       - 'f:/etc/gdm/Init/Default'
       - 'f:/etc/gdm/Init/Default -> r:^/usr/bin/zenity\s\.'
 
-  - id: 7044
+  - id: 8044 
     title: "Enable a Warning Banner for the FTP service"
     description: "The action for this item sets a warning message for FTP users before they log in."
     rationale: "Warning Banners inform users who are attempting to access the system of their legal status regarding using the system. The text below is a generic sample only, so consult with your organization's legal counsel for the appropriate wording."
@@ -600,7 +600,7 @@ checks:
     rules:
       - 'f:/etc/proftpd.conf -> !r:^# && r:DisplayConnect\s*\t*/etc/issue'
 
-  - id: 7045
+  - id: 8045 
     title: "Check that the Banner Setting for telnet is Null"
     description: "The BANNER variable in the file /etc/default/telnetd can be used to display text before the telnet login prompt. Traditionally, it has been used to display the OS level of the target system."
     rationale: "The warning banner provides information that can be used in reconnaissance for an attack. By default, this file is distributed with the BANNER variable set to null. It is not necessary to create a separate warning banner for telnet if a warning is set in the /etc/issue file. As telnet is an insecure protocol, it is strongly recommend that it be disabled and all remote administrative/user connections take place by Secure Shell."
@@ -612,10 +612,10 @@ checks:
       - 'f:/etc/default/telnetd -> !r:^# && r:BANNER\s*\t*=\s*\t*\.'
 
 # 9 System Maintenance
-  - id: 7046
+  - id: 8046 
     title: "Verify System Account Default Passwords"
     description: "There are a number of accounts provided with the Solaris OS that are used to manage applications and are not intended to provide an interactive shell. These accounts are delivered either in a locked or non-login state. Oracle does not support nor recommend changing the passwords associated with these accounts."
-    rationale: "System accounts, such as bin, lpd, and sys have special purposes and privileges. By default, these accounts are configured as either locked or non-login. This status should be verified to ensure that these accounts have not accidentially or intentionally been enabled."
+    rationale: "System accounts, such as bin, lpd, and sys have special purposes and privileges. By default, these accounts are configured as either locked or non-login. This status should be verified to ensure that these accounts have not accidentally or intentionally been enabled."
     remediation: "To lock a single account, use the command: # passwd -d [username]    # passwd -l [username]    To configure a single account to be non-login, use the command: # passwd -d [username]    # passwd -N [username]"
     compliance:
       - cis: ["9.3"]
@@ -650,7 +650,7 @@ checks:
       - 'f:/etc/shadow -> r:^upnp: && !r::NL:|:NP:'
       - 'f:/etc/shadow -> r:^zfssnap: && !r::NL:|:NP:'
 
-  - id: 7047
+  - id: 8047 
     title: "Ensure Password Fields are Not Empty"
     description: "An account with an empty password field means that anybody may log in as that user without providing a password at all (assuming that the value PASSREQ=NO is set in /etc/default/login)."
     rationale: "All accounts must have passwords, be configured as \"Non-login,\" or be locked."
@@ -661,7 +661,7 @@ checks:
     rules:
       - 'f:/etc/shadow -> r:^\w+::'
 
-  - id: 7048
+  - id: 8048 
     title: "Verify No UID 0 Accounts Exist Other than root"
     description: "Any account with UID 0 has superuser rights on the system."
     rationale: "This access must be limited to only the default root role and be made accessible from the system console only. Administrative access granted to an unprivileged account should use an approved mechanism such as RBAC."
@@ -672,7 +672,7 @@ checks:
     rules:
       - 'f:/etc/passwd -> !r:^# && !r:^\s*\t*root: && r:^\w+:\w+:0:'
 
-  - id: 7049
+  - id: 8049 
     title: "Ensure root PATH Integrity"
     description: "The root user can execute any command on the system and could be tricked into executing programs if the PATH is not set correctly."
     rationale: "Including the current working directory (.) or any other writable directory in root's executable path makes it likely that an attacker can gain superuser access by forcing an administrator operating as root to execute a malcode, such as a Trojan horse program."
@@ -691,7 +691,7 @@ checks:
       - 'f:/root/.profile -> r::$'
       - 'f:/root/.bashrc -> r::$'
 
-  - id: 7050
+  - id: 8050 
     title: "Check That Users Are Assigned Home Directories"
     description: "passwd(4) defines a home directory that each user is placed in upon login. If there is no defined home directory, a user will be placed in / and will not be able to write any files or have local environment variables set."
     rationale: "All users must be assigned a home directory in passwd(4)."
