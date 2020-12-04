@@ -130,6 +130,7 @@ void check_max_fps(int mode) {
     static time_t last_time = 0;
 #endif
     time_t now;
+
     if (mode != FIM_SCHEDULED || syscheck.max_fps == 0) {
         return;
     }
@@ -147,8 +148,6 @@ void check_max_fps(int mode) {
 
     mdebug2(FIM_REACHED_MAX_FPS);
     sleep(1);
-
-    //w_mutex_unlock(&syscheck.fim_scheduled_max_fps);
 }
 
 // LCOV_EXCL_START

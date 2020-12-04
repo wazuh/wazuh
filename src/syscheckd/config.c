@@ -202,6 +202,7 @@ cJSON *getSyscheckConfig(void) {
     if (syscheck.scan_on_start) cJSON_AddStringToObject(syscfg,"scan_on_start","yes"); else cJSON_AddStringToObject(syscfg,"scan_on_start","no");
     if (syscheck.scan_day) cJSON_AddStringToObject(syscfg,"scan_day",syscheck.scan_day);
     if (syscheck.scan_time) cJSON_AddStringToObject(syscfg,"scan_time",syscheck.scan_time);
+    cJSON_AddNumberToObject(syscfg, "max_fps", syscheck.max_fps);
 
     cJSON * file_limit = cJSON_CreateObject();
     cJSON_AddStringToObject(file_limit, "enabled", syscheck.file_limit_enabled ? "yes" : "no");

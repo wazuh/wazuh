@@ -148,7 +148,7 @@ void read_internal(int debug_level);
 void fim_scan();
 
 /**
- * @brief Sleep the file scan one second when at least syscheck.max_fps files have been readed in one second.
+ * @brief Stop scanning files for one second if the max number of files scanned has been reached.
  *
  * @param mode Mode of the event.
  */
