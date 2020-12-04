@@ -164,11 +164,16 @@ void test_w_get_attr_timeout_out_range(void ** state) {
     test_mode = 1;
     unsigned int expect_retval = MULTI_LINE_REGEX_TIMEOUT;
     unsigned int retval;
+    char str_timeout[10] = {0};
+    char str_msg[300] = {0};
 
-    will_return(__wrap_w_get_attr_val_by_name, "61");
-    expect_string(__wrap__mwarn, formatted_msg,
-                  "(8000): Invalid value '61' for attribute 'timeout' in "
-                  "'multiline_regex' option. Default value will be taken");
+    sprintf(str_timeout, "%i", MULTI_LINE_REGEX_MAX_TIMEOUT + 4);
+    sprintf(str_msg, "(8000): Invalid value '%s' for attribute 'timeout' in "
+                  "'multiline_regex' option. Default value will be taken", str_timeout);
+
+    will_return(__wrap_w_get_attr_val_by_name, str_timeout);
+    expect_string(__wrap__mwarn, formatted_msg, str_msg);
+
     retval = w_get_attr_timeout(NULL);
 
     test_mode = 0;

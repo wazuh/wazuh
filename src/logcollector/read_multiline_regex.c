@@ -144,12 +144,15 @@ STATIC int multiline_getlog_start(char * buffer, int length, FILE * stream, w_mu
     long pos = w_ftell(stream);
     *str = '\0';
 
+    /* Check if a context restore is needed */
     if (ml_cfg->ctxt) {
         multiline_ctxt_restore(str, &readed_lines, ml_cfg->ctxt);
         offset = strlen(str);
         collecting_lines = true;
+        /* If the context it's expired then free it and return log */
         if (multiline_ctxt_is_expired(ml_cfg->timeout, ml_cfg->ctxt)) {
             multiline_ctxt_free(&ml_cfg->ctxt);
+            /* delete last end-of-line character (LF / CR LF) */
             multiline_replace(buffer, ML_REPLACE_NONE);
             return readed_lines;
         }
@@ -171,12 +174,16 @@ STATIC int multiline_getlog_start(char * buffer, int length, FILE * stream, w_mu
         offset += chunk_sz;
         str += chunk_sz;
         readed_lines++;
+        /* Save current posistion in case we have to rewind */
         pos = w_ftell(stream);
         collecting_lines = true;
+        /* Allow save new content in the context in case can_read() fail */
+        retstr = NULL;
     }
 
+    /* Check if we have to save/create context in case
+       Multiline log found but MAYBE not finished yet */
     if (collecting_lines && !retstr && length > offset) {
-        // Multiline log found but not finished yet
         multiline_ctxt_backup(buffer, readed_lines, &ml_cfg->ctxt);
         readed_lines = 0;
     } else if (length == offset) {
@@ -184,6 +191,7 @@ STATIC int multiline_getlog_start(char * buffer, int length, FILE * stream, w_mu
         while (c = fgetc(stream), c != '\n' || c != '\0' || c != EOF) {};
     }
 
+    /* If the lastest line complete the multiline log, free the context */
     if (ml_cfg->ctxt && readed_lines > 0) {
         multiline_ctxt_free(&ml_cfg->ctxt);
     }
@@ -201,12 +209,15 @@ STATIC int multiline_getlog_end(char * buffer, int length, FILE * stream, w_mult
     int c = 0;
     *str = '\0';
 
+    /* Check if a context restore is needed */
     if (ml_cfg->ctxt) {
         multiline_ctxt_restore(str, &readed_lines, ml_cfg->ctxt);
         offset = strlen(str);
         collecting_lines = true;
+        /* If the context it's expired then free it and return log */
         if (multiline_ctxt_is_expired(ml_cfg->timeout, ml_cfg->ctxt)) {
             multiline_ctxt_free(&ml_cfg->ctxt);
+            /* delete last end-of-line character (LF / CR LF) */
             multiline_replace(buffer, ML_REPLACE_NONE);
             return readed_lines;
         }
@@ -223,10 +234,13 @@ STATIC int multiline_getlog_end(char * buffer, int length, FILE * stream, w_mult
         }
         str += chunk_sz;
         collecting_lines = true;
+        /* Allow save new content in the context in case can_read() fail */
+        retstr = NULL;
     }
 
+    /* Check if we have to save/create context in case
+       Multiline log found but not finished yet */
     if (collecting_lines && !retstr && length > offset) {
-        // Multiline log found but not finished yet
         multiline_ctxt_backup(buffer, readed_lines, &ml_cfg->ctxt);
         readed_lines = 0;
     } else if (length == offset) {
@@ -234,6 +248,7 @@ STATIC int multiline_getlog_end(char * buffer, int length, FILE * stream, w_mult
         while (c = fgetc(stream), c != '\n' || c != '\0' || c != EOF) {};
     }
 
+    /* If the lastest line complete the multiline log, free the context */
     if (ml_cfg->ctxt && readed_lines > 0) {
         multiline_ctxt_free(&ml_cfg->ctxt);
     }
@@ -249,25 +264,51 @@ STATIC int multiline_getlog_all(char * buffer, int length, FILE * stream, w_mult
     int chunk_sz = 0;
     int readed_lines = 0;
     int c = 0;
+    bool collecting_lines = false;
+    char * retstr = NULL;
 
-    if (multiline_ctxt_restore(str, &readed_lines, ml_cfg->ctxt)) {
+    /* Check if a context restore is needed */
+    if (ml_cfg->ctxt) {
+        multiline_ctxt_restore(str, &readed_lines, ml_cfg->ctxt);
         offset = strlen(str);
+        collecting_lines = true;
+        /* If the context it's expired then free it and return log */
+        if (multiline_ctxt_is_expired(ml_cfg->timeout, ml_cfg->ctxt)) {
+            multiline_ctxt_free(&ml_cfg->ctxt);
+            /* delete last end-of-line character (LF / CR LF) */
+            multiline_replace(buffer, ML_REPLACE_NONE);
+            return readed_lines;
+        }
     }
 
-    while (can_read() && fgets(str, length - offset, stream)) {
+    while (can_read() && (retstr = fgets(str, length - offset, stream)) != NULL) {
         readed_lines++;
         chunk_sz = strlen(str);
         offset += chunk_sz;
         multiline_replace(str, ml_cfg->replace_type);
         if (w_expression_match(ml_cfg->regex, buffer, NULL, NULL)) {
+            collecting_lines = false;
             break;
         }
         str += chunk_sz;
+        collecting_lines = true;
+        /* Allow save new content in the context in case can_read() fail */
+        retstr = NULL;
     }
 
-    if (length == offset) {
+    /* Check if we have to save/create context in case
+       Multiline log found but not finished yet */
+    if (collecting_lines && !retstr && length > offset) {
+        multiline_ctxt_backup(buffer, readed_lines, &ml_cfg->ctxt);
+        readed_lines = 0;
+    } else if (length == offset) {
         // Discard the rest of the log, moving the pointer to the next end of line
-        while( c = fgetc(stream), c != '\n' || c != EOF ){};
+        while (c = fgetc(stream), c != '\n' || c != '\0' || c != EOF) {};
+    }
+
+    /* If the lastest line complete the multiline log, free the context */
+    if (ml_cfg->ctxt && readed_lines > 0) {
+        multiline_ctxt_free(&ml_cfg->ctxt);
     }
 
     return readed_lines;
