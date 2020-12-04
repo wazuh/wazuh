@@ -748,6 +748,7 @@ InstallCommon()
         if [ -f shared_modules/dbsync/build/lib/libdbsync.dylib ]
         then
             ${INSTALL} -m 0750 -o root -g 0 shared_modules/dbsync/build/lib/libdbsync.dylib ${PREFIX}/lib
+            install_name_tool -id @rpath/../lib/libdbsync.dylib ${PREFIX}/lib/libdbsync.dylib
         fi
     elif [ -f shared_modules/dbsync/build/lib/libdbsync.so ]
     then
@@ -763,6 +764,8 @@ InstallCommon()
         if [ -f shared_modules/rsync/build/lib/librsync.dylib ]
         then
             ${INSTALL} -m 0750 -o root -g 0 shared_modules/rsync/build/lib/librsync.dylib ${PREFIX}/lib
+            install_name_tool -id @rpath/../lib/librsync.dylib ${PREFIX}/lib/librsync.dylib
+            install_name_tool -change $(PWD)/shared_modules/dbsync/build/lib/libdbsync.dylib @rpath/../lib/libdbsync.dylib ${PREFIX}/lib/librsync.dylib
         fi
     elif [ -f shared_modules/rsync/build/lib/librsync.so ]
     then
@@ -778,6 +781,7 @@ InstallCommon()
         if [ -f data_provider/build/lib/libsysinfo.dylib ]
         then
             ${INSTALL} -m 0750 -o root -g 0 data_provider/build/lib/libsysinfo.dylib ${PREFIX}/lib
+            install_name_tool -id @rpath/../lib/libsysinfo.dylib ${PREFIX}/lib/libsysinfo.dylib
         fi
     elif [ -f data_provider/build/lib/libsysinfo.so ]
     then
@@ -793,6 +797,11 @@ InstallCommon()
         if [ -f wazuh_modules/syscollector/build/lib/libsyscollector.dylib ]
         then
             ${INSTALL} -m 0750 -o root -g 0 wazuh_modules/syscollector/build/lib/libsyscollector.dylib ${PREFIX}/lib
+            install_name_tool -id @rpath/../lib/libsyscollector.dylib ${PREFIX}/lib/libsyscollector.dylib
+            install_name_tool -change $(PWD)/data_provider/build/lib/libsysinfo.dylib @rpath/../lib/libsysinfo.dylib ${PREFIX}/lib/libsyscollector.dylib
+            install_name_tool -change $(PWD)/shared_modules/rsync/build/lib/librsync.dylib @rpath/../lib/librsync.dylib ${PREFIX}/lib/libsyscollector.dylib
+            install_name_tool -change $(PWD)/shared_modules/dbsync/build/lib/libdbsync.dylib @rpath/../lib/libdbsync.dylib ${PREFIX}/lib/libsyscollector.dylib
+
         fi
     elif [ -f wazuh_modules/syscollector/build/lib/libsyscollector.so ]
     then

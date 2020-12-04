@@ -80,8 +80,6 @@ WIN_CMAKE_RULES+=win32/syscollector
 endif
 endif
 
-WIN_CMAKE_OPTS+=-DCMAKE_INSTALL_PREFIX=${PREFIX} 
-
 
 ifeq (${uname_S},Darwin)
 SYSINFO_OS=-DCMAKE_SYSTEM_NAME=Darwin
