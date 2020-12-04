@@ -442,9 +442,16 @@ void audit_set_db_consistency(void);
 /**
  * @brief Check if Auditd is installed and running
  *
- * @return The PID of Auditd
+ * @return -1 on error, 0 when Auditd is disabled, 1 when Auditd is enabled and 2 when it is enabled and
+ * in immutable mode
  */
 int check_auditd_enabled(void);
+
+/**
+ * @brief Set all directories that don't have audit rules and have whodata enabled to realtime.
+ * 
+*/
+void audit_no_rules_to_realtime();
 
 /**
  * @brief Set Auditd socket configuration

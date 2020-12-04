@@ -54,6 +54,7 @@ volatile int hc_thread_active;
 volatile int audit_health_check_creation;
 
 static unsigned int count_reload_retries;
+static int auditd_fd = -1;  // File descriptor for Auditd
 
 #ifdef ENABLE_AUDIT
 
@@ -89,27 +90,19 @@ static regex_t regexCompiled_dev;
 
 
 int check_auditd_enabled(void) {
+    struct audit_reply rep;
 
-    PROCTAB *proc = openproc(PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLCOM );
-    proc_t *proc_info;
-    int auditd_pid = -1;
-
-    if (!proc) {
+    if (audit_request_status(auditd_fd) < 0) {
+        mdebug1("Error in audit_request_status().");
         return -1;
     }
 
-    while (proc_info = readproc(proc, NULL), proc_info != NULL) {
-        if(strcmp(proc_info->cmd,"auditd") == 0) {
-            auditd_pid = proc_info->tid;
-            freeproc(proc_info);
-            break;
-        }
-
-        freeproc(proc_info);
+    if (audit_get_reply(auditd_fd, &rep, GET_REPLY_BLOCKING, 0) <= 0) {
+        mdebug1("Error in audit_get_reply()");
+        return -1;
     }
 
-    closeproc(proc);
-    return auditd_pid;
+    return rep.status->enabled;
 }
 
 
@@ -213,9 +206,7 @@ int add_audit_rules_syscheck(bool first_time) {
     unsigned int i = 0;
     unsigned int rules_added = 0;
 
-    int fd = audit_open();
-    int res = audit_get_rule_list(fd);
-    audit_close(fd);
+    int res = audit_get_rule_list(auditd_fd);
 
     if (!res) {
         merror(FIM_ERROR_WHODATA_READ_RULE);
@@ -271,6 +262,24 @@ int add_audit_rules_syscheck(bool first_time) {
     }
 
     return rules_added;
+}
+
+
+void audit_no_rules_to_realtime() {
+    int found;
+    int i;
+
+    for (i = 0; syscheck.dir[i] != NULL; i++) {
+        if (syscheck.opts[i] & WHODATA_ACTIVE){
+            found = search_audit_rule(fim_get_real_path(i), "wa", AUDIT_KEY);
+
+            if (found == 0) {   // No rule found
+                mwarn(FIM_ERROR_WHODATA_ADD_DIRECTORY, fim_get_real_path(i));
+                syscheck.opts[i] &= ~WHODATA_ACTIVE;
+                syscheck.opts[i] |= REALTIME_ACTIVE;
+            }
+        }
+    }
 }
 
 
@@ -433,9 +442,12 @@ int audit_init(void) {
     w_mutex_init(&audit_rules_mutex, NULL);
 
     // Check if auditd is installed and running.
-    int aupid = check_auditd_enabled();
-    if (aupid <= 0) {
+    auditd_fd = audit_open();
+    int auditd_status = check_auditd_enabled();
+
+    if (auditd_status <= 0 || auditd_fd < 0) {
         mwarn(FIM_AUDIT_NORUNNING);
+        audit_close(auditd_fd);
         return (-1);
     }
 
@@ -443,10 +455,12 @@ int audit_init(void) {
     switch (set_auditd_config()) {
     case -1:
         mdebug1(FIM_AUDIT_NOCONF);
+        audit_close(auditd_fd);
         return (-1);
     case 0:
         break;
     default:
+        audit_close(auditd_fd);
         return (-1);
     }
 
@@ -455,12 +469,14 @@ int audit_init(void) {
     audit_socket = init_auditd_socket();
     if (audit_socket < 0) {
         merror("Can't init auditd socket in 'init_auditd_socket()'");
+        audit_close(auditd_fd);
         return -1;
     }
 
     int regex_comp = init_regex();
     if (regex_comp < 0) {
         merror("Can't init regex in 'init_regex()'");
+        audit_close(auditd_fd);
         return -1;
     }
 
@@ -468,6 +484,7 @@ int audit_init(void) {
     if (syscheck.audit_healthcheck) {
         if(audit_health_check(audit_socket)) {
             merror(FIM_ERROR_WHODATA_HEALTHCHECK_START);
+            audit_close(auditd_fd);
             return -1;
         }
     } else {
@@ -479,6 +496,12 @@ int audit_init(void) {
     audit_added_dirs = W_Vector_init(20);
 
     add_audit_rules_syscheck(true);
+
+    // Change to realtime directories that don't have any rules when Auditd is in immutable mode
+    if (auditd_status == 2) {
+        audit_no_rules_to_realtime();
+    }
+
     atexit(clean_rules);
     auid_err_reported = 0;
 
@@ -1407,6 +1430,9 @@ void clean_rules(void) {
         W_Vector_free(audit_added_rules);
         audit_added_rules = NULL;
     }
+
+    audit_close(auditd_fd);
+
     w_mutex_unlock(&audit_mutex);
 }
 
