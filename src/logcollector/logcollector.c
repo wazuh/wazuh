@@ -78,8 +78,15 @@ STATIC int w_set_to_last_line_read(logreader *lf);
  * @param lf logreader to set
  * @return 0 on success, otherwise -1
  */
-STATIC int w_set_to_end(logreader *lf);
+STATIC ssize_t w_set_to_pos(logreader *lf, long pos, int mode);
 
+/**
+ * @brief Update hash node
+ * @param path Hash key
+ * @param pos Offset of hash
+ * @return 0 on success, otherwise -1
+ */
+STATIC int w_update_hash_node(char * path, ssize_t pos);
 
 /* Global variables */
 int loop_timeout;
@@ -956,7 +963,9 @@ int handle_file(int i, int j, int do_fseek, int do_log)
         if (!lf->future) {
             if (w_set_to_last_line_read(lf) < 0) goto error;
         } else {
-            if (w_set_to_end(lf) < 0) goto error;
+            int result;
+            if (result = w_set_to_pos(lf, 0, SEEK_END), result < 0) goto error;
+            w_update_hash_node(lf->file, result);
         }
     }
 #endif
@@ -2530,7 +2539,7 @@ STATIC void w_initialize_file_status() {
     if (fd = fopen(LOCALFILE_STATUS_PATH, "r"), fd != NULL) {
         char str[OS_MAXSTR];
 
-        if(fread(str, 1, OS_MAXSTR, fd) < 1) {
+        if (fread(str, 1, OS_MAXSTR, fd) < 1) {
             merror(FREAD_ERROR, LOCALFILE_STATUS_PATH, errno, strerror(errno));
             clearerr(fd);
         } else {
@@ -2558,7 +2567,7 @@ STATIC void w_save_file_status() {
     size_t size_str = strlen(str);
 
     if (fd = wfopen(LOCALFILE_STATUS_PATH, "w"), fd != NULL) {
-        if(fwrite(str, 1, size_str, fd) == 0) {
+        if (fwrite(str, 1, size_str, fd) == 0) {
             merror(FWRITE_ERROR, LOCALFILE_STATUS_PATH, errno, strerror(errno));
             clearerr(fd);
         }
@@ -2637,7 +2646,7 @@ STATIC char * w_save_files_status_to_cJSON() {
     OSHashNode * hash_node;
     unsigned int index = 0;
 
-    if(hash_node = OSHash_Begin(files_status, &index), !hash_node) {
+    if (hash_node = OSHash_Begin(files_status, &index), !hash_node) {
         return NULL;
     }
 
@@ -2667,56 +2676,79 @@ STATIC char * w_save_files_status_to_cJSON() {
 }
 
 STATIC int w_set_to_last_line_read(logreader *lf) {
-    OSHashNode * hash_node;
-    unsigned int index = 0;
+    os_file_status_t *data;
 
-    if (hash_node = OSHash_Begin(files_status, &index), !hash_node) {
+    if (data = (os_file_status_t *)OSHash_Get_ex(files_status, lf->file), !data) {
+        w_set_to_pos(lf, 0, SEEK_END);
+        return 0;
+    }
+
+    struct stat stat_fd;
+
+    if (fstat(fileno(lf->fp), &stat_fd) == -1) {
+        merror(FSTAT_ERROR, lf->file, errno, strerror(errno));
         return -1;
     }
 
-    while (hash_node) {
-        os_file_status_t *data = hash_node->data;
-        char * path = hash_node->key;
+    long result = 0;
 
-        if (!strcmp(lf->file, path)) {
-            struct stat stat_fd;
+    SHA_CTX context;
+    os_sha1 output;
+    OS_SHA1_File_Nbytes(lf->file, &context, output, OS_BINARY, data->offset);
 
-            if (fstat(fileno(lf->fp), &stat_fd) == -1) {
-                merror(FSTAT_ERROR, lf->file, errno, strerror(errno));
-                return -1;
-            }
-
-            if (stat_fd.st_size - data->offset > lf->diff_max_size) {
-                return w_set_to_end(lf);
-            } else {
-                if (fseek(lf->fp, data->offset, SEEK_SET) < 0) {
-                    merror(FSEEK_ERROR, lf->file, errno, strerror(errno));
-                    fclose(lf->fp);
-                    lf->fp = NULL;
-                    return -1;
-                } else {
-                    return 0;
-                }
-            }
-        }
-
-        hash_node = OSHash_Next(files_status, &index, hash_node);
+    if (strcmp(output,data->hash)){
+        result = w_set_to_pos(lf, 0, SEEK_SET);
+    } else if (stat_fd.st_size - data->offset > lf->diff_max_size) {
+        result = w_set_to_pos(lf, 0, SEEK_END);
+    } else {
+        return w_set_to_pos(lf, data->offset, SEEK_SET);
     }
 
-    return w_set_to_end(lf);
+    if (result >= 0) {
+        if (w_update_hash_node(lf->file, result) == -1) {
+            merror(HUPDATE_ERROR, lf->file, files_status_name);
+        }
+    }
+
+    return result;
 }
 
-STATIC int w_set_to_end(logreader *lf) {
+STATIC int w_update_hash_node(char * path, ssize_t pos) {
+    os_file_status_t * data;
 
-    if (fseek(lf->fp, 0, SEEK_END) < 0) {
+    os_malloc(sizeof(os_file_status_t), data);
+
+    data->offset = pos;
+
+    SHA_CTX context;
+    os_sha1 output;
+    OS_SHA1_File_Nbytes(path, &context, output, OS_BINARY, pos);
+    strncpy(data->hash, output, sizeof(os_sha1));
+    data->context = context;
+
+    if (OSHash_Update_ex(files_status, path, data) != 1){
+        return -1;
+    }
+
+    return 0;
+}
+
+STATIC ssize_t w_set_to_pos(logreader *lf, long pos, int mode) {
+    if (fseek(lf->fp, pos, mode) < 0) {
         merror(FSEEK_ERROR, lf->file, errno, strerror(errno));
         fclose(lf->fp);
         lf->fp = NULL;
         return -1;
     }
-    else {
-        return 0;
-    }
+    fpos_t fp_pos;
+    fgetpos(lf->fp, &fp_pos);
+
+#ifdef WIN32
+    return fp_pos;
+#else
+    return fp_pos.__pos;
+#endif
+
 }
 
 void w_get_hash_context (const char * path, SHA_CTX *context, ssize_t position) {
