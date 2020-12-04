@@ -11,7 +11,7 @@ from wazuh.core.results import AffectedItemsWazuhResult
 
 
 async def validate_resource(resource, r_type):
-    from api.models.security import RoleModel, RuleModel, PolicyModel, CreateUserModel, UpdateUserModel
+    from api.models.security_model import RoleModel, RuleModel, PolicyModel, CreateUserModel, UpdateUserModel
 
     resource_body = {
         'user': CreateUserModel,
@@ -69,6 +69,8 @@ async def manage_reserved_security_resource(method, resource_type, f_arguments):
     }
 
     lc = local_client.LocalClient()
+    if method not in ('link', 'unlink'):
+        f_arguments['resource_type'] = 'protected'
 
     input_json = {
         'f': func[method][resource_type],
@@ -188,7 +190,7 @@ if __name__ == "__main__":
                     result |= asyncio.run(manage_reserved_security_resource(method, resource_name,
                                                                             {f'{resource_name}_ids': values}))
                 # Link/unlink resources
-                elif method in ['link', 'unlink'] and values:
+                elif 'link' in method and values:
                     if len(values) < 2:
                         raise WazuhError(10000, extra_message='Link methods need at least 2 arguments. '
                                                               '<MAIN RESOURCE ID> <RELATED RESOURCE ID> '
@@ -206,14 +208,23 @@ if __name__ == "__main__":
 
             # Construct result table
             if result.affected_items or result.failed_items:
+                if not result.affected_items:
+                    success = None
+                elif 'link' in method:
+                    item = result.affected_items[0]
+                    key = {'role': 'roles', 'policy': 'policies', 'rule': 'rules'}[related_r]
+                    success = f"{item['id']} - [{', '.join(map(str, item[key]))}]"
+                else:
+                    success = ', '.join([f"{item['id']} - {item.get('name', item['username'])}"
+                                         for item in result.affected_items])
                 result_table.append([resource_name.title(),
                                      method,
-                                     ', '.join([str(item['id']) for item in result.affected_items]),
+                                     success,
                                      '\n'.join(f"{', '.join(map(str, ids))} || {error}"
                                                for error, ids in result.failed_items.items())])
 
         table_headers = ['Resource', 'Method', 'Success', 'Failed']
-        print(tabulate(result_table, headers=table_headers, tablefmt='fancy_grid'))
+        print(tabulate(result_table, headers=table_headers))
     except WazuhError as e:
         print(f"Error {e.code}: {e.message}")
     except Exception as e:
