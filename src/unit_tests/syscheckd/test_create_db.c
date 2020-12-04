@@ -427,7 +427,7 @@ void prepare_win_double_scan_success (char *test_file_path, char *dir_file_path,
         will_return(__wrap_w_get_file_attrs, 123456);
 
         expect_string(__wrap_get_UTC_modification_time, file_path, test_file_path);
-        will_return(__wrap_get_UTC_modification_time, 123456LL);
+        will_return(__wrap_get_UTC_modification_time, 123456);
 
         expect_string(__wrap_get_user, path, test_file_path);
         will_return(__wrap_get_user, "0");
@@ -2612,7 +2612,7 @@ static void test_fim_checker_fim_regular(void **state) {
 
     // Inside fim_file
     expect_string(__wrap_get_UTC_modification_time, file_path, expanded_path);
-    will_return(__wrap_get_UTC_modification_time, 123456LL);
+    will_return(__wrap_get_UTC_modification_time, 123456);
 
     will_return(__wrap_get_user, "0");
     will_return(__wrap_get_user, strdup("user"));
@@ -2732,7 +2732,7 @@ static void test_fim_checker_fim_regular_warning(void **state) {
 
     // Inside fim_file
     expect_string(__wrap_get_UTC_modification_time, file_path, expanded_path);
-    will_return(__wrap_get_UTC_modification_time, 123456LL);
+    will_return(__wrap_get_UTC_modification_time, 123456);
 
     will_return(__wrap_get_user, "0");
     will_return(__wrap_get_user, strdup("user"));
@@ -2839,7 +2839,7 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
 
     // Inside fim_file
     expect_string(__wrap_get_UTC_modification_time, file_path, path);
-    will_return(__wrap_get_UTC_modification_time, 123456LL);
+    will_return(__wrap_get_UTC_modification_time, 123456);
 
     will_return(__wrap_get_user, "0");
     will_return(__wrap_get_user, strdup("user"));
@@ -3711,7 +3711,7 @@ static void test_fim_get_data(void **state) {
     will_return(__wrap_get_group, "group");
 #else
     expect_string(__wrap_get_UTC_modification_time, file_path, "test");
-    will_return(__wrap_get_UTC_modification_time, 123456LL);
+    will_return(__wrap_get_UTC_modification_time, 123456);
 
     will_return(__wrap_get_user, "0");
     will_return(__wrap_get_user, strdup("user"));
@@ -3778,7 +3778,7 @@ static void test_fim_get_data_no_hashes(void **state) {
     will_return(__wrap_get_group, "group");
 #else
     expect_string(__wrap_get_UTC_modification_time, file_path, "test");
-    will_return(__wrap_get_UTC_modification_time, 123456LL);
+    will_return(__wrap_get_UTC_modification_time, 123456);
 
     will_return(__wrap_get_user, "0");
     will_return(__wrap_get_user, strdup("user"));
@@ -3825,7 +3825,7 @@ static void test_fim_get_data_hash_error(void **state) {
     will_return(__wrap_get_group, "group");
 #else
     expect_string(__wrap_get_UTC_modification_time, file_path, "test");
-    will_return(__wrap_get_UTC_modification_time, 123456LL);
+    will_return(__wrap_get_UTC_modification_time, 123456);
 
     will_return(__wrap_get_user, "0");
     will_return(__wrap_get_user, strdup("user"));

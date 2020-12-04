@@ -16,6 +16,7 @@
 #include <string.h>
 #include "headers/defs.h"
 #include "../headers/file_op.h"
+#include "error_messages/error_messages.h"
 #include "../wrappers/common.h"
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
@@ -565,42 +566,49 @@ void test_get_UTC_modification_time_success(void **state) {
 
     expect_value(__wrap_get_windows_file_time_epoch, ftime.dwLowDateTime, modification_date.dwLowDateTime);
     expect_value(__wrap_get_windows_file_time_epoch, ftime.dwHighDateTime, modification_date.dwHighDateTime);
-    will_return(__wrap_get_windows_file_time_epoch, 123456LL);
+    will_return(__wrap_get_windows_file_time_epoch, 123456);
 
-    long long ret = get_UTC_modification_time("C:\\a\\path");
-    assert_int_equal(ret, 123456LL);
+    time_t ret = get_UTC_modification_time("C:\\a\\path");
+    assert_int_equal(ret, 123456);
 }
 
 void test_get_UTC_modification_time_fail_get_handle(void **state) {
+    char buffer[OS_SIZE_128];
+    char *path = "C:\\a\\path";
 
-    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
+    expect_string(wrap_CreateFile, lpFileName, path);
     will_return(wrap_CreateFile, INVALID_HANDLE_VALUE);
 
-    expect_string(__wrap__mferror, formatted_msg, "(6711): Could not open handle for '(C:\\a\\path)', which returned (2).");
+    snprintf(buffer, OS_SIZE_128, FIM_WARN_OPEN_HANDLE_FILE, path, 2);
+    expect_string(__wrap__mferror, formatted_msg, buffer);
 
-    long long ret = get_UTC_modification_time("C:\\a\\path");
+    time_t ret = get_UTC_modification_time(path);
     assert_int_equal(ret, 0);
 }
 
 void test_get_UTC_modification_time_fail_get_filetime(void **state) {
+    char buffer[OS_SIZE_128];
+    char *path = "C:\\a\\path";
+
     HANDLE hdle = (HANDLE)1234;
     FILETIME modification_date;
     modification_date.dwLowDateTime = (DWORD)1234;
     modification_date.dwHighDateTime = (DWORD)4321;
 
-    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
+    expect_string(wrap_CreateFile, lpFileName, path);
     will_return(wrap_CreateFile, (HANDLE)1234);
 
     expect_value(wrap_GetFileTime, hFile, (HANDLE)1234);
     will_return(wrap_GetFileTime, &modification_date);
     will_return(wrap_GetFileTime, 0);
 
-    expect_string(__wrap__mferror, formatted_msg, "(6712): Could not get the filetime of the file '(C:\\a\\path)', which returned (2).");
+    snprintf(buffer, OS_SIZE_128, FIM_WARN_GET_FILETIME, path, 2);
+    expect_string(__wrap__mferror, formatted_msg, buffer);
 
     expect_value(wrap_CloseHandle, hObject, (HANDLE)1234);
     will_return(wrap_CloseHandle, 0);
 
-    long long ret = get_UTC_modification_time("C:\\a\\path");
+    time_t ret = get_UTC_modification_time(path);
     assert_int_equal(ret, 0);
 }
 #endif
