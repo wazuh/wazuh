@@ -108,7 +108,7 @@ If ($status -eq $null)
     }
     Else
     {
-        Remove-Item -path .\wazuh-agent.exe
+        Remove-Item .\wazuh-agent.exe
         .\ossec-agent.exe install-service >> .\upgrade\upgrade.log
     }
     Start-Service -Name "Wazuh" -ErrorAction SilentlyContinue
