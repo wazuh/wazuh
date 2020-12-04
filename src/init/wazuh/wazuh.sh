@@ -128,4 +128,6 @@ WazuhUpgrade()
 
     rm -f $DIRECTORY/wodles/cve.db
     rm -f $DIRECTORY/queue/vulnerabilities/cve.db
+
+    rm -f $DIRECTORY/bin/ossec-logtest
 }

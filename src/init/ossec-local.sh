@@ -215,15 +215,6 @@ testconfig()
 
 start()
 {
-    echo "Starting $NAME $VERSION..."
-    TEST=$(${DIR}/bin/ossec-logtest -t  2>&1)
-    echo $TEST
-    if [ ! -z "$TEST" ]; then
-        echo "ossec-analysisd: Configuration error. Exiting."
-        touch ${DIR}/var/run/ossec-analysisd.failed
-        exit 1;
-    fi
-
     checkpid;
 
     # Delete all files in temporary folder

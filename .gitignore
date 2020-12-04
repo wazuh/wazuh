@@ -33,7 +33,6 @@ src/ossec-csyslogd
 src/ossec-dbd
 src/ossec-execd
 src/ossec-logcollector
-src/ossec-logtest
 src/ossec-maild
 src/ossec-makelists
 src/ossec-monitord

@@ -34,13 +34,6 @@ PWD=`pwd`
 # Logging the call
 echo "`date` $0 $1 $2 $3 $4 $5" >> ${PWD}/logs/active-responses.log
 
-# Run logtest in managers
-if [ "$TYPE" = "manager" ]; then
-    if !(${PWD}/bin/ossec-logtest -t > /dev/null 2>&1); then
-        exit 1;
-    fi
-fi
-
 # Restart Wazuh
 if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
     touch ${PWD}/var/run/.restart

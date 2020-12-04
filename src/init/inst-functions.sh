@@ -857,7 +857,6 @@ InstallLocal()
     ${INSTALL} -m 0750 -o root -g 0 ossec-monitord ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 ossec-reportd ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 ossec-maild ${PREFIX}/bin
-    ${INSTALL} -m 0750 -o root -g 0 ossec-logtest ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 ossec-csyslogd ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 ossec-dbd ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 ossec-makelists ${PREFIX}/bin
