@@ -172,9 +172,15 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
 #ifndef WIN32
 // Com request thread dispatcher
 void * wmcom_main(void * arg);
+/**
+ * @brief Send a one-way message to wmodules
+ *
+ * @param message Payload.
+ */
+void wcom_send(char * message);
 #endif
 size_t wmcom_dispatch(char * command, char ** output);
 size_t wmcom_getconfig(const char * section, char ** output);
-void wmcom_sync(char * buffer);
+int wmcom_sync(char * buffer);
 
 #endif // W_MODULES

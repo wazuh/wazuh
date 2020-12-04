@@ -15,15 +15,15 @@
 
 size_t wmcom_dispatch(char * command, char ** output){
 
-    char *rcv_comm = command;
-    char *rcv_args = NULL;
 
-    if ((rcv_args = strchr(rcv_comm, ' '))){
-        *rcv_args = '\0';
-        rcv_args++;
-    }
+    if (strncmp(command, "getconfig", 9) == 0){
+        char *rcv_comm = command;
+        char *rcv_args = NULL;
 
-    if (strcmp(rcv_comm, "getconfig") == 0){
+        if ((rcv_args = strchr(rcv_comm, ' '))){
+            *rcv_args = '\0';
+            rcv_args++;
+        }
         // getconfig section
         if (!rcv_args){
             mdebug1("WMCOM getconfig needs arguments.");
@@ -31,9 +31,10 @@ size_t wmcom_dispatch(char * command, char ** output){
             return strlen(*output);
         }
         return wmcom_getconfig(rcv_args, output);
-
+    } else if (wmcom_sync(command) == 0) {
+        return 0;
     } else {
-        mdebug1("WMCOM Unrecognized command '%s'.", rcv_comm);
+        mdebug1("WMCOM Unrecognized command '%s'.", command);
         os_strdup("err Unrecognized command", *output);
         return strlen(*output);
     }
@@ -75,14 +76,36 @@ error:
     return strlen(*output);
 }
 
-void wmcom_sync(char * buffer) {
+int wmcom_sync(char * buffer) {
     const int ret = modulesSync(buffer);
     if(ret) {
         mdebug1("At WMCOM sync: Could not sync '%s' buffer", buffer);
     }
+    return ret;
 }
 
 #ifndef WIN32
+
+void wcom_send(char * message)
+{
+    int sock;
+    if (sock = OS_ConnectUnixDomain(DEFAULTDIR WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+        switch (errno) {
+            case ECONNREFUSED:
+                merror("At wcom_send(): Target wmodules refused connection. The component might be disabled");
+                break;
+
+            default:
+                merror("At wcom_send(): Could not connect to socket wmodules: %s (%d).", strerror(errno), errno);
+        }
+    }
+    else
+    {
+        OS_SendSecureTCP(sock, strlen(message), message);
+        close(sock);
+    }
+}
+
 void * wmcom_main(__attribute__((unused)) void * arg) {
     int sock;
     int peer;
@@ -146,7 +169,10 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
 
         default:
             length = wmcom_dispatch(buffer, &response);
-            OS_SendSecureTCP(peer, length, response);
+            if (length)
+            {
+                OS_SendSecureTCP(peer, length, response);
+            }
             free(response);
             close(peer);
         }
