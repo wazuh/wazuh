@@ -1823,7 +1823,6 @@ void * w_dispatch_dbsync_thread(__attribute__((unused)) void * args) {
     for (;;) {
         msg = queue_pop_ex(dispatch_dbsync_input);
         assert(msg != NULL);
-        mwarn("Database synchronization messge queue popped.");
 
         os_calloc(1, sizeof(Eventinfo), lf);
         os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1840,7 +1839,6 @@ void * w_dispatch_dbsync_thread(__attribute__((unused)) void * args) {
         w_inc_dbsync_dispatched_messages();
         Free_Eventinfo(lf);
         free(msg);
-        mwarn("Database synchronization messge processed.");
     }
 
     return NULL;
