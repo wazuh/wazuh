@@ -160,74 +160,90 @@ static int teardown_add_audit_rules(void **state) {
     return 0;
 }
 
+static int setup_audit_reply(void **state) {
+    struct audit_reply *reply = (struct audit_reply *)calloc(1, sizeof(struct audit_reply));
+
+    if (reply == NULL) {
+        return -1;
+    }
+
+    reply->status = (struct audit_status *)calloc(1, sizeof(struct audit_status));
+
+    if (reply->status == NULL) {
+        free(reply);
+        return -1;
+    }
+
+    reply->status->enabled = 1;
+
+    *state = reply;
+
+    return 0;
+}
+
+static int teardown_audit_reply(void **state) {
+    struct audit_reply *reply = *state;
+
+    if (reply->status != NULL) {
+        free(reply->status);
+        reply->status = NULL;
+    }
+
+    if (reply != NULL) {
+        free(reply);
+        reply = NULL;
+    }
+
+    return 0;
+}
+
 /* tests */
 
 
+void test_check_auditd_enabled_audit_request_status_fail(void **state) {
+    int auditd_status = 0;
+
+    will_return(__wrap_audit_request_status, -1);
+    expect_string(__wrap__mdebug2, formatted_msg, "Error in audit_request_status().");
+
+    auditd_status = check_auditd_enabled();
+
+    assert_int_equal(auditd_status, -1);
+}
+
+void test_check_auditd_enabled_audit_get_reply_fail(void **state) {
+    struct audit_reply *reply = (struct audit_reply *)*state;
+    int auditd_status = 0;
+
+    will_return(__wrap_audit_request_status, 0);
+
+    expect_any(__wrap_audit_get_reply, fd);
+    expect_value(__wrap_audit_get_reply, block, GET_REPLY_BLOCKING);
+    will_return(__wrap_audit_get_reply, reply);
+    will_return(__wrap_audit_get_reply, -1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Error in audit_get_reply().");
+
+    auditd_status = check_auditd_enabled();
+
+    assert_int_equal(auditd_status, -1);
+}
+
 void test_check_auditd_enabled_success(void **state) {
-    (void) state;
-    int ret;
+    struct audit_reply *reply = (struct audit_reply *)*state;
+    int auditd_status = 0;
 
-    proc_t *mock_proc;
+    will_return(__wrap_audit_request_status, 0);
 
-    mock_proc = calloc(3, sizeof(proc_t));
+    expect_any(__wrap_audit_get_reply, fd);
+    expect_value(__wrap_audit_get_reply, block, GET_REPLY_BLOCKING);
+    will_return(__wrap_audit_get_reply, reply);
+    will_return(__wrap_audit_get_reply, 1);
 
-    snprintf(mock_proc[0].cmd, 16, "not-auditd");
-    mock_proc[0].tid = 20;
+    auditd_status = check_auditd_enabled();
 
-    snprintf(mock_proc[1].cmd, 16, "something");
-    mock_proc[1].tid = 25;
-
-    snprintf(mock_proc[2].cmd, 16, "auditd");
-    mock_proc[2].tid = 15;
-
-    expect_value(__wrap_openproc, flags, PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLCOM);
-    will_return(__wrap_openproc, 1234);
-
-    expect_value_count(__wrap_readproc, PT, 1234, 3);
-    expect_value_count(__wrap_readproc, p, NULL, 3);
-    will_return(__wrap_readproc, &mock_proc[0]);
-    will_return(__wrap_readproc, &mock_proc[1]);
-    will_return(__wrap_readproc, &mock_proc[2]);
-
-    expect_value(__wrap_freeproc, p, &mock_proc[0]);
-    expect_value(__wrap_freeproc, p, &mock_proc[1]);
-    expect_value(__wrap_freeproc, p, &mock_proc[2]);
-
-    expect_value(__wrap_closeproc, PT, 1234);
-
-    ret = check_auditd_enabled();
-    assert_return_code(ret, 0);
-    free(mock_proc);
+    assert_int_equal(auditd_status, 1);
 }
-
-void test_check_auditd_enabled_openproc_error(void **state) {
-    (void) state;
-    int ret;
-
-    expect_value(__wrap_openproc, flags, PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLCOM);
-    will_return(__wrap_openproc, NULL);
-
-    ret = check_auditd_enabled();
-    assert_int_equal(ret, -1);
-}
-
-void test_check_auditd_enabled_readproc_error(void **state) {
-    (void) state;
-    int ret;
-
-    expect_value(__wrap_openproc, flags, PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLCOM);
-    will_return(__wrap_openproc, 1234);
-
-    expect_value(__wrap_readproc, PT, 1234);
-    expect_value(__wrap_readproc, p, NULL);
-    will_return(__wrap_readproc, NULL);
-
-    expect_value(__wrap_closeproc, PT, 1234);
-
-    ret = check_auditd_enabled();
-    assert_int_equal(ret, -1);
-}
-
 
 void test_init_auditd_socket_success(void **state) {
     (void) state;
@@ -763,14 +779,8 @@ void test_add_audit_rules_syscheck_not_added(void **state) {
     syscheck.opts[0] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 100;
 
-    // Audit open
-    will_return(__wrap_audit_open, 1);
-
     // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 0);
-
-    // Audit close
-    will_return(__wrap_audit_close, 1);
 
     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
 
@@ -812,14 +822,8 @@ void test_add_audit_rules_syscheck_not_added_new(void **state) {
     syscheck.opts[0] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 100;
 
-    // Audit open
-    will_return(__wrap_audit_open, 1);
-
     // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 0);
-
-    // Audit close
-    will_return(__wrap_audit_close, 1);
 
     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
 
@@ -861,14 +865,8 @@ void test_add_audit_rules_syscheck_not_added_error(void **state) {
     syscheck.opts[0] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 100;
 
-    // Audit open
-    will_return(__wrap_audit_open, 1);
-
     // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 0);
-
-    // Audit close
-    will_return(__wrap_audit_close, 1);
 
     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
 
@@ -905,14 +903,8 @@ void test_add_audit_rules_syscheck_not_added_first_error(void **state) {
     syscheck.opts[0] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 100;
 
-    // Audit open
-    will_return(__wrap_audit_open, 1);
-
     // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 0);
-
-    // Audit close
-    will_return(__wrap_audit_close, 1);
 
     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
 
@@ -949,14 +941,8 @@ void test_add_audit_rules_syscheck_added(void **state) {
     syscheck.opts[0] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 100;
 
-    // Audit open
-    will_return(__wrap_audit_open, 1);
-
     // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 5);
-
-    // Audit close
-    will_return(__wrap_audit_close, 1);
 
     // Audit added rules
     will_return(__wrap_W_Vector_length, 3);
@@ -999,14 +985,8 @@ void test_add_audit_rules_syscheck_max(void **state) {
     syscheck.opts[1] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 3;
 
-    // Audit open
-    will_return(__wrap_audit_open, 1);
-
     // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 5);
-
-    // Audit close
-    will_return(__wrap_audit_close, 1);
 
     // Audit added rules
     will_return(__wrap_W_Vector_length, 3);
@@ -1506,14 +1486,8 @@ void test_audit_parse_delete(void **state) {
     expect_string(__wrap__mwarn, formatted_msg, "(6911): Detected Audit rules manipulation: Audit rules removed.");
     expect_string(__wrap__mdebug1, formatted_msg, "(6275): Reloading Audit rules.");
 
-    // Audit open
-    will_return(__wrap_audit_open, 1);
-
     // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 5);
-
-    // Audit close
-    will_return(__wrap_audit_close, 1);
 
     // Audit added rules
     will_return(__wrap_W_Vector_length, 3);
@@ -1559,14 +1533,8 @@ void test_audit_parse_delete_recursive(void **state) {
 
     expect_string_count(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'", 4);
 
-    // Audit open
-    will_return_always(__wrap_audit_open, 5);
-
     // Read loaded rules in Audit
     will_return_always(__wrap_audit_get_rule_list, 5);
-
-    // Audit close
-    will_return_always(__wrap_audit_close, 5);
 
     // Audit added rules
     will_return_always(__wrap_W_Vector_length, 3);
@@ -2390,8 +2358,6 @@ void test_audit_read_events_select_success_recv_error_audit_reconnect(void **sta
     will_return(__wrap_OS_ConnectUnixDomain, 124);
 
     expect_string(__wrap__minfo, formatted_msg, "(6030): Audit: connected.");
-    will_return(__wrap_audit_open, 1);
-    will_return(__wrap_audit_close, 1);
 
     // In audit_reload_rules()
     syscheck.dir = calloc (2, sizeof(char *));
@@ -2566,9 +2532,9 @@ void test_audit_read_events_select_success_recv_success_too_long(void **state) {
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_check_auditd_enabled_success),
-        cmocka_unit_test(test_check_auditd_enabled_openproc_error),
-        cmocka_unit_test(test_check_auditd_enabled_readproc_error),
+        cmocka_unit_test(test_check_auditd_enabled_audit_request_status_fail),
+        cmocka_unit_test_setup_teardown(test_check_auditd_enabled_audit_get_reply_fail, setup_audit_reply, teardown_audit_reply),
+        cmocka_unit_test_setup_teardown(test_check_auditd_enabled_success, setup_audit_reply, teardown_audit_reply),
         cmocka_unit_test(test_init_auditd_socket_success),
         cmocka_unit_test(test_init_auditd_socket_failure),
         cmocka_unit_test(test_set_auditd_config_wrong_audit_version),

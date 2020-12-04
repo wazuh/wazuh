@@ -84,4 +84,9 @@ int __wrap_audit_update_watch_perms(__attribute__((unused)) struct audit_rule_da
 
     return mock();
 }
+
+int __wrap_audit_request_status(__attribute__((unused)) int fd) {
+    return mock();
+}
+
 #endif

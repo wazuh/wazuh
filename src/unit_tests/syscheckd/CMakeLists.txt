@@ -122,7 +122,8 @@ if(NOT ${TARGET} STREQUAL "winagent")
                                      -Wl,--wrap,openproc -Wl,--wrap,readproc -Wl,--wrap,freeproc \
                                      -Wl,--wrap,closeproc -Wl,--wrap,_mdebug2 -Wl,--wrap,get_user \
                                      -Wl,--wrap,get_group -Wl,--wrap,realpath -Wl,--wrap,readlink -Wl,--wrap,fread \
-                                     -Wl,--wrap,fseek -Wl,--wrap,remove -Wl,--wrap,atexit -Wl,--wrap,getpid -Wl,--wrap,FOREVER")
+                                     -Wl,--wrap,fseek -Wl,--wrap,remove -Wl,--wrap,atexit -Wl,--wrap,getpid \
+                                     -Wl,--wrap,FOREVER -Wl,--wrap=audit_request_status -Wl,--wrap=audit_get_reply")
 endif()
 
 set(SEECHANGES_BASE_FLAGS "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,lstat -Wl,--wrap,stat -Wl,--wrap,abspath \
