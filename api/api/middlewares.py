@@ -66,12 +66,13 @@ async def prevent_bruteforce_attack(request, attempts=5):
 
 @web.middleware
 async def request_logging(request, handler):
+    """Add request info to logging."""
+    logger.debug2(f'Receiving headers {dict(request.headers)}')
     try:
-        body = await request.json()
+        body = f' and body {await request.json()}'
     except JSONDecodeError:
-        body = {}
-    logger.debug(f'Receiving request "{request.method} {request.path}" with parameters {dict(request.query)} '
-                 f'and body {body}')
+        body = ''
+    logger.debug(f'Receiving request "{request.method} {request.path}" with parameters {dict(request.query)}{body}')
     return await handler(request)
 
 

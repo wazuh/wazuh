@@ -125,7 +125,7 @@ class DistributedAPI:
             if 'password' in self.f_kwargs:
                 self.debug_log(f"Receiving parameters { {**self.f_kwargs, 'password': '****'} }")
             elif 'token_nbf_time' in self.f_kwargs:
-                self.debug_log(f"Receiving token {self.f_kwargs}")
+                self.logger.debug(f"Decoded token {self.f_kwargs}")
             else:
                 self.debug_log(f"Receiving parameters {self.f_kwargs}")
 

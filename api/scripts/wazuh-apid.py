@@ -8,7 +8,6 @@ import argparse
 import sys
 
 from api import alogging, configuration
-from api.middlewares import request_logging
 from wazuh.core import common
 
 
@@ -42,13 +41,14 @@ def start(foreground, root, config_file):
     from api import validator
     from api.api_exception import APIError
     from api.constants import CONFIG_FILE_PATH
-    from api.middlewares import set_user_name, security_middleware, response_postprocessing
+    from api.middlewares import set_user_name, security_middleware, response_postprocessing, request_logging
     from api.uri_parser import APIUriParser
     from api.util import to_relative_path
     from wazuh.core import pyDaemonModule
 
     configuration.api_conf.update(configuration.read_yaml_config(config_file=config_file))
     api_conf = configuration.api_conf
+    security_conf = configuration.security_conf
     log_path = api_conf['logs']['path']
 
     # Set up logger
@@ -147,6 +147,10 @@ def start(foreground, root, config_file):
     # Enable cache plugin
     if api_conf['cache']['enabled']:
         setup_cache(app.app)
+
+    # API configuration logging
+    logger.debug(f'Loaded API configuration: {api_conf}')
+    logger.debug(f'Loaded security API configuration: {security_conf}')
 
     # Start API
     app.run(port=api_conf['port'],
