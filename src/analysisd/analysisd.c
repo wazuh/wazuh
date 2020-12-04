@@ -1351,7 +1351,6 @@ void * ad_input_main(void * args) {
                 hourly_events++;
             } else if (msg[0] == DBSYNC_MQ) {
                 result = -1;
-                minfo("Database synchronization messge received.");
 
                 if (!queue_full(dispatch_dbsync_input)) {
                     os_strdup(buffer, copy);
