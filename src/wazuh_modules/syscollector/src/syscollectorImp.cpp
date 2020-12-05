@@ -1075,11 +1075,8 @@ void Syscollector::syncLoop()
         scan();
         //sync Rsync
     }
-    m_logErrorFunction("about to destroy rsync");
     m_spRsync.reset(nullptr);
-    m_logErrorFunction("about to destroy dbsyc");
     m_spDBSync.reset(nullptr);
-    m_logErrorFunction("exiting syncLoop");
 }
 
 void Syscollector::push(const std::string& data)

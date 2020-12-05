@@ -967,7 +967,7 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
         }
 
         return 0;
-    } else if (strcmp(curr, "integrity_clear") == 0) {
+    } else if (strncmp(curr, "integrity_clear", 15) == 0) {
         switch (wdbi_query_clear(wdb, component, next)) {
         case -1:
             mdebug1("DB(%s) Cannot query Syscollector range checksum.", wdb->id);
