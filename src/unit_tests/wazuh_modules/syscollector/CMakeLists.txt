@@ -55,6 +55,7 @@ foreach(counter RANGE ${count})
         ${WAZUHLIB}
         ${WAZUHEXT}
         SYSCOLLECTOR_O
+        -ldl
         -lcmocka
         -fprofile-arcs
         -ftest-coverage

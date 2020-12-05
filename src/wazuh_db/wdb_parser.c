@@ -12,6 +12,171 @@
 #include "wdb.h"
 #include "external/cJSON/cJSON.h"
 
+static struct column_list const TABLE_HOTFIXES[] = {
+    { .value = {FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_HOTFIXES[1] },
+    { .value = {FIELD_TEXT, 2, true, false, "scan_time" }, .next = &TABLE_HOTFIXES[2] },
+    { .value = {FIELD_TEXT, 3, false, true, "hotfix" }, .next = &TABLE_HOTFIXES[3] },
+    { .value = {FIELD_TEXT, 4, false, false, "checksum" }, .next = NULL },
+};
+
+static struct column_list const TABLE_PROCESSES[] = {
+    { .value = { FIELD_INTEGER, 1,true,false, "scan_id" }, .next = &TABLE_PROCESSES[1] },
+    { .value = { FIELD_TEXT, 2,true,false, "scan_time" }, .next = &TABLE_PROCESSES[2] },
+    { .value = { FIELD_TEXT, 3,false,true, "pid" }, .next = &TABLE_PROCESSES[3] },
+    { .value = { FIELD_TEXT, 4,false,false,"name" }, .next = &TABLE_PROCESSES[4] },
+    { .value = { FIELD_TEXT, 5,false,false,"state" }, .next = &TABLE_PROCESSES[5] },
+    { .value = { FIELD_INTEGER, 6,false,false,"ppid" }, .next = &TABLE_PROCESSES[6] },
+    { .value = { FIELD_INTEGER, 7,false,false,"utime" }, .next = &TABLE_PROCESSES[7] },
+    { .value = { FIELD_INTEGER, 8,false,false,"stime" }, .next = &TABLE_PROCESSES[8] },
+    { .value = { FIELD_TEXT, 9,false,false,"cmd" }, .next = &TABLE_PROCESSES[9] },
+    { .value = { FIELD_TEXT, 10,false,false,"argvs" }, .next = &TABLE_PROCESSES[10] },
+    { .value = { FIELD_TEXT, 11,false,false,"euser" }, .next = &TABLE_PROCESSES[11] },
+    { .value = { FIELD_TEXT, 12,false,false,"ruser" }, .next = &TABLE_PROCESSES[12] },
+    { .value = { FIELD_TEXT, 13,false,false,"suser" }, .next = &TABLE_PROCESSES[13] },
+    { .value = { FIELD_TEXT, 14,false,false,"egroup" }, .next = &TABLE_PROCESSES[14] },
+    { .value = { FIELD_TEXT, 15,false,false,"rgroup" }, .next = &TABLE_PROCESSES[15] },
+    { .value = { FIELD_TEXT, 16,false,false,"sgroup" }, .next = &TABLE_PROCESSES[16] },
+    { .value = { FIELD_TEXT, 17,false,false,"fgroup" }, .next = &TABLE_PROCESSES[17] },
+    { .value = { FIELD_INTEGER, 18,false,false,"priority" }, .next = &TABLE_PROCESSES[18] },
+    { .value = { FIELD_INTEGER, 19,false,false,"nice" }, .next = &TABLE_PROCESSES[19] },
+    { .value = { FIELD_INTEGER, 20,false,false,"size" }, .next = &TABLE_PROCESSES[20] },
+    { .value = { FIELD_INTEGER, 21,false,false,"vm_size" }, .next = &TABLE_PROCESSES[21] },
+    { .value = { FIELD_INTEGER, 22,false,false,"resident" }, .next = &TABLE_PROCESSES[22] },
+    { .value = { FIELD_INTEGER, 23,false,false,"share" }, .next = &TABLE_PROCESSES[23] },
+    { .value = { FIELD_INTEGER, 24,false,false,"start_time" }, .next = &TABLE_PROCESSES[24] },
+    { .value = { FIELD_INTEGER, 25,false,false,"pgrp" }, .next = &TABLE_PROCESSES[25] },
+    { .value = { FIELD_INTEGER, 26,false,false,"session" }, .next = &TABLE_PROCESSES[26] },
+    { .value = { FIELD_INTEGER, 27,false,false,"nlwp" }, .next = &TABLE_PROCESSES[27] },
+    { .value = { FIELD_INTEGER, 28,false,false,"tgid" }, .next = &TABLE_PROCESSES[28] },
+    { .value = { FIELD_INTEGER, 29,false,false,"tty" }, .next = &TABLE_PROCESSES[29] },
+    { .value = { FIELD_INTEGER, 30,false,false,"processor"}, .next = &TABLE_PROCESSES[30] },
+    { .value = { FIELD_TEXT, 31, false, false, "checksum" }, .next = NULL }
+};
+
+static struct column_list const TABLE_NETIFACE[] = {
+    { .value = { FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_NETIFACE[1] } ,
+    { .value = { FIELD_TEXT, 2, true, false, "scan_time" }, .next = &TABLE_NETIFACE[2] } ,
+    { .value = { FIELD_TEXT, 3, false, true, "name" }, .next = &TABLE_NETIFACE[3] } ,
+    { .value = { FIELD_TEXT, 4, false, false, "adapter" }, .next = &TABLE_NETIFACE[4] } ,
+    { .value = { FIELD_TEXT, 5, false, false, "type" }, .next = &TABLE_NETIFACE[5] } ,
+    { .value = { FIELD_TEXT, 6, false, false, "state" }, .next = &TABLE_NETIFACE[6] } ,
+    { .value = { FIELD_INTEGER, 7, false, false, "mtu" }, .next = &TABLE_NETIFACE[7] } ,
+    { .value = { FIELD_TEXT, 8, false, false, "mac" }, .next = &TABLE_NETIFACE[8] } ,
+    { .value = { FIELD_INTEGER, 9, false, false, "tx_packets" }, .next = &TABLE_NETIFACE[9] } ,
+    { .value = { FIELD_INTEGER, 10, false, false, "rx_packets" }, .next = &TABLE_NETIFACE[10] } ,
+    { .value = { FIELD_INTEGER, 11, false, false, "tx_bytes" }, .next = &TABLE_NETIFACE[11] } ,
+    { .value = { FIELD_INTEGER, 12, false, false, "rx_bytes" }, .next = &TABLE_NETIFACE[12] } ,
+    { .value = { FIELD_INTEGER, 13, false, false, "tx_errors" }, .next = &TABLE_NETIFACE[13] } ,
+    { .value = { FIELD_INTEGER, 14, false, false, "rx_errors" }, .next = &TABLE_NETIFACE[14] } ,
+    { .value = { FIELD_INTEGER, 15, false, false, "tx_dropped" }, .next = &TABLE_NETIFACE[15] } ,
+    { .value = { FIELD_INTEGER, 16, false, false, "rx_dropped" }, .next = &TABLE_NETIFACE[16] } ,
+    { .value = { FIELD_TEXT, 17, false, false, "checksum" }, .next = NULL }
+};
+
+static struct column_list const TABLE_NETPROTO[] = {
+    { .value = { FIELD_INTEGER,1, true, false, "scan_id" }, .next = &TABLE_NETPROTO[1]},
+    { .value = { FIELD_TEXT,2, false, true, "iface" }, .next = &TABLE_NETPROTO[2]},
+    { .value = { FIELD_TEXT,3, false, true, "type" }, .next = &TABLE_NETPROTO[3]},
+    { .value = { FIELD_TEXT,4, false, false, "gateway" }, .next = &TABLE_NETPROTO[4]},
+    { .value = { FIELD_TEXT,5, false, false, "dhcp" }, .next = &TABLE_NETPROTO[5]},
+    { .value = { FIELD_INTEGER,6, false, false, "metric" }, .next = &TABLE_NETPROTO[6]},
+    { .value = { FIELD_TEXT,7, false, false, "checksum" }, .next = NULL }
+};
+
+static struct column_list const TABLE_NETADDR[] = {
+    { .value = { FIELD_INTEGER,1, true, false, "scan_id" }, .next = &TABLE_NETADDR[1]},
+    { .value = { FIELD_TEXT,2, false, true, "iface" }, .next = &TABLE_NETADDR[2]},
+    { .value = { FIELD_TEXT,3, false, true, "proto" }, .next = &TABLE_NETADDR[3]},
+    { .value = { FIELD_TEXT,4, false, true, "address" }, .next = &TABLE_NETADDR[4]},
+    { .value = { FIELD_TEXT,5, false, false, "netmask" }, .next = &TABLE_NETADDR[5]},
+    { .value = { FIELD_TEXT,6, false, false, "broadcast" }, .next = &TABLE_NETADDR[6]},
+    { .value = { FIELD_TEXT,7, false, false, "checksum" }, .next = NULL},
+};
+
+static struct column_list const TABLE_PORTS[] = {
+    { .value = { FIELD_INTEGER,1, true, false, "scan_id" }, .next = &TABLE_PORTS[1]},
+    { .value = { FIELD_TEXT,2, true, false, "scan_time" }, .next = &TABLE_PORTS[2]},
+    { .value = { FIELD_TEXT,3, false, true, "protocol" }, .next = &TABLE_PORTS[3]},
+    { .value = { FIELD_TEXT,4, false, true, "local_ip" }, .next = &TABLE_PORTS[4]},
+    { .value = { FIELD_INTEGER,5, false, true, "local_port" }, .next = &TABLE_PORTS[5]},
+    { .value = { FIELD_TEXT,6, false, false, "remote_ip" }, .next = &TABLE_PORTS[6]},
+    { .value = { FIELD_INTEGER,7, false, false, "remote_port" }, .next = &TABLE_PORTS[7]},
+    { .value = { FIELD_INTEGER,8, false, false, "tx_queue" }, .next = &TABLE_PORTS[8]},
+    { .value = { FIELD_INTEGER,9, false, false, "rx_queue" }, .next = &TABLE_PORTS[9]},
+    { .value = { FIELD_INTEGER,10, false, true, "inode" }, .next = &TABLE_PORTS[10]},
+    { .value = { FIELD_TEXT,11, false, false, "state" }, .next = &TABLE_PORTS[11]},
+    { .value = { FIELD_INTEGER,12, false, false, "PID" }, .next = &TABLE_PORTS[12]},
+    { .value = { FIELD_TEXT,13, false, false, "process" }, .next = &TABLE_PORTS[13]},
+    { .value = { FIELD_TEXT,13, false, false, "checksum" }, .next = NULL},
+};
+
+static struct column_list const TABLE_PACKAGES[] = {
+    { .value = { FIELD_INTEGER, 1, true, true, "scan_id" }, .next = &TABLE_PACKAGES[1] },
+    { .value = { FIELD_TEXT, 2, true, false, "scan_time" }, .next = &TABLE_PACKAGES[2] },
+    { .value = { FIELD_TEXT, 3, false, false, "format" }, .next = &TABLE_PACKAGES[3] },
+    { .value = { FIELD_TEXT, 4, false, true, "name" }, .next = &TABLE_PACKAGES[4] },
+    { .value = { FIELD_TEXT, 5, false, false, "priority" }, .next = &TABLE_PACKAGES[5] },
+    { .value = { FIELD_TEXT, 6, false, false, "section" }, .next = &TABLE_PACKAGES[6] },
+    { .value = { FIELD_INTEGER, 7, false, false, "size" }, .next = &TABLE_PACKAGES[7] },
+    { .value = { FIELD_TEXT, 8, false, false, "vendor" }, .next = &TABLE_PACKAGES[8] },
+    { .value = { FIELD_TEXT, 9, false, false, "install_time" }, .next = &TABLE_PACKAGES[9] },
+    { .value = { FIELD_TEXT, 10, false, true, "version" }, .next = &TABLE_PACKAGES[10] },
+    { .value = { FIELD_TEXT, 11, false, true, "architecture" }, .next = &TABLE_PACKAGES[11] },
+    { .value = { FIELD_TEXT, 12, false, false, "multiarch" }, .next = &TABLE_PACKAGES[12] },
+    { .value = { FIELD_TEXT, 13, false, false, "source" }, .next = &TABLE_PACKAGES[13] },
+    { .value = { FIELD_TEXT, 14, false, false, "description" }, .next = &TABLE_PACKAGES[14] },
+    { .value = { FIELD_TEXT, 15, false, false, "location" }, .next = &TABLE_PACKAGES[15] },
+    { .value = { FIELD_INTEGER, 16, false, false, "triaged" }, .next = &TABLE_PACKAGES[16] },
+    { .value = { FIELD_TEXT, 17, false, false, "cpe" }, .next = &TABLE_PACKAGES[17] },
+    { .value = { FIELD_TEXT, 18, false, false, "msu_name" }, .next = &TABLE_PACKAGES[18] },
+    { .value = { FIELD_TEXT, 19, false, false, "checksum" }, .next = NULL },
+};
+
+static struct column_list const TABLE_OS[] = {
+    { .value = { FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_OS[1] },
+    { .value = { FIELD_TEXT, 2, true, false, "scan_time" }, .next = &TABLE_OS[2] },
+    { .value = { FIELD_TEXT, 3, false, false, "hostname" }, .next = &TABLE_OS[3] },
+    { .value = { FIELD_TEXT, 4, false, false, "architecture" }, .next = &TABLE_OS[4] },
+    { .value = { FIELD_TEXT, 5, false, false, "os_name" }, .next = &TABLE_OS[5] },
+    { .value = { FIELD_TEXT, 6, false, false, "os_version" }, .next = &TABLE_OS[6] },
+    { .value = { FIELD_TEXT, 7, false, false, "os_codename" }, .next = &TABLE_OS[7] },
+    { .value = { FIELD_TEXT, 8, false, false, "os_major" }, .next = &TABLE_OS[8] },
+    { .value = { FIELD_TEXT, 9, false, false, "os_minor" }, .next = &TABLE_OS[9] },
+    { .value = { FIELD_TEXT, 10, false, false, "os_patch" }, .next = &TABLE_OS[10] },
+    { .value = { FIELD_TEXT, 11, false, false, "os_build" }, .next = &TABLE_OS[11] },
+    { .value = { FIELD_TEXT, 12, false, false, "os_platform" }, .next = &TABLE_OS[12] },
+    { .value = { FIELD_TEXT, 13, false, false, "sysname" }, .next = &TABLE_OS[13] },
+    { .value = { FIELD_TEXT, 14, false, false, "release" }, .next = &TABLE_OS[14] },
+    { .value = { FIELD_TEXT, 15, false, false, "version" }, .next = &TABLE_OS[15] },
+    { .value = { FIELD_TEXT, 16, false, false, "os_release" }, .next = NULL }
+};
+
+static struct column_list const TABLE_HARDWARE[] = {
+    { .value = { FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_HARDWARE[1] },
+    { .value = { FIELD_TEXT, 2, true, false, "scan_time" }, .next = &TABLE_HARDWARE[2] }, 
+    { .value = { FIELD_TEXT, 3, false, false, "board_serial" }, .next = &TABLE_HARDWARE[3] },
+    { .value = { FIELD_TEXT, 4, false, false, "cpu_name" }, .next = &TABLE_HARDWARE[4] },
+    { .value = { FIELD_INTEGER, 5, false, false, "cpu_cores" }, .next = &TABLE_HARDWARE[5] },
+    { .value = { FIELD_REAL, 6, false, false, "cpu_mhz" }, .next = &TABLE_HARDWARE[6] },
+    { .value = { FIELD_INTEGER, 7, false, false, "ram_total" }, .next = &TABLE_HARDWARE[7] },
+    { .value = { FIELD_INTEGER, 8, false, false, "ram_free" }, .next = &TABLE_HARDWARE[8] },
+    { .value = { FIELD_INTEGER, 9, false, false, "ram_usage" }, .next = NULL }
+};
+
+
+
+static struct kv_list const TABLE_MAP[] = {
+    { .current = { "network_iface", "sys_netiface", false, TABLE_NETIFACE }, .next = &TABLE_MAP[1]},
+    { .current = { "network_protocol", "sys_netproto", false, TABLE_NETPROTO }, .next = &TABLE_MAP[2]},
+    { .current = { "network_address", "sys_netaddr", false, TABLE_NETADDR }, .next = &TABLE_MAP[3]},
+    { .current = { "os", "sys_osinfo", true, TABLE_OS }, .next = &TABLE_MAP[4]},
+    { .current = { "hardware", "sys_hwinfo", true, TABLE_HARDWARE }, .next = &TABLE_MAP[5]},
+    { .current = { "ports", "sys_ports", false, TABLE_PORTS }, .next = &TABLE_MAP[6]},
+    { .current = { "packages", "sys_programs", false, TABLE_PACKAGES }, .next = &TABLE_MAP[7]},
+    { .current = { "processes", "sys_processes",  false, TABLE_PROCESSES}, .next = NULL},
+};
+
+
 int wdb_parse(char * input, char * output) {
     char * actor;
     char * id;
@@ -217,6 +382,17 @@ int wdb_parse(char * input, char * output) {
                 } else {
                     merror("Unable to update 'sys_processes' table for agent '%s'", sagent_id);
                 }
+            }
+        } else if (strcmp(query, "dbsync") == 0) {
+            if (!next) {
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = -1;
+            } else {
+                if (wdb_parse_dbsync(wdb, next, output)){
+                    mdebug2("Updated based on table deltas for agent '%s'", sagent_id);
+                } 
             }
         } else if (strcmp(query, "ciscat") == 0) {
             if (!next) {
@@ -5147,3 +5323,73 @@ int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output) {
 
     return OS_SUCCESS;
 }
+
+bool process_dbsync_data(wdb_t * wdb, const struct kv *kv_value, const char *operation, char *data)
+{
+    bool ret_val = false;
+    if (NULL != kv_value) {
+        if (kv_value->single_row_table) {
+            ret_val = wdb_single_row_insert_dbsync(wdb, kv_value, data);
+        } else {
+            if (strcmp(operation, "INSERTED") == 0) {
+                ret_val = wdb_insert_dbsync(wdb, kv_value, data);
+            } else if (strcmp(operation, "MODIFIED") == 0) {
+                ret_val = wdb_modify_dbsync(wdb, kv_value, data);
+            } else if (strcmp(operation, "DELETED") == 0) {
+                ret_val = wdb_delete_dbsync(wdb, kv_value, data);
+            }
+        }
+    }
+   
+    return ret_val;
+}
+
+
+int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output) {
+    int ret_val = -1;
+    char *next = NULL;
+    char *curr = input;
+    if (next = strchr(curr, ' '), !next) {
+        mdebug2("DBSYNC query: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid dbsync query syntax, near '%.32s'", input);
+        return ret_val;
+    }
+
+    char *table_key = curr;
+    *next++ = '\0';
+    curr = next;
+    if (next = strchr(curr, ' '), !next) {
+        mdebug2("DBSYNC query: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid dbsync query syntax, near '%.32s'", input);
+        return ret_val;
+    }
+
+    char *operation = curr;
+    *next++ = '\0';
+    curr = next;
+
+    if (next = strchr(curr, '\0'), !next) {
+        mdebug2("DBSYNC query: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid dbsync query syntax, near '%.32s'", input);
+        return ret_val;
+    }
+
+    char *data = curr;
+    
+    struct kv_list const *head = TABLE_MAP;
+    while (NULL != head) {
+        if (strncmp(head->current.key, table_key, OS_SIZE_256 - 1) == 0) {
+            ret_val = process_dbsync_data(wdb, &head->current, operation, data);
+            break;
+        }
+        head = head->next;
+    }
+
+    if (ret_val) {
+        strcat(output, "ok");
+    } else {
+        strcat(output, "error");
+    }
+    return ret_val;
+}
+

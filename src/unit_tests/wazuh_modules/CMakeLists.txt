@@ -18,8 +18,6 @@ if(${TARGET} STREQUAL "server")
   add_subdirectory(sca)
   add_subdirectory(scheduling)
   add_subdirectory(vulnerability_detector)
-elseif(${TARGET} STREQUAL "agent")
-  add_subdirectory(syscollector)
 endif()
 
 if(NOT ${uname} STREQUAL "Darwin")

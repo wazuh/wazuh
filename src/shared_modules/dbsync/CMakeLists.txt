@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 2.6.4)
 
 project(dbsync)
 
+enable_testing()
+
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()

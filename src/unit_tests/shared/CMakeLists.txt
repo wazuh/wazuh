@@ -56,6 +56,9 @@ endif()
 list(APPEND shared_tests_names "test_time_op")
 list(APPEND shared_tests_flags " ")
 
+list(APPEND shared_tests_names "test_buffer_op")
+list(APPEND shared_tests_flags " ")
+
 if(${TARGET} STREQUAL "server")
 list(APPEND shared_tests_names "test_bzip2_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=fopen,--wrap=fread,--wrap=fclose,--wrap=fwrite,--wrap=BZ2_bzWriteOpen \

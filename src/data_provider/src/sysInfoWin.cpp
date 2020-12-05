@@ -386,6 +386,7 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
                 }
                 data.push_back(packageJson);
             }
+            packageJson["format"] = "win";
         }
     }
     catch(...)

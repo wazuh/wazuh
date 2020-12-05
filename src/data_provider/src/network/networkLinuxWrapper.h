@@ -167,6 +167,9 @@ namespace RHInterfaceConfig
 class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 {
     ifaddrs* m_interfaceAddress;
+    std::string m_gateway;
+    std::string m_metrics;
+
     static std::string getNameInfo(const sockaddr* inputData, const socklen_t socketLen)
     {
         auto retVal { std::make_unique<char[]>(NI_MAXHOST) };
@@ -222,11 +225,42 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 
 public:
     explicit NetworkLinuxInterface(ifaddrs* addrs)
-    : m_interfaceAddress(addrs)
+    : m_interfaceAddress{ addrs }
+    , m_gateway{"unknown"}
+    , m_metrics{"unknown"}
     { 
         if (!addrs)
         {
             throw std::runtime_error { "Nullptr instances of network interface" };
+        }
+        else
+        {
+            auto fileData { Utils::getFileContent(std::string(WM_SYS_NET_DIR) + "route") };
+            const auto ifName { this->name() };
+            if (!fileData.empty())
+            {
+                auto lines { Utils::split(fileData, '\n') };
+                for (auto& line : lines)
+                {
+                    line = Utils::rightTrim(line);
+                    Utils::replaceAll(line, "\t", " ");
+                    Utils::replaceAll(line, "  ", " ");
+                    const auto fields { Utils::split(line, ' ') };
+
+                    if (GatewayFileFields::Size == fields.size() &&
+                        fields.at(GatewayFileFields::Iface).compare(ifName) == 0)
+                    {
+                        const auto address { static_cast<uint32_t>(std::stoi(fields.at(GatewayFileFields::Gateway), 0, 16)) };
+                        m_metrics = fields.at(GatewayFileFields::Metric);
+
+                        if (address)
+                        {
+                            m_gateway = std::string(inet_ntoa({ address }));
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -291,37 +325,12 @@ public:
 
     std::string gateway() const override
     {
-        std::string retVal { "unknown" };
-        auto fileData { Utils::getFileContent(std::string(WM_SYS_NET_DIR) + "route") };
-        const auto ifName { this->name() };
-        if (!fileData.empty())
-        {
-            auto lines { Utils::split(fileData, '\n') };
-            for (auto& line : lines)
-            {
-                line = Utils::rightTrim(line);
-                Utils::replaceAll(line, "\t", " ");
-                Utils::replaceAll(line, "  ", " ");
-                const auto fields { Utils::split(line, ' ') };
-
-                if (GatewayFileFields::Size == fields.size() &&
-                    fields.at(GatewayFileFields::Iface).compare(ifName) == 0)
-                {
-                    const auto address { static_cast<uint32_t>(std::stoi(fields.at(GatewayFileFields::Gateway), 0, 16)) };
-                    if (address)
-                    {
-                        retVal = std::string(inet_ntoa({ address })) + "|" + fields.at(GatewayFileFields::Metric);
-                        break;
-                    }
-                }
-            }
-        }
-        return retVal;
+        return m_gateway;
     }
 
     std::string metrics() const override
     {
-        return "unknown";
+        return m_metrics;
     }
 
     std::string metricsV6() const override

@@ -386,7 +386,7 @@ static void updateAndNotifyChanges(const DBSYNC_HANDLE handle,
     {
         // LCOV_EXCL_START
         {MODIFIED, "MODIFIED"},
-        {DELETED , "DELETED "},
+        {DELETED , "DELETED"},
         {INSERTED, "INSERTED"},
         {MAX_ROWS, "MAX_ROWS"},
         {DB_ERROR, "DB_ERROR"},

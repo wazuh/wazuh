@@ -57,6 +57,7 @@ foreach(counter RANGE ${count})
         ${WAZUHLIB}
         ${WAZUHEXT}
         DOCKER_O
+        -ldl
         -lcmocka
         -fprofile-arcs
         -ftest-coverage

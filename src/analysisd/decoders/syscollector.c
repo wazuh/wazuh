@@ -19,6 +19,7 @@
 #include "wazuh_modules/wmodules.h"
 #include "os_net/os_net.h"
 #include "string_op.h"
+#include "buffer_op.h"
 #include <time.h>
 #include "wazuhdb_op.h"
 
@@ -29,15 +30,161 @@ static int prev_port_id = 0;
 static int error_process = 0;
 static int prev_process_id = 0;
 
-static int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket);
-static int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket);
-static int decode_hardware( Eventinfo *lf, cJSON * logJSON,int *socket);
-static int decode_package( Eventinfo *lf, cJSON * logJSON,int *socket);
+static int decode_netinfo( Eventinfo *lf, cJSON * logJSON, int *socket);
+static int decode_osinfo( Eventinfo *lf, cJSON * logJSON, int *socket);
+static int decode_hardware( Eventinfo *lf, cJSON * logJSON, int *socket);
+static int decode_package( Eventinfo *lf, cJSON * logJSON, int *socket);
 static int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket);
-static int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket);
-static int decode_process( Eventinfo *lf, cJSON * logJSON,int *socket);
+static int decode_port( Eventinfo *lf, cJSON * logJSON, int *socket);
+static int decode_process( Eventinfo *lf, cJSON * logJSON, int *socket);
+static int decode_dbsync( char const *agent_id, char *msg_type, cJSON * logJSON, int *socket);
 
 static OSDecoderInfo *sysc_decoder = NULL;
+
+static const char* HOTFIXES_FIELDS[] = { 
+    "hotfix", 
+    "checksum",
+    NULL 
+};
+
+static const char* PACKAGES_FIELDS[] = { 
+    "format",
+    "name",
+    "priority",
+    "groups",
+    "size",
+    "vendor",
+    "install_time",
+    "version",
+    "architecture",
+    "multiarch",
+    "source",
+    "description",
+    "location",
+    "triaged",
+    "cpe",
+    "msu_name",
+    "checksum",
+    NULL 
+};
+
+    
+static const char* PROCESSES_FIELDS[] = { 
+    "pid",
+    "name",
+    "state",
+    "ppid",
+    "utime",
+    "stime",
+    "cmd",
+    "argvs",
+    "euser",
+    "ruser",
+    "suser",
+    "egroup",
+    "rgroup",
+    "sgroup",
+    "fgroup",
+    "priority",
+    "nice",
+    "size",
+    "vm_size",
+    "resident",
+    "share",
+    "start_time",
+    "pgrp",
+    "session",
+    "nlwp",
+    "tgid",
+    "tty",
+    "processor",
+    "checksum",
+    NULL
+};
+
+static const char* PORTS_FIELDS[] = { 
+    "protocol",
+    "local_ip",
+    "local_port",
+    "remote_ip",
+    "remote_port",
+    "tx_queue",
+    "rx_queue",
+    "inode",
+    "state",
+    "pid",
+    "process_name",
+    "checksum",
+    NULL 
+};
+
+static const char* NETWORK_IFACE_FIELDS[] = { 
+    "name",
+    "adapter",
+    "type",
+    "state",
+    "mtu",
+    "mac",
+    "tx_packets",
+    "rx_packets",
+    "tx_bytes",
+    "rx_bytes",
+    "tx_errors",
+    "rx_errors",
+    "tx_dropped",
+    "rx_dropped",
+    "checksum",
+    NULL 
+};
+
+static const char* NETWORK_PROTOCOL_FIELDS[] = { 
+    "iface",
+    "type",
+    "gateway",
+    "dhcp",
+    "metric",
+    "checksum",
+    NULL 
+};
+
+static const char* NETWORK_ADDRESS_FIELDS[] = { 
+    "iface",
+    "proto",
+    "address",
+    "netmask",
+    "broadcast",
+    "checksum",
+    NULL 
+};
+
+static const char* HARDWARE_FIELDS[] = { 
+    "board_serial", 
+    "cpu_name", 
+    "cpu_cores", 
+    "cpu_MHz", 
+    "ram_total", 
+    "ram_free", 
+    "ram_usage", 
+    NULL 
+};
+
+static const char* OS_FIELDS[] = { 
+    "host_name",
+    "architecture",
+    "os_name",
+    "os_version",
+    "os_codename",
+    "os_major",
+    "os_minor",
+    "os_patch",
+    "os_build",
+    "os_platform",
+    "sysname", 
+    "release",
+    "version",
+    "os_release",
+    NULL 
+};
 
 void SyscollectorInit(){
 
@@ -140,6 +287,13 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
     else if (strcmp(msg_type, "process") == 0 || strcmp(msg_type, "process_end") == 0) {
         if (decode_process(lf, logJSON,socket) < 0) {
             mdebug1("Unable to send processes information to Wazuh DB.");
+            cJSON_Delete (logJSON);
+            return (0);
+        }
+    }
+    else if (strncmp(msg_type, "dbsync_", 7) == 0) {
+        if (decode_dbsync(lf->agent_id, msg_type, logJSON, socket) < 0) {
+            mdebug1("Unable to send %s information to Wazuh DB.", msg_type);
             cJSON_Delete (logJSON);
             return (0);
         }
@@ -1756,3 +1910,110 @@ end:
     free(msg);
     return retval;
 }
+
+const char** get_field_list(const char *type) {
+    char const **ret_val = NULL;
+    if (NULL != type) {
+        if (strcmp(type, "hotfixes") == 0) {
+            ret_val = HOTFIXES_FIELDS;
+        } else if(strcmp(type, "packages") == 0) {
+            ret_val = PACKAGES_FIELDS;
+        } else if(strcmp(type, "processes") == 0) {
+            ret_val = PROCESSES_FIELDS;
+        } else if(strcmp(type, "ports") == 0) {
+            ret_val = PORTS_FIELDS;
+        } else if(strcmp(type, "network_iface") == 0) {
+            ret_val = NETWORK_IFACE_FIELDS;
+        } else if(strcmp(type, "network_protocol") == 0) {
+            ret_val = NETWORK_PROTOCOL_FIELDS;
+        } else if(strcmp(type, "network_address") == 0) {
+            ret_val = NETWORK_ADDRESS_FIELDS;
+        } else if(strcmp(type, "hardware") == 0) {
+            ret_val = HARDWARE_FIELDS;
+        } else if(strcmp(type, "os") == 0) {
+            ret_val = OS_FIELDS;
+        } else {
+            merror("Incorrect/unknown type value %s.", type);
+        }
+    } else {
+        merror("null type value.");
+    }
+    return ret_val;
+}
+
+bool fill_data_dbsync(cJSON *data, const char *field_list[], buffer_t * const msg) {
+    bool ret_val = false;
+    static const int NULL_TEXT_LENGTH = 4;
+    static const int PIPE_SEPARATOR_LENGTH = 1;
+    while (NULL != *field_list) {
+        const cJSON *key = cJSON_GetObjectItem(data, *field_list);
+        if (NULL != key) {
+            if (cJSON_IsNumber(key)) {
+                char value[OS_SIZE_128] = { 0 };
+                const int value_size = os_snprintf(value, OS_SIZE_128 - 1, "%d", key->valueint);
+                buffer_push(msg, value, value_size);
+            } else if (cJSON_IsString(key)) {
+                if(strlen(key->valuestring) == 0) {
+                    buffer_push(msg, "NULL", NULL_TEXT_LENGTH);
+                } else {
+                    buffer_push(msg, key->valuestring, strlen(key->valuestring));
+                }
+            } else {
+                buffer_push(msg, "NULL", NULL_TEXT_LENGTH);
+            }
+        } else {
+            buffer_push(msg, "NULL", NULL_TEXT_LENGTH);
+        }
+        // Message separated by pipes, includes the values to be processed in the wazuhdb
+        // this must maintain order and must always be completed, and the values that
+        // do not correspond will not be proccessed in wazuh-db
+        buffer_push(msg, "|", PIPE_SEPARATOR_LENGTH);
+        ++field_list;
+        ret_val = true;
+    }
+    return ret_val;
+}
+
+int decode_dbsync(char const *agent_id, char *msg_type, cJSON *logJSON, int *socket) {
+    int ret_val = -1;
+    if (NULL != msg_type && NULL != agent_id && NULL != logJSON) {
+        char *type = NULL;
+        if (strtok(msg_type, "_")) {
+            type = strtok(NULL, "\0");
+        }
+        if (NULL != type) {
+            cJSON * operation_object = cJSON_GetObjectItem(logJSON, "operation");
+            cJSON * data = cJSON_GetObjectItem(logJSON, "data");
+            if (NULL != operation_object && NULL != data && cJSON_IsString(operation_object) && cJSON_IsObject(data)) {
+                const char **field_list = get_field_list(type);
+                
+                if (NULL != field_list) {
+                    char *response = NULL;
+                    char header[OS_SIZE_256] = { 0 };
+                    os_calloc(OS_SIZE_128, sizeof(char), response);
+                    int header_size = snprintf(header, OS_SIZE_6144 - 1, "agent %s dbsync %s %s ", agent_id, type, cJSON_GetStringValue(operation_object));
+                    
+                    buffer_t *msg = buffer_initialize(OS_SIZE_6144);
+                    buffer_push(msg, header, header_size);
+                    if (fill_data_dbsync(data, field_list, msg) && TRUE == msg->status) {
+                        ret_val = wdbc_query_ex(socket, msg->data, response, OS_SIZE_6144);
+                        if (ret_val != 0) {
+                            merror("Wazuh-db query error, check wdb logs.");
+                        }
+                    } else {
+                        merror("Error in fill data population");
+                    }
+                    buffer_free(msg);
+                    os_free(response);
+                }
+            } else {
+                merror("Incorrect/unknown operation, type: %s.", type);
+            }
+        } else {
+            merror("Incorrect prefix message, message type: %s.", msg_type);
+        }
+    }
+    return ret_val;
+}
+
+
