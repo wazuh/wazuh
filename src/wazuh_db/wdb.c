@@ -926,12 +926,16 @@ int wdb_close(wdb_t * wdb, bool commit) {
         }
 
         struct stmt_cache_list *node_stmt = wdb->cache_list;
+        struct stmt_cache_list *temp = NULL;
         while (node_stmt){
             if (node_stmt->value.stmt) {
+                // value.stmt would be free in sqlite3_finalize.
                 sqlite3_finalize(node_stmt->value.stmt);
             }
             os_free(node_stmt->value.query);
-            node_stmt = wdb->cache_list->next;
+            temp = node_stmt->next;
+            os_free(node_stmt);
+            node_stmt = temp;
         }
 
         result = sqlite3_close_v2(wdb->db);
