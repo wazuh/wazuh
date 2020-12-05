@@ -258,4 +258,3 @@ void RemoteSync::pushMessage(const std::vector<uint8_t>& payload)
 {
     RSyncImplementation::instance().push(m_handle, payload);       
 }
-

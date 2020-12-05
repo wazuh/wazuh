@@ -52,7 +52,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 5);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 5);
         }
     };
 
@@ -77,7 +77,7 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 100);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 100);
         }
     };
 
@@ -102,7 +102,7 @@ TEST_F(SyscollectorImpTest, noScanOnStart)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 3600, false);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, false);
         }
     };
 
@@ -127,7 +127,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 3600, true, false);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, false);
         }
     };
 
@@ -152,7 +152,7 @@ TEST_F(SyscollectorImpTest, noOs)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 3600, true, true, false);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, true, false);
         }
     };
 
@@ -177,7 +177,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 3600, true, true, true, false);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, true, true, false);
         }
     };
 
@@ -202,7 +202,7 @@ TEST_F(SyscollectorImpTest, noPackages)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 3600, true, true, true, true, false);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, true, true, true, false);
         }
     };
 
@@ -227,7 +227,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 3600, true, true, true, true, true, false);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, true, true, true, true, false);
         }
     };
 
@@ -252,7 +252,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 3600, true, true, true, true, true, true, false);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, true, true, true, true, true, false);
         }
     };
 
@@ -277,7 +277,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 3600, true, true, true, true, true, true, true, false);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, true, true, true, true, true, true, false);
         }
     };
 
@@ -303,7 +303,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 3600, true, true, true, true, true, true, true, true, false);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, true, true, true, true, true, true, true, false);
         }
     };
 
@@ -332,7 +332,7 @@ TEST_F(SyscollectorImpTest, scanOnInverval)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, 1);
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 1);
         }
     };
 
@@ -343,4 +343,65 @@ TEST_F(SyscollectorImpTest, scanOnInverval)
         t.join();
     }
     std::this_thread::sleep_for(std::chrono::seconds{5});
+}
+
+
+TEST_F(SyscollectorImpTest, pushMessageOk)
+{
+    constexpr auto messageToPush{R"(syscollector_network_iface dbsync checksum_fail {"begin":"Ethernet (Kernel Debugger) ","end":"Loopback Pseudo-Interface 1","id":1606851004})"};
+    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(R"({"board_serial":"Intel Corporation","cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
+    EXPECT_CALL(*spInfoWrapper, packages()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"architecture":"amd64","group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"}])")));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(R"({"iface":[{"address":"127.0.0.1","mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600","broadcast":"127.255.255.255", "name":"ens1", "mtu":"1500", "name":"enp4s0", "adapter":"unknown", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":"unknown","netmask":"255.255.255.0"}, "IPv6":{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":"unknown","netmask":"ffff:ffff:ffff:ffff::"}}]})")));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(R"({"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"})")));
+    EXPECT_CALL(*spInfoWrapper, processes()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","nice":0,"nlwp":1,"pgrp":0,"pid":431625,"ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0}])")));
+    EXPECT_CALL(*spInfoWrapper, processes()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","nice":0,"nlwp":1,"pgrp":0,"pid":431625,"ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":20,"vm_size":0}])")));
+    EXPECT_CALL(*spInfoWrapper, processes()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","nice":0,"nlwp":1,"pgrp":0,"pid":431625,"ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":20,"vm_size":0}])")));
+    EXPECT_CALL(*spInfoWrapper, processes()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","nice":0,"nlwp":1,"pgrp":0,"pid":431625,"ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":20,"vm_size":0}])")));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(R"({"ports":[{"inode":0,"local_ip":"127.0.0.1","local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0}]})")));
+    std::thread t
+    {
+        [&spInfoWrapper]()
+        {
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 1);
+        }
+    };
+    std::this_thread::sleep_for(std::chrono::seconds{1});
+    Syscollector::instance().push(messageToPush);
+    std::this_thread::sleep_for(std::chrono::seconds{1});
+    Syscollector::instance().destroy();
+    if (t.joinable())
+    {
+        t.join();
+    }
+}
+
+TEST_F(SyscollectorImpTest, pushMessageInvalid)
+{
+    constexpr auto messageToPush{R"(syscollector_network_iface dbsync checksum_fail {"end":"Loopback Pseudo-Interface 1","id":1606851004})"};
+    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(R"({"board_serial":"Intel Corporation","cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
+    EXPECT_CALL(*spInfoWrapper, packages()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"architecture":"amd64","group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"}])")));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(R"({"iface":[{"address":"127.0.0.1","mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600","broadcast":"127.255.255.255", "name":"ens1", "mtu":"1500", "name":"enp4s0", "adapter":"unknown", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":"unknown","netmask":"255.255.255.0"}, "IPv6":{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":"unknown","netmask":"ffff:ffff:ffff:ffff::"}}]})")));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(R"({"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"})")));
+    EXPECT_CALL(*spInfoWrapper, processes()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","nice":0,"nlwp":1,"pgrp":0,"pid":431625,"ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0}])")));
+    EXPECT_CALL(*spInfoWrapper, processes()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","nice":0,"nlwp":1,"pgrp":0,"pid":431625,"ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":20,"vm_size":0}])")));
+    EXPECT_CALL(*spInfoWrapper, processes()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","nice":0,"nlwp":1,"pgrp":0,"pid":431625,"ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":20,"vm_size":0}])")));
+    EXPECT_CALL(*spInfoWrapper, processes()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","nice":0,"nlwp":1,"pgrp":0,"pid":431625,"ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":20,"vm_size":0}])")));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(R"({"ports":[{"inode":0,"local_ip":"127.0.0.1","local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0}]})")));
+    std::thread t
+    {
+        [&spInfoWrapper]()
+        {
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 1);
+        }
+    };
+    std::this_thread::sleep_for(std::chrono::seconds{1});
+    Syscollector::instance().push(messageToPush);
+    std::this_thread::sleep_for(std::chrono::seconds{1});
+    Syscollector::instance().destroy();
+    if (t.joinable())
+    {
+        t.join();
+    }
 }

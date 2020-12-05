@@ -311,13 +311,13 @@ cJSON *getModulesConfig(void) {
 }
 
 // sync data
-int modulesSync(const char* args) {
+int modulesSync(char* args) {
     int ret = -1;
     wmodule *cur_module = NULL;
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-        if (strcmp(args, cur_module->context->name) == 0) {
+        if (strstr(args, cur_module->context->name)) {
             ret = 0;
-            if (cur_module->context->sync != NULL) {
+            if (strstr(args, "dbsync") && cur_module->context->sync != NULL) {
                 ret = cur_module->context->sync(args);
             }
             break;

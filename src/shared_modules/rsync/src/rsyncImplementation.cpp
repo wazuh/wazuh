@@ -268,7 +268,7 @@ void RSyncImplementation::fillChecksum(const std::shared_ptr<DBSyncWrapper>& spD
     auto index { 1ull };
     const auto middle { ctx.size / 2 };
 
-    std::unique_ptr<Utils::HashData> hash{ std::make_unique<Utils::HashData>(Utils::HashType::Sha256) };
+    std::unique_ptr<Utils::HashData> hash{ std::make_unique<Utils::HashData>() };
     std::function<void(const nlohmann::json&)> calcChecksum
     {
         [&] (const nlohmann::json& resultJSON)
@@ -279,16 +279,17 @@ void RSyncImplementation::fillChecksum(const std::shared_ptr<DBSyncWrapper>& spD
             if (CHECKSUM_SPLIT == ctx.type)
             {
                 const auto& indexFieldName { jsonSyncConfiguration.at("index").get_ref<const std::string&>() };
+                const auto& result{resultJSON.at(indexFieldName)};
                 if (middle+1 == index)
                 {
-                    ctx.rightCtx.begin = resultJSON.at(indexFieldName);
+                    ctx.rightCtx.begin = result.is_string() ? result.get_ref<const std::string&>() : std::to_string(result.get<unsigned long>());
                     ctx.leftCtx.tail = ctx.rightCtx.begin;
                 } 
                 else if(middle == index)
                 {
-                    ctx.leftCtx.end = resultJSON.at(indexFieldName);
+                    ctx.leftCtx.end = result.is_string() ? result.get_ref<const std::string&>() : std::to_string(result.get<unsigned long>());
                     ctx.leftCtx.checksum = Utils::asciiToHex(hash->hash());
-                    hash = std::make_unique<Utils::HashData>(Utils::HashType::Sha256);
+                    hash = std::make_unique<Utils::HashData>();
                 }
                 ++index;
             }

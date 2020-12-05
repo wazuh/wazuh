@@ -39,9 +39,22 @@ namespace RSync
                     
                     const auto rawDataStringFromSecond { rawDataStringFromFirst.substr(secondToken + 1, rawDataStringFromFirst.length() - secondToken - 1) };
                     const auto& json { nlohmann::json::parse(rawDataStringFromSecond) };
-                    
-                    retVal.begin = json.at("begin").get_ref<const std::string&>() ;
-                    retVal.end = json.at("end").get_ref<const std::string&>() ;
+                    const auto& begin{json.at("begin")};
+                    const auto& end{json.at("end")};
+                    if (begin.is_string())
+                    {
+                        retVal.begin = begin;
+                        retVal.end = end;
+                    }
+                    else
+                    {
+                        const auto beginNumber{begin.get<unsigned long>()};
+                        const auto endNumber{end.get<unsigned long>()};
+                        const auto beginString{std::to_string(beginNumber)};
+                        const auto endString{std::to_string(endNumber)};
+                        retVal.begin = beginString;
+                        retVal.end = endString;
+                    }
                     retVal.id = json.at("id").get<int32_t>();
                 }
             }

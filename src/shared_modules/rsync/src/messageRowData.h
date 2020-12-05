@@ -20,11 +20,13 @@ namespace RSync
     class MessageRowData final : public IMessageCreator<Type>
     {
     public:
+        // LCOV_EXCL_START
         ~MessageRowData() = default;
         void send(const ResultCallback /*callback*/, const nlohmann::json& /*config*/, const Type& /*data*/) override
         {
             throw rsync_error { NOT_SPECIALIZED_FUNCTION };   
         }
+        // LCOV_EXCL_STOP
     };
     template <>
     class MessageRowData<nlohmann::json> final : public IMessageCreator<nlohmann::json>
@@ -41,7 +43,8 @@ namespace RSync
             
             nlohmann::json outputData;
             outputData["index"] = data.at(config.at("index").get_ref<const std::string&>());
-            outputData["timestamp"] = data.at(config.at("last_event").get_ref<const std::string&>());
+            const auto lastEvent{config.find("last_event")};
+            outputData["timestamp"] = (lastEvent != config.end()) ? data.at(lastEvent->get_ref<const std::string&>()) : "";
             outputData["attributes"] = data;
 
             outputMessage["data"] = outputData;

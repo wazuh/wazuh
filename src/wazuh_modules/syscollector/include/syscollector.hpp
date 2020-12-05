@@ -43,7 +43,9 @@ public:
     }
 
     void init(const std::shared_ptr<ISysInfo>& spInfo,
-              const std::function<void(const std::string&)> reportFunction,
+              const std::function<void(const std::string&)> reportDiffFunction,
+              const std::function<void(const std::string&)> reportSyncFunction,
+              const std::function<void(const std::string&)> logErrorFunction,
               const unsigned int inverval = 3600ul,
               const bool scanOnStart = true,
               const bool hardware = true,
@@ -56,6 +58,7 @@ public:
               const bool hotfixes = true);
 
     void destroy();
+    void push(const std::string& data);
 private:
     Syscollector() = default;
     ~Syscollector() = default;
@@ -63,6 +66,8 @@ private:
     Syscollector& operator=(const Syscollector&) = delete;
     
     std::string getCreateStatement() const;
+    void registerWithRsync();
+
     bool sleepFor();
     void scanHardware();
     void scanOs();
@@ -73,7 +78,9 @@ private:
     void scan();
     void syncLoop();
     std::shared_ptr<ISysInfo>                      m_spInfo;
-    std::function<void(const std::string&)>        m_reportFunction;
+    std::function<void(const std::string&)>        m_reportDiffFunction;
+    std::function<void(const std::string&)>        m_reportSyncFunction;
+    std::function<void(const std::string&)>        m_logErrorFunction;
     unsigned int                                   m_intervalValue;
     bool                                           m_scanOnStart;
     bool                                           m_hardware;

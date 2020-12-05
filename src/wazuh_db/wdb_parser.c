@@ -488,6 +488,15 @@ int wdb_parse(char * input, char * output) {
 
             w_mutex_unlock(&pool_mutex);
             return result;
+        } else if (strncmp(query, "syscollector_", 7) == 0) {
+            if (!next) {
+                mdebug1("DB(%s) Invalid Syscollector query syntax.", sagent_id);
+                mdebug2("DB(%s) Syscollector query error near: %s", sagent_id, query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid Syscollector query syntax, near '%.32s'", query);
+                result = -1;
+            } else {
+                result = wdb_parse_syscollector(wdb, query, next, output);
+            }
         } else {
             mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
             mdebug2("DB(%s) query error near: %s", sagent_id, query);
@@ -1052,6 +1061,111 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         mdebug1("DB(%s) Invalid FIM query syntax.", wdb->id);
         mdebug2("DB query error near: %s", curr);
         snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
+        return -1;
+    }
+}
+
+int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char * output) {
+    char * curr;
+    char * next;
+    wdb_component_t component;
+
+    if (strcmp(query, "syscollector_processes") == 0)
+    {
+        component = WDB_SYSCOLLECTOR_PROCESSES;
+        mdebug2("DB(%s) syscollector_processes Syscollector query. ", wdb->id);
+    }
+    else if (strcmp(query, "syscollector_packages") == 0)
+    {
+        component = WDB_SYSCOLLECTOR_PACKAGES;
+        mdebug2("DB(%s) syscollector_packages Syscollector query. ", wdb->id);
+    }
+    else if (strcmp(query, "syscollector_hotfixes") == 0)
+    {
+        component = WDB_SYSCOLLECTOR_HOTFIXES;
+        mdebug2("DB(%s) syscollector_hotfixes Syscollector query. ", wdb->id);
+    }
+    else if (strcmp(query, "syscollector_ports") == 0)
+    {
+        component = WDB_SYSCOLLECTOR_PORTS;
+        mdebug2("DB(%s) syscollector_ports Syscollector query. ", wdb->id);
+    }
+    else if (strcmp(query, "syscollector_network_protocol") == 0)
+    {
+        component = WDB_SYSCOLLECTOR_NETPROTO;
+        mdebug2("DB(%s) syscollector_network_protocol Syscollector query. ", wdb->id);
+    }
+    else if (strcmp(query, "syscollector_network_address") == 0)
+    {
+        component = WDB_SYSCOLLECTOR_NETADDRESS;
+        mdebug2("DB(%s) syscollector_network_address Syscollector query. ", wdb->id);
+    }
+    else if (strcmp(query, "syscollector_network_iface") == 0)
+    {
+        component = WDB_SYSCOLLECTOR_NETINFO;
+        mdebug2("DB(%s) syscollector_network_iface Syscollector query. ", wdb->id);
+    }
+    else
+    {
+        mdebug2("DB(%s) Invalid Syscollector query : %s", wdb->id, query);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid Syscollector query syntax, near '%.32s'", query);
+        return -1;
+    }
+
+    if (next = wstr_chr(input, ' '), !next) {
+        mdebug2("DB(%s) Invalid Syscollector query syntax: %s", wdb->id, input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid Syscollector query syntax, near '%.32s'", input);
+        return -1;
+    }
+
+    curr = input;
+    *next++ = '\0';
+    if (strcmp(curr, "save2") == 0) {
+        if (wdb_syscollector_save2(wdb, component, next) == -1) {
+            mdebug1("DB(%s) Cannot save Syscollector.", wdb->id);
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save Syscollector");
+            return -1;
+        }
+
+        snprintf(output, OS_MAXSTR + 1, "ok");
+        return 0;
+    }
+    if (strncmp(curr, "integrity_check_", 16) == 0) {
+        switch (wdbi_query_checksum(wdb, component, curr, next)) {
+        case -1:
+            mdebug1("DB(%s) Cannot query Syscollector range checksum.", wdb->id);
+            snprintf(output, OS_MAXSTR + 1, "err Cannot perform range checksum");
+            return -1;
+
+        case 0:
+            snprintf(output, OS_MAXSTR + 1, "ok no_data");
+            break;
+
+        case 1:
+            snprintf(output, OS_MAXSTR + 1, "ok checksum_fail");
+            break;
+
+        default:
+            snprintf(output, OS_MAXSTR + 1, "ok ");
+        }
+
+        return 0;
+    } else if (strncmp(curr, "integrity_clear", 15) == 0) {
+        switch (wdbi_query_clear(wdb, component, next)) {
+        case -1:
+            mdebug1("DB(%s) Cannot query Syscollector range checksum.", wdb->id);
+            snprintf(output, OS_MAXSTR + 1, "err Cannot perform range checksum");
+            return -1;
+
+        default:
+            snprintf(output, OS_MAXSTR + 1, "ok ");
+        }
+
+        return 0;
+    } else {
+        mdebug1("DB(%s) Invalid Syscollector query syntax.", wdb->id);
+        mdebug2("DB query error near: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid Syscollector query syntax, near '%.32s'", curr);
         return -1;
     }
 }
@@ -2299,7 +2413,7 @@ int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output) {
         else
             rx_dropped = strtol(next,NULL,10);
 
-        if (result = wdb_netinfo_save(wdb, scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped), result < 0) {
+        if (result = wdb_netinfo_save(wdb, scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped, NULL, FALSE), result < 0) {
             mdebug1("Cannot save Network information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Network information.");
         } else {
@@ -2428,7 +2542,7 @@ int wdb_parse_netproto(wdb_t * wdb, char * input, char * output) {
         else
             metric = strtol(next,NULL,10);
 
-        if (result = wdb_netproto_save(wdb, scan_id, iface, type, gateway, dhcp, metric), result < 0) {
+        if (result = wdb_netproto_save(wdb, scan_id, iface, type, gateway, dhcp, metric, NULL, FALSE), result < 0) {
             mdebug1("Cannot save netproto information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save netproto information.");
         } else {
@@ -2541,7 +2655,7 @@ int wdb_parse_netaddr(wdb_t * wdb, char * input, char * output) {
         else
             broadcast = next;
 
-        if (result = wdb_netaddr_save(wdb, scan_id, iface, proto, address, netmask, broadcast), result < 0) {
+        if (result = wdb_netaddr_save(wdb, scan_id, iface, proto, address, netmask, broadcast, NULL, FALSE), result < 0) {
             mdebug1("Cannot save netaddr information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save netaddr information.");
         } else {
@@ -3177,7 +3291,7 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
         else
             process = next;
 
-        if (result = wdb_port_save(wdb, scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, pid, process), result < 0) {
+        if (result = wdb_port_save(wdb, scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, pid, process, NULL, FALSE), result < 0) {
             mdebug1("Cannot save Port information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Port information.");
         } else {
@@ -3444,7 +3558,7 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
         else
             location = next;
 
-        if (result = wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location), result < 0) {
+        if (result = wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, NULL, FALSE), result < 0) {
             mdebug1("Cannot save Package information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Package information.");
         } else {
@@ -3535,7 +3649,7 @@ int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output) {
         hotfix = curr;
         *next++ = '\0';
 
-        if (result = wdb_hotfix_save(wdb, scan_id, scan_time, hotfix), result < 0) {
+        if (result = wdb_hotfix_save(wdb, scan_id, scan_time, hotfix, NULL, FALSE), result < 0) {
             mdebug1("Cannot save Hotfix information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Hotfix information.");
         } else {
@@ -4026,7 +4140,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         else
             processor = strtol(next,NULL,10);
 
-        if (result = wdb_process_save(wdb, scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor), result < 0) {
+        if (result = wdb_process_save(wdb, scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor, NULL, FALSE), result < 0) {
             mdebug1("Cannot save Process information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Process information.");
         } else {
