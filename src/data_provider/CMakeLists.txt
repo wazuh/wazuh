@@ -112,10 +112,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
         # MinGW generates position-independent-code for DLL by default
   )
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+elseif(UNIX AND NOT APPLE)
   target_link_libraries(sysinfo proc)
   set_target_properties(sysinfo PROPERTIES
           LINK_FLAGS "-static-libgcc -static-libstdc++")
+  string(APPEND CMAKE_SHARED_LINKER_FLAGS "-Wl,-rpath=$ORIGIN/")
 else()
   target_link_libraries(sysinfo proc)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
