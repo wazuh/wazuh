@@ -235,14 +235,16 @@ STATIC int multiline_getlog_end(char * buffer, int length, FILE * stream, w_mult
     }
 
     while (can_read() && (retstr = fgets(str, length - offset, stream)) != NULL) {
+
         readed_lines++;
-        chunk_sz = strlen(str);
-        offset += chunk_sz;
-        multiline_replace(str, ml_cfg->replace_type);
         if (w_expression_match(ml_cfg->regex, str, NULL, NULL)) {
+            multiline_replace(buffer, ML_REPLACE_NONE);
             collecting_lines = false;
             break;
         }
+        multiline_replace(str, ml_cfg->replace_type);
+        chunk_sz = strlen(str);
+        offset += chunk_sz;
         str += chunk_sz;
         collecting_lines = true;
         /* Allow save new content in the context in case can_read() fail */
@@ -303,14 +305,17 @@ STATIC int multiline_getlog_all(char * buffer, int length, FILE * stream, w_mult
     }
 
     while (can_read() && (retstr = fgets(str, length - offset, stream)) != NULL) {
+
         readed_lines++;
-        chunk_sz = strlen(str);
-        offset += chunk_sz;
-        multiline_replace(str, ml_cfg->replace_type);
         if (w_expression_match(ml_cfg->regex, buffer, NULL, NULL)) {
+            multiline_replace(buffer, ML_REPLACE_NONE);
             collecting_lines = false;
             break;
         }
+
+        multiline_replace(str, ml_cfg->replace_type);
+        chunk_sz = strlen(str);
+        offset += chunk_sz;
         str += chunk_sz;
         collecting_lines = true;
         /* Allow save new content in the context in case can_read() fail */
