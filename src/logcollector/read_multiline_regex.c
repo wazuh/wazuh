@@ -90,7 +90,7 @@ void * read_multiline_regex(logreader * lf, int * rc, int drop_it) {
     char read_buffer[OS_MAXSTR + 1];
     int count_lines = 0;
     int rlines;
-    const int max_line_len = OS_MAXSTR - OS_HEADER_SIZE - 1;
+    const int max_line_len = OS_MAXSTR - OS_LOG_HEADER;
 
     read_buffer[OS_MAXSTR] = '\0';
     *rc = 0;
