@@ -180,16 +180,25 @@ STATIC int multiline_getlog_start(char * buffer, int length, FILE * stream, w_mu
         collecting_lines = true;
         /* Allow save new content in the context in case can_read() fail */
         retstr = NULL;
+        /* Avoid fgets infinite loop behauvior when size parameter is 1 */
+        if (offset == length - 1) {
+            break;
+        }
     }
 
     /* Check if we have to save/create context in case
        Multiline log found but MAYBE not finished yet */
-    if (collecting_lines && !retstr && length > offset) {
+    if (collecting_lines && !retstr && length > offset + 1) {
         multiline_ctxt_backup(buffer, readed_lines, &ml_cfg->ctxt);
         readed_lines = 0;
-    } else if (length == offset) {
+    } else if (length == offset + 1) {
         // Discard the rest of the log, moving the pointer to the next end of line
-        while (c = fgetc(stream), c != '\n' || c != '\0' || c != EOF) {};
+        while (true) {
+            c = fgetc(stream);
+            if (c == '\n' || c == '\0' || c == EOF) {
+                break;
+            }
+        }
     }
 
     /* If the lastest line complete the multiline log, free the context */
@@ -238,16 +247,25 @@ STATIC int multiline_getlog_end(char * buffer, int length, FILE * stream, w_mult
         collecting_lines = true;
         /* Allow save new content in the context in case can_read() fail */
         retstr = NULL;
+        /* Avoid fgets infinite loop behauvior when size parameter is 1 */
+        if (offset == length - 1) {
+            break;
+        }
     }
 
     /* Check if we have to save/create context in case
        Multiline log found but not finished yet */
-    if (collecting_lines && !retstr && length > offset) {
+    if (collecting_lines && !retstr && length > offset + 1) {
         multiline_ctxt_backup(buffer, readed_lines, &ml_cfg->ctxt);
         readed_lines = 0;
-    } else if (length == offset) {
+    } else if (length == offset + 1) {
         // Discard the rest of the log, moving the pointer to the next end of line
-        while (c = fgetc(stream), c != '\n' || c != '\0' || c != EOF) {};
+        while (true) {
+            c = fgetc(stream);
+            if (c == '\n' || c == '\0' || c == EOF) {
+                break;
+            }
+        }
     }
 
     /* If the lastest line complete the multiline log, free the context */
@@ -297,16 +315,25 @@ STATIC int multiline_getlog_all(char * buffer, int length, FILE * stream, w_mult
         collecting_lines = true;
         /* Allow save new content in the context in case can_read() fail */
         retstr = NULL;
+        /* Avoid fgets infinite loop behauvior when size parameter is 1 */
+        if (offset == length - 1) {
+            break;
+        }
     }
 
     /* Check if we have to save/create context in case
        Multiline log found but not finished yet */
-    if (collecting_lines && !retstr && length > offset) {
+    if (collecting_lines && !retstr && length > offset + 1) {
         multiline_ctxt_backup(buffer, readed_lines, &ml_cfg->ctxt);
         readed_lines = 0;
-    } else if (length == offset) {
+    } else if (length == offset + 1) {
         // Discard the rest of the log, moving the pointer to the next end of line
-        while (c = fgetc(stream), c != '\n' || c != '\0' || c != EOF) {};
+        while (true) {
+            c = fgetc(stream);
+            if (c == '\n' || c == '\0' || c == EOF) {
+                break;
+            }
+        }
     }
 
     /* If the lastest line complete the multiline log, free the context */
@@ -334,7 +361,7 @@ STATIC void multiline_replace(char * str, w_multiline_replace_type_t type) {
         return;
     }
 
-    pos_creturn = (strlen(str) > 1) && (*(pos_newline - 1) == creturn)? (pos_newline - 1) : NULL;
+    pos_creturn = (strlen(str) > 1) && (*(pos_newline - 1) == creturn) ? (pos_newline - 1) : NULL;
 
     switch (type) {
     case ML_REPLACE_WSPACE:
@@ -376,12 +403,12 @@ STATIC void multiline_ctxt_backup(char * buffer, int readed_lines, w_multiline_c
     size_t current_bsize = strlen(buffer);
 
     if (*ctxt && (strlen((*ctxt)->buffer) == current_bsize)) {
-            return;
+        return;
     }
 
     if (*ctxt) {
         size_t old_size = strlen((*ctxt)->buffer);
-        os_realloc((*ctxt)->buffer,  sizeof(char) * (current_bsize + 1), (*ctxt)->buffer);
+        os_realloc((*ctxt)->buffer, sizeof(char) * (current_bsize + 1), (*ctxt)->buffer);
         strcpy((*ctxt)->buffer + old_size, buffer + old_size);
 
     } else {
