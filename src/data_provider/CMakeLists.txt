@@ -116,7 +116,7 @@ elseif(UNIX AND NOT APPLE)
   target_link_libraries(sysinfo proc)
   set_target_properties(sysinfo PROPERTIES
           LINK_FLAGS "-static-libgcc -static-libstdc++")
-  string(APPEND CMAKE_SHARED_LINKER_FLAGS "-Wl,-rpath=$ORIGIN/")
+  string(APPEND CMAKE_SHARED_LINKER_FLAGS "-Wl,-rpath=$ORIGIN")
 else()
   target_link_libraries(sysinfo proc)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")

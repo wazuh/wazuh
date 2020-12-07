@@ -57,7 +57,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 elseif(UNIX AND NOT APPLE)
   set_target_properties(dbsync PROPERTIES
         LINK_FLAGS "-static-libgcc -static-libstdc++")
-  string(APPEND CMAKE_SHARED_LINKER_FLAGS "-Wl,-rpath=$ORIGIN/")
+  string(APPEND CMAKE_SHARED_LINKER_FLAGS "-Wl,-rpath=$ORIGIN")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")

@@ -74,7 +74,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 elseif(UNIX AND NOT APPLE)
   set_target_properties(syscollector PROPERTIES
         LINK_FLAGS "-static-libgcc -static-libstdc++")
-  string(APPEND CMAKE_SHARED_LINKER_FLAGS "-Wl,-rpath=$ORIGIN/")
+  string(APPEND CMAKE_SHARED_LINKER_FLAGS "-Wl,-rpath=$ORIGIN")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 target_link_libraries(syscollector crypto dbsync rsync sysinfo cjson pthread)
