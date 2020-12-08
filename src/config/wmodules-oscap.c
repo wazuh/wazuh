@@ -21,6 +21,7 @@ static const char *XML_SCAN_ON_START = "scan-on-start";
 static const char *XML_PROFILE = "profile";
 static const char *XML_XCCDF_ID = "xccdf-id";
 static const char *XML_DS_ID = "datastream-id";
+static const char *XML_TAILORING_FILE = "tailoring-file";
 static const char *XML_CPE = "cpe";
 static const char *XML_OVAL_ID = "oval-id";
 static const char *XML_DISABLED = "disabled";
@@ -178,6 +179,16 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                     }
 
                     cur_eval->oval_id = strdup(children[j]->content);
+                } else if (!strcmp(children[j]->element, XML_TAILORING_FILE)) {
+                    free(cur_eval->tailoring_file);
+
+                    if (!strlen(children[j]->content)) {
+                        merror("Invalid content for tag '%s' at module '%s'.", XML_TAILORING_FILE, WM_OSCAP_CONTEXT.name);
+                        OS_ClearNode(children);
+                        return OS_INVALID;
+                    }
+
+                    cur_eval->tailoring_file = strdup(children[j]->content);
                 } else if (!strcmp(children[j]->element, XML_DS_ID)) {
                     free(cur_eval->ds_id);
 

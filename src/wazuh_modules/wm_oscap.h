@@ -36,6 +36,7 @@ typedef struct wm_oscap_eval {
     char *path;                     // File path (string)
     char *xccdf_id;                 // XCCDF id
     char *ds_id;                    // Datastream id
+    char *tailoring_file;           // Tailoring file
     char *oval_id;                  // OVAL id
     char *cpe;                      // CPE dictionary
     wm_oscap_profile *profiles;     // Profiles (linked list)

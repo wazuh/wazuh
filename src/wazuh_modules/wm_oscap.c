@@ -172,6 +172,11 @@ void wm_oscap_run(wm_oscap_eval *eval) {
         wm_strcat(&command, eval->ds_id, ' ');
     }
 
+    if (eval->tailoring_file) {
+        wm_strcat(&command, "--tailoring-file", ' ');
+        wm_strcat(&command, eval->tailoring_file, ' ');
+    }
+
     if (eval->cpe) {
         wm_strcat(&command, "--cpe", ' ');
         wm_strcat(&command, eval->cpe, ' ');
@@ -310,6 +315,7 @@ cJSON *wm_oscap_dump(const wm_oscap *oscap) {
             if (ptr->path) cJSON_AddStringToObject(eval,"path",ptr->path);
             if (ptr->xccdf_id) cJSON_AddStringToObject(eval,"xccdf-id",ptr->xccdf_id);
             if (ptr->ds_id) cJSON_AddStringToObject(eval,"datastream-id",ptr->ds_id);
+            if (ptr->tailoring_file) cJSON_AddStringToObject(eval,"tailoring-file",ptr->tailoring_file);
             if (ptr->oval_id) cJSON_AddStringToObject(eval,"oval-id",ptr->oval_id);
             if (ptr->cpe) cJSON_AddStringToObject(eval,"cpe",ptr->cpe);
             cJSON_AddNumberToObject(eval,"timeout",ptr->timeout);
@@ -358,6 +364,7 @@ void wm_oscap_destroy(wm_oscap *oscap) {
         free(cur_eval->xccdf_id);
         free(cur_eval->oval_id);
         free(cur_eval->ds_id);
+        free(cur_eval->tailoring_file);
         free(cur_eval->cpe);
         free(cur_eval);
     }

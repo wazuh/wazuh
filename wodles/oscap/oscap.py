@@ -128,6 +128,8 @@ def oscap(profile=None):
         if arg_dsid:
             for arg_id in arg_dsid:
                 cmd.extend(["--datastream-id", arg_id])
+        if arg_tailoring_file:
+            cmd.extend(["--tailoring-file", arg_tailoring_file])
         if arg_cpe:
             cmd.extend(["--cpe", arg_cpe])
 
@@ -269,6 +271,7 @@ def usage():
     \t--oval-id             Select particular OVAL component.
     \t--ds-id               Use a datastream with that particular ID from the given datastream collection.
     \t--cpe                 Use given CPE dictionary for applicability checks.
+    \t--tailoring-file      Select tailoring file.  
 
     Other arguments:
     \t-v, --view-profiles  Do not launch oscap. Only show extracted profiles.
@@ -291,10 +294,11 @@ if __name__ == "__main__":
     arg_view_profiles = False
     debug = False
     arg_module = None
+    arg_tailoring_file = None
 
     # Reading arguments
     try:
-        opts, args = getopt(argv[1:], "p:x:o:vdh", ["xccdf=", "oval=", "profiles=", "xccdf-id=", "oval-id=", "ds-id=", "cpe=", "view-profiles", "debug", "help"])
+        opts, args = getopt(argv[1:], "p:x:o:vdh", ["xccdf=", "oval=", "profiles=", "xccdf-id=", "oval-id=", "ds-id=", "tailoring-file=", "cpe=", "view-profiles", "debug", "help"])
         n_args = len(opts)
         if not (1 <= n_args <= 5):
             print("Incorrect number of arguments.\nTry '--help' for more information.")
@@ -317,6 +321,11 @@ if __name__ == "__main__":
             else:
                 arg_file = "{0}/{1}".format(CONTENT_PATH, a)
             arg_module = 'oval'
+        elif o == "--tailoring-file":
+            if a[0] == '/' or a[0] == '.':
+                arg_tailoring_file = a
+            else:
+                arg_tailoring_file = "{0}/{1}".format(CONTENT_PATH, a)
         elif o in ("-p", "--profiles"):
             arg_profiles = a.split(",") if a != '_' else None
         elif o == "--xccdf-id":
@@ -340,9 +349,9 @@ if __name__ == "__main__":
             exit(1)
 
     if debug:
-        print("Arguments:\n\tPolicy: {0}\n\tProfiles: {1}\n\txccdf-id: {2}\n\tds-id: {3}\n\tcpe: {4}\n\tview-profiles: {5}\n".format(arg_file, arg_profiles,
+        print("Arguments:\n\tPolicy: {0}\n\tProfiles: {1}\n\txccdf-id: {2}\n\tds-id: {3}\n\tcpe: {4}\n\tview-profiles: {5}\n\ttailoring-file: {6}\n".format(arg_file, arg_profiles,
                                                                                                                                      arg_xccdfid, arg_dsid, arg_cpe,
-                                                                                                                                     arg_view_profiles))
+                                                                                                                                     arg_view_profiles,arg_tailoring_file))
     if not arg_module:
         print("No argument '--xccdf' or '--oval'.\nTry '--help' for more information.")
         exit(1)
@@ -384,6 +393,9 @@ if __name__ == "__main__":
         if arg_profiles:
             # Get profiles
             profiles = extract_profiles_from_file(arg_file)
+            if arg_tailoring_file:
+                for tailor_profile in extract_profiles_from_file(arg_tailoring_file):
+                    profiles.append(tailor_profile)
 
             for p in arg_profiles:
                 if p not in profiles:
