@@ -42,7 +42,13 @@ char * __wrap_fgets (char * __s, int __n, FILE * __stream) {
         char *buffer = mock_type(char*);
         check_expected(__stream);
         if(buffer) {
-            strncpy(__s, buffer, __n);
+            size_t buff_len = strlen(buffer);
+            if (buff_len + 1 < __n) {
+                strncpy(__s, buffer, buff_len + 1);
+            } else {
+                strncpy(__s, buffer, __n - 1);
+                __s[ __n - 1] = '\0';
+            }
             return __s;
         }
         return NULL;
@@ -144,3 +150,13 @@ int __wrap_fileno (FILE *__stream) {
     check_expected(__stream);
     return mock();
 }
+
+extern int __real_fgetc(FILE * stream);
+int __wrap_fgetc(FILE * stream) {
+    if(test_mode) {
+        return mock_type(int);
+    } else {
+        return __real_fgetc(stream);
+    }
+}
+

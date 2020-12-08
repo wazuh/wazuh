@@ -64,3 +64,4 @@ long long __wrap_get_UTC_modification_time(const char *file_path);
 #endif
 
 #endif
+int64_t w_ftell (FILE *x);
