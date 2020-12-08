@@ -141,8 +141,8 @@ STATIC int multiline_getlog_start(char * buffer, int length, FILE * stream, w_mu
     bool collecting_lines = false;
     int readed_lines = 0;
     int c = 0;
-    long pos = w_ftell(stream);
     *str = '\0';
+    long pos = w_ftell(stream);
 
     /* Check if a context restore is needed */
     if (ml_cfg->ctxt) {
@@ -281,13 +281,13 @@ STATIC int multiline_getlog_end(char * buffer, int length, FILE * stream, w_mult
 STATIC int multiline_getlog_all(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg) {
 
     char * str = buffer;
-    *str = '\0';
+    char * retstr = NULL;
     int offset = 0;
     int chunk_sz = 0;
+    bool collecting_lines = false;
     int readed_lines = 0;
     int c = 0;
-    bool collecting_lines = false;
-    char * retstr = NULL;
+    *str = '\0';
 
     /* Check if a context restore is needed */
     if (ml_cfg->ctxt) {

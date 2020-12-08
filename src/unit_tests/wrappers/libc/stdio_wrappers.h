@@ -43,4 +43,6 @@ void __wrap_clearerr (FILE *__stream);
 
 int __wrap_fileno (FILE *__stream);
 
+int __wrap_fgetc(FILE * stream);
+
 #endif

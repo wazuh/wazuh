@@ -39,7 +39,7 @@ if(${TARGET} STREQUAL "server")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_validate")
     list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,wurl_http_get -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,OS_SHA1_File -Wl,--wrap,wurl_request -Wl,--wrap,sleep \
-                               -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,getpid -Wl,--wrap,fgetpos")
+                               -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,getpid -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_tasks")
     list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Begin -Wl,--wrap,OSHash_Next \
@@ -63,7 +63,7 @@ if(${TARGET} STREQUAL "server")
                             -Wl,--wrap,OS_SHA1_File -Wl,--wrap,wm_agent_upgrade_get_first_node -Wl,--wrap,wm_agent_upgrade_get_next_node -Wl,--wrap,wm_agent_upgrade_compare_versions -Wl,--wrap,wm_agent_upgrade_remove_entry \
                             -Wl,--wrap,wm_agent_upgrade_validate_task_status_message -Wl,--wrap,wm_agent_upgrade_validate_wpk -Wl,--wrap,wm_agent_upgrade_validate_wpk_custom -Wl,--wrap,wm_agent_upgrade_validate_wpk_version \
                             -Wl,--wrap,linked_queue_push_ex -Wl,--wrap,linked_queue_pop_ex -Wl,--wrap,pthread_cond_signal -Wl,--wrap,pthread_cond_wait -Wl,--wrap,CreateThread \
-                            -Wl,--wrap,wm_agent_upgrade_parse_agent_upgrade_command_response -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,getpid -Wl,--wrap,fgetpos")
+                            -Wl,--wrap,wm_agent_upgrade_parse_agent_upgrade_command_response -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,getpid -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
 
 else()
 

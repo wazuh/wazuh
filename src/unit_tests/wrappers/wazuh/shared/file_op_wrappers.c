@@ -140,3 +140,8 @@ long long __wrap_get_UTC_modification_time(const char *file_path) {
     return mock();
 }
 #endif
+
+int64_t __wrap_w_ftell (FILE *x) {
+    check_expected(x);
+    return mock_type(int64_t);
+}
