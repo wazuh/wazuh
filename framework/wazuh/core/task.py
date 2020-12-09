@@ -15,7 +15,7 @@ tasks_fields = {'task_id': 'task_id', 'agent_id': 'agent_id', 'node': 'node', 'm
                 'status': 'status', 'error_message': 'error_message'}
 
 
-class WazuhDBQueryTasks(WazuhDBQuery):
+class WazuhDBQueryTask(WazuhDBQuery):
 
     def __init__(self, offset: int = 0, limit: int = common.database_limit, query: str = '', count: bool = True,
                  get_data: bool = True, table: str = 'tasks', sort: dict = None, default_sort_field: str = 'task_id',

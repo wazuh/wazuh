@@ -10,7 +10,7 @@ from api.encoder import dumps, prettify
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import database_limit
-from wazuh.tasks import get_task_status
+from wazuh.task import get_task_status
 
 logger = logging.getLogger('wazuh')
 
@@ -22,7 +22,6 @@ async def get_tasks_status(request, pretty=False, wait_for_complete=False, offse
 
     Parameters
     ----------
-    request
     tasks_list : list
         List of task's IDs
     pretty : bool, optional

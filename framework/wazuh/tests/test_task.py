@@ -21,8 +21,8 @@ with patch('wazuh.common.ossec_uid'):
         from wazuh.tests.util import get_fake_database_data, RBAC_bypasser, InitWDBSocketMock
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh import tasks, WazuhError
-        from wazuh.core.tasks import WazuhDBQueryTasks
+        from wazuh import task, WazuhError
+        from wazuh.core.task import WazuhDBQueryTask
 
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -37,11 +37,11 @@ def fake_final_query(self):
 # Tests
 
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_tasks_test.sql'))
-@patch.object(WazuhDBQueryTasks, '_final_query', fake_final_query)
+@patch.object(WazuhDBQueryTask, '_final_query', fake_final_query)
 def test_get_task_status_no_filter(mock_task_db):
     """Check system's tasks (No filters)
     """
-    result = tasks.get_task_status()
+    result = task.get_task_status()
     cur = get_fake_database_data('schema_tasks_test.sql').cursor()
     cur.execute("SELECT COUNT(DISTINCT task_id) FROM tasks")
     rows = cur.fetchone()
@@ -50,7 +50,7 @@ def test_get_task_status_no_filter(mock_task_db):
 
 
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_tasks_test.sql'))
-@patch.object(WazuhDBQueryTasks, '_final_query', fake_final_query)
+@patch.object(WazuhDBQueryTask, '_final_query', fake_final_query)
 @pytest.mark.parametrize("task_list, total", [
     (['1'], 1),
     (['2'], 1),
@@ -68,13 +68,13 @@ def test_get_task_status_task_list(mock_task_db, task_list, total):
         Total records for agent id
     """
     filters = {'task_list': task_list}
-    result = tasks.get_task_status(filters=filters)
+    result = task.get_task_status(filters=filters)
 
     assert result.total_affected_items == total
 
 
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_tasks_test.sql'))
-@patch.object(WazuhDBQueryTasks, '_final_query', fake_final_query)
+@patch.object(WazuhDBQueryTask, '_final_query', fake_final_query)
 @pytest.mark.parametrize("agent_id", [
     ('002'),
     ('001')
@@ -94,13 +94,13 @@ def test_get_task_status_agent_id(mock_task_db, agent_id):
     expected_total_items = rows[0]
 
     filters = {'agent_id': agent_id}
-    result = tasks.get_task_status(filters=filters)
+    result = task.get_task_status(filters=filters)
 
     assert result.total_affected_items == expected_total_items
 
 
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_tasks_test.sql'))
-@patch.object(WazuhDBQueryTasks, '_final_query', fake_final_query)
+@patch.object(WazuhDBQueryTask, '_final_query', fake_final_query)
 @pytest.mark.parametrize("search, total", [
     ('upgrade_module', 6),
     ('invalid', 0),
@@ -117,13 +117,13 @@ def test_get_task_status_search(mock_task_db, search, total):
     total : int
         Total records for the specific search
     """
-    result = tasks.get_task_status(search={'value': search, 'negation': 0})
+    result = task.get_task_status(search={'value': search, 'negation': 0})
 
     assert result.total_affected_items == total
 
 
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_tasks_test.sql'))
-@patch.object(WazuhDBQueryTasks, '_final_query', fake_final_query)
+@patch.object(WazuhDBQueryTask, '_final_query', fake_final_query)
 @pytest.mark.parametrize("select, total, agents", [
     (['node'], 6, ['1', '2', '3'])
 ])
@@ -137,7 +137,7 @@ def test_get_task_status_select(mock_task_db, select, total, agents):
     total : int
         Total records for the specific search
     """
-    result = tasks.get_task_status(select=select)
+    result = task.get_task_status(select=select)
 
     assert result.total_affected_items == total
     for specified_select in select:
@@ -146,7 +146,7 @@ def test_get_task_status_select(mock_task_db, select, total, agents):
 
 
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_tasks_test.sql'))
-@patch.object(WazuhDBQueryTasks, '_final_query', fake_final_query)
+@patch.object(WazuhDBQueryTask, '_final_query', fake_final_query)
 @pytest.mark.parametrize("status", [
     ('Legacy'),
     ('Failed'),
@@ -167,13 +167,13 @@ def test_get_task_status_status(mock_task_db, status):
     expected_total_items = rows[0]
 
     filters = {'status': status}
-    result = tasks.get_task_status(filters=filters)
+    result = task.get_task_status(filters=filters)
 
     assert result.total_affected_items == expected_total_items
 
 
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_tasks_test.sql'))
-@patch.object(WazuhDBQueryTasks, '_final_query', fake_final_query)
+@patch.object(WazuhDBQueryTask, '_final_query', fake_final_query)
 @pytest.mark.parametrize("node", [
     ('worker2'),
     ('master-node'),
@@ -194,13 +194,13 @@ def test_get_task_status_node(mock_task_db, node):
     expected_total_items = rows[0]
 
     filters = {'node': node}
-    result = tasks.get_task_status(filters=filters)
+    result = task.get_task_status(filters=filters)
 
     assert result.total_affected_items == expected_total_items
 
 
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_tasks_test.sql'))
-@patch.object(WazuhDBQueryTasks, '_final_query', fake_final_query)
+@patch.object(WazuhDBQueryTask, '_final_query', fake_final_query)
 @pytest.mark.parametrize("command", [
     ('upgrade'),
     ('invalid')
@@ -220,13 +220,13 @@ def test_get_task_status_command(mock_task_db, command):
     expected_total_items = rows[0]
 
     filters = {'command': command}
-    result = tasks.get_task_status(filters=filters)
+    result = task.get_task_status(filters=filters)
 
     assert result.total_affected_items == expected_total_items
 
 
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_tasks_test.sql'))
-@patch.object(WazuhDBQueryTasks, '_final_query', fake_final_query)
+@patch.object(WazuhDBQueryTask, '_final_query', fake_final_query)
 @pytest.mark.parametrize("module", [
     ('upgrade_module'),
     ('invalid')
@@ -246,19 +246,19 @@ def test_get_task_status_module(mock_task_db, module):
     expected_total_items = rows[0]
 
     filters = {'module': module}
-    result = tasks.get_task_status(filters=filters)
+    result = task.get_task_status(filters=filters)
 
     assert result.total_affected_items == expected_total_items
 
 
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_tasks_test.sql'))
-@patch.object(WazuhDBQueryTasks, '_final_query', fake_final_query)
+@patch.object(WazuhDBQueryTask, '_final_query', fake_final_query)
 def test_get_task_status_sort(mock_wdb):
     """Test sort filter."""
-    result_asc = tasks.get_task_status(sort={"fields": ["task_id"], "order": "asc"}, limit=10)
+    result_asc = task.get_task_status(sort={"fields": ["task_id"], "order": "asc"}, limit=10)
     assert result_asc.affected_items[0]['task_id'] < result_asc.affected_items[1]['task_id']
 
-    result_desc = tasks.get_task_status(sort={"fields": ["task_id"], "order": "desc"}, limit=10)
+    result_desc = task.get_task_status(sort={"fields": ["task_id"], "order": "desc"}, limit=10)
     assert result_desc.affected_items[0]['task_id'] > result_desc.affected_items[1]['task_id']
 
     assert result_asc.affected_items[0]['task_id'] < result_desc.affected_items[0]['task_id']
@@ -272,12 +272,12 @@ def test_get_task_status_sort(mock_wdb):
     (15, 9)
 ])
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_tasks_test.sql'))
-@patch.object(WazuhDBQueryTasks, '_final_query', fake_final_query)
+@patch.object(WazuhDBQueryTask, '_final_query', fake_final_query)
 def test_get_task_status_offset_limit(mock_wdb, offset, limit):
     """Test if data are retrieved properly from Tasks database."""
     # Check error when limit = 0
     try:
-        result = tasks.get_task_status(offset=offset, limit=limit)
+        result = task.get_task_status(offset=offset, limit=limit)
     except WazuhError as e:
         if e.code == 1406:
             return

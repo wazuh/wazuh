@@ -9,7 +9,7 @@ from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.common import database_limit
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.tasks import WazuhDBQueryTasks
+from wazuh.core.task import WazuhDBQueryTask
 from wazuh.core.utils import sort_array
 from wazuh.rbac.decorators import expose_resources
 
@@ -49,7 +49,7 @@ def get_task_status(filters: dict = None, select: list = None, search: dict = No
                                       some_msg='Some status were not returned',
                                       none_msg='No status was returned')
 
-    db_query = WazuhDBQueryTasks(filters=filters, offset=offset, limit=limit, query=q, sort=sort, search=search,
+    db_query = WazuhDBQueryTask(filters=filters, offset=offset, limit=limit, query=q, sort=sort, search=search,
                                  select=select)
     data = db_query.run()
 
