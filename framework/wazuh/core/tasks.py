@@ -2,14 +2,10 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
-import json
 from json import dumps, loads
 
-import more_itertools
-
 from wazuh.core import common
-from wazuh.core.common import database_limit
-from wazuh.core.exception import WazuhError
+from wazuh.core.exception import WazuhInternalError
 from wazuh.core.utils import WazuhDBQuery, \
     WazuhDBBackend
 from wazuh.core.wazuh_socket import OssecSocket
@@ -56,18 +52,21 @@ class WazuhDBQueryTasks(WazuhDBQuery):
 
 
 def send_to_tasks_socket(command):
-    """Send command task module
+    """Send command to task module
 
     Parameters
     ----------
     command : dict
-        Command to be send to task module
+        Command to be sent to task module
 
     Returns
     -------
     Message received from the socket
     """
-    s = OssecSocket(common.TASKS_SOCKET)
+    try:
+        s = OssecSocket(common.TASKS_SOCKET)
+    except Exception:
+        raise WazuhInternalError(1121)
     s.send(dumps(command).encode())
     data = loads(s.receive().decode())
     s.close()

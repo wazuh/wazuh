@@ -302,12 +302,12 @@ default_policies:
           - '*:*:*'
         effect: allow
 
-  tasks_status:
-    description: Provides permissions to check the status of tasks
+  task_status:
+    description: Provide permissions to check the status of tasks
     policies:
-      tasks:
+      task:
         actions:
-          - tasks:status
+          - task:status
         resources:
           - '*:*:*'
         effect: allow
