@@ -16,7 +16,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '001'
@@ -55,7 +55,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 2
         data:
           affected_items:
             - id: '001'
@@ -82,7 +82,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '001'
@@ -121,7 +121,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '009'
@@ -154,7 +154,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           client:
             auto_restart: !anystr
@@ -190,7 +190,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '007'
@@ -224,7 +224,7 @@ stages:
    response:
      status_code: 200
      json:
-       error: !anyint
+       error: 0
        data:
          affected_items:
            - id: '005'
@@ -247,7 +247,7 @@ stages:
    response:
      status_code: 200
      json:
-       error: !anyint
+       error: 0
        data:
          affected_items:
            - name: 'group2'
@@ -280,7 +280,7 @@ stages:
    response:
      status_code: 200
      json:
-       error: !anyint
+       error: 2
        data:
          affected_items:
            - name: 'group2'
@@ -305,7 +305,7 @@ stages:
    response:
      status_code: 200
      json:
-       error: !anyint
+       error: 0
        data:
          affected_items:
            - name: 'group2'
@@ -329,7 +329,7 @@ stages:
    response:
      status_code: 200
      json:
-       error: !anyint
+       error: 0
        data:
          affected_items:
            - id: '003'
@@ -363,7 +363,7 @@ stages:
    response:
      status_code: 200
      json:
-       error: !anyint
+       error: 0
        data:
          affected_items:
            - config: !anything
@@ -398,7 +398,7 @@ stages:
    response:
      status_code: 200
      json:
-       error: !anyint
+       error: 0
        data:
          affected_items:
            - filename: agent.conf
@@ -434,7 +434,7 @@ stages:
    response:
      status_code: 200
      json:
-       error: !anyint
+       error: 0
        data: !anything
 
 ---
@@ -481,7 +481,7 @@ stages:
    response:
      status_code: 200
      json:
-       error: !anyint
+       error: 0
        data:
          total_affected_items: 0
 
@@ -497,7 +497,7 @@ stages:
    response:
      status_code: 200
      json:
-       error: !anyint
+       error: 0
        data:
          affected_items:
            - id: '001'
@@ -521,7 +521,7 @@ stages:
    response:
      status_code: 200
      json:
-       error: !anyint
+       error: 0
        data:
          affected_items:
            - id: '011'
@@ -544,7 +544,7 @@ stages:
    response:
      status_code: 200
      json:
-       error: !anyint
+       error: 0
        data:
          affected_items:
            - id: '005'
@@ -572,7 +572,7 @@ stages:
    response:
      status_code: 200
      json:
-       error: !anyint
+       error: 0
        data:
          affected_items:
            - count: 5
@@ -597,7 +597,7 @@ stages:
    response:
      status_code: 200
      json:
-       error: !anyint
+       error: 0
        data:
          active: 4
          disconnected: 1
@@ -620,7 +620,7 @@ stages:
    response:
      status_code: 200
      json:
-       error: !anyint
+       error: 0
        data:
          affected_items:
            - ubuntu
@@ -732,7 +732,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - 'group1'
@@ -753,7 +753,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -801,7 +801,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           failed_items: []
@@ -822,7 +822,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -870,7 +870,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_agents: []
           affected_items: []
@@ -894,7 +894,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_agents: []
           affected_items: []
@@ -923,7 +923,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_agents: []
           affected_items: []
@@ -948,7 +948,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_agents: []
           affected_items: []
@@ -985,6 +985,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         agents_list: '003'
+        status: 'all'
     response:
       <<: *permission_denied
 
@@ -998,10 +999,11 @@ stages:
       params:
         agents_list: '002'
         older_than: '0s'
+        status: 'all'
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - '002'
@@ -1042,7 +1044,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - '004'
@@ -1067,7 +1069,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 2
         data:
           affected_items:
             - '008'
@@ -1100,7 +1102,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - '010'
@@ -1225,7 +1227,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 2
         data:
           affected_items:
             - '005'
@@ -1251,7 +1253,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - '009'
@@ -1323,7 +1325,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - "005"
@@ -1361,7 +1363,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 2
         data:
           affected_items:
             - '005'
@@ -1386,7 +1388,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - '005'
@@ -1430,7 +1432,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -1466,7 +1468,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - '005'
