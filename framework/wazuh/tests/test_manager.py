@@ -55,11 +55,11 @@ def test_manager():
     return test_manager
 
 
-manager_status = {'ossec-agentlessd': 'running', 'ossec-analysisd': 'running', 'ossec-authd': 'running',
- 'ossec-csyslogd': 'running', 'ossec-dbd': 'running', 'ossec-monitord': 'running',
- 'ossec-execd': 'running', 'ossec-integratord': 'running', 'ossec-logcollector': 'running',
- 'ossec-maild': 'running', 'ossec-remoted': 'running', 'ossec-reportd': 'running',
- 'ossec-syscheckd': 'running', 'wazuh-clusterd': 'running', 'wazuh-modulesd': 'running',
+manager_status = {'wazuh-agentlessd': 'running', 'wazuh-analysisd': 'running', 'wazuh-authd': 'running',
+ 'wazuh-csyslogd': 'running', 'wazuh-dbd': 'running', 'wazuh-monitord': 'running',
+ 'wazuh-execd': 'running', 'wazuh-integratord': 'running', 'wazuh-logcollector': 'running',
+ 'wazuh-maild': 'running', 'wazuh-remoted': 'running', 'wazuh-reportd': 'running',
+ 'wazuh-syscheckd': 'running', 'wazuh-clusterd': 'running', 'wazuh-modulesd': 'running',
  'wazuh-db': 'running', 'wazuh-apid': 'running'}
 
 
@@ -80,8 +80,8 @@ def test_get_status(mock_status):
     ('wazuh-modulesd:syscollector', None, 2, None, None, ''),
     ('wazuh-modulesd:syscollector', None, 2, None, None, ''),
     ('wazuh-modulesd:aws-s3', None, 5, None, None, ''),
-    ('ossec-execd', None, 1, None, None, ''),
-    ('ossec-csyslogd', None, 2, None, None, ''),
+    ('wazuh-execd', None, 1, None, None, ''),
+    ('wazuh-csyslogd', None, 2, None, None, ''),
     ('random', None, 0, ['timestamp'], True, ''),
     (None, 'info', 7, ['timestamp'], False, ''),
     (None, 'error', 2, ['level'], True, ''),
@@ -98,7 +98,7 @@ def test_ossec_log(tag, level, total_items, sort_by, sort_ascending, q):
     level : str
         Filters by log type: all, error or info.
     tag : str
-        Filters by log category (i.e. ossec-remoted).
+        Filters by log category (i.e. wazuh-remoted).
     total_items : int
         Expected items to be returned after calling ossec_log.
     sort_by : list
@@ -135,12 +135,12 @@ def test_ossec_log_summary():
         # Assert data match what was expected and type of the result.
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
         assert result.render()['data']['total_affected_items'] == 6
-        assert result.render()['data']['affected_items'][0]['ossec-csyslogd']['all'] == 2
-        assert result.render()['data']['affected_items'][0]['ossec-csyslogd']['info'] == 2
-        assert result.render()['data']['affected_items'][0]['ossec-csyslogd']['error'] == 0
-        assert result.render()['data']['affected_items'][0]['ossec-csyslogd']['critical'] == 0
-        assert result.render()['data']['affected_items'][0]['ossec-csyslogd']['warning'] == 0
-        assert result.render()['data']['affected_items'][0]['ossec-csyslogd']['debug'] == 0
+        assert result.render()['data']['affected_items'][1]['wazuh-csyslogd']['all'] == 2
+        assert result.render()['data']['affected_items'][1]['wazuh-csyslogd']['info'] == 2
+        assert result.render()['data']['affected_items'][1]['wazuh-csyslogd']['error'] == 0
+        assert result.render()['data']['affected_items'][1]['wazuh-csyslogd']['critical'] == 0
+        assert result.render()['data']['affected_items'][1]['wazuh-csyslogd']['warning'] == 0
+        assert result.render()['data']['affected_items'][1]['wazuh-csyslogd']['debug'] == 0
 
 
 @pytest.mark.parametrize('path, overwrite', [
@@ -325,8 +325,8 @@ def test_restart_ko_socket(mock_exist, mock_fcntl, mock_open):
     (0, ""),
     (1, "2019/02/27 11:30:07 wazuh-clusterd: ERROR: [Cluster] [Main] Error 3004 - Error in cluster configuration: "
         "Unspecified key"),
-    (1, "2019/02/27 11:30:24 ossec-authd: ERROR: (1230): Invalid element in the configuration: "
-        "'use_source_i'.\n2019/02/27 11:30:24 ossec-authd: ERROR: (1202): Configuration error at "
+    (1, "2019/02/27 11:30:24 wazuh-authd: ERROR: (1230): Invalid element in the configuration: "
+        "'use_source_i'.\n2019/02/27 11:30:24 wazuh-authd: ERROR: (1202): Configuration error at "
         "'/var/ossec/etc/ossec.conf'.")
 ])
 @patch('wazuh.core.manager.open')

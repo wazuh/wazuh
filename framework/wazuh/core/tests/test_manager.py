@@ -343,8 +343,8 @@ def test_validate_cdb_list_ko(mock_match):
     (0, ""),
     (1, "2019/02/27 11:30:07 wazuh-clusterd: ERROR: [Cluster] [Main] Error 3004 - Error in cluster configuration: "
         "Unspecified key"),
-    (1, "2019/02/27 11:30:24 ossec-authd: ERROR: (1230): Invalid element in the configuration: "
-        "'use_source_i'.\n2019/02/27 11:30:24 ossec-authd: ERROR: (1202): Configuration error at "
+    (1, "2019/02/27 11:30:24 wazuh-authd: ERROR: (1230): Invalid element in the configuration: "
+        "'use_source_i'.\n2019/02/27 11:30:24 wazuh-authd: ERROR: (1202): Configuration error at "
         "'/var/ossec/etc/ossec.conf'.")
 ])
 @patch('wazuh.core.manager.open')
@@ -414,8 +414,8 @@ def test_validation_ko(mosck_exists, mock_lockf, mock_open):
     (0, ""),
     (1, "2019/02/27 11:30:07 wazuh-clusterd: ERROR: [Cluster] [Main] Error 3004 - Error in cluster configuration: "
         "Unspecified key"),
-    (1, "2019/02/27 11:30:24 ossec-authd: ERROR: (1230): Invalid element in the configuration: "
-        "'use_source_i'.\n2019/02/27 11:30:24 ossec-authd: ERROR: (1202): Configuration error at "
+    (1, "2019/02/27 11:30:24 wazuh-authd: ERROR: (1230): Invalid element in the configuration: "
+        "'use_source_i'.\n2019/02/27 11:30:24 wazuh-authd: ERROR: (1202): Configuration error at "
         "'/var/ossec/etc/ossec.conf'.")
 ])
 def test_parse_execd_output(error_flag, error_msg):
