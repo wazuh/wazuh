@@ -1217,7 +1217,7 @@ def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, v
     msg['parameters'] = {k: v for k, v in msg['parameters'].items() if v is not None}
 
     # Send upgrading command
-    s = OssecSocket(common.UPGRADE_SOCKET) if not get_result else OssecSocket(common.TASKS_SOCKET)
+    s = OssecSocket(common.UPGRADE_SOCKET)
     s.send(dumps(msg).encode())
     data = loads(s.receive().decode())
     s.close()

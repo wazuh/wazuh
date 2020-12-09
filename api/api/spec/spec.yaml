@@ -491,6 +491,14 @@ x-rbac-catalog:
         actions: ['syscollector:read']
         resources: ['agent:id:*']
         effect: "allow"
+    'task:status':
+      description: "Access task's status information"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['task:status']
+        resources: ['*:*:*']
+        effect: "deny"
 
 components:
   responses:
@@ -3923,6 +3931,13 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/GroupID_DELETE'
+    node:
+      in: query
+      name: node
+      description: "Show results filtered by node"
+      schema:
+        type: string
+        format: alphanumeric
     nodes_list:
       in: query
       name: nodes_list
@@ -3931,6 +3946,13 @@ components:
         type: array
         items:
           type: string
+    module:
+      in: query
+      name: module
+      description: "Show results filtered by module"
+      schema:
+        type: string
+        format: alphanumeric
     manager_host:
       in: query
       name: manager
@@ -4208,9 +4230,9 @@ components:
       schema:
         type: integer
         minimum: 0
-    task_ids:
+    tasks_list:
       in: query
-      name: 'task_ids'
+      name: 'tasks_list'
       description: "List of task IDs (separated by comma)"
       schema:
         type: array
@@ -15366,6 +15388,54 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /tasks/status:
+    get:
+      tags:
+        - tasks
+      summary: "List tasks"
+      description: "Returns all available information about the specified tasks"
+      operationId: api.controllers.task_controller.get_tasks_status
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/task:status'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/agents_list'
+        - $ref: '#/components/parameters/tasks_list'
+        - $ref: '#/components/parameters/command'
+        - $ref: '#/components/parameters/node'
+        - $ref: '#/components/parameters/module'
+        - $ref: '#/components/parameters/status'
+      responses:
+        '200':
+          description: "Tasks's status"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - message: Success
+                      agent: 2
+                      task_id: 1
+                      node: worker2
+                      module: upgrade_module
+                      command: upgrade
+                      status: In progress
+                      create_time: 2020/11/10 11:55:33
+                      update_time: 2020/11/10 11:55:36
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: [ ]
+                message: All specified task's status were returned
 
 externalDocs:
   description: "Find more about Wazuh API usage"

@@ -301,3 +301,13 @@ default_policies:
         resources:
           - '*:*:*'
         effect: allow
+
+  task_status:
+    description: Provide permissions to check the status of tasks
+    policies:
+      task:
+        actions:
+          - task:status
+        resources:
+          - '*:*:*'
+        effect: allow
