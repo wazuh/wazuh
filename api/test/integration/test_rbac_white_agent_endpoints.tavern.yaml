@@ -1047,7 +1047,7 @@ stages:
           total_failed_items: 5
 
 ---
-test_name: DELETE /agents?agents_list=agent_id
+test_name: DELETE /agents?agents_list=agent_id&status=all
 
 stages:
 
@@ -1060,6 +1060,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         agents_list: '002'
+        status: 'all'
     response:
       <<: *permission_denied
 
@@ -1073,6 +1074,7 @@ stages:
       params:
         agents_list: '001'
         older_than: '0s'
+        status: 'all'
     response:
       status_code: 200
       json:
@@ -1099,6 +1101,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         agents_list: '004,010'
+        status: 'all'
     response:
       <<: *permission_denied
 
@@ -1112,6 +1115,7 @@ stages:
       params:
         agents_list: '003,005'
         older_than: '0s'
+        status: 'all'
     response:
       status_code: 200
       json:
@@ -1136,6 +1140,7 @@ stages:
       params:
         agents_list: '000,007,999'
         older_than: '0s'
+        status: 'all'
     response:
       status_code: 200
       json:
@@ -1164,6 +1169,7 @@ stages:
       params:
         older_than: '0s'
         agents_list: 'all'
+        status: 'all'
     response:
       status_code: 200
       json:
