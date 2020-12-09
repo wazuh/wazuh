@@ -23,11 +23,6 @@ stages:
           total_affected_items: 0
           total_failed_items: 0
 
----
-test_name: PUT /agents/upgrade
-
-stages:
-
   - name: Upgrade an agent
     request:
       verify: False
