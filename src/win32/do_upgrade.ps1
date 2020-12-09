@@ -67,6 +67,14 @@ while($process_id -ne $null -And $counter -gt 0)
     $process_id = (Get-Process $current_process -ErrorAction SilentlyContinue).id
 }
 
+# Delete old OSSEC processes
+If ($current_process -ne "wazuh-agent")
+{
+    sc.exe delete OssecSvc -ErrorAction SilentlyContinue -Force
+    Remove-Item .\ossec-agent.exe -ErrorAction SilentlyContinue
+    Remove-Item .\ossec-agent.state -ErrorAction SilentlyContinue
+}
+
 # Install
 install
 check-installation
@@ -108,6 +116,7 @@ If ($status -eq $null)
     }
     Else
     {
+        sc.exe delete WazuhSvc -ErrorAction SilentlyContinue -Force
         Remove-Item .\wazuh-agent.exe -ErrorAction SilentlyContinue
         Remove-Item .\wazuh-agent.state -ErrorAction SilentlyContinue
         .\ossec-agent.exe install-service >> .\upgrade\upgrade.log
