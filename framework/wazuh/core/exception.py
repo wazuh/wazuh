@@ -48,7 +48,7 @@ class WazuhException(Exception):
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
         1101: {'message': 'Requested component does not exist',
-               'remediation': 'Run `WAZUH_PATH/bin/ossec-logtest -t` to check your configuration'},
+               'remediation': 'Run `WAZUH_PATH/bin/wazuh-logtest -t` to check your configuration'},
         1102: {'message': 'Invalid section',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/index.html) '
                               'to get more information about configuration sections'},
