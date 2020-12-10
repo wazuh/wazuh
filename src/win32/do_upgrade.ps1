@@ -5,6 +5,7 @@ function backup
     Copy-Item .\* $env:temp\backup -force
     Remove-Item $env:temp\backup\backup -recurse -ErrorAction SilentlyContinue
     Copy-Item $env:temp\backup\* .\backup -force
+    Remove-Item $env:temp\backup -recurse -ErrorAction SilentlyContinue
 }
 
 # Stop UI and launch the msi installer
@@ -19,6 +20,7 @@ function install
 function restore
 {
     Copy-Item .\backup\* .\ -force
+    Remove-Item .\backup -recurse -ErrorAction SilentlyContinue
 }
 
 # Check new version and restart the Wazuh service
@@ -65,14 +67,6 @@ while($process_id -ne $null -And $counter -gt 0)
     taskkill /pid $process_id /f /T
     Start-Sleep 2
     $process_id = (Get-Process $current_process -ErrorAction SilentlyContinue).id
-}
-
-# Delete old OSSEC processes
-If ($current_process -ne "wazuh-agent")
-{
-    sc.exe delete OssecSvc -ErrorAction SilentlyContinue -Force
-    Remove-Item .\ossec-agent.exe -ErrorAction SilentlyContinue
-    Remove-Item .\ossec-agent.state -ErrorAction SilentlyContinue
 }
 
 # Install
