@@ -121,10 +121,11 @@ void fim_scan() {
             os_winreg_check();
         }
 #endif
-        w_mutex_lock(&syscheck.fim_entry_mutex);
-        fim_db_set_all_unscanned(syscheck.database);
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
     }
+
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+    fim_db_set_all_unscanned(syscheck.database);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     gettime(&end);
 
