@@ -519,6 +519,16 @@ void w_ch_exec_dir();
  */
 DWORD FileSizeWin(const char * file);
 
+/**
+ * @brief Open a file
+ *
+ * This mode of opening the file allows reading \r\n instead of \n.
+ *
+ * @param file pathfile to open
+ * @return file descriptor on success, otherwise null.
+ */
+FILE * w_fopen_r(const char *file);
+
 #endif // Windows
 
 /**

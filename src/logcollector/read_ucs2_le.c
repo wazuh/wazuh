@@ -39,7 +39,7 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
 
-        OS_SHA1_Stream(&context, NULL, str);
+        OS_SHA1_Stream(&context, NULL, (char *) str);
 
         mdebug2("Bytes read from '%s': %lld bytes",lf->file,rbytes);
 
@@ -146,7 +146,7 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
 
     w_update_file_status(lf->file, fp_pos, &context);
 
-    mdebug2("Read %d lines from %s", lines, lf->file, &context);
+    mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);
 }
 #endif

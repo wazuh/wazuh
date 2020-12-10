@@ -22,13 +22,8 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
     char str[OS_MAXSTR + 1];
     fpos_t fp_pos;
     int lines = 0;
-#ifdef WIN32
-    int64_t offset;
-    int64_t rbytes;
-#else
-    long offset = 0;
-    long rbytes = 0;
-#endif
+    w_offset_t offset = 0;
+    w_offset_t rbytes = 0;
 
     str[OS_MAXSTR] = '\0';
     *rc = 0;

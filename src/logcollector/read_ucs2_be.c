@@ -153,7 +153,7 @@ void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
 
     w_update_file_status(lf->file, fp_pos, &context);
 
-    mdebug2("Read %d lines from %s", lines, lf->file, &context);
+    mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);
 }
 #endif

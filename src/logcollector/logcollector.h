@@ -38,6 +38,13 @@
 #include "config/localfile-config.h"
 #include "config/config.h"
 
+/**/
+#ifdef WIN32
+typedef int64_t w_offset_t;
+#else
+typedef long w_offset_t;
+#endif
+
 /*** Function prototypes ***/
 
 /* Read logcollector config */
@@ -225,7 +232,7 @@ int can_read();
  * @param context SHA1 context.
  * @return 0 on succes, otherwise -1
  */
-int w_update_file_status(const char * path, long pos, SHA_CTX *context);
+int w_update_file_status(const char * path, w_offset_t pos, SHA_CTX *context);
 
 /**
  * @brief Get SHA1 context or inicilize it
@@ -233,7 +240,7 @@ int w_update_file_status(const char * path, long pos, SHA_CTX *context);
  * @param context SHA1 context.
  * @param poisition end file position.
  */
-void w_get_hash_context (const char * path, SHA_CTX *context, ssize_t position);
+void w_get_hash_context (const char * path, SHA_CTX *context, w_offset_t position);
 
 extern int sample_log_length;
 extern int lc_debug_level;
