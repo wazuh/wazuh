@@ -11,8 +11,6 @@ from unittest.mock import ANY, patch, mock_open, call
 import pytest
 from freezegun import freeze_time
 
-from wazuh.core.common import reset_context_cache
-
 with patch('wazuh.core.common.ossec_uid'):
     with patch('wazuh.core.common.ossec_gid'):
         from wazuh.core.agent import *
