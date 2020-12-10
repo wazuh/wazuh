@@ -49,24 +49,28 @@ def create_memory_db(sql_file, session):
 @pytest.fixture(scope='function')
 def db_setup():
     with patch('wazuh.core.common.ossec_uid'), patch('wazuh.core.common.ossec_gid'):
-        with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
+        with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
             with patch('shutil.chown'), patch('os.chmod'):
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
-                    import wazuh.rbac.orm as orm
-                    reload(orm)
-                    import wazuh.rbac.decorators as decorators
-                    from wazuh.tests.util import RBAC_bypasser
+                    with patch('wazuh.rbac.orm._auth_db_file', new='test_database'):
+                        import wazuh.rbac.orm as orm
+                        import wazuh.rbac.decorators as decorators
+                        from wazuh.tests.util import RBAC_bypasser
 
-                    decorators.expose_resources = RBAC_bypasser
-                    from wazuh import security
-                    from wazuh.core.results import WazuhResult
-                    from wazuh.core import security as core_security
-    try:
-        create_memory_db('schema_security_test.sql', orm._Session())
-    except OperationalError:
-        pass
+                        decorators.expose_resources = RBAC_bypasser
+                        from wazuh import security
+                        from wazuh.core.results import WazuhResult
+                        from wazuh.core import security as core_security
+                        try:
+                            orm.db_manager.connect(orm._auth_db_file)
+                            orm.db_manager.create_database(orm._auth_db_file)
+                            orm.db_manager.insert_data_from_yaml(orm._auth_db_file)
+                            create_memory_db('schema_security_test.sql', orm.db_manager.sessions[orm._auth_db_file])
+                        except OperationalError as e:
+                            pass
 
-    yield security, WazuhResult, core_security
+                        yield security, WazuhResult, core_security
+                        orm.db_manager.close_sessions()
 
 
 def affected_are_equal(target_dict, expected_dict):

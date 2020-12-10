@@ -7,7 +7,6 @@ from unittest.mock import patch
 
 import pytest
 import yaml
-from sqlalchemy import create_engine
 
 from wazuh.rbac.tests.utils import init_db
 
@@ -16,17 +15,14 @@ test_data_path = os.path.join(test_path, 'data')
 
 
 @pytest.fixture(scope='function')
-def db_setup():
+def orm_setup():
     with patch('wazuh.core.common.ossec_uid'), patch('wazuh.core.common.ossec_gid'):
-        with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
-            with patch('shutil.chown'), patch('os.chmod'):
-                with patch('api.constants.SECURITY_PATH', new=test_data_path):
-                    import wazuh.rbac.orm as rbac
+        with patch('shutil.chown'), patch('os.chmod'):
+            with patch('api.constants.SECURITY_PATH', new=test_data_path):
+                with patch('wazuh.rbac.orm._auth_db_file', new='test_database'):
                     import wazuh.rbac.decorators
                     wazuh.rbac.decorators.rbac.set({'rbac_mode': 'white'})
-    init_db('schema_security_test.sql', test_data_path)
-
-    yield rbac
+                    yield init_db('schema_security_test.sql', test_data_path)
 
 
 test_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))  # RBAC folder
@@ -62,39 +58,39 @@ with open(default_configuration + 'relationships.yaml') as f:
 
 
 @pytest.mark.parametrize('role_name, role_description', roles_configuration)
-def test_roles_default(db_setup, role_name, role_description):
-    with db_setup.RolesManager() as rm:
+def test_roles_default(orm_setup, role_name, role_description):
+    with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rm:
         role = rm.get_role(name=role_name)
         assert role_name == role['name']
 
 
 @pytest.mark.parametrize('rule_name, rule_info', rules_configuration)
-def test_rules_default(db_setup, rule_name, rule_info):
-    with db_setup.RulesManager() as rum:
+def test_rules_default(orm_setup, rule_name, rule_info):
+    with orm_setup.RulesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rum:
         rule = rum.get_rule_by_name(rule_name=rule_name)
         assert rule_name == rule['name']
         assert rule_info == rule['rule']
 
 
 @pytest.mark.parametrize('policy_name, policy_policy', policies_configuration)
-def test_policies_default(db_setup, policy_name, policy_policy):
-    with db_setup.PoliciesManager() as pm:
+def test_policies_default(orm_setup, policy_name, policy_policy):
+    with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as pm:
         current_policy = pm.get_policy(name=policy_name)
         assert policy_name == current_policy['name']
         assert policy_policy == current_policy['policy']
 
 
 @pytest.mark.parametrize('user_name, auth_context', users_configuration)
-def test_users_default(db_setup, user_name, auth_context):
-    with db_setup.AuthenticationManager() as am:
+def test_users_default(orm_setup, user_name, auth_context):
+    with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as am:
         assert user_name == am.get_user(username=user_name)['username']
         assert auth_context == am.user_allow_run_as(username=user_name)
 
 
 @pytest.mark.parametrize('user_name, role_ids', user_roles)
-def test_user_roles_default(db_setup, user_name, role_ids):
-    with db_setup.UserRolesManager() as urm:
-        with db_setup.AuthenticationManager() as am:
+def test_user_roles_default(orm_setup, user_name, role_ids):
+    with orm_setup.UserRolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as urm:
+        with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as am:
             user_id = am.get_user(username=user_name)['id']
         db_roles = urm.get_all_roles_from_user(user_id=user_id)
         orm_role_names = [role.name for role in db_roles]
@@ -102,9 +98,9 @@ def test_user_roles_default(db_setup, user_name, role_ids):
 
 
 @pytest.mark.parametrize('role_name, policy_names', role_policies)
-def test_role_policies_default(db_setup, role_name, policy_names):
-    with db_setup.RolesPoliciesManager() as rpm:
-        with db_setup.RolesManager() as rm:
+def test_role_policies_default(orm_setup, role_name, policy_names):
+    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rpm:
+        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rm:
             db_policies = rpm.get_all_policies_from_role(role_id=rm.get_role(name=role_name)['id'])
             orm_policy_names = [policy.name for policy in db_policies]
             for current_policy in orm_policy_names:
