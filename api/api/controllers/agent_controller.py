@@ -19,7 +19,7 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import database_limit
 from wazuh.core.exception import WazuhError
 
-logger = logging.getLogger('wazuh')
+logger = logging.getLogger('wazuh-api')
 
 
 async def delete_agents(request, pretty=False, wait_for_complete=False, agents_list=None, purge=False, status='all',

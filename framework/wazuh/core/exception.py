@@ -390,6 +390,8 @@ class WazuhException(Exception):
         2005: {'message': 'Could not connect to wdb socket'},
         2006: {'message': 'Received JSON from Wazuh DB is not correctly formatted'},
         2007: {'message': 'Error retrieving data from Wazuh DB'},
+        2008: {'message': 'Corrupted RBAC database',
+               'remediation': 'Restart the Wazuh service to restore the RBAC database to default'},
 
         # Cluster
         3000: 'Cluster',

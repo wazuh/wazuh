@@ -141,8 +141,8 @@ def get_sca_checks(policy_id=None, agent_list=None, q="", offset=0, limit=common
                     if (select is None or extra_field in select) \
                             and set(field_translations.keys()) & group_list[0].keys():
                         check_dict[extra_field] = [dict(zip(field_translations.values(), x))
-                                                   for x in set((map(itemgetter(*field_translations.keys()),
-                                                                     group_list)))]
+                                                   for x in sorted(set(map(itemgetter(*field_translations.keys()),
+                                                                           group_list)))]
 
                 sca_checks.append(check_dict)
         else:
