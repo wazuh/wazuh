@@ -28,10 +28,10 @@ void multiline_ctxt_backup(char * buffer, int readed_lines, w_multiline_ctxt_t *
 
 int multiline_getlog_start(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg);
 int multiline_getlog_end(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg);
+int multiline_getlog_all(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg);
+int multiline_getlog(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg);
+void * read_multiline_regex(logreader *lf, int *rc, int drop_it);
 
-// void *read_multiline_regex(logreader *lf, int *rc, int drop_it);
-// int multiline_getlog(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg);
-// int multiline_getlog_all(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg);
 
 /* setup/teardown */
 
@@ -55,6 +55,9 @@ bool __wrap_w_expression_match(w_expression_t * expression, const char * str_tes
     return mock_type(bool);
 }
 
+int __wrap_w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logtarget * targets, char queue_mq) {
+    return mock_type(int);
+}
 /* tests */
 
 /* multiline_replace linux */
@@ -812,24 +815,6 @@ void test_multiline_getlog_start_match_multi_replace(void ** state) {
     will_return(__wrap_w_ftell, 0);
     will_return(__wrap_can_read, 1);
     expect_any(__wrap_fgets, __stream);
-    will_return(__wrap_fgets, NULL);
-
-    will_return(__wrap_time, 0);
-
-    retval = multiline_getlog_start(buffer, buffer_size, 0, &ml_confg);
-
-    assert_int_equal(retval, 0);
-    assert_string_equal(ml_confg.ctxt->buffer, "no match-");
-    assert_int_equal(ml_confg.ctxt->lines_count, 1);
-    assert_int_equal(ml_confg.ctxt->timestamp, 0);
-
-    // multi
-    expect_any(__wrap_w_ftell, x);
-    will_return(__wrap_w_ftell, 2);
-    will_return(__wrap_time, 0);
-
-    will_return(__wrap_can_read, 1);
-    expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, ">no match2\n");
 
     will_return(__wrap_w_expression_match, false);
@@ -838,21 +823,10 @@ void test_multiline_getlog_start_match_multi_replace(void ** state) {
     will_return(__wrap_w_ftell, 0);
     will_return(__wrap_can_read, 1);
     expect_any(__wrap_fgets, __stream);
-    will_return(__wrap_fgets, NULL);
+    will_return(__wrap_fgets, "next header");
+    will_return(__wrap_w_expression_match, true);
+    will_return(__wrap_fseek, 0);
 
-    will_return(__wrap_time, 0);
-
-    retval = multiline_getlog_start(buffer, buffer_size, 0, &ml_confg);
-
-    assert_int_equal(retval, 0);
-    assert_string_equal(ml_confg.ctxt->buffer, "no match->no match2");
-    assert_int_equal(ml_confg.ctxt->lines_count, 2);
-    assert_int_equal(ml_confg.ctxt->timestamp, 0);
-
-    // timeout
-    expect_any(__wrap_w_ftell, x);
-    will_return(__wrap_w_ftell, 0);
-    will_return(__wrap_time, 200);
     retval = multiline_getlog_start(buffer, buffer_size, 0, &ml_confg);
 
     assert_int_equal(retval, 2);
@@ -861,6 +835,736 @@ void test_multiline_getlog_start_match_multi_replace(void ** state) {
 }
 
 /* multiline_getlog_end_single */
+void test_multiline_getlog_end_single_match_no_context(void ** state) {
+
+    int retval;
+    const size_t buffer_size = 500;
+    const time_t timeout = (time_t) 100;
+    char buffer[500];
+    w_multiline_config_t ml_confg = {0};
+
+    ml_confg.timeout = timeout;
+    ml_confg.replace_type = ML_REPLACE_NO_REPLACE;
+    ml_confg.match_type = ML_MATCH_END;
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "end match\n");
+    will_return(__wrap_w_expression_match, true);
+
+    retval = multiline_getlog_end(buffer, buffer_size, 0, &ml_confg);
+
+    assert_int_equal(retval, 1);
+    assert_null(ml_confg.ctxt);
+    assert_string_equal(buffer, "end match");
+}
+
+void test_multiline_getlog_end_ctxt_timeout(void ** state) {
+
+    int retval;
+    const size_t buffer_size = 500;
+    const time_t timeout = (time_t) 100;
+    char buffer[500 + 1] = {0};
+
+    w_multiline_config_t ml_confg = {0};
+    os_calloc(1, sizeof(w_multiline_config_t), ml_confg.ctxt);
+    ml_confg.timeout = timeout;
+    ml_confg.replace_type = ML_REPLACE_NO_REPLACE;
+    ml_confg.match_type = ML_MATCH_END;
+    os_strdup("no match\n", ml_confg.ctxt->buffer);
+    ml_confg.ctxt->lines_count = 1;
+    ml_confg.ctxt->timestamp = 0;
+
+    will_return(__wrap_time, timeout + 1);
+
+    retval = multiline_getlog_end(buffer, buffer_size, 0, &ml_confg);
+
+    assert_int_equal(retval, 1);
+    assert_null(ml_confg.ctxt);
+    assert_string_equal(buffer, "no match");
+}
+
+void test_multiline_getlog_end_ctxt_append_ctxt(void ** state) {
+
+    int retval;
+    const size_t buffer_size = 500;
+    const time_t timeout = (time_t) 100;
+    char buffer[500 + 1] = {0};
+    const char * msg = "no match\nno match2\n";
+    w_multiline_config_t ml_confg = {0};
+    os_calloc(1, sizeof(w_multiline_config_t), ml_confg.ctxt);
+    os_strdup(msg, ml_confg.ctxt->buffer);
+    ml_confg.ctxt->lines_count = 2;
+    ml_confg.ctxt->timestamp = 0;
+    ml_confg.timeout = timeout;
+
+    will_return(__wrap_time, timeout - 1);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "no match3\n");
+    will_return(__wrap_w_expression_match, false);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+    will_return(__wrap_time, timeout);
+
+    retval = multiline_getlog_end(buffer, buffer_size, 0, &ml_confg);
+
+    assert_int_equal(retval, 0);
+    assert_non_null(ml_confg.ctxt);
+    assert_string_equal(ml_confg.ctxt->buffer, "no match\nno match2\nno match3\n");
+    assert_int_equal(ml_confg.ctxt->lines_count, 3);
+    assert_int_equal(ml_confg.ctxt->timestamp, timeout);
+    multiline_ctxt_free(&ml_confg.ctxt);
+}
+
+void test_multiline_getlog_end_multi_match_no_context(void ** state) {
+    int retval;
+    const size_t buffer_size = 500;
+    const time_t timeout = (time_t) 100;
+    char buffer[500];
+    w_multiline_config_t ml_confg = {0};
+
+    os_calloc(1, sizeof(w_multiline_config_t), ml_confg.ctxt);
+    os_strdup("initial\n ctx\n", ml_confg.ctxt->buffer);
+    ml_confg.ctxt->lines_count = 2;
+    ml_confg.ctxt->timestamp = 0;
+    ml_confg.timeout = timeout;
+    ml_confg.replace_type = ML_REPLACE_NO_REPLACE;
+    ml_confg.match_type = ML_MATCH_END;
+
+    will_return(__wrap_time, timeout - 1);
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "no match\n");
+    will_return(__wrap_w_expression_match, false);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "end match\n");
+    will_return(__wrap_w_expression_match, true);
+
+    retval = multiline_getlog_end(buffer, buffer_size, 0, &ml_confg);
+
+    assert_int_equal(retval, 4);
+    assert_null(ml_confg.ctxt);
+    assert_string_equal(buffer, "initial\n ctx\nno match\nend match");
+}
+
+void test_multiline_getlog_end_multi_match_context(void ** state) {
+
+    int retval;
+    const size_t buffer_size = 500;
+    const time_t timeout = (time_t) 100;
+    char buffer[500];
+    w_multiline_config_t ml_confg = {0};
+
+    ml_confg.timeout = timeout;
+    ml_confg.replace_type = ML_REPLACE_NO_REPLACE;
+    ml_confg.match_type = ML_MATCH_END;
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "no match\n");
+    will_return(__wrap_w_expression_match, false);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "end match\n");
+    will_return(__wrap_w_expression_match, true);
+
+    retval = multiline_getlog_end(buffer, buffer_size, 0, &ml_confg);
+
+    assert_int_equal(retval, 2);
+    assert_null(ml_confg.ctxt);
+    assert_string_equal(buffer, "no match\nend match");
+}
+
+void test_multiline_getlog_end_no_ctxt_overflow(void ** state) {
+
+    int retval;
+    const size_t buffer_size = 20;
+    const time_t timeout = (time_t) 100;
+    char buffer[20];
+    w_multiline_config_t ml_confg = {0};
+
+    ml_confg.timeout = timeout;
+    ml_confg.replace_type = ML_REPLACE_NO_REPLACE;
+    ml_confg.match_type = ML_MATCH_END;
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "01234567890123456789------");
+    will_return(__wrap_w_expression_match, false);
+
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '\0');
+
+    retval = multiline_getlog_end(buffer, buffer_size, 0, &ml_confg);
+    assert_int_equal(retval, 1);
+    assert_null(ml_confg.ctxt);
+    assert_string_equal(buffer, "0123456789012345678");
+}
+
+void test_multiline_getlog_end_ctxt_overflow(void ** state) {
+    int retval;
+    const size_t buffer_size = 20;
+    const time_t timeout = (time_t) 100;
+    char buffer[20];
+    w_multiline_config_t ml_confg = {0};
+
+    const char * msg = "123456789\n";
+    os_calloc(1, sizeof(w_multiline_config_t), ml_confg.ctxt);
+    os_strdup(msg, ml_confg.ctxt->buffer);
+    ml_confg.timeout = timeout;
+    ml_confg.replace_type = ML_REPLACE_NO_REPLACE;
+    ml_confg.match_type = ML_MATCH_END;
+
+    will_return(__wrap_time, 0);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "0123456789------");
+
+    will_return(__wrap_w_expression_match, false);
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '\0');
+
+    retval = multiline_getlog_end(buffer, buffer_size, 0, &ml_confg);
+    assert_int_equal(retval, 1);
+    assert_null(ml_confg.ctxt);
+    assert_string_equal(buffer, "123456789\n012345678");
+}
+
+void test_multiline_getlog_end_no_ctxt_cant_read(void ** state) {
+
+    int retval;
+    const size_t buffer_size = 20;
+    const time_t timeout = (time_t) 100;
+    char buffer[20];
+    w_multiline_config_t ml_confg = {0};
+
+    ml_confg.timeout = timeout;
+    ml_confg.replace_type = ML_REPLACE_NO_REPLACE;
+    ml_confg.match_type = ML_MATCH_END;
+
+    will_return(__wrap_can_read, 0);
+    retval = multiline_getlog_end(buffer, buffer_size, 0, &ml_confg);
+    assert_int_equal(retval, 0);
+    assert_null(ml_confg.ctxt);
+}
+
+void test_multiline_getlog_end_ctxt_cant_read(void ** state) {
+
+    int retval;
+    const size_t buffer_size = 20;
+    const time_t timeout = (time_t) 100;
+    char buffer[20];
+    w_multiline_config_t ml_confg = {0};
+
+    const char * msg = "123456789\n";
+    os_calloc(1, sizeof(w_multiline_config_t), ml_confg.ctxt);
+    os_strdup(msg, ml_confg.ctxt->buffer);
+    ml_confg.timeout = timeout;
+    ml_confg.replace_type = ML_REPLACE_NO_REPLACE;
+    ml_confg.match_type = ML_MATCH_END;
+    ml_confg.ctxt->lines_count = 1;
+
+    will_return(__wrap_time, 0);
+
+    will_return(__wrap_can_read, 0);
+    retval = multiline_getlog_end(buffer, buffer_size, 0, &ml_confg);
+    assert_int_equal(retval, 0);
+    assert_non_null(ml_confg.ctxt);
+    assert_string_equal(ml_confg.ctxt->buffer, "123456789\n");
+    assert_int_equal(ml_confg.ctxt->lines_count, 1);
+    multiline_ctxt_free(&ml_confg.ctxt);
+}
+
+void test_multiline_getlog_end_match_multi_replace(void ** state) {
+    int retval;
+    const size_t buffer_size = 500;
+    const time_t timeout = (time_t) 100;
+    char buffer[500];
+    w_multiline_config_t ml_confg = {0};
+
+    os_calloc(1, sizeof(w_multiline_config_t), ml_confg.ctxt);
+    os_strdup("initial ctx", ml_confg.ctxt->buffer);
+    ml_confg.ctxt->lines_count = 2;
+    ml_confg.ctxt->timestamp = 0;
+    ml_confg.timeout = timeout;
+    ml_confg.replace_type = ML_REPLACE_NONE;
+    ml_confg.match_type = ML_MATCH_END;
+
+    will_return(__wrap_time, timeout - 1);
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "no match\n");
+    will_return(__wrap_w_expression_match, false);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "end match\n");
+    will_return(__wrap_w_expression_match, true);
+
+    retval = multiline_getlog_end(buffer, buffer_size, 0, &ml_confg);
+
+    assert_int_equal(retval, 4);
+    assert_null(ml_confg.ctxt);
+    assert_string_equal(buffer, "initial ctxno matchend match");
+}
+
+// Test multiline_getlog_all
+void test_multiline_getlog_all_single_match_no_context(void ** state){
+
+    int retval;
+    const size_t buffer_size = 500;
+    const time_t timeout = (time_t) 100;
+    char buffer[500];
+    w_multiline_config_t ml_confg = {0};
+
+    ml_confg.timeout = timeout;
+    ml_confg.replace_type = ML_REPLACE_NO_REPLACE;
+    ml_confg.match_type = ML_MATCH_ALL;
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "all match\n");
+    will_return(__wrap_w_expression_match, true);
+
+    retval = multiline_getlog_all(buffer, buffer_size, 0, &ml_confg);
+
+    assert_int_equal(retval, 1);
+    assert_null(ml_confg.ctxt);
+    assert_string_equal(buffer, "all match");
+}
+
+void test_multiline_getlog_all_ctxt_timeout(void ** state) {
+
+    int retval;
+    const size_t buffer_size = 500;
+    const time_t timeout = (time_t) 100;
+    char buffer[500 + 1] = {0};
+
+    w_multiline_config_t ml_confg = {0};
+    os_calloc(1, sizeof(w_multiline_config_t), ml_confg.ctxt);
+    ml_confg.timeout = timeout;
+    ml_confg.replace_type = ML_REPLACE_NO_REPLACE;
+    ml_confg.match_type = ML_MATCH_ALL;
+    os_strdup("no match\n", ml_confg.ctxt->buffer);
+    ml_confg.ctxt->lines_count = 1;
+    ml_confg.ctxt->timestamp = 0;
+
+    will_return(__wrap_time, timeout + 1);
+
+    retval = multiline_getlog_all(buffer, buffer_size, 0, &ml_confg);
+
+    assert_int_equal(retval, 1);
+    assert_null(ml_confg.ctxt);
+    assert_string_equal(buffer, "no match");
+}
+
+void test_multiline_getlog_all_ctxt_append_ctxt(void ** state) {
+
+    int retval;
+    const size_t buffer_size = 500;
+    const time_t timeout = (time_t) 100;
+    char buffer[500 + 1] = {0};
+    const char * msg = "no match\nno match2\n";
+    w_multiline_config_t ml_confg = {0};
+    os_calloc(1, sizeof(w_multiline_config_t), ml_confg.ctxt);
+    os_strdup(msg, ml_confg.ctxt->buffer);
+    ml_confg.ctxt->lines_count = 2;
+    ml_confg.ctxt->timestamp = 0;
+    ml_confg.timeout = timeout;
+
+    will_return(__wrap_time, timeout - 1);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "no match3\n");
+    will_return(__wrap_w_expression_match, false);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+    will_return(__wrap_time, timeout);
+
+    retval = multiline_getlog_all(buffer, buffer_size, 0, &ml_confg);
+
+    assert_int_equal(retval, 0);
+    assert_non_null(ml_confg.ctxt);
+    assert_string_equal(ml_confg.ctxt->buffer, "no match\nno match2\nno match3\n");
+    assert_int_equal(ml_confg.ctxt->lines_count, 3);
+    assert_int_equal(ml_confg.ctxt->timestamp, timeout);
+    multiline_ctxt_free(&ml_confg.ctxt);
+}
+
+void test_multiline_getlog_all_multi_match_no_context(void ** state) {
+    int retval;
+    const size_t buffer_size = 500;
+    const time_t timeout = (time_t) 100;
+    char buffer[500];
+    w_multiline_config_t ml_confg = {0};
+
+    os_calloc(1, sizeof(w_multiline_config_t), ml_confg.ctxt);
+    os_strdup("initial\n ctx\n", ml_confg.ctxt->buffer);
+    ml_confg.ctxt->lines_count = 2;
+    ml_confg.ctxt->timestamp = 0;
+    ml_confg.timeout = timeout;
+    ml_confg.replace_type = ML_REPLACE_NO_REPLACE;
+    ml_confg.match_type = ML_MATCH_ALL;
+
+    will_return(__wrap_time, timeout - 1);
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "no match\n");
+    will_return(__wrap_w_expression_match, false);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "end match\n");
+    will_return(__wrap_w_expression_match, true);
+
+    retval = multiline_getlog_all(buffer, buffer_size, 0, &ml_confg);
+
+    assert_int_equal(retval, 4);
+    assert_null(ml_confg.ctxt);
+    assert_string_equal(buffer, "initial\n ctx\nno match\nend match");
+}
+
+void test_multiline_getlog_all_multi_match_context(void ** state) {
+
+    int retval;
+    const size_t buffer_size = 500;
+    const time_t timeout = (time_t) 100;
+    char buffer[500];
+    w_multiline_config_t ml_confg = {0};
+
+    ml_confg.timeout = timeout;
+    ml_confg.replace_type = ML_REPLACE_NO_REPLACE;
+    ml_confg.match_type = ML_MATCH_ALL;
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "no match\n");
+    will_return(__wrap_w_expression_match, false);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "end match\n");
+    will_return(__wrap_w_expression_match, true);
+
+    retval = multiline_getlog_all(buffer, buffer_size, 0, &ml_confg);
+
+    assert_int_equal(retval, 2);
+    assert_null(ml_confg.ctxt);
+    assert_string_equal(buffer, "no match\nend match");
+}
+
+void test_multiline_getlog_all_no_ctxt_overflow(void ** state) {
+
+    int retval;
+    const size_t buffer_size = 20;
+    const time_t timeout = (time_t) 100;
+    char buffer[20];
+    w_multiline_config_t ml_confg = {0};
+
+    ml_confg.timeout = timeout;
+    ml_confg.replace_type = ML_REPLACE_NO_REPLACE;
+    ml_confg.match_type = ML_MATCH_ALL;
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "01234567890123456789------");
+    will_return(__wrap_w_expression_match, false);
+
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '\0');
+
+    retval = multiline_getlog_all(buffer, buffer_size, 0, &ml_confg);
+    assert_int_equal(retval, 1);
+    assert_null(ml_confg.ctxt);
+    assert_string_equal(buffer, "0123456789012345678");
+}
+
+void test_multiline_getlog_all_ctxt_overflow(void ** state) {
+    int retval;
+    const size_t buffer_size = 20;
+    const time_t timeout = (time_t) 100;
+    char buffer[20];
+    w_multiline_config_t ml_confg = {0};
+
+    const char * msg = "123456789\n";
+    os_calloc(1, sizeof(w_multiline_config_t), ml_confg.ctxt);
+    os_strdup(msg, ml_confg.ctxt->buffer);
+    ml_confg.timeout = timeout;
+    ml_confg.replace_type = ML_REPLACE_NO_REPLACE;
+    ml_confg.match_type = ML_MATCH_ALL;
+
+    will_return(__wrap_time, 0);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "0123456789------");
+
+    will_return(__wrap_w_expression_match, false);
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '-');
+    will_return(__wrap_fgetc, '\0');
+
+    retval = multiline_getlog_all(buffer, buffer_size, 0, &ml_confg);
+    assert_int_equal(retval, 1);
+    assert_null(ml_confg.ctxt);
+    assert_string_equal(buffer, "123456789\n012345678");
+}
+
+void test_multiline_getlog_all_no_ctxt_cant_read(void ** state) {
+
+    int retval;
+    const size_t buffer_size = 20;
+    const time_t timeout = (time_t) 100;
+    char buffer[20];
+    w_multiline_config_t ml_confg = {0};
+
+    ml_confg.timeout = timeout;
+    ml_confg.replace_type = ML_REPLACE_NO_REPLACE;
+    ml_confg.match_type = ML_MATCH_ALL;
+
+    will_return(__wrap_can_read, 0);
+    retval = multiline_getlog_all(buffer, buffer_size, 0, &ml_confg);
+    assert_int_equal(retval, 0);
+    assert_null(ml_confg.ctxt);
+}
+
+void test_multiline_getlog_all_ctxt_cant_read(void ** state) {
+
+    int retval;
+    const size_t buffer_size = 20;
+    const time_t timeout = (time_t) 100;
+    char buffer[20];
+    w_multiline_config_t ml_confg = {0};
+
+    const char * msg = "123456789\n";
+    os_calloc(1, sizeof(w_multiline_config_t), ml_confg.ctxt);
+    os_strdup(msg, ml_confg.ctxt->buffer);
+    ml_confg.timeout = timeout;
+    ml_confg.replace_type = ML_REPLACE_NO_REPLACE;
+    ml_confg.match_type = ML_MATCH_ALL;
+    ml_confg.ctxt->lines_count = 1;
+
+    will_return(__wrap_time, 0);
+
+    will_return(__wrap_can_read, 0);
+    retval = multiline_getlog_all(buffer, buffer_size, 0, &ml_confg);
+    assert_int_equal(retval, 0);
+    assert_non_null(ml_confg.ctxt);
+    assert_string_equal(ml_confg.ctxt->buffer, "123456789\n");
+    assert_int_equal(ml_confg.ctxt->lines_count, 1);
+    multiline_ctxt_free(&ml_confg.ctxt);
+}
+
+void test_multiline_getlog_all_match_multi_replace(void ** state) {
+    int retval;
+    const size_t buffer_size = 500;
+    const time_t timeout = (time_t) 100;
+    char buffer[500];
+    w_multiline_config_t ml_confg = {0};
+
+    os_calloc(1, sizeof(w_multiline_config_t), ml_confg.ctxt);
+    os_strdup("initial ctx", ml_confg.ctxt->buffer);
+    ml_confg.ctxt->lines_count = 2;
+    ml_confg.ctxt->timestamp = 0;
+    ml_confg.timeout = timeout;
+    ml_confg.replace_type = ML_REPLACE_NONE;
+    ml_confg.match_type = ML_MATCH_ALL;
+
+    will_return(__wrap_time, timeout - 1);
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "no match\n");
+    will_return(__wrap_w_expression_match, false);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "end match\n");
+    will_return(__wrap_w_expression_match, true);
+
+    retval = multiline_getlog_all(buffer, buffer_size, 0, &ml_confg);
+
+    assert_int_equal(retval, 4);
+    assert_null(ml_confg.ctxt);
+    assert_string_equal(buffer, "initial ctxno matchend match");
+}
+
+/* multiline_getlog */
+void test_multiline_getlog_unknown(void ** state) {
+
+    char buffer[]="1234567890";
+    int length = 100;
+    int retval;
+    w_multiline_config_t ml_cfg = {0};
+    ml_cfg.match_type = ML_MATCH_MAX;
+
+    retval = multiline_getlog(buffer, length, 0, &ml_cfg);
+
+    assert_int_equal(retval, 0);
+    assert_int_equal(strlen(buffer), 0);
+}
+
+void test_multiline_getlog_start(void ** state){
+
+    int retval;
+    const size_t buffer_size = 500;
+    const time_t timeout = (time_t) 100;
+    char buffer[500] = {0};
+    const char * msg = "no match\nno match2\n";
+    w_multiline_config_t ml_confg = {0};
+
+    os_calloc(1, sizeof(w_multiline_config_t), ml_confg.ctxt);
+    os_strdup(msg, ml_confg.ctxt->buffer);
+    ml_confg.ctxt->lines_count = 2;
+    ml_confg.ctxt->timestamp = 0;
+    ml_confg.timeout = timeout;
+    ml_confg.match_type = ML_MATCH_START;
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, 0);
+    will_return(__wrap_time, timeout - 1);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "match");
+    will_return(__wrap_w_expression_match, true);
+    will_return(__wrap_fseek, 0);
+
+    retval = multiline_getlog(buffer, buffer_size, 0, &ml_confg);
+
+    assert_int_equal(retval, 2);
+    assert_null(ml_confg.ctxt);
+    assert_string_equal(buffer, "no match\nno match2");
+}
+
+void test_multiline_getlog_end(void ** state){
+
+    int retval;
+    const size_t buffer_size = 500;
+    const time_t timeout = (time_t) 100;
+    char buffer[500];
+    w_multiline_config_t ml_confg = {0};
+
+    ml_confg.timeout = timeout;
+    ml_confg.replace_type = ML_REPLACE_NO_REPLACE;
+    ml_confg.match_type = ML_MATCH_END;
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "end match\n");
+    will_return(__wrap_w_expression_match, true);
+
+    retval = multiline_getlog(buffer, buffer_size, 0, &ml_confg);
+
+    assert_int_equal(retval, 1);
+    assert_null(ml_confg.ctxt);
+    assert_string_equal(buffer, "end match");
+}
+
+void test_multiline_getlog_all(void ** state){
+
+    int retval;
+    const size_t buffer_size = 500;
+    const time_t timeout = (time_t) 100;
+    char buffer[500];
+    w_multiline_config_t ml_confg = {0};
+
+    ml_confg.timeout = timeout;
+    ml_confg.replace_type = ML_REPLACE_NO_REPLACE;
+    ml_confg.match_type = ML_MATCH_ALL;
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "end match\n");
+    will_return(__wrap_w_expression_match, true);
+
+    retval = multiline_getlog(buffer, buffer_size, 0, &ml_confg);
+
+    assert_int_equal(retval, 1);
+    assert_null(ml_confg.ctxt);
+    assert_string_equal(buffer, "end match");
+}
+
+/* read_multiline_regex */
+void test_read_multiline_regex_log_process(void ** state) {
+
+    logreader lf = {0};
+    int rc = 0;
+    int drop_it = 0;
+
+    w_multiline_config_t ml_confg = {0};
+
+    ml_confg.timeout = 500;
+    ml_confg.replace_type = ML_REPLACE_NO_REPLACE;
+    ml_confg.match_type = ML_MATCH_END;
+
+    lf.multiline = &ml_confg;
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "end match\n");
+    will_return(__wrap_w_expression_match, true);
+    will_return(__wrap_w_msg_hash_queues_push, 0);
+    
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+
+    void * retval = read_multiline_regex(&lf, &rc, drop_it);
+    assert_ptr_equal(retval, NULL);
+    assert_null(ml_confg.ctxt);
+}
+
+void test_read_multiline_regex_no_aviable_log(void ** state) {
+  logreader lf = {0};
+    int rc = 0;
+    int drop_it = 0;
+
+    w_multiline_config_t ml_confg = {0};
+
+    ml_confg.timeout = 500;
+    ml_confg.replace_type = ML_REPLACE_NO_REPLACE;
+    ml_confg.match_type = ML_MATCH_END;
+
+    lf.multiline = &ml_confg;
+    
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+
+    void * retval = read_multiline_regex(&lf, &rc, drop_it);
+    assert_ptr_equal(retval, NULL);
+    assert_null(ml_confg.ctxt);
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -924,13 +1628,37 @@ int main(void) {
         cmocka_unit_test(test_multiline_getlog_start_ctxt_overflow),
         cmocka_unit_test(test_multiline_getlog_start_no_ctxt_cant_read),
         cmocka_unit_test(test_multiline_getlog_start_ctxt_cant_read),
-        // cmocka_unit_test(test_multiline_getlog_start_match_multi_replace),
+        cmocka_unit_test(test_multiline_getlog_start_match_multi_replace),
         // Test multiline_getlog_end
-        // cmocka_unit_test(test_multiline_getlog_end_single),
-        // cmocka_unit_test(test_multiline_getlog_end_multi_no_match_timeout),
-        // cmocka_unit_test(test_multiline_getlog_end_multi_match),
-        // cmocka_unit_test(test_multiline_getlog_end_overflow),
-
+        cmocka_unit_test(test_multiline_getlog_end_single_match_no_context),
+        cmocka_unit_test(test_multiline_getlog_end_ctxt_timeout),
+        cmocka_unit_test(test_multiline_getlog_end_ctxt_append_ctxt),
+        cmocka_unit_test(test_multiline_getlog_end_multi_match_no_context),
+        cmocka_unit_test(test_multiline_getlog_end_multi_match_context),
+        cmocka_unit_test(test_multiline_getlog_end_no_ctxt_overflow),
+        cmocka_unit_test(test_multiline_getlog_end_ctxt_overflow),
+        cmocka_unit_test(test_multiline_getlog_end_no_ctxt_cant_read),
+        cmocka_unit_test(test_multiline_getlog_end_ctxt_cant_read),
+        cmocka_unit_test(test_multiline_getlog_end_match_multi_replace),
+        // Test multiline_getlog_all
+        cmocka_unit_test(test_multiline_getlog_all_single_match_no_context),
+        cmocka_unit_test(test_multiline_getlog_all_ctxt_timeout),
+        cmocka_unit_test(test_multiline_getlog_all_ctxt_append_ctxt),
+        cmocka_unit_test(test_multiline_getlog_all_multi_match_no_context),
+        cmocka_unit_test(test_multiline_getlog_all_multi_match_context),
+        cmocka_unit_test(test_multiline_getlog_all_no_ctxt_overflow),
+        cmocka_unit_test(test_multiline_getlog_all_ctxt_overflow),
+        cmocka_unit_test(test_multiline_getlog_all_no_ctxt_cant_read),
+        cmocka_unit_test(test_multiline_getlog_all_ctxt_cant_read),
+        cmocka_unit_test(test_multiline_getlog_all_match_multi_replace),
+        // Tests multiline_getlog
+        cmocka_unit_test(test_multiline_getlog_unknown),
+        cmocka_unit_test(test_multiline_getlog_start),
+        cmocka_unit_test(test_multiline_getlog_end),
+        cmocka_unit_test(test_multiline_getlog_all),
+        // Tests read_multiline_regex
+        cmocka_unit_test(test_read_multiline_regex_no_aviable_log),
+        cmocka_unit_test(test_read_multiline_regex_log_process),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

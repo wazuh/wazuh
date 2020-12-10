@@ -31,7 +31,8 @@ list(APPEND logcollector_flags "-Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Add -
 list(APPEND logcollector_names "test_read_multiline_regex")
 list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
                                 -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fseek -Wl,--wrap=fgetc\
-                                -Wl,--wrap,time -Wl,--wrap,can_read -Wl,--wrap,w_ftell -Wl,--wrap,w_expression_match")
+                                -Wl,--wrap,time -Wl,--wrap,can_read -Wl,--wrap,w_ftell -Wl,--wrap,w_expression_match \
+                                -Wl,--wrap,w_msg_hash_queues_push")
 
 list(APPEND logcollector_names "test_localfile-config")
 list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \

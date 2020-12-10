@@ -43,7 +43,7 @@ char * __wrap_fgets (char * __s, int __n, FILE * __stream) {
         check_expected(__stream);
         if(buffer) {
             size_t buff_len = strlen(buffer);
-            if (buff_len + 1 < __n) {
+            if (buff_len + 1 < (size_t) __n) {
                 strncpy(__s, buffer, buff_len + 1);
             } else {
                 strncpy(__s, buffer, __n - 1);
