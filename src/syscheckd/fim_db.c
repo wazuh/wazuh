@@ -398,9 +398,17 @@ fim_tmp_file *fim_db_create_temp_file(int storage) {
                     getpid(),
                     os_random());
 
-        file->fd = fopen(file->path, "w+");
+        file->fd = wfopen(file->path, "w+");
         if (file->fd == NULL) {
             merror("Failed to create temporal storage '%s': %s (%d)", file->path, strerror(errno), errno);
+            os_free(file->path);
+            os_free(file);
+            return NULL;
+        }
+
+        // Have the file removed on close.
+        if (remove(file->path) < 0) {
+            merror("Failed to remove '%s': %s (%d)", file->path, strerror(errno), errno);
             os_free(file->path);
             os_free(file);
             return NULL;
@@ -415,9 +423,6 @@ fim_tmp_file *fim_db_create_temp_file(int storage) {
 void fim_db_clean_file(fim_tmp_file **file, int storage) {
     if (storage == FIM_DB_DISK) {
         fclose((*file)->fd);
-        if (remove((*file)->path) < 0) {
-            merror("Failed to remove '%s': %s (%d)", (*file)->path, strerror(errno), errno);
-        }
         os_free((*file)->path);
     } else {
         W_Vector_free((*file)->list);
@@ -557,9 +562,9 @@ int fim_db_delete_not_scanned(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex
                                     (void *) true, (void *) FIM_SCHEDULED, NULL);
 }
 
-int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
+int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage, fim_event_mode mode) {
     return fim_db_process_read_file(fim_sql, file, mutex, fim_db_remove_path, storage,
-                                    (void *) false, (void *) FIM_SCHEDULED, NULL);
+                                    (void *) false, (void *) mode, NULL);
 }
 
 int fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage, fim_event_mode mode, whodata_evt * w_evt) {
@@ -571,31 +576,54 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
     void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
     int storage, void * alert, void * mode, void * w_evt) {
 
-    char line[PATH_MAX + 1];
     char *path = NULL;
     int i = 0;
+    int retval = FIMDB_OK;
 
     if (storage == FIM_DB_DISK) {
-        fseek(file->fd, SEEK_SET, 0);
+        if (fseek(file->fd, 0, SEEK_SET)) {
+            mwarn(FIM_DB_TEMPORARY_FILE_POSITION, errno, strerror(errno));
+            fim_db_clean_file(&file, storage);
+            return FIMDB_ERR;
+        }
     }
 
-    do {
+    for (i = 0; i < file->elements; i++) {
 
         if (storage == FIM_DB_DISK) {
+            char *line;
+            char path_length[OS_SIZE_32 + 1];
+
+            /* First 32 bytes hold the path length includig the line break */
+            if (fgets(path_length, OS_SIZE_32 + 1, file->fd) == NULL) {
+                mdebug1(FIM_UNABLE_TO_READ_TEMP_FILE);
+                retval = FIMDB_ERR;
+                break;
+            }
+
+            size_t len = atoi(path_length);
+            os_malloc(len + 1, line);
+
             /* fgets() adds \n(newline) to the end of the string,
              So it must be removed. */
-            if (fgets(line, sizeof(line), file->fd)) {
-                size_t len = strlen(line);
-
-                if (len > 2 && line[len - 1] == '\n') {
-                    line[len - 1] = '\0';
-                } else {
-                    merror("Temporary path file '%s' is corrupt: missing line end.", file->path);
-                    continue;
-                }
-
-                path = wstr_unescape_json(line);
+            if (fgets(line, len + 1, file->fd) == NULL) {
+                mdebug1(FIM_UNABLE_TO_READ_TEMP_FILE);
+                os_free(line);
+                retval = FIMDB_ERR;
+                break;
             }
+
+            if (len > 2 && line[len - 1] == '\n') {
+                line[len - 1] = '\0';
+            } else {
+                merror("Temporary path file '%s' is corrupt: missing line end.", file->path);
+                os_free(line);
+                retval = FIMDB_ERR;
+                break;
+            }
+            path = wstr_unescape_json(line);
+
+            os_free(line);
         } else {
             path = wstr_unescape_json((char *) W_Vector_get(file->list, i));
         }
@@ -610,13 +638,11 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
             }
             os_free(path);
         }
-
-        i++;
-    } while (i < file->elements);
+    }
 
     fim_db_clean_file(&file, storage);
 
-    return FIMDB_OK;
+    return retval;
 }
 
 fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt) {
@@ -1122,7 +1148,9 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
             goto end;
         }
 
+        w_mutex_lock(mutex);
         json_event = fim_json_event(entry->path, NULL, entry->data, pos, FIM_DELETE, mode, whodata_event, NULL);
+        w_mutex_unlock(mutex);
 
         if (!strcmp(FIM_ENTRY_TYPE[entry->data->entry_type], "file") && syscheck.opts[pos] & CHECK_SEECHANGES) {
             if (syscheck.disk_quota_enabled) {
@@ -1206,7 +1234,7 @@ void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry
     }
 
     if (storage == FIM_DB_DISK) { // disk storage enabled
-        if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", base) != (strlen(base) + sizeof(char))) {
+        if (fprintf(((fim_tmp_file *) arg)->fd, "%032ld%s\n", (unsigned long) strlen(base) + 1, base) < 0) {
             merror("%s - %s", entry->path, strerror(errno));
             goto end;
         }

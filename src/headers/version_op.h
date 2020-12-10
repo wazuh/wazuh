@@ -42,7 +42,7 @@ typedef struct os_info {
  * @param version Version number.
  * @return Reselase name.
  */
-char *OSX_ReleaseName(const int version);
+const char *OSX_ReleaseName(int version);
 
 
 /**

@@ -2114,7 +2114,7 @@ static void test_ag_send_syscheck_unable_to_connect(void **state) {
 
     errno = EADDRNOTAVAIL;
 
-    expect_string(__wrap__merror, formatted_msg, "dbsync: cannot connect to syscheck: Cannot assign requested address (99)");
+    expect_string(__wrap__mwarn, formatted_msg, "dbsync: cannot connect to syscheck: Cannot assign requested address (99)");
 
     ag_send_syscheck(input);
 
@@ -2137,7 +2137,7 @@ static void test_ag_send_syscheck_error_sending_message(void **state) {
 
     errno = EWOULDBLOCK;
 
-    expect_string(__wrap__merror, formatted_msg, "Cannot send message to syscheck: Resource temporarily unavailable (11)");
+    expect_string(__wrap__mwarn, formatted_msg, "Cannot send message to syscheck: Resource temporarily unavailable (11)");
 
     ag_send_syscheck(input);
 
