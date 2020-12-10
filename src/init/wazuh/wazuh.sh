@@ -135,4 +135,5 @@ WazuhUpgrade()
     rm -f $DIRECTORY/bin/ossec-regex
     rm -f $DIRECTORY/bin/ossec-logtest
     rm -f $DIRECTORY/bin/ossec-makelists
+    rm -f $DIRECTORY/bin/util.sh
 }
