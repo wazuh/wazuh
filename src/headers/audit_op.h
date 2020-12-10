@@ -39,6 +39,14 @@ typedef struct {
 } w_audit_rules_list;
 
 
+typedef enum _audit_status {
+    AUDIT_ERROR = -1,
+    AUDIT_DISABLED = 0,
+    AUDIT_ENABLED = 1,
+    AUDIT_IMMUTABLE = 2
+} audit_status;
+
+
 /**
  * @brief Init loaded rules list.
  *
@@ -100,6 +108,14 @@ void audit_rules_list_free(w_audit_rules_list *wlist);
  * @param fd Audit netlink socket.
  */
 void kernel_get_reply(int fd);
+
+
+/**
+ * @brief Get mode from audit.
+ *
+ * @return AUDIT_ERROR, AUDIT_DISABLED, AUDIT_ENABLED or AUDIT_IMMUTABLE.
+*/
+int audit_get_mode();
 
 
 /**
