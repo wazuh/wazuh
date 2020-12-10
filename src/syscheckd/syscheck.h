@@ -440,7 +440,7 @@ void audit_read_events(int *audit_sock, int reading_mode);
 void audit_set_db_consistency(void);
 
 /**
- * @brief Check if the Auditd daemon is installed and running
+ * @brief Check if the Audit daemon is installed and running
  *
  * @return The PID of Auditd
  */
