@@ -172,7 +172,7 @@ runInit()
     fi
 
     if [ "X${UN}" = "XOpenBSD" -o "X${UN}" = "XNetBSD" -o "X${UN}" = "XFreeBSD" -o "X${UN}" = "XDragonFly" ]; then
-        # Checking for the presence of ossec-control on rc.local
+        # Checking for the presence of wazuh-control on rc.local
         grep wazuh-control /etc/rc.local > /dev/null 2>&1
         if [ $? != 0 ]; then
             echo "echo \"${starting}\"" >> /etc/rc.local
