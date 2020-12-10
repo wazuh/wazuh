@@ -1066,10 +1066,8 @@ InstallWazuh()
         InstallAgent
     elif [ "X$INSTYPE" = "Xserver" ]; then
         InstallServer
-        InstallCDB
     elif [ "X$INSTYPE" = "Xlocal" ]; then
         InstallLocal
-        InstallCDB
     fi
 
 }
