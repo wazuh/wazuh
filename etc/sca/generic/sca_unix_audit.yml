@@ -29,7 +29,7 @@ variables:
   $pam_d_files: /etc/pam.d/common-password,/etc/pam.d/password-auth,/etc/pam.d/system-auth,/etc/pam.d/system-auth-ac,/etc/pam.d/passwd
 
 checks:
-  - id: 4000
+  - id: 3000 
     title: "SSH Hardening: Port should not be 22"
     description: "The ssh daemon should not be listening on port 22 (the default value) for incoming connections."
     rationale: "Changing the default port you may reduce the number of successful attacks from zombie bots, an attacker or bot doing port-scanning can quickly identify your SSH port."
@@ -41,7 +41,7 @@ checks:
     rules:
       - 'f:$sshd_file -> !r:^# && r:Port && !r:\s*\t*22$'
 
-  - id: 4001
+  - id: 3001 
     title: "SSH Hardening: Protocol should be set to 2"
     description: "The SSH protocol should not be 1."
     rationale: "The Protocol parameter dictates which version of the SSH communication and encryption protocols are in use. Version 1 of the SSH protocol has weaknesses."
@@ -53,7 +53,7 @@ checks:
     rules:
       - 'f:$sshd_file -> r:^\s*\t*Protocol\s*\t*2'
 
-  - id: 4002
+  - id: 3002 
     title: "SSH Hardening: Root account should not be able to log in"
     description: "The option PermitRootLogin should be set to no."
     rationale: "The option PermitRootLogin specifies whether root can log in using ssh. If you want log in as root, you should use the option \"Match\" and restrict it to a few IP addresses."
@@ -62,7 +62,7 @@ checks:
     rules:
       - 'f:$sshd_file -> r:^\s*PermitRootLogin\s*\t*no'
 
-  - id: 4003
+  - id: 3003 
     title: "SSH Hardening: No Public Key authentication"
     description: "The option PubkeyAuthentication should be set yes."
     rationale: "Access only by public key. Generally people will use weak passwords and have poor password practices. Keys are considered stronger than password."
@@ -74,7 +74,7 @@ checks:
     rules:
       - 'f:$sshd_file -> r:^\s*PubkeyAuthentication\s*\t*yes'
 
-  - id: 4004
+  - id: 3004 
     title: "SSH Hardening: Password Authentication should be disabled"
     description: "The option PasswordAuthentication should be set to no."
     rationale: "The option PasswordAuthentication specifies whether we should use password-based authentication. Use public key authentication instead of passwords."
@@ -86,7 +86,7 @@ checks:
     rules:
       - 'f:$sshd_file -> r:^\s*PasswordAuthentication\s*\t*no'
 
-  - id: 4005
+  - id: 3005 
     title: "SSH Hardening: Empty passwords should not be allowed"
     description: "The option PermitEmptyPasswords should be set to no."
     rationale: "The option PermitEmptyPasswords specifies whether the server allows logging in to accounts with a null password. Accounts with null passwords are a bad practice."
@@ -98,7 +98,7 @@ checks:
     rules:
       - 'f:$sshd_file -> r:^\s*PermitEmptyPasswords\s*\t*no'
 
-  - id: 4006
+  - id: 3006 
     title: "SSH Hardening: Rhost or shost should not be used for authentication"
     description: "The option IgnoreRhosts should be set to yes."
     rationale: "The option IgnoreRhosts specifies whether rhosts or shosts files should not be used in authentication. For security reasons it is recommended to no use rhosts or shosts files for authentication."
@@ -110,7 +110,7 @@ checks:
     rules:
       - 'f:$sshd_file -> r:^\s*\t*IgnoreRhosts\s*\t*yes'
 
-  - id: 4007
+  - id: 3007 
     title: "SSH Hardening: Grace Time should be one minute or less."
     description: "The option LoginGraceTime should be set to 60 or less."
     rationale: "The option LoginGraceTime specifies how long in seconds after a connection request the server will wait before disconnecting if the user has not successfully logged in. 30 seconds is the recommended time for avoiding open connections without authenticate."
@@ -122,7 +122,7 @@ checks:
     rules:
       - 'f:$sshd_file -> n:^\s*LoginGraceTime\s*\t*(\d+)s compare <= 60'
 
-  - id: 4008
+  - id: 3008 
     title: "SSH Hardening: Wrong Maximum number of authentication attempts"
     description: "The option MaxAuthTries should be set to 4 or less."
     rationale: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. Once the number of failures reaches half this value, additional failures are logged. This should be set to 4."
@@ -134,7 +134,7 @@ checks:
     rules:
       - 'f:$sshd_file -> n:^\s*MaxAuthTries\s*\t*(\d+) compare <= 4'
 
-  - id: 4009
+  - id: 3009 
     title: "SSH Hardening: Ensure SSH HostbasedAuthentication is disabled"
     description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts , or /etc/hosts.equiv , along with successful public key client host authentication. This option only applies to SSH Protocol Version 2."
     rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
@@ -148,7 +148,7 @@ checks:
     rules:
       - 'f:$sshd_file -> r:^\s*\t*HostbasedAuthentication\s*\t*no'
 
-  - id: 4010
+  - id: 3010 
     title: "Ensure retry option for passwords is less than 3"
     description: "The pam_pwquality.so module and pam_cracklib.so module (depending on the Linux distribution used) checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more."
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
@@ -161,7 +161,7 @@ checks:
     rules:
       - 'f:$pam_d_files -> r:password && r:requisite|required && r:pam_cracklib.so|pam_pwquality.so && n:retry\s*=\s*(\d+) compare <= 3'
 
-  - id: 4011
+  - id: 3011 
     title: "Ensure passwords are longer than 14 characters"
     description: "The pam_pwquality.so module and pam_cracklib.so module (depending on the Linux distribution used) checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more."
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
@@ -174,7 +174,7 @@ checks:
     rules:
       - 'f:$pam_d_files -> r:pam_cracklib.so && n:minlen=(\d+) compare >= 14'
 
-  - id: 4012
+  - id: 3012 
     title: "Ensure passwords contain at least one digit"
     description: "The pam_pwquality.so module and pam_cracklib.so module (depending on the Linux distribution used) checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more."
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
@@ -187,7 +187,7 @@ checks:
     rules:
       - 'f:$pam_d_files -> r:pam_cracklib.so && r:dcredit\s*\t*='
 
-  - id: 4013
+  - id: 3013 
     title: "Ensure passwords contain at least one lowercase character"
     description: "The pam_pwquality.so module and pam_cracklib.so module (depending on the Linux distribution used) checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more."
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
@@ -200,7 +200,7 @@ checks:
     rules:
       - 'f:$pam_d_files -> r:pam_cracklib.so && r:lcredit\s*\t*='
 
-  - id: 4014
+  - id: 3014 
     title: "Ensure passwords contain at least one uppercase character"
     description: "The pam_pwquality.so module and pam_cracklib.so module (depending on the Linux distribution used) checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more."
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
@@ -213,7 +213,7 @@ checks:
     rules:
       - 'f:$pam_d_files -> r:pam_cracklib.so && r:ucredit\s*\t*='
 
-  - id: 4015
+  - id: 3015 
     title: "Ensure passwords contain at least one special character"
     description: "The pam_pwquality.so module and pam_cracklib.so module (depending on the Linux distribution used) checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more."
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
@@ -226,7 +226,7 @@ checks:
     rules:
       - 'f:$pam_d_files -> r:pam_cracklib.so && r:ocredit\s*\t*='
 
-  - id: 4016
+  - id: 3016 
     title: "Ensure lockout for failed password attempts is configured"
     description: "Lock out users after n unsuccessful consecutive login attempts. The first sets of changes are made to the PAM configuration files. The second set of changes are applied to the program specific PAM configuration file. The second set of changes must be applied to each program that will lock out users."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
@@ -235,7 +235,7 @@ checks:
     rules:
       - 'f:/etc/pam.d/common-auth -> !r:^# && r:auth\s*\t*required\s*\t*pam_tally2.so && r:onerr=fail && r:audit && r:silent && r:deny\s*=\s*\d && r:unlock_time\s*=\s*\d\d\d+'
 
-  - id: 4017
+  - id: 3017 
     title: "Ensure password hashing algorithm is SHA-512"
     description: "The commands below change password encryption from md5 to sha512 (a much stronger hashing algorithm). All existing accounts will need to perform a password change to upgrade the stored hashes to the new algorithm."
     rationale: "The SHA-512 algorithm provides much stronger hashing than MD5, thus providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords. Note that these change only apply to accounts configured on the local system."
@@ -246,7 +246,7 @@ checks:
     rules:
       - 'f:$pam_d_files -> r:^password\.+pam_unix.so\.+sha512'
 
-  - id: 4018
+  - id: 3018 
     title: "Ensure passwords in /etc/shadow are hashed with SHA-512 or SHA-256"
     description: "SHA-512 and SHA-256 are much stronger hashing algorithms than MD5."
     rationale: "The SHA-512 algorithm provides much stronger hashing than MD5, thus providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords."
@@ -258,7 +258,7 @@ checks:
     rules:
       - 'f:/etc/shadow -> r:^\w+:\$1\$|^\w+:\$2\$|^\w+:\$md5\$|^\w+:\$md5\$|^\w+:\$__unix__\$'
 
-  - id: 4019
+  - id: 3019 
     title: "Ensure password expiration is 365 days or less"
     description: "The PASS_MAX_DAYS parameter in /etc/login.defs allows an administrator to force passwords to expire once they reach a defined age. It is recommended that the PASS_MAX_DAYS parameter be set to less than or equal to 365 days."
     rationale: "The window of opportunity for an attacker to leverage compromised credentials or successfully compromise credentials via an online brute force attack is limited by the age of the password. Therefore, reducing the maximum age of a password also reduces an attacker's window of opportunity."
@@ -271,7 +271,7 @@ checks:
     rules:
       - 'f:/etc/login.defs -> n:^PASS_MAX_DAYS\s*\t*(\d+)$ compare <= 365'
 
-  - id: 4020
+  - id: 3020 
     title: "Ensure SELinux or AppArmor are installed"
     description: "SELinux and AppArmor provide Mandatory Access Controls."
     rationale: "Without a Mandatory Access Control system installed only the default Discretionary Access Control system will be available."
@@ -283,7 +283,7 @@ checks:
       - 'c:dpkg -s selinux-basics -> r:install ok installed'
       - 'c:dpkg -s apparmor -> r:install ok installed'
 
-  - id: 4021
+  - id: 3021 
     title: "Ensure CUPS is not enabled"
     description: "The Common Unix Print System (CUPS) provides the ability to print to both local and network printers. A system running CUPS can also accept print jobs from remote systems and print them to local printers. It also provides a web based remote administration capability."
     rationale: "If the system does not need to print jobs or accept print jobs from other systems, it is recommended that CUPS be disabled to reduce the potential attack surface."
@@ -296,7 +296,7 @@ checks:
     rules:
       - 'c:systemctl is-enabled cups -> r:^enabled'
 
-  - id: 4022
+  - id: 3022 
     title: "Ensure auditd service is enabled"
     description: "Turn on the auditd daemon to record system events."
     rationale: "The capturing of system events provides system administrators with information to allow them to determine if unauthorized access to their system is occurring."

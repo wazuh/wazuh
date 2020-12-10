@@ -25,7 +25,7 @@ stages:
              count: int
      status_code: 200
      json:
-       error: !anyint
+       error: 0
        data:
          agent_os:
            - count: !anyint
@@ -43,13 +43,12 @@ stages:
                name: !anystr
                platform: !anystr
                version: !anystr
-           - count: !anyint
          agent_status:
-           active: 5
+           active: 4
            disconnected: 1
            never_connected: 1
            pending: 0
-           total: 7
+           total: 6
          agent_version: !anything # This will be tested with an external function
          groups: []
          last_registered_agent:

@@ -361,8 +361,8 @@ char *get_release_from_build(char *os_build) {
 
 #else
 
-char *OSX_ReleaseName(const int version) {
-    char *r_names[] = {
+const char *OSX_ReleaseName(int version) {
+    const char *R_NAMES[] = {
     /* 10 */ "Snow Leopard",
     /* 11 */ "Lion",
     /* 12 */ "Mountain Lion",
@@ -372,11 +372,17 @@ char *OSX_ReleaseName(const int version) {
     /* 16 */ "Sierra",
     /* 17 */ "High Sierra",
     /* 18 */ "Mojave",
-    /* 19 */ "Catalina"};
-    if (version >= 10 && version <= 19)
-        return r_names[version%10];
-    else
+    /* 19 */ "Catalina",
+    /* 20 */ "Big Sur",
+    };
+
+    version -= 10;
+
+    if (version >= 0 && (unsigned)version < sizeof(R_NAMES) / sizeof(char *)) {
+        return R_NAMES[version];
+    } else {
         return "Unknown";
+    }
 }
 
 
@@ -456,7 +462,12 @@ os_info *get_unix_version()
                 fclose(version_release);
             }
         }
-    } else {
+    }
+
+    if (!info->os_name || !info->os_version || !info->os_platform) {
+        os_free(info->os_name);
+        os_free(info->os_version);
+        os_free(info->os_platform);
         regex_t regexCompiled;
         regmatch_t match[2];
         int match_size;

@@ -148,27 +148,27 @@ int receive_msg()
                 /* Connect to the Security configuration assessment queue */
                 if (agt->cfgadq >= 0) {
                     if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
-                        merror("Error communicating with Security configuration assessment");
+                        mwarn("Error communicating with Security configuration assessment");
                         close(agt->cfgadq);
 
                         if ((agt->cfgadq = StartMQ(CFGASSESSMENTQUEUEPATH, WRITE, 1)) < 0) {
-                            merror("Unable to connect to the Security configuration assessment "
+                            mwarn("Unable to connect to the Security configuration assessment "
                                     "queue (disabled).");
                             agt->cfgadq = -1;
                         } else if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
-                            merror("Error communicating with Security configuration assessment");
+                            mwarn("Error communicating with Security configuration assessment");
                             close(agt->cfgadq);
                             agt->cfgadq = -1;
                         }
                     }
                 } else {
                     if ((agt->cfgadq = StartMQ(CFGASSESSMENTQUEUEPATH, WRITE, 1)) < 0) {
-                        merror("Unable to connect to the Security configuration assessment "
+                        mwarn("Unable to connect to the Security configuration assessment "
                             "queue (disabled).");
                         agt->cfgadq = -1;
                     } else {
                          if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
-                            merror("Error communicating with Security configuration assessment");
+                            mwarn("Error communicating with Security configuration assessment");
                             close(agt->cfgadq);
                             agt->cfgadq = -1;
                         }

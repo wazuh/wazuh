@@ -2,19 +2,18 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
+import copy
 import fcntl
 import hashlib
 import ipaddress
 from base64 import b64encode
 from datetime import date, datetime
-
 from json import dumps, loads
-from os import chown, chmod, path, makedirs, urandom, stat, remove
+from os import chown, chmod, makedirs, urandom, stat, remove
+from os import listdir, path
+from platform import platform
 from shutil import copyfile, rmtree
 from time import time
-
-import copy
-from platform import platform
 
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
@@ -1072,14 +1071,12 @@ def send_restart_command(agent_id):
 
 @common.context_cached('system_agents')
 def get_agents_info():
-    """Get all agents IDs in the system
+    """Get all agent IDs in the system."""
+    with open(common.client_keys, 'r') as f:
+        result = {line.split(' ')[0] for line in f}
 
-    :return: List of agents ids
-    """
-    db_query = WazuhDBQueryAgents(select=['id'], limit=None)
-    query_data = db_query.run()
-
-    return {str(agent_info['id']).zfill(3) for agent_info in query_data['items']}
+    result.add('000')
+    return result
 
 
 @common.context_cached('system_groups')
@@ -1088,32 +1085,35 @@ def get_groups():
 
     :return: List of group names
     """
-    db_query = WazuhDBQueryGroup(limit=None)
-    query_data = db_query.run()
+    groups = set()
+    for shared_file in listdir(common.shared_path):
+        path.isdir(path.join(common.shared_path, shared_file)) and groups.add(shared_file)
 
-    return {group['name'] for group in query_data['items']}
+    return groups
 
 
+@common.context_cached('system_expanded_groups')
 def expand_group(group_name):
-    """Expands a certain group or all (*) of them
+    """Expand a certain group or all (*) of them
 
     :param group_name: Name of the group to be expanded
     :return: List of agents ids
     """
-    if group_name == '*':
-        data = WazuhDBQueryAgents(select=['group'], limit=None).run()['items']
-        groups = set()
-        for agent_group in data:
-            groups.update(set(agent_group.get('group', list())))
-    else:
-        groups = {group_name}
     agents_ids = set()
-    for group in groups:
-        agents_group = WazuhDBQueryMultigroups(group, select=['id'], limit=None).run()['items']
-        for agent in agents_group:
-            agents_ids.add(str(agent['id']).zfill(3))
+    if group_name == '*':
+        for file in listdir(common.groups_path):
+            if path.getsize(path.join(common.groups_path, file)) > 0:
+                agents_ids.add(file)
+    else:
+        for file in listdir(common.groups_path):
+            with open(path.join(common.groups_path, file), 'r') as f:
+                try:
+                    if group_name in f.readlines()[0]:
+                        agents_ids.add(file)
+                except IndexError:
+                    pass
 
-    return agents_ids
+    return agents_ids & get_agents_info()
 
 
 def get_rbac_filters(system_resources=None, permitted_resources=None, filters=None):

@@ -84,6 +84,7 @@
 #define HOTFIX_INSTALLED  112
 #define HOTFIX_SUPERSEDED 80
 #define HOTFIX_STAGED     64
+#define HOTFIX_SIZE       9 // KB0000001
 
 /* MAC package scan */
 #define INFO_FILE       "Contents/Info.plist"

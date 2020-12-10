@@ -1967,6 +1967,7 @@ ifneq ($(wildcard external/*/*),)
 	rm -f $(msgpack_o) $(EXTERNAL_MSGPACK)libmsgpack.a
 	-${MAKE} -C $(EXTERNAL_BZIP2) clean
 	-cd ${EXTERNAL_LIBPLIST} && ${MAKE} clean && rm -rf bin/*
+	-cd ${EXTERNAL_LIBPCRE2} && ${MAKE} distclean && rm include/*
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && ${MAKE} realclean

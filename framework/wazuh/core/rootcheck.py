@@ -75,6 +75,12 @@ class WazuhDBQueryRootcheck(WazuhDBQuery):
                            self.min_select_fields if field in db_tuple and db_tuple[field] is not None}
                           for db_tuple in self._data], 'totalItems': self.total_items}
 
+    def _process_filter(self, field_name, field_filter, q_filter):
+        if field_name == "status":
+            self._filter_status(q_filter)
+        else:
+            super()._process_filter(field_name, field_filter, q_filter)
+
     @staticmethod
     def _pass_filter(db_filter):
         return False
