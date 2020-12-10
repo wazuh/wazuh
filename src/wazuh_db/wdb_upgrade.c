@@ -86,7 +86,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
         return wdb;
     case 0:
         // The table doesn't exist. Checking if version is 3.10 to upgrade or recreate
-        if (wdb_global_check_manager_keepalive(wdb) != 1) {
+        if (wdb_upgrade_check_manager_keepalive(wdb) != 1) {
             wdb = wdb_backup_global(wdb, -1);
             return wdb;
         }
@@ -349,7 +349,7 @@ int wdb_adjust_v4(wdb_t *wdb) {
 }
 
 // Check the presence of manager's keepalive in the global database
-int wdb_global_check_manager_keepalive(wdb_t *wdb) {
+int wdb_upgrade_check_manager_keepalive(wdb_t *wdb) {
     sqlite3_stmt *stmt = NULL;
     int result = -1;
 
