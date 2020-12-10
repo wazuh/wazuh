@@ -38,7 +38,6 @@ list(APPEND shared_tests_names "test_queue_linked_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock,--wrap=pthread_cond_wait \
                                 -Wl,--wrap=pthread_cond_signal")
 
-
 list(APPEND shared_tests_names "test_agent_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,_merror")
 
