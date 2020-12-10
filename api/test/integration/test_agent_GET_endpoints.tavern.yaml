@@ -1248,7 +1248,6 @@ stages:
         error: !anyint
         data:
           active-response:
-            ca_verification: !anystr
             disabled: !anystr
 
   - name: Request-Com-Active-response (Agent)
@@ -4023,7 +4022,7 @@ stages:
                 - '999'
                 - '1000'
               error:
-                code: 1818
+                code: 1814
           total_affected_items: 0
           total_failed_items: 2
 
@@ -4114,7 +4113,7 @@ stages:
               id:
                 - '000'
             - error:
-                code: 1818
+                code: 1814
                 message: !anystr
                 remediation: !anything
               id:
