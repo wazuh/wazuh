@@ -124,6 +124,43 @@ void kernel_get_reply(int fd) {
 }
 
 
+int audit_get_mode() {
+    int auditd_fd = audit_open();
+    const int attempts = 40;
+    struct audit_reply rep;
+    int reply_retval = AUDIT_ERROR;
+    int i = 0;
+
+    if (auditd_fd < 0) {
+        mdebug2("Error opening audit socket.");
+        return AUDIT_ERROR;
+    }
+
+    if (audit_request_status(auditd_fd) < 0) {
+        mdebug2("Error in audit_request_status().");
+        audit_close(auditd_fd);
+        return AUDIT_ERROR;
+    }
+
+    for (i = 0; i < attempts; i++) {
+        reply_retval = audit_get_reply(auditd_fd, &rep, GET_REPLY_NONBLOCKING, 0);
+
+        if (reply_retval > 0) {
+            audit_close(auditd_fd);
+            return rep.status->enabled;
+        }
+
+        sleep(1);
+    }
+
+    audit_close(auditd_fd);
+
+    mdebug2("Couldn't get audit mode.");
+
+    return AUDIT_ERROR;
+}
+
+
 char *audit_clean_path(char *cwd, char *path) {
 
     char *file_ptr = path;
