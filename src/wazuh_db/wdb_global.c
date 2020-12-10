@@ -1325,7 +1325,7 @@ bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data) {
         sqlite3_stmt *stmt = wdb_get_cache_stmt(wdb, query);
         
         if (NULL != stmt) {
-            char *field_value = strtok(data,"|");
+            char *field_value = strtok(data,"\0");
             for (column = kv_value->column_list; column ; column=column->next) {
                 if (column->value.is_old_implementation) {
                     if (FIELD_TEXT == column->value.type) {
@@ -1348,7 +1348,7 @@ bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data) {
                         }
                     }
                     if (column->next && NULL != field_value) {
-                        field_value = strtok(NULL,"|");
+                        field_value = strtok(NULL,"\0");
                     }
                 }
             }
@@ -1371,12 +1371,12 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
         char **field_values = NULL;
         const size_t size = sizeof(char*) * (os_strcnt(data, '|') + 1);
         field_values = (char **)malloc(size);
-        char *tok = strtok(data, "|");
+        char *tok = strtok(data, "\0");
         char **curr = field_values;
 
         while (NULL != tok) {
             *curr = tok;
-            tok = strtok(NULL, "|");
+            tok = strtok(NULL, "\0");
             ++curr;
         }
         *curr = NULL;
@@ -1501,7 +1501,7 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
         sqlite3_stmt *stmt = wdb_get_cache_stmt(wdb, query);
 
         if (NULL != stmt) {
-            char *field_value = strtok(data,"|");     
+            char *field_value = strtok(data,"\0");     
             struct column_list const *column = NULL;
             int index = 1;
             for (column = kv_value->column_list; column ; column=column->next) {
@@ -1519,7 +1519,7 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
                         ++index;
                     }
                     if (column->next && NULL != field_value) {
-                        field_value = strtok(NULL,"|");
+                        field_value = strtok(NULL,"\0");
                     }
                 }
             }

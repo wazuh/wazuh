@@ -1944,7 +1944,7 @@ const char** get_field_list(const char *type) {
 bool fill_data_dbsync(cJSON *data, const char *field_list[], buffer_t * const msg) {
     bool ret_val = false;
     static const int NULL_TEXT_LENGTH = 4;
-    static const int PIPE_SEPARATOR_LENGTH = 1;
+    static const int SEPARATOR_LENGTH = 1;
     while (NULL != *field_list) {
         const cJSON *key = cJSON_GetObjectItem(data, *field_list);
         if (NULL != key) {
@@ -1964,10 +1964,10 @@ bool fill_data_dbsync(cJSON *data, const char *field_list[], buffer_t * const ms
         } else {
             buffer_push(msg, "NULL", NULL_TEXT_LENGTH);
         }
-        // Message separated by pipes, includes the values to be processed in the wazuhdb
+        // Message separated by \0, includes the values to be processed in the wazuhdb
         // this must maintain order and must always be completed, and the values that
         // do not correspond will not be proccessed in wazuh-db
-        buffer_push(msg, "|", PIPE_SEPARATOR_LENGTH);
+        buffer_push(msg, "\0", SEPARATOR_LENGTH);
         ++field_list;
         ret_val = true;
     }
