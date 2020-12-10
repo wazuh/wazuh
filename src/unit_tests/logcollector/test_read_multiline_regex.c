@@ -21,7 +21,7 @@
 #include "../wrappers/libc/stdio_wrappers.h"
 
 void multiline_replace(char * buffer, w_multiline_replace_type_t type);
-bool multiline_ctxt_is_expired(unsigned int timeout, w_multiline_ctxt_t * ctxt);
+bool multiline_ctxt_is_expired(time_t timeout, w_multiline_ctxt_t * ctxt);
 bool multiline_ctxt_restore(char * buffer, int * readed_lines, w_multiline_ctxt_t * ctxt);
 void multiline_ctxt_free(w_multiline_ctxt_t ** ctxt);
 void multiline_ctxt_backup(char * buffer, int readed_lines, w_multiline_ctxt_t ** ctxt);
@@ -371,7 +371,9 @@ void test_multiline_replace_w_noreplace_char_replace_last(void ** state) {
     assert_string_equal(str, str_expected);
 }
 // Test multiline_ctxt_is_expired
-void test_multiline_ctxt_is_expired_not_found(void ** state) { assert_true(multiline_ctxt_is_expired(1, NULL)); }
+void test_multiline_ctxt_is_expired_not_found(void ** state) { 
+    assert_true(multiline_ctxt_is_expired(1, NULL)); 
+}
 
 void test_multiline_ctxt_is_expired_not_expired(void ** state) {
 

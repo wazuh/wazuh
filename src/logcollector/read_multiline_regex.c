@@ -22,7 +22,7 @@
 STATIC bool multiline_ctxt_restore(char * buffer, int * readed_lines, w_multiline_ctxt_t * ctxt);
 STATIC void multiline_ctxt_backup(char * buffer, int readed_lines, w_multiline_ctxt_t ** ctxt);
 STATIC void multiline_ctxt_free(w_multiline_ctxt_t ** ctxt);
-STATIC bool multiline_ctxt_is_expired(unsigned int timeout, w_multiline_ctxt_t * ctxt);
+STATIC bool multiline_ctxt_is_expired(time_t timeout, w_multiline_ctxt_t * ctxt);
 /**
  * @brief Get log from file with multiline log support.
  *
@@ -448,7 +448,7 @@ STATIC bool multiline_ctxt_restore(char * buffer, int * readed_lines, w_multilin
     return true;
 }
 
-STATIC bool multiline_ctxt_is_expired(unsigned int timeout, w_multiline_ctxt_t * ctxt) {
+STATIC bool multiline_ctxt_is_expired(time_t timeout, w_multiline_ctxt_t * ctxt) {
 
     if (!ctxt) {
         return true;
