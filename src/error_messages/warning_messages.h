@@ -47,6 +47,7 @@
 #define FIM_WHODATA_PARAMETER                   "(6932): Invalid parameter type (%ld) for '%s'."
 #define FIM_WHODATA_RENDER_EVENT                "(6933): Error rendering the event. Error %lu."
 #define FIM_WHODATA_RENDER_PARAM                "(6934): Invalid number of rendered parameters."
+#define FIM_DB_TEMPORARY_FILE_POSITION          "(6935): Unable to reposition temporary file to beginning. Error[%d]: '%s'"
 
 /* Monitord warning messages */
 #define ROTATE_LOG_LONG_PATH                    "(7500): The path of the rotated log is too long."

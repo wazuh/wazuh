@@ -14,7 +14,7 @@ from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh import rule as rule_framework
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
-logger = logging.getLogger('wazuh')
+logger = logging.getLogger('wazuh-api')
 
 
 @cache(expires=api_conf['cache']['time'])

@@ -25,7 +25,7 @@ stages:
              count: int
      status_code: 200
      json:
-       error: !anyint
+       error: 0
        data:
          agent_os:
            - count: !anyint
@@ -43,13 +43,12 @@ stages:
                name: !anystr
                platform: !anystr
                version: !anystr
-           - count: !anyint
          agent_status:
-           active: 9
+           active: 8
            disconnected: 2
            never_connected: 2
            pending: 0
-           total: 13
+           total: 12
          agent_version: !anything
          groups:
            - configSum: !anystr

@@ -129,9 +129,14 @@ WazuhUpgrade()
     rm -f $DIRECTORY/wodles/cve.db
     rm -f $DIRECTORY/queue/vulnerabilities/cve.db
 
-	# Remove deprecated tools in previous versions
+    # Remove deprecated Wazuh tools
 
-	rm -f $DIRECTORY/bin/rootcheck_control
+    rm -f $DIRECTORY/bin/ossec-control
+    rm -f $DIRECTORY/bin/ossec-regex
+    rm -f $DIRECTORY/bin/ossec-logtest
+    rm -f $DIRECTORY/bin/ossec-makelists
+    rm -f $DIRECTORY/bin/util.sh
+    rm -f $DIRECTORY/bin/rootcheck_control
 	rm -f $DIRECTORY/bin/syscheck_control
 	rm -f $DIRECTORY/bin/syscheck_update
 }

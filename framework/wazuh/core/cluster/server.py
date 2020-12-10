@@ -3,6 +3,7 @@
 import asyncio
 import itertools
 import logging
+import os
 import random
 import ssl
 import time
@@ -40,7 +41,7 @@ class AbstractServerHandler(c_common.Handler):
         tag : str
             Log tag.
         """
-        super().__init__(fernet_key=fernet_key, logger=logger, tag="{} {}".format(tag, random.randint(0, 1000)),
+        super().__init__(fernet_key=fernet_key, logger=logger, tag=f"{tag} {random.randint(0, 1000)}",
                          cluster_items=cluster_items)
         self.server = server
         self.loop = loop
@@ -70,7 +71,7 @@ class AbstractServerHandler(c_common.Handler):
             Socket to write data on.
         """
         peername = transport.get_extra_info('peername')
-        self.logger.info('Connection from {}'.format(peername))
+        self.logger.info(f'Connection from {peername}')
         self.ip = peername[0]
         self.transport = transport
 
@@ -139,9 +140,9 @@ class AbstractServerHandler(c_common.Handler):
             raise exception.WazuhClusterError(3029)
         else:
             self.server.clients[self.name] = self
-            self.tag = '{} {}'.format(self.tag, self.name)
+            self.tag = f'{self.tag} {self.name}'
             context_tag.set(self.tag)
-            return b'ok', 'Client {} added'.format(self.name).encode()
+            return b'ok', f'Client {self.name} added'.encode()
 
     def process_response(self, command: bytes, payload: bytes) -> bytes:
         """Define response commands for servers.
@@ -353,7 +354,7 @@ class AbstractServer:
         """Send an echo message to all clients every 3 seconds."""
         while True:
             for client_name, client in self.clients.items():
-                self.logger.debug("Sending echo to worker {}".format(client_name))
+                self.logger.debug(f"Sending echo to worker {client_name}")
                 self.logger.info((await client.send_request(b'echo-m', b'keepalive ' + client_name)).decode())
             await asyncio.sleep(3)
 
@@ -363,8 +364,7 @@ class AbstractServer:
             for client_name, client in self.clients.items():
                 before = time.time()
                 response = await client.send_request(b'echo', b'a' * self.performance)
-                after = time.time()
-                self.logger.info("Received size: {} // Time: {}".format(len(response), after - before))
+                self.logger.info(f"Received size: {len(response)} // Time: {time.time() - before}")
             await asyncio.sleep(3)
 
     async def concurrency_test(self):
@@ -373,9 +373,8 @@ class AbstractServer:
             before = time.time()
             for i in range(self.concurrency):
                 for client_name, client in self.clients.items():
-                    await client.send_request(b'echo', 'concurrency {} client {}'.format(i, client_name).encode())
-            after = time.time()
-            self.logger.info("Time sending {} messages: {}".format(self.concurrency, after - before))
+                    await client.send_request(b'echo', f'concurrency {i} client {client_name}'.encode())
+            self.logger.info(f"Time sending {self.concurrency} messages: {time.time() - before}")
             await asyncio.sleep(10)
 
     async def start(self):
@@ -387,8 +386,8 @@ class AbstractServer:
 
         if self.enable_ssl:
             ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
-            ssl_context.load_cert_chain(certfile='{}/etc/sslmanager.cert'.format(common.ossec_path),
-                                        keyfile='{}/etc/sslmanager.key'.format(common.ossec_path))
+            ssl_context.load_cert_chain(certfile=os.path.join(common.ossec_path, 'etc', 'sslmanager.cert'),
+                                        keyfile=os.path.join(common.ossec_path, 'etc', 'sslmanager.key'))
         else:
             ssl_context = None
 
@@ -399,10 +398,10 @@ class AbstractServer:
                                                             cluster_items=self.cluster_items),
                 host=self.configuration['bind_addr'], port=self.configuration['port'], ssl=ssl_context)
         except OSError as e:
-            self.logger.error("Could not start master: {}".format(e))
+            self.logger.error(f"Could not start master: {e}")
             raise KeyboardInterrupt
 
-        self.logger.info('Serving on {}'.format(server.sockets[0].getsockname()))
+        self.logger.info(f'Serving on {server.sockets[0].getsockname()}')
         self.tasks.append(server.serve_forever)
 
         async with server:

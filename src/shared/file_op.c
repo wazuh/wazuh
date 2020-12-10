@@ -2564,7 +2564,7 @@ FILE * wfopen(const char * pathname, const char * mode) {
     for (i = 0; mode[i]; ++i) {
         switch (mode[i]) {
         case '+':
-            dwDesiredAccess |= GENERIC_WRITE;
+            dwDesiredAccess |= GENERIC_WRITE | GENERIC_READ;
             flags &= ~_O_RDONLY;
             break;
         case 'a':

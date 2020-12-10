@@ -22,7 +22,7 @@ fi
 
 start() {
     echo -n "Starting Wazuh: "
-    ${DIRECTORY}/bin/ossec-control start > /dev/null
+    ${DIRECTORY}/bin/wazuh-control start > /dev/null
     RETVAL=$?
     if [ $RETVAL -eq 0 ]; then
         success
@@ -35,7 +35,7 @@ start() {
 
 stop() {
     echo -n "Stopping Wazuh: "
-    ${DIRECTORY}/bin/ossec-control stop > /dev/null
+    ${DIRECTORY}/bin/wazuh-control stop > /dev/null
     RETVAL=$?
     if [ $RETVAL -eq 0 ]; then
         success
@@ -47,7 +47,7 @@ stop() {
 }
 
 status() {
-    ${DIRECTORY}/bin/ossec-control status
+    ${DIRECTORY}/bin/wazuh-control status
     RETVAL=$?
     return $RETVAL
 }

@@ -22,7 +22,7 @@ echo "`date` $0 $1 $2 $3 $4 $5" >> ${PWD}/../logs/active-responses.log
 
 # Adding the ip to hosts.deny
 if [ "x${ACTION}" = "xadd" ]; then
-   ${PWD}/../bin/ossec-control restart
+   ${PWD}/../bin/wazuh-control restart
    exit 0;
 
 
