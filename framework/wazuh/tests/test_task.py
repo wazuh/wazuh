@@ -11,12 +11,7 @@ import pytest
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
-        sys.modules['api'] = MagicMock()
         import wazuh.rbac.decorators
-
-        del sys.modules['wazuh.rbac.orm']
-        del sys.modules['api']
 
         from wazuh.tests.util import get_fake_database_data, RBAC_bypasser, InitWDBSocketMock
 
