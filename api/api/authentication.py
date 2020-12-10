@@ -67,7 +67,7 @@ def check_user(user, password, required_scopes=None):
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=True,
-                          logger=logging.getLogger('wazuh')
+                          logger=logging.getLogger('wazuh-api')
                           )
     data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
 
@@ -137,7 +137,7 @@ def generate_token(user_id=None, data=None, run_as=False):
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=True,
-                          logger=logging.getLogger('wazuh')
+                          logger=logging.getLogger('wazuh-api')
                           )
     result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).dikt
     timestamp = int(time())
@@ -220,7 +220,7 @@ def decode_token(token):
                               request_type='local_master',
                               is_async=False,
                               wait_for_complete=True,
-                              logger=logging.getLogger('wazuh')
+                              logger=logging.getLogger('wazuh-api')
                               )
         data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).to_dict()
 
@@ -234,7 +234,7 @@ def decode_token(token):
                               request_type='local_master',
                               is_async=False,
                               wait_for_complete=True,
-                              logger=logging.getLogger('wazuh')
+                              logger=logging.getLogger('wazuh-api')
                               )
         result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
 

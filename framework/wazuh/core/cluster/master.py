@@ -25,7 +25,7 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
     """
     Define the process and variables necessary to receive and process integrity information from the master.
 
-    This task is created by the master when the worker starts sending its integrity file checksums and it's destroyed
+    This task is created by the master when the worker starts sending its integrity file metadata and it's destroyed
     by the master once the necessary files to update have been sent.
     """
 
@@ -158,7 +158,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         bytes
             Response message.
         """
-        self.logger.debug("Command received: {}".format(command))
+        self.logger.debug(f"Command received: {command}")
         if command == b'sync_i_w_m_p' or command == b'sync_e_w_m_p':
             return self.get_permission(command)
         elif command == b'sync_i_w_m' or command == b'sync_e_w_m':
@@ -282,7 +282,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             raise exception.WazuhClusterError(3031)
 
         # Create directory where zips and other files coming from or going to the worker will be managed.
-        worker_dir = '{}/queue/cluster/{}'.format(common.ossec_path, self.name)
+        worker_dir = os.path.join(common.ossec_path, 'queue', 'cluster', self.name)
         if cmd == b'ok' and not os.path.exists(worker_dir):
             utils.mkdir_with_mode(worker_dir)
         return cmd, payload
@@ -429,6 +429,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         if sync_type == b'sync_a_w_m_s':
             self.sync_agent_info_status['date_start_master'] = str(datetime.now())
+            self.logger.info(f"Starting to synchronize agent-info from {self.name} node.")
 
         return b'ok', b'Started ' + sync_type
 
@@ -450,6 +451,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         if sync_type == b'sync_a_w_m_e':
             self.sync_agent_info_status['date_end_master'] = str(datetime.now())
             self.sync_agent_info_status['total_agentinfo'] = size.decode()
+            self.logger.info(f"Finished agent-info synchronization from {self.name} node.")
 
         return b'ok', b'Ended ' + sync_type
 
@@ -517,14 +519,14 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         if isinstance(received_filename, Exception):
             raise received_filename
 
-        logger.debug("Received file from worker: '{}'".format(received_filename))
+        logger.debug(f"Received file from worker: '{received_filename}'")
 
-        # Path to checksums file (cluster_control.json) and to zipdir (directory with decompressed files).
-        files_checksums, decompressed_files_path = await wazuh.core.cluster.cluster.decompress_files(received_filename)
-        logger.info("Analyzing worker files: Received {} files to check.".format(len(files_checksums)))
+        # Path to metadata file (cluster_control.json) and to zipdir (directory with decompressed files).
+        files_metadata, decompressed_files_path = await wazuh.core.cluster.cluster.decompress_files(received_filename)
+        logger.info(f"Analyzing worker files: Received {len(files_metadata)} files to check.")
         try:
             # Unmerge unzipped files to their destination path inside /var/ossec/ if their modification time is newer.
-            await self.process_files_from_worker(files_checksums, decompressed_files_path, logger)
+            await self.process_files_from_worker(files_metadata, decompressed_files_path, logger)
         finally:
             shutil.rmtree(decompressed_files_path)
 
@@ -547,9 +549,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
     async def sync_integrity(self, task_name: str, received_file: asyncio.Event):
         """Perform the integrity synchronization process by comparing local and received files.
 
-        It waits until the worker sends its integrity checksums. Once received, they are unzipped.
+        It waits until the worker sends its integrity metadata. Once received, they are unzipped.
 
-        The information inside the unzipped cluster_control.json file (integrity checksums) is compared with the
+        The information inside the unzipped cluster_control.json file (integrity metadata) is compared with the
         local one (updated every self.cluster_items['intervals']['master']['recalculate_integrity'] seconds).
         All files that are different (new, deleted, with a different MD5, etc) are classified into four groups:
         shared, missing, extra and extra_valid.
@@ -584,17 +586,17 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         if isinstance(received_filename, Exception):
             raise received_filename
 
-        logger.debug("Received file from worker: '{}'".format(received_filename))
+        logger.debug(f"Received file from worker: '{received_filename}'")
 
-        # Path to checksums file (cluster_control.json) and to zipdir (directory with decompressed files).
-        files_checksums, decompressed_files_path = await wazuh.core.cluster.cluster.decompress_files(received_filename)
+        # Path to metadata file (cluster_control.json) and to zipdir (directory with decompressed files).
+        files_metadata, decompressed_files_path = await wazuh.core.cluster.cluster.decompress_files(received_filename)
         # There are no files inside decompressed_files_path, only cluster_control.json which has already been loaded.
         shutil.rmtree(decompressed_files_path)
-        logger.info("Analyzing worker integrity: Received {} files to check.".format(len(files_checksums)))
+        logger.info(f"Analyzing worker integrity: Received {len(files_metadata)} files to check.")
 
         # Classify files in shared, missing, extra and extra valid.
         worker_files_ko, counts = wazuh.core.cluster.cluster.compare_files(self.server.integrity_control,
-                                                                           files_checksums, self.name)
+                                                                           files_metadata, self.name)
 
         # Health check
         self.sync_integrity_status['total_files'] = counts
@@ -652,12 +654,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger.info("Finished integrity synchronization.")
         return result
 
-    async def process_files_from_worker(self, files_checksums: Dict, decompressed_files_path: str, logger):
+    async def process_files_from_worker(self, files_metadata: Dict, decompressed_files_path: str, logger):
         """Iterate over received files from worker and updates the local ones.
 
         Parameters
         ----------
-        files_checksums : dict
+        files_metadata : dict
             Dictionary containing file metadata (each key is a filepath and each value its metadata).
         decompressed_files_path : str
             Filepath of the decompressed received zipfile.
@@ -678,13 +680,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 Metadata of the file (MD5, merged, etc).
             """
             # Full path
-            full_path, error_updating_file, n_merged_files = common.ossec_path + name, False, 0
+            full_path, error_updating_file = os.path.join(common.ossec_path, name), False
 
-            # Cluster items information: write mode and permissions.
-            lock_full_path = "{}/queue/cluster/lockdir/{}.lock".format(common.ossec_path, os.path.basename(full_path))
-            lock_file = open(lock_full_path, 'a+')
             try:
-                fcntl.lockf(lock_file, fcntl.LOCK_EX)
                 # Only valid client.keys is the local one (master).
                 if os.path.basename(name) == 'client.keys':
                     self.logger.warning("Client.keys received in a master node")
@@ -699,7 +697,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                         # Destination path.
                         full_unmerged_name = os.path.join(common.ossec_path, file_path)
                         # Path where to create the file before moving it to the destination path (with safe_move).
-                        tmp_unmerged_path = os.path.join(common.ossec_path, 'queue/cluster', self.name, os.path.basename(file_path))
+                        tmp_unmerged_path = os.path.join(common.ossec_path, 'queue', 'cluster', self.name, os.path.basename(file_path))
 
                         try:
                             agent_id = os.path.basename(file_path)
@@ -709,7 +707,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                     if n_errors['warnings'].get(data['cluster_item_key']) is None \
                                     else n_errors['warnings'][data['cluster_item_key']] + 1
 
-                                self.logger.debug2("Received group of an non-existent agent '{}'".format(agent_id))
+                                self.logger.debug2(f"Received group of an non-existent agent '{agent_id}'")
                                 continue
 
                             # Format the file_data specified inside the merged file.
@@ -722,7 +720,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                             if os.path.isfile(full_unmerged_name):
                                 local_mtime = datetime.utcfromtimestamp(int(os.stat(full_unmerged_name).st_mtime))
                                 if local_mtime > mtime:
-                                    logger.debug2("Receiving an old file ({})".format(file_path))
+                                    logger.debug2(f"Receiving an old file ({file_path})")
                                     continue
 
                             # Create file in temporal path and safe move it to the destination path.
@@ -736,7 +734,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                             time=(mtime_epoch, mtime_epoch)
                                             )
                         except Exception as e:
-                            self.logger.error("Error updating agent group/status ({}): {}".format(tmp_unmerged_path, e))
+                            self.logger.error(f"Error updating agent group/status ({tmp_unmerged_path}): {e}")
                             self.sync_extra_valid_status['total_extra_valid'] -= 1
 
                             n_errors['errors'][data['cluster_item_key']] = 1 \
@@ -746,18 +744,18 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
                 # If the file is not merged, move it directly to the destination path.
                 else:
-                    zip_path = "{}{}".format(decompressed_files_path, name)
+                    zip_path = os.path.join(decompressed_files_path, name)
                     utils.safe_move(zip_path, full_path,
                                     ownership=(common.ossec_uid(), common.ossec_gid()),
                                     permissions=self.cluster_items['files'][data['cluster_item_key']]['permissions']
                                     )
 
             except exception.WazuhException as e:
-                logger.debug2("Warning updating file '{}': {}".format(name, e))
+                logger.debug2(f"Warning updating file '{name}': {e}")
                 error_tag = 'warnings'
                 error_updating_file = True
             except Exception as e:
-                logger.debug2("Error updating file '{}': {}".format(name, e))
+                logger.debug2(f"Error updating file '{name}': {e}")
                 error_tag = 'errors'
                 error_updating_file = True
 
@@ -766,31 +764,22 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     data['cluster_item_key']) \
                     else n_errors[error_tag][data['cluster_item_key']] + 1
 
-            fcntl.lockf(lock_file, fcntl.LOCK_UN)
-            lock_file.close()
-
-        n_merged_files = 0
         n_errors = {'errors': {}, 'warnings': {}}
-
-        # Create temporary directory for lock files.
-        lock_directory = "{}/queue/cluster/lockdir".format(common.ossec_path)
-        if not os.path.exists(lock_directory):
-            utils.mkdir_with_mode(lock_directory)
 
         # Get ID of all agents.
         try:
             agents = Agent.get_agents_overview(select=['name'], limit=None)['items']
             agent_ids = set(map(operator.itemgetter('id'), agents))
         except Exception as e:
-            logger.debug2("Error getting agent ids: {}".format(e))
+            logger.debug2(f"Error getting agent ids: {e}")
             agent_ids = {}
 
-        # Iterate and update each file specified in 'files_checksums' if conditions are meets.
+        # Iterate and update each file specified in 'files_metadata' if conditions are meets.
         try:
-            for filename, data in files_checksums.items():
+            for filename, data in files_metadata.items():
                 await update_file(data=data, name=filename)
         except Exception as e:
-            self.logger.error("Error updating worker files: '{}'.".format(e))
+            self.logger.error(f"Error updating worker files: '{e}'.")
             raise e
 
         # Log errors if any.
@@ -801,8 +790,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             ))
         if sum(n_errors['warnings'].values()) > 0:
             for key, value in n_errors['warnings'].items():
-                if key == '/queue/agent-groups/':
-                    logger.debug2("Received {} group assignments for non-existent agents. Skipping.".format(value))
+                if key == 'queue/agent-groups/':
+                    logger.debug2(f"Received {value} group assignments for non-existent agents. Skipping.")
 
     def get_logger(self, logger_tag: str = ''):
         """Get a logger object.
@@ -884,9 +873,9 @@ class Master(server.AbstractServer):
         while True:
             file_integrity_logger.debug("Calculating")
             try:
-                self.integrity_control = wazuh.core.cluster.cluster.get_files_status('master')
+                self.integrity_control = wazuh.core.cluster.cluster.get_files_status()
             except Exception as e:
-                file_integrity_logger.error("Error calculating file integrity: {}".format(e))
+                file_integrity_logger.error(f"Error calculating file integrity: {e}")
             file_integrity_logger.debug("Calculated.")
 
             await asyncio.sleep(self.cluster_items['intervals']['master']['recalculate_integrity'])

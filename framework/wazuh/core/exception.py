@@ -390,6 +390,8 @@ class WazuhException(Exception):
         2005: {'message': 'Could not connect to wdb socket'},
         2006: {'message': 'Received JSON from Wazuh DB is not correctly formatted'},
         2007: {'message': 'Error retrieving data from Wazuh DB'},
+        2008: {'message': 'Corrupted RBAC database',
+               'remediation': 'Restart the Wazuh service to restore the RBAC database to default'},
 
         # Cluster
         3000: 'Cluster',
@@ -505,7 +507,7 @@ class WazuhException(Exception):
         # User management
         5000: {'message': 'The user could not be created',
                'remediation': 'Please check that the user does not exist, '
-                              'to do this you can use the `GET /security/users/{username}` call'},
+                              'to do this you can use the `GET /security/users` call'},
         5001: {'message': 'The user does not exist',
                'remediation': 'The user can be created with the endpoint POST /security/users'},
         5002: {'message': 'There are no users in the system'},

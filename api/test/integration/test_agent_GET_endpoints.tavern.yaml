@@ -3946,11 +3946,11 @@ stages:
       json:
         error: !anyint
         data:
-          active: 9
+          active: 8
           disconnected: 2
           never_connected: 2
           pending: 0
-          total: 13
+          total: 12
 
 ---
 test_name: GET /agents/summary/os
