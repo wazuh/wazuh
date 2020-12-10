@@ -44,7 +44,7 @@ Index: ossec-hids-agent-2.8.2/Makefile
 +	cp -pr src/logcollector/ossec-logcollector ${DIR}/bin/
 +	cp -pr src/syscheckd/ossec-syscheckd ${DIR}/bin/
 +	cp -pr src/os_execd/ossec-execd ${DIR}/bin/
-+	cp -pr src/init/ossec-client.sh ${DIR}/bin/ossec-control
++	cp -pr src/init/wazuh-client.sh ${DIR}/bin/wazuh-control
 +	cp -pr src/addagent/manage_agents ${DIR}/bin/
 +	cp -pr contrib/util.sh ${DIR}/bin/
 +	sh src/init/fw-check.sh execute > /dev/null

@@ -188,9 +188,9 @@ size_t wcom_restart(char ** output) {
 
     if (lock <= 0) {
 #ifndef WIN32
-        char *exec_cmd[3] = { DEFAULTDIR "/bin/ossec-control", "restart", NULL};
+        char *exec_cmd[3] = { DEFAULTDIR "/bin/wazuh-control", "restart", NULL};
         if (isChroot()) {
-            strcpy(exec_cmd[0], "/bin/ossec-control");
+            strcpy(exec_cmd[0], "/bin/wazuh-control");
         }
 
         switch (fork()) {
