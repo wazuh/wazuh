@@ -1009,10 +1009,10 @@ main()
     echo " - ${configurationdone}."
     echo ""
     echo " - ${tostart}:"
-    echo "      $INSTALLDIR/bin/ossec-control start"
+    echo "      $INSTALLDIR/bin/wazuh-control start"
     echo ""
     echo " - ${tostop}:"
-    echo "      $INSTALLDIR/bin/ossec-control stop"
+    echo "      $INSTALLDIR/bin/wazuh-control stop"
     echo ""
     echo " - ${configat} $INSTALLDIR/etc/ossec.conf"
     echo ""
@@ -1073,7 +1073,7 @@ main()
 
     if [ "X$notmodified" = "Xyes" ]; then
         catMsg "0x105-noboot"
-        echo "      $INSTALLDIR/bin/ossec-control start"
+        echo "      $INSTALLDIR/bin/wazuh-control start"
         echo ""
     fi
 }

@@ -31,7 +31,7 @@ Kroki szybkiego sposobu:
    zostanie utworzony, można postępując zgodnie z instrukcjami
    z install.sh spowodować uruchamianie OSSEC HIDS podczas
    startu systemu. Aby wystartować ręcznie wystarczy uruchomić
-   /var/ossec/bin/ossec-control start
+   /var/ossec/bin/wazuh-control start
 
 3- Jeśli zamierzasz używać kilku klientów, powinieneś najpierw
    zainstalowac serwer. Do stworzenia odpowiednich kluczy użyj

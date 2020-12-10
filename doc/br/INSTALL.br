@@ -31,7 +31,7 @@ Passos do processo r�pido:
    inicializa��o em seu sistema (/etc/rc.local ou /etc/rc.d/init.d/ossec).
    Se o script de inicializa��o n�o for criado, siga as instru��es do
    para iniciar o OSSEC HIDS durante o boot. Para iniciar na m�o, digite
-   /var/ossec/bin/ossec-control start
+   /var/ossec/bin/wazuh-control start
 
 3- Se voc� for rodar em v�rios clientes, Instale o servidor primeiro.
    Use o manage_agents para criar as chaves de encripta��o.

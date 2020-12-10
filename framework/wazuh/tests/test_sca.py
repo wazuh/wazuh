@@ -194,7 +194,7 @@ def test_sca_checks_select_and_q(mock_agent, mock_sca_agent):
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_sca_test.sql')
         result = get_sca_checks('cis_debian', agent_list=['000'], q="rules.type!=file",
                                 select=['compliance', 'policy_id', 'result', 'rules']).to_dict()
-        assert result['affected_items'][0]['rules'][0]['type'] != 'file'
+        assert result['affected_items'][0]['rules'][1]['type'] != 'file'
         assert set(result['affected_items'][0].keys()).issubset({'compliance', 'policy_id', 'result', 'rules'})
 
 
