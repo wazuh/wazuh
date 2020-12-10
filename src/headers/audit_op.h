@@ -41,9 +41,9 @@ typedef struct {
 
 typedef enum _audit_status {
     AUDIT_ERROR = -1,
-    AUDIT_DISABLED = 0,
-    AUDIT_ENABLED = 1,
-    AUDIT_IMMUTABLE = 2
+    AUDIT_DISABLED,
+    AUDIT_ENABLED,
+    AUDIT_IMMUTABLE
 } audit_status;
 
 
