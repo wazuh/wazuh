@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import concurrent.futures
+from json import JSONDecodeError
 
 from logging import getLogger
 from time import time
@@ -16,7 +17,7 @@ from api.configuration import api_conf
 from api.util import raise_if_exc
 from wazuh.core.exception import WazuhTooManyRequests, WazuhPermissionError
 
-logger = getLogger('wazuh')
+logger = getLogger('wazuh-api')
 pool = concurrent.futures.ThreadPoolExecutor()
 
 
@@ -61,6 +62,18 @@ async def prevent_bruteforce_attack(request, attempts=5):
 
         if ip_stats[request.remote]['attempts'] >= attempts:
             ip_block.add(request.remote)
+
+
+@web.middleware
+async def request_logging(request, handler):
+    """Add request info to logging."""
+    logger.debug2(f'Receiving headers {dict(request.headers)}')
+    try:
+        body = f' and body {await request.json()}'
+    except JSONDecodeError:
+        body = ''
+    logger.debug(f'Receiving request "{request.method} {request.path}" with parameters {dict(request.query)}{body}')
+    return await handler(request)
 
 
 @web.middleware

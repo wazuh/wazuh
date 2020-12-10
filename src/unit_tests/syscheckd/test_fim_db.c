@@ -351,8 +351,6 @@ static int teardown_fim_tmp_file_disk(void **state) {
     expect_value(__wrap_fclose, _File, file->fd);
     will_return(__wrap_fclose, 1);
 
-    expect_string(__wrap_remove, filename, file->path);
-    will_return(__wrap_remove, 1);
     fim_db_clean_file(&file, FIM_DB_DISK);
     return 0;
 }
@@ -1501,16 +1499,16 @@ void test_fim_db_get_path_range_failed(void **state) {
     test_fim_db_insert_data *test_data = *state;
     fim_tmp_file *file = NULL;
 
-    expect_string(__wrap_fopen, mode, "w+");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, __modes, "w+");
+    will_return(__wrap_wfopen, 0);
 
     will_return(__wrap_os_random, 2345);
 
 #ifndef TEST_WINAGENT
-    expect_string(__wrap_fopen, path, "/var/ossec/tmp/tmp_19283746523452345");
+    expect_string(__wrap_wfopen, __filename, "/var/ossec/tmp/tmp_19283746523452345");
     expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage '/var/ossec/tmp/tmp_19283746523452345': Success (0)");
 #else
-    expect_string(__wrap_fopen, path, "tmp/tmp_19283746523452345");
+    expect_string(__wrap_wfopen, __filename, "tmp/tmp_19283746523452345");
     expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage 'tmp/tmp_19283746523452345': Success (0)");
 #endif
 
@@ -1526,13 +1524,13 @@ void test_fim_db_get_path_range_success(void **state) {
     will_return(__wrap_os_random, 2345);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_fopen, path, "tmp/tmp_19283746523452345");
+    expect_string(__wrap_wfopen, __filename, "tmp/tmp_19283746523452345");
 #else
-    expect_string(__wrap_fopen, path, "/var/ossec/tmp/tmp_19283746523452345");
+    expect_string(__wrap_wfopen, __filename, "/var/ossec/tmp/tmp_19283746523452345");
 #endif
 
-    expect_string(__wrap_fopen, mode, "w+");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __modes, "w+");
+    will_return(__wrap_wfopen, 1);
 
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
@@ -1568,13 +1566,13 @@ void test_fim_db_get_not_scanned_failed(void **state) {
     will_return(__wrap_os_random, 2345);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_fopen, path, "tmp/tmp_19283746523452345");
+    expect_string(__wrap_wfopen, __filename, "tmp/tmp_19283746523452345");
 #else
-    expect_string(__wrap_fopen, path, "/var/ossec/tmp/tmp_19283746523452345");
+    expect_string(__wrap_wfopen, __filename, "/var/ossec/tmp/tmp_19283746523452345");
 #endif
 
-    expect_string(__wrap_fopen, mode, "w+");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, __modes, "w+");
+    will_return(__wrap_wfopen, 0);
 #ifndef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage '/var/ossec/tmp/tmp_19283746523452345': Success (0)");
 #else
@@ -1593,13 +1591,13 @@ void test_fim_db_get_not_scanned_success(void **state) {
     will_return(__wrap_os_random, 2345);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_fopen, path, "tmp/tmp_19283746523452345");
+    expect_string(__wrap_wfopen, __filename, "tmp/tmp_19283746523452345");
 #else
-    expect_string(__wrap_fopen, path, "/var/ossec/tmp/tmp_19283746523452345");
+    expect_string(__wrap_wfopen, __filename, "/var/ossec/tmp/tmp_19283746523452345");
 #endif
 
-    expect_string(__wrap_fopen, mode, "w+");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __modes, "w+");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     wraps_fim_db_check_transaction();
@@ -2163,13 +2161,16 @@ void test_fim_db_process_get_query_error(void **state) {
 void test_fim_db_sync_path_range_disk(void **state) {
     test_fim_db_insert_data *test_data = *state;
     test_data->tmp_file->fd = (FILE*)2345;
+    test_data->tmp_file->elements = 1;
 
     will_return(__wrap_fseek, 0);
 #ifdef WIN32
-    expect_value(wrap_fgets, __stream, (FILE*)2345);
+    expect_value_count(wrap_fgets, __stream, (FILE*)2345, 2);
+    will_return(wrap_fgets, "00000000000000000000000000000010");
     will_return(wrap_fgets, "/tmp/file\n");
 #else
-    expect_value(__wrap_fgets, __stream, (FILE*)2345);
+    expect_value_count(__wrap_fgets, __stream, (FILE*)2345, 2);
+    will_return(__wrap_fgets, "00000000000000000000000000000010");
     will_return(__wrap_fgets, "/tmp/file\n");
 #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
@@ -2196,15 +2197,13 @@ void test_fim_db_sync_path_range_disk(void **state) {
 
     expect_string(__wrap_fim_send_sync_msg, msg, "This is the returned JSON");
 
-    expect_string(__wrap_remove, filename, "/tmp/file");
-    will_return(__wrap_remove, 0);
-
     int ret = fim_db_sync_path_range(test_data->fim_sql, &syscheck.fim_entry_mutex, test_data->tmp_file, syscheck.database_store);
     assert_int_equal(FIMDB_OK, ret);
 }
 
 void test_fim_db_sync_path_range_memory(void **state) {
     test_fim_db_insert_data *test_data = *state;
+    test_data->tmp_file->elements = 1;
 
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
@@ -2238,14 +2237,17 @@ void test_fim_db_sync_path_range_memory(void **state) {
 void test_fim_db_delete_range_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
     test_data->tmp_file->fd = (FILE*)2345;
+    test_data->tmp_file->elements = 1;
     int ret;
 
     will_return(__wrap_fseek, 0);
 #ifdef WIN32
-    expect_value(wrap_fgets, __stream, (FILE*)2345);
+    expect_value_count(wrap_fgets, __stream, (FILE*)2345, 2);
+    will_return(wrap_fgets, "00000000000000000000000000000010");
     will_return(wrap_fgets, "/tmp/file\n");
 #else
-    expect_value(__wrap_fgets, __stream, (FILE*)2345);
+    expect_value_count(__wrap_fgets, __stream, (FILE*)2345, 2);
+    will_return(__wrap_fgets, "00000000000000000000000000000010");
     will_return(__wrap_fgets, "/tmp/file\n");
 #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
@@ -2268,10 +2270,8 @@ void test_fim_db_delete_range_success(void **state) {
     expect_value(__wrap_fclose, _File, (FILE*)2345);
     will_return(__wrap_fclose, 1);
 
-    expect_string(__wrap_remove, filename, "/tmp/file");
-    will_return(__wrap_remove, 0);
-
-    ret = fim_db_delete_range(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex, syscheck.database_store);
+    ret = fim_db_delete_range(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex,
+                              syscheck.database_store, FIM_SCHEDULED);
 
     assert_int_equal(ret, FIMDB_OK);
 }
@@ -2279,14 +2279,17 @@ void test_fim_db_delete_range_success(void **state) {
 void test_fim_db_delete_range_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
     test_data->tmp_file->fd = (FILE*)2345;
+    test_data->tmp_file->elements = 1;
     int ret;
 
     will_return(__wrap_fseek, 0);
 #ifdef WIN32
-    expect_value(wrap_fgets, __stream, (FILE*)2345);
+    expect_value_count(wrap_fgets, __stream, (FILE*)2345, 2);
+    will_return(wrap_fgets, "00000000000000000000000000000010");
     will_return(wrap_fgets, "/tmp/file\n");
 #else
-    expect_value(__wrap_fgets, __stream, (FILE*)2345);
+    expect_value_count(__wrap_fgets, __stream, (FILE*)2345, 2);
+    will_return(__wrap_fgets, "00000000000000000000000000000010");
     will_return(__wrap_fgets, "/tmp/file\n");
 #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
@@ -2304,10 +2307,8 @@ void test_fim_db_delete_range_error(void **state) {
     expect_value(__wrap_fclose, _File, (FILE*)2345);
     will_return(__wrap_fclose, 1);
 
-    expect_string(__wrap_remove, filename, "/tmp/file");
-    will_return(__wrap_remove, 0);
-
-    ret = fim_db_delete_range(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex, syscheck.database_store);
+    ret = fim_db_delete_range(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex,
+                              syscheck.database_store, FIM_SCHEDULED);
 
     assert_int_equal(ret, FIMDB_OK);
 }
@@ -2315,14 +2316,17 @@ void test_fim_db_delete_range_error(void **state) {
 void test_fim_db_delete_range_path_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
     test_data->tmp_file->fd = (FILE*)2345;
+    test_data->tmp_file->elements = 1;
     int ret;
 
     will_return(__wrap_fseek, 0);
 #ifdef WIN32
-    expect_value(wrap_fgets, __stream, (FILE*)2345);
+    expect_value_count(wrap_fgets, __stream, (FILE*)2345, 2);
+    will_return(wrap_fgets, "00000000000000000000000000000001");
     will_return(wrap_fgets, "\n");
 #else
-    expect_value(__wrap_fgets, __stream, (FILE*)2345);
+    expect_value_count(__wrap_fgets, __stream, (FILE*)2345, 2);
+    will_return(__wrap_fgets, "00000000000000000000000000000001");
     will_return(__wrap_fgets, "\n");
 #endif
 
@@ -2331,12 +2335,94 @@ void test_fim_db_delete_range_path_error(void **state) {
     expect_value(__wrap_fclose, _File, (FILE*)2345);
     will_return(__wrap_fclose, 1);
 
-    expect_string(__wrap_remove, filename, "/tmp/file");
-    will_return(__wrap_remove, 0);
+    ret = fim_db_delete_range(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex,
+                              syscheck.database_store, FIM_SCHEDULED);
 
-    ret = fim_db_delete_range(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex, syscheck.database_store);
+    assert_int_equal(ret, FIMDB_ERR);
+}
 
-    assert_int_equal(ret, FIMDB_OK);
+void test_fim_db_delete_range_fail_to_reposition_file(void **state) {
+    char warning_message[OS_SIZE_256];
+    test_fim_db_insert_data *test_data = *state;
+    test_data->tmp_file->fd = (FILE*)2345;
+    test_data->tmp_file->elements = 1;
+    int ret;
+
+    will_return(__wrap_fseek, -1);
+
+    snprintf(warning_message, OS_SIZE_256, FIM_DB_TEMPORARY_FILE_POSITION, errno, strerror(errno));
+
+    expect_string(__wrap__mwarn, formatted_msg, warning_message);
+
+    expect_value(__wrap_fclose, _File, (FILE*)2345);
+    will_return(__wrap_fclose, 1);
+
+    ret = fim_db_delete_range(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex,
+                              syscheck.database_store, FIM_SCHEDULED);
+
+    assert_int_equal(ret, FIMDB_ERR);
+}
+
+void test_fim_db_delete_range_fail_to_read_line_length(void **state) {
+    char debug_message[OS_SIZE_256];
+    test_fim_db_insert_data *test_data = *state;
+    test_data->tmp_file->fd = (FILE*)2345;
+    test_data->tmp_file->elements = 1;
+    int ret;
+
+    will_return(__wrap_fseek, 0);
+
+#ifdef WIN32
+    expect_value(wrap_fgets, __stream, (FILE*)2345);
+    will_return(wrap_fgets, NULL);
+#else
+    expect_value(__wrap_fgets, __stream, (FILE*)2345);
+    will_return(__wrap_fgets, NULL);
+#endif
+
+    snprintf(debug_message, OS_SIZE_256, FIM_UNABLE_TO_READ_TEMP_FILE);
+
+    expect_string(__wrap__mdebug1, formatted_msg, debug_message);
+
+    expect_value(__wrap_fclose, _File, (FILE*)2345);
+    will_return(__wrap_fclose, 1);
+
+    ret = fim_db_delete_range(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex,
+                              syscheck.database_store, FIM_SCHEDULED);
+
+    assert_int_equal(ret, FIMDB_ERR);
+}
+
+void test_fim_db_delete_range_fail_to_read_line(void **state) {
+    char debug_message[OS_SIZE_256];
+    test_fim_db_insert_data *test_data = *state;
+    test_data->tmp_file->fd = (FILE*)2345;
+    test_data->tmp_file->elements = 1;
+    int ret;
+
+    will_return(__wrap_fseek, 0);
+
+#ifdef WIN32
+    expect_value_count(wrap_fgets, __stream, (FILE*)2345, 2);
+    will_return(wrap_fgets, "00000000000000000000000000000010");
+    will_return(wrap_fgets, NULL);
+#else
+    expect_value_count(__wrap_fgets, __stream, (FILE*)2345, 2);
+    will_return(__wrap_fgets, "00000000000000000000000000000001");
+    will_return(__wrap_fgets, NULL);
+#endif
+
+    snprintf(debug_message, OS_SIZE_256, FIM_UNABLE_TO_READ_TEMP_FILE);
+
+    expect_string(__wrap__mdebug1, formatted_msg, debug_message);
+
+    expect_value(__wrap_fclose, _File, (FILE*)2345);
+    will_return(__wrap_fclose, 1);
+
+    ret = fim_db_delete_range(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex,
+                              syscheck.database_store, FIM_SCHEDULED);
+
+    assert_int_equal(ret, FIMDB_ERR);
 }
 
 /*----------------------------------------------*/
@@ -2344,14 +2430,17 @@ void test_fim_db_delete_range_path_error(void **state) {
 void test_fim_db_delete_not_scanned(void **state) {
     test_fim_db_insert_data *test_data = *state;
     test_data->tmp_file->fd = (FILE*)2345;
+    test_data->tmp_file->elements = 1;
     int ret;
 
     will_return(__wrap_fseek, 0);
 #ifdef WIN32
-    expect_value(wrap_fgets, __stream, (FILE*)2345);
+    expect_value_count(wrap_fgets, __stream, (FILE*)2345, 2);
+    will_return(wrap_fgets, "00000000000000000000000000000010");
     will_return(wrap_fgets, "/tmp/file\n");
 #else
-    expect_value(__wrap_fgets, __stream, (FILE*)2345);
+    expect_value_count(__wrap_fgets, __stream, (FILE*)2345, 2);
+    will_return(__wrap_fgets, "00000000000000000000000000000010");
     will_return(__wrap_fgets, "/tmp/file\n");
 #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
@@ -2370,9 +2459,6 @@ void test_fim_db_delete_not_scanned(void **state) {
     expect_value(__wrap_fclose, _File, (FILE*)2345);
     will_return(__wrap_fclose, 1);
 
-    expect_string(__wrap_remove, filename, "/tmp/file");
-    will_return(__wrap_remove, 0);
-
     ret = fim_db_delete_not_scanned(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex, syscheck.database_store);
 
     assert_int_equal(ret, FIMDB_OK);
@@ -2383,14 +2469,17 @@ void test_fim_db_delete_not_scanned(void **state) {
 void test_fim_db_process_missing_entry(void **state) {
     test_fim_db_insert_data *test_data = *state;
     test_data->tmp_file->fd = (FILE*)2345;
+    test_data->tmp_file->elements = 1;
     int ret;
 
     will_return(__wrap_fseek, 0);
 #ifdef WIN32
-    expect_value(wrap_fgets, __stream, (FILE*)2345);
+    expect_value_count(wrap_fgets, __stream, (FILE*)2345, 2);
+    will_return(wrap_fgets, "00000000000000000000000000000010");
     will_return(wrap_fgets, "/tmp/file\n");
 #else
-    expect_value(__wrap_fgets, __stream, (FILE*)2345);
+    expect_value_count(__wrap_fgets, __stream, (FILE*)2345, 2);
+    will_return(__wrap_fgets, "00000000000000000000000000000010");
     will_return(__wrap_fgets, "/tmp/file\n");
 #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
@@ -2408,9 +2497,6 @@ void test_fim_db_process_missing_entry(void **state) {
 
     expect_value(__wrap_fclose, _File, (FILE*)2345);
     will_return(__wrap_fclose, 1);
-
-    expect_string(__wrap_remove, filename, "/tmp/file");
-    will_return(__wrap_remove, 0);
 
     ret = fim_db_process_missing_entry(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex, syscheck.database_store, FIM_REALTIME, NULL);
 
@@ -2460,11 +2546,11 @@ void test_fim_db_callback_save_path_disk(void **state) {
 
 #ifndef TEST_WINAGENT
     expect_value(__wrap_fprintf, __stream, 2345);
-    expect_string(__wrap_fprintf, formatted_msg, "/test/path\n");
+    expect_string(__wrap_fprintf, formatted_msg, "00000000000000000000000000000011/test/path\n");
     will_return(__wrap_fprintf, 11);
 #else
     expect_value(wrap_fprintf, __stream, 2345);
-    expect_string(wrap_fprintf, formatted_msg, "/test/path\n");
+    expect_string(wrap_fprintf, formatted_msg, "00000000000000000000000000000011/test/path\n");
     will_return(wrap_fprintf, 11);
 #endif
 
@@ -2480,12 +2566,12 @@ void test_fim_db_callback_save_path_disk_error(void **state) {
 
 #ifndef TEST_WINAGENT
     expect_value(__wrap_fprintf, __stream, 2345);
-    expect_string(__wrap_fprintf, formatted_msg, "/test/path\n");
-    will_return(__wrap_fprintf, 0);
+    expect_string(__wrap_fprintf, formatted_msg, "00000000000000000000000000000011/test/path\n");
+    will_return(__wrap_fprintf, -1);
 #else
     expect_value(wrap_fprintf, __stream, 2345);
-    expect_string(wrap_fprintf, formatted_msg, "/test/path\n");
-    will_return(wrap_fprintf, 0);
+    expect_string(wrap_fprintf, formatted_msg, "00000000000000000000000000000011/test/path\n");
+    will_return(wrap_fprintf, -1);
 #endif
 
     errno = 0;
@@ -2683,13 +2769,20 @@ void test_fim_db_create_temp_file_disk(void **state) {
     will_return(__wrap_os_random, 2345);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_fopen, path, "tmp/tmp_19283746523452345");
+    expect_string(__wrap_wfopen, __filename, "tmp/tmp_19283746523452345");
 #else
-    expect_string(__wrap_fopen, path, "/var/ossec/tmp/tmp_19283746523452345");
+    expect_string(__wrap_wfopen, __filename, "/var/ossec/tmp/tmp_19283746523452345");
 #endif
 
-    expect_string(__wrap_fopen, mode, "w+");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __modes, "w+");
+    will_return(__wrap_wfopen, 1);
+
+#ifdef TEST_WINAGENT
+    expect_string(__wrap_remove, filename, "tmp/tmp_19283746523452345");
+#else
+    expect_string(__wrap_remove, filename, "/var/ossec/tmp/tmp_19283746523452345");
+#endif
+    will_return(__wrap_remove, 0);
 
     fim_tmp_file *ret = fim_db_create_temp_file(FIM_DB_DISK);
     state[1] = ret;
@@ -2704,13 +2797,13 @@ void test_fim_db_create_temp_file_disk_error(void **state) {
     will_return(__wrap_os_random, 2345);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_fopen, path, "tmp/tmp_19283746523452345");
+    expect_string(__wrap_wfopen, __filename, "tmp/tmp_19283746523452345");
 #else
-    expect_string(__wrap_fopen, path, "/var/ossec/tmp/tmp_19283746523452345");
+    expect_string(__wrap_wfopen, __filename, "/var/ossec/tmp/tmp_19283746523452345");
 #endif
 
-    expect_string(__wrap_fopen, mode, "w+");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, __modes, "w+");
+    will_return(__wrap_wfopen, 0);
 
 #ifdef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage 'tmp/tmp_19283746523452345': Success (0)");
@@ -2718,6 +2811,37 @@ void test_fim_db_create_temp_file_disk_error(void **state) {
     expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage '/var/ossec/tmp/tmp_19283746523452345': Success (0)");
 #endif
 
+
+    fim_tmp_file *ret = fim_db_create_temp_file(FIM_DB_DISK);
+
+    assert_null(ret);
+}
+
+void test_fim_db_create_temp_file_disk_fail_to_remove_open_file(void **state) {
+
+    will_return(__wrap_os_random, 2345);
+
+#ifdef TEST_WINAGENT
+    expect_string(__wrap_wfopen, __filename, "tmp/tmp_19283746523452345");
+#else
+    expect_string(__wrap_wfopen, __filename, "/var/ossec/tmp/tmp_19283746523452345");
+#endif
+
+    expect_string(__wrap_wfopen, __modes, "w+");
+    will_return(__wrap_wfopen, 1);
+
+#ifdef TEST_WINAGENT
+    expect_string(__wrap_remove, filename, "tmp/tmp_19283746523452345");
+#else
+    expect_string(__wrap_remove, filename, "/var/ossec/tmp/tmp_19283746523452345");
+#endif
+    will_return(__wrap_remove, -1);
+
+#ifdef TEST_WINAGENT
+    expect_string(__wrap__merror, formatted_msg, "Failed to remove 'tmp/tmp_19283746523452345': Success (0)");
+#else
+    expect_string(__wrap__merror, formatted_msg, "Failed to remove '/var/ossec/tmp/tmp_19283746523452345': Success (0)");
+#endif
 
     fim_tmp_file *ret = fim_db_create_temp_file(FIM_DB_DISK);
 
@@ -2744,27 +2868,6 @@ void test_fim_db_clean_file_disk() {
 
     expect_value(__wrap_fclose, _File, file->fd);
     will_return(__wrap_fclose, 1);
-
-    expect_string(__wrap_remove, filename, file->path);
-    will_return(__wrap_remove, 1);
-
-    fim_db_clean_file(&file, FIM_DB_DISK);
-
-    assert_null(file);
-}
-
-void test_fim_db_clean_file_disk_error() {
-    fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
-    file->path = calloc(PATH_MAX, sizeof(char));
-    sprintf(file->path, "test");
-
-    expect_value(__wrap_fclose, _File, file->fd);
-    will_return(__wrap_fclose, 1);
-
-    expect_string(__wrap_remove, filename, file->path);
-    will_return(__wrap_remove, -1);
-
-    expect_string(__wrap__merror, formatted_msg, "Failed to remove 'test': Success (0)");
 
     fim_db_clean_file(&file, FIM_DB_DISK);
 
@@ -2892,6 +2995,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_delete_range_success, test_fim_tmp_file_setup_disk, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_delete_range_error, test_fim_tmp_file_setup_disk, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_delete_range_path_error, test_fim_tmp_file_setup_disk, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_delete_range_fail_to_reposition_file, test_fim_tmp_file_setup_disk, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_delete_range_fail_to_read_line_length, test_fim_tmp_file_setup_disk, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_delete_range_fail_to_read_line, test_fim_tmp_file_setup_disk, test_fim_db_teardown),
         // fim_db_delete_not_scanned
         cmocka_unit_test_setup_teardown(test_fim_db_delete_not_scanned, test_fim_tmp_file_setup_disk, test_fim_db_teardown),
         // fim_db_process_missing_entry
@@ -2919,10 +3025,10 @@ int main(void) {
         // fim_db_create_temp_file
         cmocka_unit_test_teardown(test_fim_db_create_temp_file_disk, teardown_fim_tmp_file_disk),
         cmocka_unit_test(test_fim_db_create_temp_file_disk_error),
+        cmocka_unit_test(test_fim_db_create_temp_file_disk_fail_to_remove_open_file),
         cmocka_unit_test_teardown(test_fim_db_create_temp_file_memory, teardown_fim_tmp_file_memory),
         // fim_db_clean_file
         cmocka_unit_test(test_fim_db_clean_file_disk),
-        cmocka_unit_test(test_fim_db_clean_file_disk_error),
         cmocka_unit_test(test_fim_db_clean_file_memory),
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

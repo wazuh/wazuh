@@ -1,6 +1,6 @@
 {
     "files":{
-        "/etc/": {
+        "etc/": {
             "permissions": "0o640",
             "source": "master",
             "files": ["client.keys"],
@@ -11,7 +11,7 @@
             "description": "client keys file database"
         },
 
-        "/etc/shared/": {
+        "etc/shared/": {
             "permissions": "0o660",
             "source": "master",
             "files": ["merged.mg"],
@@ -22,7 +22,7 @@
             "description": "shared configuration files"
         },
 
-        "/var/multigroups/": {
+        "var/multigroups/": {
             "permissions": "0o660",
             "source": "master",
             "files": ["merged.mg"],
@@ -33,7 +33,7 @@
             "description": "shared configuration files"
         },
 
-        "/etc/rules/": {
+        "etc/rules/": {
             "permissions": "0o660",
             "source": "master",
             "files": ["all"],
@@ -44,7 +44,7 @@
             "description": "user rules"
         },
 
-        "/etc/decoders/": {
+        "etc/decoders/": {
             "permissions": "0o660",
             "source": "master",
             "files": ["all"],
@@ -55,7 +55,7 @@
             "description": "user decoders"
         },
 
-        "/etc/lists/": {
+        "etc/lists/": {
             "permissions": "0o660",
             "source": "master",
             "files": ["all"],
@@ -66,7 +66,7 @@
             "description": "user CDB lists"
         },
 
-        "/queue/agent-groups/": {
+        "queue/agent-groups/": {
             "permissions": "0o660",
             "source": "master",
             "files": ["all"],

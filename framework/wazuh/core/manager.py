@@ -274,7 +274,7 @@ def validate_ossec_conf():
             api_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             api_socket.bind(api_socket_path)
             # Timeout
-            api_socket.settimeout(5)
+            api_socket.settimeout(10)
         except OSError as e:
             extra_msg = f'Socket: WAZUH_PATH/{api_socket_relative_path}. Error: {e.strerror}'
             raise WazuhInternalError(1013, extra_message=extra_msg)

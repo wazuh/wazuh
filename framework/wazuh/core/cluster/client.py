@@ -111,7 +111,7 @@ class AbstractClientManager:
                 await asyncio.sleep(self.cluster_items['intervals']['worker']['connection_retry'])
                 continue
             except OSError as e:
-                self.logger.error("Could not connect to master: {}. Trying again in 10 seconds.".format(e))
+                self.logger.error(f"Could not connect to master: {e}. Trying again in 10 seconds.")
                 await asyncio.sleep(self.cluster_items['intervals']['worker']['connection_retry'])
                 continue
 
@@ -155,7 +155,7 @@ class AbstractClient(common.Handler):
         tag : str
             Log tag.
         """
-        super().__init__(fernet_key=fernet_key, logger=logger, tag="{} {}".format(tag, name), cluster_items=cluster_items)
+        super().__init__(fernet_key=fernet_key, logger=logger, tag=f"{tag} {name}", cluster_items=cluster_items)
         self.loop = loop
         self.name = name
         self.on_con_lost = on_con_lost
@@ -173,7 +173,7 @@ class AbstractClient(common.Handler):
         """
         response_msg = future_result.result()[0]
         if isinstance(response_msg, Exception):
-            self.logger.error("Could not connect to master: {}.".format(response_msg))
+            self.logger.error(f"Could not connect to master: {response_msg}.")
             self.transport.close()
         else:
             self.logger.info("Sucessfully connected to master.")
@@ -319,7 +319,7 @@ class AbstractClient(common.Handler):
             if len(result) != test_size:
                 self.logger.error(result)
             else:
-                self.logger.info("Received size: {} // Time: {}".format(len(result), after - before))
+                self.logger.info(f"Received size: {len(result)} // Time: {after - before}")
             await asyncio.sleep(3)
 
     async def concurrency_test_client(self, n_msgs: int):
@@ -335,9 +335,8 @@ class AbstractClient(common.Handler):
         while not self.on_con_lost.done():
             before = time.time()
             for i in range(n_msgs):
-                await self.send_request(b'echo', 'concurrency {}'.format(i).encode())
-            after = time.time()
-            self.logger.info("Time sending {} messages: {}".format(n_msgs, after - before))
+                await self.send_request(b'echo', f'concurrency {i}'.encode())
+            self.logger.info(f"Time sending {n_msgs} messages: {time.time() - before}")
             await asyncio.sleep(10)
 
     async def send_file_task(self, filename: str):
@@ -354,7 +353,7 @@ class AbstractClient(common.Handler):
         response = await self.send_file(filename)
         after = time.time()
         self.logger.debug(response)
-        self.logger.debug("Time: {}".format(after - before))
+        self.logger.debug(f"Time: {after - before}")
 
     async def send_string_task(self, string_size: int):
         """Test the send big string protocol.
@@ -370,4 +369,4 @@ class AbstractClient(common.Handler):
         response = await self.send_string(my_str=b'a' * string_size)
         after = time.time()
         self.logger.debug(response)
-        self.logger.debug("Time: {}".format(after - before))
+        self.logger.debug(f"Time: {after - before}")
