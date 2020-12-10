@@ -66,7 +66,7 @@ def send_msg_to_wdb(msg, raw=False):
         {'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '16.04.1 LTS'}, 'count': 1},
         {'os': {'name': 'unknown', 'platform': 'unknown', 'version': 'unknown'}, 'count': 2}]),
 ])
-@patch('wazuh.core.agent.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
+@patch('wazuh.core.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_items):
