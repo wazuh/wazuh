@@ -34,11 +34,10 @@ void OS_SHA1_Hexdigest(const unsigned char * digest, os_sha1 output);
  * @param fname[in] File name to calculate SHA1.
  * @param c[out] SHA1 context.
  * @param output[out] Output string.
- * @param mode[in] File opening mode.
  * @param nbytes[in] Number of bytes to read.
  * @return 0 on success, -1 when failure opening file.
  */
-int OS_SHA1_File_Nbytes(const char *fname, SHA_CTX *c, os_sha1 output, int mode, ssize_t nbytes);
+int OS_SHA1_File_Nbytes(const char *fname, SHA_CTX *c, os_sha1 output, size_t nbytes);
 
 /**
  * @brief update the context and calculates the SHA1

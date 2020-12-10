@@ -2030,6 +2030,33 @@ void w_ch_exec_dir() {
     }
 }
 
+FILE * w_fopen_r(const char *file) {
+
+    FILE *fp = NULL;
+    int fd;
+    HANDLE h;
+
+    h = CreateFile(file, GENERIC_READ, FILE_SHARE_DELETE|FILE_SHARE_READ|FILE_SHARE_WRITE,
+                   NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h == INVALID_HANDLE_VALUE) {
+        return NULL;
+    }
+
+    if (fd = _open_osfhandle((intptr_t)h, 0), fd == -1) {
+        merror(FOPEN_ERROR, file, errno, strerror(errno));
+        CloseHandle(h);
+        return NULL;
+    }
+
+    if (fp = _fdopen(fd, "r"), !fp) {
+        merror(FOPEN_ERROR, file, errno, strerror(errno));
+        CloseHandle(h);
+        return NULL;
+    }
+
+    return fp;
+}
+
 #endif /* WIN32 */
 
 

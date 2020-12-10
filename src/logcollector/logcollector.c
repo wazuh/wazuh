@@ -27,7 +27,7 @@
 
 ///> Struct to save the position of last line read and the SHA1 hash content
 typedef struct file_status {
-    long offset;        ///> Position to read
+    w_offset_t offset;        ///> Position to read
     SHA_CTX context;    ///> It stores the hashed data calculated so far
     os_sha1 hash;       ///> Content file SHA1 hash
 } os_file_status_t;
@@ -63,6 +63,7 @@ STATIC void w_load_files_status(cJSON *global_json);
 
 /**
  * @brief Parse the hash files_status to JSON
+ * @return json of all read status files in a string
  */
 STATIC char * w_save_files_status_to_cJSON();
 
@@ -78,7 +79,7 @@ STATIC int w_set_to_last_line_read(logreader *lf);
  * @param lf logreader to set
  * @return 0 on success, otherwise -1
  */
-STATIC ssize_t w_set_to_pos(logreader *lf, long pos, int mode);
+STATIC w_offset_t w_set_to_pos(logreader *lf, w_offset_t pos, int mode);
 
 /**
  * @brief Update hash node
@@ -86,7 +87,7 @@ STATIC ssize_t w_set_to_pos(logreader *lf, long pos, int mode);
  * @param pos Offset of hash
  * @return 0 on success, otherwise -1
  */
-STATIC int w_update_hash_node(char * path, ssize_t pos);
+STATIC int w_update_hash_node(char * path, w_offset_t pos);
 
 /* Global variables */
 int loop_timeout;
@@ -182,7 +183,6 @@ void LogCollectorStart()
 #else
     BY_HANDLE_FILE_INFORMATION lpFileInformation;
     memset(&lpFileInformation, 0, sizeof(BY_HANDLE_FILE_INFORMATION));
-    int r;
     const char *m_uname;
 
     m_uname = getuname();
@@ -329,9 +329,12 @@ void LogCollectorStart()
              */
 #ifdef WIN32
             if (current->fp) {
-                set_can_read(1);
-                current->read(current, &r, 1);
-                set_can_read(0);
+                if (!current->future) {
+                    w_set_to_last_line_read(current);
+                } else {
+                   w_offset_t offset = w_set_to_pos(current, 0, SEEK_END);
+                    w_update_hash_node(current->file, offset);
+                }
             }
 
             /* Mutexes are not previously initialized under Windows*/
@@ -345,9 +348,12 @@ void LogCollectorStart()
             }
 
             if (current->fp) {
-                set_can_read(1);
-                current->read(current, &r, 1);
-                set_can_read(0);
+                if (!current->future) {
+                    w_set_to_last_line_read(current);
+                } else {
+                    w_offset_t offset = w_set_to_pos(current, 0, SEEK_END);
+                    w_update_hash_node(current->file, offset);
+                }
             }
 #endif
         }
@@ -867,10 +873,9 @@ int update_fname(int i, int j)
 }
 
 /* Open, get the fileno, seek to the end and update mtime */
-int handle_file(int i, int j, int do_fseek, int do_log)
+int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
 {
     int fd;
-    struct stat stat_fd = { .st_mode = 0 };
     logreader *lf;
 
     if (j < 0) {
@@ -883,6 +888,8 @@ int handle_file(int i, int j, int do_fseek, int do_log)
      * time of change from it.
      */
 #ifndef WIN32
+    struct stat stat_fd = { .st_mode = 0 };
+
     lf->fp = fopen(lf->file, "r");
     if (!lf->fp) {
         if (do_log == 1 && lf->exists == 1) {
@@ -963,9 +970,9 @@ int handle_file(int i, int j, int do_fseek, int do_log)
         if (!lf->future) {
             if (w_set_to_last_line_read(lf) < 0) goto error;
         } else {
-            int result;
-            if (result = w_set_to_pos(lf, 0, SEEK_END), result < 0) goto error;
-            w_update_hash_node(lf->file, result);
+            w_offset_t offset;
+            if (offset = w_set_to_pos(lf, 0, SEEK_END), offset < 0) goto error;
+            w_update_hash_node(lf->file, offset);
         }
     }
 #endif
@@ -2218,9 +2225,12 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                             continue;
                         }
     #ifdef WIN32
-                        set_can_read(1);
-                        current->read(current, &r, 1);
-                        set_can_read(0);
+                        if (!current->future) {
+                            w_set_to_last_line_read(current);
+                        } else {
+                            w_offset_t offset = w_set_to_pos(current, 0, SEEK_END);
+                            w_update_hash_node(current->file, offset);
+                        }
     #endif
                     }
                     /* Increase the error count  */
@@ -2498,7 +2508,7 @@ int can_read() {
     return ret;
 }
 
-int w_update_file_status(const char * path, long pos, SHA_CTX *context) {
+int w_update_file_status(const char * path, w_offset_t pos, SHA_CTX *context) {
 
     os_file_status_t *data;
     os_malloc(sizeof(os_file_status_t), data);
@@ -2619,7 +2629,7 @@ STATIC void w_load_files_status(cJSON *global_json) {
         }
 
         char *end;
-        long value_offset = strtol(offset_str, &end, 10);
+        w_offset_t value_offset = strtol(offset_str, &end, 10);
         if (value_offset < 0 || value_offset > 65534 || *end != '\0') {
             continue;
         }
@@ -2631,7 +2641,7 @@ STATIC void w_load_files_status(cJSON *global_json) {
 
         SHA_CTX context;
         os_sha1 output;
-        OS_SHA1_File_Nbytes(path_str, &context, output, OS_BINARY, value_offset);
+        OS_SHA1_File_Nbytes(path_str, &context, output, value_offset);
         data->context = context;
 
         if (OSHash_Update_ex(files_status, path_str, data) != 1){
@@ -2657,7 +2667,12 @@ STATIC char * w_save_files_status_to_cJSON() {
         os_file_status_t *data = hash_node->data;
         char * path = hash_node->key;
         char offset[OFFSET_SIZE] = {0};
+
+        #ifdef WIN32
+        sprintf(offset, "%lld", data->offset);
+        #else
         sprintf(offset, "%ld", data->offset);
+        #endif
 
         cJSON *item = cJSON_CreateObject();
 
@@ -2676,6 +2691,7 @@ STATIC char * w_save_files_status_to_cJSON() {
 }
 
 STATIC int w_set_to_last_line_read(logreader *lf) {
+
     os_file_status_t *data;
 
     if (data = (os_file_status_t *)OSHash_Get_ex(files_status, lf->file), !data) {
@@ -2690,13 +2706,17 @@ STATIC int w_set_to_last_line_read(logreader *lf) {
         return -1;
     }
 
-    long result = 0;
+    w_offset_t result = 0;
 
     SHA_CTX context;
     os_sha1 output;
-    OS_SHA1_File_Nbytes(lf->file, &context, output, OS_BINARY, data->offset);
 
-    if (strcmp(output,data->hash)){
+    if (OS_SHA1_File_Nbytes(lf->file, &context, output, data->offset) == -1) {
+        merror("Failure to generate the SHA1 hash from file '%s'", lf->file);
+        return -1;
+    }
+
+    if (strcmp(output, data->hash)) {
         result = w_set_to_pos(lf, 0, SEEK_SET);
     } else if (stat_fd.st_size - data->offset > lf->diff_max_size) {
         result = w_set_to_pos(lf, 0, SEEK_END);
@@ -2713,8 +2733,12 @@ STATIC int w_set_to_last_line_read(logreader *lf) {
     return result;
 }
 
-STATIC int w_update_hash_node(char * path, ssize_t pos) {
+STATIC int w_update_hash_node(char * path, w_offset_t pos) {
     os_file_status_t * data;
+
+    if (!path) {
+        return -1;
+    }
 
     os_malloc(sizeof(os_file_status_t), data);
 
@@ -2722,7 +2746,7 @@ STATIC int w_update_hash_node(char * path, ssize_t pos) {
 
     SHA_CTX context;
     os_sha1 output;
-    OS_SHA1_File_Nbytes(path, &context, output, OS_BINARY, pos);
+    OS_SHA1_File_Nbytes(path, &context, output, pos);
     strncpy(data->hash, output, sizeof(os_sha1));
     data->context = context;
 
@@ -2733,13 +2757,24 @@ STATIC int w_update_hash_node(char * path, ssize_t pos) {
     return 0;
 }
 
-STATIC ssize_t w_set_to_pos(logreader *lf, long pos, int mode) {
+STATIC w_offset_t w_set_to_pos(logreader *lf, w_offset_t pos, int mode) {
+
+    if(!lf || !lf->file) {
+        return -1;
+    }
+
+#ifdef WIN32
+    if (_fseeki64(lf->fp, pos, mode) < 0) {
+#else
     if (fseek(lf->fp, pos, mode) < 0) {
+#endif
+
         merror(FSEEK_ERROR, lf->file, errno, strerror(errno));
         fclose(lf->fp);
         lf->fp = NULL;
         return -1;
     }
+
     fpos_t fp_pos;
     fgetpos(lf->fp, &fp_pos);
 
@@ -2751,12 +2786,12 @@ STATIC ssize_t w_set_to_pos(logreader *lf, long pos, int mode) {
 
 }
 
-void w_get_hash_context (const char * path, SHA_CTX *context, ssize_t position) {
+void w_get_hash_context (const char * path, SHA_CTX *context, w_offset_t position) {
     os_file_status_t *data;
 
     if (data = (os_file_status_t *)OSHash_Get_ex(files_status, path), data == NULL) {
         os_sha1 output;
-        OS_SHA1_File_Nbytes(path, context, output, OS_BINARY, position);
+        OS_SHA1_File_Nbytes(path, context, output, position);
     }
     else {
         *context = data->context;
