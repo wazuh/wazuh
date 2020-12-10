@@ -136,4 +136,7 @@ WazuhUpgrade()
     rm -f $DIRECTORY/bin/ossec-logtest
     rm -f $DIRECTORY/bin/ossec-makelists
     rm -f $DIRECTORY/bin/util.sh
+    rm -f $DIRECTORY/bin/rootcheck_control
+	rm -f $DIRECTORY/bin/syscheck_control
+	rm -f $DIRECTORY/bin/syscheck_update
 }

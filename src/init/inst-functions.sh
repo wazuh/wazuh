@@ -861,10 +861,7 @@ InstallLocal()
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} verify-agent-conf ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 clear_stats ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 wazuh-regex ${PREFIX}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 syscheck_update ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 agent_control ${PREFIX}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 syscheck_control ${PREFIX}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 rootcheck_control ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 ossec-integratord ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 wazuh-db ${PREFIX}/bin/
 
