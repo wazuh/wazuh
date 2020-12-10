@@ -133,4 +133,5 @@ WazuhUpgrade()
 
     rm -f $DIRECTORY/bin/ossec-control
     rm -f $DIRECTORY/bin/ossec-regex
+    rm -f $DIRECTORY/bin/ossec-logtest
 }

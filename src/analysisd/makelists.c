@@ -193,7 +193,7 @@ int main(int argc, char **argv)
     }
 
     printf(" Since Wazuh v3.11.0, this binary is deprecated\n");
-    printf(" CDB lists are now compiled at manager start-up time as well as each time ossec-logtest is run.\n");
+    printf(" CDB lists are now compiled at manager start-up time.\n");
     Lists_OP_MakeAll(force, 1, &os_analysisd_cdblists);
     exit(0);
 }
