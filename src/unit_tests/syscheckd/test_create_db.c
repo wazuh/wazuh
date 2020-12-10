@@ -1665,7 +1665,7 @@ static void test_fim_checker_deleted_file(void **state) {
 
     errno = 0;
 
-    assert_int_equal(fim_data->item->configuration, 49663);
+    assert_int_equal(fim_data->item->configuration, 33279);
     assert_int_equal(fim_data->item->index, 3);
 }
 
@@ -1730,7 +1730,7 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     errno = 0;
     syscheck.opts[3] &= ~CHECK_SEECHANGES;
 
-    assert_int_equal(fim_data->item->configuration, 57855);
+    assert_int_equal(fim_data->item->configuration, 41471);
     assert_int_equal(fim_data->item->index, 3);
 }
 
@@ -1752,7 +1752,7 @@ static void test_fim_checker_no_file_system(void **state) {
 
     fim_checker(path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 49663);
+    assert_int_equal(fim_data->item->configuration, 33279);
     assert_int_equal(fim_data->item->index, 3);
 }
 
@@ -1801,7 +1801,7 @@ static void test_fim_checker_fim_regular(void **state) {
 
     fim_checker(path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 49663);
+    assert_int_equal(fim_data->item->configuration, 33279);
     assert_int_equal(fim_data->item->index, 3);
 }
 
@@ -1848,7 +1848,7 @@ static void test_fim_checker_fim_regular_warning(void **state) {
 
     fim_checker(path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 49663);
+    assert_int_equal(fim_data->item->configuration, 33279);
     assert_int_equal(fim_data->item->index, 3);
 }
 
@@ -1870,7 +1870,7 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
 
     fim_checker(path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 82431);
+    assert_int_equal(fim_data->item->configuration, 66047);
     assert_int_equal(fim_data->item->index, 1);
 }
 
@@ -1891,7 +1891,7 @@ static void test_fim_checker_fim_regular_restrict(void **state) {
 
     fim_checker(path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 49663);
+    assert_int_equal(fim_data->item->configuration, 33279);
     assert_int_equal(fim_data->item->index, 3);
 }
 
@@ -2030,7 +2030,7 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
 
     fim_checker(path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 49663);
+    assert_int_equal(fim_data->item->configuration, 33279);
     assert_int_equal(fim_data->item->index, 0);
 }
 
@@ -2505,7 +2505,8 @@ static void test_fim_checker_deleted_file(void **state) {
     fim_checker(expanded_path, fim_data->item, NULL, 1);
 
     errno = 0;
-    assert_int_equal(fim_data->item->configuration, 53759);
+
+    assert_int_equal(fim_data->item->configuration, 37375);
     assert_int_equal(fim_data->item->index, 7);
 }
 
@@ -2581,7 +2582,7 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     errno = 0;
     syscheck.opts[7] &= ~CHECK_SEECHANGES;
 
-    assert_int_equal(fim_data->item->configuration, 61951);
+    assert_int_equal(fim_data->item->configuration, 45567);
     assert_int_equal(fim_data->item->index, 7);
 }
 
@@ -2638,7 +2639,7 @@ static void test_fim_checker_fim_regular(void **state) {
 
     fim_checker(expanded_path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 53759);
+    assert_int_equal(fim_data->item->configuration, 37375);
     assert_int_equal(fim_data->item->index, 7);
 }
 
@@ -2668,7 +2669,7 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
 
     fim_checker(expanded_path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 53759);
+    assert_int_equal(fim_data->item->configuration, 37375);
     assert_int_equal(fim_data->item->index, 7);
 }
 
@@ -2698,7 +2699,7 @@ static void test_fim_checker_fim_regular_restrict(void **state) {
 
     fim_checker(expanded_path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 53759);
+    assert_int_equal(fim_data->item->configuration, 37375);
     assert_int_equal(fim_data->item->index, 8);
 }
 
@@ -2754,7 +2755,7 @@ static void test_fim_checker_fim_regular_warning(void **state) {
 
     fim_checker(expanded_path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 53759);
+    assert_int_equal(fim_data->item->configuration, 37375);
     assert_int_equal(fim_data->item->index, 7);
 }
 
@@ -2864,7 +2865,7 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
 
     fim_checker(path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 53759);
+    assert_int_equal(fim_data->item->configuration, 37375);
     assert_int_equal(fim_data->item->index, 0);
 }
 

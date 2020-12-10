@@ -129,5 +129,9 @@ WazuhUpgrade()
     rm -f $DIRECTORY/wodles/cve.db
     rm -f $DIRECTORY/queue/vulnerabilities/cve.db
 
+    # Remove old Wazuh tools
+
+    rm -f $DIRECTORY/bin/ossec-control
+    rm -f $DIRECTORY/bin/ossec-regex
     rm -f $DIRECTORY/bin/ossec-logtest
 }

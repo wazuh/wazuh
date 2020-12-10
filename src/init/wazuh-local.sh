@@ -1,23 +1,31 @@
 #!/bin/sh
 
 # Copyright (C) 2015-2020, Wazuh Inc.
-# ossec-control        This shell script takes care of starting
+# wazuh-control        This shell script takes care of starting
 #                      or stopping ossec-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
+# Getting where we are installed
 LOCAL=`dirname $0`;
 cd ${LOCAL}
 PWD=`pwd`
 DIR=`dirname $PWD`;
+PLIST=${DIR}/bin/.process_list;
 
 ###  Do not modify bellow here ###
+
+# Getting additional processes
+ls -la ${PLIST} > /dev/null 2>&1
+if [ $? = 0 ]; then
+. ${PLIST};
+fi
+
 AUTHOR="Wazuh Inc."
-DAEMONS="wazuh-modulesd ossec-logcollector ossec-syscheckd ossec-agentd ossec-execd"
+DAEMONS="wazuh-modulesd ossec-monitord ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd"
+INITCONF="/etc/ossec-init.conf"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
-
-INITCONF="/etc/ossec-init.conf"
 
 [ -f ${INITCONF} ] && . ${INITCONF}  || echo "ERROR: No such file ${INITCONF}"
 
@@ -32,8 +40,7 @@ MAX_ITERATION="10"
 
 MAX_KILL_TRIES=600
 
-checkpid()
-{
+checkpid() {
     for i in ${DAEMONS}; do
         for j in `cat ${DIR}/var/run/${i}*.pid 2>/dev/null`; do
             ps -p $j > /dev/null 2>&1
@@ -45,8 +52,7 @@ checkpid()
     done
 }
 
-lock()
-{
+lock() {
     i=0;
 
     # Providing a lock.
@@ -94,8 +100,85 @@ unlock()
 help()
 {
     # Help message
-    echo "Usage: $0 {start|stop|restart|status}";
+    echo ""
+    echo "Usage: $0 {start|stop|restart|status|enable|disable}";
     exit 1;
+}
+
+DATABASE_MSG="This option is deprecated because the database output is now enabled by default."
+SYSLOG_MSG="This option is deprecated because Client Syslog is now enabled by default."
+AGENTLESS_MSG="This option is deprecated because Agentless is now enabled by default."
+INTEGRATOR_MSG="This option is deprecated because Integrator is now enabled by default."
+
+
+# Enables additional daemons
+enable()
+{
+    if [ "X$2" = "X" ]; then
+        echo ""
+        echo "Enable options: debug"
+        echo "Usage: $0 enable debug"
+        exit 1;
+    fi
+
+    if [ "X$2" = "Xdatabase" ]; then
+        echo "$DATABASE_MSG"
+    elif [ "X$2" = "Xclient-syslog" ]; then
+        echo "$SYSLOG_MSG"
+    elif [ "X$2" = "Xagentless" ]; then
+        echo "$AGENTLESS_MSG";
+    elif [ "X$2" = "Xintegrator" ]; then
+        echo "$INTEGRATOR_MSG";
+    elif [ "X$2" = "Xdebug" ]; then
+        echo "DEBUG_CLI=\"-d\"" >> ${PLIST};
+    else
+        echo ""
+        echo "Invalid enable option."
+        echo ""
+        echo "Enable options: debug"
+        echo "Usage: $0 enable debug"
+        exit 1;
+    fi
+}
+
+# Disables additional daemons
+disable()
+{
+    if [ "X$2" = "X" ]; then
+        echo ""
+        echo "Disable options: debug"
+        echo "Usage: $0 disable debug"
+        exit 1;
+    fi
+    daemon=''
+
+
+    if [ "X$2" = "Xdatabase" ]; then
+        echo "$DATABASE_MSG"
+    elif [ "X$2" = "Xclient-syslog" ]; then
+        echo "$SYSLOG_MSG"
+    elif [ "X$2" = "Xagentless" ]; then
+        echo "$AGENTLESS_MSG";
+    elif [ "X$2" = "Xintegrator" ]; then
+        echo "$INTEGRATOR_MSG";
+    elif [ "X$2" = "Xdebug" ]; then
+        echo "DEBUG_CLI=\"\"" >> ${PLIST};
+    else
+        echo ""
+        echo "Invalid disable option."
+        echo ""
+        echo "Disable options: debug"
+        echo "Usage: $0 disable debug"
+        exit 1;
+    fi
+    if [ "$daemon" != '' ]; then
+        pstatus ${daemon};
+        if [ $? = 1 ]; then
+            kill `cat $DIR/var/run/$daemon*`
+            rm $DIR/var/run/$daemon*
+            echo "Killing ${daemon}...";
+        fi
+    fi
 }
 
 status()
@@ -114,51 +197,54 @@ status()
 
 testconfig()
 {
-    # We first loop to check the config.
+    # We first loop to check the config
     for i in ${SDAEMONS}; do
-        ${DIR}/bin/${i} -t;
+        ${DIR}/bin/${i} -t ${DEBUG_CLI};
         if [ $? != 0 ]; then
+            if [ ! -f ${DIR}/var/run/.restart ]; then
+                touch ${DIR}/var/run/${i}.failed
+            fi
             echo "${i}: Configuration error. Exiting"
+            rm -f ${DIR}/var/run/*.start
+            rm -f ${DIR}/var/run/.restart
             unlock;
             exit 1;
         fi
     done
 }
 
-# Start function
 start()
 {
     echo "Starting $NAME $VERSION..."
+    TEST=$(${DIR}/bin/ossec-analysisd -t  2>&1)
+    echo $TEST
+
+    if [ ! -z "$TEST" ]; then
+        echo "ossec-analysisd: Configuration error. Exiting."
+        touch ${DIR}/var/run/ossec-analysisd.failed
+        exit 1;
+    fi
+
     checkpid;
 
     # Delete all files in temporary folder
     TO_DELETE="$DIR/tmp/*"
     rm -rf $TO_DELETE
 
+
     # We actually start them now.
     for i in ${SDAEMONS}; do
         pstatus ${i};
         if [ $? = 0 ]; then
-            failed=false
-            ${DIR}/bin/${i};
+            rm -f ${DIR}/var/run/${i}.failed
+            touch ${DIR}/var/run/${i}.start
+            ${DIR}/bin/${i} ${DEBUG_CLI};
             if [ $? != 0 ]; then
-                failed=true
-            else
-                j=0;
-                while [ $failed = false ]; do
-                    pstatus ${i};
-                    if [ $? = 1 ]; then
-                        break;
-                    fi
-                    sleep 1;
-                    j=`expr $j + 1`;
-                    if [ "$j" -ge "${MAX_ITERATION}" ]; then
-                        failed=true
-                    fi
-                done
-            fi
-            if [ $failed = true ]; then
-                echo "${i} did not start";
+                echo "${i} did not start correctly.";
+                rm -f ${DIR}/var/run/${i}.start
+                touch ${DIR}/var/run/${i}.failed
+                rm -f ${DIR}/var/run/*.start
+                rm -f ${DIR}/var/run/.restart
                 unlock;
                 exit 1;
             fi
@@ -171,6 +257,14 @@ start()
     # After we start we give 2 seconds for the daemons
     # to internally create their PID files.
     sleep 2;
+    rm -f ${DIR}/var/run/*.start
+    ls -la "${DIR}/ossec-agent/" >/dev/null 2>&1
+    if [ $? = 0 ]; then
+        echo ""
+        echo "Starting sub agent directory (for hybrid mode)"
+        ${DIR}/ossec-agent/bin/wazuh-control start
+    fi
+
     echo "Completed."
 }
 
@@ -188,7 +282,7 @@ pstatus()
         for pid in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
             ps -p ${pid} > /dev/null 2>&1
             if [ ! $? = 0 ]; then
-                echo "${pfile}: Process ${pid} not used by Wazuh, removing .."
+                echo "${pfile}: Process ${pid} not used by Wazuh, removing..."
                 rm -f ${DIR}/var/run/${pfile}-${pid}.pid
                 continue;
             fi
@@ -228,8 +322,7 @@ stopa()
     for i in ${DAEMONS}; do
         pstatus ${i};
         if [ $? = 1 ]; then
-            echo "Killing ${i}... ";
-
+            echo "Killing ${i}...";
             pid=`cat ${DIR}/var/run/${i}*.pid`
             kill $pid
 
@@ -241,10 +334,16 @@ stopa()
         else
             echo "${i} not running...";
         fi
-
         rm -f ${DIR}/var/run/${i}*.pid
-     done
+    done
 
+
+    ls -la "${DIR}/ossec-agent/" >/dev/null 2>&1
+    if [ $? = 0 ]; then
+        echo ""
+        echo "Stopping sub agent directory (for hybrid mode)"
+        ${DIR}/ossec-agent/bin/wazuh-control stop
+    fi
     echo "$NAME $VERSION Stopped"
 }
 
@@ -266,7 +365,6 @@ restart)
     testconfig
     lock
     stopa
-    sleep 1
     start
     unlock
     ;;
@@ -274,7 +372,6 @@ reload)
     DAEMONS=$(echo $DAEMONS | sed 's/ossec-execd//')
     lock
     stopa
-    sleep 1
     start
     unlock
     ;;
@@ -285,6 +382,16 @@ status)
     ;;
 help)
     help
+    ;;
+enable)
+    lock
+    enable $1 $2;
+    unlock
+    ;;
+disable)
+    lock
+    disable $1 $2;
+    unlock
     ;;
 *)
     help

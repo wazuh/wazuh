@@ -50,7 +50,7 @@ elif command -v service > /dev/null 2>&1; then
     service wazuh-$TYPE restart
     rm -f ${PWD}/var/run/.restart
 else
-    ${PWD}/bin/ossec-control restart
+    ${PWD}/bin/wazuh-control restart
 fi
 
 exit $?;

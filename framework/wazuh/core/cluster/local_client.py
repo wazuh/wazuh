@@ -3,6 +3,7 @@
 import asyncio
 import logging
 from typing import Tuple
+import os
 
 import uvloop
 
@@ -61,7 +62,7 @@ class LocalClientHandler(client.AbstractClient):
         bytes
             Response message.
         """
-        self.logger.debug("Command received: {}".format(command))
+        self.logger.debug(f"Command received: {command}")
         if command == b'dapi_res' or command == b'send_f_res':
             if data.startswith(b'Error'):
                 return b'err', self.process_error_from_peer(data)
@@ -143,7 +144,7 @@ class LocalClient(client.AbstractClientManager):
                                                                                          name=self.name, logger=self.logger,
                                                                                          fernet_key='', manager=self,
                                                                                          cluster_items=self.cluster_items),
-                                             path='{}/queue/cluster/c-internal.sock'.format(common.ossec_path))
+                                             path=os.path.join(common.ossec_path, 'queue', 'cluster', 'c-internal.sock'))
         except (ConnectionRefusedError, FileNotFoundError):
             raise exception.WazuhInternalError(3012)
         except MemoryError:
@@ -230,4 +231,4 @@ class LocalClient(client.AbstractClientManager):
             Request response.
         """
         await self.start()
-        return await self.send_api_request(b'send_file', "{} {}".format(path, node_name).encode(), False)
+        return await self.send_api_request(b'send_file', f"{path} {node_name}".encode(), False)

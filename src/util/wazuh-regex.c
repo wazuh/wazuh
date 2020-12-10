@@ -11,7 +11,7 @@
 #include "shared.h"
 
 #undef ARGV0
-#define ARGV0 "ossec-regex"
+#define ARGV0 "wazuh-regex"
 
 /* Prototypes */
 static void helpmsg(void) __attribute__((noreturn));
@@ -19,7 +19,7 @@ static void helpmsg(void) __attribute__((noreturn));
 
 static void helpmsg()
 {
-    printf("\n%s %s: ossec-regex <pattern>\n", __ossec_name, ARGV0);
+    printf("\n%s %s: wazuh-regex <pattern>\n", __ossec_name, ARGV0);
     exit(1);
 }
 

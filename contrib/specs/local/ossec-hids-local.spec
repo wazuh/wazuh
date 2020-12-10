@@ -84,7 +84,7 @@ cat <<EOF >> /etc/init.d/ossec
 # Source function library.
 . /etc/init.d/functions
 
-[ -f /var/ossec/bin/ossec-control ] || exit 0
+[ -f /var/ossec/bin/wazuh-control ] || exit 0
 
 RETVAL=0
 
@@ -92,19 +92,19 @@ umask 077
 
 case "\$1" in
   start)
-        /var/ossec/bin/ossec-control start
+        /var/ossec/bin/wazuh-control start
         ;;
   stop)
-        /var/ossec/bin/ossec-control stop
+        /var/ossec/bin/wazuh-control stop
         ;;
   status)
-        /var/ossec/bin/ossec-control status
+        /var/ossec/bin/wazuh-control status
         ;;
   restart|reload)
-        /var/ossec/bin/ossec-control restart
+        /var/ossec/bin/wazuh-control restart
         ;;
   *)
-        echo "Usage: /var/ossec/bin/ossec-control {start|stop|status|restart}"
+        echo "Usage: /var/ossec/bin/wazuh-control {start|stop|status|restart}"
         exit 1
 esac
 
@@ -174,8 +174,8 @@ fi
 %attr(550, root, ossec) /var/ossec/bin/ossec-agentd
 /var/ossec/bin/ossec-logcollector
 %attr(550, root, ossec) /var/ossec/bin/ossec-logcollector
-/var/ossec/bin/ossec-control
-%attr(550, root, ossec) /var/ossec/bin/ossec-control
+/var/ossec/bin/wazuh-control
+%attr(550, root, ossec) /var/ossec/bin/wazuh-control
 /var/ossec/bin/ossec-syscheckd
 %attr(550, root, ossec) /var/ossec/bin/ossec-syscheckd
 /var/ossec/bin/manage_agents

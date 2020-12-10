@@ -197,7 +197,7 @@ class Handler(asyncio.Protocol):
         # Defines header length.
         self.header_len = self.cmd_len + 8  # 4 bytes of counter and 4 bytes of message size
         # Defines header format.
-        self.header_format = '!2I{}s'.format(self.cmd_len)
+        self.header_format = f'!2I{self.cmd_len}s'
         # Stores received data.
         self.in_buffer = b''
         # Stores last received message.
@@ -518,10 +518,10 @@ class Handler(asyncio.Protocol):
         try:
             command, payload = self.process_request(command, payload)
         except exception.WazuhException as e:
-            self.logger.error("Internal error processing request '{}': {}".format(command, e))
+            self.logger.error(f"Internal error processing request '{command}': {e}")
             command, payload = b'err', json.dumps(e, cls=WazuhJSONEncoder).encode()
         except Exception as e:
-            self.logger.error("Unhandled error processing request '{}': {}".format(command, e), exc_info=True)
+            self.logger.error(f"Unhandled error processing request '{command}': {e}", exc_info=True)
             command, payload = b'err', json.dumps(exception.WazuhInternalError(1000, extra_message=str(e)),
                                                   cls=WazuhJSONEncoder).encode()
         if command is not None:
@@ -717,7 +717,7 @@ class Handler(asyncio.Protocol):
         bytes
             Response message.
         """
-        return b'err', "unknown command '{}'".format(command).encode()
+        return b'err', f"unknown command '{command}'".encode()
 
     def process_error_from_peer(self, data: bytes) -> bytes:
         """Handle errors in requests.

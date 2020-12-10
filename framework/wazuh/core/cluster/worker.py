@@ -40,7 +40,7 @@ class SyncWorker:
     Define methods to synchronize files with master.
     """
 
-    def __init__(self, cmd: bytes, files_to_sync: Dict, checksums: Dict, logger, worker):
+    def __init__(self, cmd: bytes, files_to_sync: Dict, files_metadata: Dict, logger, worker):
         """Class constructor.
 
         Parameters
@@ -50,7 +50,7 @@ class SyncWorker:
         files_to_sync : dict
             Paths (keys) and metadata (values) of the files to send to the master. Keys in this dictionary
             will be iterated to add the files they refer to the zip file that the master will receive.
-        checksums : dict
+        files_metadata : dict
             Paths (keys) and metadata (values) of the files to send to the master. This dict will be included as
             a JSON file named cluster_control.json.
         logger : Logger object
@@ -60,7 +60,7 @@ class SyncWorker:
         """
         self.cmd = cmd
         self.files_to_sync = files_to_sync
-        self.checksums = checksums
+        self.files_metadata = files_metadata
         self.logger = logger
         self.worker = worker
 
@@ -92,7 +92,7 @@ class SyncWorker:
         self.logger.info("Compressing files")
         compressed_data_path = wazuh.core.cluster.cluster.compress_files(name=self.worker.name,
                                                                          list_path=self.files_to_sync,
-                                                                         cluster_control_json=self.checksums)
+                                                                         cluster_control_json=self.files_metadata)
 
         try:
             # Send zip file to the master into chunks.
@@ -264,7 +264,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """
         super().__init__(**kwargs, tag="Worker")
         # The self.client_data will be sent to the master when doing a hello request.
-        self.client_data = "{} {} {} {}".format(self.name, cluster_name, node_type, version).encode()
+        self.client_data = f"{self.name} {cluster_name} {node_type} {version}".encode()
 
         # Every task logger is configured to log using a tag describing the synchronization process. For example,
         # a log coming from the "Integrity" logger will look like this:
@@ -285,7 +285,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         super().connection_result(future_result)
         if self.connected:
             # create directory for temporary files
-            worker_tmp_files = '{}/queue/cluster/{}'.format(common.ossec_path, self.name)
+            worker_tmp_files = os.path.join(common.ossec_path, 'queue', 'cluster', self.name)
             if not os.path.exists(worker_tmp_files):
                 utils.mkdir_with_mode(worker_tmp_files)
 
@@ -306,7 +306,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         bytes
             Response message.
         """
-        self.logger.debug("Command received: '{}'".format(command))
+        self.logger.debug(f"Command received: '{command}'")
         if command == b'sync_m_c_ok':
             return self.sync_integrity_ok_from_master()
         elif command == b'sync_m_c':
@@ -432,16 +432,15 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 if self.connected:
                     before = time.time()
                     await SyncWorker(cmd=b'sync_i_w_m', files_to_sync={}, logger=integrity_logger, worker=self,
-                                     checksums=wazuh.core.cluster.cluster.get_files_status('master')).sync()
-                    after = time.time()
-                    integrity_logger.debug("Time synchronizing integrity: {} s".format(after - before))
+                                     files_metadata=wazuh.core.cluster.cluster.get_files_status()).sync()
+                    integrity_logger.debug(f"Time synchronizing integrity: {time.time() - before} s")
             # If exception is raised during sync process, notify the master so it removes the file if received.
             except exception.WazuhException as e:
-                integrity_logger.error("Error synchronizing integrity: {}".format(e))
+                integrity_logger.error(f"Error synchronizing integrity: {e}")
                 await self.send_request(command=b'sync_i_w_m_r', data=b'None ' +
                                         json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
             except Exception as e:
-                integrity_logger.error("Error synchronizing integrity: {}".format(e))
+                integrity_logger.error(f"Error synchronizing integrity: {e}")
                 exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
                                       cls=c_common.WazuhJSONEncoder)
                 await self.send_request(command=b'sync_i_w_m_r', data=b'None ' + exc_info.encode())
@@ -470,9 +469,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     agent_info_logger.info("Starting agent-info sync process.")
                     before = time.time()
                     await agent_info.retrieve_and_send('global sync-agent-info-get ')
-                    agent_info_logger.debug2("Time synchronizing agent statuses: {} s".format(time.time() - before))
+                    agent_info_logger.debug2(f"Time synchronizing agent statuses: {time.time() - before} s")
             except Exception as e:
-                agent_info_logger.error("Error synchronizing agent info: {}".format(e))
+                agent_info_logger.error(f"Error synchronizing agent info: {e}")
 
             await asyncio.sleep(self.cluster_items['intervals']['worker']['sync_files'])
 
@@ -491,25 +490,24 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         try:
             before = time.time()
             self.logger.debug("Starting to send extra valid files")
-            # Merge all agent-groups files into one and create checksums dict with it (key->filepath, value->metadata).
+            # Merge all agent-groups files into one and create metadata dict with it (key->filepath, value->metadata).
             n_files, merged_file = \
                 wazuh.core.cluster.cluster.merge_info(merge_type='agent-groups', files=extra_valid.keys(),
-                                                      time_limit_seconds=0, node_name=self.name)
+                                                    node_name=self.name)
             if n_files:
                 files_to_sync = {merged_file: {'merged': True, 'merge_type': 'agent-groups', 'merge_name': merged_file,
-                                               'cluster_item_key': '/queue/agent-groups/'}}
-                my_worker = SyncWorker(cmd=b'sync_e_w_m', files_to_sync=files_to_sync, checksums=files_to_sync,
+                                               'cluster_item_key': 'queue/agent-groups/'}}
+                my_worker = SyncWorker(cmd=b'sync_e_w_m', files_to_sync=files_to_sync, files_metadata=files_to_sync,
                                        logger=extra_valid_logger, worker=self)
                 await my_worker.sync()
-            after = time.time()
-            self.logger.debug2("Time synchronizing extra valid files: {} s".format(after - before))
+            self.logger.debug2(f"Time synchronizing extra valid files: {time.time() - before} s")
         # If exception is raised during sync process, notify the master so it removes the file if received.
         except exception.WazuhException as e:
-            extra_valid_logger.error("Error synchronizing extra valid files: {}".format(e))
+            extra_valid_logger.error(f"Error synchronizing extra valid files: {e}")
             await self.send_request(command=b'sync_e_w_m_r',
                                     data=b'None ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
         except Exception as e:
-            extra_valid_logger.error("Error synchronizing extra valid files: {}".format(e))
+            extra_valid_logger.error(f"Error synchronizing extra valid files: {e}")
             exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
                                   cls=c_common.WazuhJSONEncoder)
             await self.send_request(command=b'sync_e_w_m_r', data=b'None ' + exc_info.encode())
@@ -595,7 +593,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                   for a in agent_info}
 
                 for agent_file in set(glob.iglob(filetype_glob)) & filetype_agent:
-                    logger.debug2("Removing {}".format(agent_file))
+                    logger.debug2(f"Removing {agent_file}")
                     if os.path.isdir(agent_file):
                         shutil.rmtree(agent_file)
                     else:
@@ -604,15 +602,15 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         if not agent_ids_list:
             return  # the function doesn't make sense if there is no agents to remove
 
-        logger.info("Removing files from {} agents".format(len(agent_ids_list)))
-        logger.debug("Agents to remove: {}".format(', '.join(agent_ids_list)))
+        logger.info(f"Removing files from {len(agent_ids_list)} agents")
+        logger.debug(f"Agents to remove: {', '.join(agent_ids_list)}")
         # Remove agents in group of 500 elements (so wazuh-db socket is not saturated)
         for agents_ids_sublist in itertools.zip_longest(*itertools.repeat(iter(agent_ids_list), 500), fillvalue='0'):
             agents_ids_sublist = list(filter(lambda x: x != '0', agents_ids_sublist))
             # Get info from DB
             agent_info = Agent.get_agents_overview(q=",".join(["id={}".format(i) for i in agents_ids_sublist]),
                                                    select=['ip', 'id', 'name'], limit=None)['items']
-            logger.debug2("Removing files from agents {}".format(', '.join(agents_ids_sublist)))
+            logger.debug2(f"Removing files from agents {', '.join(agents_ids_sublist)}")
 
             # Remove agent related files inside these paths.
             files_to_remove = ['{ossec_path}/queue/rootcheck/({name}) {ip}->rootcheck',
@@ -664,14 +662,14 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     map(lambda x: x.split(' '), filter(lambda x: ck_line.match(x) is not None, client_keys_contents))
                     if not a_name.startswith('!')}
 
-        ck_path = "{0}/etc/client.keys".format(common.ossec_path)
+        ck_path = os.path.join(common.ossec_path, 'etc', 'client.keys')
         try:
             with open(ck_path) as ck:
                 # Can't use readlines function since it leaves a \n at the end of each item of the list.
                 client_keys_dict = parse_client_keys(ck)
         except Exception as e:
             # If client.keys can't be read, it can't be parsed.
-            logger.warning("Could not parse client.keys file: {}".format(e))
+            logger.warning(f"Could not parse client.keys file: {e}")
             return
 
         with open(new_client_keys_path) as n_ck:
@@ -681,7 +679,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         try:
             WorkerHandler.remove_bulk_agents(client_keys_dict.keys() - new_client_keys_dict.keys(), logger)
         except Exception as e:
-            logger.error("Error removing agent files: {}".format(e))
+            logger.error(f"Error removing agent files: {e}")
             raise e
 
     def update_master_files_in_worker(self, ko_files: Dict, zip_path: str):
@@ -709,9 +707,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             data : dict
                 File metadata such as modification time, whether it's a merged file or not, etc.
             """
-            full_filename_path = common.ossec_path + filename
+            full_filename_path = os.path.join(common.ossec_path, filename)
             if os.path.basename(filename) == 'client.keys':
-                self._check_removed_agents("{}{}".format(zip_path, filename), logger)
+                self._check_removed_agents(os.path.join(zip_path, filename), logger)
 
             if data['merged']:  # worker nodes can only receive agent-groups files
                 # Split merged file into individual files inside zipdir (directory containing unzipped files),
@@ -730,7 +728,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 if not os.path.exists(os.path.dirname(full_filename_path)):
                     utils.mkdir_with_mode(os.path.dirname(full_filename_path))
                 # Move the file from zipdir (directory containing unzipped files) to <ossec_path>/filename.
-                safe_move("{}{}".format(zip_path, filename), full_filename_path,
+                safe_move(os.path.join(zip_path, filename), full_filename_path,
                           permissions=self.cluster_items['files'][data['cluster_item_key']]['permissions'],
                           ownership=(common.ossec_uid(), common.ossec_gid())
                           )
@@ -741,33 +739,32 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         for filetype, files in ko_files.items():
             # Overwrite local files marked as shared or missing.
             if filetype == 'shared' or filetype == 'missing':
-                logger.debug("Received {} {} files to update from master.".format(len(ko_files[filetype]),
-                                                                                  filetype))
+                logger.debug(f"Received {len(ko_files[filetype])} {filetype} files to update from master.")
                 for filename, data in files.items():
                     try:
-                        logger.debug2("Processing file {}".format(filename))
+                        logger.debug2(f"Processing file {filename}")
                         overwrite_or_create_files(filename, data)
                     except Exception as e:
                         errors[filetype] += 1
-                        logger.error("Error processing {} file '{}': {}".format(filetype, filename, e))
+                        logger.error(f"Error processing {filetype} file '{filename}': {e}")
                         continue
             # Remove local files marked as extra.
             elif filetype == 'extra':
                 for file_to_remove in files:
                     try:
-                        logger.debug2("Remove file: '{}'".format(file_to_remove))
-                        file_path = common.ossec_path + file_to_remove
+                        logger.debug2(f"Remove file: '{file_to_remove}'")
+                        file_path = os.path.join(common.ossec_path, file_to_remove)
                         try:
                             os.remove(file_path)
                         except OSError as e:
-                            if e.errno == errno.ENOENT and '/queue/agent-groups/' in file_path:
-                                logger.debug2("File {} doesn't exist.".format(file_to_remove))
+                            if e.errno == errno.ENOENT and 'queue/agent-groups/' in file_path:
+                                logger.debug2(f"File {file_to_remove} doesn't exist.")
                                 continue
                             else:
                                 raise e
                     except Exception as e:
                         errors['extra'] += 1
-                        logger.debug2("Error removing file '{}': {}".format(file_to_remove, e))
+                        logger.debug2(f"Error removing file '{file_to_remove}': {e}")
                         continue
 
         # Once files are deleted, check and remove subdirectories which are now empty, as specified in cluster.json.
@@ -775,19 +772,18 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                 if self.cluster_items['files'][data['cluster_item_key']]['remove_subdirs_if_empty'])
         for directory in directories_to_check:
             try:
-                full_path = common.ossec_path + directory
+                full_path = os.path.join(common.ossec_path, directory)
                 dir_files = set(os.listdir(full_path))
                 if not dir_files or dir_files.issubset(set(self.cluster_items['files']['excluded_files'])):
                     shutil.rmtree(full_path)
             except Exception as e:
                 errors['extra'] += 1
-                logger.debug2("Error removing directory '{}': {}".format(directory, e))
+                logger.debug2(f"Error removing directory '{directory}': {e}")
                 continue
 
         if sum(errors.values()) > 0:
-            logger.error("Found errors: {} overwriting, {} creating and {} removing".format(errors['shared'],
-                                                                                            errors['missing'],
-                                                                                            errors['extra']))
+            logger.error(f"Found errors: {errors['shared']} overwriting, {errors['missing']} creating and "
+                         f"{errors['extra']} removing")
 
     def get_logger(self, logger_tag: str = ''):
         """Get current logger. In workers it will always return the main logger.

@@ -19,7 +19,7 @@ from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deseri
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
-logger = logging.getLogger('wazuh')
+logger = logging.getLogger('wazuh-api')
 
 
 async def get_cluster_node(request, pretty=False, wait_for_complete=False):
