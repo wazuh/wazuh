@@ -20,6 +20,9 @@
 #define OUTPUT_MIN_QUEUE_SIZE 128
 #define WIN32_MAX_FILES 200
 
+///> Size of hash table to save the status file
+#define LOCALFILES_TABLE_SIZE 40
+
 ///> JSON path wich contains the files position of last read
 #ifdef WIN32
 #define LOCALFILE_STATUS_PATH   "queue\\logcollector\\file_status.json"

@@ -298,8 +298,6 @@ void test_w_save_file_status_str_NULL(void ** state) {
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
 
-    expect_string(__wrap__merror, formatted_msg, "Failure to convert the status files information to JSON.");
-
     w_save_file_status();
 
 }
@@ -780,7 +778,7 @@ void test_w_load_files_status_update_add_fail(void ** state) {
     expect_string(__wrap_OSHash_Add_ex, key, file);
     will_return(__wrap_OSHash_Add_ex, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "(1298): Failure to add 'test' to 'files_status' hash table");
+    expect_string(__wrap__merror, formatted_msg, "(1298): Failure to add 'test' to 'file_status' hash table");
 
     w_load_files_status(global_json);
 
@@ -884,7 +882,7 @@ void test_w_initialize_file_status_OSHash_Create_fail(void ** state) {
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, NULL);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(1296): Unable to create a 'files_status' hash table");
+    expect_string(__wrap__merror_exit, formatted_msg, "(1296): Unable to create a 'file_status' hash table");
 
     will_return(__wrap_OSHash_setSize, 1);
 
@@ -909,7 +907,7 @@ void test_w_initialize_file_status_OSHash_setSize_fail(void ** state) {
 
     will_return(__wrap_OSHash_setSize, NULL);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(1297): Unable to set size of 'files_status' hash table");
+    expect_string(__wrap__merror_exit, formatted_msg, "(1297): Unable to set size of 'file_status' hash table");
 
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
@@ -1394,7 +1392,7 @@ void test_w_set_to_last_line_read_update_hash_node_error(void ** state) {
 
     will_return(__wrap_OSHash_Update_ex, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "(1299): Failure to update 'test' to 'files_status' hash table");
+    expect_string(__wrap__merror, formatted_msg, "(1299): Failure to update 'test' to 'file_status' hash table");
 
     int ret = w_set_to_last_line_read(lf);
 

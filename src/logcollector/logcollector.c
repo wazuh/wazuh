@@ -2529,7 +2529,8 @@ STATIC void w_initialize_file_status() {
     if (files_status = OSHash_Create(), !files_status) {
         merror_exit(HCREATE_ERROR, files_status_name);
     }
-    if (!OSHash_setSize(files_status, 256)) {
+
+    if (!OSHash_setSize(files_status, LOCALFILES_TABLE_SIZE)) {
         merror_exit(HSETSIZE_ERROR, files_status_name);
     }
 
@@ -2560,7 +2561,6 @@ STATIC void w_save_file_status() {
     char * str = w_save_files_status_to_cJSON();
 
     if (!str) {
-        merror("Failure to convert the status files information to JSON.");
         return;
     }
 
@@ -2643,6 +2643,7 @@ STATIC void w_load_files_status(cJSON * global_json) {
         if (OSHash_Update_ex(files_status, path_str, data) != 1) {
             if (OSHash_Add_ex(files_status, path_str, data) != 2) {
                 merror(HADD_ERROR, path_str, files_status_name);
+                os_free(data);
             }
         }
     }
@@ -2747,6 +2748,7 @@ STATIC int w_update_hash_node(char * path, w_offset_t pos) {
     data->context = context;
 
     if (OSHash_Update_ex(files_status, path, data) != 1) {
+        os_free(data);
         return -1;
     }
 
@@ -2773,10 +2775,10 @@ STATIC w_offset_t w_set_to_pos(logreader * lf, w_offset_t pos, int mode) {
     fpos_t fp_pos = {0};
     fgetpos(lf->fp, &fp_pos);
 
-#ifdef WIN32
-    return fp_pos;
-#else
+#if defined(__linux__)
     return fp_pos.__pos;
+#else
+    return fp_pos;
 #endif
 }
 

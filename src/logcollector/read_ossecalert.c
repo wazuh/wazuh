@@ -34,12 +34,12 @@ void *read_ossecalert(logreader *lf, __attribute__((unused)) int *rc, int drop_i
     os_sha1 output;
 
     /* For Windows fpos_t is a __int64 type. In contrast, for Linux is a __fpos_t type */
-#ifdef WIN32
-    OS_SHA1_File_Nbytes(lf->file, &context, output,  pos);
-    w_update_file_status(lf->file, pos, &context);
-#else
+#if defined(__linux__)
     OS_SHA1_File_Nbytes(lf->file, &context, output, pos.__pos);
     w_update_file_status(lf->file, pos.__pos, &context);
+#else
+    OS_SHA1_File_Nbytes(lf->file, &context, output,  pos);
+    w_update_file_status(lf->file, pos, &context);
 #endif
 
     memset(syslog_msg, '\0', OS_SIZE_2048 + 1);
