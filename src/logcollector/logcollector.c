@@ -100,7 +100,7 @@ OSHash * msg_queues_table;
 ///> To asociate the path, the position to read, and the hash key of lines read.
 OSHash * files_status;
 ///> Use for log messages
-char *files_status_name = "files_status";
+char *files_status_name = "file_status";
 
 static int _cday = 0;
 int N_INPUT_THREADS = N_MIN_INPUT_THREADS;

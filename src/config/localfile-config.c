@@ -16,6 +16,8 @@ int maximum_files;
 int current_files;
 int total_files;
 
+
+
 int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     unsigned int pl = 0;
@@ -93,17 +95,19 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
         } else if (strcmp(node[i]->element, xml_localfile_future) == 0) {
-            logf[pl].diff_max_size = DIFF_MAX_SIZE;
+            logf[pl].diff_max_size = DIFF_DEFAULT_SIZE;
             if (node[i]->attributes) {
                 for (int j = 0; node[i]->attributes[j]; j++) {
                     if (strcmp(node[i]->attributes[j], xml_localfile_max_size_attr) == 0) {
-                        char * end;
-                        long value = strtol(node[i]->values[j], &end, 10);
-                        if (value < 0 || value > 65534 || *end != '\0') {
-                            mwarn(XML_INVATTR, node[i]->element, node[i]->content);
+                        long long value = w_validate_bytes(node[i]->values[j]);
+                        if (value == -1 && value > DIFF_MAX_SIZE) {
+                            mwarn("Invalid value in attribute '%s' in localfile block configuration",
+                                  node[i]->attributes[j]);
                             continue;
                         }
-                        logf[pl].diff_max_size = value;
+                        logf[pl].diff_max_size = (long) value;
+                    } else {
+                        mwarn(XML_INVATTR, node[i]->attributes[j], node[i]->element);
                     }
                 }
             }

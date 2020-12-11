@@ -901,3 +901,34 @@ int w_validate_interval(int interval, int force) {
 
     return ret;
 }
+
+long long w_validate_bytes(const char *content) {
+
+    long long converted_value = 0;
+    char * end;
+    long read_value = strtol(content, &end, 10);
+
+    if (read_value < 0 || read_value > LONG_MAX || content == end) {
+        return -1;
+    }
+
+    switch (*end) {
+        case 'K':
+        case 'k':
+            converted_value = read_value * 1024;
+            break;
+        case 'M':
+        case 'm':
+            converted_value = read_value * (1024 * 1024);
+            break;
+        case 'G':
+        case 'g':
+            converted_value = read_value * (1024 * 1024 * 1024);
+            break;
+        default:
+            converted_value = read_value;
+            break;
+    }
+
+    return converted_value;
+}
