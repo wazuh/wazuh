@@ -23,8 +23,6 @@ def get_health():
     output = os.system("grep -q 'wazuh-modulesd:syscollector: INFO: Evaluation finished.' /var/ossec/logs/ossec.log")
 
     if "differ" not in check and output == 0:
-        # Avoid race condition
-        time.sleep(30)
         return 0
     else:
         return 1
