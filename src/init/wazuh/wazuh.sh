@@ -128,4 +128,21 @@ WazuhUpgrade()
 
     rm -f $DIRECTORY/wodles/cve.db
     rm -f $DIRECTORY/queue/vulnerabilities/cve.db
+
+    # Remove old Wazuh daemons
+
+    rm -f $DIRECTORY/bin/ossec-agentd
+    rm -f $DIRECTORY/bin/ossec-agentlessd
+    rm -f $DIRECTORY/bin/ossec-analysisd
+    rm -f $DIRECTORY/bin/ossec-authd
+    rm -f $DIRECTORY/bin/ossec-csyslogd
+    rm -f $DIRECTORY/bin/ossec-dbd
+    rm -f $DIRECTORY/bin/ossec-execd
+    rm -f $DIRECTORY/bin/ossec-integratord
+    rm -f $DIRECTORY/bin/ossec-logcollector
+    rm -f $DIRECTORY/bin/ossec-maild
+    rm -f $DIRECTORY/bin/ossec-monitord
+    rm -f $DIRECTORY/bin/ossec-remoted
+    rm -f $DIRECTORY/bin/ossec-reportd
+    rm -f $DIRECTORY/bin/ossec-syscheckd
 }
