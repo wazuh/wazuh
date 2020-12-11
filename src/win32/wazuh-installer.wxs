@@ -177,6 +177,10 @@
         <!-- Otherwise, the locked files and directories will not be deleted. -->
         <CustomAction Id="StopWinService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP &quot;WazuhSvc&quot;" Execute="immediate" Return="ignore" />
 
+        <!-- Explicitely stopping and deleting the OSSEC service to install new Wazuh service -->
+        <CustomAction Id="StopOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC STOP &quot;OssecSvc&quot;" Execute="immediate" Return="ignore" />
+        <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE &quot;OssecSvc&quot;" Execute="immediate" Return="ignore" />
+
         <UI>
             <UIRef Id="WixUI_Advanced" />
             <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Order="4"><![CDATA[WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID="1"]]></Publish>
@@ -184,11 +188,16 @@
             <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
         </UI>
         <InstallExecuteSequence>
-            <Custom Action="SetCustomActionDataValue" After="InstallInitialize">NOT Installed</Custom>
+            <!-- Delete OSSEC service if it exist -->
+            <Custom Action="StopOssecService" After="InstallInitialize">OSSECINSTALLED</Custom>
+            <Custom Action="DeleteOssecService" After="StopOssecService">OSSECINSTALLED</Custom>
+
+            <!-- Install functions -->
+            <Custom Action="SetCustomActionDataValue" After="DeleteOssecService">NOT Installed</Custom>
             <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">NOT Installed</Custom>
 
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
-            <Custom Action="StopWinService" After="InstallInitialize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
+            <Custom Action="StopWinService" After="DeleteOssecService">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
 
@@ -313,18 +322,12 @@
                     </Component>
                     <Component Id="WAZUH_AGENT_EVENTCHANNEL.EXE" DiskId="1" Guid="044E7997-12B6-4178-BD00-B90500DBA53F">
                         <File Id="WAZUH_AGENT_EVENTCHANNEL.EXE" Name="wazuh-agent.exe" Source="wazuh-agent-eventchannel.exe" />
-                        <ServiceControl Id="svc_uninstall_ossec_eventchannel" Name="OssecSvc" Remove="install" Stop="install" Wait="yes">
-                            <Condition>OSSECINSTALLED</Condition>
-                        </ServiceControl>
                         <ServiceInstall Name="WazuhSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install_eventchannel" />
                         <ServiceControl Id="svc_uninstall_eventchannel" Name="WazuhSvc" Remove="uninstall" Stop="uninstall" Wait="yes" />
                         <Condition>VersionNT &gt;= 600</Condition>
                     </Component>
                     <Component Id="WAZUH_AGENT.EXE" DiskId="1" Guid="5CCEA6DC-8434-4137-9486-55AE3949266B">
                         <File Id="WAZUH_AGENT.EXE" Name="wazuh-agent.exe" Source="wazuh-agent.exe" />
-                        <ServiceControl Id="svc_uninstall_ossec" Name="OssecSvc" Remove="install" Stop="install" Wait="yes">
-                            <Condition>OSSECINSTALLED</Condition>
-                        </ServiceControl>
                         <ServiceInstall Name="WazuhSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install" />
                         <ServiceControl Id="svc_uninstall" Name="WazuhSvc" Remove="uninstall" Stop="uninstall" Wait="yes" />
                         <Condition>VersionNT &lt; 600</Condition>
