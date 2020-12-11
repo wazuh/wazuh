@@ -7,6 +7,9 @@
  * Foundation
  */
 
+#ifdef WIN32
+#include <windows.h>
+#endif
 #include "time_op_wrappers.h"
 #include <stddef.h>
 #include <stdarg.h>
@@ -28,3 +31,12 @@ char* __wrap_w_get_timestamp(time_t time) {
 
     return mock_type(char*);
 }
+
+#ifdef WIN32
+long long __wrap_get_windows_file_time_epoch(FILETIME ftime) {
+    check_expected(ftime.dwLowDateTime);
+    check_expected(ftime.dwHighDateTime);
+
+    return mock_type(long long);
+}
+#endif

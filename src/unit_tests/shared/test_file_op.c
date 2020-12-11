@@ -16,6 +16,7 @@
 #include <string.h>
 #include "headers/defs.h"
 #include "../headers/file_op.h"
+#include "error_messages/error_messages.h"
 #include "../wrappers/common.h"
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
@@ -546,8 +547,75 @@ void test_w_uncompress_gzfile_success(void **state) {
 
 }
 
+#ifdef TEST_WINAGENT
+void test_get_UTC_modification_time_success(void **state) {
+    HANDLE hdle = (HANDLE)1234;
+    FILETIME modification_date;
+    modification_date.dwLowDateTime = (DWORD)1234;
+    modification_date.dwHighDateTime = (DWORD)4321;
+
+    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_CreateFile, hdle);
+
+    expect_value(wrap_GetFileTime, hFile, hdle);
+    will_return(wrap_GetFileTime, &modification_date);
+    will_return(wrap_GetFileTime, 1);
+
+    expect_value(wrap_CloseHandle, hObject, hdle);
+    will_return(wrap_CloseHandle, 0);
+
+    expect_value(__wrap_get_windows_file_time_epoch, ftime.dwLowDateTime, modification_date.dwLowDateTime);
+    expect_value(__wrap_get_windows_file_time_epoch, ftime.dwHighDateTime, modification_date.dwHighDateTime);
+    will_return(__wrap_get_windows_file_time_epoch, 123456);
+
+    time_t ret = get_UTC_modification_time("C:\\a\\path");
+    assert_int_equal(ret, 123456);
+}
+
+void test_get_UTC_modification_time_fail_get_handle(void **state) {
+    char buffer[OS_SIZE_128];
+    char *path = "C:\\a\\path";
+
+    expect_string(wrap_CreateFile, lpFileName, path);
+    will_return(wrap_CreateFile, INVALID_HANDLE_VALUE);
+
+    snprintf(buffer, OS_SIZE_128, FIM_WARN_OPEN_HANDLE_FILE, path, 2);
+    expect_string(__wrap__mferror, formatted_msg, buffer);
+
+    time_t ret = get_UTC_modification_time(path);
+    assert_int_equal(ret, 0);
+}
+
+void test_get_UTC_modification_time_fail_get_filetime(void **state) {
+    char buffer[OS_SIZE_128];
+    char *path = "C:\\a\\path";
+
+    HANDLE hdle = (HANDLE)1234;
+    FILETIME modification_date;
+    modification_date.dwLowDateTime = (DWORD)1234;
+    modification_date.dwHighDateTime = (DWORD)4321;
+
+    expect_string(wrap_CreateFile, lpFileName, path);
+    will_return(wrap_CreateFile, (HANDLE)1234);
+
+    expect_value(wrap_GetFileTime, hFile, (HANDLE)1234);
+    will_return(wrap_GetFileTime, &modification_date);
+    will_return(wrap_GetFileTime, 0);
+
+    snprintf(buffer, OS_SIZE_128, FIM_WARN_GET_FILETIME, path, 2);
+    expect_string(__wrap__mferror, formatted_msg, buffer);
+
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)1234);
+    will_return(wrap_CloseHandle, 0);
+
+    time_t ret = get_UTC_modification_time(path);
+    assert_int_equal(ret, 0);
+}
+#endif
+
 int main(void) {
     const struct CMUnitTest tests[] = {
+#ifndef TEST_WINAGENT
         cmocka_unit_test(test_CreatePID_success),
         cmocka_unit_test(test_CreatePID_failure_chmod),
         cmocka_unit_test(test_CreatePID_failure_fopen),
@@ -571,6 +639,13 @@ int main(void) {
         cmocka_unit_test(test_w_uncompress_gzfile_first_read_fail),
         cmocka_unit_test(test_w_uncompress_gzfile_first_read_success),
         cmocka_unit_test(test_w_uncompress_gzfile_success)
+#else
+        cmocka_unit_test(test_get_UTC_modification_time_success),
+        cmocka_unit_test(test_get_UTC_modification_time_fail_get_handle),
+        cmocka_unit_test(test_get_UTC_modification_time_fail_get_filetime)
+#endif
+
+
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
