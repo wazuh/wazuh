@@ -1023,7 +1023,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-    delay_after: !float "{restart_delay}"
+    delay_after: !float "{restart_delay_cluster}"
 
   # GET /cluster/api/config
   - name: Get API configuration that was set above
@@ -1093,7 +1093,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-    delay_after: !float "{restart_delay}"
+    delay_after: !float "{restart_delay_cluster}"
 
   # GET /cluster/api/config
   - name: Get API default configuration
@@ -1156,7 +1156,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-    delay_after: !float "{restart_delay}"
+    delay_after: !float "{restart_delay_cluster}"
 
   # GET /cluster/api/config
   - name: Get API default configuration
@@ -2789,7 +2789,7 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-    delay_after: !float "{restart_delay}"
+    delay_after: !float "{restart_delay_cluster}"
 
   - name: Restart cluster
     request:

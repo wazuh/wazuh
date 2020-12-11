@@ -20,6 +20,8 @@
 #define FindNextVolumeW wrap_FindNextVolumeW
 #undef  CreateFile
 #define CreateFile      wrap_CreateFile
+#undef  GetFileTime
+#define GetFileTime      wrap_GetFileTime
 #define GetFileAttributesA wrap_GetFileAttributesA
 
 HANDLE wrap_CreateFile(LPCSTR lpFileName,
@@ -49,5 +51,10 @@ DWORD wrap_QueryDosDeviceW(LPCWSTR lpDeviceName,
 WINBOOL wrap_FindNextVolumeW(HANDLE hFindVolume,
                              LPWSTR lpszVolumeName,
                              DWORD cchBufferLength);
+
+BOOL wrap_GetFileTime(HANDLE     hFile,
+                      LPFILETIME lpCreationTime,
+                      LPFILETIME lpLastAccessTime,
+                      LPFILETIME lpLastWriteTime);
 
 #endif

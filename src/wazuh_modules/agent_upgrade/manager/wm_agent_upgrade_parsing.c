@@ -121,6 +121,12 @@ int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_
                     }
                 }
 
+            } else if (strcmp(command->valuestring, task_manager_commands_list[WM_UPGRADE_RESULT]) == 0) { // Upgrade result command
+                *agent_ids = wm_agent_upgrade_parse_agents(agents, &error_message);
+                if (!error_message) {
+                    retval = WM_UPGRADE_RESULT;
+                }
+
             } else {
                 mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNDEFINED_ACTION_ERRROR, command->valuestring);
                 error_code = WM_UPGRADE_TASK_CONFIGURATIONS;

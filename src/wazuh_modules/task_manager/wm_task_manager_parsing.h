@@ -30,9 +30,9 @@ extern const char* task_statuses[];
 
 /**
  * Parse the incomming message and return a JSON with the message.
- * 
+ *
  * Example:
- * 
+ *
  * {
  *	    "command": "upgrade_result",
  *	    "origin": {
@@ -42,7 +42,7 @@ extern const char* task_statuses[];
  *		    "agents": [99, 43, 18]
  *	    }
  * }
- * 
+ *
  * @param msg Incomming message from a connection.
  * @return task structure if there is no error, NULL otherwise.
  * */
@@ -50,23 +50,23 @@ wm_task_manager_task* wm_task_manager_parse_message(const char *msg) __attribute
 
 /**
  * Build a JSON data object.
- * 
+ *
  * Example 1:
- * 
+ *
  * {
  *     "error":0,
  *     "message":"Success",
  *     "agent":4,
  *     "task_id":2
  * }
- * 
+ *
  * Example 2:
- * 
+ *
  * {
  *     "error":1,
  *     "message":"Invalid message"
  * }
- * 
+ *
  * @param error_code Code of the error.
  * @param agent_id ID of the agent when receiving a request for a specific agent.
  * @param task_id ID of the task when receiving a request for a specific task.
@@ -77,9 +77,9 @@ cJSON* wm_task_manager_parse_data_response(int error_code, int agent_id, int tas
 
 /**
  * Add data to a JSON data object.
- * 
+ *
  * Example 1: On upgrade_result request
- * 
+ *
  * {
  *     "error":0,
  *     "message":"Success",
@@ -91,9 +91,9 @@ cJSON* wm_task_manager_parse_data_response(int error_code, int agent_id, int tas
  *     "create_time":"2020-08-06 22:51:44"
  *     "update_time":"2020-08-06 22:53:21"
  * }
- * 
+ *
  * Example 2: On task_result request
- * 
+ *
  * {
  *     "error":0,
  *     "message":"Success",
@@ -105,7 +105,7 @@ cJSON* wm_task_manager_parse_data_response(int error_code, int agent_id, int tas
  *     "create_time":"2020-08-06 22:51:44"
  *     "update_time":"2020-08-06 22:53:21"
  * }
- * 
+ *
  * @param response JSON object response
  * @param node Node of the task when receiving a request for a specific task.
  * @param module Module of the task when receiving a request for a specific task.
@@ -120,9 +120,9 @@ void wm_task_manager_parse_data_result(cJSON *response, const char *node, const 
 
 /**
  * Build a JSON response object.
- * 
+ *
  * Example:
- * 
+ *
  * {
  *     "error":0,
  *     "data": [
@@ -141,7 +141,7 @@ void wm_task_manager_parse_data_result(cJSON *response, const char *node, const 
  *     ],
  *     "message": "Successful"
  * }
- * 
+ *
  * @param error_code Code of the error.
  * @param data [OPTIONAL] array of responses.
  * @return JSON object.

@@ -27,6 +27,7 @@ from wazuh.core import common, exception
 from wazuh.core.cluster import local_client, common as c_common
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 from wazuh.core.wazuh_socket import wazuh_sendsync
+from sqlalchemy.exc import OperationalError
 
 
 class DistributedAPI:
@@ -99,6 +100,19 @@ class DistributedAPI:
         self.local_client_arg = local_client_arg
         self.threadpool = ThreadPoolExecutor(max_workers=1)
 
+    def debug_log(self, message):
+        """Use debug or debug2 depending on the log type.
+
+        Parameters
+        ----------
+        message : str
+            Full log message.
+        """
+        if self.logger.name == 'wazuh-api':
+            self.logger.debug2(message)
+        else:
+            self.logger.debug(message)
+
     async def distribute_function(self) -> [Dict, exception.WazuhException]:
         """
         Distribute an API call.
@@ -110,9 +124,11 @@ class DistributedAPI:
         """
         try:
             if 'password' in self.f_kwargs:
-                self.logger.debug(f"Receiving parameters { {**self.f_kwargs, 'password': '****'} }")
+                self.debug_log(f"Receiving parameters { {**self.f_kwargs, 'password': '****'} }")
+            elif 'token_nbf_time' in self.f_kwargs:
+                self.logger.debug(f"Decoded token {self.f_kwargs}")
             else:
-                self.logger.debug(f"Receiving parameters {self.f_kwargs}")
+                self.debug_log(f"Receiving parameters {self.f_kwargs}")
 
             is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
             # First case: execute the request locally.
@@ -200,14 +216,14 @@ class DistributedAPI:
             JSON response.
         """
         def run_local():
-            self.logger.debug("Starting to execute request locally")
+            self.debug_log("Starting to execute request locally")
             common.rbac.set(self.rbac_permissions)
             common.broadcast.set(self.broadcasting)
             common.cluster_nodes.set(self.nodes)
             common.current_user.set(self.current_user)
             data = self.f(**self.f_kwargs)
             common.reset_context_cache()
-            self.logger.debug("Finished executing request locally")
+            self.debug_log("Finished executing request locally")
             return data
 
         try:
@@ -234,8 +250,10 @@ class DistributedAPI:
                 data = await asyncio.wait_for(task, timeout=timeout)
             except asyncio.TimeoutError:
                 raise exception.WazuhInternalError(3021)
+            except OperationalError:
+                raise exception.WazuhInternalError(2008)
 
-            self.logger.debug(f"Time calculating request result: {time.time() - before}s")
+            self.debug_log(f"Time calculating request result: {time.time() - before:.3f}s")
             return data
         except (exception.WazuhError, exception.WazuhResourceNotFound) as e:
             e.dapi_errors = self.get_error_info(e)
@@ -496,7 +514,7 @@ class DistributedAPI:
                                                             filters=filters)['items']
             node_name = defaultdict(list)
             for element in system_agents:
-                node_name[element['node_name']].append(element['id'])
+                node_name[element.get('node_name', '')].append(element['id'])
 
             # Update node_name in case it is empty or a node has no agents
             if 'node_id' in self.f_kwargs:

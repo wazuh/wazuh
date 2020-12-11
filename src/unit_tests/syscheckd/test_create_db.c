@@ -20,6 +20,7 @@
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/fs_op_wrappers.h"
 #include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
@@ -424,6 +425,9 @@ void prepare_win_double_scan_success (char *test_file_path, char *dir_file_path,
 
         expect_string(__wrap_w_get_file_attrs, file_path, test_file_path);
         will_return(__wrap_w_get_file_attrs, 123456);
+
+        expect_string(__wrap_get_UTC_modification_time, file_path, test_file_path);
+        will_return(__wrap_get_UTC_modification_time, 123456);
 
         expect_string(__wrap_get_user, path, test_file_path);
         will_return(__wrap_get_user, "0");
@@ -1665,7 +1669,7 @@ static void test_fim_checker_deleted_file(void **state) {
 
     errno = 0;
 
-    assert_int_equal(fim_data->item->configuration, 49663);
+    assert_int_equal(fim_data->item->configuration, 33279);
     assert_int_equal(fim_data->item->index, 3);
 }
 
@@ -1730,7 +1734,7 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     errno = 0;
     syscheck.opts[3] &= ~CHECK_SEECHANGES;
 
-    assert_int_equal(fim_data->item->configuration, 57855);
+    assert_int_equal(fim_data->item->configuration, 41471);
     assert_int_equal(fim_data->item->index, 3);
 }
 
@@ -1752,7 +1756,7 @@ static void test_fim_checker_no_file_system(void **state) {
 
     fim_checker(path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 49663);
+    assert_int_equal(fim_data->item->configuration, 33279);
     assert_int_equal(fim_data->item->index, 3);
 }
 
@@ -1801,7 +1805,7 @@ static void test_fim_checker_fim_regular(void **state) {
 
     fim_checker(path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 49663);
+    assert_int_equal(fim_data->item->configuration, 33279);
     assert_int_equal(fim_data->item->index, 3);
 }
 
@@ -1848,7 +1852,7 @@ static void test_fim_checker_fim_regular_warning(void **state) {
 
     fim_checker(path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 49663);
+    assert_int_equal(fim_data->item->configuration, 33279);
     assert_int_equal(fim_data->item->index, 3);
 }
 
@@ -1870,7 +1874,7 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
 
     fim_checker(path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 82431);
+    assert_int_equal(fim_data->item->configuration, 66047);
     assert_int_equal(fim_data->item->index, 1);
 }
 
@@ -1891,7 +1895,7 @@ static void test_fim_checker_fim_regular_restrict(void **state) {
 
     fim_checker(path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 49663);
+    assert_int_equal(fim_data->item->configuration, 33279);
     assert_int_equal(fim_data->item->index, 3);
 }
 
@@ -2030,7 +2034,7 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
 
     fim_checker(path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 49663);
+    assert_int_equal(fim_data->item->configuration, 33279);
     assert_int_equal(fim_data->item->index, 0);
 }
 
@@ -2505,7 +2509,8 @@ static void test_fim_checker_deleted_file(void **state) {
     fim_checker(expanded_path, fim_data->item, NULL, 1);
 
     errno = 0;
-    assert_int_equal(fim_data->item->configuration, 53759);
+
+    assert_int_equal(fim_data->item->configuration, 37375);
     assert_int_equal(fim_data->item->index, 7);
 }
 
@@ -2581,7 +2586,7 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     errno = 0;
     syscheck.opts[7] &= ~CHECK_SEECHANGES;
 
-    assert_int_equal(fim_data->item->configuration, 61951);
+    assert_int_equal(fim_data->item->configuration, 45567);
     assert_int_equal(fim_data->item->index, 7);
 }
 
@@ -2606,6 +2611,9 @@ static void test_fim_checker_fim_regular(void **state) {
     will_return(__wrap_HasFilesystem, 0);
 
     // Inside fim_file
+    expect_string(__wrap_get_UTC_modification_time, file_path, expanded_path);
+    will_return(__wrap_get_UTC_modification_time, 123456);
+
     will_return(__wrap_get_user, "0");
     will_return(__wrap_get_user, strdup("user"));
     expect_string(__wrap_get_user, path, expanded_path);
@@ -2638,7 +2646,7 @@ static void test_fim_checker_fim_regular(void **state) {
 
     fim_checker(expanded_path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 53759);
+    assert_int_equal(fim_data->item->configuration, 37375);
     assert_int_equal(fim_data->item->index, 7);
 }
 
@@ -2668,7 +2676,7 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
 
     fim_checker(expanded_path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 53759);
+    assert_int_equal(fim_data->item->configuration, 37375);
     assert_int_equal(fim_data->item->index, 7);
 }
 
@@ -2698,7 +2706,7 @@ static void test_fim_checker_fim_regular_restrict(void **state) {
 
     fim_checker(expanded_path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 53759);
+    assert_int_equal(fim_data->item->configuration, 37375);
     assert_int_equal(fim_data->item->index, 8);
 }
 
@@ -2723,6 +2731,9 @@ static void test_fim_checker_fim_regular_warning(void **state) {
     will_return(__wrap_HasFilesystem, 0);
 
     // Inside fim_file
+    expect_string(__wrap_get_UTC_modification_time, file_path, expanded_path);
+    will_return(__wrap_get_UTC_modification_time, 123456);
+
     will_return(__wrap_get_user, "0");
     will_return(__wrap_get_user, strdup("user"));
     expect_string(__wrap_get_user, path, expanded_path);
@@ -2754,7 +2765,7 @@ static void test_fim_checker_fim_regular_warning(void **state) {
 
     fim_checker(expanded_path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 53759);
+    assert_int_equal(fim_data->item->configuration, 37375);
     assert_int_equal(fim_data->item->index, 7);
 }
 
@@ -2827,6 +2838,9 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     fim_data->item->mode = FIM_REALTIME;
 
     // Inside fim_file
+    expect_string(__wrap_get_UTC_modification_time, file_path, path);
+    will_return(__wrap_get_UTC_modification_time, 123456);
+
     will_return(__wrap_get_user, "0");
     will_return(__wrap_get_user, strdup("user"));
     expect_string(__wrap_get_user, path, "c:\\test.file");
@@ -2864,7 +2878,7 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
 
     fim_checker(path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 53759);
+    assert_int_equal(fim_data->item->configuration, 37375);
     assert_int_equal(fim_data->item->index, 0);
 }
 
@@ -3696,6 +3710,9 @@ static void test_fim_get_data(void **state) {
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
 #else
+    expect_string(__wrap_get_UTC_modification_time, file_path, "test");
+    will_return(__wrap_get_UTC_modification_time, 123456);
+
     will_return(__wrap_get_user, "0");
     will_return(__wrap_get_user, strdup("user"));
     expect_string(__wrap_get_user, path, "test");
@@ -3760,6 +3777,9 @@ static void test_fim_get_data_no_hashes(void **state) {
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
 #else
+    expect_string(__wrap_get_UTC_modification_time, file_path, "test");
+    will_return(__wrap_get_UTC_modification_time, 123456);
+
     will_return(__wrap_get_user, "0");
     will_return(__wrap_get_user, strdup("user"));
     expect_string(__wrap_get_user, path, "test");
@@ -3804,6 +3824,9 @@ static void test_fim_get_data_hash_error(void **state) {
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
 #else
+    expect_string(__wrap_get_UTC_modification_time, file_path, "test");
+    will_return(__wrap_get_UTC_modification_time, 123456);
+
     will_return(__wrap_get_user, "0");
     will_return(__wrap_get_user, strdup("user"));
     expect_string(__wrap_get_user, path, "test");

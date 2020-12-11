@@ -284,17 +284,20 @@
 #define XML_INV_MISSOPTS    "(7103): Missing agentless options."
 
 /* Database messages */
-#define DBINIT_ERROR    "(5201): Error initializing database handler."
-#define DBCONN_ERROR    "(5202): Error connecting to database '%s'(%s): ERROR: %s."
-#define DBQUERY_ERROR   "(5203): Error executing query '%s'. Error: '%s'."
-#define DB_GENERROR     "(5204): Database error. Unable to run query."
-#define DB_MISS_CONFIG  "(5205): Missing database configuration. "\
-                        "It requires host, user, pass and database."
-#define DB_CONFIGERR    "(5206): Database configuration error."
-#define DB_COMPILED     "(5207): OSSEC not compiled with support for '%s'."
-#define DB_MAINERROR    "(5208): Multiple database errors. Exiting."
-#define DB_CLOSING      "(5209): Closing connection to database."
-#define DB_ATTEMPT      "(5210): Attempting to reconnect to database."
+#define DBINIT_ERROR          "(5201): Error initializing database handler."
+#define DBCONN_ERROR          "(5202): Error connecting to database '%s'(%s): ERROR: %s."
+#define DBQUERY_ERROR         "(5203): Error executing query '%s'. Error: '%s'."
+#define DB_GENERROR           "(5204): Database error. Unable to run query."
+#define DB_MISS_CONFIG        "(5205): Missing database configuration. "\
+                              "It requires host, user, pass and database."
+#define DB_CONFIGERR          "(5206): Database configuration error."
+#define DB_COMPILED           "(5207): OSSEC not compiled with support for '%s'."
+#define DB_MAINERROR          "(5208): Multiple database errors. Exiting."
+#define DB_CLOSING            "(5209): Closing connection to database."
+#define DB_ATTEMPT            "(5210): Attempting to reconnect to database."
+#define DB_SQL_ERROR          "(5211): SQL error: '%s'"
+#define DB_TRANSACTION_ERROR  "(5212): Cannot begin transaction."
+#define DB_CACHE_ERROR        "(5213): Cannot cache statement."
 
 /* vulnerability-detector messages*/
 #define VU_FETCH_ERROR              "(5500): The '%s' database could not be fetched."
@@ -500,6 +503,8 @@
 #define FIM_DB_ERROR_RM_RANGE                       "(6708): Failed to delete a range of paths between '%s' and '%s'"
 #define FIM_DB_ERROR_RM_NOT_SCANNED                 "(6709): Failed to delete from db all unscanned files."
 #define FIM_ERROR_WHODATA_INIT                      "(6710): Failed to start the Whodata engine. Directories/files will be monitored in Realtime mode"
+#define FIM_WARN_OPEN_HANDLE_FILE                   "(6711): Could not open handle for '%s'. Error code: %lu"
+#define FIM_WARN_GET_FILETIME                       "(6712): Could not get the filetime of the file '%s'. Error code: %lu."
 
 /* Wazuh Logtest error messsages */
 #define LOGTEST_ERROR_BIND_SOCK                     "(7300): Unable to bind to socket '%s'. Errno: (%d) %s"
@@ -577,12 +582,6 @@
 #define MOD_TASK_PARSE_KEY_ERROR                    "(8259): Invalid message. '%s' not found."
 #define MOD_TASK_INVALID_ELEMENT_ERROR              "(8260): Invalid element in array."
 #define MOD_TASK_DB_ERROR                           "(8261): Database error."
-
-#define MOD_TASK_CREATE_DB_ERROR                    "(8275): DB couldn't be checked or created."
-#define MOD_TASK_OPEN_DB_ERROR                      "(8276): DB couldn't be opened."
-#define MOD_TASK_SQL_ERROR                          "(8277): SQL error: '%s'"
-#define MOD_TASK_SQL_PREPARE_ERROR                  "(8278): Couldn't prepare SQL statement."
-#define MOD_TASK_SQL_STEP_ERROR                     "(8279): Couldn't execute SQL statement."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."

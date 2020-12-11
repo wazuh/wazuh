@@ -128,7 +128,7 @@
 #define FIM_WHODATA_SCAN                    "(6231): The '%s' directory has been scanned after detecting event of new files."
 #define FIM_WHODATA_SCAN_ABORTED            "(6232): Scanning of the '%s' directory is aborted because something has gone wrong."
 #define FIM_WHODATA_CHECKTHREAD             "(6233): Checking thread set to '%d' seconds."
-#define FIM_LINK_ALREADY_ADDED              "(6234): Directory '%s' already monitored, ignoring link '%s'"
+#define FIM_LINK_ALREADY_ADDED              "(6234): Directory '%s' already monitored, ignoring link."
 #define FIM_WHODATA_FULLQUEUE               "(6235): Real-time Whodata events queue for Windows is full. Removing the first '%d'"
 #define FIM_WHODATA_EVENT_DELETED           "(6236): '%d' events have been deleted from the whodata list."
 #define FIM_WHODATA_EVENTQUEUE_VALUES       "(6237): Whodata event queue values for Windows -> max_size:'%d' | max_remove:'%d' | alert_threshold:'%d'",
@@ -152,7 +152,7 @@
 #define FIM_HEALTHCHECK_THREAD_ACTIVE       "(6255): Whodata health-check: Reading thread active."
 #define FIM_HEALTHCHECK_THREAD_FINISHED     "(6256): Whodata health-check: Reading thread finished."
 #define FIM_HEALTHCHECK_CREATE_ERROR        "(6257): Whodata health-check: Failed to receive creation event."
-
+#define FIM_UNABLE_TO_READ_TEMP_FILE        "(6258): Detected error or EOF before processing all entries."
 
 
 #define FIM_HEALTHCHECK_SUCCESS             "(6261): Whodata health-check: Success."
@@ -246,7 +246,8 @@
 #define FIM_DISK_QUOTA_LIMIT_REACHED        "(6350): The maximum configured size for the '%s' folder has been reached, the diff operation cannot be performed."
 #define FIM_DIFF_FILE_SIZE_LIMIT            "(6351): Maximum file size limit to generate diff information configured to '%d KB' for '%s'."
 #define FIM_DISK_QUOTA_LIMIT                "(6352): Maximum disk quota size limit configured to '%d KB'."
-#define FIM_DIFF_FOLDER_DELETED             "(6351): Folder '%s' has been deleted."
+#define FIM_DIFF_FOLDER_DELETED             "(6353): Folder '%s' has been deleted."
+#define GLOB_NO_MATCH                       "(6354): No matches found for the glob pattern: '%s'"
 
 /* Modules messages */
 #define WM_UPGRADE_RESULT_AGENT_INFO         "(8151): Agent Information obtained: '%s'"
@@ -274,8 +275,8 @@
 #define MOD_TASK_EMPTY_MESSAGE              "(8203): Empty message from local client."
 #define MOD_TASK_INCOMMING_MESSAGE          "(8204): Incomming message: '%s'"
 #define MOD_TASK_RESPONSE_MESSAGE           "(8205): Response to message: '%s'"
-#define MOD_TASK_RUNNING_CLEAN              "(8206): Running daily clean DB thread."
 #define MOD_TASK_DISABLED_WORKER            "(8207): Module Task Manager only runs on Master nodes in cluster configuration."
-#define GLOB_NO_MATCH                       "(6351): No matches found for the glob pattern: '%s'"
+#define MOD_TASK_TASKS_DB_ERROR_IN_QUERY    "(8208): Tasks DB Error reported in the result of the query, message: '%s'"
+#define MOD_TASK_TASKS_DB_ERROR_EXECUTE     "(8209): Tasks DB Cannot execute SQL query: err database '%s/%s.db'"
 
 #endif /* DEBUG_MESSAGES_H */

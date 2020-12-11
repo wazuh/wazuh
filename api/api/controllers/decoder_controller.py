@@ -12,7 +12,7 @@ from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh import decoder as decoder_framework
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
-logger = logging.getLogger('wazuh')
+logger = logging.getLogger('wazuh-api')
 
 
 async def get_decoders(request, decoder_names: list = None, pretty: bool = False, wait_for_complete: bool = False,

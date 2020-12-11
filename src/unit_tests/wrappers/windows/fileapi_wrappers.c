@@ -75,3 +75,28 @@ WINBOOL wrap_FindNextVolumeW(HANDLE hFindVolume,
     wcsncpy(lpszVolumeName, mock_type(LPWSTR), cchBufferLength);
     return mock();
 }
+
+BOOL wrap_GetFileTime(HANDLE     hFile,
+                      LPFILETIME lpCreationTime,
+                      LPFILETIME lpLastAccessTime,
+                      LPFILETIME lpLastWriteTime) {
+    LPFILETIME lpft;
+
+    check_expected(hFile);
+    if (lpCreationTime){
+        lpft = mock_type(LPFILETIME);
+        lpCreationTime->dwLowDateTime = lpft->dwLowDateTime;
+        lpCreationTime->dwHighDateTime = lpft->dwHighDateTime;
+    }
+    if (lpLastAccessTime){
+        lpft = mock_type(LPFILETIME);
+        lpLastAccessTime->dwLowDateTime = lpft->dwLowDateTime;
+        lpLastAccessTime->dwHighDateTime = lpft->dwHighDateTime;
+    }
+    if (lpLastWriteTime){
+        lpft = mock_type(LPFILETIME);
+        lpLastWriteTime->dwLowDateTime = lpft->dwLowDateTime;
+        lpLastWriteTime->dwHighDateTime = lpft->dwHighDateTime;
+    }
+    return mock_type(BOOL);
+}

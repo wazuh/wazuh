@@ -101,7 +101,8 @@ list(APPEND syscheckd_tests_names "test_create_db")
 if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=w_get_file_permissions \
                                      -Wl,--wrap=decode_win_permissions,--wrap=pthread_mutex_lock \
-                                     -Wl,--wrap=pthread_mutex_unlock,--wrap=w_get_file_attrs,--wrap=os_winreg_check")
+                                     -Wl,--wrap=pthread_mutex_unlock,--wrap=w_get_file_attrs,--wrap=os_winreg_check \
+                                     -Wl,--wrap,get_UTC_modification_time")
 else()
   list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches")
 endif()
@@ -238,7 +239,7 @@ set(FIM_DB_BASE_FLAGS "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_v2
                        -Wl,--wrap=fclose,--wrap=fopen,--wrap=getpid,--wrap=fflush -Wl,--wrap=wstr_escape_json \
                        -Wl,--wrap=sqlite3_bind_int64,--wrap=sqlite3_column_int64 -Wl,--wrap=fread,--wrap=fwrite \
                        -Wl,--wrap=fprintf,--wrap=fgets,--wrap=stat,--wrap=wstr_split,--wrap=os_random \
-                       -Wl,--wrap=DirSize,--wrap=IsDir")
+                       -Wl,--wrap=DirSize,--wrap=IsDir,--wrap=wfopen,--wrap=_mwarn")
 
 list(APPEND syscheckd_tests_names "test_fim_db")
 if(${TARGET} STREQUAL "agent")
