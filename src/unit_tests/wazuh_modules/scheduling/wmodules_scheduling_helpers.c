@@ -17,7 +17,7 @@ extern time_t __real_time(time_t *_time);
 
 time_t __wrap_time(time_t *_time){
     if(!current_time){
-        current_time = __real_time(NULL);
+        current_time = 1606797884;
     }
     return current_time;
 }

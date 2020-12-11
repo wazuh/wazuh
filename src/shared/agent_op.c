@@ -291,6 +291,8 @@ int get_agent_group(const char *id, char *group, size_t size) {
     return result;
 }
 
+#ifndef CLIENT
+
 /* Set agent group. Returns 0 on success or -1 on failure. */
 int set_agent_group(const char * id, const char * group) {
     char path[PATH_MAX];
@@ -311,6 +313,10 @@ int set_agent_group(const char * id, const char * group) {
         return -1;
     }
 
+    if (fchmod(fileno(fp), 0660) < 0) {
+        merror(CHMOD_ERROR, path, errno, strerror(errno));
+    }
+
     fprintf(fp, "%s\n", group);
     fclose(fp);
 
@@ -318,6 +324,8 @@ int set_agent_group(const char * id, const char * group) {
 
     return 0;
 }
+
+#endif
 
 int set_agent_multigroup(char * group){
     int oldmask;

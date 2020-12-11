@@ -19,7 +19,7 @@ from wazuh.core import common
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.exception import WazuhError
 
-logger = logging.getLogger('wazuh')
+logger = logging.getLogger('wazuh-api')
 
 
 async def get_status(request, pretty=False, wait_for_complete=False):

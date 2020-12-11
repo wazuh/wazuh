@@ -192,7 +192,7 @@ class LocalServer(server.AbstractServer):
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         loop = asyncio.get_running_loop()
         loop.set_exception_handler(c_common.asyncio_exception_handler)
-        socket_path = '{}/queue/cluster/c-internal.sock'.format(common.ossec_path)
+        socket_path = os.path.join(common.ossec_path, 'queue', 'cluster', 'c-internal.sock')
 
         try:
             local_server = await loop.create_unix_server(
@@ -204,10 +204,10 @@ class LocalServer(server.AbstractServer):
                 path=socket_path)
             os.chmod(socket_path, 0o660)
         except OSError as e:
-            self.logger.error("Could not create server: {}".format(e))
+            self.logger.error(f"Could not create server: {e}")
             raise KeyboardInterrupt
 
-        self.logger.info('Serving on {}'.format(local_server.sockets[0].getsockname()))
+        self.logger.info(f'Serving on {local_server.sockets[0].getsockname()}')
 
         self.tasks.append(local_server.serve_forever)
 
@@ -364,7 +364,7 @@ class LocalServerHandlerWorker(LocalServerHandler):
         # Modify logger filter tag in LocalServerHandlerWorker entry point.
         context_tag.set("Local " + self.name)
 
-        self.logger.debug2("Command received: {}".format(command))
+        self.logger.debug2(f"Command received: {command}")
         if command == b'dapi':
             if self.server.node.client is None:
                 raise WazuhClusterError(3023)
