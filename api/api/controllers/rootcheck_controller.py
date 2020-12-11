@@ -11,7 +11,7 @@ from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc
 from wazuh import rootcheck
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
-logger = logging.getLogger('wazuh')
+logger = logging.getLogger('wazuh-api')
 
 
 async def put_rootcheck(request, pretty=False, wait_for_complete=False, agents_list='*'):

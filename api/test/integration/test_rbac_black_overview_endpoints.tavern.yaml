@@ -25,7 +25,7 @@ stages:
              count: int
      status_code: 200
      json:
-       error: !anyint
+       error: 0
        data:
          agent_os:
            - count: !anyint
