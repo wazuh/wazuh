@@ -69,9 +69,6 @@ void* wm_sys_main(wm_sys_t *sys)
     }
     #endif
 
-    SSL_load_error_strings();
-    SSL_library_init();
-
     if (syscollector_module = so_get_module_handle("syscollector"), syscollector_module)
     {
         syscollector_start_ptr = so_get_function_sym(syscollector_module, "syscollector_start");

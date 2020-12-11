@@ -115,7 +115,7 @@ namespace Utils
                 snprintf(output, 3, "%02x", value);
                 output += 2;
             }
-            return {output, size};
+            return {buffer.get(), size};
         }
         return ss.str();
     }
