@@ -24,7 +24,7 @@ def get_health():
 
     if "differ" not in check and output == 0:
         # Avoid race condition
-        time.sleep(20)
+        time.sleep(30)
         return 0
     else:
         return 1
