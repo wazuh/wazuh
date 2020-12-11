@@ -2500,9 +2500,9 @@ int can_read() {
     return ret;
 }
 
-int w_update_file_status(const char * path, w_offset_t pos, SHA_CTX *context) {
+int w_update_file_status(const char * path, w_offset_t pos, SHA_CTX * context) {
 
-    os_file_status_t *data;
+    os_file_status_t * data;
     os_malloc(sizeof(os_file_status_t), data);
 
     data->context = *context;
@@ -2545,14 +2545,13 @@ STATIC void w_initialize_file_status() {
             merror(FREAD_ERROR, LOCALFILE_STATUS_PATH, errno, strerror(errno));
             clearerr(fd);
         } else {
-            cJSON *global_json = cJSON_Parse(str);
+            cJSON * global_json = cJSON_Parse(str);
             w_load_files_status(global_json);
             cJSON_Delete(global_json);
         }
 
         fclose(fd);
-    }
-    else if (errno != ENOENT) {
+    } else if (errno != ENOENT) {
         merror_exit(FOPEN_ERROR, LOCALFILE_STATUS_PATH, errno, strerror(errno));
     }
 }
@@ -2574,28 +2573,27 @@ STATIC void w_save_file_status() {
             clearerr(fd);
         }
         fclose(fd);
-    }
-    else {
+    } else {
         merror_exit(FOPEN_ERROR, LOCALFILE_STATUS_PATH, errno, strerror(errno));
     }
 
     os_free(str);
 }
 
-STATIC void w_load_files_status(cJSON *global_json) {
+STATIC void w_load_files_status(cJSON * global_json) {
 
-    cJSON *localfiles_array = cJSON_GetObjectItem(global_json, OS_LOGCOLLECTOR_JSON_FILES);
+    cJSON * localfiles_array = cJSON_GetObjectItem(global_json, OS_LOGCOLLECTOR_JSON_FILES);
     int array_size = cJSON_GetArraySize(localfiles_array);
 
     for (int i = 0; i < array_size; i++) {
-        cJSON *localfile_item = cJSON_GetArrayItem(localfiles_array, i);
+        cJSON * localfile_item = cJSON_GetArrayItem(localfiles_array, i);
 
-        cJSON *path = cJSON_GetObjectItem(localfile_item, OS_LOGCOLLECTOR_JSON_PATH);
+        cJSON * path = cJSON_GetObjectItem(localfile_item, OS_LOGCOLLECTOR_JSON_PATH);
         if (!path) {
             continue;
         }
 
-        char *path_str = cJSON_GetStringValue(path);
+        char * path_str = cJSON_GetStringValue(path);
         if (!path_str) {
             continue;
         }
@@ -2606,27 +2604,27 @@ STATIC void w_load_files_status(cJSON *global_json) {
             continue;
         }
 
-        cJSON *hash = cJSON_GetObjectItem(localfile_item, OS_LOGCOLLECTOR_JSON_HASH);
+        cJSON * hash = cJSON_GetObjectItem(localfile_item, OS_LOGCOLLECTOR_JSON_HASH);
         if (!hash) {
             continue;
         }
 
-        char *hash_str = cJSON_GetStringValue(hash);
+        char * hash_str = cJSON_GetStringValue(hash);
         if (!hash_str) {
             continue;
         }
 
-        cJSON *offset = cJSON_GetObjectItem(localfile_item, OS_LOGCOLLECTOR_JSON_OFFSET);
+        cJSON * offset = cJSON_GetObjectItem(localfile_item, OS_LOGCOLLECTOR_JSON_OFFSET);
         if (!offset) {
             continue;
         }
 
-        char *offset_str = cJSON_GetStringValue(offset);
+        char * offset_str = cJSON_GetStringValue(offset);
         if (!offset_str) {
             continue;
         }
 
-        char *end;
+        char * end;
         w_offset_t value_offset = strtol(offset_str, &end, 10);
         if (value_offset < 0 || *end != '\0') {
             continue;
@@ -2642,7 +2640,7 @@ STATIC void w_load_files_status(cJSON *global_json) {
         OS_SHA1_File_Nbytes(path_str, &context, output, value_offset);
         data->context = context;
 
-        if (OSHash_Update_ex(files_status, path_str, data) != 1){
+        if (OSHash_Update_ex(files_status, path_str, data) != 1) {
             if (OSHash_Add_ex(files_status, path_str, data) != 2) {
                 merror(HADD_ERROR, path_str, files_status_name);
             }
@@ -2662,7 +2660,7 @@ STATIC char * w_save_files_status_to_cJSON() {
     cJSON * array = cJSON_AddArrayToObject(global_json, OS_LOGCOLLECTOR_JSON_FILES);
 
     while (hash_node) {
-        os_file_status_t *data = hash_node->data;
+        os_file_status_t * data = hash_node->data;
         char * path = hash_node->key;
         char offset[OFFSET_SIZE] = {0};
 
@@ -2672,7 +2670,7 @@ STATIC char * w_save_files_status_to_cJSON() {
         sprintf(offset, "%ld", data->offset);
         #endif
 
-        cJSON *item = cJSON_CreateObject();
+        cJSON * item = cJSON_CreateObject();
 
         cJSON_AddStringToObject(item, OS_LOGCOLLECTOR_JSON_PATH, path);
         cJSON_AddStringToObject(item, OS_LOGCOLLECTOR_JSON_HASH, data->hash);
@@ -2688,9 +2686,9 @@ STATIC char * w_save_files_status_to_cJSON() {
     return global_json_str;
 }
 
-STATIC int w_set_to_last_line_read(logreader *lf) {
+STATIC int w_set_to_last_line_read(logreader * lf) {
 
-    os_file_status_t *data;
+    os_file_status_t * data;
 
     if (data = (os_file_status_t *)OSHash_Get_ex(files_status, lf->file), !data) {
         w_set_to_pos(lf, 0, SEEK_END);
@@ -2748,16 +2746,16 @@ STATIC int w_update_hash_node(char * path, w_offset_t pos) {
     strncpy(data->hash, output, sizeof(os_sha1));
     data->context = context;
 
-    if (OSHash_Update_ex(files_status, path, data) != 1){
+    if (OSHash_Update_ex(files_status, path, data) != 1) {
         return -1;
     }
 
     return 0;
 }
 
-STATIC w_offset_t w_set_to_pos(logreader *lf, w_offset_t pos, int mode) {
+STATIC w_offset_t w_set_to_pos(logreader * lf, w_offset_t pos, int mode) {
 
-    if(!lf || !lf->file) {
+    if (!lf || !lf->file) {
         return -1;
     }
 
@@ -2780,17 +2778,15 @@ STATIC w_offset_t w_set_to_pos(logreader *lf, w_offset_t pos, int mode) {
 #else
     return fp_pos.__pos;
 #endif
-
 }
 
-void w_get_hash_context (const char * path, SHA_CTX *context, w_offset_t position) {
-    os_file_status_t *data;
+void w_get_hash_context (const char * path, SHA_CTX * context, w_offset_t position) {
+    os_file_status_t * data;
 
     if (data = (os_file_status_t *)OSHash_Get_ex(files_status, path), data == NULL) {
         os_sha1 output;
         OS_SHA1_File_Nbytes(path, context, output, position);
-    }
-    else {
+    } else {
         *context = data->context;
     }
 }
