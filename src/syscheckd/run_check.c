@@ -527,7 +527,6 @@ void log_realtime_status(int next) {
 // LCOV_EXCL_START
 static void *symlink_checker_thread(__attribute__((unused)) void * data) {
     char *real_path;
-    struct stat sb;
     int i;
 
     mdebug1(FIM_LINKCHECK_START, syscheck.sym_checker_interval);
@@ -567,12 +566,8 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
                     }
                 }
             } else {
-                // Check if syscheck.dir[i] is a symbolic link
-                memset(&sb, 0, sizeof(struct stat));
-                lstat(syscheck.dir[i], &sb);
-
                 // Check real_path to reload broken link.
-                if (real_path && (sb.st_mode & S_IFMT) == S_IFLNK) {
+                if (real_path && strcmp(real_path, syscheck.dir[i]) != 0) {
                     fim_link_reload_broken_link(real_path, i);
                 }
             }
@@ -601,7 +596,7 @@ STATIC void fim_link_update(int pos, char *new_path) {
         }
     }
 
-    if (!in_configuration) {
+    if (in_configuration == false) {
         fim_link_delete_range(pos);
     }
 
