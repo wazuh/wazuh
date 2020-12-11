@@ -103,7 +103,19 @@ namespace Utils
         std::stringstream ss;
         for (const auto& val : asciiData)
         {
-            ss << std::hex << std::setfill('0') << std::setw(2) << static_cast<int>(val);
+            ss << std::hex << std::setfill('0') << std::setw(2) << static_cast<unsigned int>(val);
+        }
+        if (!ss.good())
+        {
+            const auto size{asciiData.size() * 2};
+            const auto buffer{std::make_unique<char[]>(size)};
+            char* output{buffer.get()};
+            for (const auto& value : asciiData)
+            {
+                snprintf(output, 3, "%02x", value);
+                output += 2;
+            }
+            return {output, size};
         }
         return ss.str();
     }

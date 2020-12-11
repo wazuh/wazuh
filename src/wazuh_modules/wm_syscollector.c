@@ -9,6 +9,8 @@
  * Foundation.
  */
 #include <stdlib.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 #include "../../wmodules_def.h"
 #include "wmodules.h"
 #include "wm_syscollector.h"
@@ -46,6 +48,7 @@ static void wm_sys_send_diff_message(const void* data) {
 
 static void wm_sys_send_dbsync_message(const void* data) {
     const int eps = 1000000/wm_max_eps;
+    mtinfo(WM_SYS_LOGTAG, "Sync message: %s.", data);
     wm_sendmsg(eps,queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ);
 }
 
@@ -65,6 +68,9 @@ void* wm_sys_main(wm_sys_t *sys)
         pthread_exit(NULL);
     }
     #endif
+
+    SSL_load_error_strings();
+    SSL_library_init();
 
     if (syscollector_module = so_get_module_handle("syscollector"), syscollector_module)
     {
@@ -101,12 +107,13 @@ void* wm_sys_main(wm_sys_t *sys)
 void wm_sys_destroy(wm_sys_t *data) 
 {
     mtinfo(WM_SYS_LOGTAG, "Destroy received for Syscollector.");
-    if (queue_fd) {
-        close(queue_fd);
-    }
 
+    syscollector_sync_message_ptr = NULL;
     if (syscollector_stop_ptr){
         syscollector_stop_ptr();
+    }
+    if (queue_fd) {
+        close(queue_fd);
     }
 
     if (syscollector_module){
@@ -116,7 +123,6 @@ void wm_sys_destroy(wm_sys_t *data)
     syscollector_module = NULL;
     syscollector_start_ptr = NULL;
     syscollector_stop_ptr = NULL;
-    syscollector_sync_message_ptr = NULL;
     free(data);
 }
 
