@@ -62,6 +62,7 @@ test_name: GET /experimental/ciscat/results
 stages:
 
   - name: Request all agents (Partially allowed, user agnostic)
+    skip: True
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
