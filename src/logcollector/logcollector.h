@@ -182,7 +182,7 @@ typedef struct w_input_range_t{
 
 ///> Struct to save the position of last line read and the SHA1 hash content
 typedef struct file_status {
-    long offset;        ///> Position to read
+    w_offset_t offset;  ///> Position to read
     SHA_CTX context;    ///> It stores the hashed data calculated so far
     os_sha1 hash;       ///> Content file SHA1 hash
 } os_file_status_t;

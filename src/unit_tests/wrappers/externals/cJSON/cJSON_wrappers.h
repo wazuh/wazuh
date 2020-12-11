@@ -81,7 +81,7 @@ char * __wrap_cJSON_Print(const cJSON *item);
 
 int __wrap_cJSON_GetArraySize(const cJSON *array);
 
-cJSON * cJSON_GetArrayItem(const cJSON *array, int index);
+cJSON * __wrap_cJSON_GetArrayItem(const cJSON *array, int index);
 
 extern cJSON * __real_cJSON_GetArrayItem(const cJSON *array, int index);
 

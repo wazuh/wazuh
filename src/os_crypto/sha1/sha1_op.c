@@ -112,7 +112,7 @@ int OS_SHA1_File_Nbytes(const char *fname, SHA_CTX *c, os_sha1 output, size_t nb
     unsigned char md[SHA_DIGEST_LENGTH];
 
     memset(output, 0, sizeof(os_sha1));
-    buf[OS_MAXSTR] = '\0';
+    buf[OS_MAXSTR - 1] = '\0';
 
     /* It's important to read \r\n instead of \n to generate the correct hash */
     #ifdef WIN32
