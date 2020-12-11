@@ -13,7 +13,7 @@
 
 
 // Function to save Network info into the DB. Return 0 on success or -1 on error.
-int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped, const char * checksum, const bool replace) {
+int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped, const char * checksum, const char * item_id, const bool replace) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_netinfo_save(): cannot begin transaction");
@@ -38,6 +38,7 @@ int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
         tx_dropped,
         rx_dropped,
         checksum,
+        item_id,
         replace) < 0) {
 
         return -1;
@@ -47,7 +48,7 @@ int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 }
 
 // Insert Network info tuple. Return 0 on success or -1 on error.
-int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped, const char * checksum, const bool replace) {
+int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped, const char * checksum, const char * item_id, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_NETINFO_INSERT2 : WDB_STMT_NETINFO_INSERT) < 0) {
@@ -113,6 +114,7 @@ int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
         sqlite3_bind_null(stmt, 16);
     }
     sqlite3_bind_text(stmt, 17, checksum, -1, NULL);
+    sqlite3_bind_text(stmt, 18, item_id, -1, NULL);
 
     switch (sqlite3_step(stmt)) {
         case SQLITE_DONE:
@@ -132,7 +134,7 @@ int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
 }
 
 // Save IPv4/IPv6 protocol info into DB.
-int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface, int type, const char * gateway, const char * dhcp, int metric, const char * checksum, const bool replace) {
+int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface, int type, const char * gateway, const char * dhcp, int metric, const char * checksum, const char * item_id, const bool replace) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_netproto_save(): cannot begin transaction");
@@ -147,6 +149,7 @@ int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface, int
         dhcp,
         metric,
         checksum,
+        item_id,
         replace) < 0) {
 
         return -1;
@@ -156,7 +159,7 @@ int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface, int
 }
 
 // Insert IPv4/IPv6 protocol info tuple. Return 0 on success or -1 on error.
-int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, int type, const char * gateway, const char * dhcp, int metric, const char * checksum, const bool replace) {
+int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, int type, const char * gateway, const char * dhcp, int metric, const char * checksum, const char * item_id, const bool replace) {
 
     sqlite3_stmt *stmt = NULL;
 
@@ -184,6 +187,7 @@ int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, i
         sqlite3_bind_null(stmt, 6);
     }
     sqlite3_bind_text(stmt, 7, checksum, -1, NULL);
+    sqlite3_bind_text(stmt, 8, item_id, -1, NULL);
 
     switch (sqlite3_step(stmt)) {
         case SQLITE_DONE:
@@ -203,7 +207,7 @@ int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, i
 }
 
 // Save IPv4/IPv6 address info into DB.
-int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast, const char * checksum, const bool replace) {
+int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast, const char * checksum, const char * item_id, const bool replace) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_netaddr_save(): cannot begin transaction");
@@ -218,6 +222,7 @@ int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, const char * iface, int 
         netmask,
         broadcast,
         checksum,
+        item_id,
         replace) < 0) {
 
         return -1;
@@ -227,7 +232,7 @@ int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, const char * iface, int 
 }
 
 // Insert IPv4/IPv6 address info tuple. Return 0 on success or -1 on error.
-int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast, const char * checksum, const bool replace) {
+int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast, const char * checksum, const char * item_id, const bool replace) {
 
     sqlite3_stmt *stmt = NULL;
 
@@ -250,6 +255,7 @@ int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, in
     sqlite3_bind_text(stmt, 5, netmask, -1, NULL);
     sqlite3_bind_text(stmt, 6, broadcast, -1, NULL);
     sqlite3_bind_text(stmt, 7, checksum, -1, NULL);
+    sqlite3_bind_text(stmt, 8, item_id, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE){
         return 0;
@@ -453,7 +459,7 @@ int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
 }
 
 // Function to save Package info into the DB. Return 0 on success or -1 on error.
-int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char * checksum, const bool replace) {
+int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char * checksum, const char * item_id, const bool replace) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_package_save(): cannot begin transaction");
@@ -478,6 +484,7 @@ int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
         location,
         0,
         checksum,
+        item_id,
         replace) < 0) {
 
         return -1;
@@ -501,7 +508,7 @@ int wdb_hotfix_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 }
 
 // Insert Package info tuple. Return 0 on success or -1 on error.
-int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char triaged, const char* checksum, const bool replace) {
+int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char triaged, const char* checksum, const char * item_id, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_PROGRAM_INSERT2 : WDB_STMT_PROGRAM_INSERT) < 0) {
@@ -532,6 +539,7 @@ int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     sqlite3_bind_text(stmt, 15, location, -1, NULL);
     sqlite3_bind_int(stmt, 16, triaged);
     sqlite3_bind_text(stmt, 17, checksum, -1, NULL);
+    sqlite3_bind_text(stmt, 18, item_id, -1, NULL);
 
     switch (sqlite3_step(stmt)) {
         case SQLITE_DONE:
@@ -764,7 +772,7 @@ int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_tim
 }
 
 // Function to save Port info into the DB. Return 0 on success or -1 on error.
-int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, int inode, const char * state, int pid, const char * process, const char * checksum, const bool replace) {
+int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, int inode, const char * state, int pid, const char * process, const char * checksum, const char * item_id, const bool replace) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_port_save(): cannot begin transaction");
@@ -786,6 +794,7 @@ int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, con
         pid,
         process,
         checksum,
+        item_id,
         replace) < 0) {
 
         return -1;
@@ -795,7 +804,7 @@ int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, con
 }
 
 // Insert port info tuple. Return 0 on success or -1 on error.
-int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, int inode, const char * state, int pid, const char * process, const char * checksum, const bool replace) {
+int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, int inode, const char * state, int pid, const char * process, const char * checksum, const char * item_id, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_PORT_INSERT2 : WDB_STMT_PORT_INSERT) < 0) {
@@ -850,6 +859,7 @@ int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, c
     }
     sqlite3_bind_text(stmt, 13, process, -1, NULL);
     sqlite3_bind_text(stmt, 14, checksum, -1, NULL);
+    sqlite3_bind_text(stmt, 15, item_id, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE){
         return 0;
@@ -1119,7 +1129,8 @@ int wdb_syscollector_package_save2(wdb_t * wdb, const cJSON * attributes)
     const char * description = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "description"));
     const char * location = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "location"));
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
-    return wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, checksum, TRUE);
+    const char * item_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "item_id"));
+    return wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, checksum, item_id, TRUE);
 }
 
 int wdb_syscollector_hotfix_save2(wdb_t * wdb, const cJSON * attributes)
@@ -1147,7 +1158,8 @@ int wdb_syscollector_port_save2(wdb_t * wdb, const cJSON * attributes)
     const int pid = cJSON_GetObjectItem(attributes, "pid") ? cJSON_GetObjectItem(attributes, "pid")->valueint : 0;
     const char * process = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "process"));
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
-    return wdb_port_save(wdb, scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, pid, process, checksum, TRUE);
+    const char * item_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "item_id"));
+    return wdb_port_save(wdb, scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, pid, process, checksum, item_id, TRUE);
 }
 
 int wdb_syscollector_netproto_save2(wdb_t * wdb, const cJSON * attributes)
@@ -1159,7 +1171,8 @@ int wdb_syscollector_netproto_save2(wdb_t * wdb, const cJSON * attributes)
     const char * dhcp = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "dhcp"));
     const int metric = cJSON_GetObjectItem(attributes, "metric") ? cJSON_GetObjectItem(attributes, "metric")->valueint : 0;
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
-    return wdb_netproto_save(wdb, scan_id, iface, type, gateway, dhcp, metric, checksum, TRUE);
+    const char * item_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "item_id"));
+    return wdb_netproto_save(wdb, scan_id, iface, type, gateway, dhcp, metric, checksum, item_id, TRUE);
 }
 
 int wdb_syscollector_netaddr_save2(wdb_t * wdb, const cJSON * attributes)
@@ -1171,7 +1184,8 @@ int wdb_syscollector_netaddr_save2(wdb_t * wdb, const cJSON * attributes)
     const char * netmask = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "netmask"));
     const char * broadcast = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "broadcast"));
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
-    return wdb_netaddr_save(wdb, scan_id, iface, proto, address, netmask, broadcast, checksum, TRUE);
+    const char * item_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "item_id"));
+    return wdb_netaddr_save(wdb, scan_id, iface, proto, address, netmask, broadcast, checksum, item_id, TRUE);
 }
 
 int wdb_syscollector_netinfo_save2(wdb_t * wdb, const cJSON * attributes)
@@ -1193,7 +1207,8 @@ int wdb_syscollector_netinfo_save2(wdb_t * wdb, const cJSON * attributes)
     const long tx_dropped = cJSON_GetObjectItem(attributes, "tx_dropped") ? cJSON_GetObjectItem(attributes, "tx_dropped")->valueint : 0;
     const long rx_dropped = cJSON_GetObjectItem(attributes, "rx_dropped") ? cJSON_GetObjectItem(attributes, "rx_dropped")->valueint : 0;
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
-    return wdb_netinfo_save(wdb, scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped, checksum, TRUE);
+    const char * item_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "item_id"));
+    return wdb_netinfo_save(wdb, scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped, checksum, item_id, TRUE);
 }
 
 int wdb_syscollector_save2(wdb_t * wdb, wdb_component_t component, const char * payload)

@@ -70,7 +70,8 @@ static struct column_list const TABLE_NETIFACE[] = {
     { .value = { FIELD_INTEGER, 14, false, false, "rx_errors" }, .next = &TABLE_NETIFACE[14] } ,
     { .value = { FIELD_INTEGER, 15, false, false, "tx_dropped" }, .next = &TABLE_NETIFACE[15] } ,
     { .value = { FIELD_INTEGER, 16, false, false, "rx_dropped" }, .next = &TABLE_NETIFACE[16] } ,
-    { .value = { FIELD_TEXT, 17, false, false, "checksum" }, .next = NULL }
+    { .value = { FIELD_TEXT, 17, false, false, "checksum" }, .next = &TABLE_NETIFACE[17] } ,
+    { .value = { FIELD_TEXT, 18, false, false, "item_id" }, .next = NULL }
 };
 
 static struct column_list const TABLE_NETPROTO[] = {
@@ -80,7 +81,8 @@ static struct column_list const TABLE_NETPROTO[] = {
     { .value = { FIELD_TEXT,4, false, false, "gateway" }, .next = &TABLE_NETPROTO[4]},
     { .value = { FIELD_TEXT,5, false, false, "dhcp" }, .next = &TABLE_NETPROTO[5]},
     { .value = { FIELD_INTEGER,6, false, false, "metric" }, .next = &TABLE_NETPROTO[6]},
-    { .value = { FIELD_TEXT,7, false, false, "checksum" }, .next = NULL }
+    { .value = { FIELD_TEXT,7, false, false, "checksum" }, .next = &TABLE_NETPROTO[7]},
+    { .value = { FIELD_TEXT,8, false, false, "item_id" }, .next = NULL }
 };
 
 static struct column_list const TABLE_NETADDR[] = {
@@ -90,7 +92,8 @@ static struct column_list const TABLE_NETADDR[] = {
     { .value = { FIELD_TEXT,4, false, true, "address" }, .next = &TABLE_NETADDR[4]},
     { .value = { FIELD_TEXT,5, false, false, "netmask" }, .next = &TABLE_NETADDR[5]},
     { .value = { FIELD_TEXT,6, false, false, "broadcast" }, .next = &TABLE_NETADDR[6]},
-    { .value = { FIELD_TEXT,7, false, false, "checksum" }, .next = NULL},
+    { .value = { FIELD_TEXT,7, false, false, "checksum" }, .next = &TABLE_NETADDR[7]},
+    { .value = { FIELD_TEXT,8, false, false, "item_id" }, .next = NULL},
 };
 
 static struct column_list const TABLE_PORTS[] = {
@@ -107,7 +110,8 @@ static struct column_list const TABLE_PORTS[] = {
     { .value = { FIELD_TEXT,11, false, false, "state" }, .next = &TABLE_PORTS[11]},
     { .value = { FIELD_INTEGER,12, false, false, "PID" }, .next = &TABLE_PORTS[12]},
     { .value = { FIELD_TEXT,13, false, false, "process" }, .next = &TABLE_PORTS[13]},
-    { .value = { FIELD_TEXT,13, false, false, "checksum" }, .next = NULL},
+    { .value = { FIELD_TEXT,14, false, false, "checksum" }, .next = &TABLE_PORTS[14]},
+    { .value = { FIELD_TEXT,15, false, false, "item_id" }, .next = NULL},
 };
 
 static struct column_list const TABLE_PACKAGES[] = {
@@ -129,7 +133,8 @@ static struct column_list const TABLE_PACKAGES[] = {
     { .value = { FIELD_INTEGER, 16, false, false, "triaged" }, .next = &TABLE_PACKAGES[16] },
     { .value = { FIELD_TEXT, 17, false, false, "cpe" }, .next = &TABLE_PACKAGES[17] },
     { .value = { FIELD_TEXT, 18, false, false, "msu_name" }, .next = &TABLE_PACKAGES[18] },
-    { .value = { FIELD_TEXT, 19, false, false, "checksum" }, .next = NULL },
+    { .value = { FIELD_TEXT, 19, false, false, "checksum" }, .next = &TABLE_PACKAGES[19] },
+    { .value = { FIELD_TEXT, 20, false, false, "item_id" }, .next = NULL },
 };
 
 static struct column_list const TABLE_OS[] = {
@@ -2413,7 +2418,7 @@ int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output) {
         else
             rx_dropped = strtol(next,NULL,10);
 
-        if (result = wdb_netinfo_save(wdb, scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped, NULL, FALSE), result < 0) {
+        if (result = wdb_netinfo_save(wdb, scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped, NULL, NULL, FALSE), result < 0) {
             mdebug1("Cannot save Network information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Network information.");
         } else {
@@ -2542,7 +2547,7 @@ int wdb_parse_netproto(wdb_t * wdb, char * input, char * output) {
         else
             metric = strtol(next,NULL,10);
 
-        if (result = wdb_netproto_save(wdb, scan_id, iface, type, gateway, dhcp, metric, NULL, FALSE), result < 0) {
+        if (result = wdb_netproto_save(wdb, scan_id, iface, type, gateway, dhcp, metric, NULL, NULL, FALSE), result < 0) {
             mdebug1("Cannot save netproto information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save netproto information.");
         } else {
@@ -2655,7 +2660,7 @@ int wdb_parse_netaddr(wdb_t * wdb, char * input, char * output) {
         else
             broadcast = next;
 
-        if (result = wdb_netaddr_save(wdb, scan_id, iface, proto, address, netmask, broadcast, NULL, FALSE), result < 0) {
+        if (result = wdb_netaddr_save(wdb, scan_id, iface, proto, address, netmask, broadcast, NULL, NULL, FALSE), result < 0) {
             mdebug1("Cannot save netaddr information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save netaddr information.");
         } else {
@@ -3291,7 +3296,7 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
         else
             process = next;
 
-        if (result = wdb_port_save(wdb, scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, pid, process, NULL, FALSE), result < 0) {
+        if (result = wdb_port_save(wdb, scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, pid, process, NULL, NULL, FALSE), result < 0) {
             mdebug1("Cannot save Port information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Port information.");
         } else {
@@ -3558,7 +3563,7 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
         else
             location = next;
 
-        if (result = wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, NULL, FALSE), result < 0) {
+        if (result = wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, NULL, NULL, FALSE), result < 0) {
             mdebug1("Cannot save Package information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Package information.");
         } else {
