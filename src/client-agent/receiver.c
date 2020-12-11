@@ -133,7 +133,7 @@ int receive_msg()
 
             /* syscollector */
             else if (strncmp(tmp_msg, HC_SYSCOLLECTOR, strlen(HC_SYSCOLLECTOR)) == 0) {
-                wcom_send(tmp_msg);
+                wmcom_send(tmp_msg);
                 continue;
             }
 

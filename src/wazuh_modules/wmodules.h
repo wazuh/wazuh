@@ -177,8 +177,8 @@ void * wmcom_main(void * arg);
  *
  * @param message Payload.
  */
-void wcom_send(char * message);
 #endif
+void wmcom_send(char * message);
 size_t wmcom_dispatch(char * command, char ** output);
 size_t wmcom_getconfig(const char * section, char ** output);
 int wmcom_sync(char * buffer);
