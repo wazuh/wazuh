@@ -37,6 +37,7 @@ int __wrap_lstat(const char *filename, struct stat *buf) {
 int __wrap_fstat(int __fd, struct stat *__buf) {
     check_expected(__fd);
     __buf->st_mode = mock();
+    __buf->st_size = mock();
     return mock();
 }
 
