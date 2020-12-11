@@ -120,6 +120,7 @@ If ($status -eq $null)
 Else
 {
     write-output "0" | out-file ".\upgrade\upgrade_result" -encoding ascii
+    Remove-Item .\backup -recurse -ErrorAction SilentlyContinue
     write-output "$(Get-Date -format u) - Upgrade finished successfully." >> .\upgrade\upgrade.log
     $new_version = (Get-Content VERSION)
     write-output "$(Get-Date -format u) - New version: $($new_version)" >> .\upgrade\upgrade.log
