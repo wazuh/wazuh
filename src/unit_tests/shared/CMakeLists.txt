@@ -1,7 +1,8 @@
 
 # Tests list and flags
+
+list(APPEND shared_tests_names "test_file_op")
 if(NOT ${TARGET} STREQUAL "winagent")
-    list(APPEND shared_tests_names "test_file_op")
     set(FILE_OP_BASE_FLAGS "-Wl,--wrap,isChroot,--wrap,stat,--wrap,chmod,--wrap,getpid \
                             -Wl,--wrap,unlink,--wrap,_merror,--wrap,_minfo,--wrap,_mwarn \
                             -Wl,--wrap,fopen,--wrap,_mferror,--wrap,fflush,--wrap,fclose \
@@ -11,6 +12,8 @@ if(NOT ${TARGET} STREQUAL "winagent")
                             -Wl,--wrap,gzopen,--wrap,gzread,--wrap,gzclose \
                             -Wl,--wrap,gzeof,--wrap,gzerror,--wrap,gzwrite")
     list(APPEND shared_tests_flags "${FILE_OP_BASE_FLAGS}")
+else()
+    list(APPEND shared_tests_flags "-Wl,--wrap,get_windows_file_time_epoch,--wrap,_mferror")
 endif()
 
 list(APPEND shared_tests_names "test_integrity_op")

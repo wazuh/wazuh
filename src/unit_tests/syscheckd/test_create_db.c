@@ -20,6 +20,7 @@
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/fs_op_wrappers.h"
 #include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
@@ -419,6 +420,9 @@ void expect_get_data (char *user, char *group, char *file_path, int calculate_ch
 
     expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
     will_return(__wrap_decode_win_permissions, "decoded_perms");
+
+    expect_string(__wrap_get_UTC_modification_time, file_path, file_path);
+    will_return(__wrap_get_UTC_modification_time, 123456);
 #endif
     if (calculate_checksums) {
         expect_OS_MD5_SHA1_SHA256_File_call(file_path,
@@ -2634,7 +2638,6 @@ static void test_fim_checker_fim_regular_warning(void **state) {
 
     // Inside fim_file
     expect_get_data(strdup("user"), "group", expanded_path, 0);
-
 
     expect_string(__wrap_w_get_file_attrs, file_path, expanded_path);
     will_return(__wrap_w_get_file_attrs, 123456);

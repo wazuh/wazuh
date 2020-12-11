@@ -168,7 +168,6 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GET_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT,
     WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS,
-    WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
     WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
@@ -1355,6 +1354,19 @@ wdb_t * wdb_backup_global(wdb_t *wdb, int version);
 int wdb_create_backup_global(int version);
 
 /**
+ * @brief Check the agent 0 status in the global database
+ *
+ * The table "agent" must have a tuple with id=0 and last_keepalive=9999/12/31 23:59:59 UTC.
+ * Otherwise, the database is either corrupt or old.
+ *
+ * @return Number of tuples matching that condition.
+ * @retval 1 The agent 0 status is OK.
+ * @retval 0 No tuple matching conditions exists.
+ * @retval -1 The table "agent" is missing or an error occurred.
+ */
+int wdb_upgrade_check_manager_keepalive(wdb_t *wdb);
+
+/**
  * @brief Query the checksum of a data range
  *
  * Check that the accumulated checksum of every item between begin and
@@ -1748,18 +1760,5 @@ cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int ke
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
-
-/**
- * @brief Check the agent 0 status in the global database
- *
- * The table "agent" must have a tuple with id=0 and last_keepalive=1999/12/31 23:59:59 UTC.
- * Otherwise, the database is either corrupt or old.
- *
- * @return Number of tuples matching that condition.
- * @retval 1 The agent 0 status is OK.
- * @retval 0 No tuple matching conditions exists.
- * @retval -1 The table "agent" is missing or an error occurred.
- */
-int wdb_global_check_manager_keepalive(wdb_t *wdb);
 
 #endif
