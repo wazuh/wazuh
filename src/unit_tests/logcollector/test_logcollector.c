@@ -55,12 +55,42 @@ static int teardown_group(void **state) {
 
 void test_w_get_hash_context_NULL(void ** state) {
 
+    SHA_CTX * context;
+    os_calloc(1, sizeof(SHA_CTX), context);
+    w_offset_t position = 10;
+    const char path[] = "/test_path";
 
+    expect_any(__wrap_OSHash_Get_ex, self);
+    expect_string(__wrap_OSHash_Get_ex, key, path);
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    expect_string(__wrap_OS_SHA1_File_Nbytes, fname, path);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, position);
+    will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
+    will_return(__wrap_OS_SHA1_File_Nbytes, 1);
+
+    w_get_hash_context (path, context, position);
+
+    os_free(context);
 }
 
 void test_w_get_hash_context_done(void ** state) {
 
+    SHA_CTX * context;
+    os_calloc(1, sizeof(SHA_CTX), context);
+    w_offset_t position = 10;
+    const char path[] = "/test_path";
+    os_file_status_t data = {0};
+    data.context.num = 123;
 
+    expect_any(__wrap_OSHash_Get_ex, self);
+    expect_string(__wrap_OSHash_Get_ex, key, path);
+    will_return(__wrap_OSHash_Get_ex, &data);
+
+    w_get_hash_context (path, context, position);
+    assert_memory_equal(&(data.context), context, sizeof(SHA_CTX)); 
+
+    os_free(context);
 }
 
 /* w_update_file_status */
