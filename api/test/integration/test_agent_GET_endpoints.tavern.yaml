@@ -4022,7 +4022,7 @@ stages:
                 - '999'
                 - '1000'
               error:
-                code: 1814
+                code: 1813
           total_affected_items: 0
           total_failed_items: 2
 
@@ -4057,10 +4057,10 @@ stages:
         error: 2
         data:
           affected_items:
-            - agent: !anystr
-              task_id: 1
-            - agent: !anystr
-              task_id: 2
+            - agent: '001'
+              task_id: !anyint
+            - agent: '002'
+              task_id: !anyint
           total_affected_items: 2
           total_failed_items: 1
           failed_items:
@@ -4089,7 +4089,7 @@ stages:
           affected_items:
             - message: Success
               agent: '001'
-              task_id: 1
+              task_id: !anyint
               module: upgrade_module
               command: upgrade
               status: !anystr
@@ -4097,7 +4097,7 @@ stages:
               update_time: !anystr
             - message: Success
               agent: '002'
-              task_id: 2
+              task_id: !anyint
               module: upgrade_module
               command: upgrade
               status: !anystr
@@ -4113,7 +4113,7 @@ stages:
               id:
                 - '000'
             - error:
-                code: 1814
+                code: 1813
                 message: !anystr
                 remediation: !anything
               id:

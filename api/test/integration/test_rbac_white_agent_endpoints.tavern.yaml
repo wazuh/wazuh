@@ -1658,7 +1658,6 @@ stages:
         agents_list: '001,002'
     response:
       status_code: 200
-    delay_after: !float "{upgrade_delay}"
 
   - name: Try to upgrade agents 003 and 004 (Denied)
     request:
@@ -1690,7 +1689,6 @@ stages:
         wait_for_complete: 'true'
     response:
       status_code: 200
-    delay_after: !float "{upgrade_delay}"
 
   - name: Try to customly upgrade agents 003 and 004 (Denied)
     request:

@@ -67,6 +67,7 @@ test_name: GET /experimental/ciscat/results
 stages:
 
   - name: Request
+    skip: True
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
@@ -104,6 +105,7 @@ stages:
           total_failed_items: 0
 
   - name: Request
+    skip: True
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"

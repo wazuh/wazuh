@@ -69,6 +69,12 @@ char* __wrap_wm_agent_upgrade_process_agent_result_command(const int* agent_ids,
     return mock_type(char *);
 }
 
+char* __wrap_wm_agent_upgrade_process_upgrade_result_command(const int* agent_ids) {
+    check_expected_ptr(agent_ids);
+
+    return mock_type(char *);
+}
+
 cJSON* __wrap_wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, cJSON *agents_array, const char* status, const char* error) {
     check_expected(command);
 

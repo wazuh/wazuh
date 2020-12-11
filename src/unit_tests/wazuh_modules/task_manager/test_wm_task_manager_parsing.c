@@ -27,7 +27,6 @@ wm_task_manager_upgrade_get_status* wm_task_manager_parse_upgrade_get_status_par
 wm_task_manager_upgrade_update_status* wm_task_manager_parse_upgrade_update_status_parameters(const cJSON* origin, const cJSON* parameters);
 wm_task_manager_upgrade_result* wm_task_manager_parse_upgrade_result_parameters(const cJSON* parameters);
 wm_task_manager_upgrade_cancel_tasks* wm_task_manager_parse_upgrade_cancel_tasks_parameters(const cJSON* origin);
-wm_task_manager_task_result* wm_task_manager_parse_task_result_parameters(const cJSON* parameters);
 const char* wm_task_manager_decode_status(char *status);
 
 // Setup / teardown
@@ -120,18 +119,6 @@ static int teardown_json_upgrade_cancel_tasks_task(void **state) {
     return 0;
 }
 
-static int teardown_json_task_result_task(void **state) {
-    if (state[0]) {
-        cJSON *json = state[0];
-        cJSON_Delete(json);
-    }
-    if (state[1]) {
-        wm_task_manager_task_result *task = (wm_task_manager_task_result*)state[1];
-        wm_task_manager_free_task_result_parameters(task);
-    }
-    return 0;
-}
-
 // Tests
 
 void test_wm_task_manager_decode_status_done(void **state)
@@ -203,7 +190,7 @@ void test_wm_task_manager_decode_status_unknown(void **state)
 
     const char *ret = wm_task_manager_decode_status(status);
 
-    assert_string_equal(ret, "Invalid status");
+    assert_null(ret);
 }
 
 void test_wm_task_manager_parse_data_response(void **state)
@@ -699,43 +686,6 @@ void test_wm_task_manager_parse_response_data_object(void **state)
     assert_string_equal(cJSON_GetObjectItem(response, "message")->valuestring, "Success");
     assert_non_null(cJSON_GetObjectItem(response, "data"));
     assert_memory_equal(cJSON_GetArrayItem(cJSON_GetObjectItem(response, "data"), 0), data, sizeof(data));
-}
-
-void test_wm_task_manager_parse_task_result_parameters_ok(void **state)
-{
-    cJSON *parameters = cJSON_CreateObject();
-    cJSON *tasks = cJSON_CreateArray();
-
-    cJSON_AddItemToArray(tasks, cJSON_CreateNumber(65));
-    cJSON_AddItemToArray(tasks, cJSON_CreateNumber(70));
-
-    cJSON_AddItemToObject(parameters, "tasks", tasks);
-
-    wm_task_manager_task_result* task_result = wm_task_manager_parse_task_result_parameters(parameters);
-
-    state[0] = parameters;
-    state[1] = task_result;
-
-    assert_non_null(task_result);
-    assert_non_null(task_result->task_ids);
-    assert_int_equal(task_result->task_ids[0], 65);
-    assert_int_equal(task_result->task_ids[1], 70);
-    assert_int_equal(task_result->task_ids[2], OS_INVALID);
-}
-
-void test_wm_task_manager_parse_task_result_parameters_tasks_err(void **state)
-{
-    cJSON *parameters = cJSON_CreateObject();
-
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'tasks' not found.");
-
-    wm_task_manager_task_result* task_result = wm_task_manager_parse_task_result_parameters(parameters);
-
-    state[0] = parameters;
-    state[1] = task_result;
-
-    assert_null(task_result);
 }
 
 void test_wm_task_manager_parse_upgrade_cancel_tasks_parameters_ok(void **state)
@@ -1299,32 +1249,6 @@ void test_wm_task_manager_parse_message_upgrade_cancel_tasks(void **state)
     assert_string_equal(parameters->node, "node05");
 }
 
-void test_wm_task_manager_parse_message_task_result(void **state)
-{
-    char *message = "{"
-                    "  \"origin\": {"
-                    "      \"name\": \"node05\","
-                    "      \"module\": \"api\""
-                    "   },"
-                    "  \"command\": \"task_result\","
-                    "  \"parameters\": {"
-                    "      \"tasks\": [1, 2]"
-                    "   }"
-                    "}";
-
-    wm_task_manager_task *task = wm_task_manager_parse_message(message);
-
-    *state = task;
-
-    assert_non_null(task);
-    assert_int_equal(task->command, WM_TASK_TASK_RESULT);
-    wm_task_manager_task_result *parameters = (wm_task_manager_task_result *)task->parameters;
-    assert_non_null(parameters->task_ids);
-    assert_int_equal(parameters->task_ids[0], 1);
-    assert_int_equal(parameters->task_ids[1], 2);
-    assert_int_equal(parameters->task_ids[2], -1);
-}
-
 void test_wm_task_manager_parse_message_unknown(void **state)
 {
     char *message = "{"
@@ -1460,9 +1384,6 @@ int main(void) {
         // wm_task_manager_parse_response
         cmocka_unit_test_teardown(test_wm_task_manager_parse_response_data_array, teardown_json),
         cmocka_unit_test_teardown(test_wm_task_manager_parse_response_data_object, teardown_json),
-        // wm_task_manager_parse_task_result_parameters
-        cmocka_unit_test_teardown(test_wm_task_manager_parse_task_result_parameters_ok, teardown_json_task_result_task),
-        cmocka_unit_test_teardown(test_wm_task_manager_parse_task_result_parameters_tasks_err, teardown_json_task_result_task),
         // wm_task_manager_parse_upgrade_cancel_tasks_parameters
         cmocka_unit_test_teardown(test_wm_task_manager_parse_upgrade_cancel_tasks_parameters_ok, teardown_json_upgrade_cancel_tasks_task),
         cmocka_unit_test_teardown(test_wm_task_manager_parse_upgrade_cancel_tasks_parameters_node_err, teardown_json_upgrade_cancel_tasks_task),
@@ -1494,7 +1415,6 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_task_manager_parse_message_upgrade_update_status, teardown_task),
         cmocka_unit_test_teardown(test_wm_task_manager_parse_message_upgrade_result, teardown_task),
         cmocka_unit_test_teardown(test_wm_task_manager_parse_message_upgrade_cancel_tasks, teardown_task),
-        cmocka_unit_test_teardown(test_wm_task_manager_parse_message_task_result, teardown_task),
         cmocka_unit_test_teardown(test_wm_task_manager_parse_message_unknown, teardown_task),
         cmocka_unit_test(test_wm_task_manager_parse_message_command_parameters_err),
         cmocka_unit_test(test_wm_task_manager_parse_message_command_err),

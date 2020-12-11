@@ -953,6 +953,8 @@ class WazuhDBBackend(AbstractDatabaseBackend):
         """Render query attending the format."""
         if self.query_format == 'mitre':
             return f'mitre sql {query}'
+        elif self.query_format == 'task':
+            return f'task sql {query}'
         elif self.query_format == 'global':
             return f'global sql {query}'
         else:
