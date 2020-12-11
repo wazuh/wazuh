@@ -243,10 +243,10 @@ int can_read();
 int w_update_file_status(const char * path, w_offset_t pos, SHA_CTX *context);
 
 /**
- * @brief Get SHA1 context or inicilize it
+ * @brief Get SHA1 context or initialize it
  * @param path the path is the hash key
  * @param context SHA1 context.
- * @param poisition end file position.
+ * @param position end file position.
  */
 void w_get_hash_context (const char * path, SHA_CTX *context, w_offset_t position);
 

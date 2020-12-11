@@ -172,6 +172,16 @@ char * w_validate_time(const char * time_str);
  */
 int w_validate_interval(int interval, int force);
 
+
+/**
+ * @brief Convert to bytes
+ *
+ * @param content string to validate
+ * @return number of bytes on success, otherwise -1
+ */
+long long w_validate_bytes(const char *content);
+
+
 /* Macros */
 
 /* Check if the IP is a single host, not a network with a netmask */
