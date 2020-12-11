@@ -34,6 +34,12 @@ int __wrap_lstat(const char *filename, struct stat *buf) {
     return mock();
 }
 
+int __wrap_fstat(int __fd, struct stat *__buf) {
+    check_expected(__fd);
+    __buf->st_mode = mock();
+    return mock();
+}
+
 #ifdef WIN32
 int __wrap_mkdir(const char *__path) {
     check_expected(__path);

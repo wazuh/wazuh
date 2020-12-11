@@ -16,6 +16,7 @@
 #include "headers/defs.h"
 #include "../common.h"
 
+fpos_t * test_position = NULL;
 
 extern int __real_fclose(FILE *_File);
 int __wrap_fclose(FILE *_File) {
@@ -47,6 +48,17 @@ char * __wrap_fgets (char * __s, int __n, FILE * __stream) {
         return NULL;
     } else {
         return __real_fgets(__s, __n, __stream);
+    }
+}
+
+extern int __real_fgetpos(FILE *__restrict __stream, fpos_t * __pos);
+int __wrap_fgetpos (FILE *__restrict __stream, fpos_t * __pos) {
+    if(test_mode) {
+        check_expected(__stream);
+        memcpy(__pos, test_position, sizeof(fpos_t));
+        return mock();
+    } else {
+        return __real_fgetpos(__stream, __pos);
     }
 }
 
@@ -119,5 +131,16 @@ int __wrap_remove(const char *filename) {
 int __wrap_rename(const char *__old, const char *__new) {
     check_expected(__old);
     check_expected(__new);
+    return mock();
+}
+
+void __wrap_clearerr (FILE *__stream) {
+    function_called();
+    check_expected(__stream);
+    return;
+}
+
+int __wrap_fileno (FILE *__stream) {
+    check_expected(__stream);
     return mock();
 }
