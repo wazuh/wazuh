@@ -12,7 +12,6 @@
 #include "logcollector.h"
 #include <math.h>
 #include <pthread.h>
-#include "os_crypto/sha1/sha1_op.h"
 
 // Remove STATIC qualifier from tests
 #ifdef WAZUH_UNIT_TESTING
@@ -24,13 +23,6 @@
 #define MAX_ASCII_LINES 10
 #define MAX_UTF8_CHARS 1400
 #define OFFSET_SIZE 11
-
-///> Struct to save the position of last line read and the SHA1 hash content
-typedef struct file_status {
-    w_offset_t offset;        ///> Position to read
-    SHA_CTX context;    ///> It stores the hashed data calculated so far
-    os_sha1 hash;       ///> Content file SHA1 hash
-} os_file_status_t;
 
 /* Prototypes */
 static int update_fname(int i, int j);
@@ -2569,7 +2561,7 @@ STATIC void w_save_file_status() {
     char * str = w_save_files_status_to_cJSON();
 
     if (!str) {
-        merror("Failure to convert the status files information to JSON");
+        merror("Failure to convert the status files information to JSON.");
         return;
     }
 
@@ -2608,6 +2600,12 @@ STATIC void w_load_files_status(cJSON *global_json) {
             continue;
         }
 
+        struct stat stat_fd;
+
+        if (stat(path_str, &stat_fd) == -1) {
+            continue;
+        }
+
         cJSON *hash = cJSON_GetObjectItem(localfile_item, OS_LOGCOLLECTOR_JSON_HASH);
         if (!hash) {
             continue;
@@ -2630,7 +2628,7 @@ STATIC void w_load_files_status(cJSON *global_json) {
 
         char *end;
         w_offset_t value_offset = strtol(offset_str, &end, 10);
-        if (value_offset < 0 || value_offset > 65534 || *end != '\0') {
+        if (value_offset < 0 || *end != '\0') {
             continue;
         }
         os_file_status_t * data;
@@ -2774,8 +2772,7 @@ STATIC w_offset_t w_set_to_pos(logreader *lf, w_offset_t pos, int mode) {
         lf->fp = NULL;
         return -1;
     }
-
-    fpos_t fp_pos;
+    fpos_t fp_pos = {0};
     fgetpos(lf->fp, &fp_pos);
 
 #ifdef WIN32

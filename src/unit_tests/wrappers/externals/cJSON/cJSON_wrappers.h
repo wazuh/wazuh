@@ -25,6 +25,10 @@ cJSON * __wrap_cJSON_AddStringToObject(cJSON * const object, const char * const 
 
 extern cJSON * __real_cJSON_AddStringToObject(cJSON * const object, const char * const name, const char * const string);
 
+cJSON* __wrap_cJSON_AddArrayToObject(cJSON * const object, const char * const name);
+
+extern cJSON* __real_cJSON_AddArrayToObject(cJSON * const object, const char * const name);
+
 cJSON * __wrap_cJSON_AddNumberToObject(cJSON * const object, const char * const name, const double number);
 
 extern cJSON * __real_cJSON_AddNumberToObject(cJSON * const object, const char * const name, const double number);
@@ -72,6 +76,14 @@ cJSON * __wrap_cJSON_Parse(const char *value);
 extern cJSON * __real_cJSON_Parse(const char *value);
 
 char * __wrap_cJSON_PrintUnformatted(const cJSON *item);
+
+char * __wrap_cJSON_Print(const cJSON *item);
+
+int __wrap_cJSON_GetArraySize(const cJSON *array);
+
+cJSON * cJSON_GetArrayItem(const cJSON *array, int index);
+
+extern cJSON * __real_cJSON_GetArrayItem(const cJSON *array, int index);
 
 cJSON* __wrap_cJSON_Duplicate(const cJSON *item, int recurse);
 

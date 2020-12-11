@@ -21,13 +21,31 @@
 
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
+#include "../wrappers/libc/stdio_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/externals/cJSON/cJSON_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/wazuh/os_crypto/sha1_op_wrappers.h"
 
 extern OSHash *files_status;
 
 void w_get_hash_context (const char * path, SHA_CTX *context, ssize_t position);
 void w_initialize_file_status();
+ssize_t w_set_to_pos(logreader *lf, long pos, int mode);
+char * w_save_files_status_to_cJSON();
+void w_save_file_status();
+void w_load_files_status(cJSON *global_json);
 
 /* setup/teardown */
+
+static int setup_group(void **state) {
+    test_mode = 1;
+    return 0;
+}
+static int teardown_group(void **state) {
+    test_mode = 0;
+    return 0;
+}
 
 /* wraps */
 
@@ -111,6 +129,718 @@ void test_w_update_file_status_update_OK(void ** state) {
 
 }
 
+/* w_set_to_pos */
+
+void test_w_set_to_pos_fseek_error(void ** state) {
+    test_mode = 1;
+    logreader *lf = NULL;
+    os_calloc(1, sizeof(logreader), lf);
+    lf->fp = (FILE*)1;
+    os_strdup("test", lf->file);
+    long pos = 0;
+    int mode = OS_BINARY;
+
+    will_return(__wrap_fseek, -1);
+
+    expect_string(__wrap__merror, formatted_msg, "(1116): Could not set position in file 'test' due to [(0)-(Success)].");
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    int retval = w_set_to_pos(lf, pos, mode);
+
+    assert_int_equal(retval, -1);
+
+    os_free(lf->file);
+    os_free(lf->fp);
+    os_free(lf);
+
+}
+
+void test_w_set_to_pos_OK(void ** state) {
+    test_mode = 1;
+    logreader *lf = NULL;
+    os_calloc(1, sizeof(logreader), lf);
+    lf->fp = (FILE*)1;
+    os_strdup("test", lf->file);
+    long pos = 0;
+    int mode = OS_BINARY;
+
+    os_calloc(1, sizeof(fpos_t), test_position);
+    test_position->__pos = 1;
+
+    will_return(__wrap_fseek, 0);
+
+    expect_value(__wrap_fgetpos, __stream, 1);
+    will_return(__wrap_fgetpos, 1);
+
+    ssize_t retval = w_set_to_pos(lf, pos, mode);
+
+    assert_int_equal(retval, 1);
+
+    os_free(lf->file);
+    os_free(lf);
+
+}
+
+/* w_save_files_status_to_cJSON */
+
+void test_w_save_files_status_to_cJSON_begin_NULL(void ** state) {
+    test_mode = 1;
+
+    OSHashNode *hash_node = NULL;
+
+    expect_value(__wrap_OSHash_Begin, self, files_status);
+    will_return(__wrap_OSHash_Begin, hash_node);
+
+    char * ret = w_save_files_status_to_cJSON();
+    assert_null(ret);
+
+}
+
+void test_w_save_files_status_to_cJSON_OK(void ** state) {
+    test_mode = 1;
+
+    os_file_status_t * data;
+    os_calloc(1, sizeof(os_file_status_t), data);
+    strcpy(data->hash,"test1234");
+    data->offset = 5;
+
+    OSHashNode *hash_node = NULL;
+    os_calloc(1, sizeof(OSHashNode), hash_node);
+    hash_node->key = "test";
+    hash_node->data = data;
+
+    expect_value(__wrap_OSHash_Begin, self, files_status);
+    will_return(__wrap_OSHash_Begin, hash_node);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_string(__wrap_cJSON_AddArrayToObject, name, "files");
+    will_return(__wrap_cJSON_AddArrayToObject, (cJSON *) 1);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "path");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "test");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "hash");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "test1234");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "offset");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "5");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_function_call(__wrap_cJSON_AddItemToArray);
+    will_return(__wrap_cJSON_AddItemToArray, true);
+
+    expect_value(__wrap_OSHash_Next, self, files_status);
+    will_return(__wrap_OSHash_Next, NULL);
+
+    will_return(__wrap_cJSON_Print, "test_1234");
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    char * ret = w_save_files_status_to_cJSON();
+
+    assert_string_equal(ret, "test_1234");
+
+    os_free(data);
+    os_free(hash_node);
+
+}
+
+/* w_save_files_status_to_cJSON */
+
+void test_w_save_file_status_str_NULL(void ** state) {
+    test_mode = 1;
+
+    //test_w_save_files_status_to_cJSON_begin_NULL
+    OSHashNode *hash_node = NULL;
+
+    expect_value(__wrap_OSHash_Begin, self, files_status);
+    will_return(__wrap_OSHash_Begin, hash_node);
+
+    expect_string(__wrap__merror, formatted_msg, "Failure to convert the status files information to JSON.");
+
+    w_save_file_status();
+
+}
+
+void test_w_save_file_status_wfopen_error(void ** state) {
+    test_mode = 1;
+
+    //test_w_save_files_status_to_cJSON_OK
+    os_file_status_t * data;
+    os_calloc(1, sizeof(os_file_status_t), data);
+    strcpy(data->hash,"test1234");
+    data->offset = 5;
+
+    OSHashNode *hash_node = NULL;
+    os_calloc(1, sizeof(OSHashNode), hash_node);
+    hash_node->key = "test";
+    hash_node->data = data;
+
+    expect_value(__wrap_OSHash_Begin, self, files_status);
+    will_return(__wrap_OSHash_Begin, hash_node);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_string(__wrap_cJSON_AddArrayToObject, name, "files");
+    will_return(__wrap_cJSON_AddArrayToObject, (cJSON *) 1);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "path");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "test");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "hash");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "test1234");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "offset");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "5");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_function_call(__wrap_cJSON_AddItemToArray);
+    will_return(__wrap_cJSON_AddItemToArray, true);
+
+    expect_value(__wrap_OSHash_Next, self, files_status);
+    will_return(__wrap_OSHash_Next, NULL);
+
+    will_return(__wrap_cJSON_Print, strdup("test_1234"));
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    expect_string(__wrap_wfopen, __filename, "/var/ossec/queue/logcollector/file_status.json");
+    expect_string(__wrap_wfopen, __modes, "w");
+    will_return(__wrap_wfopen, 0);
+
+    expect_string(__wrap__merror_exit, formatted_msg, "(1103): Could not open file '/var/ossec/queue/logcollector/file_status.json' due to [(0)-(Success)].");
+
+    w_save_file_status();
+
+    os_free(data);
+    os_free(hash_node);
+
+}
+
+void test_w_save_file_status_fwrite_error(void ** state) {
+    test_mode = 1;
+
+    //test_w_save_files_status_to_cJSON_OK
+    os_file_status_t * data;
+    os_calloc(1, sizeof(os_file_status_t), data);
+    strcpy(data->hash,"test1234");
+    data->offset = 5;
+
+    OSHashNode *hash_node = NULL;
+    os_calloc(1, sizeof(OSHashNode), hash_node);
+    hash_node->key = "test";
+    hash_node->data = data;
+
+    expect_value(__wrap_OSHash_Begin, self, files_status);
+    will_return(__wrap_OSHash_Begin, hash_node);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_string(__wrap_cJSON_AddArrayToObject, name, "files");
+    will_return(__wrap_cJSON_AddArrayToObject, (cJSON *) 1);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "path");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "test");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "hash");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "test1234");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "offset");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "5");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_function_call(__wrap_cJSON_AddItemToArray);
+    will_return(__wrap_cJSON_AddItemToArray, true);
+
+    expect_value(__wrap_OSHash_Next, self, files_status);
+    will_return(__wrap_OSHash_Next, NULL);
+
+    will_return(__wrap_cJSON_Print, strdup("test_1234"));
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    expect_string(__wrap_wfopen, __filename, "/var/ossec/queue/logcollector/file_status.json");
+    expect_string(__wrap_wfopen, __modes, "w");
+    will_return(__wrap_wfopen, "test");
+
+    will_return(__wrap_fwrite, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "(1110): Could not write file '/var/ossec/queue/logcollector/file_status.json' due to [(0)-(Success)].");
+
+    expect_function_call(__wrap_clearerr);
+    expect_string(__wrap_clearerr, __stream, "test");
+
+    expect_value(__wrap_fclose, _File, "test");
+    will_return(__wrap_fclose, 1);
+
+    w_save_file_status();
+
+    os_free(data);
+    os_free(hash_node);
+
+}
+
+void test_w_save_file_status_OK(void ** state) {
+    test_mode = 1;
+
+    //test_w_save_files_status_to_cJSON_OK
+    os_file_status_t * data;
+    os_calloc(1, sizeof(os_file_status_t), data);
+    strcpy(data->hash,"test1234");
+    data->offset = 5;
+
+    OSHashNode *hash_node = NULL;
+    os_calloc(1, sizeof(OSHashNode), hash_node);
+    hash_node->key = "test";
+    hash_node->data = data;
+
+    expect_value(__wrap_OSHash_Begin, self, files_status);
+    will_return(__wrap_OSHash_Begin, hash_node);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_string(__wrap_cJSON_AddArrayToObject, name, "files");
+    will_return(__wrap_cJSON_AddArrayToObject, (cJSON *) 1);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "path");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "test");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "hash");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "test1234");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "offset");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "5");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_function_call(__wrap_cJSON_AddItemToArray);
+    will_return(__wrap_cJSON_AddItemToArray, true);
+
+    expect_value(__wrap_OSHash_Next, self, files_status);
+    will_return(__wrap_OSHash_Next, NULL);
+
+    will_return(__wrap_cJSON_Print, strdup("test_1234"));
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    expect_string(__wrap_wfopen, __filename, "/var/ossec/queue/logcollector/file_status.json");
+    expect_string(__wrap_wfopen, __modes, "w");
+    will_return(__wrap_wfopen, "test");
+
+    will_return(__wrap_fwrite, 1);
+
+    expect_value(__wrap_fclose, _File, "test");
+    will_return(__wrap_fclose, 1);
+
+    w_save_file_status();
+
+    os_free(data);
+    os_free(hash_node);
+
+}
+
+/* w_load_files_status */
+
+void test_w_load_files_status_empty_array(void ** state) {
+    test_mode = 1;
+
+    cJSON *global_json = (cJSON*)1;
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetArraySize, 0);
+
+    w_load_files_status(global_json);
+
+}
+
+void test_w_load_files_status_path_NULL(void ** state) {
+    test_mode = 1;
+
+    cJSON *global_json = (cJSON*)1;
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetArraySize, 1);
+
+    will_return(__wrap_cJSON_GetArrayItem, NULL);
+
+    //Path
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    w_load_files_status(global_json);
+
+}
+
+void test_w_load_files_status_path_str_NULL(void ** state) {
+    test_mode = 1;
+
+    cJSON *global_json = (cJSON*)1;
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetArraySize, 1);
+
+    will_return(__wrap_cJSON_GetArrayItem, NULL);
+
+    //Path
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
+    w_load_files_status(global_json);
+
+}
+
+void test_w_load_files_status_no_file(void ** state) {
+    test_mode = 1;
+
+    cJSON *global_json = (cJSON*)1;
+
+    char * file = "test";
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetArraySize, 1);
+
+    will_return(__wrap_cJSON_GetArrayItem, NULL);
+
+    //Path
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "test");
+
+    expect_string(__wrap_stat, __file, file);
+    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, -1);
+
+    w_load_files_status(global_json);
+
+}
+
+void test_w_load_files_status_hash_NULL(void ** state) {
+    test_mode = 1;
+
+    cJSON *global_json = (cJSON*)1;
+
+    char * file = "test";
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetArraySize, 1);
+
+    will_return(__wrap_cJSON_GetArrayItem, NULL);
+
+    //Path
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "test");
+
+    expect_string(__wrap_stat, __file, file);
+    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, 0);
+
+    //Hash
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    w_load_files_status(global_json);
+
+}
+
+void test_w_load_files_status_hash_str_NULL(void ** state) {
+    test_mode = 1;
+
+    cJSON *global_json = (cJSON*)1;
+
+    char * file = "test";
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetArraySize, 1);
+
+    will_return(__wrap_cJSON_GetArrayItem, NULL);
+
+    //Path
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "test");
+
+    expect_string(__wrap_stat, __file, file);
+    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, 0);
+
+    //Hash
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
+    w_load_files_status(global_json);
+
+}
+
+void test_w_load_files_status_offset_NULL(void ** state) {
+    test_mode = 1;
+
+    cJSON *global_json = (cJSON*)1;
+
+    char * file = "test";
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetArraySize, 1);
+
+    will_return(__wrap_cJSON_GetArrayItem, NULL);
+
+    //Path
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "test");
+
+    expect_string(__wrap_stat, __file, file);
+    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, 0);
+
+    //Hash
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "1");
+
+    //Offset
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    w_load_files_status(global_json);
+
+}
+
+void test_w_load_files_status_offset_str_NULL(void ** state) {
+    test_mode = 1;
+
+    cJSON *global_json = (cJSON*)1;
+
+    char * file = "test";
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetArraySize, 1);
+
+    will_return(__wrap_cJSON_GetArrayItem, NULL);
+
+    //Path
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "test");
+
+    expect_string(__wrap_stat, __file, file);
+    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, 0);
+
+    //Hash
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "1");
+
+    //Offset
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
+    w_load_files_status(global_json);
+
+}
+
+void test_w_load_files_status_invalid_offset(void ** state) {
+    test_mode = 1;
+
+    cJSON *global_json = (cJSON*)1;
+
+    char * file = "test";
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetArraySize, 1);
+
+    will_return(__wrap_cJSON_GetArrayItem, NULL);
+
+    //Path
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "test");
+
+    expect_string(__wrap_stat, __file, file);
+    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, 0);
+
+    //Hash
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "1");
+
+    //Offset
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "-1");
+
+    w_load_files_status(global_json);
+
+}
+
+void test_w_load_files_status_update_add_fail(void ** state) {
+    test_mode = 1;
+
+    char * file = "test";
+
+    cJSON *global_json = (cJSON*)1;
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetArraySize, 1);
+
+    will_return(__wrap_cJSON_GetArrayItem, NULL);
+
+    //Path
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "test");
+
+    expect_string(__wrap_stat, __file, file);
+    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, 0);
+
+    //Hash
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "1");
+
+    //Offset
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "1");
+
+    expect_string(__wrap_OS_SHA1_File_Nbytes, fname, file);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 1);
+    will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
+    will_return(__wrap_OS_SHA1_File_Nbytes, 1);
+
+    will_return(__wrap_OSHash_Update_ex, 0);
+
+    expect_value(__wrap_OSHash_Add_ex, self, files_status);
+    expect_string(__wrap_OSHash_Add_ex, key, file);
+    will_return(__wrap_OSHash_Add_ex, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "(1298): Failure to add 'test' to 'files_status' hash table");
+
+    w_load_files_status(global_json);
+
+}
+
+void test_w_load_files_status_update_fail(void ** state) {
+    test_mode = 1;
+
+    char * file = "test";
+
+    cJSON *global_json = (cJSON*)1;
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetArraySize, 1);
+
+    will_return(__wrap_cJSON_GetArrayItem, NULL);
+
+    //Path
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "test");
+
+    expect_string(__wrap_stat, __file, file);
+    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, 0);
+
+    //Hash
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "1");
+
+    //Offset
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "1");
+
+    expect_string(__wrap_OS_SHA1_File_Nbytes, fname, file);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 1);
+    will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
+    will_return(__wrap_OS_SHA1_File_Nbytes, 1);
+
+    will_return(__wrap_OSHash_Update_ex, 0);
+
+    expect_value(__wrap_OSHash_Add_ex, self, files_status);
+    expect_string(__wrap_OSHash_Add_ex, key, file);
+    will_return(__wrap_OSHash_Add_ex, 2);
+
+    w_load_files_status(global_json);
+
+}
+
+void test_w_load_files_status_OK(void ** state) {
+    test_mode = 1;
+
+    char * file = "test";
+
+    cJSON *global_json = (cJSON*)1;
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetArraySize, 1);
+
+    will_return(__wrap_cJSON_GetArrayItem, NULL);
+
+    //Path
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "test");
+
+    expect_string(__wrap_stat, __file, file);
+    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, 0);
+
+    //Hash
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "1");
+
+    //Offset
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "1");
+
+    expect_string(__wrap_OS_SHA1_File_Nbytes, fname, file);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 1);
+    will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
+    will_return(__wrap_OS_SHA1_File_Nbytes, 1);
+
+    will_return(__wrap_OSHash_Update_ex, 1);
+
+    w_load_files_status(global_json);
+
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Test w_get_hash_context
@@ -120,9 +850,36 @@ int main(void) {
         // Test w_update_file_status
         cmocka_unit_test(test_w_update_file_status_fail_update_add_table_hash),
         cmocka_unit_test(test_w_update_file_status_update_fail_add_OK),
-        cmocka_unit_test(test_w_update_file_status_update_OK)
+        cmocka_unit_test(test_w_update_file_status_update_OK),
 
+        // Test w_set_to_pos
+        cmocka_unit_test(test_w_set_to_pos_fseek_error),
+        cmocka_unit_test(test_w_set_to_pos_OK),
+
+        // Test w_save_files_status_to_cJSON
+        cmocka_unit_test(test_w_save_files_status_to_cJSON_begin_NULL),
+        cmocka_unit_test(test_w_save_files_status_to_cJSON_OK),
+
+        // Test w_save_file_status
+        cmocka_unit_test(test_w_save_file_status_str_NULL),
+        cmocka_unit_test(test_w_save_file_status_wfopen_error),
+        cmocka_unit_test(test_w_save_file_status_fwrite_error),
+        cmocka_unit_test(test_w_save_file_status_OK),
+
+        // Test w_load_files_status
+        cmocka_unit_test(test_w_load_files_status_empty_array),
+        cmocka_unit_test(test_w_load_files_status_path_NULL),
+        cmocka_unit_test(test_w_load_files_status_path_str_NULL),
+        cmocka_unit_test(test_w_load_files_status_no_file),
+        cmocka_unit_test(test_w_load_files_status_hash_NULL),
+        cmocka_unit_test(test_w_load_files_status_hash_str_NULL),
+        cmocka_unit_test(test_w_load_files_status_offset_NULL),
+        cmocka_unit_test(test_w_load_files_status_offset_str_NULL),
+        cmocka_unit_test(test_w_load_files_status_invalid_offset),
+        cmocka_unit_test(test_w_load_files_status_update_add_fail),
+        cmocka_unit_test(test_w_load_files_status_update_fail),
+        cmocka_unit_test(test_w_load_files_status_OK)
     };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

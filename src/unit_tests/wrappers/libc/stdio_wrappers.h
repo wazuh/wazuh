@@ -13,6 +13,8 @@
 
 #include <stdio.h>
 
+extern fpos_t * test_position;
+
 int __wrap_fclose(FILE *_File);
 
 int __wrap_fflush(FILE *__stream);
@@ -34,5 +36,11 @@ int __wrap_remove(const char *filename);
 int __wrap_rename(const char *__old, const char *__new);
 
 size_t __wrap_strlen(const char *s);
+
+int __wrap_fgetpos (FILE *__restrict __stream, fpos_t * __pos);
+
+void __wrap_clearerr (FILE *__stream);
+
+int __wrap_fileno (FILE *__stream);
 
 #endif

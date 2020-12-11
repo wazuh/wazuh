@@ -37,6 +37,7 @@
 #include "shared.h"
 #include "config/localfile-config.h"
 #include "config/config.h"
+#include "os_crypto/sha1/sha1_op.h"
 
 /**/
 #ifdef WIN32
@@ -178,6 +179,13 @@ typedef struct w_input_range_t{
     int end_i;
     int end_j;
 } w_input_range_t;
+
+///> Struct to save the position of last line read and the SHA1 hash content
+typedef struct file_status {
+    long offset;        ///> Position to read
+    SHA_CTX context;    ///> It stores the hashed data calculated so far
+    os_sha1 hash;       ///> Content file SHA1 hash
+} os_file_status_t;
 
 extern w_input_range_t *w_input_threads_range;
 
