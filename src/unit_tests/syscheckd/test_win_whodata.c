@@ -201,6 +201,9 @@ static int setup_whodata_callback_group(void ** state) {
     if (syscheck.dir = calloc(2, sizeof(char *)), !syscheck.dir)
         return -1;
 
+    if (syscheck.symbolic_links = calloc(2, sizeof(char *)), !syscheck.symbolic_links)
+        return -1;
+
     if (syscheck.opts = calloc(1, sizeof(int *)), !syscheck.opts)
         return -1;
 

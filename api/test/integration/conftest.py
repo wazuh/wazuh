@@ -151,9 +151,11 @@ def healthcheck_procedure(module: str):
 
     os.popen(f'cp -rf {master_base_folder} {os.path.join(tmp_content, "manager")}')
     os.popen(f'cp -rf {agent_base_folder} {os.path.join(tmp_content, "agent")}')
+    # Avoid race condition
+    time.sleep(2)
     if os.path.exists(manager_folder):
         os.popen(f'cp -rf {manager_folder} {os.path.join(tmp_content, "manager")}')
-    elif os.path.exists(agent_folder):
+    if os.path.exists(agent_folder):
         os.popen(f'cp -rf {agent_folder} {os.path.join(tmp_content, "agent")}')
 
 

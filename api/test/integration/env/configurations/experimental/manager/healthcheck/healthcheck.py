@@ -1,5 +1,6 @@
 import os
 import sqlite3
+import time
 
 
 database = '/var/ossec/queue/db/'

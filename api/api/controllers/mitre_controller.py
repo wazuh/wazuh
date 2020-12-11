@@ -12,7 +12,7 @@ from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh.core.common import database_limit
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
-logger = logging.getLogger('wazuh')
+logger = logging.getLogger('wazuh-api')
 
 
 async def get_attack(request, pretty=False, wait_for_complete=False, offset=0, limit=database_limit,

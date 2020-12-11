@@ -122,7 +122,7 @@ then
     sed -E -i'' -e "s/__version__ = '.+'/__version__ = '${version:1}'/g" $CLUSTER_INIT
 
     # API
-    sed -E -i'' -e "s/VERSION = '.+'/VERSION = '${version:1}'/g" $API_SETUP
+    sed -E -i'' -e "s/version='.+',/version='${version:1}',/g" $API_SETUP
     sed -E -i'' -e "s/version: '.+'/version: '${version:1}'/g" $API_SPEC
 
     # Documentation config file

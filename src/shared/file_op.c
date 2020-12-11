@@ -19,6 +19,8 @@
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
 #include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
+#include "unit_tests/wrappers/windows/fileapi_wrappers.h"
+#include "unit_tests/wrappers/windows/handleapi_wrappers.h"
 #endif
 #endif
 
@@ -1266,6 +1268,27 @@ int get_creation_date(char *dir, SYSTEMTIME *utc) {
 end:
     CloseHandle(hdle);
     return retval;
+}
+
+
+time_t get_UTC_modification_time(const char *file){
+    HANDLE hdle;
+    FILETIME modification_date;
+    if (hdle = CreateFile(file, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL), \
+        hdle == INVALID_HANDLE_VALUE) {
+        mferror(FIM_WARN_OPEN_HANDLE_FILE, file, GetLastError());
+        return 0;
+    }
+
+    if (!GetFileTime(hdle, NULL, NULL, &modification_date)) {
+        CloseHandle(hdle);
+        mferror(FIM_WARN_GET_FILETIME, file, GetLastError());
+        return 0;
+    }
+
+    CloseHandle(hdle);
+
+    return (time_t) get_windows_file_time_epoch(modification_date);
 }
 
 
@@ -2564,7 +2587,7 @@ FILE * wfopen(const char * pathname, const char * mode) {
     for (i = 0; mode[i]; ++i) {
         switch (mode[i]) {
         case '+':
-            dwDesiredAccess |= GENERIC_WRITE;
+            dwDesiredAccess |= GENERIC_WRITE | GENERIC_READ;
             flags &= ~_O_RDONLY;
             break;
         case 'a':
