@@ -101,7 +101,8 @@ list(APPEND syscheckd_tests_names "test_create_db")
 if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=w_get_file_permissions \
                                      -Wl,--wrap=decode_win_permissions,--wrap=pthread_mutex_lock \
-                                     -Wl,--wrap=pthread_mutex_unlock,--wrap=w_get_file_attrs,--wrap=os_winreg_check")
+                                     -Wl,--wrap=pthread_mutex_unlock,--wrap=w_get_file_attrs,--wrap=os_winreg_check \
+                                     -Wl,--wrap,get_UTC_modification_time")
 else()
   list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches")
 endif()

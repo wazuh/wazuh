@@ -133,3 +133,10 @@ int __wrap_UnmergeFiles(const char *finalpath, const char *optdir, int mode) {
     check_expected(mode);
     return mock();
 }
+
+#ifdef WIN32
+long long __wrap_get_UTC_modification_time(const char *file_path) {
+    check_expected(file_path);
+    return mock();
+}
+#endif
