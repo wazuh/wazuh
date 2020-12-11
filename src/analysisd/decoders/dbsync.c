@@ -31,7 +31,7 @@ extern void mock_assert(const int result, const char* const expression,
 static void dispatch_send_local(dbsync_context_t * ctx, const char * query) {
     int sock;
 
-    if (strcmp(ctx->component, "syscheck") == 0 || strncmp(ctx->component, "syscollector", 12) == 0) {
+    if (strncmp(ctx->component, "syscheck", 8) == 0 || strncmp(ctx->component, "syscollector", 12) == 0) {
         sock = OS_ConnectUnixDomain(SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
     } else {
         merror("dbsync: unknown location '%s'", ctx->component);
