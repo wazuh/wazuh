@@ -138,43 +138,6 @@ static int test_teardown_file(void **state) {
     return 0;
 }
 
-static int setup_audit_reply(void **state) {
-    struct audit_reply *reply = (struct audit_reply *)calloc(1, sizeof(struct audit_reply));
-
-    if (reply == NULL) {
-        return -1;
-    }
-
-    reply->status = (struct audit_status *)calloc(1, sizeof(struct audit_status));
-
-    if (reply->status == NULL) {
-        free(reply);
-        return -1;
-    }
-
-    reply->status->enabled = 1;
-
-    *state = reply;
-
-    return 0;
-}
-
-static int teardown_audit_reply(void **state) {
-    struct audit_reply *reply = *state;
-
-    if (reply->status != NULL) {
-        free(reply->status);
-        reply->status = NULL;
-    }
-
-    if (reply != NULL) {
-        free(reply);
-        reply = NULL;
-    }
-
-    return 0;
-}
-
 /* tests */
 
 static void test_audit_get_rule_list_error(void **state) {
@@ -589,81 +552,6 @@ static void test_audit_manage_rules_action_error(void **state) {
     assert_int_equal(ret, -1);
 }
 
-static void test_audit_get_mode_audit_open_fail(void **state) {
-    int retval = 0;
-
-    will_return(__wrap_audit_open, -1);
-    expect_string(__wrap__mdebug2, formatted_msg, "Error opening audit socket.");
-
-    retval = audit_get_mode();
-
-    assert_int_equal(retval, -1);
-}
-
-static void test_audit_get_mode_audit_request_status_fail(void **state) {
-    int retval = 0;
-
-    will_return(__wrap_audit_open, 1);
-
-    will_return(__wrap_audit_request_status, -1);
-    expect_string(__wrap__mdebug2, formatted_msg, "Error in audit_request_status().");
-
-    will_return(__wrap_audit_close, 1);
-
-    retval = audit_get_mode();
-
-    assert_int_equal(retval, -1);
-}
-
-static void test_audit_get_mode_audit_get_reply_one_attempt_fails(void **state) {
-    struct audit_reply *reply = (struct audit_reply *)*state;
-    int retval = 0;
-
-    will_return(__wrap_audit_open, 1);
-
-    will_return(__wrap_audit_request_status, 1);
-
-    // First attempt fails
-    expect_value(__wrap_audit_get_reply, fd, 1);
-    expect_value(__wrap_audit_get_reply, block, GET_REPLY_NONBLOCKING);
-    will_return(__wrap_audit_get_reply, reply);
-    will_return(__wrap_audit_get_reply, 0);
-
-    // Second attempt is succesful
-    expect_value(__wrap_audit_get_reply, fd, 1);
-    expect_value(__wrap_audit_get_reply, block, GET_REPLY_NONBLOCKING);
-    will_return(__wrap_audit_get_reply, reply);
-    will_return(__wrap_audit_get_reply, 1);
-
-    will_return(__wrap_audit_close, 1);
-
-    retval = audit_get_mode();
-
-    assert_int_equal(retval, 1);
-}
-
-static void test_audit_get_mode_audit_get_reply_first_attempt(void **state) {
-    struct audit_reply *reply = (struct audit_reply *)*state;
-    int retval = 0;
-
-    reply->status->enabled = 2;
-
-    will_return(__wrap_audit_open, 1);
-
-    will_return(__wrap_audit_request_status, 1);
-
-    expect_value(__wrap_audit_get_reply, fd, 1);
-    expect_value(__wrap_audit_get_reply, block, GET_REPLY_NONBLOCKING);
-    will_return(__wrap_audit_get_reply, reply);
-    will_return(__wrap_audit_get_reply, 1);
-
-    will_return(__wrap_audit_close, 1);
-
-    retval = audit_get_mode();
-
-    assert_int_equal(retval, 2);
-}
-
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_audit_get_rule_list_error),
@@ -688,10 +576,6 @@ int main(void) {
         cmocka_unit_test(test_audit_manage_rules_key_length_error),
         cmocka_unit_test(test_audit_manage_rules_fieldpair_error),
         cmocka_unit_test(test_audit_manage_rules_action_error),
-        cmocka_unit_test(test_audit_get_mode_audit_open_fail),
-        cmocka_unit_test(test_audit_get_mode_audit_request_status_fail),
-        cmocka_unit_test_setup_teardown(test_audit_get_mode_audit_get_reply_one_attempt_fails, setup_audit_reply, teardown_audit_reply),
-        cmocka_unit_test_setup_teardown(test_audit_get_mode_audit_get_reply_first_attempt, setup_audit_reply, teardown_audit_reply),
     };
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
 }

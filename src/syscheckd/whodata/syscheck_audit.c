@@ -278,14 +278,16 @@ void audit_no_rules_to_realtime() {
     int i;
 
     for (i = 0; syscheck.dir[i] != NULL; i++) {
-        if (syscheck.opts[i] & WHODATA_ACTIVE) {
-            found = search_audit_rule(fim_get_real_path(i), "wa", AUDIT_KEY);
+        if ((syscheck.opts[i] & WHODATA_ACTIVE) == 0) {
+            continue;
+        }
 
-            if (found == 0) {   // No rule found
-                mwarn(FIM_ERROR_WHODATA_ADD_DIRECTORY, fim_get_real_path(i));
-                syscheck.opts[i] &= ~WHODATA_ACTIVE;
-                syscheck.opts[i] |= REALTIME_ACTIVE;
-            }
+        found = search_audit_rule(fim_get_real_path(i), "wa", AUDIT_KEY);
+
+        if (found == 0) {   // No rule found
+            mwarn(FIM_ERROR_WHODATA_ADD_DIRECTORY, fim_get_real_path(i));
+            syscheck.opts[i] &= ~WHODATA_ACTIVE;
+            syscheck.opts[i] |= REALTIME_ACTIVE;
         }
     }
 }
@@ -451,9 +453,8 @@ int audit_init(void) {
 
     // Check if auditd is installed and running.
     int aupid = check_auditd_enabled();
-    int audit_status = audit_get_mode();
 
-    if (aupid <= 0 || audit_status < 1) {
+    if (aupid <= 0) {
         mwarn(FIM_AUDIT_NORUNNING);
         return (-1);
     }
@@ -500,8 +501,22 @@ int audit_init(void) {
     add_audit_rules_syscheck(true);
 
     // Change to realtime directories that don't have any rules when Auditd is in immutable mode
-    if (audit_status == AUDIT_IMMUTABLE) {
+    int auditd_fd = audit_open();
+    int au_mode = audit_is_enabled(auditd_fd);
+    audit_close(auditd_fd);
+
+    switch (au_mode) {
+    case AUDIT_IMMUTABLE:
         audit_no_rules_to_realtime();
+        break;
+    case AUDIT_ERROR:
+        merror(FIM_ERROR_AUDIT_MODE, strerror(errno), errno);
+        return -1;
+    case AUDIT_DISABLED:
+        mwarn(FIM_AUDIT_DISABLED);
+        return -1;
+    default:
+        break;
     }
 
     atexit(clean_rules);
