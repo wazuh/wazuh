@@ -4302,7 +4302,22 @@ components:
           - never_connected
           - disconnected
         minItems: 1
-
+    statusDeleteAgentParam:
+      in: query
+      name: status
+      required: true
+      description: "Filter by agent status (use commas to enter multiple statuses)"
+      schema:
+        type: array
+        items:
+          type: string
+          enum:
+            - all
+            - active
+            - pending
+            - never_connected
+            - disconnected
+        minItems: 1
     statusRLDParam:
       in: query
       name: status
@@ -5278,7 +5293,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agents_list_delete'
         - $ref: '#/components/parameters/purge'
-        - $ref: '#/components/parameters/statusAgentParam'
+        - $ref: '#/components/parameters/statusDeleteAgentParam'
         - $ref: '#/components/parameters/older_than'
       responses:
         '200':

@@ -22,7 +22,7 @@ from wazuh.core.exception import WazuhError
 logger = logging.getLogger('wazuh-api')
 
 
-async def delete_agents(request, pretty=False, wait_for_complete=False, agents_list=None, purge=False, status='all',
+async def delete_agents(request, pretty=False, wait_for_complete=False, agents_list=None, purge=False, status=None,
                         older_than="7d"):
     """Delete all agents or a list of them with optional criteria based on the status or time of the last connection.
 
