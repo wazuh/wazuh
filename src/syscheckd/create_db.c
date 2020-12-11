@@ -252,7 +252,7 @@ void fim_checker(const char *path, fim_element *item, whodata_evt *w_evt, int re
             return;
         }
 
-        check_max_fps(item->mode);
+        check_max_fps(item->mode, _base_line);
 
         if (fim_file(path, item, w_evt, report) < 0) {
             mwarn(FIM_WARN_SKIP_EVENT, path);

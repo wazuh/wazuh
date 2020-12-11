@@ -574,6 +574,9 @@ void test_send_syscheck_msg_0_eps(void ** state) {
 void test_fim_send_scan_info(void **state) {
     (void) state;
     const char *msg = "{\"type\":\"scan_start\",\"data\":{\"timestamp\":1}}";
+#ifndef TEST_WINAGENT
+    will_return(__wrap_time, 1);
+#endif
     expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {\"type\":\"scan_start\",\"data\":{\"timestamp\":1}}");
     expect_w_send_sync_msg(msg, SYSCHECK, SYSCHECK_MQ, 0);
     fim_send_scan_info(FIM_SCAN_START);
@@ -772,7 +775,7 @@ void test_check_max_fps_no_sleep(void **state) {
 #ifndef TEST_WINAGENT
     will_return(__wrap_time, 0);
 #endif
-    check_max_fps(FIM_SCHEDULED);
+    check_max_fps(FIM_SCHEDULED, 1);
 }
 
 void test_check_max_fps_sleep(void **state) {
@@ -783,7 +786,7 @@ void test_check_max_fps_sleep(void **state) {
     expect_value(wrap_Sleep, dwMilliseconds, 1000);
 #endif
     expect_string(__wrap__mdebug2, formatted_msg, FIM_REACHED_MAX_FPS);
-    check_max_fps(FIM_SCHEDULED);
+    check_max_fps(FIM_SCHEDULED, 1);
 }
 
 int main(void) {

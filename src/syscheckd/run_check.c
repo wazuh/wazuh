@@ -124,14 +124,14 @@ void fim_send_scan_info(fim_scan_event event) {
     cJSON_Delete(json);
 }
 
-void check_max_fps(int mode) {
+void check_max_fps(int mode, int baseline) {
 #ifndef WAZUH_TESTING
     static unsigned int files_read = 0;
     static time_t last_time = 0;
 #endif
     time_t now;
-
-    if (mode != FIM_SCHEDULED || syscheck.max_fps == 0) {
+    // Check only if scheduled, if it's enabled or if it's not the first scan.
+    if (mode != FIM_SCHEDULED || syscheck.max_fps == 0 || baseline == 0) {
         return;
     }
 
