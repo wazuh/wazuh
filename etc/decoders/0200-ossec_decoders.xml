@@ -16,7 +16,7 @@
 
 <decoder name="ossec-logcollector">
   <type>ossec</type>
-  <prematch>^\d\d\d\d/\d\d/\d\d \d\d:\d\d:\d\d ossec-logcollector</prematch>
+  <prematch>^\d\d\d\d/\d\d/\d\d \d\d:\d\d:\d\d ossec-logcollector|^\d\d\d\d/\d\d/\d\d \d\d:\d\d:\d\d wazuh-logcollector</prematch>
   <regex offset="after_prematch">^\(\d+\): (\.)</regex>
   <order>extra_data</order>
 </decoder>
