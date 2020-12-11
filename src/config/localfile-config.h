@@ -16,7 +16,7 @@
 #define DATE_MODIFIED   1
 #define DEFAULT_EVENTCHANNEL_REC_TIME 5
 #define DIFF_DEFAULT_SIZE 10240
-#define DIFF_MAX_SIZE LONG_MAX
+#define DIFF_MAX_SIZE 100 * 1024 * 1024
 
 #include <pthread.h>
 

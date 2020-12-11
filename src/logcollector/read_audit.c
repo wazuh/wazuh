@@ -61,10 +61,10 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
     fgetpos(lf->fp, &fp_pos);
 
     SHA_CTX context;
-#ifdef WIN32
-    w_get_hash_context(lf->file, &context, fp_pos);
-#else
+#if defined(__linux__)
     w_get_hash_context(lf->file, &context, fp_pos.__pos);
+#else
+    w_get_hash_context(lf->file, &context, fp_pos);
 #endif
 
 

@@ -33,10 +33,10 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     fgetpos(lf->fp, &fp_pos);
 
     SHA_CTX context;
-#ifdef WIN32
-    w_get_hash_context(lf->file, &context, fp_pos);
-#else
+#if defined(__linux__)
     w_get_hash_context(lf->file, &context, fp_pos.__pos);
+#else
+    w_get_hash_context(lf->file, &context, fp_pos);
 #endif
 
     while (can_read() && fgets(str, OS_MAXSTR, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
@@ -129,11 +129,12 @@ file_error:
     fpos_t pos;
     fgetpos(lf->fp, &pos);
 
-    /* For Windows fpos_t is a __int64 type. In contrast, for Linux is a __fpos_t type */
-#ifdef WIN32
-    w_update_file_status(lf->file, pos, &context);
+    /* For Windows, Macos, Solaris, FreeBSD and OpenBSD fpos_t is a interger type.
+    In contrast, for Linux is a __fpos_t type */
+#if defined(__linux__)
+    w_update_file_status(lf->file, fp_pos.__pos, &context);
 #else
-    w_update_file_status(lf->file, pos.__pos, &context);
+    w_update_file_status(lf->file, fp_pos, &context);
 #endif
 
     mdebug2("Read %d lines from %s", lines, lf->file);

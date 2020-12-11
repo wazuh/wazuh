@@ -32,10 +32,10 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
     fgetpos(lf->fp, &fp_pos);
 
     SHA_CTX context;
-#ifdef WIN32
-    w_get_hash_context(lf->file, &context, fp_pos);
-#else
+#if defined(__linux__)
     w_get_hash_context(lf->file, &context, fp_pos.__pos);
+#else
+    w_get_hash_context(lf->file, &context, fp_pos);
 #endif
 
     for (offset = w_ftell(lf->fp); can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
@@ -134,11 +134,13 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
         }
         fgetpos(lf->fp, &fp_pos);       
     }
-    /* For Windows fpos_t is a __int64 type. In contrast, for Linux is a __fpos_t type */
-#ifdef WIN32
-    w_update_file_status(lf->file, fp_pos, &context);
-#else
+
+    /* For Windows, Macos, Solaris, FreeBSD and OpenBSD fpos_t is a interger type.
+    In contrast, for Linux is a __fpos_t type */
+#if defined(__linux__)
     w_update_file_status(lf->file, fp_pos.__pos, &context);
+#else
+    w_update_file_status(lf->file, fp_pos, &context);
 #endif
 
     mdebug2("Read %d lines from %s", lines, lf->file);
