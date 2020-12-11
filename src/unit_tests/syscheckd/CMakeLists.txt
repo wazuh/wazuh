@@ -267,7 +267,8 @@ if(${TARGET} STREQUAL "winagent")
                                            -Wl,--wrap=fim_checker,--wrap=OSHash_Get,--wrap=os_random \
                                            -Wl,--wrap=convert_windows_string,--wrap=OSHash_Get_ex,--wrap=FOREVER \
                                            -Wl,--wrap=fflush,--wrap=fread,--wrap=fseek,--wrap=fwrite,--wrap=fprintf \
-                                           -Wl,--wrap=fgets -Wl,--wrap=wstr_split -Wl,--wrap=pthread_rwlock_wrlock")
+                                           -Wl,--wrap=fgets -Wl,--wrap=wstr_split -Wl,--wrap=pthread_rwlock_wrlock \
+                                           -Wl,--wrap=fgetpos")
 endif()
 
 # Compiling tests
