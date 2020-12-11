@@ -8,6 +8,15 @@
  * and/or modify it under the terms of GPLv2.
 */
 
+DELETE FROM sys_osinfo;
+DELETE FROM sys_netiface;
+DELETE FROM sys_netproto;
+DELETE FROM sys_netaddr;
+DELETE FROM sys_ports;
+DELETE FROM sys_programs;
+DELETE FROM sys_hotfixes;
+DELETE FROM sys_processes;
+
 ALTER TABLE sys_osinfo ADD COLUMN os_patch TEXT DEFAULT NULL;
 
 ALTER TABLE sys_netiface ADD COLUMN checksum TEXT DEFAULT NULL;

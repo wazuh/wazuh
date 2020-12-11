@@ -23,7 +23,10 @@ SQLiteDBEngine::SQLiteDBEngine(const std::shared_ptr<ISQLiteFactory>& sqliteFact
 }
 
 SQLiteDBEngine::~SQLiteDBEngine()
-{}
+{
+    std::lock_guard<std::mutex> lock(m_stmtMutex);
+    m_statementsCache.clear();
+}
 
 void SQLiteDBEngine::setMaxRows(const std::string& table,
                                 const unsigned long long maxRows)
@@ -1573,9 +1576,17 @@ void SQLiteDBEngine::getFieldValueFromTuple(const Field& value,
 
 std::unique_ptr<SQLite::IStatement>const& SQLiteDBEngine::getStatement(const std::string& sql) 
 {
-    static std::mutex mutex;
-    std::lock_guard<std::mutex> lock(mutex);
-    const auto it { m_statementsCache.find(sql) };
+    std::lock_guard<std::mutex> lock(m_stmtMutex);
+    const auto it
+    {
+        std::find_if(m_statementsCache.begin(),
+                     m_statementsCache.end(),
+                     [sql](const std::pair<std::string, std::unique_ptr<SQLite::IStatement>>& pair)
+                     {
+                        return 0 == pair.first.compare(sql);
+                     })
+    };
+
     if(m_statementsCache.end() != it) 
     {
         it->second->reset();
@@ -1583,8 +1594,12 @@ std::unique_ptr<SQLite::IStatement>const& SQLiteDBEngine::getStatement(const std
     } 
     else 
     {
-        m_statementsCache[sql] = m_sqliteFactory->createStatement(m_sqliteConnection, sql);
-        return m_statementsCache[sql];
+        m_statementsCache.emplace_back(sql, m_sqliteFactory->createStatement(m_sqliteConnection, sql));
+        if (CACHE_STMT_LIMIT <= m_statementsCache.size())
+        {
+            m_statementsCache.pop_front();
+        }
+        return m_statementsCache.back().second;
     }
 }
 
