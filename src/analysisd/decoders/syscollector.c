@@ -1956,7 +1956,13 @@ bool fill_data_dbsync(cJSON *data, const char *field_list[], buffer_t * const ms
                 if(strlen(key->valuestring) == 0) {
                     buffer_push(msg, "NULL", NULL_TEXT_LENGTH);
                 } else {
-                    buffer_push(msg, key->valuestring, strlen(key->valuestring));
+                    char *value_string = wstr_replace(key->valuestring, FIELD_SEPARATOR_DBSYNC, "?");
+                    if (NULL != value_string) {
+                        buffer_push(msg, value_string, strlen(value_string));
+                        os_free(value_string);
+                    } else {
+                        buffer_push(msg, "NULL", NULL_TEXT_LENGTH);
+                    }
                 }
             } else {
                 buffer_push(msg, "NULL", NULL_TEXT_LENGTH);
@@ -1967,7 +1973,7 @@ bool fill_data_dbsync(cJSON *data, const char *field_list[], buffer_t * const ms
         // Message separated by \0, includes the values to be processed in the wazuhdb
         // this must maintain order and must always be completed, and the values that
         // do not correspond will not be proccessed in wazuh-db
-        buffer_push(msg, "\0", SEPARATOR_LENGTH);
+        buffer_push(msg, FIELD_SEPARATOR_DBSYNC, SEPARATOR_LENGTH);
         ++field_list;
         ret_val = true;
     }

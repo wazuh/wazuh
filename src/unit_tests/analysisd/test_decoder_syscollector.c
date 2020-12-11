@@ -101,6 +101,21 @@ int test_setup_valid_msg_invalid_field_list(void **state)
     return 0;
 }
 
+int test_setup_hotfixes_valid_msg_with_separator_character(void **state)
+{
+    Eventinfo *lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    if (lf->log = strdup("{\"type\":\"dbsync_hotfixes\", \"operation\":\"MODIFIED\", \"data\":{\"hotfix\":\"KB12|3456\",\"checksum\":\"abcdef|0123456789\"}}"), lf->log == NULL)
+        return -1;
+    os_strdup("(>syscollector", lf->location);
+    os_strdup("001", lf->agent_id);
+
+    *state = lf;
+    return 0;
+}
+
 int test_setup_hotfixes_valid_msg(void **state)
 {
     Eventinfo *lf;
@@ -445,6 +460,24 @@ void test_syscollector_dbsync_valid_msg_invalid_field_list(void **state)
     assert_int_equal(ret, 0);
 }
 
+void test_syscollector_dbsync_hotfixes_valid_msg_with_separator_character(void **state)
+{
+    Eventinfo *lf = *state;
+
+    const char *query = "agent 001 dbsync hotfixes MODIFIED KB12?3456|abcdef?0123456789|";
+    const char *result = "ok";
+    int sock = 1;
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query);
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, result);
+    will_return(__wrap_wdbc_query_ex, 0);
+    int ret = DecodeSyscollector(lf, &sock);
+
+    assert_int_not_equal(ret, 0);
+}
+
 void test_syscollector_dbsync_hotfixes_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
@@ -639,6 +672,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_valid_msg_unknown_operation, test_setup_valid_msg_unknown_operation, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_valid_msg_invalid_field_list, test_setup_valid_msg_invalid_field_list, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_valid_msg_query_error, test_setup_valid_msg_query_error, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_hotfixes_valid_msg_with_separator_character, test_setup_hotfixes_valid_msg_with_separator_character, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_hotfixes_valid_msg, test_setup_hotfixes_valid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_packages_valid_msg, test_setup_packages_valid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_processes_valid_msg, test_setup_processes_valid_msg, test_cleanup),
