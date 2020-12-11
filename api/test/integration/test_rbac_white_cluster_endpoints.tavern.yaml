@@ -650,7 +650,7 @@ stages:
                 - worker1
           total_affected_items: 1
           total_failed_items: 1
-    delay_after: !float "{restart_delay}"
+    delay_after: !float "{restart_delay_cluster}"
 
   - name: Restart cluster
     request:
@@ -669,7 +669,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-    delay_after: !float "{restart_delay}"
+    delay_after: !float "{restart_delay_cluster}"
 
 ---
 test_name: GET /cluster/{node_id}/files
