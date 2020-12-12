@@ -15,6 +15,7 @@
 #include <tuple>
 #include <iostream>
 #include <mutex>
+#include <queue>
 #include "dbengine.h"
 #include "sqlite_wrapper_factory.h"
 #include "isqlite_wrapper.h"
@@ -24,6 +25,8 @@ constexpr auto TEMP_TABLE_SUBFIX {"_TEMP"};
 
 constexpr auto STATUS_FIELD_NAME {"db_status_field_dm"};
 constexpr auto STATUS_FIELD_TYPE {"INTEGER"};
+
+constexpr auto CACHE_STMT_LIMIT { 30ull };
 
 const std::vector<std::string> InternalColumnNames = 
 {
@@ -283,9 +286,10 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
                                                const std::vector<std::string>&  primaryKeys);
 
         Utils::MapWrapperSafe<std::string, TableColumns> m_tableFields;
-        std::map<std::string, std::unique_ptr<SQLite::IStatement>> m_statementsCache;
+        std::deque<std::pair<std::string, std::unique_ptr<SQLite::IStatement>>> m_statementsCache;
         const std::shared_ptr<ISQLiteFactory> m_sqliteFactory;
         std::shared_ptr<SQLite::IConnection> m_sqliteConnection;
+        std::mutex m_stmtMutex;
 
 };
 

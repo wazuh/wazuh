@@ -11,7 +11,7 @@ from api.encoder import dumps, prettify
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
-logger = logging.getLogger('wazuh')
+logger = logging.getLogger('wazuh-api')
 
 
 async def get_hardware_info(request, agent_id, pretty=False, wait_for_complete=False, select=None):

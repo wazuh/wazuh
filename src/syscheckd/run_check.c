@@ -329,7 +329,7 @@ static int _base_line = 0;
         // Directories in Windows configured with real-time add recursive watches
         for (int i = 0; syscheck.dir[i]; i++) {
             if (syscheck.opts[i] & REALTIME_ACTIVE) {
-                realtime_adddir(syscheck.dir[i], 0, (syscheck.opts[i] & CHECK_FOLLOW) ? 1 : 0);
+                realtime_adddir(syscheck.dir[i], 0, 0);
             }
         }
 #endif
@@ -437,14 +437,14 @@ int fim_whodata_initialize() {
         if (syscheck.opts[i] & WHODATA_ACTIVE) {
 
 #ifdef WIN_WHODATA // Whodata on Windows
-            if(realtime_adddir(syscheck.dir[i], i + 1, (syscheck.opts[i] & CHECK_FOLLOW) ? 1 : 0) == -2) {
+            if(realtime_adddir(syscheck.dir[i], i + 1, 0) == -2) {
                 syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_WHODATA;
                 syscheck.opts[i] &= ~WHODATA_ACTIVE;
                 syscheck.wdata.dirs_status[i].status |= WD_CHECK_REALTIME;
                 syscheck.realtime_change = 1;
             }
 #else // Whodata on Linux
-            realtime_adddir(syscheck.dir[i], i + 1, (syscheck.opts[i] & CHECK_FOLLOW) ? 1 : 0);
+            realtime_adddir(fim_get_real_path(i), i + 1, (syscheck.opts[i] & CHECK_FOLLOW) ? 1 : 0);
 #endif
 
         }
@@ -542,22 +542,22 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
                 continue;
             }
 
-            real_path = realpath(syscheck.symbolic_links[i], NULL);
+            real_path = realpath(syscheck.dir[i], NULL);
 
-            if (*syscheck.dir[i]) {
+            if (*syscheck.symbolic_links[i]) {
                 if (real_path) {
                     // Check if link has changed
-                    if (strcmp(real_path, syscheck.dir[i])) {
-                        minfo(FIM_LINKCHECK_CHANGED, syscheck.symbolic_links[i], syscheck.dir[i], real_path);
+                    if (strcmp(real_path, syscheck.symbolic_links[i])) {
+                        minfo(FIM_LINKCHECK_CHANGED, syscheck.dir[i], syscheck.symbolic_links[i], real_path);
                         fim_link_update(i, real_path);
                     } else {
-                        mdebug1(FIM_LINKCHECK_NOCHANGE, syscheck.dir[i]);
+                        mdebug1(FIM_LINKCHECK_NOCHANGE, syscheck.symbolic_links[i]);
                     }
                 } else {
                     // Broken link
                     char path[PATH_MAX];
 
-                    snprintf(path, PATH_MAX, "%s", syscheck.dir[i]);
+                    snprintf(path, PATH_MAX, "%s", syscheck.symbolic_links[i]);
                     fim_link_check_delete(i);
 
                     int config = fim_configuration_directory(path, "file");
@@ -572,8 +572,10 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
                     fim_link_reload_broken_link(real_path, i);
                 }
             }
+
             os_free(real_path);
         }
+
         w_mutex_unlock(&syscheck.fim_scan_mutex);
         mdebug1(FIM_LINKCHECK_FINALIZE);
     }
@@ -592,15 +594,14 @@ STATIC void fim_link_update(int pos, char *new_path) {
     // Check if the updated path of the link is already in the configuration
     for (i = 0; syscheck.dir[i] != NULL; i++) {
         if (strcmp(new_path, syscheck.dir[i]) == 0) {
-            mdebug1(FIM_LINK_ALREADY_ADDED, syscheck.dir[i], syscheck.symbolic_links[pos]);
-            *syscheck.dir[pos] = '\0';
+            mdebug1(FIM_LINK_ALREADY_ADDED, syscheck.dir[i]);
+            *syscheck.symbolic_links[pos] = '\0';
             return;
         }
     }
 
-    os_free(syscheck.dir[pos]);
-    os_calloc(strlen(new_path) + 1, sizeof(char), syscheck.dir[pos]);
-    snprintf(syscheck.dir[pos], strlen(new_path) + 1, "%s", new_path);
+    os_free(syscheck.symbolic_links[pos]);
+    os_strdup(new_path, syscheck.symbolic_links[pos]);
 
     // Add new entries without alert.
     fim_link_silent_scan(new_path, pos);
@@ -609,19 +610,21 @@ STATIC void fim_link_update(int pos, char *new_path) {
 STATIC void fim_link_check_delete(int pos) {
     struct stat statbuf;
 
-    if (w_stat(syscheck.dir[pos], &statbuf) < 0) {
+    if (w_stat(syscheck.symbolic_links[pos], &statbuf) < 0) {
         if (errno == ENOENT) {
-            *syscheck.dir[pos] = '\0';
+            *syscheck.symbolic_links[pos] = '\0';
             return;
         }
-        mdebug1(FIM_STAT_FAILED, syscheck.dir[pos], errno, strerror(errno));
+
+        mdebug1(FIM_STAT_FAILED, syscheck.symbolic_links[pos], errno, strerror(errno));
     } else {
         fim_link_delete_range(pos);
 
         if (syscheck.realtime && syscheck.realtime->dirtb) {
             fim_delete_realtime_watches(pos);
         }
-        *syscheck.dir[pos] = '\0';
+
+        *syscheck.symbolic_links[pos] = '\0';
     }
 }
 
@@ -636,7 +639,7 @@ STATIC void fim_delete_realtime_watches(__attribute__((unused)) int pos) {
     int watch_conf;
 
     assert(watch_to_delete != NULL);
-    dir_conf = fim_configuration_directory(syscheck.dir[pos], "file");
+    dir_conf = fim_configuration_directory(syscheck.symbolic_links[pos], "file");
 
     if (dir_conf > -1) {
         w_mutex_lock(&syscheck.fim_realtime_mutex);
@@ -676,22 +679,22 @@ STATIC void fim_link_delete_range(int pos) {
     char last_entry[PATH_MAX]  = {0};
     fim_tmp_file * file = NULL;
 
-    snprintf(first_entry, PATH_MAX, "%s/", syscheck.dir[pos]);
-    snprintf(last_entry, PATH_MAX, "%s0", syscheck.dir[pos]);
+    snprintf(first_entry, PATH_MAX, "%s/", syscheck.symbolic_links[pos]);
+    snprintf(last_entry, PATH_MAX, "%s0", syscheck.symbolic_links[pos]);
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
-    if (fim_db_get_path_range(syscheck.database, first_entry,
-        last_entry, &file, syscheck.database_store) != FIMDB_OK) {
+    if (fim_db_get_path_range(syscheck.database, first_entry, last_entry, &file, syscheck.database_store) != FIMDB_OK) {
         merror(FIM_DB_ERROR_RM_RANGE, first_entry, last_entry);
     }
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
-
     if (file && file->elements) {
+        fim_event_mode mode = FIM_MODE(syscheck.opts[pos]);
+
         if (fim_db_delete_range(syscheck.database, file,
-            &syscheck.fim_entry_mutex, syscheck.database_store) != FIMDB_OK) {
+                                &syscheck.fim_entry_mutex, syscheck.database_store, mode) != FIMDB_OK) {
             merror(FIM_DB_ERROR_RM_RANGE, first_entry, last_entry);
         }
     }
@@ -705,7 +708,7 @@ STATIC void fim_link_silent_scan(char *path, int pos) {
     item->mode = FIM_SCHEDULED;
 
     if (syscheck.opts[pos] & REALTIME_ACTIVE) {
-        realtime_adddir(path, 0, (syscheck.opts[pos] & CHECK_FOLLOW) ? 1 : 0);
+        realtime_adddir(path, 0, 1);    // This is acting always on links, so `followsl` will always be `1`
     }
 
     fim_checker(path, item, NULL, 0);
@@ -719,16 +722,16 @@ STATIC void fim_link_reload_broken_link(char *path, int index) {
     for (element = 0; syscheck.dir[element]; element++) {
         if (strcmp(path, syscheck.dir[element]) == 0) {
             // If a configuration directory exists don't reload
-            mdebug1(FIM_LINK_ALREADY_ADDED,
-                  syscheck.dir[element], syscheck.symbolic_links[index]);
+            mdebug1(FIM_LINK_ALREADY_ADDED, syscheck.dir[element]);
             found = 1;
         }
     }
+
     // Reload broken link
     if (!found) {
-        os_free(syscheck.dir[index]);
-        os_calloc(strlen(path) + 1, sizeof(char), syscheck.dir[index]);
-        snprintf(syscheck.dir[index], strlen(path) + 1, "%s", path);
+        os_free(syscheck.symbolic_links[index]);
+        os_strdup(path, syscheck.symbolic_links[index]);
+
         // Add new entries without alert.
         fim_link_silent_scan(path, index);
     }
@@ -749,7 +752,7 @@ void set_whodata_mode_changes() {
             // At this point the directories in whodata mode that have been deconfigured are added to realtime
             syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_REALTIME;
             syscheck.opts[i] |= REALTIME_ACTIVE;
-            if (realtime_adddir(syscheck.dir[i], 0, (syscheck.opts[i] & CHECK_FOLLOW) ? 1 : 0) != 1) {
+            if (realtime_adddir(syscheck.dir[i], 0, 0) != 1) {
                 merror(FIM_ERROR_REALTIME_ADDDIR_FAILED, syscheck.dir[i]);
             } else {
                 mdebug1(FIM_REALTIME_MONITORING, syscheck.dir[i]);

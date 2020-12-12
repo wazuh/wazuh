@@ -156,7 +156,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
                 /* syscollector */
                 else if (strncmp(tmp_msg, HC_SYSCOLLECTOR, strlen(HC_SYSCOLLECTOR)) == 0) {
-                    wmcom_sync(tmp_msg);
+                    wmcom_send(tmp_msg);
                     continue;
                 }
 

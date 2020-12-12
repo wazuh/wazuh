@@ -16,7 +16,7 @@ class AccessLogger(AbstractAccessLogger):
         self.logger.info(f'{request.get("user", "unknown_user")} '
                          f'{request.remote} '
                          f'"{request.method} {request.path}" '
-                         f'done in {time*1000}ms: {response.status}')
+                         f'done in {time:.3f}s: {response.status}')
 
 
 class APILogger(WazuhLogger):

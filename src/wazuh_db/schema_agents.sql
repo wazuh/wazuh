@@ -138,7 +138,8 @@ CREATE TABLE IF NOT EXISTS sys_ports (
     state TEXT,
     PID INTEGER,
     process TEXT,
-    checksum TEXT NOT NULL CHECK (checksum <> '')
+    checksum TEXT NOT NULL CHECK (checksum <> ''),
+    PRIMARY KEY (protocol, local_ip, local_port, inode)
 );
 
 CREATE INDEX IF NOT EXISTS ports_id ON sys_ports (scan_id);

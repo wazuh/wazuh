@@ -41,18 +41,19 @@ def start(foreground, root, config_file):
     from api import validator
     from api.api_exception import APIError
     from api.constants import CONFIG_FILE_PATH
-    from api.middlewares import set_user_name, security_middleware, response_postprocessing
+    from api.middlewares import set_user_name, security_middleware, response_postprocessing, request_logging
     from api.uri_parser import APIUriParser
     from api.util import to_relative_path
     from wazuh.core import pyDaemonModule
 
     configuration.api_conf.update(configuration.read_yaml_config(config_file=config_file))
     api_conf = configuration.api_conf
+    security_conf = configuration.security_conf
     log_path = api_conf['logs']['path']
 
     # Set up logger
     set_logging(log_path=log_path, debug_mode=api_conf['logs']['level'], foreground_mode=foreground)
-    logger = logging.getLogger('wazuh')
+    logger = logging.getLogger('wazuh-api')
 
     # Set correct permissions on api.log file
     if os.path.exists(os.path.join(common.ossec_path, log_path)):
@@ -127,7 +128,7 @@ def start(foreground, root, config_file):
                 strict_validation=True,
                 validate_responses=False,
                 pass_context_arg_name='request',
-                options={"middlewares": [response_postprocessing, set_user_name, security_middleware]})
+                options={"middlewares": [response_postprocessing, set_user_name, security_middleware, request_logging]})
 
     # Enable CORS
     if api_conf['cors']['enabled']:
@@ -147,6 +148,10 @@ def start(foreground, root, config_file):
     if api_conf['cache']['enabled']:
         setup_cache(app.app)
 
+    # API configuration logging
+    logger.debug(f'Loaded API configuration: {api_conf}')
+    logger.debug(f'Loaded security API configuration: {security_conf}')
+
     # Start API
     app.run(port=api_conf['port'],
             host=api_conf['host'],
@@ -157,9 +162,10 @@ def start(foreground, root, config_file):
 
 
 def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):
-    for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh'):
+    for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh-api'):
         api_logger = alogging.APILogger(log_path=log_path, foreground_mode=foreground_mode,
-                                        debug_level=debug_mode,
+                                        debug_level='info' if logger_name != 'wazuh-api'
+                                        and debug_mode != 'debug2' else debug_mode,
                                         logger_name=logger_name)
         api_logger.setup_logger()
 

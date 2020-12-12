@@ -134,6 +134,32 @@ static int teardown_hc_success(void **state) {
     return 0;
 }
 
+static int setup_add_audit_rules(void **state) {
+    syscheck.symbolic_links = calloc(2, sizeof(char *));
+
+    if (syscheck.symbolic_links == NULL) {
+        return -1;
+    }
+
+    syscheck.symbolic_links[0] = NULL;
+
+    return 0;
+}
+
+static int teardown_add_audit_rules(void **state) {
+    if (syscheck.symbolic_links[0] != NULL) {
+        free(syscheck.symbolic_links[0]);
+        syscheck.symbolic_links[0] = NULL;
+    }
+
+    if (syscheck.symbolic_links != NULL) {
+        free(syscheck.symbolic_links);
+        syscheck.symbolic_links = NULL;
+    }
+
+    return 0;
+}
+
 /* tests */
 
 
@@ -1202,15 +1228,20 @@ void test_get_process_parent_info_failed(void **state) {
     will_return(__wrap_readlink, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Failure to obtain the cwd of the process: '1515'. Error: File exists");
 
-    state[0] = parent_name;
-    state[1] = parent_cwd;
-    state[2] = NULL;
-
     get_parent_process_info("1515", &parent_name, &parent_cwd);
 
     assert_string_equal(parent_name, "");
     assert_string_equal(parent_cwd, "");
 
+    if (parent_name != NULL) {
+        free(parent_name);
+        parent_name = NULL;
+    }
+
+    if (parent_cwd != NULL) {
+        free(parent_cwd);
+        parent_cwd = NULL;
+    }
 }
 
 void test_get_process_parent_info_passsed(void **state) {
@@ -1227,12 +1258,18 @@ void test_get_process_parent_info_passsed(void **state) {
 
     get_parent_process_info("1515", &parent_name, &parent_cwd);
 
-    state[0] = parent_name;
-    state[1] = parent_cwd;
-    state[2] = NULL;
-
     assert_string_equal(parent_name, "");
     assert_string_equal(parent_cwd, "");
+
+    if (parent_name != NULL) {
+        free(parent_name);
+        parent_name = NULL;
+    }
+
+    if (parent_cwd != NULL) {
+        free(parent_cwd);
+        parent_cwd = NULL;
+    }
 }
 
 void test_audit_parse(void **state) {
@@ -2550,12 +2587,12 @@ int main(void) {
         cmocka_unit_test(test_audit_get_id_begin_error),
         cmocka_unit_test(test_audit_get_id_end_error),
         cmocka_unit_test(test_init_regex),
-        cmocka_unit_test(test_add_audit_rules_syscheck_added),
-        cmocka_unit_test(test_add_audit_rules_syscheck_not_added),
-        cmocka_unit_test(test_add_audit_rules_syscheck_not_added_new),
-        cmocka_unit_test(test_add_audit_rules_syscheck_not_added_error),
-        cmocka_unit_test(test_add_audit_rules_syscheck_not_added_first_error),
-        cmocka_unit_test(test_add_audit_rules_syscheck_max),
+        cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_added, setup_add_audit_rules, teardown_add_audit_rules),
+        cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_not_added, setup_add_audit_rules, teardown_add_audit_rules),
+        cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_not_added_new, setup_add_audit_rules, teardown_add_audit_rules),
+        cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_not_added_error, setup_add_audit_rules, teardown_add_audit_rules),
+        cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_not_added_first_error, setup_add_audit_rules, teardown_add_audit_rules),
+        cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_max, setup_add_audit_rules, teardown_add_audit_rules),
         cmocka_unit_test(test_filterkey_audit_events_custom),
         cmocka_unit_test(test_filterkey_audit_events_discard),
         cmocka_unit_test(test_filterkey_audit_events_fim),
@@ -2568,15 +2605,15 @@ int main(void) {
         cmocka_unit_test_teardown(test_gen_audit_path6, free_string),
         cmocka_unit_test_teardown(test_gen_audit_path7, free_string),
         cmocka_unit_test_teardown(test_gen_audit_path8, free_string),
-        cmocka_unit_test_teardown(test_get_process_parent_info_failed, free_string),
-        cmocka_unit_test_teardown(test_get_process_parent_info_passsed, free_string),
+        cmocka_unit_test(test_get_process_parent_info_failed),
+        cmocka_unit_test(test_get_process_parent_info_passsed),
         cmocka_unit_test(test_audit_parse),
         cmocka_unit_test(test_audit_parse3),
         cmocka_unit_test(test_audit_parse4),
         cmocka_unit_test(test_audit_parse_hex),
         cmocka_unit_test(test_audit_parse_empty_fields),
-        cmocka_unit_test(test_audit_parse_delete),
-        cmocka_unit_test(test_audit_parse_delete_recursive),
+        cmocka_unit_test_setup_teardown(test_audit_parse_delete, setup_add_audit_rules, teardown_add_audit_rules),
+        cmocka_unit_test_setup_teardown(test_audit_parse_delete_recursive, setup_add_audit_rules, teardown_add_audit_rules),
         cmocka_unit_test(test_audit_parse_mv),
         cmocka_unit_test(test_audit_parse_mv_hex),
         cmocka_unit_test(test_audit_parse_rm),

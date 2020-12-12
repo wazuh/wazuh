@@ -902,4 +902,13 @@ void fim_check_db_state();
  */
 void fim_diff_folder_size();
 
+/**
+ * @brief Get path from syscheck.dir or syscheck.symbolic_links, depending on whether there is a resolved path
+ * configured in syscheck.symbolic_links or not.
+ *
+ * @param position Position of the directory in the structure
+ * @return syscheck.symbolic_links[position] if not NULL, syscheck.dir[position] otherwise
+ */
+char *fim_get_real_path(int position);
+
 #endif /* SYSCHECK_H */

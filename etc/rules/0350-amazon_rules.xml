@@ -162,6 +162,33 @@ ID: 80200 - 80499
     </rule>
 
 
+    <!-- AWS ELB -->
+    <!-- Documentation: https://docs.aws.amazon.com/elasticloadbalancing/index.html -->
+    <rule id="80325" level="3">
+        <if_sid>80200</if_sid>
+        <field name="aws.source">alb</field>
+        <description>AWS ALB alert.</description>
+        <group>aws_alb,</group>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="80330" level="3">
+        <if_sid>80200</if_sid>
+        <field name="aws.source">clb</field>
+        <description>AWS CLB alert.</description>
+        <group>aws_clb,</group>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="80335" level="3">
+        <if_sid>80200</if_sid>
+        <field name="aws.source">nlb</field>
+        <description>AWS NLB alert.</description>
+        <group>aws_nlb,</group>
+        <options>no_full_log</options>
+    </rule>
+
+
     <!-- Macie Alerts -->
     <!-- Documentation: https://docs.aws.amazon.com/macie/latest/userguide/macie-alerts.html#macie-alert-severity -->
     <rule id="80350" level="0">
@@ -300,12 +327,45 @@ ID: 80200 - 80499
     </rule>
 
     <!-- Config history -->
-    <rule id="80453" level="3">
+    <rule id="80453" level="0">
         <if_sid>80451</if_sid>
+        <field name="aws.configurationItemStatus">OK</field>
         <description>AWS Config - History [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus))</description>
         <group>aws_config,aws_config_history,</group>
         <options>no_full_log</options>
     </rule>
+  
+    <rule id="80454" level="3">
+        <if_sid>80451</if_sid>
+        <field name="aws.configurationItemStatus">ResourceDiscovered</field>
+        <description>The resource was newly discovered. AWS Config - History:  [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus))</description>
+        <group>aws_config,aws_config_history,</group>
+        <options>no_full_log</options>
+    </rule>
+  
+    <rule id="80455" level="3">
+        <if_sid>80451</if_sid>
+        <field name="aws.configurationItemStatus">ResourceNotRecorded</field>
+        <description>The resource was discovered but its configuration was not recorded since the recorder excludes the recording of resources of this type. AWS Config - History:  [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus))</description>
+        <group>aws_config,aws_config_history,</group>
+        <options>no_full_log</options>
+    </rule>
+  
+    <rule id="80456" level="3">
+        <if_sid>80451</if_sid>
+        <field name="aws.configurationItemStatus">ResourceDeleted</field>
+        <description>The resource was deleted. AWS Config - History:  [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus))</description>
+        <group>aws_config,aws_config_history,</group>
+        <options>no_full_log</options>
+    </rule>
+  
+    <rule id="80457" level="3">
+        <if_sid>80451</if_sid>
+        <field name="aws.configurationItemStatus">ResourceDeletedNotRecorded</field>
+        <description>The resource was deleted but its configuration was not recorded since the recorder excludes the recording of resources of this type. AWS Config - History:  [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus))</description>
+        <group>aws_config,aws_config_history,</group>
+        <options>no_full_log</options>
+    </rule> 
 
     <!-- Config Snapshot -->
     <rule id="80475" level="3">
