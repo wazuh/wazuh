@@ -921,7 +921,7 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     ace.Mask = FILE_WRITE_DATA | WRITE_DAC | FILE_APPEND_DATA | FILE_WRITE_ATTRIBUTES | DELETE;
 
     // Set value of FirstSubKey
-    char value_name[10] = "test_value";
+    char *value_name = "test_value";
     unsigned int value_type = REG_DWORD;
     unsigned int value_size = 4;
     DWORD value_data = 123456;
@@ -962,6 +962,9 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
 
     will_return(__wrap_fim_db_get_registry_data, NULL);
     will_return(fim_db_insert_registry_data, FIMDB_OK);
+
+    expect_fim_registry_value_diff("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\FirstSubKey", "test_value",
+                                   123456, 8, REG_QWORD, "diff string");
 
     expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_fim_db_get_registry_keys_not_scanned, FIMDB_ERR);
@@ -1200,7 +1203,8 @@ static void test_fim_registry_process_value_event_success(void **state) {
     BYTE *data_buffer = (unsigned char *)"value_data";
 
     will_return(__wrap_fim_db_get_registry_data, entry_array[0]->registry_entry.value);
-    expect_fim_registry_value_diff("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", "valuename", "value_data", REG_QWORD, "diff string");
+    expect_fim_registry_value_diff("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", "valuename", "value_data",
+                                   strlen("value_data"), REG_QWORD, "diff string");
     will_return(__wrap_fim_db_insert_registry_data, FIMDB_OK);
 
     fim_registry_process_value_event(entry_array[1], entry_array[0], event_mode, data_buffer);

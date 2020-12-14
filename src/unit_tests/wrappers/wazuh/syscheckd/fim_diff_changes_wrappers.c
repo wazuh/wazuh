@@ -52,11 +52,12 @@ char *__wrap_fim_registry_value_diff(const char *key_name,
 void expect_fim_registry_value_diff(const char *key_name,
                                     const char *value_name,
                                     const char *value_data,
+                                    DWORD data_size,
                                     DWORD data_type,
                                     char *ret) {
     expect_string(__wrap_fim_registry_value_diff, key_name, key_name);
     expect_string(__wrap_fim_registry_value_diff, value_name, value_name);
-    expect_string(__wrap_fim_registry_value_diff, value_data, value_data);
+    expect_memory(__wrap_fim_registry_value_diff, value_data, value_data, data_size);
     expect_value(__wrap_fim_registry_value_diff, data_type, data_type);
     will_return(__wrap_fim_registry_value_diff, ret);
 }

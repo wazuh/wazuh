@@ -45,6 +45,7 @@ char *__wrap_fim_registry_value_diff(const char *key_name,
 void expect_fim_registry_value_diff(const char *key_name,
                                     const char *value_name,
                                     const char *value_data,
+                                    DWORD data_size,
                                     DWORD data_type,
                                     char *ret);
 #endif
