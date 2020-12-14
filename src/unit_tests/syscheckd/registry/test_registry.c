@@ -23,6 +23,7 @@
 #include "../../wrappers/windows/winbase_wrappers.h"
 #include "../../wrappers/windows/securitybaseapi_wrappers.h"
 #include "../../wrappers/wazuh/syscheckd/fim_db_registries_wrappers.h"
+#include "../../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
 
 #define CHECK_REGISTRY_ALL                                                                             \
     CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_MD5SUM | CHECK_SHA1SUM | \
@@ -99,43 +100,6 @@ void expect_fim_registry_get_key_data_call(LPSTR usid, LPSTR gsid, char *uname, 
     will_return(wrap_IsValidSid, 1);
 
     expect_RegQueryInfoKeyA_call(&last_write_time, ERROR_SUCCESS);
-}
-
-int check_fim_db_reg_key(fim_registry_key *key_to_check){
-    fim_registry_key *key_saved = fim_db_get_registry_key(syscheck.database, key_to_check->path, key_to_check->arch);
-    if(!key_saved){
-        return -1;
-    }
-
-    assert_string_equal(key_saved->perm, key_to_check->perm);
-    assert_string_equal(key_saved->uid, key_to_check->uid);
-    assert_string_equal(key_saved->gid, key_to_check->gid);
-    assert_string_equal(key_saved->user_name, key_to_check->user_name);
-    assert_string_equal(key_saved->group_name, key_to_check->group_name);
-
-    fim_registry_free_key(key_saved);
-
-    return 0;
-}
-
-int check_fim_db_reg_value_data(const char *data_name, unsigned int type, unsigned int size, const char *key_name, int key_arch){
-    fim_registry_key *reg_key = fim_db_get_registry_key(syscheck.database, key_name, key_arch);
-    assert_non_null(reg_key);
-
-    fim_registry_value_data *value_saved = fim_db_get_registry_data(syscheck.database, reg_key->id, data_name);
-    if(!value_saved){
-        fim_registry_free_key(reg_key);
-        return -1;
-    }
-
-    assert_string_equal(value_saved->name, data_name);
-    assert_int_equal(value_saved->type, type);
-    assert_int_equal(value_saved->size, size);
-
-    fim_registry_free_key(reg_key);
-    fim_registry_free_value_data(value_saved);
-
-    return 0;
 }
 
 fim_registry_key *create_reg_key(int id, const char *path, int arch, const char *perm, const char *uid, const char *gid, const char *user_name,
@@ -1016,14 +980,6 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     // Test
     fim_registry_scan();
     assert_int_equal(_base_line, 1);
-
-    // Database check
-    ret = check_fim_db_reg_key(keys_array[0]);
-    assert_int_equal(ret, 0);
-    ret = check_fim_db_reg_key(keys_array[1]);
-    assert_int_equal(ret, 0);
-    ret = check_fim_db_reg_value_data("test_value", REG_DWORD, 4, keys_array[1]->path, keys_array[1]->arch);
-    assert_int_equal(ret, 0);
 }
 
 static void test_fim_registry_scan_regular_scan(void **state) {
@@ -1081,18 +1037,6 @@ static void test_fim_registry_scan_regular_scan(void **state) {
 
     // Test
     fim_registry_scan();
-
-    // Database check
-    ret = check_fim_db_reg_key(keys_array[0]);
-    assert_int_equal(ret, 0);
-    ret = check_fim_db_reg_key(keys_array[1]);
-    assert_int_equal(ret, 0);
-    ret = check_fim_db_reg_value_data("test_value", REG_DWORD, 4, keys_array[1]->path, keys_array[1]->arch);
-    assert_int_equal(ret, 0);
-    ret = check_fim_db_reg_key(keys_array[2]);
-    assert_int_equal(ret, 0);
-    ret = check_fim_db_reg_key(keys_array[3]);
-    assert_int_equal(ret, -1);
 }
 
 static void test_fim_registry_scan_RegOpenKeyEx_fail(void **state) {
@@ -1141,14 +1085,6 @@ static void test_fim_registry_process_value_delete_event_null_configuration(void
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (registry):'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile'");
 
     fim_registry_process_value_delete_event(syscheck.database, entry, &mutex, &alert, &event_mode, w_event);
-
-    // Check that value was not removed from DB
-    ret = check_fim_db_reg_value_data(entry->registry_entry.value->name,
-                                      entry->registry_entry.value->type,
-                                      entry->registry_entry.value->size,
-                                      entry->registry_entry.key->path,
-                                      entry->registry_entry.key->arch);
-    assert_int_equal(ret, 0);
 }
 
 static void test_fim_registry_process_value_delete_event_success(void **state) {
@@ -1160,14 +1096,6 @@ static void test_fim_registry_process_value_delete_event_success(void **state) {
     void *w_event = NULL;
 
     fim_registry_process_value_delete_event(syscheck.database, entry, &mutex, &alert, &event_mode, w_event);
-
-    // Check that value was removed from DB
-    ret = check_fim_db_reg_value_data(entry->registry_entry.value->name,
-                                      entry->registry_entry.value->type,
-                                      entry->registry_entry.value->size,
-                                      entry->registry_entry.key->path,
-                                      entry->registry_entry.key->arch);
-    assert_int_equal(ret, -1);
 }
 
 static void test_fim_registry_process_key_delete_event_null_configuration(void **state) {
@@ -1185,16 +1113,6 @@ static void test_fim_registry_process_key_delete_event_null_configuration(void *
 
     fim_registry_process_key_delete_event(syscheck.database, entry, &mutex, &alert, &event_mode, w_event);
 
-    // Check that value and key was not removed from DB
-    ret = check_fim_db_reg_value_data(entry->registry_entry.value->name,
-                                      entry->registry_entry.value->type,
-                                      entry->registry_entry.value->size,
-                                      entry->registry_entry.key->path,
-                                      entry->registry_entry.key->arch);
-    assert_int_equal(ret, 0);
-
-    ret = check_fim_db_reg_key(entry->registry_entry.key);
-    assert_int_equal(ret, 0);
 }
 
 static void test_fim_registry_process_key_delete_event_success(void **state) {
@@ -1209,9 +1127,6 @@ static void test_fim_registry_process_key_delete_event_success(void **state) {
 
     fim_registry_process_key_delete_event(syscheck.database, entry, &mutex, &alert, &event_mode, w_event);
 
-    // Check that key was removed from DB
-    ret = check_fim_db_reg_key(entry->registry_entry.key);
-    assert_int_equal(ret, -1);
 }
 
 static void test_fim_registry_process_value_event_null_configuration(void **state) {
@@ -1226,15 +1141,6 @@ static void test_fim_registry_process_value_event_null_configuration(void **stat
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (registry):'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile'");
 
     fim_registry_process_value_event(entry_array[1], entry_array[0], event_mode, data_buffer);
-
-    // Check that value was not modified from DB (entry_array[0] is the saved entry, entry_array[1] is the new)
-    ret = check_fim_db_reg_value_data(entry_array[0]->registry_entry.value->name,
-                                      entry_array[0]->registry_entry.value->type,
-                                      entry_array[0]->registry_entry.value->size,
-                                      entry_array[0]->registry_entry.key->path,
-                                      entry_array[0]->registry_entry.key->arch);
-    assert_int_equal(ret, 0);
-
 }
 
 static void test_fim_registry_process_value_event_ignore_event(void **state) {
@@ -1257,13 +1163,6 @@ static void test_fim_registry_process_value_event_ignore_event(void **state) {
 
     fim_registry_process_value_event(entry_array[1], entry_array[0], event_mode, data_buffer);
 
-    // Check that value was not modified from DB (entry_array[0] is the saved entry, entry_array[1] is the new)
-    ret = check_fim_db_reg_value_data(entry_array[0]->registry_entry.value->name,
-                                      entry_array[0]->registry_entry.value->type,
-                                      entry_array[0]->registry_entry.value->size,
-                                      entry_array[0]->registry_entry.key->path,
-                                      entry_array[0]->registry_entry.key->arch);
-    assert_int_equal(ret, 0);
 
     syscheck.value_ignore = NULL;
 }
@@ -1288,14 +1187,6 @@ static void test_fim_registry_process_value_event_restrict_event(void **state) {
     OSMatch_FreePattern(restrict_list);
     os_free(restrict_list);
     syscheck.registry[0].restrict_value = NULL;
-
-    // Check that value was not modified from DB (entry_array[0] is the saved entry, entry_array[1] is the new)
-    ret = check_fim_db_reg_value_data(entry_array[0]->registry_entry.value->name,
-                                      entry_array[0]->registry_entry.value->type,
-                                      entry_array[0]->registry_entry.value->size,
-                                      entry_array[0]->registry_entry.key->path,
-                                      entry_array[0]->registry_entry.key->arch);
-    assert_int_equal(ret, 0);
 }
 
 static void test_fim_registry_process_value_event_success(void **state) {
@@ -1305,14 +1196,6 @@ static void test_fim_registry_process_value_event_success(void **state) {
     BYTE *data_buffer = (unsigned char *)"value_data";
 
     fim_registry_process_value_event(entry_array[1], entry_array[0], event_mode, data_buffer);
-
-    // Check that value was modified from DB (entry_array[0] is the saved entry, entry_array[1] is the new)
-    ret = check_fim_db_reg_value_data(entry_array[1]->registry_entry.value->name,
-                                      entry_array[1]->registry_entry.value->type,
-                                      entry_array[1]->registry_entry.value->size,
-                                      entry_array[1]->registry_entry.key->path,
-                                      entry_array[1]->registry_entry.key->arch);
-    assert_int_equal(ret, 0);
 }
 
 int main(void) {
