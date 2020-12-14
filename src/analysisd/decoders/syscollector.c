@@ -65,6 +65,7 @@ static const char* PACKAGES_FIELDS[] = {
     "cpe",
     "msu_name",
     "checksum",
+    "item_id",
     NULL 
 };
 
@@ -115,6 +116,7 @@ static const char* PORTS_FIELDS[] = {
     "pid",
     "process_name",
     "checksum",
+    "item_id",
     NULL 
 };
 
@@ -134,6 +136,7 @@ static const char* NETWORK_IFACE_FIELDS[] = {
     "tx_dropped",
     "rx_dropped",
     "checksum",
+    "item_id",
     NULL 
 };
 
@@ -144,6 +147,7 @@ static const char* NETWORK_PROTOCOL_FIELDS[] = {
     "dhcp",
     "metric",
     "checksum",
+    "item_id",
     NULL 
 };
 
@@ -154,6 +158,7 @@ static const char* NETWORK_ADDRESS_FIELDS[] = {
     "netmask",
     "broadcast",
     "checksum",
+    "item_id",
     NULL 
 };
 
