@@ -6324,7 +6324,7 @@ paths:
                 group_id:
                   description: "Group name"
                   type: string
-                  format: names
+                  format: group_names
               required:
                 - group_id
             example:
