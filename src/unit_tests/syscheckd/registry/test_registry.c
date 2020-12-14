@@ -1196,6 +1196,23 @@ static void test_fim_registry_process_value_event_restrict_event(void **state) {
     syscheck.registry[0].restrict_value = NULL;
 }
 
+static void test_fim_registry_process_value_event_insert_data_error(void **state) {
+    fim_entry **entry_array = *state;
+
+    fim_event_mode event_mode = FIM_SCHEDULED;
+    BYTE *data_buffer = (unsigned char *)"value_data";
+
+    will_return(__wrap_fim_db_get_registry_data, entry_array[0]->registry_entry.value);
+    expect_fim_registry_value_diff("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", "valuename", "value_data",
+                                   strlen("value_data"), REG_QWORD, "diff string");
+    will_return(__wrap_fim_db_insert_registry_data, FIMDB_ERR);
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "(6944): Failed to insert value '[x64] HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\valuename'");
+
+    fim_registry_process_value_event(entry_array[1], entry_array[0], event_mode, data_buffer);
+}
+
 static void test_fim_registry_process_value_event_success(void **state) {
     fim_entry **entry_array = *state;
 
@@ -1274,6 +1291,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_registry_process_value_event_null_configuration, setup_process_value_events, teardown_process_value_events_failed),
         cmocka_unit_test_setup_teardown(test_fim_registry_process_value_event_ignore_event, setup_process_value_events, teardown_process_value_events_failed),
         cmocka_unit_test_setup_teardown(test_fim_registry_process_value_event_restrict_event, setup_process_value_events, teardown_process_value_events_success),
+        cmocka_unit_test_setup_teardown(test_fim_registry_process_value_event_insert_data_error, setup_process_value_events, teardown_process_value_events_success),
         cmocka_unit_test_setup_teardown(test_fim_registry_process_value_event_success, setup_process_value_events, teardown_process_value_events_success),
 
     };
