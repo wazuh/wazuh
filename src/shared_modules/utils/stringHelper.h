@@ -108,7 +108,7 @@ namespace Utils
         if (!ss.good())
         {
             const auto size{asciiData.size() * 2};
-            const auto buffer{std::make_unique<char[]>(size)};
+            const auto buffer{std::make_unique<char[]>(size + 1)};
             char* output{buffer.get()};
             for (const auto& value : asciiData)
             {
