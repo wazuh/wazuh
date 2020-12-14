@@ -44,7 +44,7 @@ void expect_fim_db_get_values_from_registry_key_call(fdb_t *fim_sql,
                                                      int storage,
                                                      int ret);
 void expect_fim_db_remove_registry_key_call(fdb_t *fim_sql,
-                                                 fim_registry_value_data *entry,
+                                                 fim_entry *entry,
                                                  int ret);
 
 void expect_fim_db_remove_registry_value_data_call(fdb_t *fim_sql,

@@ -24,6 +24,7 @@
 #include "../../wrappers/windows/securitybaseapi_wrappers.h"
 #include "../../wrappers/wazuh/syscheckd/fim_db_registries_wrappers.h"
 #include "../../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
+#include "../../wrappers/wazuh/syscheckd/fim_diff_changes_wrappers.h"
 #include "../../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 #include "../../wrappers/wazuh/syscheckd/fim_diff_changes_wrappers.h"
 
@@ -182,18 +183,6 @@ static int setup_group(void **state) {
     return 0;
 }
 
-int __wrap_fim_db_process_read_file(fdb_t *fim_sql,
-                                    fim_tmp_file *file,
-                                    __attribute__((unused)) int type,
-                                    pthread_mutex_t *mutex,
-                                    void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
-                                    int storage,
-                                    void *alert,
-                                    void *mode,
-                                    void *w_evt) {
-    return mock();
-}
-
 static int teardown_group(void **state) {
     int i;
 
@@ -220,70 +209,6 @@ static int teardown_restore_scan(void **state) {
 
     _base_line = 0;
 
-    return 0;
-}
-
-static int setup_base_line(void **state) {
-    syscheck.registry = one_entry_config;
-    syscheck.registry[0].opts = CHECK_REGISTRY_ALL;
-
-    fim_registry_key **keys_array = calloc(3, sizeof(fim_registry_key*));
-    if(keys_array == NULL)
-        return -1;
-
-    keys_array[0] = create_reg_key(0, "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", 1,
-                                   "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
-                                   "userid", "groupid", "username", "groupname");
-    keys_array[1] = create_reg_key(0, "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\FirstSubKey", 1,
-                                   "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
-                                   "userid", "groupid", "username", "groupname");
-    keys_array[2] = NULL;
-
-    _base_line = 0;
-    *state = keys_array;
-    return 0;
-}
-
-static int teardown_clean_db_and_state(void **state) {
-    fim_registry_key **keys_array = *state;
-
-    // Free state
-    if (keys_array){
-        // Temporary
-        for (int i = 0; keys_array[i]; ++i) {
-            fim_registry_free_key(keys_array[i]);
-            free(keys_array[i]);
-        }
-        free(keys_array);
-        keys_array = NULL;
-    }
-
-    return 0;
-}
-
-static int setup_regular_scan(void **state) {
-    syscheck.registry = default_config;
-
-    fim_registry_key **keys_array = calloc(5, sizeof(fim_registry_key*));
-    if(keys_array == NULL)
-        return -1;
-
-    keys_array[0] = create_reg_key(0, "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", 1,
-                                   "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
-                                   "userid", "groupid", "username", "groupname");
-    keys_array[1] = create_reg_key(0, "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\FirstSubKey", 1,
-                                   "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
-                                   "userid", "groupid", "username", "groupname");
-    keys_array[2] = create_reg_key(0, "HKEY_LOCAL_MACHINE\\Software\\RecursionLevel0", 1,
-                                   "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
-                                   "userid", "groupid", "username2", "groupname2");
-    keys_array[3] = create_reg_key(0, "HKEY_LOCAL_MACHINE\\Software\\RecursionLevel0\\depth0", 1,
-                                   "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
-                                   "userid", "groupid", "username2", "groupname2");
-    keys_array[4] = NULL;
-
-    _base_line = 1;
-    *state = keys_array;
     return 0;
 }
 
@@ -373,7 +298,6 @@ static int teardown_process_delete_events(void **state) {
 }
 
 static int setup_process_value_events(void **state) {
-    char *err_msg = NULL;
     syscheck.registry = default_config;
     fim_entry **entry_array = calloc(3, sizeof(fim_entry*));
 
@@ -739,13 +663,6 @@ static void test_fim_registry_get_key_data_check_perm(void **state) {
     configuration->opts = CHECK_PERM;
     HKEY key_handle = HKEY_LOCAL_MACHINE;
     fim_registry_key *ret_key;
-    ACL_SIZE_INFORMATION acl_size = { .AceCount = 1 };
-
-    // Set the ACE data
-    ACCESS_ALLOWED_ACE ace;
-    ace.Header.AceType = ACCESS_ALLOWED_ACE_TYPE;
-    ace.Header.AceFlags = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG;
-    ace.Mask = FILE_WRITE_DATA | WRITE_DAC | FILE_APPEND_DATA | FILE_WRITE_ATTRIBUTES | DELETE;
 
     expect_get_registry_permissions("permissions", ERROR_SUCCESS);
 
@@ -940,7 +857,7 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     will_return(__wrap_fim_db_get_registry_data, NULL);
 
     expect_fim_registry_value_diff("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\FirstSubKey", "test_value",
-                                   &value_data, 4, REG_DWORD, NULL);
+                                   (const char *)&value_data, 4, REG_DWORD, NULL);
 
     will_return(__wrap_fim_db_insert_registry_data, FIMDB_OK);
 
@@ -1024,7 +941,7 @@ static void test_fim_registry_scan_regular_scan(void **state) {
     will_return(__wrap_fim_db_get_registry_data, NULL);
 
     expect_fim_registry_value_diff("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\FirstSubKey", "test_value",
-                                   &value_data, 4, REG_DWORD, NULL);
+                                   (const char *)&value_data, 4, REG_DWORD, NULL);
 
     will_return(__wrap_fim_db_insert_registry_data, FIMDB_OK);
 

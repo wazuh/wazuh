@@ -23,7 +23,7 @@ int __wrap_fim_db_remove_registry_value_data(fdb_t *fim_sql,
 int __wrap_fim_db_get_values_from_registry_key(fdb_t *fim_sql,
                                                fim_tmp_file **file,
                                                int storage,
-                                               unsigned long int key_id) {
+                                               __attribute__((unused)) unsigned long int key_id) {
     check_expected_ptr(fim_sql);
     *file = mock_type(fim_tmp_file *);
     check_expected(storage);
@@ -31,7 +31,7 @@ int __wrap_fim_db_get_values_from_registry_key(fdb_t *fim_sql,
     return mock();
 }
 
-int __wrap_fim_db_process_read_registry_data_file(fdb_t *fim_sql,
+int __wrap_fim_db_process_read_registry_data_file(__attribute__((unused)) fdb_t *fim_sql,
                                                   __attribute__((unused)) fim_tmp_file *file,
                                                   __attribute__((unused)) pthread_mutex_t *mutex,
                                                   __attribute__((unused)) void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
@@ -127,7 +127,7 @@ void expect_fim_db_get_values_from_registry_key_call(fdb_t *fim_sql,
     will_return(__wrap_fim_db_get_values_from_registry_key, ret);
 }
 
-void expect_fim_db_remove_registry_key_call(fdb_t *fim_sql, fim_registry_value_data *entry, int ret) {
+void expect_fim_db_remove_registry_key_call(fdb_t *fim_sql, fim_entry *entry, int ret) {
     expect_value(__wrap_fim_db_remove_registry_key, fim_sql, fim_sql);
     expect_value(__wrap_fim_db_remove_registry_key, entry, entry);
     will_return(__wrap_fim_db_remove_registry_key, ret);
