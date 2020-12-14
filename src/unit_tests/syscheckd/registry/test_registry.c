@@ -24,6 +24,7 @@
 #include "../../wrappers/windows/securitybaseapi_wrappers.h"
 #include "../../wrappers/wazuh/syscheckd/fim_db_registries_wrappers.h"
 #include "../../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
+#include "../../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 
 #define CHECK_REGISTRY_ALL                                                                             \
     CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_MD5SUM | CHECK_SHA1SUM | \
@@ -74,30 +75,28 @@ void expect_SendMSG_call(const char *message_expected, const char *locmsg_expect
     will_return(__wrap_SendMSG, ret);
 }
 
-void expect_fim_registry_get_key_data_call(LPSTR usid, LPSTR gsid, char *uname, char *gname,
-                                           ACL_SIZE_INFORMATION acl_size, ACCESS_ALLOWED_ACE ace,
+void expect_fim_registry_get_key_data_call(LPSTR usid,
+                                           LPSTR gsid,
+                                           char *uname,
+                                           char *gname,
+                                           const char *permissions,
                                            FILETIME last_write_time) {
-    expect_GetSecurityInfo_call((PSID)"userid", NULL, ERROR_SUCCESS);
+    expect_GetSecurityInfo_call((PSID) "userid", NULL, ERROR_SUCCESS);
     expect_ConvertSidToStringSid_call(usid, 1);
     expect_LookupAccountSid_call((PSID)uname, "domain", 1);
 
-    expect_GetSecurityInfo_call(NULL, (PSID)"groupid", ERROR_SUCCESS);
+    expect_GetSecurityInfo_call(NULL, (PSID) "groupid", ERROR_SUCCESS);
     expect_ConvertSidToStringSid_call(gsid, 1);
     expect_LookupAccountSid_call((PSID)gname, "domain", 1);
 
-    expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_INSUFFICIENT_BUFFER);
-    expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_SUCCESS);
+    expect_get_registry_permissions("sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
+                                    ERROR_SUCCESS);
 
-    expect_GetSecurityDescriptorDacl_call(TRUE, (PACL*)123456, TRUE);
+    expect_string(__wrap_decode_win_permissions, raw_perm,
+                  "sid (allowed): delete|write_dac|write_data|append_data|write_attributes");
+    will_return(__wrap_decode_win_permissions, permissions);
 
-    expect_GetAclInformation_call(&acl_size, TRUE);
-
-    expect_GetAce_call((LPVOID)&ace, TRUE);
-
-    expect_LookupAccountSid_call((PSID)"sid", "domain", 1);
-    expect_LookupAccountSid_call((PSID)"sid", "domain", 1);
-
-    will_return(wrap_IsValidSid, 1);
+    expect_get_registry_permissions(permissions, ERROR_SUCCESS);
 
     expect_RegQueryInfoKeyA_call(&last_write_time, ERROR_SUCCESS);
 }
@@ -176,6 +175,18 @@ static int setup_group(void **state) {
     syscheck.key_ignore_regex = default_ignore_regex;
 
     return 0;
+}
+
+int __wrap_fim_db_process_read_file(fdb_t *fim_sql,
+                                    fim_tmp_file *file,
+                                    __attribute__((unused)) int type,
+                                    pthread_mutex_t *mutex,
+                                    void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
+                                    int storage,
+                                    void *alert,
+                                    void *mode,
+                                    void *w_evt) {
+    return mock();
 }
 
 static int teardown_group(void **state) {
@@ -754,19 +765,11 @@ static void test_fim_registry_get_key_data_check_perm(void **state) {
     ace.Header.AceFlags = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG;
     ace.Mask = FILE_WRITE_DATA | WRITE_DAC | FILE_APPEND_DATA | FILE_WRITE_ATTRIBUTES | DELETE;
 
-    expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_INSUFFICIENT_BUFFER);
-    expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_SUCCESS);
+    expect_get_registry_permissions("permissions", ERROR_SUCCESS);
 
-    expect_GetSecurityDescriptorDacl_call(TRUE, (PACL*)123456, TRUE);
-
-    expect_GetAclInformation_call(&acl_size, TRUE);
-
-    expect_GetAce_call((LPVOID)&ace, TRUE);
-
-    expect_LookupAccountSid_call((PSID)"sid", "domain", 1);
-    expect_LookupAccountSid_call((PSID)"sid", "domain", 1);
-
-    will_return(wrap_IsValidSid, 1);
+    expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
+    will_return(__wrap_decode_win_permissions,
+                "sid (allowed): delete|write_dac|write_data|append_data|write_attributes");
 
     ret_key = fim_registry_get_key_data(key_handle, path, configuration);
 
@@ -891,7 +894,17 @@ static void test_fim_registry_scan_no_entries_configured(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_START);
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
 
-    will_return_always(__wrap_os_random, 2345);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_fim_db_get_registry_keys_not_scanned, FIMDB_ERR);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap__mwarn, formatted_msg, FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_fim_db_get_registry_data_not_scanned, FIMDB_ERR);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap__mwarn, formatted_msg, FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
 
     fim_registry_scan();
 
@@ -918,27 +931,51 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     FILETIME last_write_time = { 0, 1000 };
 
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_START);
-    expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
     expect_any_always(__wrap__mdebug2, formatted_msg);
     will_return_always(__wrap_os_random, 2345);
 
     // Scan a subkey of batfile
-    expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile", 0,
-                             KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
+    expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile", 0, KEY_READ | KEY_WOW64_64KEY, NULL,
+                             ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(1, 0, &last_write_time, ERROR_SUCCESS);
     expect_RegEnumKeyEx_call("FirstSubKey", 12, ERROR_SUCCESS);
-    // Inside fim_registry_get_key_data
-    expect_fim_registry_get_key_data_call(usid, gsid, "username", "groupname", acl_size, ace, last_write_time);
 
+    // Inside fim_registry_get_key_data
+    expect_fim_registry_get_key_data_call(usid, gsid, "username", "groupname",
+                                          "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
+                                          last_write_time);
+
+    will_return(__wrap_fim_db_get_registry_key, NULL);
+    will_return(__wrap_fim_db_insert_registry_key, FIMDB_OK);
+    will_return(__wrap_fim_db_get_registry_key_rowid, FIMDB_OK);
 
     // Scan a value of FirstSubKey
     expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile\\FirstSubKey", 0,
                              KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(0, 1, &last_write_time, ERROR_SUCCESS);
     expect_RegEnumValue_call(value_name, value_type, (LPBYTE)&value_data, value_size, ERROR_SUCCESS);
-    // Inside fim_registry_get_key_data
-    expect_fim_registry_get_key_data_call(usid, gsid, "username", "groupname", acl_size, ace, last_write_time);
 
+    // Inside fim_registry_get_key_data
+    expect_fim_registry_get_key_data_call(usid, gsid, "username", "groupname",
+                                          "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
+                                          last_write_time);
+
+    will_return(__wrap_fim_db_get_registry_data, NULL);
+    will_return(fim_db_insert_registry_data, FIMDB_OK);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_fim_db_get_registry_keys_not_scanned, FIMDB_ERR);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap__mwarn, formatted_msg, FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_fim_db_get_registry_data_not_scanned, FIMDB_ERR);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap__mwarn, formatted_msg, FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
+
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
 
     // Test
     fim_registry_scan();
@@ -976,7 +1013,9 @@ static void test_fim_registry_scan_regular_scan(void **state) {
     expect_RegQueryInfoKey_call(1, 0, &last_write_time, ERROR_SUCCESS);
     expect_RegEnumKeyEx_call("FirstSubKey", 12, ERROR_SUCCESS);
     // Inside fim_registry_get_key_data
-    expect_fim_registry_get_key_data_call(usid, gsid, "username", "groupname", acl_size, ace, last_write_time);
+    expect_fim_registry_get_key_data_call(usid, gsid, "username", "groupname",
+                                          "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
+                                          last_write_time);
 
 
     // Scan a value of FirstSubKey
@@ -985,7 +1024,9 @@ static void test_fim_registry_scan_regular_scan(void **state) {
     expect_RegQueryInfoKey_call(0, 1, &last_write_time, ERROR_SUCCESS);
     expect_RegEnumValue_call(value_name, value_type, (LPBYTE)&value_data, value_size, ERROR_SUCCESS);
     // Inside fim_registry_get_key_data
-    expect_fim_registry_get_key_data_call(usid, gsid, "username", "groupname", acl_size, ace, last_write_time);
+    expect_fim_registry_get_key_data_call(usid, gsid, "username", "groupname",
+                                          "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
+                                          last_write_time);
 
 
     // Scan a subkey of RecursionLevel0
@@ -993,7 +1034,9 @@ static void test_fim_registry_scan_regular_scan(void **state) {
     expect_RegQueryInfoKey_call(1, 0, &last_write_time, ERROR_SUCCESS);
     expect_RegEnumKeyEx_call("depth0", 7, ERROR_SUCCESS);
     // Inside fim_registry_get_key_data
-    expect_fim_registry_get_key_data_call(usid, gsid, "username2", "groupname2", acl_size, ace, last_write_time);
+    expect_fim_registry_get_key_data_call(usid, gsid, "username2", "groupname2",
+                                          "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
+                                          last_write_time);
 
 
     // Test

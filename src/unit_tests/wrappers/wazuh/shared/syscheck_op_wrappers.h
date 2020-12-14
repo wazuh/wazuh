@@ -11,6 +11,11 @@
 #ifndef SYSCHECK_OP_WRAPPERS_H
 #define SYSCHECK_OP_WRAPPERS_H
 
+#ifdef WIN32
+#include <winsock2.h>
+#include <windows.h>
+#endif // WIN32
+
 char *__wrap_decode_win_permissions(char *raw_perm);
 
 int __wrap_delete_target_file(const char *path);
@@ -48,6 +53,16 @@ void expect_get_file_user(const char *path, char *sid, char *user);
  * @brief This function loads the expect and will return of the function w_get_file_permissions
  */
 void expect_w_get_file_permissions(const char *file_path, char *perms, int ret);
+
+/**
+ * @brief Mock calls to get_registry_permissions
+ */
+DWORD __wrap_get_registry_permissions(HKEY hndl,  char *perm_key);
+
+/**
+ * @brief This function loads the expect and will return of the function get_registry_permissions
+ */
+void expect_get_registry_permissions(const char *permissions, DWORD retval);
 
 #else
 /**
