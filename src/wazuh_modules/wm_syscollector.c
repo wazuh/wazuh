@@ -9,8 +9,6 @@
  * Foundation.
  */
 #include <stdlib.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
 #include "../../wmodules_def.h"
 #include "wmodules.h"
 #include "wm_syscollector.h"
