@@ -934,8 +934,6 @@ static void test_fim_registry_scan_no_entries_configured(void **state) {
 }
 
 static void test_fim_registry_scan_base_line_generation(void **state) {
-    fim_registry_key **keys_array = *state;
-    int ret = 0;
     ACL_SIZE_INFORMATION acl_size = { .AceCount = 1 };
     ACCESS_ALLOWED_ACE ace;
 
@@ -983,8 +981,6 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
 }
 
 static void test_fim_registry_scan_regular_scan(void **state) {
-    fim_registry_key **keys_array = *state;
-    int ret = 0;
     ACL_SIZE_INFORMATION acl_size = { .AceCount = 1 };
     ACCESS_ALLOWED_ACE ace;
 
@@ -1073,7 +1069,7 @@ static void test_fim_registry_scan_RegQueryInfoKey_fail(void **state) {
 
 static void test_fim_registry_process_value_delete_event_null_configuration(void **state) {
     fim_entry *entry = *state;
-    int ret = 0;
+
     pthread_mutex_t mutex = 0;
     int alert = 1;
     fim_event_mode event_mode = FIM_SCHEDULED;
@@ -1089,7 +1085,7 @@ static void test_fim_registry_process_value_delete_event_null_configuration(void
 
 static void test_fim_registry_process_value_delete_event_success(void **state) {
     fim_entry *entry = *state;
-    int ret = 0;
+
     pthread_mutex_t mutex = 0;
     int alert = 1;
     fim_event_mode event_mode = FIM_SCHEDULED;
@@ -1100,7 +1096,7 @@ static void test_fim_registry_process_value_delete_event_success(void **state) {
 
 static void test_fim_registry_process_key_delete_event_null_configuration(void **state) {
     fim_entry *entry = *state;
-    int ret = 0;
+
     pthread_mutex_t mutex = 0;
     int alert = 1;
     fim_event_mode event_mode = FIM_SCHEDULED;
@@ -1117,7 +1113,7 @@ static void test_fim_registry_process_key_delete_event_null_configuration(void *
 
 static void test_fim_registry_process_key_delete_event_success(void **state) {
     fim_entry *entry = *state;
-    int ret = 0;
+
     pthread_mutex_t mutex = 0;
     int alert = 1;
     fim_event_mode event_mode = FIM_SCHEDULED;
@@ -1131,7 +1127,7 @@ static void test_fim_registry_process_key_delete_event_success(void **state) {
 
 static void test_fim_registry_process_value_event_null_configuration(void **state) {
     fim_entry **entry_array = *state;
-    int ret = 0;
+
     fim_event_mode event_mode = FIM_SCHEDULED;
     BYTE *data_buffer = (unsigned char *)"value_data";
 
@@ -1145,7 +1141,7 @@ static void test_fim_registry_process_value_event_null_configuration(void **stat
 
 static void test_fim_registry_process_value_event_ignore_event(void **state) {
     fim_entry **entry_array = *state;
-    int ret = 0;
+
     fim_event_mode event_mode = FIM_SCHEDULED;
     BYTE *data_buffer = (unsigned char *)"value_data";
 
@@ -1169,7 +1165,7 @@ static void test_fim_registry_process_value_event_ignore_event(void **state) {
 
 static void test_fim_registry_process_value_event_restrict_event(void **state) {
     fim_entry **entry_array = *state;
-    int ret = 0;
+
     fim_event_mode event_mode = FIM_SCHEDULED;
     BYTE *data_buffer = (unsigned char *)"value_data";
     OSMatch *restrict_list;
@@ -1191,7 +1187,7 @@ static void test_fim_registry_process_value_event_restrict_event(void **state) {
 
 static void test_fim_registry_process_value_event_success(void **state) {
     fim_entry **entry_array = *state;
-    int ret = 0;
+
     fim_event_mode event_mode = FIM_SCHEDULED;
     BYTE *data_buffer = (unsigned char *)"value_data";
 
