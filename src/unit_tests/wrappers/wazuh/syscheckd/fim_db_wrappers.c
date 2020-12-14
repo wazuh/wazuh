@@ -287,3 +287,15 @@ void expect_wrapper_fim_db_get_paths_from_inode(fdb_t *db, int inode, int dev, c
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, dev);
     will_return(__wrap_fim_db_get_paths_from_inode, ret);
 }
+
+int __wrap_fim_db_process_read_file(__attribute__((unused)) fdb_t *fim_sql,
+                                    __attribute__((unused)) fim_tmp_file *file,
+                                    __attribute__((unused)) int type,
+                                    __attribute__((unused)) pthread_mutex_t *mutex,
+                                    __attribute__((unused)) void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
+                                    __attribute__((unused)) int storage,
+                                    __attribute__((unused)) void *alert,
+                                    __attribute__((unused)) void *mode,
+                                    __attribute__((unused)) void *w_evt) {
+    return mock();
+}

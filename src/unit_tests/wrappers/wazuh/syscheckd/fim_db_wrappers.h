@@ -134,4 +134,17 @@ void expect_wrapper_fim_db_get_count_entries(const fdb_t *fim_sql, int ret);
  * @brief This function loads the expect and will_return calls for the wrapper of fim_db_get_paths_from_inode
  */
 void expect_wrapper_fim_db_get_paths_from_inode(fdb_t *db, int inode, int dev, char **ret);
+
+/**
+ * @brief This function mocks a call to fim_db_process_read_file
+ */
+int __wrap_fim_db_process_read_file(fdb_t *fim_sql,
+                                    fim_tmp_file *file,
+                                    int type,
+                                    pthread_mutex_t *mutex,
+                                    void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
+                                    int storage,
+                                    void *alert,
+                                    void *mode,
+                                    void *w_evt);
 #endif
