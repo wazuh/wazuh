@@ -6316,7 +6316,19 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/group_id_query'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                group_id:
+                  description: "Group name"
+                  type: string
+                  format: names
+              required:
+                - group_id
+            example:
+              name: NewGroup_1
       responses:
         '200':
           description: "Add new agent"
