@@ -57,6 +57,11 @@ static registry empty_config[] = { { NULL, 0, 0, 320, 0, NULL, NULL, NULL } };
 
 extern int _base_line;
 
+typedef struct tmp_file_entry_s {
+    fim_tmp_file *file;
+    fim_entry *entry;
+} tmp_file_entry_t;
+
 int fim_set_root_key(HKEY *root_key_handle, const char *full_key, const char **sub_key);
 registry *fim_registry_configuration(const char *key, int arch);
 int fim_registry_validate_recursion_level(const char *key_path, const registry *configuration);
@@ -328,59 +333,40 @@ static int teardown_test_hashes(void **state) {
 }
 
 static int setup_process_delete_events(void **state) {
-    char *err_msg = NULL;
+    tmp_file_entry_t *data = malloc(sizeof(tmp_file_entry_t));
+    if (data == NULL) {
+        return 1;
+    }
+
     syscheck.registry = default_config;
-
     // Set fim_entry
-    fim_entry *entry = calloc(1, sizeof(fim_entry));
-    if(entry == NULL)
-        return -1;
-    entry->type = FIM_TYPE_REGISTRY;
 
+    if(data->entry = calloc(1, sizeof(fim_entry)), data->entry == NULL) {
+        return -1;
+    }
+
+    data->entry->type = FIM_TYPE_REGISTRY;
     // Key
-    entry->registry_entry.key = create_reg_key(1, "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", 1,
+    data->entry->registry_entry.key = create_reg_key(1, "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", 1,
                             "permissions", "userid", "groupid", "username", "groupname");
-    sqlite3_exec(syscheck.database->db, "INSERT INTO registry_key VALUES(1, \"HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\", \"permissions\", \"userid\", \"groupid\", \"username\", \"groupname\", 1234, \'[x64]\', 0, 1234, \"checksum1\");", NULL, NULL, &err_msg);
-    if (err_msg) {
-        fail_msg("%s", err_msg);
-        sqlite3_free(err_msg);
-
-        return -1;
-    }
-
     // Value
-    char value_name[10] = "valuename";
-    unsigned int value_type = REG_DWORD;
-    unsigned int value_size = 4;
+    data->entry->registry_entry.value = create_reg_value_data(1, "valuename", REG_DWORD, 4);
 
-    entry->registry_entry.value = create_reg_value_data(1, value_name, value_type, value_size);
-    sqlite3_exec(syscheck.database->db, "INSERT INTO registry_data VALUES(1, \"valuename\", 4, 4, \"hash1\", \"hash2\", \"hash3\", 0, 1234, \"checksum2\");", NULL, NULL, &err_msg);
-    if (err_msg) {
-        fail_msg("%s", err_msg);
-        sqlite3_free(err_msg);
-
-        return -1;
+    if (data->file = calloc(1, sizeof(fim_tmp_file)), data->file == NULL) {
+        return 1;
     }
 
-    *state = entry;
+    *state = data;
     return 0;
+
 }
 
 static int teardown_process_delete_events(void **state) {
-    fim_entry *entry = *state;
+    tmp_file_entry_t *data = *state;
+    free_entry(data->entry);
+    free(data->file);
 
-    if (delete_tables()){
-        return -1;
-    }
-
-    // Free state
-    if (entry){
-        // Temporary
-        fim_registry_free_key(entry->registry_entry.key);
-        fim_registry_free_value_data(entry->registry_entry.value);
-        free(entry);
-        entry = NULL;
-    }
+    free(data);
 
     return 0;
 }
@@ -911,7 +897,7 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     syscheck.registry[0].opts = CHECK_REGISTRY_ALL;
 
     // Set value of FirstSubKey
-    char *value_name = "test_value";
+    char value_name[10] = "test_value";
     unsigned int value_type = REG_DWORD;
     unsigned int value_size = 4;
     DWORD value_data = 123456;
@@ -1082,7 +1068,8 @@ static void test_fim_registry_scan_RegQueryInfoKey_fail(void **state) {
 }
 
 static void test_fim_registry_process_value_delete_event_null_configuration(void **state) {
-    fim_entry *entry = *state;
+    tmp_file_entry_t *data = *state;
+    char buff[OS_SIZE_128];
 
     pthread_mutex_t mutex = 0;
     int alert = 1;
@@ -1091,25 +1078,26 @@ static void test_fim_registry_process_value_delete_event_null_configuration(void
 
     // Test if the entry is not configured
     syscheck.registry = empty_config;
+    snprintf(buff, OS_SIZE_128, FIM_CONFIGURATION_NOTFOUND, "registry", data->entry->registry_entry.key->path);
+    expect_string(__wrap__mdebug2, formatted_msg, buff);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (registry):'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile'");
-
-    fim_registry_process_value_delete_event(syscheck.database, entry, &mutex, &alert, &event_mode, w_event);
+    fim_registry_process_value_delete_event(syscheck.database, data->entry, &mutex, &alert, &event_mode, w_event);
 }
 
 static void test_fim_registry_process_value_delete_event_success(void **state) {
-    fim_entry *entry = *state;
+    tmp_file_entry_t *data = *state;
 
     pthread_mutex_t mutex = 0;
     int alert = 1;
     fim_event_mode event_mode = FIM_SCHEDULED;
     void *w_event = NULL;
-
-    fim_registry_process_value_delete_event(syscheck.database, entry, &mutex, &alert, &event_mode, w_event);
+    expect_fim_db_remove_registry_value_data_call(syscheck.database, data->entry->registry_entry.value, FIMDB_OK);
+    fim_registry_process_value_delete_event(syscheck.database, data->entry, &mutex, &alert, &event_mode, w_event);
 }
 
 static void test_fim_registry_process_key_delete_event_null_configuration(void **state) {
-    fim_entry *entry = *state;
+    tmp_file_entry_t *data = *state;
+    char buff[OS_SIZE_128];
 
     pthread_mutex_t mutex = 0;
     int alert = 1;
@@ -1118,24 +1106,32 @@ static void test_fim_registry_process_key_delete_event_null_configuration(void *
 
     // Test if the entry is not configured
     syscheck.registry = empty_config;
+    snprintf(buff, OS_SIZE_128, FIM_CONFIGURATION_NOTFOUND, "registry", data->entry->registry_entry.key->path);
+    expect_string(__wrap__mdebug2, formatted_msg, buff);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (registry):'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile'");
-
-    fim_registry_process_key_delete_event(syscheck.database, entry, &mutex, &alert, &event_mode, w_event);
+    fim_registry_process_key_delete_event(syscheck.database, data->entry, &mutex, &alert, &event_mode, w_event);
 
 }
 
 static void test_fim_registry_process_key_delete_event_success(void **state) {
-    fim_entry *entry = *state;
+    tmp_file_entry_t *data = *state;
+    data->file->elements = 10;
 
     pthread_mutex_t mutex = 0;
     int alert = 1;
     fim_event_mode event_mode = FIM_SCHEDULED;
     void *w_event = NULL;
 
-    will_return_always(__wrap_os_random, 2345);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_fim_db_get_values_from_registry_key_call(syscheck.database, data->file, FIM_DB_DISK, FIMDB_OK);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
-    fim_registry_process_key_delete_event(syscheck.database, entry, &mutex, &alert, &event_mode, w_event);
+    will_return(__wrap_fim_db_process_read_registry_data_file, FIMDB_OK);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_fim_db_remove_registry_key_call(syscheck.database, data->entry, FIMDB_OK);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    fim_registry_process_key_delete_event(syscheck.database, data->entry, &mutex, &alert, &event_mode, w_event);
 
 }
 

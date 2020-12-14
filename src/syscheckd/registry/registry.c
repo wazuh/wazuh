@@ -653,7 +653,6 @@ void fim_registry_process_value_event(fim_entry *new,
     registry *configuration;
     cJSON *json_event;
     char *diff = NULL;
-
     configuration = fim_registry_configuration(new->registry_entry.key->path, new->registry_entry.key->arch);
     if (configuration == NULL) {
         return;

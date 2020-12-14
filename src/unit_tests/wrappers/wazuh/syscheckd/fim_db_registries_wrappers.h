@@ -39,5 +39,17 @@ int __wrap_fim_db_set_all_registry_data_unscanned(fdb_t *fim_sql);
 
 int __wrap_fim_db_set_all_registry_key_unscanned(fdb_t *fim_sql);
 
+void expect_fim_db_get_values_from_registry_key_call(fdb_t *fim_sql,
+                                                     fim_tmp_file *file,
+                                                     int storage,
+                                                     int ret);
+void expect_fim_db_remove_registry_key_call(fdb_t *fim_sql,
+                                                 fim_registry_value_data *entry,
+                                                 int ret);
+
+void expect_fim_db_remove_registry_value_data_call(fdb_t *fim_sql,
+                                                   fim_registry_value_data *entry,
+                                                   int ret);
+
 #endif // WIN32
 #endif // FIM_DB_REGISTRIES_WRAPPERS_H
