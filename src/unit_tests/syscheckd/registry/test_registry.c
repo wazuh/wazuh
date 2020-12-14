@@ -41,7 +41,8 @@ static registry default_config[] = {
 };
 
 static registry one_entry_config[] = {
-    { "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL, NULL }
+    { "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL, NULL },
+    { NULL, 0, 0, 320, 0, NULL, NULL, NULL }
 };
 
 static registry_ignore default_ignore[] = { { "HKEY_LOCAL_MACHINE\\Software\\Ignore", ARCH_32BIT},
@@ -95,8 +96,6 @@ void expect_fim_registry_get_key_data_call(LPSTR usid,
     expect_string(__wrap_decode_win_permissions, raw_perm,
                   "sid (allowed): delete|write_dac|write_data|append_data|write_attributes");
     will_return(__wrap_decode_win_permissions, permissions);
-
-    expect_get_registry_permissions(permissions, ERROR_SUCCESS);
 
     expect_RegQueryInfoKeyA_call(&last_write_time, ERROR_SUCCESS);
 }
@@ -241,10 +240,6 @@ static int setup_base_line(void **state) {
 
 static int teardown_clean_db_and_state(void **state) {
     fim_registry_key **keys_array = *state;
-
-    if (delete_tables()){
-        return -1;
-    }
 
     // Free state
     if (keys_array){
@@ -912,13 +907,8 @@ static void test_fim_registry_scan_no_entries_configured(void **state) {
 }
 
 static void test_fim_registry_scan_base_line_generation(void **state) {
-    ACL_SIZE_INFORMATION acl_size = { .AceCount = 1 };
-    ACCESS_ALLOWED_ACE ace;
-
-    // Set the ACE data
-    ace.Header.AceType = ACCESS_ALLOWED_ACE_TYPE;
-    ace.Header.AceFlags = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG;
-    ace.Mask = FILE_WRITE_DATA | WRITE_DAC | FILE_APPEND_DATA | FILE_WRITE_ATTRIBUTES | DELETE;
+    syscheck.registry = one_entry_config;
+    syscheck.registry[0].opts = CHECK_REGISTRY_ALL;
 
     // Set value of FirstSubKey
     char *value_name = "test_value";
@@ -932,7 +922,6 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_START);
     expect_any_always(__wrap__mdebug2, formatted_msg);
-    will_return_always(__wrap_os_random, 2345);
 
     // Scan a subkey of batfile
     expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile", 0, KEY_READ | KEY_WOW64_64KEY, NULL,
@@ -940,31 +929,45 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     expect_RegQueryInfoKey_call(1, 0, &last_write_time, ERROR_SUCCESS);
     expect_RegEnumKeyEx_call("FirstSubKey", 12, ERROR_SUCCESS);
 
-    // Inside fim_registry_get_key_data
-    expect_fim_registry_get_key_data_call(usid, gsid, "username", "groupname",
-                                          "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
-                                          last_write_time);
-
-    will_return(__wrap_fim_db_get_registry_key, NULL);
-    will_return(__wrap_fim_db_insert_registry_key, FIMDB_OK);
-    will_return(__wrap_fim_db_get_registry_key_rowid, FIMDB_OK);
-
     // Scan a value of FirstSubKey
     expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile\\FirstSubKey", 0,
                              KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(0, 1, &last_write_time, ERROR_SUCCESS);
-    expect_RegEnumValue_call(value_name, value_type, (LPBYTE)&value_data, value_size, ERROR_SUCCESS);
 
     // Inside fim_registry_get_key_data
     expect_fim_registry_get_key_data_call(usid, gsid, "username", "groupname",
                                           "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
                                           last_write_time);
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    will_return(__wrap_fim_db_get_registry_key, NULL);
+    will_return(__wrap_fim_db_insert_registry_key, FIMDB_OK);
+
+    will_return(__wrap_fim_db_get_registry_key_rowid, FIMDB_OK);
+
+    expect_RegEnumValue_call(value_name, value_type, (LPBYTE)&value_data, value_size, ERROR_SUCCESS);
+
     will_return(__wrap_fim_db_get_registry_data, NULL);
-    will_return(fim_db_insert_registry_data, FIMDB_OK);
 
     expect_fim_registry_value_diff("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\FirstSubKey", "test_value",
-                                   123456, 8, REG_QWORD, "diff string");
+                                   &value_data, 4, REG_DWORD, NULL);
+
+    will_return(__wrap_fim_db_insert_registry_data, FIMDB_OK);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    // Inside fim_registry_get_key_data
+    expect_fim_registry_get_key_data_call(usid, gsid, "username", "groupname",
+                                          "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
+                                          last_write_time);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    will_return(__wrap_fim_db_get_registry_key, NULL);
+    will_return(__wrap_fim_db_insert_registry_key, FIMDB_OK);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_fim_db_get_registry_keys_not_scanned, FIMDB_ERR);
@@ -1274,10 +1277,10 @@ int main(void) {
 
         /* fim_registry_scan tests */
         cmocka_unit_test_setup_teardown(test_fim_registry_scan_no_entries_configured, setup_remove_entries, teardown_restore_scan),
-        cmocka_unit_test_setup_teardown(test_fim_registry_scan_base_line_generation, setup_base_line, teardown_clean_db_and_state),
+        cmocka_unit_test(test_fim_registry_scan_base_line_generation),
         cmocka_unit_test_setup_teardown(test_fim_registry_scan_regular_scan, setup_regular_scan, teardown_clean_db_and_state),
-        cmocka_unit_test_setup_teardown(test_fim_registry_scan_RegOpenKeyEx_fail, setup_base_line, teardown_clean_db_and_state),
-        cmocka_unit_test_setup_teardown(test_fim_registry_scan_RegQueryInfoKey_fail, setup_base_line, teardown_clean_db_and_state),
+        cmocka_unit_test(test_fim_registry_scan_RegOpenKeyEx_fail),
+        cmocka_unit_test(test_fim_registry_scan_RegQueryInfoKey_fail),
 
         /* fim_registry_process_value_delete_event tests */
         cmocka_unit_test_setup_teardown(test_fim_registry_process_value_delete_event_null_configuration, setup_process_delete_events, teardown_process_delete_events),
