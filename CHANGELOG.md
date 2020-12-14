@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 
 - **API:**
   - Added endpoints to query and manage Rootcheck data. ([#6496](https://github.com/wazuh/wazuh/pull/6496))
+  - Added new endpoint to check status of tasks. ([#6029](https://github.com/wazuh/wazuh/issues/6029))
   - Added new endpoints to run the logtest tool and delete a logtest session. ([#5984](https://github.com/wazuh/wazuh/pull/5984))
   - Added debug2 mode for API log and improved debug mode. ([#6822](https://github.com/wazuh/wazuh/pull/6822))
 
@@ -34,6 +35,7 @@ All notable changes to this project will be documented in this file.
 - Moved CA configuration section to verify WPK signatures from `active-response` section to `agent-upgrade` section. ([#5929](https://github.com/wazuh/wazuh/issues/5929))
 
 - **API:**
+  - Changed the `status` parameter behavior in the `DELETE /agents` endpoint to enhance security. ([#6829](https://github.com/wazuh/wazuh/pull/6829))
   - Changed upgrade endpoints to accept a list of agents, maximum 100 agents per request. ([#5336](https://github.com/wazuh/wazuh/issues/5536))
 
 - **Framework:**

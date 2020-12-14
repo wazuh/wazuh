@@ -94,17 +94,6 @@ STATIC wm_task_manager_upgrade_result* wm_task_manager_parse_upgrade_result_para
 STATIC wm_task_manager_upgrade_cancel_tasks* wm_task_manager_parse_upgrade_cancel_tasks_parameters(const cJSON* origin);
 
 /**
- * Parses task parameters and returns a task result task from the information
- * Example:
- * {
- *      "tasks"   : [28, 14, 101]
- * }
- * @param parameters JSON with the parameters
- * @return task result task if there is no error, NULL otherwise
- * */
-STATIC wm_task_manager_task_result* wm_task_manager_parse_task_result_parameters(const cJSON* parameters);
-
-/**
  * Decode status to a more understandable string
  * @param status status string
  * @return status conversion
@@ -125,9 +114,10 @@ static const char *error_codes[] = {
     [WM_TASK_SUCCESS] = "Success",
     [WM_TASK_INVALID_MESSAGE] = "Invalid message",
     [WM_TASK_INVALID_COMMAND] = "Invalid command",
-    [WM_TASK_INVALID_STATUS] = "Invalid status",
     [WM_TASK_DATABASE_NO_TASK] = "No task in DB",
     [WM_TASK_DATABASE_ERROR] = "Database error",
+    [WM_TASK_DATABASE_PARSE_ERROR] = "Parse DB response error",
+    [WM_TASK_DATABASE_REQUEST_ERROR] = "Error in DB request",
     [WM_TASK_UNKNOWN_ERROR] = "Unknown error"
 };
 
@@ -187,9 +177,6 @@ wm_task_manager_task* wm_task_manager_parse_message(const char *msg) {
     } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_CANCEL_TASKS], command_json->valuestring)) {
         task->command = WM_TASK_UPGRADE_CANCEL_TASKS;
         task->parameters = wm_task_manager_parse_upgrade_cancel_tasks_parameters(origin_json);
-    } else if (!strcmp(task_manager_commands_list[WM_TASK_TASK_RESULT], command_json->valuestring)) {
-        task->command = WM_TASK_TASK_RESULT;
-        task->parameters = wm_task_manager_parse_task_result_parameters(parameters_json);
     } else {
         task->command = WM_TASK_UNKNOWN;
         cJSON_Delete(event_json);
@@ -369,22 +356,6 @@ STATIC wm_task_manager_upgrade_cancel_tasks* wm_task_manager_parse_upgrade_cance
     return task_parameters;
 }
 
-STATIC wm_task_manager_task_result* wm_task_manager_parse_task_result_parameters(const cJSON* parameters) {
-
-    wm_task_manager_task_result *task_parameters = wm_task_manager_init_task_result_parameters();
-
-    cJSON *tasks_json = cJSON_GetObjectItem(parameters, task_manager_json_keys[WM_TASK_TASKS]);
-
-    task_parameters->task_ids = wm_task_manager_parse_ids(tasks_json);
-    if (!task_parameters->task_ids) {
-        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_TASKS]);
-        wm_task_manager_free_task_result_parameters(task_parameters);
-        return NULL;
-    }
-
-    return task_parameters;
-}
-
 void wm_task_manager_parse_data_result(cJSON *response, const char *node, const char *module, const char *command, char *status, char *error, int create_time, int last_update_time, const char *request_command) {
 
     if (node != NULL) {
@@ -482,7 +453,7 @@ STATIC const char* wm_task_manager_decode_status(char *status) {
     } else if (!strcmp(task_statuses[WM_TASK_LEGACY], status)){
         return upgrade_statuses[WM_TASK_UPGRADE_LEGACY];
     }
-    return error_codes[WM_TASK_INVALID_STATUS];
+    return NULL;
 }
 
 #endif

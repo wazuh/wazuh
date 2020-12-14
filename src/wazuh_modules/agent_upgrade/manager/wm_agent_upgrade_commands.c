@@ -207,6 +207,33 @@ char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, const 
     return response;
 }
 
+char* wm_agent_upgrade_process_upgrade_result_command(const int* agent_ids) {
+    char* response = NULL;
+    int agent = 0;
+    int agent_id = 0;
+    cJSON *json_response = NULL;
+    cJSON *json_task_module_request = NULL;
+    cJSON* data_array = cJSON_CreateArray();
+    cJSON *agents_array = cJSON_CreateArray();
+
+    while (agent_id = agent_ids[agent++], agent_id != OS_INVALID) {
+        cJSON_AddItemToArray(agents_array, cJSON_CreateNumber(agent_id));
+    }
+
+    json_task_module_request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_RESULT, agents_array, NULL, NULL);
+
+    // Send upgrade result request to task manager and bring back the response
+    wm_agent_upgrade_task_module_callback(data_array, json_task_module_request, NULL, NULL);
+
+    json_response = wm_agent_upgrade_parse_response(WM_UPGRADE_SUCCESS, data_array);
+    response = cJSON_PrintUnformatted(json_response);
+
+    cJSON_Delete(json_task_module_request);
+    cJSON_Delete(json_response);
+
+    return response;
+}
+
 STATIC int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task) {
     int validate_result = WM_UPGRADE_SUCCESS;
     cJSON *agent_info = NULL;

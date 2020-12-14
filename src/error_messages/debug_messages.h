@@ -252,6 +252,7 @@
 #define FIM_DIFF_FILE_SIZE_LIMIT            "(6356): Maximum file size limit to generate diff information configured to '%d KB' for '%s'."
 #define FIM_DISK_QUOTA_LIMIT                "(6357): Maximum disk quota size limit configured to '%d KB'."
 #define FIM_DIFF_FOLDER_DELETED             "(6358): Folder '%s' has been deleted."
+#define GLOB_NO_MATCH                       "(6359): No matches found for the glob pattern: '%s'"
 
 /* Modules messages */
 #define WM_UPGRADE_RESULT_AGENT_INFO         "(8151): Agent Information obtained: '%s'"
@@ -279,8 +280,8 @@
 #define MOD_TASK_EMPTY_MESSAGE              "(8203): Empty message from local client."
 #define MOD_TASK_INCOMMING_MESSAGE          "(8204): Incomming message: '%s'"
 #define MOD_TASK_RESPONSE_MESSAGE           "(8205): Response to message: '%s'"
-#define MOD_TASK_RUNNING_CLEAN              "(8206): Running daily clean DB thread."
 #define MOD_TASK_DISABLED_WORKER            "(8207): Module Task Manager only runs on Master nodes in cluster configuration."
-#define GLOB_NO_MATCH                       "(6351): No matches found for the glob pattern: '%s'"
+#define MOD_TASK_TASKS_DB_ERROR_IN_QUERY    "(8208): Tasks DB Error reported in the result of the query, message: '%s'"
+#define MOD_TASK_TASKS_DB_ERROR_EXECUTE     "(8209): Tasks DB Cannot execute SQL query: err database '%s/%s.db'"
 
 #endif /* DEBUG_MESSAGES_H */

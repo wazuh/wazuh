@@ -345,6 +345,108 @@ void test_wm_agent_upgrade_listen_messages_agent_update_status_command(void **st
     wm_agent_upgrade_listen_messages(config);
 }
 
+void test_wm_agent_upgrade_listen_messages_upgrade_result_command(void **state)
+{
+    wm_manager_configs *config = *state;
+    int socket = 0;
+    int peer = 1111;
+
+    char *input = "{"
+                  "   \"command\": \"upgrade_result\","
+                  "   \"parameters\": {"
+                  "        \"agents\": [2]"
+                  "    }"
+                  "}";
+
+    size_t input_size = strlen(input) + 1;
+    void *task = NULL;
+    int *agents = NULL;
+    char *response = NULL;
+
+    os_calloc(2, sizeof(int), agents);
+    os_calloc(OS_SIZE_512, sizeof(char), response);
+
+    agents[0] = 3;
+    agents[1] = -1;
+
+    sprintf(response, "{"
+                      "    \"error\":0,"
+                      "    \"data\":["
+                      "         {"
+                      "            \"task_id\":38,"
+                      "            \"node\":\"node01\","
+                      "            \"module\":\"api\","
+                      "            \"command\":\"upgrade\","
+                      "            \"create_time\":789456123,"
+                      "            \"update_time\":987654321,"
+                      "            \"status\":\"Updating\","
+                      "            \"error_msg\":\"Error string\""
+                      "         }"
+                      "     ],"
+                      "    \"message\":\"Success\""
+                      "}");
+
+    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK_PATH);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_BindUnixDomain, socket);
+
+    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+
+    will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
+
+    will_return(__wrap_select, 1);
+
+    will_return(__wrap_accept, peer);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, peer);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, input);
+    will_return(__wrap_OS_RecvSecureTCP, input_size);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8155): Incomming message: '{"
+                                                                               "   \"command\": \"upgrade_result\","
+                                                                               "   \"parameters\": {"
+                                                                               "        \"agents\": [2]"
+                                                                               "    }"
+                                                                               "}'");
+
+    expect_string(__wrap_wm_agent_upgrade_parse_message, buffer, input);
+    will_return(__wrap_wm_agent_upgrade_parse_message, task);
+    will_return(__wrap_wm_agent_upgrade_parse_message, agents);
+    will_return(__wrap_wm_agent_upgrade_parse_message, NULL);
+    will_return(__wrap_wm_agent_upgrade_parse_message, WM_UPGRADE_RESULT);
+
+    expect_value(__wrap_wm_agent_upgrade_process_upgrade_result_command, agent_ids, agents);
+    will_return(__wrap_wm_agent_upgrade_process_upgrade_result_command, response);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8156): Response message: '{"
+                                                                              "    \"error\":0,"
+                                                                              "    \"data\":["
+                                                                              "         {"
+                                                                              "            \"task_id\":38,"
+                                                                              "            \"node\":\"node01\","
+                                                                              "            \"module\":\"api\","
+                                                                              "            \"command\":\"upgrade\","
+                                                                              "            \"create_time\":789456123,"
+                                                                              "            \"update_time\":987654321,"
+                                                                              "            \"status\":\"Updating\","
+                                                                              "            \"error_msg\":\"Error string\""
+                                                                              "         }"
+                                                                              "     ],"
+                                                                              "    \"message\":\"Success\""
+                                                                              "}'");
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, peer);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(response));
+    expect_string(__wrap_OS_SendSecureTCP, msg, response);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    wm_agent_upgrade_listen_messages(config);
+}
+
 void test_wm_agent_upgrade_listen_messages_parse_error(void **state)
 {
     wm_manager_configs *config = *state;
@@ -772,6 +874,7 @@ int main(void) {
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_upgrade_command),
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_upgrade_custom_command),
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_agent_update_status_command),
+        cmocka_unit_test(test_wm_agent_upgrade_listen_messages_upgrade_result_command),
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_parse_error),
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_parse_error_with_message),
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_receive_empty),

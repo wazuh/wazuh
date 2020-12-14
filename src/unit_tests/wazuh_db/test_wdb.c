@@ -58,6 +58,57 @@ int teardown_wdb(void **state) {
 
 /* Tests wdb_open_global */
 
+void test_wdb_open_tasks_pool_success(void **state)
+{
+    wdb_t *ret = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_value(__wrap_OSHash_Get, self, (OSHash*) 0);
+    expect_string(__wrap_OSHash_Get, key, WDB_TASK_NAME);
+    will_return(__wrap_OSHash_Get, data->wdb);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    ret = wdb_open_tasks();
+
+    assert_int_equal(ret, data->wdb);
+}
+
+void test_wdb_open_tasks_create_error(void **state)
+{
+    wdb_t *ret = NULL;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_value(__wrap_OSHash_Get, self, (OSHash*) 0);
+    expect_string(__wrap_OSHash_Get, key, WDB_TASK_NAME);
+    will_return(__wrap_OSHash_Get, NULL);
+
+    expect_string(__wrap_sqlite3_open_v2, filename, "queue/tasks/tasks.db");
+    will_return(__wrap_sqlite3_open_v2, NULL);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, OS_INVALID);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Tasks database not found, creating.");
+    will_return(__wrap_sqlite3_close_v2, OS_SUCCESS);
+
+    expect_string(__wrap_sqlite3_open_v2, filename, "queue/tasks/tasks.db");
+    will_return(__wrap_sqlite3_open_v2, NULL);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
+    will_return(__wrap_sqlite3_open_v2, OS_INVALID);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Couldn't create SQLite database 'queue/tasks/tasks.db': out of memory");
+    will_return(__wrap_sqlite3_close_v2, OS_SUCCESS);
+
+    expect_string(__wrap__merror, formatted_msg, "Couldn't create SQLite database 'queue/tasks/tasks.db'");
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    ret = wdb_open_tasks();
+
+    assert_null(ret);
+}
+
 void test_wdb_open_global_pool_success(void **state)
 {
     wdb_t *ret = NULL;
@@ -352,6 +403,9 @@ int main()
 {
     const struct CMUnitTest tests[] =
     {
+        //wdb_open_tasks
+        cmocka_unit_test_setup_teardown(test_wdb_open_tasks_pool_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_open_tasks_create_error, setup_wdb, teardown_wdb),
         //wdb_open_global
         cmocka_unit_test_setup_teardown(test_wdb_open_global_pool_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_open_global_create_fail, setup_wdb, teardown_wdb),
