@@ -876,6 +876,7 @@ static void test_fim_registry_scan_no_entries_configured(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
 
     expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_fim_db_get_registry_keys_not_scanned, NULL);
     will_return(__wrap_fim_db_get_registry_keys_not_scanned, FIMDB_ERR);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
@@ -897,7 +898,7 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     syscheck.registry[0].opts = CHECK_REGISTRY_ALL;
 
     // Set value of FirstSubKey
-    char value_name[10] = "test_value";
+    char *value_name = "test_value";
     unsigned int value_type = REG_DWORD;
     unsigned int value_size = 4;
     DWORD value_data = 123456;
@@ -956,6 +957,7 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_fim_db_get_registry_keys_not_scanned, NULL);
     will_return(__wrap_fim_db_get_registry_keys_not_scanned, FIMDB_ERR);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
@@ -1055,6 +1057,7 @@ static void test_fim_registry_scan_regular_scan(void **state) {
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_fim_db_get_registry_keys_not_scanned, NULL);
     will_return(__wrap_fim_db_get_registry_keys_not_scanned, FIMDB_ERR);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
@@ -1073,15 +1076,30 @@ static void test_fim_registry_scan_regular_scan(void **state) {
 }
 
 static void test_fim_registry_scan_RegOpenKeyEx_fail(void **state) {
+    syscheck.registry = one_entry_config;
+    syscheck.registry[0].opts = CHECK_REGISTRY_ALL;
+
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_START);
     expect_string(__wrap__mdebug1, formatted_msg, "(6920): Unable to open registry key: 'Software\\Classes\\batfile' arch: '[x64]'.");
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
     expect_any_always(__wrap__mdebug2, formatted_msg);
-    will_return_always(__wrap_os_random, 2345);
 
     // Scan a subkey of batfile
     expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile", 0,
                              KEY_READ | KEY_WOW64_64KEY, NULL, -1);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_fim_db_get_registry_keys_not_scanned, NULL);
+    will_return(__wrap_fim_db_get_registry_keys_not_scanned, FIMDB_ERR);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap__mwarn, formatted_msg, FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_fim_db_get_registry_data_not_scanned, FIMDB_ERR);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap__mwarn, formatted_msg, FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
 
     // Test
     fim_registry_scan();

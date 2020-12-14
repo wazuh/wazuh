@@ -50,8 +50,9 @@ int __wrap_fim_db_remove_registry_key(fdb_t *fim_sql,
 }
 
 int __wrap_fim_db_get_registry_keys_not_scanned(__attribute__((unused)) fdb_t *fim_sql,
-                                                __attribute__((unused)) fim_tmp_file **file,
+                                                fim_tmp_file **file,
                                                 __attribute__((unused)) int storage) {
+    *file = mock();
     return mock();
 }
 
