@@ -17,10 +17,6 @@ int __wrap_fim_db_get_registry_keys_not_scanned(fdb_t * fim_sql, fim_tmp_file **
 
 int __wrap_fim_db_get_registry_data_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage);
 
-int __wrap_fim_db_process_read_registry_data_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex,
-                                           void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
-                                           int storage, void * alert, void * mode, void * w_evt);
-
 fim_registry_value_data *__wrap_fim_db_get_registry_data(fdb_t *fim_sql, unsigned int key_id, const char *name);
 
 int __wrap_fim_db_insert_registry_data(fdb_t *fim_sql,
