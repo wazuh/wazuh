@@ -24,7 +24,6 @@
 #include "../../wrappers/windows/securitybaseapi_wrappers.h"
 #include "../../wrappers/wazuh/syscheckd/fim_db_registries_wrappers.h"
 #include "../../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
-#include "../../wrappers/wazuh/syscheckd/fim_diff_changes_wrappers.h"
 #include "../../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 #include "../../wrappers/wazuh/syscheckd/fim_diff_changes_wrappers.h"
 
@@ -39,6 +38,7 @@ static registry default_config[] = {
     { "HKEY_LOCAL_MACHINE\\Software\\RecursionLevel0", ARCH_64BIT, CHECK_REGISTRY_ALL, 0, 0, NULL, NULL, NULL },
     { "HKEY_LOCAL_MACHINE\\Software\\Ignore", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL, NULL },
     { inv_hKey, ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL, NULL },
+    { "HKEY_LOCAL_MACHINE\\Software\\FailToInsert", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL, NULL },
     { NULL, 0, 0, 320, 0, NULL, NULL, NULL }
 };
 
@@ -877,17 +877,13 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_fim_db_get_registry_keys_not_scanned, NULL);
-    will_return(__wrap_fim_db_get_registry_keys_not_scanned, FIMDB_ERR);
+    will_return(__wrap_fim_db_get_registry_keys_not_scanned, FIMDB_OK);
     expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_string(__wrap__mwarn, formatted_msg, FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
 
     expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_fim_db_get_registry_data_not_scanned, NULL);
-    will_return(__wrap_fim_db_get_registry_data_not_scanned, FIMDB_ERR);
+    will_return(__wrap_fim_db_get_registry_data_not_scanned, FIMDB_OK);
     expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_string(__wrap__mwarn, formatted_msg, FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
 
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
 
@@ -976,19 +972,32 @@ static void test_fim_registry_scan_regular_scan(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
+    expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\FailToInsert", 0,
+                             KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
+    expect_RegQueryInfoKey_call(0, 0, &last_write_time, ERROR_SUCCESS);
+
+
+    // Inside fim_registry_get_key_data
+    expect_fim_registry_get_key_data_call(usid, gsid, "username2", "groupname2",
+                                          "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
+                                          last_write_time);
+
     expect_function_call(__wrap_pthread_mutex_lock);
-    will_return(__wrap_fim_db_get_registry_keys_not_scanned, NULL);
-    will_return(__wrap_fim_db_get_registry_keys_not_scanned, FIMDB_ERR);
+    will_return(__wrap_fim_db_get_registry_key, NULL);
+    will_return(__wrap_fim_db_insert_registry_key, FIMDB_ERR);
+
+
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap__mwarn, formatted_msg, FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_fim_db_get_registry_keys_not_scanned, NULL);
+    will_return(__wrap_fim_db_get_registry_keys_not_scanned, FIMDB_OK);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_fim_db_get_registry_data_not_scanned, NULL);
-    will_return(__wrap_fim_db_get_registry_data_not_scanned, FIMDB_ERR);
+    will_return(__wrap_fim_db_get_registry_data_not_scanned, FIMDB_OK);
     expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_string(__wrap__mwarn, formatted_msg, FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
 
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
 
@@ -1029,6 +1038,7 @@ static void test_fim_registry_scan_RegOpenKeyEx_fail(void **state) {
 
 static void test_fim_registry_scan_RegQueryInfoKey_fail(void **state) {
     FILETIME last_write_time = { 0, 1000 };
+    fim_tmp_file file = { .elements = 1 };
 
     syscheck.registry = one_entry_config;
     syscheck.registry[0].opts = CHECK_REGISTRY_ALL;
@@ -1043,14 +1053,18 @@ static void test_fim_registry_scan_RegQueryInfoKey_fail(void **state) {
     expect_RegQueryInfoKey_call(1, 0, &last_write_time, -1);
 
     expect_function_call(__wrap_pthread_mutex_lock);
-    will_return(__wrap_fim_db_get_registry_keys_not_scanned, NULL);
+    will_return(__wrap_fim_db_get_registry_keys_not_scanned, &file);
     will_return(__wrap_fim_db_get_registry_keys_not_scanned, FIMDB_OK);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
+    will_return(__wrap_fim_db_process_read_file, 0);
+
     expect_function_call(__wrap_pthread_mutex_lock);
-    will_return(__wrap_fim_db_get_registry_data_not_scanned, NULL);
+    will_return(__wrap_fim_db_get_registry_data_not_scanned, &file);
     will_return(__wrap_fim_db_get_registry_data_not_scanned, FIMDB_OK);
     expect_function_call(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_fim_db_process_read_registry_data_file, 0);
 
     // Test
     fim_registry_scan();
