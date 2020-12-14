@@ -15,18 +15,18 @@
 #include "hashHelper.h"
 
 
-#define TRY_CATCH_SCAN(scan)                                            \
+#define TRY_CATCH_TASK(task)                                            \
 do                                                                      \
 {                                                                       \
     try                                                                 \
     {                                                                   \
-        scan();                                                         \
+        task();                                                         \
     }                                                                   \
     catch(const std::exception& ex)                                     \
     {                                                                   \
         if(m_logErrorFunction)                                          \
         {                                                               \
-            const std::string error{"scan: " + std::string{ex.what()}}; \
+            const std::string error{"task: " + std::string{ex.what()}}; \
             m_logErrorFunction(error);                                  \
         }                                                               \
     }                                                                   \
@@ -281,7 +281,7 @@ constexpr auto PROCESSES_SYNC_CONFIG_STATEMENT
 constexpr auto PROCESSES_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_processes (
-    pid BIGINT,
+    pid TEXT,
     name TEXT,
     state TEXT,
     ppid BIGINT,
@@ -993,6 +993,16 @@ void Syscollector::scanNetwork()
     }
 }
 
+void Syscollector::syncNetwork()
+{
+    if (m_network)
+    {
+        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETIFACE_START_CONFIG_STATEMENT), m_reportSyncFunction);
+        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETPROTO_START_CONFIG_STATEMENT), m_reportSyncFunction);
+        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETADDRESS_START_CONFIG_STATEMENT), m_reportSyncFunction);
+    }
+}
+
 void Syscollector::scanPackages()
 {
     if (m_packages)
@@ -1027,6 +1037,18 @@ void Syscollector::scanPackages()
                 updateAndNotifyChanges(m_spDBSync->handle(), tableHotfixes, hotfixes, m_reportDiffFunction);
                 m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HOTFIXES_START_CONFIG_STATEMENT), m_reportSyncFunction);
             }
+        }
+    }
+}
+
+void Syscollector::syncPackages()
+{
+    if (m_packages)
+    {
+        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PACKAGES_START_CONFIG_STATEMENT), m_reportSyncFunction);
+        if (m_hotfixes)
+        {
+            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HOTFIXES_START_CONFIG_STATEMENT), m_reportSyncFunction);
         }
     }
 }
@@ -1078,6 +1100,14 @@ void Syscollector::scanPorts()
     }
 }
 
+void Syscollector::syncPorts()
+{
+    if (m_ports)
+    {
+        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PORTS_START_CONFIG_STATEMENT), m_reportSyncFunction);
+    }
+}
+
 void Syscollector::scanProcesses()
 {
     if (m_processes)
@@ -1087,19 +1117,34 @@ void Syscollector::scanProcesses()
         if (!processes.is_null())
         {
             updateAndNotifyChanges(m_spDBSync->handle(), table, processes, m_reportDiffFunction);
-            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PROCESSES_START_CONFIG_STATEMENT), m_reportSyncFunction);
         }
+    }
+}
+
+void Syscollector::syncProcesses()
+{
+    if (m_processes)
+    {
+        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PROCESSES_START_CONFIG_STATEMENT), m_reportSyncFunction);
     }
 }
 
 void Syscollector::scan()
 {
-    TRY_CATCH_SCAN(scanHardware);
-    TRY_CATCH_SCAN(scanOs);
-    TRY_CATCH_SCAN(scanNetwork);
-    TRY_CATCH_SCAN(scanPackages);
-    TRY_CATCH_SCAN(scanPorts);
-    TRY_CATCH_SCAN(scanProcesses);
+    TRY_CATCH_TASK(scanHardware);
+    TRY_CATCH_TASK(scanOs);
+    TRY_CATCH_TASK(scanNetwork);
+    TRY_CATCH_TASK(scanPackages);
+    TRY_CATCH_TASK(scanPorts);
+    TRY_CATCH_TASK(scanProcesses);
+}
+
+void Syscollector::sync()
+{
+    TRY_CATCH_TASK(syncNetwork);
+    TRY_CATCH_TASK(syncPackages);
+    TRY_CATCH_TASK(syncPorts);
+    TRY_CATCH_TASK(syncProcesses);
 }
 
 void Syscollector::syncLoop()
@@ -1107,11 +1152,14 @@ void Syscollector::syncLoop()
     if (m_scanOnStart)
     {
         scan();
+        std::this_thread::sleep_for(std::chrono::seconds{1});
+        sync();
     }
     while(sleepFor())
     {
         scan();
-        //sync Rsync
+        std::this_thread::sleep_for(std::chrono::seconds{1});
+        sync();
     }
     m_spRsync.reset(nullptr);
     m_spDBSync.reset(nullptr);
