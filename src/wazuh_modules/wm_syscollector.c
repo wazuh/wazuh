@@ -72,7 +72,7 @@ void* wm_sys_main(wm_sys_t *sys)
         syscollector_stop_ptr = so_get_function_sym(syscollector_module, "syscollector_stop");
         syscollector_sync_message_ptr = so_get_function_sym(syscollector_module, "syscollector_sync_message");
     } else {
-        mterror(WM_SYS_LOGTAG, "Can't load syscollector.");
+        mterror(WM_SYS_LOGTAG, "Can't load syscollector, %s.", dlerror());
         pthread_exit(NULL);
     }
 
