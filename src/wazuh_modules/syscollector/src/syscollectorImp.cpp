@@ -674,7 +674,7 @@ constexpr auto NETADDR_SQL_STATEMENT
 static const std::vector<std::string> NETADDRESS_ITEM_ID_FIELDS{"iface", "proto", "address"};
 
 
-static std::string getItemId(const nlohmann::json& item, const std::vector<std::string> idFields)
+static std::string getItemId(const nlohmann::json& item, const std::vector<std::string>& idFields)
 {
     Utils::HashData hash;
     for (const auto& field : idFields)
